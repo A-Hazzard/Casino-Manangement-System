@@ -24,6 +24,7 @@ import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { TimePeriod } from '@/shared/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
+import { Countries } from '@/app/api/lib/models/countries';
 import { NextRequest, NextResponse } from 'next/server';
 
 type LocationAggregationResult = {
@@ -362,12 +363,14 @@ export async function GET(request: NextRequest) {
 
       // Get country details for currency mapping (for unassigned locations)
       const { getCountryCurrency } = await import('@/lib/helpers/rates');
-      const countriesData = await db.collection('countries').find({}).toArray();
+      const countriesData = await Countries.find({}).lean();
 
       // Create a map of country ID to name
       const countryIdToName = new Map<string, string>();
       countriesData.forEach(country => {
-        countryIdToName.set(country._id.toString(), country.name);
+        if (country._id && country.name) {
+          countryIdToName.set(String(country._id), country.name);
+        }
       });
 
       // Convert each location's financial data

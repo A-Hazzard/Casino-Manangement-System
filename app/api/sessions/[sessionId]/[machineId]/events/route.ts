@@ -12,8 +12,8 @@
  * @module app/api/sessions/[sessionId]/[machineId]/events/route
  */
 
-import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 

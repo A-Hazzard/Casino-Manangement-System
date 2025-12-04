@@ -9,6 +9,7 @@
 
 import { getDatesForTimePeriod } from '../utils/dates';
 import type { TimePeriod } from '../types';
+import { Meters } from '@/app/api/lib/models/meters';
 import type { Db } from 'mongodb';
 import type { PipelineStage } from 'mongoose';
 
@@ -176,7 +177,7 @@ export async function getTopMachinesByLocation(
   );
   const pipeline = buildTopMachinesPipeline(locationId, start, end);
 
-  return await db.collection('meters').aggregate(pipeline).toArray();
+  return await Meters.aggregate(pipeline);
 }
 
 /**
@@ -424,6 +425,6 @@ export async function getTopMachinesDetailed(
     limit
   );
 
-  return await db.collection('meters').aggregate(pipeline).toArray();
+  return await Meters.aggregate(pipeline);
 }
 

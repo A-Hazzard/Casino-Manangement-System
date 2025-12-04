@@ -14,7 +14,7 @@
  * @module app/api/collection-reports/fix-all-reports/route
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { fixAllReportsData } from '../../lib/helpers/bulkReportsFix';
 import { getUserById, getUserIdFromServer } from '../../lib/helpers/users';
 import { connectDB } from '../../lib/middleware/db';
@@ -28,7 +28,7 @@ import { connectDB } from '../../lib/middleware/db';
  * 3. Execute fix operation for reports with issues
  * 4. Return detailed summary of all fixes and errors
  */
-export async function POST(_request: NextRequest) {
+export async function POST() {
   const startTime = Date.now();
 
   try {

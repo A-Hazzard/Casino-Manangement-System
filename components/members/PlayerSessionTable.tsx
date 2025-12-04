@@ -120,7 +120,7 @@ const SortableHeader = ({
 
   return (
     <th
-      className="relative cursor-pointer select-none whitespace-nowrap border border-border p-3 text-sm transition-colors hover:bg-gray-100"
+      className="cursor-pointer select-none p-3 text-center font-medium text-white transition-colors hover:bg-buttonActive"
       onClick={() => onSort(sortKey)}
     >
       <div className="flex items-center justify-center gap-1">
@@ -141,103 +141,96 @@ const SortableHeader = ({
   );
 };
 
-// Session Card Component for Mobile
+// Session Card Component for Mobile/Tablet
 const SessionCard = ({ session }: { session: MemberSession }) => {
   const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
   const wonLess = (session.won || 0) - (session.bet || 0);
   const wonLessColor = wonLess >= 0 ? 'text-green-600' : 'text-red-600';
 
   return (
-    <div className="mx-auto w-full rounded-lg border border-border bg-container p-4 shadow-sm">
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="break-words text-base font-semibold text-gray-800">
-          {session.sessionId && session.sessionId !== session._id
-            ? session.sessionId
-            : `Login Time: ${formatLoginTime(session.time)}`}
-        </h3>
-        <span className="whitespace-nowrap text-sm text-gray-500">
-          Length: {session.sessionLength}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-600">Money In</span>
-          <span className={`break-all text-right font-semibold ${getMoneyInColorClass(session.moneyIn)}`}>
-            {shouldShowCurrency()
-              ? formatAmount(session.moneyIn || 0)
-              : formatCurrency(session.moneyIn || 0)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-600">Money Out</span>
-          <span className={`break-all text-right font-semibold ${getMoneyOutColorClass(session.moneyOut, session.moneyIn)}`}>
-            {shouldShowCurrency()
-              ? formatAmount(session.moneyOut || 0)
-              : formatCurrency(session.moneyOut || 0)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-600">Jackpot</span>
-          <span className="break-all text-right font-semibold">
-            {shouldShowCurrency()
-              ? formatAmount(session.jackpot || 0)
-              : formatCurrency(session.jackpot || 0)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-600">Won/Less</span>
-          <span
-            className={`break-all text-right font-semibold ${wonLessColor}`}
+    <div className="overflow-hidden rounded-lg border bg-white transition-shadow hover:shadow-md">
+      {/* Card Header */}
+      <div className="border-b bg-gradient-to-r from-gray-50 to-white p-4">
+        <div className="mb-2 flex items-start justify-between">
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-gray-900">
+              {session.sessionId && session.sessionId !== session._id
+                ? `Session ${session.sessionId}`
+                : formatLoginTime(session.time)}
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Duration: {session.sessionLength || 'N/A'}
+            </p>
+          </div>
+          <Link
+            href={`/sessions/${session.sessionId || session._id}/${
+              session.machineId
+            }/events`}
           >
-            {shouldShowCurrency()
-              ? formatAmount(wonLess || 0)
-              : formatCurrency(wonLess || 0)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-600">Points</span>
-          <span className="text-right font-semibold">{session.points}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-600">Games Played</span>
-          <span className="text-right font-semibold">
-            {session.gamesPlayed}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-600">Games Won</span>
-          <span className="text-right font-semibold">{session.gamesWon}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-600">Coin In</span>
-          <span className="break-all text-right font-semibold">
-            {formatCurrency(session.coinIn)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between sm:col-span-2">
-          <span className="font-medium text-gray-600">Coin Out</span>
-          <span className="break-all text-right font-semibold">
-            {formatCurrency(session.coinOut)}
-          </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+            >
+              <ActivityIcon className="mr-1 h-3 w-3" />
+              Events
+            </Button>
+          </Link>
         </div>
       </div>
 
-      <div className="mt-3 border-t border-gray-200 pt-3">
-        <Link
-          href={`/sessions/${session.sessionId || session._id}/${
-            session.machineId
-          }/events`}
-        >
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex w-full items-center justify-center gap-2 text-xs"
-          >
-            <ActivityIcon className="h-3 w-3" />
-            View Events
-          </Button>
-        </Link>
+      {/* Card Content - 2x2 Grid */}
+      <div className="p-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Money In</span>
+            <span className={`font-semibold ${getMoneyInColorClass(session.moneyIn)}`}>
+              {shouldShowCurrency()
+                ? formatAmount(session.moneyIn || 0)
+                : formatCurrency(session.moneyIn || 0)}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Money Out</span>
+            <span className={`font-semibold ${getMoneyOutColorClass(session.moneyOut, session.moneyIn)}`}>
+              {shouldShowCurrency()
+                ? formatAmount(session.moneyOut || 0)
+                : formatCurrency(session.moneyOut || 0)}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Jackpot</span>
+            <span className="font-semibold">
+              {shouldShowCurrency()
+                ? formatAmount(session.jackpot || 0)
+                : formatCurrency(session.jackpot || 0)}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Won/Less</span>
+            <span className={`font-semibold ${wonLessColor}`}>
+              {shouldShowCurrency()
+                ? formatAmount(wonLess || 0)
+                : formatCurrency(wonLess || 0)}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Points</span>
+            <span className="font-semibold">{session.points || 0}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Games Played</span>
+            <span className="font-semibold">{session.gamesPlayed || 0}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Games Won</span>
+            <span className="font-semibold">{session.gamesWon || 0}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Coin In</span>
+            <span className="font-semibold">{formatCurrency(session.coinIn || 0)}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -430,20 +423,20 @@ export default function PlayerSessionTable({
   };
 
   return (
-    <div className="overflow-hidden rounded-lg bg-white shadow-md">
-      {/* Mobile/Tablet Card View */}
-      <div className="block md:hidden">
-        <div className="grid grid-cols-1 gap-4 p-4">
+    <div className="rounded-md border bg-white">
+      {/* Card Grid View - shown below xl breakpoint */}
+      <div className="block p-4 xl:hidden">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {sortedSessions.map(session => (
             <SessionCard key={session._id} session={session} />
           ))}
         </div>
       </div>
 
-      {/* Desktop Table View */}
-      <div className="hidden md:block">
+      {/* Desktop Table View - shown on xl and above */}
+      <div className="hidden xl:block">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1400px] border-collapse text-center">
+          <table className="w-full min-w-[1400px]">
             <thead className="bg-button text-white">
               <tr>
                 {TABLE_HEADERS.map(header =>
@@ -459,7 +452,7 @@ export default function PlayerSessionTable({
                   ) : (
                     <th
                       key={header.label}
-                      className="relative whitespace-nowrap border border-border p-3 text-sm"
+                      className="p-3 text-center font-medium text-white"
                     >
                       <span>{header.label}</span>
                     </th>
@@ -469,11 +462,11 @@ export default function PlayerSessionTable({
             </thead>
             <tbody>
               {sortedSessions.map(session => (
-                <tr key={session._id} className="hover:bg-muted">
+                <tr key={session._id} className="border-b hover:bg-muted/30">
                   {TABLE_HEADERS.map(header => (
                     <td
                       key={header.label}
-                      className="whitespace-nowrap border border-border bg-container p-3 text-left text-sm hover:bg-accent"
+                      className="bg-white p-3 text-center text-sm"
                     >
                       {renderCell(session, header.label)}
                     </td>
@@ -486,8 +479,8 @@ export default function PlayerSessionTable({
       </div>
 
       {/* Mobile Pagination */}
-      <div className="flex flex-col space-y-3 border-t bg-gray-50 px-4 py-3 sm:hidden">
-        <div className="text-center text-xs text-gray-600">
+      <div className="flex flex-col space-y-3 border-t bg-muted/20 px-4 py-3 sm:hidden">
+        <div className="text-center text-xs text-muted-foreground">
           Page {currentPage + 1} of {totalPages}
         </div>
         <div className="flex items-center justify-center space-x-2">
@@ -496,7 +489,7 @@ export default function PlayerSessionTable({
             size="sm"
             onClick={handleFirstPage}
             disabled={currentPage === 0}
-            className="px-2 py-1 text-xs"
+            className="h-8 px-2"
           >
             ««
           </Button>
@@ -505,12 +498,12 @@ export default function PlayerSessionTable({
             size="sm"
             onClick={handlePrevPage}
             disabled={currentPage === 0}
-            className="px-2 py-1 text-xs"
+            className="h-8 px-2"
           >
             ‹
           </Button>
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-600">Page</span>
+            <span className="text-xs text-muted-foreground">Page</span>
             <input
               type="number"
               min={1}
@@ -523,17 +516,17 @@ export default function PlayerSessionTable({
                 if (val > totalPages) val = totalPages;
                 onPageChange(val - 1);
               }}
-              className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+              className="h-8 w-12 rounded-md border border-input bg-background px-2 text-center text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Page number"
             />
-            <span className="text-xs text-gray-600">of {totalPages}</span>
+            <span className="text-xs text-muted-foreground">of {totalPages}</span>
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={handleNextPage}
             disabled={currentPage >= totalPages - 1}
-            className="px-2 py-1 text-xs"
+            className="h-8 px-2"
           >
             ›
           </Button>
@@ -542,7 +535,7 @@ export default function PlayerSessionTable({
             size="sm"
             onClick={handleLastPage}
             disabled={currentPage >= totalPages - 1}
-            className="px-2 py-1 text-xs"
+            className="h-8 px-2"
           >
             »»
           </Button>
@@ -550,8 +543,8 @@ export default function PlayerSessionTable({
       </div>
 
       {/* Desktop Pagination */}
-      <div className="hidden items-center justify-between border-t bg-gray-50 px-4 py-3 sm:flex">
-        <span className="text-sm text-gray-600">
+      <div className="hidden items-center justify-between border-t bg-muted/20 px-4 py-3 sm:flex">
+        <span className="text-sm text-muted-foreground">
           Page {currentPage + 1} of {totalPages}
         </span>
         <div className="flex items-center gap-2">
@@ -572,7 +565,7 @@ export default function PlayerSessionTable({
             Previous
           </Button>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Page</span>
+            <span className="text-sm text-muted-foreground">Page</span>
             <input
               type="number"
               min={1}
@@ -585,10 +578,10 @@ export default function PlayerSessionTable({
                 if (val > totalPages) val = totalPages;
                 onPageChange(val - 1);
               }}
-              className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+              className="h-9 w-16 rounded-md border border-input bg-background px-2 text-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Page number"
             />
-            <span className="text-sm text-gray-600">of {totalPages}</span>
+            <span className="text-sm text-muted-foreground">of {totalPages}</span>
           </div>
           <Button
             variant="outline"

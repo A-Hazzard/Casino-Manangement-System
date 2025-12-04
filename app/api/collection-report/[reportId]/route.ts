@@ -129,10 +129,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 6: Return report data
     // ============================================================================
-    const duration = Date.now() - startTime;
-    console.log(
-      `[Collection Report GET API] Successfully fetched report ${reportId} (${reportData.machineMetrics?.length || 0} machines) after ${duration}ms.`
-    );
     return NextResponse.json(reportData);
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
@@ -221,20 +217,79 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     }
 
     // ============================================================================
-    // STEP 6: Log activity
+    // STEP 6: Log activity with accurate change tracking
     // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-        const updateChanges = Object.keys(body).map(key => ({
-          field: key,
-          oldValue: existingReport[key as keyof typeof existingReport],
-          newValue: body[key as keyof typeof body],
-        }));
+        // Build changes array - ONLY for fields that were actually updated
+        const updateChanges: Array<{
+          field: string;
+          oldValue: unknown;
+          newValue: unknown;
+        }> = [];
+
+        // Only log fields that were included in the update body
+        if (body.locationName !== undefined) {
+          updateChanges.push({
+            field: 'locationName',
+            oldValue: existingReport.locationName,
+            newValue: body.locationName,
+          });
+        }
+        if (body.collectorName !== undefined) {
+          updateChanges.push({
+            field: 'collectorName',
+            oldValue: existingReport.collectorName,
+            newValue: body.collectorName,
+          });
+        }
+        if (body.amountCollected !== undefined) {
+          updateChanges.push({
+            field: 'amountCollected',
+            oldValue: existingReport.amountCollected,
+            newValue: body.amountCollected,
+          });
+        }
+        if (body.amountToCollect !== undefined) {
+          updateChanges.push({
+            field: 'amountToCollect',
+            oldValue: existingReport.amountToCollect,
+            newValue: body.amountToCollect,
+          });
+        }
+        if (body.variance !== undefined) {
+          updateChanges.push({
+            field: 'variance',
+            oldValue: existingReport.variance,
+            newValue: body.variance,
+          });
+        }
+        if (body.partnerProfit !== undefined) {
+          updateChanges.push({
+            field: 'partnerProfit',
+            oldValue: existingReport.partnerProfit,
+            newValue: body.partnerProfit,
+          });
+        }
+        if (body.taxes !== undefined) {
+          updateChanges.push({
+            field: 'taxes',
+            oldValue: existingReport.taxes,
+            newValue: body.taxes,
+          });
+        }
+        if (body.machines !== undefined) {
+          updateChanges.push({
+            field: 'machines',
+            oldValue: body.machines?.length || 0, // No previous machines count available
+            newValue: body.machines?.length || 0,
+          });
+        }
 
         await logActivity({
           action: 'UPDATE',
-          details: `Updated collection report for ${existingReport.locationName}`,
+          details: `Updated collection report for ${existingReport.locationName} (${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''})`,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
@@ -255,10 +310,6 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 7: Return updated report
     // ============================================================================
-    const duration = Date.now() - startTime;
-    console.log(
-      `[Collection Report PATCH API] Successfully updated report ${reportId} after ${duration}ms.`
-    );
     return NextResponse.json({
       success: true,
       data: updateResult.data,
@@ -335,10 +386,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 4: Remove collection history entries from machines
     // ============================================================================
-    const machinesUpdated = await removeCollectionHistoryFromMachines(reportId);
-    console.log(
-      `[Collection Report DELETE API] Removed collection history from ${machinesUpdated} machines for reportId: ${reportId}`
-    );
+    await removeCollectionHistoryFromMachines(reportId);
 
     // ============================================================================
     // STEP 5: Revert machine collection meters
@@ -380,10 +428,6 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 8: Return success response
     // ============================================================================
-    const duration = Date.now() - startTime;
-    console.log(
-      `[Collection Report DELETE API] Successfully deleted report ${reportId} with ${associatedCollections.length} collections after ${duration}ms.`
-    );
     return NextResponse.json({
       success: true,
       message: `Collection report and ${associatedCollections.length} associated collections deleted successfully. Collection meters reverted to previous values.`,

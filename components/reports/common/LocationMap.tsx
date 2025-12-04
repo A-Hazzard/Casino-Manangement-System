@@ -10,6 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { LocationMapProps } from '@/lib/types/components';
 import { formatCurrency } from '@/lib/utils/formatting';
@@ -271,6 +272,9 @@ export default function LocationMap({
     getContainer?: () => HTMLElement | null;
   } | null>(null);
 
+  // Abort controller for data fetching
+  const makeLocationMapRequest = useAbortableRequest();
+
   // Helper function to safely check if map is ready for operations
   const isMapReadyForOperations = (map: typeof mapRef.current): boolean => {
     if (!map) return false;
@@ -286,10 +290,23 @@ export default function LocationMap({
     if (!(panes.mapPane instanceof HTMLElement)) return false;
     if (!(panes.markerPane instanceof HTMLElement)) return false;
 
-    // Check if container exists
+    // ENHANCED: Check that panes have _leaflet_pos property and are attached to DOM
+    // @ts-expect-error - _leaflet_pos is a Leaflet internal property
+    if (!panes.mapPane._leaflet_pos) return false;
+    // @ts-expect-error - _leaflet_pos is a Leaflet internal property
+    if (!panes.markerPane._leaflet_pos) return false;
+    
+    // Verify panes are attached to the DOM (have parent elements)
+    if (!panes.mapPane.parentElement) return false;
+    if (!panes.markerPane.parentElement) return false;
+
+    // Check if container exists and has dimensions
     if (map.getContainer) {
       const container = map.getContainer();
       if (!container || !(container instanceof HTMLElement)) return false;
+      
+      // Verify container has dimensions (width > 0)
+      if (container.offsetWidth <= 0) return false;
     }
 
     return true;
@@ -363,14 +380,28 @@ export default function LocationMap({
               try {
                 mapRef.current.setView(locationCenter, zoomLevel);
               } catch (error) {
-                console.warn('LocationMap: Error setting view:', error);
+                if (error instanceof Error && error.message.includes('_leaflet_pos')) {
+                  console.warn('Map not fully initialized, deferring setView');
+                  // Retry after longer delay
+                  setTimeout(() => {
+                    if (mapRef.current && isMapReadyForOperations(mapRef.current)) {
+                      try {
+                        mapRef.current.setView(locationCenter, zoomLevel);
+                      } catch (e) {
+                        console.error('Failed to set map view after retry:', e);
+                      }
+                    }
+                  }, 1500);
+                } else {
+                  console.warn('LocationMap: Error setting view:', error);
+                }
               }
             } else {
               console.warn(
                 'LocationMap: Map not ready for operations, skipping setView'
               );
             }
-          }, 1000);
+          }, 1500);
           return;
         }
       }
@@ -431,14 +462,28 @@ export default function LocationMap({
           try {
             mapRef.current.setView(defaultCenter, zoomLevel);
           } catch (error) {
-            console.warn('LocationMap: Error setting view:', error);
+            if (error instanceof Error && error.message.includes('_leaflet_pos')) {
+              console.warn('Map not fully initialized, deferring setView');
+              // Retry after longer delay
+              setTimeout(() => {
+                if (mapRef.current && isMapReadyForOperations(mapRef.current)) {
+                  try {
+                    mapRef.current.setView(defaultCenter, zoomLevel);
+                  } catch (e) {
+                    console.error('Failed to set map view after retry:', e);
+                  }
+                }
+              }, 1500);
+            } else {
+              console.warn('LocationMap: Error setting view:', error);
+            }
           }
         } else {
           console.warn(
             'LocationMap: Map not ready for operations, skipping setView'
           );
         }
-      }, 1000);
+      }, 1500);
     };
 
     void updateMapCenter();
@@ -473,95 +518,101 @@ export default function LocationMap({
     }
 
     const fetchData = async () => {
-      setLoading(true);
-      try {
-        if (Array.isArray(aggregates)) {
-          setLocationAggregates(aggregates);
-        } else {
-          // Build query parameters based on current filters
-          const params = new URLSearchParams();
+      await makeLocationMapRequest(async (signal) => {
+        setLoading(true);
+        try {
+          if (Array.isArray(aggregates)) {
+            setLocationAggregates(aggregates);
+          } else {
+            // Build query parameters based on current filters
+            const params = new URLSearchParams();
 
-          // Add time period based on activeMetricsFilter
-          if (activeMetricsFilter === 'Today') {
-            params.append('timePeriod', 'Today');
-          } else if (activeMetricsFilter === 'Yesterday') {
-            params.append('timePeriod', 'Yesterday');
-          } else if (
-            activeMetricsFilter === 'last7days' ||
-            activeMetricsFilter === '7d'
-          ) {
-            params.append('timePeriod', '7d');
-          } else if (
-            activeMetricsFilter === 'last30days' ||
-            activeMetricsFilter === '30d'
-          ) {
-            params.append('timePeriod', '30d');
-          } else if (activeMetricsFilter === 'Custom' && customDateRange) {
-            // For custom range, use the date range directly
-            if (customDateRange.startDate && customDateRange.endDate) {
-              const sd =
-                customDateRange.startDate instanceof Date
-                  ? customDateRange.startDate
-                  : new Date(customDateRange.startDate as string);
-              const ed =
-                customDateRange.endDate instanceof Date
-                  ? customDateRange.endDate
-                  : new Date(customDateRange.endDate as string);
+            // Add time period based on activeMetricsFilter
+            if (activeMetricsFilter === 'Today') {
+              params.append('timePeriod', 'Today');
+            } else if (activeMetricsFilter === 'Yesterday') {
+              params.append('timePeriod', 'Yesterday');
+            } else if (
+              activeMetricsFilter === 'last7days' ||
+              activeMetricsFilter === '7d'
+            ) {
+              params.append('timePeriod', '7d');
+            } else if (
+              activeMetricsFilter === 'last30days' ||
+              activeMetricsFilter === '30d'
+            ) {
+              params.append('timePeriod', '30d');
+            } else if (activeMetricsFilter === 'Custom' && customDateRange) {
+              // For custom range, use the date range directly
+              if (customDateRange.startDate && customDateRange.endDate) {
+                const sd =
+                  customDateRange.startDate instanceof Date
+                    ? customDateRange.startDate
+                    : new Date(customDateRange.startDate as string);
+                const ed =
+                  customDateRange.endDate instanceof Date
+                    ? customDateRange.endDate
+                    : new Date(customDateRange.endDate as string);
 
-              // Send dates in local format (YYYY-MM-DD) to avoid double timezone conversion
-              // The API will treat these as Trinidad time and convert to UTC
-              const startDateStr = sd.toISOString().split('T')[0];
-              const endDateStr = ed.toISOString().split('T')[0];
-              params.append('startDate', startDateStr);
-              params.append('endDate', endDateStr);
+                // Send dates in local format (YYYY-MM-DD) to avoid double timezone conversion
+                // The API will treat these as Trinidad time and convert to UTC
+                const startDateStr = sd.toISOString().split('T')[0];
+                const endDateStr = ed.toISOString().split('T')[0];
+                params.append('startDate', startDateStr);
+                params.append('endDate', endDateStr);
+              } else {
+                // No valid timePeriod, skip the request
+                return;
+              }
             } else {
               // No valid timePeriod, skip the request
               return;
             }
-          } else {
-            // No valid timePeriod, skip the request
-            return;
+
+            // Add licensee filter if selected
+            if (selectedLicencee) {
+              params.append('licencee', selectedLicencee);
+            }
+
+            // Fetch location aggregation data
+            const aggResponse = await axios.get(
+              `/api/locationAggregation?${params.toString()}`,
+              { signal }
+            );
+            const aggData = aggResponse.data;
+            // Handle both old array format and new paginated format
+            const locationData = Array.isArray(aggData)
+              ? aggData
+              : aggData.data || [];
+            setLocationAggregates(locationData);
           }
 
-          // Add licensee filter if selected
-          if (selectedLicencee) {
-            params.append('licencee', selectedLicencee);
+          // Fetch ALL gaming locations using search-all API (including those without coordinates)
+          const searchAllParams = new URLSearchParams();
+          if (selectedLicencee && selectedLicencee !== 'all') {
+            searchAllParams.append('licencee', selectedLicencee);
           }
 
-          // Fetch location aggregation data
-          const aggResponse = await axios.get(
-            `/api/locationAggregation?${params.toString()}`
+          const searchAllResponse = await axios.get(
+            `/api/locations/search-all?${searchAllParams.toString()}`,
+            { signal }
           );
-          const aggData = aggResponse.data;
-          // Handle both old array format and new paginated format
-          const locationData = Array.isArray(aggData)
-            ? aggData
-            : aggData.data || [];
-          setLocationAggregates(locationData);
+          const locationsData = searchAllResponse.data;
+          setGamingLocations(locationsData || []);
+        } catch (err) {
+          if (!axios.isCancel(err)) {
+            console.error('Error fetching location data:', err);
+            setLocationAggregates([]);
+            setGamingLocations([]);
+          }
+        } finally {
+          // Delay slightly to avoid flicker, but also guard with a hard cap
+          if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+          loadingTimeoutRef.current = setTimeout(() => setLoading(false), 300);
+          // Hard cap to ensure loading never lingers beyond 2s
+          setTimeout(() => setLoading(false), 2000);
         }
-
-        // Fetch ALL gaming locations using search-all API (including those without coordinates)
-        const searchAllParams = new URLSearchParams();
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          searchAllParams.append('licencee', selectedLicencee);
-        }
-
-        const searchAllResponse = await axios.get(
-          `/api/locations/search-all?${searchAllParams.toString()}`
-        );
-        const locationsData = searchAllResponse.data;
-        setGamingLocations(locationsData || []);
-      } catch (err) {
-        console.error('Error fetching location data:', err);
-        setLocationAggregates([]);
-        setGamingLocations([]);
-      } finally {
-        // Delay slightly to avoid flicker, but also guard with a hard cap
-        if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = setTimeout(() => setLoading(false), 300);
-        // Hard cap to ensure loading never lingers beyond 2s
-        setTimeout(() => setLoading(false), 2000);
-      }
+      }, `Reports Map Data (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`);
     };
     fetchData();
   }, [
@@ -570,6 +621,7 @@ export default function LocationMap({
     customDateRange,
     aggregates,
     propsGamingLocations,
+    makeLocationMapRequest,
   ]);
 
   // Get locations without coordinates for user notification
@@ -641,7 +693,21 @@ export default function LocationMap({
         try {
           mapRef.current.setView([lat as number, lon as number], 15);
         } catch (error) {
-          console.warn('LocationMap: Error zooming to location:', error);
+          if (error instanceof Error && error.message.includes('_leaflet_pos')) {
+            console.warn('Map not fully initialized, deferring setView');
+            // Retry after longer delay
+            setTimeout(() => {
+              if (mapRef.current && isMapReadyForOperations(mapRef.current)) {
+                try {
+                  mapRef.current.setView([lat as number, lon as number], 15);
+                } catch (e) {
+                  console.error('Failed to set map view after retry:', e);
+                }
+              }
+            }, 1500);
+          } else {
+            console.warn('LocationMap: Error zooming to location:', error);
+          }
         }
       } else {
         console.warn(

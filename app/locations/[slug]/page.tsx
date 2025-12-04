@@ -42,11 +42,7 @@ import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
 import type { ExtendedCabinetDetail } from '@/lib/types/pages';
 import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
-import {
-  animateColumnSort,
-  animateSortDirection,
-  filterAndSortCabinets as filterAndSortCabinetsUtil,
-} from '@/lib/utils/ui';
+import { filterAndSortCabinets as filterAndSortCabinetsUtil } from '@/lib/utils/ui';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import gsap from 'gsap';
@@ -54,16 +50,20 @@ import { PlusCircle, RefreshCw, Search } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
-import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
 import Chart from '@/components/ui/dashboard/Chart';
+import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
 import { IMAGES } from '@/lib/constants/images';
+import { getMetrics } from '@/lib/helpers/metrics';
+import {
+  useLocationMachineStats,
+  useLocationMembershipStats,
+} from '@/lib/hooks/data';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
+import type { dashboardData } from '@/lib/types';
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
-import { useLocationMachineStats } from '@/lib/hooks/data';
-import { getMetrics } from '@/lib/helpers/metrics';
-import type { dashboardData } from '@/lib/types';
 import { TimePeriod } from '@/shared/types/common';
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
 import axios from 'axios';
@@ -103,6 +103,10 @@ export default function LocationPage() {
   } = useDashBoardStore();
 
   const user = useUserStore(state => state.user);
+
+  // AbortController for different query types
+  const makeCabinetsRequest = useAbortableRequest();
+  const makeChartRequest = useAbortableRequest();
   const { displayCurrency } = useCurrencyFormat();
 
   // ============================================================================
@@ -127,9 +131,13 @@ export default function LocationPage() {
       return false;
     }
     // Technicians, managers, admins, developers, and location admins can manage machines
-    return ['developer', 'admin', 'manager', 'location admin', 'technician'].some(
-      role => userRoles.includes(role)
-    );
+    return [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
+    ].some(role => userRoles.includes(role));
   }, [user]);
 
   const [filteredCabinets, setFilteredCabinets] = useState<Cabinet[]>([]);
@@ -180,6 +188,8 @@ export default function LocationPage() {
   // Machine status stats from dedicated API (location-specific)
   const { machineStats, machineStatsLoading, refreshMachineStats } =
     useLocationMachineStats(locationId);
+  const { membershipStats, membershipStatsLoading, refreshMembershipStats } =
+    useLocationMembershipStats(locationId);
 
   // Extract game types from cabinets
   const gameTypes = useMemo(() => {
@@ -308,53 +318,20 @@ export default function LocationPage() {
     setAllCabinets(accumulatedCabinets);
   }, [accumulatedCabinets]);
 
-  // Get items for current page from the current batch
-  // When searching, use allCabinets directly (API returns all search results)
-  // When not searching, use accumulatedCabinets (batched loading)
-  const paginatedCabinets = useMemo(() => {
-    // When searching, API returns all results, so use allCabinets directly
-    const sourceCabinets = debouncedSearchTerm?.trim()
-      ? allCabinets
-      : accumulatedCabinets;
+  // Determine the full source set to work from (all loaded cabinets for the period)
+  const sourceCabinets = useMemo(
+    () => (debouncedSearchTerm?.trim() ? allCabinets : accumulatedCabinets),
+    [allCabinets, accumulatedCabinets, debouncedSearchTerm]
+  );
 
-    // Calculate position within current batch (0-4 for pages 0-4, 0-4 for pages 5-9, etc.)
-    const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
-    const startIndex = positionInBatch;
-    const endIndex = startIndex + itemsPerPage;
-
-    return sourceCabinets.slice(startIndex, endIndex);
-  }, [
-    accumulatedCabinets,
-    allCabinets,
-    currentPage,
-    itemsPerPage,
-    pagesPerBatch,
-    debouncedSearchTerm,
-  ]);
-
-  // Calculate total pages based on all loaded batches (dynamically increases as batches load)
-  // When searching, use allCabinets length (API returns all search results)
-  const effectiveTotalPages = useMemo(() => {
-    const totalItems = debouncedSearchTerm?.trim()
-      ? allCabinets.length
-      : accumulatedCabinets.length;
-    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
-    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [
-    accumulatedCabinets.length,
-    allCabinets.length,
-    itemsPerPage,
-    debouncedSearchTerm,
-  ]);
-
-  // ====== Filter Cabinets by search and sort ======
-  // Filter and sort from paginated cabinets (current page's data from loaded batches)
+  // ====== Filter & Sort Cabinets, then Paginate ======
+  // Filter and sort from the full loaded set so sorting is global, not per-page
   const applyFiltersAndSort = useCallback(() => {
     // When searchTerm is provided, API already filtered the results
     // We only need to apply sorting and other filters (game type, status)
     // Don't apply search filter again since API already handled it
     let filtered = filterAndSortCabinetsUtil(
-      paginatedCabinets,
+      sourceCabinets,
       '', // Empty search term since API already handled search filtering
       sortOption,
       sortOrder
@@ -381,13 +358,14 @@ export default function LocationPage() {
     }
 
     setFilteredCabinets(filtered);
-  }, [
-    paginatedCabinets,
-    sortOption,
-    sortOrder,
-    selectedStatus,
-    selectedGameType,
-  ]);
+  }, [sourceCabinets, sortOption, sortOrder, selectedStatus, selectedGameType]);
+
+  // Calculate total pages based on the filtered & sorted set
+  const effectiveTotalPages = useMemo(() => {
+    const totalItems = filteredCabinets.length;
+    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
+    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
+  }, [filteredCabinets.length, itemsPerPage]);
 
   // Reset to default view when search is cleared
   useEffect(() => {
@@ -536,18 +514,32 @@ export default function LocationPage() {
             ? undefined
             : itemsPerBatch;
 
-          const result = await fetchCabinetsForLocation(
-            locationId, // Always use the URL slug for cabinet fetching
-            selectedLicencee,
-            activeMetricsFilter, // Pass the selected filter directly
-            debouncedSearchTerm?.trim() || undefined, // Pass debouncedSearchTerm to API
-            activeMetricsFilter === 'Custom' && customDateRange
-              ? { from: customDateRange.startDate, to: customDateRange.endDate }
-              : undefined, // Only pass customDateRange when filter is "Custom"
-            effectivePage, // page
-            effectiveLimit, // limit (undefined when searching = fetch all)
-            displayCurrency
+          const result = await makeCabinetsRequest(
+            async signal => {
+              return await fetchCabinetsForLocation(
+                locationId,
+                selectedLicencee,
+                activeMetricsFilter,
+                debouncedSearchTerm?.trim() || undefined,
+                activeMetricsFilter === 'Custom' && customDateRange
+                  ? {
+                      from: customDateRange.startDate,
+                      to: customDateRange.endDate,
+                    }
+                  : undefined,
+                effectivePage,
+                effectiveLimit,
+                displayCurrency,
+                signal
+              );
+            },
+            `Location Cabinets (${locationId}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
           );
+
+          if (!result) {
+            // Request was aborted
+            return;
+          }
           setAllCabinets(result.data);
           // When search is cleared, reset accumulated data to start fresh
           if (!debouncedSearchTerm?.trim()) {
@@ -608,6 +600,7 @@ export default function LocationPage() {
     isAdminUser,
     debouncedSearchTerm, // Use debounced value to trigger fetch only after user stops typing
     displayCurrency,
+    makeCabinetsRequest,
   ]);
 
   // Effect to re-run filtering and sorting when dependencies change
@@ -624,92 +617,107 @@ export default function LocationPage() {
 
     const fetchChartData = async () => {
       setLoadingChartData(true);
-      try {
-        const timePeriod = activeMetricsFilter as TimePeriod;
 
-        // Fetch chart data using the same API as top performing locations
-        const allChartData = await getMetrics(
-          timePeriod,
-          customDateRange.startDate,
-          customDateRange.endDate,
-          selectedLicencee && selectedLicencee !== 'all' ? selectedLicencee : undefined,
-          displayCurrency
-        );
+      await makeChartRequest(
+        async signal => {
+          const timePeriod = activeMetricsFilter as TimePeriod;
 
-        // Filter chart data by the current location
-        // The location field in chart data can be either ID or name
-        // Try multiple matching strategies to ensure we catch the data
-        let filteredChartData = allChartData.filter(item => {
-          const itemLocation = item.location;
-          if (!itemLocation) return false;
-          
-          // Convert to strings for comparison
-          const locationIdStr = String(locationId);
-          const selectedLocationIdStr = selectedLocationId ? String(selectedLocationId) : '';
-          const locationNameStr = locationName ? String(locationName).toLowerCase() : '';
-          const itemLocationStr = String(itemLocation).toLowerCase();
-          
-          return (
-            itemLocation === locationId ||
-            itemLocation === locationIdStr ||
-            itemLocation === selectedLocationId ||
-            itemLocation === selectedLocationIdStr ||
-            itemLocation === locationName ||
-            itemLocationStr === locationNameStr ||
-            // Also check if location name matches (case-insensitive)
-            (locationName && itemLocationStr.includes(locationNameStr)) ||
-            (locationName && locationNameStr.includes(itemLocationStr))
-          );
-        });
+          let url = `/api/analytics/location-trends?locationIds=${locationId}&timePeriod=${timePeriod}`;
 
-        // If no filtered data found, try showing all data (might be aggregated already)
-        // This handles cases where location filtering might not work due to data structure
-        if (filteredChartData.length === 0 && allChartData.length > 0) {
-          // If we have data but filtering returned nothing, use all data
-          // This might happen if the API already filtered by location or if location field format differs
-          filteredChartData = allChartData;
-        }
+          if (
+            timePeriod === 'Custom' &&
+            customDateRange.startDate &&
+            customDateRange.endDate
+          ) {
+            const sd =
+              customDateRange.startDate instanceof Date
+                ? customDateRange.startDate
+                : new Date(customDateRange.startDate);
+            const ed =
+              customDateRange.endDate instanceof Date
+                ? customDateRange.endDate
+                : new Date(customDateRange.endDate);
+            url += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
+          }
 
-        setChartData(filteredChartData);
-      } catch (error) {
-        console.error('Error fetching chart data:', error);
-        setChartData([]);
-      } finally {
-        setLoadingChartData(false);
-      }
+          if (selectedLicencee && selectedLicencee !== 'all') {
+            url += `&licencee=${encodeURIComponent(selectedLicencee)}`;
+          }
+
+          if (displayCurrency) {
+            url += `&currency=${displayCurrency}`;
+          }
+
+          try {
+            const response = await axios.get<{
+              trends: Array<{
+                day: string;
+                time?: string;
+                [key: string]:
+                  | {
+                      drop: number;
+                      gross: number;
+                      totalCancelledCredits?: number;
+                    }
+                  | string
+                  | undefined;
+              }>;
+              isHourly: boolean;
+            }>(url, {
+              headers: {
+                'Cache-Control': 'no-cache',
+              },
+              signal,
+            });
+
+            const { trends, isHourly } = response.data;
+
+            const transformedData = trends.map(trend => {
+              const locationData = trend[locationId] as
+                | {
+                    drop: number;
+                    gross: number;
+                    totalCancelledCredits?: number;
+                  }
+                | undefined;
+
+              const xValue = isHourly ? trend.time || '' : trend.day;
+
+              return {
+                xValue,
+                day: trend.day,
+                time: trend.time || '',
+                moneyIn: locationData?.drop || 0,
+                moneyOut: locationData?.totalCancelledCredits || 0,
+                gross: locationData?.gross || 0,
+              };
+            });
+
+            setChartData(transformedData);
+          } catch (error) {
+            console.error('Error fetching chart data:', error);
+            setChartData([]);
+          }
+        },
+        `Location Chart (${locationId}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
+      );
+
+      setLoadingChartData(false);
     };
 
     fetchChartData();
   }, [
     locationId,
-    selectedLocationId,
-    locationName,
     activeMetricsFilter,
     customDateRange.startDate,
     customDateRange.endDate,
     selectedLicencee,
     displayCurrency,
     dateFilterInitialized,
+    makeChartRequest,
   ]);
 
-  // ====== Sorting / Pagination Logic ======
-  const handleSortToggle = () => {
-    animateSortDirection(sortOrder);
-    setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'));
-  };
-
-  const handleColumnSort = (column: CabinetSortOption) => {
-    animateColumnSort(tableRef, column);
-
-    if (sortOption === column) {
-      handleSortToggle();
-    } else {
-      setSortOption(column);
-      setSortOrder('desc'); // Default to desc when changing column
-    }
-  };
-
-  // Animation hooks for filtering and sorting
+  // ====== Animation hooks for filtering and sorting ======
   useEffect(() => {
     if (!loading && !cabinetsLoading && filteredCabinets.length > 0) {
       // Small delay to ensure DOM is updated before animation
@@ -779,8 +787,8 @@ export default function LocationPage() {
     setLoading(true);
     setCabinetsLoading(true);
     try {
-      // Refresh machine status stats
-      await refreshMachineStats();
+      // Refresh machine status and membership stats
+      await Promise.all([refreshMachineStats(), refreshMembershipStats()]);
       // Fetch cabinets data for the SELECTED location
       try {
         // Only fetch if we have a valid activeMetricsFilter and it's been properly initialized
@@ -796,18 +804,33 @@ export default function LocationPage() {
             ? undefined
             : itemsPerBatch;
 
-          const result = await fetchCabinetsForLocation(
-            locationId, // Always use the URL slug for cabinet fetching
-            selectedLicencee,
-            activeMetricsFilter,
-            debouncedSearchTerm?.trim() || undefined, // Pass debouncedSearchTerm to API
-            activeMetricsFilter === 'Custom' && customDateRange
-              ? { from: customDateRange.startDate, to: customDateRange.endDate }
-              : undefined, // Only pass customDateRange when filter is "Custom"
-            effectivePage, // page
-            effectiveLimit, // limit (undefined when searching = fetch all)
-            displayCurrency
+          const result = await makeCabinetsRequest(
+            async signal => {
+              return await fetchCabinetsForLocation(
+                locationId,
+                selectedLicencee,
+                activeMetricsFilter,
+                debouncedSearchTerm?.trim() || undefined,
+                activeMetricsFilter === 'Custom' && customDateRange
+                  ? {
+                      from: customDateRange.startDate,
+                      to: customDateRange.endDate,
+                    }
+                  : undefined,
+                effectivePage,
+                effectiveLimit,
+                displayCurrency,
+                signal
+              );
+            },
+            `Location Cabinets Refresh (${locationId}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
           );
+
+          if (!result) {
+            // Request was aborted
+            return;
+          }
+
           setAllCabinets(result.data);
           // When search is cleared, reset accumulated data to start fresh
           if (!debouncedSearchTerm?.trim()) {
@@ -831,13 +854,27 @@ export default function LocationPage() {
       setLoadingChartData(true);
       try {
         const timePeriod = activeMetricsFilter as TimePeriod;
-        const allChartData = await getMetrics(
-          timePeriod,
-          customDateRange.startDate,
-          customDateRange.endDate,
-          selectedLicencee && selectedLicencee !== 'all' ? selectedLicencee : undefined,
-          displayCurrency
+        const allChartData = await makeChartRequest(
+          async signal => {
+            return await getMetrics(
+              timePeriod,
+              customDateRange.startDate,
+              customDateRange.endDate,
+              selectedLicencee && selectedLicencee !== 'all'
+                ? selectedLicencee
+                : undefined,
+              displayCurrency,
+              signal
+            );
+          },
+          `Location Chart Data (${locationId}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
         );
+
+        if (!allChartData) {
+          // Request was aborted
+          setLoadingChartData(false);
+          return;
+        }
 
         // Filter chart data by the current location
         // The location field in chart data can be either ID or name
@@ -898,9 +935,12 @@ export default function LocationPage() {
     selectedLocationId,
     locationName,
     refreshMachineStats,
+    refreshMembershipStats,
     debouncedSearchTerm,
     itemsPerBatch,
     displayCurrency,
+    makeCabinetsRequest,
+    makeChartRequest,
   ]);
 
   // Handle location change without navigation - just update the selected location
@@ -1103,7 +1143,6 @@ export default function LocationPage() {
           <div className="hidden items-center justify-between gap-4 md:flex">
             <div className="min-w-0 flex-1">
               <DashboardDateFilters
-                disabled={loading || cabinetsLoading || refreshing}
                 onCustomRangeGo={handleRefresh}
                 hideAllTime={false}
                 enableTimeInputs={true}
@@ -1111,11 +1150,13 @@ export default function LocationPage() {
             </div>
             <div className="ml-4 w-auto flex-shrink-0">
               <MachineStatusWidget
-                isLoading={machineStatsLoading}
+                isLoading={machineStatsLoading || membershipStatsLoading}
                 onlineCount={machineStats?.onlineMachines || 0}
                 offlineCount={machineStats?.offlineMachines || 0}
                 totalCount={machineStats?.totalMachines}
                 showTotal={true}
+                membershipCount={membershipStats?.membershipCount || 0}
+                showMembership={true}
               />
             </div>
           </div>
@@ -1124,7 +1165,6 @@ export default function LocationPage() {
           <div className="flex flex-col gap-4 md:hidden">
             <div className="w-full">
               <DashboardDateFilters
-                disabled={loading || cabinetsLoading || refreshing}
                 onCustomRangeGo={handleRefresh}
                 hideAllTime={false}
                 enableTimeInputs={true}
@@ -1132,11 +1172,13 @@ export default function LocationPage() {
             </div>
             <div className="w-full">
               <MachineStatusWidget
-                isLoading={machineStatsLoading}
+                isLoading={machineStatsLoading || membershipStatsLoading}
                 onlineCount={machineStats?.onlineMachines || 0}
                 offlineCount={machineStats?.offlineMachines || 0}
                 totalCount={machineStats?.totalMachines}
                 showTotal={true}
+                membershipCount={membershipStats?.membershipCount || 0}
+                showMembership={true}
               />
             </div>
           </div>
@@ -1144,7 +1186,7 @@ export default function LocationPage() {
 
         {/* Search and Location Selection Section: Desktop search bar with location dropdown */}
         <div className="mt-4 hidden bg-buttonActive p-4 md:flex">
-          {/* Search Input and Filters on same row */}
+          {/* Search Input, Sort, and Filters on same row */}
           <div className="flex w-full flex-wrap items-center gap-4">
             {/* Search Input - Takes available space */}
             <div className="relative min-w-0 flex-1">
@@ -1178,7 +1220,7 @@ export default function LocationPage() {
             </div>
 
             {/* Filter Buttons - On the right, wrap when needed */}
-            <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex flex-wrap items-center gap-4">
               {showLocationSelect && (
                 <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
                   <LocationSingleSelect
@@ -1329,7 +1371,7 @@ export default function LocationPage() {
                   value={`${sortOption}-${sortOrder}`}
                   onValueChange={value => {
                     const [option, order] = value.split('-');
-                    handleColumnSort(option as CabinetSortOption);
+                    setSortOption(option as CabinetSortOption);
                     setSortOrder(order as 'asc' | 'desc');
                   }}
                   options={[
@@ -1444,9 +1486,15 @@ export default function LocationPage() {
                             isOnline: cab.online,
                           })) as ExtendedCabinetDetail[]
                       }
-                      currentPage={0}
+                      currentPage={currentPage}
                       itemsPerPage={itemsPerPage}
                       router={router}
+                      sortOption={sortOption}
+                      sortOrder={sortOrder}
+                      onSortChange={(option, order) => {
+                        setSortOption(option);
+                        setSortOrder(order);
+                      }}
                     />
                   </div>
 

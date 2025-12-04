@@ -27,12 +27,10 @@ function getMongodbUri(): string {
  */
 async function closeConnection() {
   if (mongooseCache.conn) {
-    console.log('🔌 [DB] Closing existing MongoDB connection...');
     try {
       await mongooseCache.conn.close();
-      console.log('✅ [DB] MongoDB connection closed');
     } catch (err) {
-      console.error('❌ [DB] Error closing connection:', err);
+      console.error('[DB] Error closing connection:', err);
     }
     mongooseCache.conn = null;
     mongooseCache.promise = null;
@@ -64,9 +62,6 @@ export async function connectDB() {
     mongooseCache.connectionString &&
     mongooseCache.connectionString !== MONGODB_URI
   ) {
-    console.log('🔄 [DB] Connection string changed - reconnecting...');
-    console.log('   Old:', mongooseCache.connectionString);
-    console.log('   New:', MONGODB_URI);
     await closeConnection();
   }
 
@@ -76,7 +71,6 @@ export async function connectDB() {
 
   if (!mongooseCache.promise) {
     mongooseCache.connectionString = MONGODB_URI;
-    console.log('🔗 [DB] Connecting to MongoDB...');
 
     mongooseCache.promise = mongoose
       .connect(MONGODB_URI, {
@@ -86,7 +80,6 @@ export async function connectDB() {
         socketTimeoutMS: 30000,
       })
       .then(mongooseInstance => {
-        console.log('✅ [DB] MongoDB connected successfully');
         return mongooseInstance.connection;
       })
       .catch(err => {

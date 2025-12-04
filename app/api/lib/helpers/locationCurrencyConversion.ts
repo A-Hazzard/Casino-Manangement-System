@@ -5,11 +5,17 @@
  * between different currencies based on licensee and country settings.
  */
 
-import type { CurrencyCode } from '@/shared/types/currency';
-import type { AggregatedLocation } from '@/lib/types/location';
+import { Countries } from '@/app/api/lib/models/countries';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
-import { convertFromUSD, convertToUSD, getCountryCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
-import { Db } from 'mongodb';
+import {
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+  getLicenseeCurrency,
+} from '@/lib/helpers/rates';
+import type { AggregatedLocation } from '@/lib/types/location';
+import type { CurrencyCode } from '@/shared/types/currency';
 
 /**
  * Converts location financial data to display currency
@@ -17,42 +23,41 @@ import { Db } from 'mongodb';
  * @param rows - Array of aggregated locations
  * @param displayCurrency - Target currency code
  * @param licencee - Licensee filter (if any)
- * @param db - MongoDB database instance
  * @returns Promise<AggregatedLocation[]>
  */
 export async function convertLocationCurrency(
   rows: AggregatedLocation[],
   displayCurrency: CurrencyCode,
-  licencee: string | undefined,
-  db: Db
+  licencee: string | undefined
 ): Promise<AggregatedLocation[]> {
   if (!shouldApplyCurrencyConversion(licencee)) {
     return rows;
   }
 
   // Get currency mappings
-  const licenseesData = await db
-    .collection('licencees')
-    .find(
-      {
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
-        ],
-      },
-      { projection: { _id: 1, name: 1 } }
-    )
-    .toArray();
+  const licenseesData = await Licencee.find(
+    {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
+      ],
+    },
+    { _id: 1, name: 1 }
+  ).lean();
 
   const licenseeIdToName = new Map<string, string>();
   licenseesData.forEach(lic => {
-    licenseeIdToName.set(lic._id.toString(), lic.name);
+    if (lic._id && lic.name) {
+      licenseeIdToName.set(String(lic._id), lic.name);
+    }
   });
 
-  const countriesData = await db.collection('countries').find({}).toArray();
+  const countriesData = await Countries.find({}).lean();
   const countryIdToName = new Map<string, string>();
   countriesData.forEach(country => {
-    countryIdToName.set(country._id.toString(), country.name);
+    if (country._id && country.name) {
+      countryIdToName.set(String(country._id), country.name);
+    }
   });
 
   // Convert each location's financial data
@@ -69,9 +74,7 @@ export async function convertLocationCurrency(
       const countryName = countryId
         ? countryIdToName.get(countryId.toString())
         : undefined;
-      nativeCurrency = countryName
-        ? getCountryCurrency(countryName)
-        : 'USD';
+      nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
     } else {
       // Get licensee's native currency
       const licenseeName =
@@ -123,10 +126,11 @@ export function applyMachineTypeFilter(
           return loc.noSMIBLocation === false;
         case 'NoSMIBLocation':
           return loc.noSMIBLocation === true;
+        case 'MembershipOnly':
+          return loc.membershipEnabled === true;
         default:
           return true;
       }
     });
   });
 }
-

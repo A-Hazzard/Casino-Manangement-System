@@ -12,9 +12,9 @@
  */
 
 import { getMetrics } from '@/lib/helpers/metrics';
-import { ActiveFilters, dashboardData } from '../types';
-import { TimePeriod } from '@shared/types';
 import type { CollectionDocument } from '@/lib/types/collections';
+import { TimePeriod } from '@shared/types';
+import { ActiveFilters, dashboardData } from '../types';
 
 // ============================================================================
 // Filter Handling Functions
@@ -70,7 +70,8 @@ export async function switchFilter(
   licencee?: string,
   setActiveFilters?: (filters: ActiveFilters) => void,
   setShowDatePicker?: (state: boolean) => void,
-  displayCurrency?: string
+  displayCurrency?: string,
+  signal?: AbortSignal
 ): Promise<void> {
   try {
     // If setActiveFilters is provided, update the filter state
@@ -95,7 +96,8 @@ export async function switchFilter(
       startDate,
       endDate,
       licencee,
-      displayCurrency
+      displayCurrency,
+      signal
     );
 
     if (data.length > 0) {

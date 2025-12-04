@@ -39,6 +39,19 @@ export default function GlobalErrorBoundary({
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      // Ignore canceled/aborted requests - these are expected when user changes filters or navigates
+      const reason = event.reason;
+      if (reason && typeof reason === 'object') {
+        const errorName = (reason as Error).name || (reason as { name?: string }).name;
+        const errorMessage = (reason as Error).message || (reason as { message?: string }).message;
+        
+        if (errorName === 'AbortError' || errorName === 'CanceledError' || errorMessage === 'canceled') {
+          console.log("🔍 [GlobalErrorBoundary] Ignored canceled request");
+          event.preventDefault(); // Prevent default error handling
+          return;
+        }
+      }
+      
       console.error("Unhandled promise rejection:", event.reason);
       setGlobalError(
         new Error(event.reason?.message || "Unhandled promise rejection")

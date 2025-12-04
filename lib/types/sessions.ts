@@ -13,6 +13,9 @@ export type Session = {
   sessionId?: string;
   machineId?: string;
   machineName?: string;
+  machineSerialNumber?: string;
+  machineCustomName?: string;
+  machineGame?: string;
   memberId?: string;
   memberName?: string;
   startTime?: string;

@@ -36,45 +36,12 @@ export const getLocationsWithMetrics = async (
   // Apply user location permissions if provided (takes precedence)
   const locationIdFilter: { _id?: { $in: string[] } } = {};
 
-  // Debug logging
-  console.log(
-    '🔍 [getLocationsWithMetrics] ========================================'
-  );
-  if (allowedLocationIds === 'all') {
-    console.log(
-      '🔍 [getLocationsWithMetrics] allowedLocationIds is "all" - no location filtering will be applied'
-    );
-  } else if (allowedLocationIds !== undefined) {
-    console.log(
-      `🔍 [getLocationsWithMetrics] allowedLocationIds is array with ${allowedLocationIds.length} locations - filtering will be applied`
-    );
-    console.log(
-      '🔍 [getLocationsWithMetrics] Allowed location IDs (first 10):',
-      allowedLocationIds.slice(0, 10)
-    );
-  } else {
-    console.log(
-      '🔍 [getLocationsWithMetrics] allowedLocationIds is undefined - will check licensee filter'
-    );
-  }
-
   if (allowedLocationIds !== undefined && allowedLocationIds !== 'all') {
     // User has specific location permissions (from getUserLocationFilter)
-    // This already includes licensee filtering if applicable
     if (allowedLocationIds.length === 0) {
-      // No accessible locations
-      console.warn(
-        '⚠️⚠️⚠️ [getLocationsWithMetrics] EMPTY allowedLocationIds - returning empty result ⚠️⚠️⚠️'
-      );
-      return {
-        rows: [],
-        totalCount: 0,
-      };
+      return { rows: [], totalCount: 0 };
     }
     locationIdFilter._id = { $in: allowedLocationIds };
-    console.log('🔍 [getLocationsWithMetrics] Applied location filter:', {
-      _id: { $in: allowedLocationIds.slice(0, 5) },
-    });
   } else if (licencee && licencee !== 'all') {
     // No user location permissions provided, but licensee filter is specified
     // Prefetch location ids for this licensee
@@ -128,38 +95,16 @@ export const getLocationsWithMetrics = async (
   }
 
   // Add financial aggregation only if not basic list
-  // NEW BEHAVIOR: Always load financial data unless it's a basic list
-  // This means when no selectedLocations are provided, we load ALL locations with financial data
   if (!basicList) {
     // Execute the location pipeline first to get all matching locations
-    console.log(
-      '🔍 [getLocationsWithMetrics] Executing location pipeline with filter:',
-      JSON.stringify(basePipeline[0].$match, null, 2)
-    );
     const locations = await db
       .collection('gaminglocations')
       .aggregate(basePipeline)
       .toArray();
 
-    console.log('🔍 [getLocationsWithMetrics] Pipeline returned locations:', {
-      count: locations.length,
-      firstFew: locations
-        .slice(0, 5)
-        .map((loc: { _id?: string; name?: string }) => ({
-          _id: String(loc._id),
-          name: loc.name,
-        })),
-    });
-
     // If no locations found, return empty result
     if (locations.length === 0) {
-      console.warn(
-        '⚠️⚠️⚠️ [getLocationsWithMetrics] NO LOCATIONS FOUND - returning empty result ⚠️⚠️⚠️'
-      );
-      return {
-        rows: [],
-        totalCount: 0,
-      };
+      return { rows: [], totalCount: 0 };
     }
 
     // Now aggregate meters for each location using gaming day ranges
@@ -170,10 +115,6 @@ export const getLocationsWithMetrics = async (
       timePeriod === '30d' ||
       timePeriod === 'last7days' ||
       timePeriod === 'last30days';
-
-    console.log(
-      `[getLocationsWithMetrics] Processing ${locations.length} locations using ${useSingleAggregation ? 'single aggregation' : 'parallel batches'} for ${timePeriod || 'Today'}`
-    );
 
     const locationsWithMetrics: AggregatedLocation[] = [];
 
@@ -370,6 +311,7 @@ export const getLocationsWithMetrics = async (
             gamesPlayed: metrics.gamesPlayed,
             rel: location.rel,
             country: location.country,
+            membershipEnabled: location.membershipEnabled || false,
           } as unknown as AggregatedLocation);
         }
       } else {
@@ -397,8 +339,49 @@ export const getLocationsWithMetrics = async (
             gamesPlayed: 0,
             rel: location.rel,
             country: location.country,
+            membershipEnabled: location.membershipEnabled || false,
           } as unknown as AggregatedLocation);
         }
+      }
+      
+      // ============================================================================
+      // Add member counts for locations with membership enabled
+      // ============================================================================
+      const membershipEnabledLocations = locationsWithMetrics
+        .filter(loc => loc.membershipEnabled)
+        .map(loc => loc.location);
+      
+      if (membershipEnabledLocations.length > 0) {
+        const { Member } = await import('@/app/api/lib/models/members');
+        
+        // Count members for each membership-enabled location
+        const memberCounts = await Member.aggregate([
+          {
+            $match: {
+              gamingLocation: { $in: membershipEnabledLocations },
+              deletedAt: { $lt: new Date('2020-01-01') }, // Exclude deleted members
+            },
+          },
+          {
+            $group: {
+              _id: '$gamingLocation',
+              count: { $sum: 1 },
+            },
+          },
+        ]);
+        
+        // Create a map of location ID to member count
+        const memberCountMap = new Map<string, number>();
+        memberCounts.forEach((item: { _id: string; count: number }) => {
+          memberCountMap.set(item._id, item.count);
+        });
+        
+        // Add member counts to locations
+        locationsWithMetrics.forEach(loc => {
+          if (loc.membershipEnabled) {
+            loc.memberCount = memberCountMap.get(loc.location) || 0;
+          }
+        });
       }
     } else {
       // 🚀 OPTIMIZED: Process locations in batches to reduce database load
@@ -408,7 +391,6 @@ export const getLocationsWithMetrics = async (
 
       for (let i = 0; i < locations.length; i += BATCH_SIZE) {
         const batch = locations.slice(i, i + BATCH_SIZE);
-        const batchStartTime = Date.now();
 
         // Process batch in parallel
         const batchResults = await Promise.all(
@@ -554,15 +536,52 @@ export const getLocationsWithMetrics = async (
               gamesPlayed: meterMetrics.totalGamesPlayed,
               rel: location.rel, // Include for currency conversion
               country: location.country, // Include for currency conversion
+              membershipEnabled: location.membershipEnabled || false,
             } as unknown as AggregatedLocation;
           })
         );
 
         locationsWithMetrics.push(...batchResults);
-        const batchDuration = Date.now() - batchStartTime;
-        console.log(
-          `[getLocationsWithMetrics] Processed batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(locations.length / BATCH_SIZE)} (${batch.length} locations) in ${batchDuration}ms`
-        );
+      }
+      
+      // ============================================================================
+      // Add member counts for locations with membership enabled (batch processing)
+      // ============================================================================
+      const membershipEnabledLocations = locationsWithMetrics
+        .filter(loc => loc.membershipEnabled)
+        .map(loc => loc.location);
+      
+      if (membershipEnabledLocations.length > 0) {
+        const { Member } = await import('@/app/api/lib/models/members');
+        
+        // Count members for each membership-enabled location
+        const memberCounts = await Member.aggregate([
+          {
+            $match: {
+              gamingLocation: { $in: membershipEnabledLocations },
+              deletedAt: { $lt: new Date('2020-01-01') }, // Exclude deleted members
+            },
+          },
+          {
+            $group: {
+              _id: '$gamingLocation',
+              count: { $sum: 1 },
+            },
+          },
+        ]);
+        
+        // Create a map of location ID to member count
+        const memberCountMap = new Map<string, number>();
+        memberCounts.forEach((item: { _id: string; count: number }) => {
+          memberCountMap.set(item._id, item.count);
+        });
+        
+        // Add member counts to locations
+        locationsWithMetrics.forEach(loc => {
+          if (loc.membershipEnabled) {
+            loc.memberCount = memberCountMap.get(loc.location) || 0;
+          }
+        });
       }
     }
 

@@ -63,6 +63,28 @@ export async function GET(request: Request) {
     const licencee =
       searchParams.get('licensee') || searchParams.get('licencee');
     const minimal = searchParams.get('minimal') === '1';
+    
+    // Check if user is a collector (collectors should not access locations list)
+    // Note: Allow minimal=true requests for dropdown usage in other pages
+    if (!minimal) {
+      const user = await getUserFromServer();
+      if (user) {
+        const userRoles = (user.roles as string[])?.map(r => r.toLowerCase()) || [];
+        const isCollectorOnly = userRoles.includes('collector') && 
+          !userRoles.includes('developer') &&
+          !userRoles.includes('admin') &&
+          !userRoles.includes('manager') &&
+          !userRoles.includes('location admin') &&
+          !userRoles.includes('technician');
+
+        if (isCollectorOnly) {
+          return NextResponse.json(
+            { success: false, error: 'Collectors do not have access to locations page' },
+            { status: 403 }
+          );
+        }
+      }
+    }
     const showAll = searchParams.get('showAll') === 'true';
     const forceAll =
       searchParams.get('forceAll') === 'true' ||
@@ -622,7 +644,111 @@ export async function PUT(request: Request) {
     }
 
     // ============================================================================
-    // STEP 8: Return update result
+    // STEP 8: Log activity with accurate change tracking
+    // ============================================================================
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        // Build changes array - ONLY for fields that were actually updated
+        const updateChanges: Array<{
+          field: string;
+          oldValue: unknown;
+          newValue: unknown;
+        }> = [];
+
+        if (name !== undefined) {
+          updateChanges.push({
+            field: 'name',
+            oldValue: location.name,
+            newValue: name,
+          });
+        }
+        if (country !== undefined) {
+          updateChanges.push({
+            field: 'country',
+            oldValue: location.country,
+            newValue: country,
+          });
+        }
+        if (address?.street !== undefined) {
+          updateChanges.push({
+            field: 'address.street',
+            oldValue: location.address?.street,
+            newValue: address.street,
+          });
+        }
+        if (address?.city !== undefined) {
+          updateChanges.push({
+            field: 'address.city',
+            oldValue: location.address?.city,
+            newValue: address.city,
+          });
+        }
+        if (rel?.licencee !== undefined) {
+          updateChanges.push({
+            field: 'rel.licencee',
+            oldValue: location.rel?.licencee,
+            newValue: rel.licencee,
+          });
+        }
+        if (profitShare !== undefined) {
+          updateChanges.push({
+            field: 'profitShare',
+            oldValue: location.profitShare,
+            newValue: profitShare,
+          });
+        }
+        if (gameDayOffset !== undefined) {
+          updateChanges.push({
+            field: 'gameDayOffset',
+            oldValue: location.gameDayOffset,
+            newValue: gameDayOffset,
+          });
+        }
+        if (isLocalServer !== undefined) {
+          updateChanges.push({
+            field: 'isLocalServer',
+            oldValue: location.isLocalServer,
+            newValue: isLocalServer,
+          });
+        }
+        if (geoCoords?.latitude !== undefined) {
+          updateChanges.push({
+            field: 'geoCoords.latitude',
+            oldValue: location.geoCoords?.latitude,
+            newValue: geoCoords.latitude,
+          });
+        }
+        if (geoCoords?.longitude !== undefined) {
+          updateChanges.push({
+            field: 'geoCoords.longitude',
+            oldValue: location.geoCoords?.longitude,
+            newValue: geoCoords.longitude,
+          });
+        }
+
+        await logActivity({
+          action: 'UPDATE',
+          details: `Updated location "${location.name}" (${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''})`,
+          ipAddress: getClientIP(request as NextRequest) || undefined,
+          userAgent: (request as NextRequest).headers.get('user-agent') || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'location',
+            resourceId: locationId,
+            resourceName: location.name,
+            changes: updateChanges,
+          },
+        });
+      } catch (logError) {
+        console.error('Failed to log activity:', logError);
+      }
+    }
+
+    // ============================================================================
+    // STEP 9: Return update result
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {

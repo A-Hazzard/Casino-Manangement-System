@@ -12,6 +12,7 @@ import { LocationFilter } from '@/lib/types/location';
 import { useDebounce } from '@/lib/utils/hooks';
 import { AggregatedLocation, TimePeriod } from '@/shared/types/common';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 
 type UseLocationDataProps = {
   selectedLicencee: string;
@@ -61,6 +62,9 @@ export function useLocationData({
 
   // Get display currency from CurrencyContext (kept in sync with dashboard store)
   const { displayCurrency } = useCurrency();
+
+  // AbortController for canceling previous requests
+  const makeRequest = useAbortableRequest();
 
   // Debounce search term to reduce API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -129,6 +133,8 @@ export function useLocationData({
   // Track fetch to prevent duplicate calls
   const fetchInProgressRef = useRef(false);
   const lastFetchKeyRef = useRef<string>('');
+  const isInitialMountRef = useRef(true);
+  const hasCompletedFirstFetchRef = useRef(false);
 
   // Optimized data fetching with better error handling
   const fetchData = useCallback(
@@ -138,17 +144,32 @@ export function useLocationData({
 
       // Skip if this exact fetch is already in progress
       if (fetchInProgressRef.current && lastFetchKeyRef.current === fetchKey) {
+        console.log('[useLocationData] Skipping duplicate fetch');
         return;
       }
 
       // Mark as in progress and update key
       fetchInProgressRef.current = true;
       lastFetchKeyRef.current = fetchKey;
+      
+      console.log('[useLocationData] Starting fetch:', {
+        isInitialMount: isInitialMountRef.current,
+        hasCompletedFirst: hasCompletedFirstFetchRef.current,
+        fetchKey,
+      });
 
+      // Don't clear data immediately - keep showing old data with loading state
+      // This prevents the "blank screen" issue when navigating or changing filters
       setLoading(true);
       setError(null);
+      
+      // Mark that we're no longer on initial mount after first fetch
+      const wasInitialMount = isInitialMountRef.current;
+      if (isInitialMountRef.current) {
+        isInitialMountRef.current = false;
+      }
 
-      try {
+      const result = await makeRequest(async (signal) => {
         // Only use backend search if debounced search term exists
         // Frontend filtering is handled in the component
         if (debouncedSearchTerm.trim()) {
@@ -162,43 +183,58 @@ export function useLocationData({
             effectiveFilter,
             dateRangeForFetch
               ? { from: dateRangeForFetch.from, to: dateRangeForFetch.to }
-              : undefined
+              : undefined,
+            signal
           );
-          setLocationData(searchData);
-          setTotalCount(searchData.length);
           setSearchLoading(false);
-          return;
+          return { data: searchData, pagination: undefined };
         }
 
         // Otherwise, use the normal fetchLocationsData for metrics-based data
-        const result = await fetchBatch(page || 1, limit || 50);
-
-  setLocationData(result.data);
-  if (result.pagination) {
-    const total = result.pagination.totalCount ?? result.pagination.total ?? 0;
-    setTotalCount(total);
-  } else {
-    setTotalCount(result.data.length);
-  }
-      } catch (err) {
-        setLocationData([]);
-        setTotalCount(0);
-        setError(
-          err instanceof Error ? err.message : 'Failed to load locations'
+        const result = await fetchAggregatedLocationsData(
+          (activeMetricsFilter || 'Today') as TimePeriod,
+          selectedLicencee || '',
+          selectedFiltersRef.current.length ? selectedFiltersRef.current.join(',') : '',
+          dateRangeForFetch,
+          displayCurrency,
+          page || 1,
+          limit || 50,
+          signal
         );
-      } finally {
-        lastFetchRef.current = Date.now();
+        
+        return result;
+      }, `Locations (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})${wasInitialMount ? ' [Initial]' : ''}`);
+
+      // Only update state if request wasn't aborted (result is not null)
+      if (result) {
+        setLocationData(result.data);
+        if (result.pagination) {
+          const total = result.pagination.totalCount ?? result.pagination.total ?? 0;
+          setTotalCount(total);
+        } else {
+          setTotalCount(result.data.length);
+        }
+        hasCompletedFirstFetchRef.current = true;
+        console.log('[useLocationData] Fetch completed successfully');
+        // Only set loading to false when we successfully received data
         setLoading(false);
-        fetchInProgressRef.current = false;
+        setSearchLoading(false);
+        lastFetchRef.current = Date.now();
+      } else {
+        console.log('[useLocationData] Fetch aborted - keeping loading state and existing data');
+        // If aborted, keep loading state active so skeleton continues to show
+        // The next request will complete and update the loading state
       }
+
+      fetchInProgressRef.current = false;
     },
     [
       debouncedSearchTerm,
       displayCurrency,
-      fetchBatch,
       selectedLicencee,
       activeMetricsFilter,
       dateRangeForFetch,
+      makeRequest,
     ]
   );
 

@@ -26,7 +26,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 4. Return file with appropriate headers
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const startTime = Date.now();

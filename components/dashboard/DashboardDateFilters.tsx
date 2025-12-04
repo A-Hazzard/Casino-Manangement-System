@@ -28,9 +28,6 @@ export default function DashboardDateFilters({
     setCustomDateRange,
     pendingCustomDateRange,
     setPendingCustomDateRange,
-    loadingChartData,
-    loadingTopPerforming,
-    refreshing,
   } = useDashBoardStore();
 
   const [showCustomPicker, setShowCustomPicker] = useState(false);
@@ -90,8 +87,7 @@ export default function DashboardDateFilters({
     [hideAllTime]
   );
 
-  // Check if any loading state is active
-  const isLoading = loadingChartData || loadingTopPerforming || refreshing;
+  // NOTE: We no longer disable buttons during loading - AbortController handles request cancellation
 
   // Handle callback after state updates
   useEffect(() => {
@@ -166,11 +162,11 @@ export default function DashboardDateFilters({
 
       {/* Filter Controls - This section aligns with Machine Status Widget */}
       <div className="flex w-full flex-wrap items-center gap-2">
-        {/* Select dropdown - used below lg: (mobile and tablet) */}
+        {/* Select dropdown - used below md: (mobile only) */}
         <div
           className={
             mode === 'auto'
-              ? 'w-full lg:hidden'
+              ? 'w-full md:hidden'
               : mode === 'mobile'
                 ? 'w-full'
                 : 'hidden'
@@ -184,21 +180,19 @@ export default function DashboardDateFilters({
               label: filter.label,
             }))}
             placeholder="Select date range"
-            disabled={isLoading}
-            className={`w-full ${
-              isLoading ? 'cursor-not-allowed opacity-50' : ''
-            }`}
+            disabled={false}
+            className="w-full"
             triggerClassName="bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors min-h-[44px] text-base"
             contentClassName="text-gray-700"
           />
         </div>
 
-        {/* Desktop buttons - shown on lg: and above when mode is auto or desktop */}
+        {/* Desktop buttons - shown on md: and above when mode is auto or desktop */}
         {(mode === 'auto' || mode === 'desktop') && (
           <div
             className={
               mode === 'auto'
-                ? 'hidden flex-wrap items-center gap-2 lg:flex'
+                ? 'hidden flex-wrap items-center gap-2 md:flex'
                 : 'flex flex-wrap items-center gap-2'
             }
           >
@@ -210,8 +204,8 @@ export default function DashboardDateFilters({
                   activeMetricsFilter === filter.value
                     ? 'bg-buttonActive text-white'
                     : 'bg-button text-white hover:bg-button/90'
-                } ${isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
-                disabled={disabled || isLoading}
+                }`}
+                disabled={disabled}
               >
                 {filter.label}
               </Button>

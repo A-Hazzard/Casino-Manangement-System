@@ -115,6 +115,7 @@ import PaginationControls from '@/components/ui/PaginationControls';
 import { COLLECTION_TABS_CONFIG } from '@/lib/constants/collection';
 import { IMAGES } from '@/lib/constants/images';
 import { useCollectionNavigation } from '@/lib/hooks/navigation';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useUrlProtection } from '@/lib/hooks/useUrlProtection';
 import type { CollectionView } from '@/lib/types/collection';
 import { PlusCircle, RefreshCw } from 'lucide-react';
@@ -387,6 +388,10 @@ function CollectionReportContent() {
   const [selectedCollectorStatus, setSelectedCollectorStatus] = useState('all');
   const [collectorsList, setCollectorsList] = useState<string[]>([]);
 
+  // AbortController for different report types
+  const makeMonthlyRequest = useAbortableRequest();
+  const makeCollectionRequest = useAbortableRequest();
+
   // Monthly Report state
   const [monthlySummary, setMonthlySummary] = useState<MonthlyReportSummary>({
     drop: '-',
@@ -625,20 +630,30 @@ function CollectionReportContent() {
       }
 
       // Fetch first batch
-      fetchCollectionReportsByLicencee(
-        selectedLicencee === '' ? undefined : selectedLicencee,
-        dateRangeForFetch,
-        timePeriodForFetch,
-        1, // page
-        itemsPerBatch // limit
+      makeCollectionRequest(
+        async signal => {
+          return await fetchCollectionReportsByLicencee(
+            selectedLicencee === '' ? undefined : selectedLicencee,
+            dateRangeForFetch,
+            timePeriodForFetch,
+            1,
+            itemsPerBatch,
+            0, // retryCount
+            signal
+          );
+        },
+        `Collection Reports (Batch 1, ${activeMetricsFilter || 'Today'}, Licensee: ${selectedLicencee || 'all'})`
       )
         .then(async result => {
+          if (!result) {
+            setLoading(false);
+            return;
+          }
           setAllReports(result.data);
           setLoadedBatches(new Set([1]));
           setLoading(false);
         })
         .catch((error: unknown) => {
-          // Error is already handled gracefully in fetchCollectionReportsByLicencee
           setAllReports([]);
           setLoading(false);
           if (error instanceof Error) {
@@ -653,6 +668,7 @@ function CollectionReportContent() {
     customDateRange,
     handleError,
     itemsPerBatch,
+    makeCollectionRequest,
   ]);
 
   // Fetch next batch when crossing batch boundaries
@@ -1015,6 +1031,10 @@ function CollectionReportContent() {
     setMonthlyLoading(true);
     setMonthlyPage(1);
 
+    // Extract validated dates for type safety
+    const startDate = monthlyDateRange.from;
+    const endDate = monthlyDateRange.to;
+
     // Convert location ID to name for API call
     const locationName =
       monthlyLocation !== 'all'
@@ -1023,13 +1043,27 @@ function CollectionReportContent() {
           )?.name || monthlyLocation
         : undefined;
 
-    fetchMonthlyReportSummaryAndDetails({
-      startDate: monthlyDateRange.from,
-      endDate: monthlyDateRange.to,
-      locationName,
-      licencee: selectedLicencee,
-    })
-      .then(({ summary, details }) => {
+    makeMonthlyRequest(
+      async signal => {
+        return await fetchMonthlyReportSummaryAndDetails({
+          startDate,
+          endDate,
+          locationName,
+          licencee: selectedLicencee,
+          signal,
+        });
+      },
+      `Monthly Report (${monthlyLocation === 'all' ? 'All Locations' : locationName || 'Unknown'}, Licensee: ${selectedLicencee})`
+    )
+      .then(result => {
+        // Handle aborted requests (result will be null)
+        if (!result) {
+          setMonthlyLoading(false);
+          return;
+        }
+
+        const { summary, details } = result;
+
         // Calculate drop values for verification (development only)
         if (
           process.env.NODE_ENV === 'development' &&
@@ -1058,7 +1092,13 @@ function CollectionReportContent() {
         setMonthlyDetails([]);
         setMonthlyLoading(false);
       });
-  }, [monthlyDateRange, monthlyLocation, selectedLicencee, monthlyLocations]);
+  }, [
+    monthlyDateRange,
+    monthlyLocation,
+    selectedLicencee,
+    monthlyLocations,
+    makeMonthlyRequest,
+  ]);
 
   // Fetch new batch when crossing batch boundary (similar to locations page)
 

@@ -390,6 +390,70 @@ export default function ComponentName(props: ComponentProps) {
 
 ---
 
+## 4.4. JSX Commenting & Spacing (Frontend)
+
+**CRITICAL**: JSX should be easy to navigate and understand. Use comments and spacing strategically (see `Documentation/frontend/FRONTEND_GUIDELINES.md` for full details).
+
+- **Use JSX comments to:**
+  - Mark major UI sections (headers, filters, tables, forms, modals, pagination)
+  - Explain complex conditional rendering and non-obvious UI behaviour
+  - Indicate where data comes from and important responsive breakpoints
+- **Recommended comment format for major sections:**
+
+```tsx
+{
+  /* ============================================================================
+   Header Section: Title, actions, and navigation
+   ============================================================================ */
+}
+<div className="header-section">
+  {/* Page Title */}
+  <h1>Page Title</h1>
+
+  {/* Action Buttons: Create, Edit, Delete */}
+  <div className="actions">
+    <Button>Create</Button>
+  </div>
+</div>;
+```
+
+- **Spacing guidelines:**
+  - Separate major UI sections with blank lines
+  - Group related elements together
+  - Make nested structures readable
+  - Avoid dense, unspaced JSX blocks that are hard to scan
+- **Section comment examples:**
+
+```tsx
+{/* Modal Components: All modals used by this page */}
+<EditModal />
+<DeleteModal />
+<CreateModal />
+
+{/* Main Content: Page layout with data display */}
+<PageLayout>
+  {/* Page Header: Title and action buttons */}
+  <div className="header">{/* ... */}</div>
+
+  {/* Filters: Search, date range, and sorting */}
+  <div className="filters">{/* ... */}</div>
+
+  {/* Data Display: Table or cards */}
+  <div className="data-display">
+    {/* Loading State: Show skeleton while fetching */}
+    {loading && <PageSkeleton />}
+
+    {/* Error State: Show error message */}
+    {error && <ErrorMessage />}
+
+    {/* Success State: Show data */}
+    {!loading && !error && <DataTable />}
+  </div>
+</PageLayout>
+```
+
+---
+
 ## 5. Comments & Documentation
 
 - **Remove redundant comments** that simply restate the meaning of well-named code.
@@ -703,6 +767,111 @@ export const GenericSkeleton = () => (
 - `app/api/` - API route handlers
 - `shared/types/` - Shared type definitions
 - `app/api/lib/models/` - Database models
+
+---
+
+## 13. Backend Database Query Standards & Licensee Filtering
+
+These rules consolidate the backend guidelines in `Documentation/backend/BACKEND_GUIDELINES.md` and the licensee/location access rules.
+
+### 13.1. Use Mongoose Models, Never Direct Collection Access
+
+**CRITICAL**: Always use Mongoose models instead of direct `db.collection()` access:
+
+- ✅ **Use Mongoose models** - Import from `@/app/api/lib/models/`
+- ❌ **NEVER use `db.collection('name')`** - Bypasses type safety and indexes
+- ✅ **Models provide**: Automatic indexing, type safety, validation, and optimization
+- ❌ **Direct collection access**: No type safety, manual indexes required, error-prone
+
+```typescript
+// ✅ CORRECT - Use Mongoose model
+import { Member } from '@/app/api/lib/models/members';
+const members = await Member.find(query).lean();
+const count = await Member.countDocuments(query);
+
+// ❌ INCORRECT - Direct collection access
+const members = await db.collection('members').find(query).toArray();
+const count = await db.collection('members').countDocuments(query);
+```
+
+### 13.2. MongoDB Query Methods
+
+- ✅ **Use `findOne({ _id: id })`** for finding by ID (string IDs, not `ObjectId`)
+- ❌ **NEVER use `findById(id)`** (it expects `ObjectId`)
+- ✅ **Use `findOneAndUpdate({ _id: id }, update, options)`** for updates
+- ❌ **NEVER use `findByIdAndUpdate(id, ...)`**
+
+```typescript
+// ✅ CORRECT
+const session = await MachineSession.findOne({ _id: sessionId });
+
+// ❌ INCORRECT
+const session = await MachineSession.findById(sessionId);
+```
+
+### 13.3. Licensee & Location Filtering
+
+All API routes that return location- or machine-scoped data **must** respect the user’s accessible licensees and locations.
+
+- **Always support both spellings** of the query parameter:
+
+```typescript
+const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+```
+
+- **Always** use the shared helper to determine allowed locations and apply it to queries or aggregation `$match` stages.
+- **Pattern for applying location filters:**
+
+```typescript
+const allowedLocationIds = await getUserLocationFilter(licensee || undefined);
+
+if (allowedLocationIds !== 'all') {
+  matchStage.gamingLocation = { $in: allowedLocationIds };
+}
+```
+
+### 13.4. Aggregations with Licensee Filtering
+
+When joining machines and locations in aggregations:
+
+- Join machines by `_id`
+- Join locations by `gamingLocation`
+- Filter on `locationDetails.rel.licencee` using the resolved licensee
+
+```typescript
+const pipeline: PipelineStage[] = [
+  { $match: baseMatch },
+  {
+    $lookup: {
+      from: 'machines',
+      localField: 'machine',
+      foreignField: '_id',
+      as: 'machineDetails',
+    },
+  },
+  { $unwind: '$machineDetails' },
+  {
+    $lookup: {
+      from: 'gaminglocations',
+      localField: 'machineDetails.gamingLocation',
+      foreignField: '_id',
+      as: 'locationDetails',
+    },
+  },
+  { $unwind: '$locationDetails' },
+  {
+    $match: {
+      'locationDetails.rel.licencee': licenseeId,
+    },
+  },
+];
+```
+
+### 13.5. Consistency & Safety
+
+- Never bypass licensee/location checks in production APIs
+- Prefer shared helpers (`licenseeFilter.ts`, `users.ts`) over duplicating logic
+- Keep all database query logic type-safe – no `any` in query objects or results
 
 ---
 

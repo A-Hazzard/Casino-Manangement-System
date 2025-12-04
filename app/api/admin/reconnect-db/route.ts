@@ -12,7 +12,7 @@
  */
 
 import { connectDB, disconnectDB } from '@/app/api/lib/middleware/db';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 /**
  * Main POST handler for forcing database reconnection
@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 2. Reconnect with new connection string
  * 3. Return success response
  */
-export async function POST(_request: NextRequest) {
+export async function POST() {
   const startTime = Date.now();
 
   try {
@@ -77,7 +77,7 @@ export async function POST(_request: NextRequest) {
  * Flow:
  * 1. Return connection status information
  */
-export async function GET(_request: NextRequest) {
+export async function GET() {
   return NextResponse.json({
     message: 'Use POST to reconnect database',
     currentUri: process.env.MONGODB_URI ? 'Set' : 'Not set',

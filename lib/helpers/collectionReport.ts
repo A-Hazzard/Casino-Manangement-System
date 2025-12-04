@@ -432,11 +432,13 @@ export async function fetchMonthlyReportSummaryAndDetails({
   endDate,
   locationName,
   licencee,
+  signal,
 }: {
   startDate: Date;
   endDate: Date;
   locationName?: string;
   licencee?: string;
+  signal?: AbortSignal;
 }): Promise<{
   summary: MonthlyReportSummary;
   details: MonthlyReportDetailsRow[];
@@ -449,7 +451,7 @@ export async function fetchMonthlyReportSummaryAndDetails({
     params.locationName = locationName;
   if (licencee && licencee !== "All Licensees" && licencee !== "")
     params.licencee = licencee;
-  const { data } = await axios.get("/api/collectionReport", { params });
+  const { data } = await axios.get("/api/collectionReport", { params, signal });
   return {
     summary: data.summary || {
       drop: "-",
@@ -681,7 +683,8 @@ export async function fetchCollectionReportsByLicencee(
   timePeriod?: string,
   page: number = 1,
   limit: number = 50,
-  retryCount = 0
+  retryCount = 0,
+  signal?: AbortSignal
 ): Promise<{ data: CollectionReportRow[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
   const maxRetries = 2;
 
@@ -716,6 +719,7 @@ export async function fetchCollectionReportsByLicencee(
 
     const { data } = await axios.get("/api/collectionReport", {
       params,
+      signal,
     });
     
     // Response format: { data: CollectionReportRow[], pagination: {...} }

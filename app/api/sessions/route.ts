@@ -12,8 +12,8 @@
  * @module app/api/sessions/route
  */
 
-import { MachineSession } from '@/app/api/lib/models/machineSessions';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { MachineSession } from '@/app/api/lib/models/machineSessions';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -46,7 +46,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const sortBy = searchParams.get('sortBy') || 'startTime';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
-    const licencee = searchParams.get('licencee') || searchParams.get('licensee') || '';
+    const licencee =
+      searchParams.get('licencee') || searchParams.get('licensee') || '';
     const dateFilter = searchParams.get('dateFilter') || 'all';
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
@@ -271,7 +272,23 @@ export async function GET(request: NextRequest) {
             },
           ]
         : []),
-      // Stage 9: Add computed machine name field
+      // Stage 9: Lookup member details for each session
+      {
+        $lookup: {
+          from: 'members',
+          localField: 'memberId',
+          foreignField: '_id',
+          as: 'member',
+        },
+      },
+      // Stage 10: Unwind member array (preserve sessions with no member)
+      {
+        $unwind: {
+          path: '$member',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Stage 11: Add computed fields
       {
         $addFields: {
           machineName: {
@@ -281,27 +298,45 @@ export async function GET(request: NextRequest) {
               'Unknown',
             ],
           },
+          memberName: {
+            $cond: {
+              if: { $ne: ['$member', null] },
+              then: {
+                $concat: [
+                  { $ifNull: ['$member.profile.firstName', ''] },
+                  ' ',
+                  { $ifNull: ['$member.profile.lastName', ''] },
+                ],
+              },
+              else: null,
+            },
+          },
         },
       },
-      // Stage 10: Sort sessions by specified field and order
+      // Stage 12: Sort sessions by specified field and order
       {
         $sort: { [sortBy]: sortOrder === 'desc' ? -1 : 1 },
       },
-      // Stage 11: Apply pagination (skip records)
+      // Stage 13: Apply pagination (skip records)
       {
         $skip: (page - 1) * limit,
       },
-      // Stage 12: Apply pagination (limit records)
+      // Stage 14: Apply pagination (limit records)
       {
         $limit: limit,
       },
-      // Stage 13: Project final fields and calculate duration
+      // Stage 15: Project final fields and calculate duration
       {
         $project: {
           _id: 1,
           sessionId: '$_id',
           machineId: 1,
           machineName: 1,
+          machineSerialNumber: '$machine.serialNumber',
+          machineCustomName: '$machine.custom.name',
+          machineGame: '$machine.game',
+          memberId: 1,
+          memberName: 1,
           startTime: 1,
           endTime: 1,
           gamesPlayed: 1,
@@ -358,7 +393,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
     console.error(`[Sessions API] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
       { success: false, error: errorMessage },

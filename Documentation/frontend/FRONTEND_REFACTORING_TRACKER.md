@@ -933,7 +933,7 @@ Each frontend file must have:
 | `lib/utils/collectionReportUtils.ts`       | ✅     | ✅ Active | **REFACTORED** |
 | `lib/utils/collectionTime.ts`              | ✅     | ✅ Active | **REFACTORED** |
 | `lib/utils/components.ts`                  | ✅     | ✅ Active | **REFACTORED** |
-| `lib/utils/connectionMonitor.ts`           | ✅     | ✅ Active | **REFACTORED** |
+| `lib/utils/connectionMonitor.ts`           | ✅     | ❌ Deleted | **REMOVED** - Unused utility, never imported |
 | `lib/utils/createIndexes.ts`               | ✅     | ✅ Active | **REFACTORED** |
 | `lib/utils/currency.ts`                    | ✅     | ✅ Active | **REFACTORED** |
 | `lib/utils/dateFormatting.ts`              | ✅     | ✅ Active | **REFACTORED** |

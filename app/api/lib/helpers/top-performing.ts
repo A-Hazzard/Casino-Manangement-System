@@ -1,10 +1,8 @@
-import { Db } from 'mongodb';
-import {
-  PipelineStage,
-  QueryFilter,
-  TimePeriod,
-} from '@/lib/types/api';
+import { Meters } from '@/app/api/lib/models/meters';
+import type { QueryFilter, TimePeriod } from '@/lib/types/api';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import { Db } from 'mongodb';
+import type { PipelineStage } from 'mongoose';
 
 type ActiveTab = 'locations' | 'Cabinets';
 
@@ -40,7 +38,7 @@ export async function getTopPerformingMetrics(
       ? aggregateMetersForTop5Machines(filter, licensee)
       : aggregateMetersForTop5Locations(filter, licensee);
 
-  return db.collection('meters').aggregate(aggregationQuery).toArray();
+  return Meters.aggregate(aggregationQuery);
 }
 
 /**
@@ -50,7 +48,10 @@ export async function getTopPerformingMetrics(
  * @param licensee - (Optional) Licensee filter to restrict results.
  * @returns MongoDB aggregation pipeline for top 5 locations.
  */
-function aggregateMetersForTop5Locations(filter: QueryFilter, licensee?: string): PipelineStage[] {
+function aggregateMetersForTop5Locations(
+  filter: QueryFilter,
+  licensee?: string
+): PipelineStage[] {
   return [
     { $match: filter },
     {
@@ -71,11 +72,15 @@ function aggregateMetersForTop5Locations(filter: QueryFilter, licensee?: string)
     },
     { $unwind: '$locationDetails' },
     // Filter by licensee if specified
-    ...(licensee ? [{
-      $match: {
-        'locationDetails.rel.licencee': licensee
-      }
-    }] : []),
+    ...(licensee
+      ? [
+          {
+            $match: {
+              'locationDetails.rel.licencee': licensee,
+            },
+          },
+        ]
+      : []),
     {
       $project: {
         _id: 0,
@@ -118,7 +123,10 @@ function aggregateMetersForTop5Locations(filter: QueryFilter, licensee?: string)
  * @param licensee - (Optional) Licensee filter to restrict results.
  * @returns MongoDB aggregation pipeline for top 5 machines.
  */
-function aggregateMetersForTop5Machines(filter: QueryFilter, licensee?: string): PipelineStage[] {
+function aggregateMetersForTop5Machines(
+  filter: QueryFilter,
+  licensee?: string
+): PipelineStage[] {
   return [
     { $match: filter },
     {
@@ -151,11 +159,15 @@ function aggregateMetersForTop5Machines(filter: QueryFilter, licensee?: string):
     },
     { $unwind: '$locationDetails' },
     // Filter by licensee if specified
-    ...(licensee ? [{
-      $match: {
-        'locationDetails.rel.licencee': licensee
-      }
-    }] : []),
+    ...(licensee
+      ? [
+          {
+            $match: {
+              'locationDetails.rel.licencee': licensee,
+            },
+          },
+        ]
+      : []),
     {
       $project: {
         _id: 0,

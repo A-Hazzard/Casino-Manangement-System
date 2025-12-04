@@ -25,6 +25,7 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
+import { Countries } from '@/app/api/lib/models/countries';
 import { TimePeriod } from '@/app/api/lib/types';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
@@ -70,6 +71,10 @@ export async function GET(req: NextRequest) {
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;
     let displayCurrency: CurrencyCode = currencyParam || 'USD';
     const searchTerm = searchParams.get('search')?.trim() || '';
+    
+    // Parse filters parameter (e.g., "MembershipOnly", "SMIBLocationsOnly", etc.)
+    const filtersParam = searchParams.get('filters');
+    const filters = filtersParam ? filtersParam.split(',') : [];
 
     const showAllLocations = searchParams.get('showAllLocations') === 'true';
 
@@ -120,10 +125,6 @@ export async function GET(req: NextRequest) {
     if (isDevMode && testUserId) {
       perfTimers.auth = Date.now() - authStart;
       // Dev mode: Get user directly from DB for testing
-      console.warn(
-        '[Reports/Locations] 🔧 DEV MODE: Using testUserId:',
-        testUserId
-      );
       const UserModel = (await import('../../lib/models/user')).default;
       const testUserResult = await UserModel.findOne({
         _id: testUserId,
@@ -141,11 +142,6 @@ export async function GET(req: NextRequest) {
         userAccessibleLicensees = Array.isArray(testUser.assignedLicensees)
           ? testUser.assignedLicensees.map((id: string) => String(id))
           : [];
-        console.log('[Reports/Locations] DEV MODE - User from DB:', {
-          roles: userRoles,
-          assignedLocations: userLocationPermissions,
-          assignedLicensees: userAccessibleLicensees,
-        });
       } else {
         return NextResponse.json(
           { error: 'Test user not found' },
@@ -199,19 +195,9 @@ export async function GET(req: NextRequest) {
         ).lean();
         if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
           displayCurrency = getLicenseeCurrency(licenseeDoc.name);
-          console.log(
-            `🔍 [Reports/Locations] Auto-detected currency: ${displayCurrency} for licensee: ${licenseeDoc.name} (${resolvedLicensee})`
-          );
-        } else {
-          console.warn(
-            `🔍 [Reports/Locations] Licensee not found: ${resolvedLicensee}, using default USD`
-          );
         }
-      } catch (error) {
-        console.warn(
-          '[Reports/Locations] Failed to get licensee name for currency, using default USD:',
-          error
-        );
+      } catch {
+        // Failed to get licensee name for currency - use default USD
       }
     }
 
@@ -223,47 +209,6 @@ export async function GET(req: NextRequest) {
       licencee || undefined,
       userLocationPermissions,
       userRoles
-    );
-
-    // Debug logging for all users (especially collectors)
-    console.log(
-      '🔍 [Reports/Locations] ========================================'
-    );
-    console.log('🔍 [Reports/Locations] User roles:', userRoles);
-    console.log(
-      '🔍 [Reports/Locations] User assignedLocations count:',
-      userLocationPermissions.length
-    );
-    console.log(
-      '🔍 [Reports/Locations] User assignedLocations:',
-      userLocationPermissions
-    );
-    console.log(
-      '🔍 [Reports/Locations] User accessibleLicensees:',
-      userAccessibleLicensees
-    );
-    console.log('🔍 [Reports/Locations] Licencee param:', licencee);
-    console.log(
-      '🔍 [Reports/Locations] Allowed location IDs:',
-      allowedLocationIds === 'all'
-        ? 'all (no filtering)'
-        : `${Array.isArray(allowedLocationIds) ? allowedLocationIds.length : 0} locations`
-    );
-    if (Array.isArray(allowedLocationIds) && allowedLocationIds.length > 0) {
-      console.log(
-        '🔍 [Reports/Locations] Allowed location IDs list (first 10):',
-        allowedLocationIds.slice(0, 10)
-      );
-    } else if (
-      Array.isArray(allowedLocationIds) &&
-      allowedLocationIds.length === 0
-    ) {
-      console.warn(
-        '⚠️⚠️⚠️ [Reports/Locations] EMPTY ALLOWED LOCATION IDs - USER WILL SEE NO DATA ⚠️⚠️⚠️'
-      );
-    }
-    console.log(
-      '🔍 [Reports/Locations] ========================================'
     );
 
     // ============================================================================
@@ -311,12 +256,8 @@ export async function GET(req: NextRequest) {
         if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc._id) {
           licenseeId = String(licenseeDoc._id);
         }
-      } catch (error) {
-        console.warn(
-          '[reports/locations] Failed to resolve licensee, using as-is:',
-          licencee,
-          error
-        );
+      } catch {
+        // Failed to resolve licensee - use as-is
       }
       // rel.licencee is stored as a String
       locationMatchStage['rel.licencee'] = licenseeId;
@@ -345,6 +286,7 @@ export async function GET(req: NextRequest) {
       isLocalServer: 1,
       rel: 1,
       country: 1,
+      membershipEnabled: 1,
     }).lean();
     perfTimers.fetchLocations = Date.now() - locationsStart;
 
@@ -378,9 +320,6 @@ export async function GET(req: NextRequest) {
       timePeriod === 'last7days' ||
       timePeriod === 'last30days';
 
-    console.log(
-      `[LOCATIONS API] Processing ${locations.length} locations using ${useSingleAggregation ? 'single aggregation' : 'parallel batches'} for ${timePeriod}`
-    );
 
     if (useSingleAggregation) {
       // 🚀 SUPER OPTIMIZED: Single aggregation for ALL locations (much faster for 30d/7d)
@@ -542,6 +481,10 @@ export async function GET(req: NextRequest) {
           location: locationId,
           locationName: location.name,
           isLocalServer: location.isLocalServer || false,
+          membershipEnabled: Boolean(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (location as any).membershipEnabled
+          ),
           moneyIn: locationMetrics.moneyIn,
           moneyOut: locationMetrics.moneyOut,
           gross: gross,
@@ -568,9 +511,6 @@ export async function GET(req: NextRequest) {
       // (Today/Yesterday/Custom/All Time) - these are already fast with smaller batches
       const BATCH_SIZE = 20;
 
-      console.log(
-        `[LOCATIONS API] Using batch size: ${BATCH_SIZE} for ${timePeriod}`
-      );
 
       for (let i = 0; i < locations.length; i += BATCH_SIZE) {
         const batch = locations.slice(i, i + BATCH_SIZE);
@@ -582,9 +522,6 @@ export async function GET(req: NextRequest) {
             const gamingDayRange = gamingDayRanges.get(locationId);
 
             if (!gamingDayRange) {
-              console.warn(
-                `⚠️ [LOCATIONS API] No gaming day range for location ${locationId}`
-              );
               return null;
             }
 
@@ -681,6 +618,10 @@ export async function GET(req: NextRequest) {
                 isLocalServer:
                   (location as { isLocalServer?: boolean }).isLocalServer ||
                   false,
+                membershipEnabled: Boolean(
+                  (location as { membershipEnabled?: boolean })
+                    .membershipEnabled
+                ),
                 moneyIn: locationMetrics.moneyIn,
                 moneyOut: locationMetrics.moneyOut,
                 gross: gross,
@@ -726,11 +667,79 @@ export async function GET(req: NextRequest) {
 
     perfTimers.processing = Date.now() - processingStart;
 
+    // ============================================================================
+    // STEP 9.5: Add member counts for locations with membership enabled
+    // ============================================================================
+    const memberCountStart = Date.now();
+    const membershipEnabledLocations = locationResults
+      .filter(loc => loc.membershipEnabled)
+      .map(loc => loc._id);
+    
+    if (membershipEnabledLocations.length > 0) {
+      const { Member } = await import('@/app/api/lib/models/members');
+      
+      // Count members for each membership-enabled location
+      const memberCounts = await Member.aggregate([
+        {
+          $match: {
+            gamingLocation: { $in: membershipEnabledLocations },
+            deletedAt: { $lt: new Date('2020-01-01') }, // Exclude deleted members
+          },
+        },
+        {
+          $group: {
+            _id: '$gamingLocation',
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+      
+      // Create a map of location ID to member count
+      const memberCountMap = new Map<string, number>();
+      memberCounts.forEach((item: { _id: string; count: number }) => {
+        memberCountMap.set(item._id, item.count);
+      });
+      
+      // Add member counts to locations
+      locationResults.forEach(loc => {
+        if (loc.membershipEnabled) {
+          (loc as { memberCount?: number }).memberCount = memberCountMap.get(loc._id) || 0;
+        }
+      });
+    }
+    perfTimers.memberCounts = Date.now() - memberCountStart;
+
+    // ============================================================================
+    // STEP 10: Apply filters (MembershipOnly, SMIBLocationsOnly, etc.)
+    // ============================================================================
+    const filterStart = Date.now();
+    let filteredResults = locationResults;
+    
+    if (filters.length > 0) {
+      filteredResults = locationResults.filter(loc => {
+        return filters.every(filter => {
+          switch (filter) {
+            case 'SMIBLocationsOnly':
+              return ((loc as { sasMachines?: number }).sasMachines || 0) > 0;
+            case 'NoSMIBLocation':
+              return ((loc as { sasMachines?: number }).sasMachines || 0) === 0;
+            case 'LocalServersOnly':
+              return loc.isLocalServer === true;
+            case 'MembershipOnly':
+              return loc.membershipEnabled === true;
+            default:
+              return true;
+          }
+        });
+      });
+    }
+    perfTimers.filters = Date.now() - filterStart;
+
     // 🔍 PERFORMANCE: Sort and paginate
     const sortStart = Date.now();
-    locationResults.sort((a, b) => b.gross - a.gross);
-    const totalCount = locationResults.length;
-    const paginatedResults = locationResults.slice(skip, skip + limit);
+    filteredResults.sort((a, b) => b.gross - a.gross);
+    const totalCount = filteredResults.length;
+    const paginatedResults = filteredResults.slice(skip, skip + limit);
     const totalPages = Math.ceil(totalCount / limit);
     perfTimers.sortAndPaginate = Date.now() - sortStart;
 
@@ -777,10 +786,12 @@ export async function GET(req: NextRequest) {
           });
 
           // Get country details for currency mapping (for unassigned locations)
-          const countriesData = await db.collection('countries').find({}).toArray();
+          const countriesData = await Countries.find({}).lean();
           const countryIdToName = new Map<string, string>();
           countriesData.forEach(country => {
-            countryIdToName.set(country._id.toString(), country.name);
+            if (country._id && country.name) {
+              countryIdToName.set(String(country._id), country.name);
+            }
           });
 
           // Convert each location's financial data
@@ -860,16 +871,12 @@ export async function GET(req: NextRequest) {
     const totalTime = Date.now() - perfStart;
     perfTimers.total = totalTime;
 
-    // 📊 PERFORMANCE SUMMARY - Concise logging
-    console.log(
-      '⚡ /api/reports/locations - ' +
-        `${totalTime}ms | ` +
-        `${locations.length} locations | ` +
-        `${(perfTimers.processing / locations.length).toFixed(1)}ms/loc | ` +
-        `${(locations.length / (totalTime / 1000)).toFixed(0)}/sec | ` +
-        `Processing: ${((perfTimers.processing / totalTime) * 100).toFixed(0)}% | ` +
-        `Currency: ${((perfTimers.currencyConversion / totalTime) * 100).toFixed(0)}%`
-    );
+    // Log only if slow response (>3 seconds)
+    if (totalTime > 3000) {
+      console.warn(
+        `[Locations Report API] Slow response: ${totalTime}ms for ${locations.length} locations`
+      );
+    }
 
     const response = {
       data: convertedData,

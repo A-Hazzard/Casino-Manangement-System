@@ -17,32 +17,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useReportsStore } from '@/lib/store/reportsStore';
+import { useDebounce } from '@/lib/utils/hooks';
 import axios from 'axios';
 import {
   BarChart3,
   ChevronDown,
   ChevronUp,
   Download,
+  FileSpreadsheet,
+  FileText,
   Monitor,
   RefreshCw,
-  FileText,
-  FileSpreadsheet,
 } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useDebounce } from '@/lib/utils/hooks';
 
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   handleExportMeters as handleExportMetersHelper,
   handleMachineSort as handleMachineSortHelper,
@@ -57,6 +58,7 @@ import { GamesPerformanceChart } from '@/components/ui/GamesPerformanceChart';
 import { GamesPerformanceRevenueChart } from '@/components/ui/GamesPerformanceRevenueChart';
 import { MachineEvaluationSummary } from '@/components/ui/MachineEvaluationSummary';
 import { ManufacturerPerformanceChart } from '@/components/ui/ManufacturerPerformanceChart';
+import PaginationControls from '@/components/ui/PaginationControls';
 import {
   ChartNoData,
   ChartSkeleton,
@@ -74,13 +76,12 @@ import type {
 } from '@/shared/types/machines';
 import { Pencil2Icon } from '@radix-ui/react-icons';
 import { Trash2 } from 'lucide-react';
-import PaginationControls from '@/components/ui/PaginationControls';
 
 import StatusIcon from '@/components/ui/common/StatusIcon';
 import {
+  getGrossColorClass,
   getMoneyInColorClass,
   getMoneyOutColorClass,
-  getGrossColorClass,
 } from '@/lib/utils/financialColors';
 
 // Sortable table header component
@@ -126,10 +127,21 @@ export default function MachinesTab() {
   const searchParams = useSearchParams();
   const { formatAmount, shouldShowCurrency, displayCurrency } =
     useCurrencyFormat();
+
+  // AbortController for different query types
+  const makeStatsRequest = useAbortableRequest();
+  const makeOverviewRequest = useAbortableRequest();
+  const makeOfflineRequest = useAbortableRequest();
+  const makeEvaluationRequest = useAbortableRequest();
+
   // Separate states for different purposes (streaming approach)
-  const [allOverviewMachines, setAllOverviewMachines] = useState<MachineData[]>([]); // All loaded machines for overview
+  const [allOverviewMachines, setAllOverviewMachines] = useState<MachineData[]>(
+    []
+  ); // All loaded machines for overview
   const [allMachines, setAllMachines] = useState<MachineData[]>([]); // All machines for performance analysis
-  const [allOfflineMachines, setAllOfflineMachines] = useState<MachineData[]>([]); // All offline machines loaded
+  const [allOfflineMachines, setAllOfflineMachines] = useState<MachineData[]>(
+    []
+  ); // All offline machines loaded
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null); // Counts for dashboard cards
 
   // Manufacturer performance data
@@ -177,7 +189,9 @@ export default function MachinesTab() {
 
   // Batch-based pagination for overview tab
   const [overviewCurrentPage, setOverviewCurrentPage] = useState(0);
-  const [overviewLoadedBatches, setOverviewLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [overviewLoadedBatches, setOverviewLoadedBatches] = useState<
+    Set<number>
+  >(new Set([1]));
   const overviewItemsPerPage = 10;
   const overviewItemsPerBatch = 50;
   const overviewPagesPerBatch = overviewItemsPerBatch / overviewItemsPerPage; // 5
@@ -193,20 +207,28 @@ export default function MachinesTab() {
 
   // Batch-based pagination for offline machines tab
   const [offlineCurrentPage, setOfflineCurrentPage] = useState(0);
-  const [offlineLoadedBatches, setOfflineLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [offlineLoadedBatches, setOfflineLoadedBatches] = useState<Set<number>>(
+    new Set([1])
+  );
   const offlineItemsPerPage = 10;
   const offlineItemsPerBatch = 50;
   const offlinePagesPerBatch = offlineItemsPerBatch / offlineItemsPerPage; // 5
 
   // Calculate which batch we need based on current page for overview
-  const calculateOverviewBatchNumber = useCallback((page: number) => {
-    return Math.floor(page / overviewPagesPerBatch) + 1;
-  }, [overviewPagesPerBatch]);
+  const calculateOverviewBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / overviewPagesPerBatch) + 1;
+    },
+    [overviewPagesPerBatch]
+  );
 
   // Calculate which batch we need based on current page for offline
-  const calculateOfflineBatchNumber = useCallback((page: number) => {
-    return Math.floor(page / offlinePagesPerBatch) + 1;
-  }, [offlinePagesPerBatch]);
+  const calculateOfflineBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / offlinePagesPerBatch) + 1;
+    },
+    [offlinePagesPerBatch]
+  );
 
   // Sorting function for machine overview table
   const handleSort = (key: keyof MachineData) => {
@@ -315,11 +337,16 @@ export default function MachinesTab() {
         params.currency = displayCurrency;
       }
 
-      const response = await axios.get<MachineStatsApiResponse>(
-        '/api/reports/machines',
-        { params }
+      await makeStatsRequest(
+        async signal => {
+          const response = await axios.get<MachineStatsApiResponse>(
+            '/api/reports/machines',
+            { params, signal }
+          );
+          setMachineStats(response.data);
+        },
+        `Machine Stats (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
       );
-      setMachineStats(response.data);
     } catch (error) {
       console.error('Failed to fetch machine stats:', error);
       setError('Failed to load machine statistics');
@@ -336,75 +363,78 @@ export default function MachinesTab() {
     onlineStatusFilter,
     activeMetricsFilter,
     displayCurrency,
+    makeStatsRequest,
   ]);
 
   // Fetch overview machines (paginated)
   const fetchOverviewMachines = useCallback(
     async (page: number = 1, search: string = '') => {
-      try {
-        setOverviewLoading(true);
-        setLoading(true); // Set reports store loading state
-        setError(null);
+      setOverviewLoading(true);
+      setLoading(true);
+      setError(null);
 
-        const params: Record<string, string> = {
-          type: 'overview',
-          page: page.toString(),
-          limit: overviewItemsPerBatch.toString(),
-          timePeriod: activeMetricsFilter || 'Today',
-        };
+      await makeOverviewRequest(
+        async signal => {
+          const params: Record<string, string> = {
+            type: 'overview',
+            page: page.toString(),
+            limit: overviewItemsPerBatch.toString(),
+            timePeriod: activeMetricsFilter || 'Today',
+          };
 
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.licencee = selectedLicencee;
-        }
+          if (selectedLicencee && selectedLicencee !== 'all') {
+            params.licencee = selectedLicencee;
+          }
 
-        if (overviewSelectedLocation && overviewSelectedLocation !== 'all') {
-          params.locationId = overviewSelectedLocation;
-        }
+          if (overviewSelectedLocation && overviewSelectedLocation !== 'all') {
+            params.locationId = overviewSelectedLocation;
+          }
 
-        if (selectedDateRange?.start && selectedDateRange?.end) {
-          params.startDate = selectedDateRange.start.toISOString();
-          params.endDate = selectedDateRange.end.toISOString();
-        }
+          if (selectedDateRange?.start && selectedDateRange?.end) {
+            params.startDate = selectedDateRange.start.toISOString();
+            params.endDate = selectedDateRange.end.toISOString();
+          }
 
-        if (onlineStatusFilter !== 'all') {
-          params.onlineStatus = onlineStatusFilter;
-        }
+          if (onlineStatusFilter !== 'all') {
+            params.onlineStatus = onlineStatusFilter;
+          }
 
-        // Add search parameter if provided
-        if (search && search.trim()) {
-          params.search = search.trim();
-        }
+          if (search && search.trim()) {
+            params.search = search.trim();
+          }
 
-        // Add currency parameter
-        if (displayCurrency) {
-          params.currency = displayCurrency;
-        }
+          if (displayCurrency) {
+            params.currency = displayCurrency;
+          }
 
-        const response = await axios.get<MachinesApiResponse>(
-          '/api/reports/machines',
-          { params }
-        );
-        const { data: machinesData } = response.data;
-        const newMachines = machinesData || [];
+          try {
+            const response = await axios.get<MachinesApiResponse>(
+              '/api/reports/machines',
+              { params, signal }
+            );
+            const { data: machinesData } = response.data;
+            const newMachines = machinesData || [];
 
-        // Merge new machines into allOverviewMachines, avoiding duplicates
-        setAllOverviewMachines(prev => {
-          const existingIds = new Set(prev.map(m => m.machineId));
-          const uniqueNewMachines = newMachines.filter((m: MachineData) => 
-            !existingIds.has(m.machineId)
-          );
-          return [...prev, ...uniqueNewMachines];
-        });
-      } catch (error) {
-        console.error('Failed to fetch overview machines:', error);
-        setError('Failed to load overview machines');
-        toast.error('Failed to load overview machines', {
-          duration: 3000,
-        });
-      } finally {
-        setOverviewLoading(false);
-        setLoading(false); // Clear reports store loading state
-      }
+            setAllOverviewMachines(prev => {
+              const existingIds = new Set(prev.map(m => m.machineId));
+              const uniqueNewMachines = newMachines.filter(
+                (m: MachineData) => !existingIds.has(m.machineId)
+              );
+              return [...prev, ...uniqueNewMachines];
+            });
+          } catch (error) {
+            console.error('Failed to fetch overview machines:', error);
+            setError('Failed to load overview machines');
+            toast.error('Failed to load overview machines', {
+              duration: 3000,
+            });
+          }
+        },
+        `Machine Overview (Page ${page}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
+      );
+
+      setOverviewLoading(false);
+      setLoading(false);
     },
     [
       selectedLicencee,
@@ -416,61 +446,65 @@ export default function MachinesTab() {
       displayCurrency,
       overviewItemsPerBatch,
       setLoading,
+      makeOverviewRequest,
     ]
   );
 
   // Fetch all machines for performance analysis (loads on tab switch)
   const fetchAllMachines = useCallback(async () => {
-    try {
-      setLoading(true); // Set reports store loading state
-      const params: Record<string, string> = {
-        type: 'all',
-        timePeriod: activeMetricsFilter || 'Today',
-      };
+    setLoading(true);
 
-      if (selectedLicencee && selectedLicencee !== 'all') {
-        params.licencee = selectedLicencee;
-      }
+    await makeEvaluationRequest(
+      async signal => {
+        const params: Record<string, string> = {
+          type: 'all',
+          timePeriod: activeMetricsFilter || 'Today',
+        };
 
-      // Apply location filter based on active tab
-      if (
-        activeTab === 'evaluation' &&
-        evaluationSelectedLocation &&
-        evaluationSelectedLocation !== 'all' &&
-        evaluationSelectedLocation !== ''
-      ) {
-        params.locationId = evaluationSelectedLocation;
-      }
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.licencee = selectedLicencee;
+        }
 
-      if (selectedDateRange?.start && selectedDateRange?.end) {
-        params.startDate = selectedDateRange.start.toISOString();
-        params.endDate = selectedDateRange.end.toISOString();
-      }
+        if (
+          activeTab === 'evaluation' &&
+          evaluationSelectedLocation &&
+          evaluationSelectedLocation !== 'all' &&
+          evaluationSelectedLocation !== ''
+        ) {
+          params.locationId = evaluationSelectedLocation;
+        }
 
-      if (onlineStatusFilter !== 'all') {
-        params.onlineStatus = onlineStatusFilter;
-      }
+        if (selectedDateRange?.start && selectedDateRange?.end) {
+          params.startDate = selectedDateRange.start.toISOString();
+          params.endDate = selectedDateRange.end.toISOString();
+        }
 
-      // Add currency parameter
-      if (displayCurrency) {
-        params.currency = displayCurrency;
-      }
+        if (onlineStatusFilter !== 'all') {
+          params.onlineStatus = onlineStatusFilter;
+        }
 
-      const response = await axios.get<MachinesApiResponse>(
-        '/api/reports/machines',
-        { params }
-      );
-      const { data: allMachinesData } = response.data;
+        if (displayCurrency) {
+          params.currency = displayCurrency;
+        }
 
-      setAllMachines(allMachinesData);
-    } catch (error) {
-      console.error('Failed to fetch all machines:', error);
-      toast.error('Failed to load performance analysis data', {
-        duration: 3000,
-      });
-    } finally {
-      setLoading(false); // Clear reports store loading state
-    }
+        try {
+          const response = await axios.get<MachinesApiResponse>(
+            '/api/reports/machines',
+            { params, signal }
+          );
+          const { data: allMachinesData } = response.data;
+          setAllMachines(allMachinesData);
+        } catch (error) {
+          console.error('Failed to fetch all machines:', error);
+          toast.error('Failed to load performance analysis data', {
+            duration: 3000,
+          });
+        }
+      },
+      `Machine Evaluation (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
+    );
+
+    setLoading(false);
   }, [
     selectedLicencee,
     selectedDateRange?.start,
@@ -481,80 +515,85 @@ export default function MachinesTab() {
     activeMetricsFilter,
     displayCurrency,
     setLoading,
+    makeEvaluationRequest,
   ]);
 
   // Fetch offline machines (batch-based, loads on tab switch)
-  const fetchOfflineMachines = useCallback(async (batch: number = 1) => {
-    try {
+  const fetchOfflineMachines = useCallback(
+    async (batch: number = 1) => {
       setOfflineLoading(true);
-      setLoading(true); // Set reports store loading state
-      const params: Record<string, string> = {
-        type: 'offline',
-        timePeriod: activeMetricsFilter || 'Today',
-        page: batch.toString(),
-        limit: offlineItemsPerBatch.toString(),
-      };
+      setLoading(true);
 
-      if (selectedLicencee && selectedLicencee !== 'all') {
-        params.licencee = selectedLicencee;
-      }
+      await makeOfflineRequest(
+        async signal => {
+          const params: Record<string, string> = {
+            type: 'offline',
+            timePeriod: activeMetricsFilter || 'Today',
+            page: batch.toString(),
+            limit: offlineItemsPerBatch.toString(),
+          };
 
-      if (offlineSelectedLocation && offlineSelectedLocation !== 'all') {
-        params.locationId = offlineSelectedLocation;
-      }
+          if (selectedLicencee && selectedLicencee !== 'all') {
+            params.licencee = selectedLicencee;
+          }
 
-      if (selectedDateRange?.start && selectedDateRange?.end) {
-        params.startDate = selectedDateRange.start.toISOString();
-        params.endDate = selectedDateRange.end.toISOString();
-      }
+          if (offlineSelectedLocation && offlineSelectedLocation !== 'all') {
+            params.locationId = offlineSelectedLocation;
+          }
 
-      // Don't pass onlineStatus for offline machines - the API handles offline filtering internally
-      // if (onlineStatusFilter !== "all") {
-      //   params.onlineStatus = onlineStatusFilter;
-      // }
+          if (selectedDateRange?.start && selectedDateRange?.end) {
+            params.startDate = selectedDateRange.start.toISOString();
+            params.endDate = selectedDateRange.end.toISOString();
+          }
 
-      console.warn(
-        `🔍 Fetching offline machines with params: ${JSON.stringify(params)}`
+          console.warn(
+            `🔍 Fetching offline machines with params: ${JSON.stringify(params)}`
+          );
+
+          try {
+            const response = await axios.get<MachinesApiResponse>(
+              '/api/reports/machines',
+              { params, signal }
+            );
+            const { data: offlineMachinesData } = response.data;
+            const newOfflineMachines = offlineMachinesData || [];
+
+            setAllOfflineMachines(prev => {
+              const existingIds = new Set(prev.map(m => m.machineId));
+              const uniqueNewMachines = newOfflineMachines.filter(
+                (m: MachineData) => !existingIds.has(m.machineId)
+              );
+              return [...prev, ...uniqueNewMachines];
+            });
+          } catch (error) {
+            console.error('Failed to fetch offline machines:', error);
+            toast.error('Failed to load offline machines data', {
+              duration: 3000,
+            });
+          }
+        },
+        `Machine Offline (Batch ${batch}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
       );
 
-      const response = await axios.get<MachinesApiResponse>(
-        '/api/reports/machines',
-        { params }
-      );
-      const { data: offlineMachinesData } = response.data;
-      const newOfflineMachines = offlineMachinesData || [];
-
-      // Merge new offline machines into allOfflineMachines, avoiding duplicates
-      setAllOfflineMachines(prev => {
-        const existingIds = new Set(prev.map(m => m.machineId));
-        const uniqueNewMachines = newOfflineMachines.filter((m: MachineData) => 
-          !existingIds.has(m.machineId)
-        );
-        return [...prev, ...uniqueNewMachines];
-      });
-    } catch (error) {
-      console.error('Failed to fetch offline machines:', error);
-      toast.error('Failed to load offline machines data', {
-        duration: 3000,
-      });
-    } finally {
       setOfflineLoading(false);
-      setLoading(false); // Clear reports store loading state
-    }
-  }, [
-    selectedLicencee,
-    selectedDateRange?.start,
-    selectedDateRange?.end,
-    offlineSelectedLocation,
-    activeMetricsFilter,
-    offlineItemsPerBatch,
-    setLoading,
-  ]);
+      setLoading(false);
+    },
+    [
+      selectedLicencee,
+      selectedDateRange?.start,
+      selectedDateRange?.end,
+      offlineSelectedLocation,
+      activeMetricsFilter,
+      offlineItemsPerBatch,
+      setLoading,
+      makeOfflineRequest,
+    ]
+  );
 
   // Handle search with backend fallback for overview tab
   // Note: The actual API call is triggered by debouncedSearchTerm in useEffect
   const handleSearchChange = useCallback((value: string) => {
-      setSearchTerm(value);
+    setSearchTerm(value);
     setAllOverviewMachines([]);
     setOverviewLoadedBatches(new Set([1]));
     setOverviewCurrentPage(0);
@@ -597,7 +636,8 @@ export default function MachinesTab() {
     if (activeTab !== 'overview' || overviewLoading) return;
 
     const currentBatch = calculateOverviewBatchNumber(overviewCurrentPage);
-    const isLastPageOfBatch = (overviewCurrentPage + 1) % overviewPagesPerBatch === 0;
+    const isLastPageOfBatch =
+      (overviewCurrentPage + 1) % overviewPagesPerBatch === 0;
     const nextBatch = currentBatch + 1;
 
     // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
@@ -649,7 +689,8 @@ export default function MachinesTab() {
     if (activeTab !== 'offline' || offlineLoading) return;
 
     const currentBatch = calculateOfflineBatchNumber(offlineCurrentPage);
-    const isLastPageOfBatch = (offlineCurrentPage + 1) % offlinePagesPerBatch === 0;
+    const isLastPageOfBatch =
+      (offlineCurrentPage + 1) % offlinePagesPerBatch === 0;
     const nextBatch = currentBatch + 1;
 
     // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
@@ -689,11 +730,17 @@ export default function MachinesTab() {
   // Filter offline data based on search
   // Get items for current page from overview machines
   const paginatedOverviewMachines = useMemo(() => {
-    const positionInBatch = (overviewCurrentPage % overviewPagesPerBatch) * overviewItemsPerPage;
+    const positionInBatch =
+      (overviewCurrentPage % overviewPagesPerBatch) * overviewItemsPerPage;
     const startIndex = positionInBatch;
     const endIndex = startIndex + overviewItemsPerPage;
     return allOverviewMachines.slice(startIndex, endIndex);
-  }, [allOverviewMachines, overviewCurrentPage, overviewItemsPerPage, overviewPagesPerBatch]);
+  }, [
+    allOverviewMachines,
+    overviewCurrentPage,
+    overviewItemsPerPage,
+    overviewPagesPerBatch,
+  ]);
 
   // Calculate total pages for overview based on all loaded batches
   const overviewTotalPages = useMemo(() => {
@@ -731,11 +778,17 @@ export default function MachinesTab() {
 
   // Get items for current page from filtered offline machines (paginate after filtering)
   const paginatedOfflineMachines = useMemo(() => {
-    const positionInBatch = (offlineCurrentPage % offlinePagesPerBatch) * offlineItemsPerPage;
+    const positionInBatch =
+      (offlineCurrentPage % offlinePagesPerBatch) * offlineItemsPerPage;
     const startIndex = positionInBatch;
     const endIndex = startIndex + offlineItemsPerPage;
     return filteredOfflineData.slice(startIndex, endIndex);
-  }, [filteredOfflineData, offlineCurrentPage, offlineItemsPerPage, offlinePagesPerBatch]);
+  }, [
+    filteredOfflineData,
+    offlineCurrentPage,
+    offlineItemsPerPage,
+    offlinePagesPerBatch,
+  ]);
 
   // Calculate total pages for offline based on all loaded batches (not filtered)
   // This ensures we only show pages for data we've actually loaded
@@ -1780,12 +1833,16 @@ export default function MachinesTab() {
                                       {machine.machineType || 'slot'}
                                     </Badge>
                                   </td>
-                                  <td className={`p-3 text-sm font-medium ${getGrossColorClass(machine.netWin || 0)}`}>
+                                  <td
+                                    className={`p-3 text-sm font-medium ${getGrossColorClass(machine.netWin || 0)}`}
+                                  >
                                     {shouldShowCurrency()
                                       ? formatAmount(machine.netWin || 0)
                                       : `$${(machine.netWin || 0).toLocaleString()}`}
                                   </td>
-                                  <td className={`p-3 text-sm font-medium ${getMoneyInColorClass(machine.drop || 0)}`}>
+                                  <td
+                                    className={`p-3 text-sm font-medium ${getMoneyInColorClass(machine.drop || 0)}`}
+                                  >
                                     {shouldShowCurrency()
                                       ? formatAmount(machine.drop || 0)
                                       : `$${(machine.drop || 0).toLocaleString()}`}
@@ -1996,7 +2053,9 @@ export default function MachinesTab() {
                               <span className="text-muted-foreground">
                                 Drop:
                               </span>
-                              <p className={`font-medium ${getMoneyInColorClass(machine.drop || 0)}`}>
+                              <p
+                                className={`font-medium ${getMoneyInColorClass(machine.drop || 0)}`}
+                              >
                                 ${(machine.drop || 0).toLocaleString()}
                               </p>
                             </div>
@@ -2032,7 +2091,7 @@ export default function MachinesTab() {
                         totalPages={overviewTotalPages}
                         setCurrentPage={setOverviewCurrentPage}
                       />
-                          </div>
+                    </div>
                   )}
                 </>
               )}
@@ -2077,10 +2136,7 @@ export default function MachinesTab() {
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                  >
+                  <Button variant="outline" size="sm">
                     <Download className="mr-2 h-4 w-4" />
                     Export
                     <ChevronDown className="ml-2 h-4 w-4" />
@@ -2108,7 +2164,8 @@ export default function MachinesTab() {
           {evaluationLoading ? (
             <MachinesEvaluationSkeleton />
           ) : !evaluationSelectedLocation ||
-            (evaluationSelectedLocation !== 'all' && evaluationSelectedLocation === '') ? (
+            (evaluationSelectedLocation !== 'all' &&
+              evaluationSelectedLocation === '') ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <Monitor className="mx-auto mb-4 h-12 w-12 text-gray-400" />
@@ -2587,10 +2644,7 @@ export default function MachinesTab() {
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                          >
+                          <Button variant="outline" size="sm">
                             <Download className="mr-2 h-4 w-4" />
                             Export
                             <ChevronDown className="ml-2 h-4 w-4" />

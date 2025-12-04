@@ -52,6 +52,7 @@ import { cn } from '@/lib/utils';
 import {
   containsEmailPattern,
   containsPhonePattern,
+  isPlaceholderEmail,
   normalizePhoneNumber,
   validateEmail,
   validateNameField,
@@ -59,7 +60,6 @@ import {
   validatePasswordStrength,
   validatePhoneNumber,
   validateProfileField,
-  isPlaceholderEmail,
 } from '@/lib/utils/validation';
 import type {
   InvalidProfileFields,
@@ -173,7 +173,9 @@ export default function ProfileValidationModal({
             headers: { 'Content-Type': 'application/json' },
           }),
         ]);
-        const licenseesData = Array.isArray(licenseesResult.licensees) ? licenseesResult.licensees : [];
+        const licenseesData = Array.isArray(licenseesResult.licensees)
+          ? licenseesResult.licensees
+          : [];
 
         if (cancelled) return;
 
@@ -389,7 +391,8 @@ export default function ProfileValidationModal({
     const usernameChanged =
       username.toLowerCase() !== (currentData.username || '').toLowerCase();
     const emailChanged =
-      emailAddress.toLowerCase() !== (currentData.emailAddress || '').toLowerCase();
+      emailAddress.toLowerCase() !==
+      (currentData.emailAddress || '').toLowerCase();
 
     if (invalidFields.username || usernameChanged) {
       if (!username) {
@@ -428,7 +431,10 @@ export default function ProfileValidationModal({
       }
     }
 
-    if (invalidFields.otherName || otherName !== (currentData.otherName || '').trim()) {
+    if (
+      invalidFields.otherName ||
+      otherName !== (currentData.otherName || '').trim()
+    ) {
       if (otherName && !validateNameField(otherName)) {
         newErrors.otherName =
           'Other name may only contain letters and spaces and cannot look like a phone number.';
@@ -441,7 +447,6 @@ export default function ProfileValidationModal({
         newErrors.gender = 'Select a valid gender option.';
       }
     }
-
 
     if (invalidFields.emailAddress || emailChanged) {
       if (!emailAddress) {
@@ -484,12 +489,12 @@ export default function ProfileValidationModal({
     if (canManageAssignments) {
       const hasExistingLicensees = (currentData.licenseeIds || []).length > 0;
       const hasExistingLocations = (currentData.locationIds || []).length > 0;
-      
+
       // Only require licensees if they don't have any and formData is empty
       if (formData.licenseeIds.length === 0 && !hasExistingLicensees) {
         newErrors.licenseeIds = 'Select at least one licensee.';
       }
-      
+
       // Only require locations if they don't have any and formData is empty
       if (formData.locationIds.length === 0 && !hasExistingLocations) {
         newErrors.locationIds = 'Select at least one location.';
@@ -516,7 +521,13 @@ export default function ProfileValidationModal({
     }
 
     return newErrors;
-  }, [formData, currentData, invalidFields, canManageAssignments, passwordRequired]);
+  }, [
+    formData,
+    currentData,
+    invalidFields,
+    canManageAssignments,
+    passwordRequired,
+  ]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -612,7 +623,7 @@ export default function ProfileValidationModal({
   return (
     <Dialog open={open} onOpenChange={handleCloseRequest}>
       <DialogContent
-        className="sm:max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto [&>button]:hidden"
+        className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-lg [&>button]:hidden"
         onEscapeKeyDown={event => {
           if (enforceUpdate) {
             event.preventDefault();
@@ -630,69 +641,79 @@ export default function ProfileValidationModal({
             compliance release, all users must confirm their profile meets the
             updated standards before accessing the new interface.
           </DialogDescription>
-          {Object.keys(reasons || {}).length > 0 && (
-            <div className="mt-2 space-y-1 rounded-md bg-amber-50 p-3 text-xs text-amber-900">
-              <p className="font-semibold text-amber-900">
-                Issues you need to fix:
-              </p>
-              <ul className="space-y-2">
-                {Object.entries(reasons)
-                  .filter(
-                    ([key]) => invalidFields[key as keyof InvalidProfileFields]
-                  )
-                  .map(([field, reason]) => {
-                    if (!reason) return null;
-                    const currentValue =
-                      currentData[field as keyof ProfileValidationModalData];
-                    const isMissing =
-                      typeof currentValue === 'string' &&
-                      currentValue.trim() === '';
-                    return (
-                      <li
-                        key={field}
-                        className="rounded-md border border-amber-200 bg-white/70 p-2 shadow-sm"
-                      >
-                        <p className="font-medium capitalize text-amber-900">
-                          {field.replace(/([A-Z])/g, ' $1')}:
-                        </p>
-                        <p className="text-amber-800">
-                          {reason}
-                          {isMissing ? (
+        </DialogHeader>
+
+        {/* Validation Reasons Section */}
+        {Object.keys(reasons || {}).length > 0 && (
+          <div className="mt-4 space-y-1 rounded-md bg-amber-50 p-3 text-xs text-amber-900">
+            <p className="font-semibold text-amber-900">
+              Issues you need to fix:
+            </p>
+            <ul className="space-y-2">
+              {Object.entries(reasons)
+                .filter(
+                  ([key]) => invalidFields[key as keyof InvalidProfileFields]
+                )
+                .map(([field, reason]) => {
+                  if (!reason) return null;
+                  const currentValue =
+                    currentData[field as keyof ProfileValidationModalData];
+                  const isMissing =
+                    typeof currentValue === 'string' &&
+                    currentValue.trim() === '';
+                  return (
+                    <li
+                      key={field}
+                      className="rounded-md border border-amber-200 bg-white/70 p-2 shadow-sm"
+                    >
+                      <p className="font-medium capitalize text-amber-900">
+                        {field.replace(/([A-Z])/g, ' $1')}:
+                      </p>
+                      <p className="text-amber-800">
+                        {reason}
+                        {isMissing ? (
+                          <>
+                            {' '}
+                            <span className="font-semibold text-amber-900">
+                              (you haven&apos;t provided this yet)
+                            </span>
+                          </>
+                        ) : (
+                          typeof currentValue === 'string' &&
+                          currentValue.trim() !== '' && (
                             <>
                               {' '}
                               <span className="font-semibold text-amber-900">
-                                (you haven’t provided this yet)
+                                (current: &quot;{currentValue}&quot;)
                               </span>
                             </>
-                          ) : (
-                            typeof currentValue === 'string' &&
-                            currentValue.trim() !== '' && (
-                              <>
-                                {' '}
-                                <span className="font-semibold text-amber-900">
-                                  (current: “{currentValue}”)
-                                </span>
-                              </>
-                            )
-                          )}
-                        </p>
-                      </li>
-                    );
-                  })}
-              </ul>
-            </div>
-          )}
-          {serverError && (
-            <p className="mt-2 text-sm text-red-500" role="alert">
+                          )
+                        )}
+                      </p>
+                    </li>
+                  );
+                })}
+            </ul>
+          </div>
+        )}
+
+        {/* Server Error Message */}
+        {serverError && (
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3">
+            <p className="text-sm font-medium text-red-600" role="alert">
               {serverError}
             </p>
-          )}
-          <p className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
+          </div>
+        )}
+
+        {/* Informational Notice */}
+        <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3">
+          <p className="text-xs text-blue-900">
             Once you press <span className="font-semibold">Update Profile</span>{' '}
             the system may sign you out to refresh your session. This only takes
             a moment—just log back in with your updated details.
           </p>
-        </DialogHeader>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           {invalidFields.username && (
@@ -836,7 +857,6 @@ export default function ProfileValidationModal({
               {renderFieldError('gender')}
             </div>
           )}
-
 
           {invalidFields.emailAddress && (
             <div className="space-y-2">

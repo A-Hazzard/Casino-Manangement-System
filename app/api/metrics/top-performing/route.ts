@@ -63,15 +63,6 @@ export async function GET(req: NextRequest) {
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;
     const displayCurrency: CurrencyCode = currencyParam || 'USD';
 
-    console.log('[TopPerforming API] Params:', {
-      activeTab,
-      timePeriod,
-      rawLicensee,
-      licenseeForFilter,
-      currencyParam,
-      displayCurrency,
-    });
-
     // ============================================================================
     // STEP 2: Connect to database
     // ============================================================================
@@ -86,12 +77,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 3: Fetch top performing metrics
     // ============================================================================
-    const data = await getTopPerformingMetrics(
-      db,
-      activeTab,
-      timePeriod,
-      licenseeForFilter
-    );
+    const data = await getTopPerformingMetrics(db, activeTab, timePeriod, licenseeForFilter);
 
     // ============================================================================
     // STEP 4: Apply currency conversion if needed
@@ -113,21 +99,10 @@ export async function GET(req: NextRequest) {
       displayCurrency !== 'USD';
 
     if (shouldConvert) {
-      console.log('[TopPerforming API] Applying currency conversion to', displayCurrency);
       convertedData = await convertTopPerformingCurrency(
         convertedData,
-        displayCurrency,
-        licenseeForFilter,
-        db
+        displayCurrency
       );
-    } else {
-      console.log('[TopPerforming API] Skipping conversion:', {
-        isAdminOrDev,
-        shouldApplyConversion: shouldApplyCurrencyConversion(rawLicensee),
-        displayCurrency,
-        rawLicensee,
-        licenseeForFilter,
-      });
     }
 
     // ============================================================================

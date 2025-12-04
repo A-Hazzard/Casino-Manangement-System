@@ -22,6 +22,9 @@ import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
+import { Licencee } from '@/app/api/lib/models/licencee';
+import { Countries } from '@/app/api/lib/models/countries';
+import { Machine } from '@/app/api/lib/models/machines';
 import { Db, Document } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -99,20 +102,6 @@ export async function GET(req: NextRequest) {
       const { startDate: s, endDate: e } = getDatesForTimePeriod(timePeriod);
       startDate = s;
       endDate = e;
-    }
-
-    // Debug logging for custom date ranges
-    if (timePeriod === 'Custom') {
-      const customStart = searchParams.get('startDate');
-      const customEnd = searchParams.get('endDate');
-      console.warn('🔍 API - Custom date range debug (machines):');
-      console.warn('🔍 API - Original customStart:', customStart);
-      console.warn('🔍 API - Original customEnd:', customEnd);
-      console.warn('🔍 API - Parsed startDate:', startDate?.toISOString());
-      console.warn('🔍 API - Parsed endDate:', endDate?.toISOString());
-      console.warn(
-        '🔍 API - Timezone offset applied: +4 hours (Trinidad to UTC)'
-      );
     }
 
     // ============================================================================
@@ -489,34 +478,32 @@ const getMachineStats = async (
   let convertedTotals = totals;
 
   if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
-    console.warn(
-      '🔍 REPORTS MACHINES - Applying multi-currency aggregation for All Licensee mode'
-    );
-
     // Need to re-aggregate with currency conversion per machine
     // Get licensee and country mappings for currency determination
     const { getCountryCurrency } = await import('@/lib/helpers/rates');
     const { convertToUSD } = await import('@/lib/helpers/rates');
     
-    const licensees = await db.collection('licensees').find({}).toArray();
+    const licensees = await Licencee.find({}).lean();
     const licenseeIdToName = new Map<string, string>();
     const licenseeIdToCurrency = new Map<string, string>();
     licensees.forEach(licensee => {
-      const licenseeId = licensee._id.toString();
-      licenseeIdToName.set(licenseeId, licensee.name);
-      licenseeIdToCurrency.set(licenseeId, licensee.currency || 'USD');
+      if (licensee._id && licensee.name) {
+        const licenseeId = String(licensee._id);
+        licenseeIdToName.set(licenseeId, licensee.name);
+        licenseeIdToCurrency.set(licenseeId, licensee.currency || 'USD');
+      }
     });
 
-    const countriesData = await db.collection('countries').find({}).toArray();
+    const countriesData = await Countries.find({}).lean();
     const countryIdToName = new Map<string, string>();
     countriesData.forEach(country => {
-      countryIdToName.set(country._id.toString(), country.name);
+      if (country._id && country.name) {
+        countryIdToName.set(String(country._id), country.name);
+      }
     });
 
     // Re-fetch machines with location and currency info
-    const machinesWithCurrency = await db
-      .collection('machines')
-      .aggregate([
+    const machinesWithCurrency = await Machine.aggregate([
         { $match: machineMatchStage },
         {
           $lookup: {
@@ -596,8 +583,7 @@ const getMachineStats = async (
             countryId: '$locationDetails.country',
           },
         },
-      ])
-      .toArray();
+      ]);
 
     // Convert each machine's values to USD, then sum, then convert to display currency
     let totalDropUSD = 0;

@@ -133,16 +133,20 @@ export default function MembersListTab() {
     [itemsPerBatch]
   );
 
-  // Fetch locations for the filter dropdown
+  // Fetch locations for the filter dropdown (membership-enabled only)
   const fetchLocations = useCallback(async () => {
     try {
-      const response = await axios.get('/api/machines/locations');
+      const response = await axios.get(
+        '/api/machines/locations?membershipOnly=true'
+      );
       const data = response.data;
       if (data.locations && Array.isArray(data.locations)) {
-        setLocations(data.locations.map((loc: { _id: string; name: string }) => ({
-          id: loc._id,
-          name: loc.name || '',
-        })));
+        setLocations(
+          data.locations.map((loc: { _id: string; name: string }) => ({
+            id: loc._id,
+            name: loc.name || '',
+          }))
+        );
       }
     } catch (error) {
       console.error('Error fetching locations:', error);
@@ -338,6 +342,11 @@ export default function MembersListTab() {
     router.push(`/members/${memberId}`);
   };
 
+  const handleLocationClick = (locationId?: string) => {
+    if (!locationId) return;
+    router.push(`/locations/${locationId}`);
+  };
+
   const handleEdit = (member: Member) => {
     openEditModal(member);
   };
@@ -421,7 +430,11 @@ export default function MembersListTab() {
     if (!summaryStats) return null;
 
     return (
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className={`mb-6 grid grid-cols-1 gap-4 ${
+        typeof window !== 'undefined' && window.location.hostname === 'localhost'
+          ? 'md:grid-cols-3'
+          : 'md:grid-cols-2'
+      }`}>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="flex items-center">
             <div className="rounded-lg bg-blue-100 p-2">
@@ -450,21 +463,23 @@ export default function MembersListTab() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center">
-            <div className="rounded-lg bg-orange-100 p-2">
-              <Calendar className="h-6 w-6 text-orange-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">
-                Active Members
-              </p>
-              <p className="text-2xl font-bold text-gray-900">
-                {summaryStats.activeMembers}
-              </p>
+        {typeof window !== 'undefined' && window.location.hostname === 'localhost' && (
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <div className="flex items-center">
+              <div className="rounded-lg bg-orange-100 p-2">
+                <Calendar className="h-6 w-6 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Active Members
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {summaryStats.activeMembers}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -568,6 +583,7 @@ export default function MembersListTab() {
                 key={member._id}
                 member={member}
                 onMemberClick={handleMemberClick}
+                onLocationClick={handleLocationClick}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
               />
@@ -590,6 +606,7 @@ export default function MembersListTab() {
               sortOrder={sortOrder}
               onSort={handleSort}
               onMemberClick={handleMemberClick}
+              onLocationClick={handleLocationClick}
               onAction={handleTableAction}
             />
           )}

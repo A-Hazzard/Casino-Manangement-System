@@ -613,7 +613,6 @@ function CabinetsPageContent() {
           <div className="mb-2 mt-4">
             <div className="mb-3">
               <DashboardDateFilters
-                disabled={loading}
                 hideAllTime={true}
                 onCustomRangeGo={loadCabinets}
                 enableTimeInputs={true}
@@ -624,7 +623,6 @@ function CabinetsPageContent() {
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 flex-1 items-center">
                 <DashboardDateFilters
-                  disabled={loading}
                   hideAllTime={true}
                   onCustomRangeGo={loadCabinets}
                   enableTimeInputs={true}

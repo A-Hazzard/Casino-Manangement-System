@@ -182,10 +182,6 @@ export async function GET(req: NextRequest) {
 
     if (isDevMode && testUserId) {
       // Dev mode: Get user directly from DB for testing
-      console.warn(
-        '[LocationAggregation] 🔧 DEV MODE: Using testUserId:',
-        testUserId
-      );
       const UserModel = (await import('../lib/models/user')).default;
       const testUserResult = await UserModel.findOne({
         _id: testUserId,
@@ -203,11 +199,6 @@ export async function GET(req: NextRequest) {
         userAccessibleLicensees = Array.isArray(testUser.assignedLicensees)
           ? testUser.assignedLicensees.map((id: string) => String(id))
           : [];
-        console.log('[LocationAggregation] DEV MODE - User from DB:', {
-          roles: userRoles,
-          assignedLocations: userLocationPermissions,
-          assignedLicensees: userAccessibleLicensees,
-        });
       } else {
         return NextResponse.json(
           { error: 'Test user not found' },
@@ -232,25 +223,6 @@ export async function GET(req: NextRequest) {
       }
       userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
     }
-
-    // Debug logging for all users (especially collectors)
-    console.log(
-      '🔍 [LocationAggregation] ========================================'
-    );
-    console.log('🔍 [LocationAggregation] User roles:', userRoles);
-    console.log(
-      '🔍 [LocationAggregation] User assignedLocations count:',
-      userLocationPermissions.length
-    );
-    console.log(
-      '🔍 [LocationAggregation] User assignedLocations:',
-      userLocationPermissions
-    );
-    console.log(
-      '🔍 [LocationAggregation] User accessibleLicensees:',
-      userAccessibleLicensees
-    );
-    console.log('[LocationAggregation] Licencee param:', licencee);
 
     // In normal mode (not dev mode or no testUserId), get licensees from token
     if (!isDevMode || !testUserId) {
@@ -282,19 +254,9 @@ export async function GET(req: NextRequest) {
           if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
             const { getLicenseeCurrency } = await import('@/lib/helpers/rates');
             displayCurrency = getLicenseeCurrency(licenseeDoc.name);
-            console.log(
-              `🔍 [LocationAggregation] Auto-detected currency: ${displayCurrency} for licensee: ${licenseeDoc.name} (${resolvedLicensee})`
-            );
-          } else {
-            console.warn(
-              `🔍 [LocationAggregation] Licensee not found: ${resolvedLicensee}, using default USD`
-            );
           }
-        } catch (error) {
-          console.warn(
-            '[LocationAggregation] Failed to get licensee name for currency, using default USD:',
-            error
-          );
+        } catch {
+          // Failed to get licensee name for currency - use default USD
         }
       }
     }
@@ -305,29 +267,6 @@ export async function GET(req: NextRequest) {
       licencee || undefined,
       userLocationPermissions,
       userRoles
-    );
-
-    console.log(
-      '🔍 [LocationAggregation] Allowed location IDs:',
-      allowedLocationIds === 'all'
-        ? 'all (no filtering)'
-        : `${Array.isArray(allowedLocationIds) ? allowedLocationIds.length : 0} locations`
-    );
-    if (Array.isArray(allowedLocationIds) && allowedLocationIds.length > 0) {
-      console.log(
-        '🔍 [LocationAggregation] Allowed location IDs list (first 10):',
-        allowedLocationIds.slice(0, 10)
-      );
-    } else if (
-      Array.isArray(allowedLocationIds) &&
-      allowedLocationIds.length === 0
-    ) {
-      console.warn(
-        '⚠️⚠️⚠️ [LocationAggregation] EMPTY ALLOWED LOCATION IDs - USER WILL SEE NO DATA ⚠️⚠️⚠️'
-      );
-    }
-    console.log(
-      '🔍 [LocationAggregation] ========================================'
     );
 
     // ============================================================================
@@ -359,10 +298,6 @@ export async function GET(req: NextRequest) {
     if (!clearCacheParam && !skipCacheForSelected) {
       const cachedResult = getCachedData(cacheKey);
       if (cachedResult) {
-        const duration = Date.now() - startTime;
-        console.log(
-          `[Location Aggregation GET API] Returned cached result after ${duration}ms.`
-        );
         return NextResponse.json(cachedResult);
       }
     }
@@ -370,22 +305,6 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 7: Fetch aggregated location metrics
     // ============================================================================
-    console.log(
-      '🔍 [LocationAggregation] Calling getLocationsWithMetrics with:',
-      {
-        allowedLocationIds:
-          allowedLocationIds === 'all'
-            ? 'all'
-            : Array.isArray(allowedLocationIds)
-              ? `${allowedLocationIds.length} locations`
-              : 'none',
-        timePeriod,
-        licencee,
-        page,
-        limit,
-      }
-    );
-
     const { rows, totalCount } = await getLocationsWithMetrics(
       db,
       { startDate, endDate },
@@ -400,17 +319,6 @@ export async function GET(req: NextRequest) {
       customEndDate,
       allowedLocationIds
     );
-
-    console.log('🔍 [LocationAggregation] getLocationsWithMetrics returned:', {
-      rowsCount: rows.length,
-      totalCount,
-      firstFewLocationIds: rows
-        .slice(0, 5)
-        .map((r: { _id?: string; name?: string }) => ({
-          _id: r._id,
-          name: r.name,
-        })),
-    });
 
     // ============================================================================
     // STEP 7: Apply machine type filters
@@ -438,8 +346,7 @@ export async function GET(req: NextRequest) {
       convertedRows = await convertLocationCurrency(
         sortedRows,
         displayCurrency,
-        licencee,
-        db
+        licencee
       );
     }
 
@@ -460,10 +367,6 @@ export async function GET(req: NextRequest) {
       setCachedData(cacheKey, result);
     }
 
-    const duration = Date.now() - startTime;
-    console.log(
-      `[Location Aggregation GET API] Successfully fetched ${convertedRows.length} locations after ${duration}ms.`
-    );
     return NextResponse.json(result);
   } catch (error: unknown) {
     const duration = Date.now() - startTime;

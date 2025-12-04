@@ -3,13 +3,14 @@
  * Loading skeleton for player session table component.
  *
  * Features:
- * - Matches PlayerSessionTable layout structure
+ * - Matches PlayerSessionTable layout structure with shadcn styling
  * - Desktop table skeleton (10 rows, 12 columns)
  * - Mobile card skeleton (3 cards)
  * - Pagination skeleton
  * - Responsive design
  */
 import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // ============================================================================
 // Constants
@@ -30,22 +31,31 @@ const TABLE_HEADERS = [
   { label: 'Actions', sortable: false },
 ];
 
-// Session Card Skeleton Component for Mobile
+// Session Card Skeleton Component for Mobile/Tablet
 const SessionCardSkeleton = () => {
   return (
-    <div className="mx-auto w-full rounded-lg border border-border bg-container p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
-        <div className="h-5 w-24 animate-pulse rounded bg-gray-200"></div>
-        <div className="h-4 w-16 animate-pulse rounded bg-gray-200"></div>
+    <div className="overflow-hidden rounded-lg border bg-white">
+      {/* Card Header */}
+      <div className="border-b bg-gradient-to-r from-gray-50 to-white p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="mt-2 h-3 w-24" />
+          </div>
+          <Skeleton className="h-8 w-20" />
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        {Array.from({ length: 9 }).map((_, index) => (
-          <div key={index} className="flex justify-between">
-            <div className="h-4 w-20 animate-pulse rounded bg-gray-200"></div>
-            <div className="h-4 w-16 animate-pulse rounded bg-gray-200"></div>
-          </div>
-        ))}
+      {/* Card Content - 2x2 Grid */}
+      <div className="p-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div key={index} className="flex flex-col space-y-1">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -54,37 +64,33 @@ const SessionCardSkeleton = () => {
 export default function PlayerSessionTableSkeleton() {
   return (
     <div
-      className="overflow-hidden rounded-lg bg-white shadow-md"
+      className="rounded-md border bg-white"
       suppressHydrationWarning
     >
-      {/* Mobile Card Skeleton View */}
-      <div className="block lg:hidden">
-        <div className="grid grid-cols-1 gap-4 p-4">
-          {Array.from({ length: 3 }).map((_, index) => (
+      {/* Card Grid Skeleton View - below xl */}
+      <div className="block p-4 xl:hidden">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, index) => (
             <SessionCardSkeleton key={index} />
           ))}
         </div>
       </div>
 
-      {/* Desktop Table Skeleton View */}
-      <div className="hidden lg:block">
+      {/* Desktop Table Skeleton View - xl and above */}
+      <div className="hidden xl:block">
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed border-collapse text-center">
+          <table className="w-full min-w-[1400px]">
             <thead className="bg-button text-white">
               <tr>
                 {TABLE_HEADERS.map(header => (
                   <th
                     key={header.label}
-                    className={`relative border border-border p-3 text-sm ${
-                      header.sortable ? 'cursor-pointer' : ''
-                    }`}
+                    className="p-3 text-center font-medium text-white"
                   >
                     <div className="flex items-center justify-center gap-1">
-                      <span>{header.label}</span>
+                      <Skeleton className="h-4 w-20 bg-white/20" />
                       {header.sortable && (
-                        <div className="h-4 w-4 opacity-30">
-                          <div className="h-4 w-4 animate-pulse rounded bg-gray-300"></div>
-                        </div>
+                        <Skeleton className="h-4 w-4 bg-white/20" />
                       )}
                     </div>
                   </th>
@@ -93,13 +99,13 @@ export default function PlayerSessionTableSkeleton() {
             </thead>
             <tbody>
               {Array.from({ length: 10 }).map((_, index) => (
-                <tr key={index} className="hover:bg-muted">
+                <tr key={index} className="border-b">
                   {TABLE_HEADERS.map(header => (
                     <td
                       key={header.label}
-                      className="border border-border bg-container p-3 text-left text-sm hover:bg-accent"
+                      className="bg-white p-3 text-center text-sm"
                     >
-                      <div className="h-4 w-16 animate-pulse rounded bg-gray-200"></div>
+                      <Skeleton className="mx-auto h-4 w-16" />
                     </td>
                   ))}
                 </tr>
@@ -109,14 +115,14 @@ export default function PlayerSessionTableSkeleton() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t bg-gray-50 px-4 py-3">
-        <div className="h-4 w-24 animate-pulse rounded bg-gray-200"></div>
+      <div className="flex items-center justify-between border-t bg-muted/20 px-4 py-3">
+        <Skeleton className="h-4 w-32" />
         <div className="flex items-center gap-2">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div
+          {Array.from({ length  : 4 }).map((_, index) => (
+            <Skeleton
               key={index}
-              className="h-8 w-8 animate-pulse rounded bg-gray-200"
-            ></div>
+              className="h-9 w-16"
+            />
           ))}
         </div>
       </div>

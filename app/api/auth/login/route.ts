@@ -100,23 +100,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log cookie setting for debugging
-    if (process.env.NODE_ENV === 'development') {
-      const cookieHeader = response.headers.get('Set-Cookie');
-      const tokenSize = result.token?.length || 0;
-      const refreshTokenSize = result.refreshToken?.length || 0;
-      console.log('[Login API] Cookie set on response:', {
-        hasToken: !!result.token,
-        hasRefreshToken: !!result.refreshToken,
-        tokenSize,
-        refreshTokenSize,
-        maxAge: cookieOptions.maxAge,
-        sameSite: cookieOptions.sameSite,
-        secure: cookieOptions.secure,
-        cookieHeader: cookieHeader?.substring(0, 200) + '...', // Truncate for readability
-      });
-    }
-
     const duration = Date.now() - startTime;
     if (duration > 1000) {
       console.warn(`[Login API] Completed in ${duration}ms`);

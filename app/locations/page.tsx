@@ -52,10 +52,12 @@ import { fetchDashboardTotals } from '@/lib/helpers/dashboard';
 import {
   useLocationData,
   useLocationMachineStats,
+  useLocationMembershipStats,
   useLocationModals,
   useLocationSorting,
 } from '@/lib/hooks/data';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { DashboardTotals } from '@/lib/types';
@@ -106,7 +108,10 @@ function LocationsPageContent() {
   const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(
     null
   );
-  const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
+  const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(true);
+
+  // AbortController for metrics totals
+  const makeMetricsRequest = useAbortableRequest();
 
   // ============================================================================
   // Constants
@@ -232,6 +237,8 @@ function LocationsPageContent() {
   // ============================================================================
   const { machineStats, machineStatsLoading, refreshMachineStats } =
     useLocationMachineStats();
+  const { membershipStats, membershipStatsLoading, refreshMembershipStats } =
+    useLocationMembershipStats();
 
   const {
     isNewLocationModalOpen,
@@ -244,7 +251,6 @@ function LocationsPageContent() {
   const { sortOrder, sortOption, handleColumnSort, totalPages, currentItems } =
     useLocationSorting({
       locationData: filteredLocationData,
-      selectedFilters,
       currentPage,
       // For frontend search, use filtered length; for backend search, use locationData length; otherwise use totalCount
       totalCount: searchTerm.trim()
@@ -269,8 +275,11 @@ function LocationsPageContent() {
   // Handler for refresh button
   const handleRefresh = async () => {
     setRefreshing(true);
-    await refreshMachineStats();
-    await fetchData();
+    await Promise.all([
+      refreshMachineStats(),
+      refreshMembershipStats(),
+      fetchData(),
+    ]);
     setRefreshing(false);
   };
 
@@ -304,18 +313,23 @@ function LocationsPageContent() {
       // Update the last fetch params
       lastFetchParamsRef.current = fetchKey;
 
-      // Reset accumulated data when filters change
-      isResettingRef.current = true;
-      setAccumulatedLocations([]);
-      setLoadedBatches(new Set());
-      lastLocationDataRef.current = [];
+      // Reset accumulated data when filters change (but not on initial mount)
+      if (hasInitialFetchRef.current) {
+        isResettingRef.current = true;
+        setAccumulatedLocations([]);
+        setLoadedBatches(new Set());
+        lastLocationDataRef.current = [];
+      }
+      
       fetchData(1, itemsPerBatch);
       hasInitialFetchRef.current = true;
 
       // Reset flag after a short delay to allow state updates to complete
-      setTimeout(() => {
-        isResettingRef.current = false;
-      }, 0);
+      if (isResettingRef.current) {
+        setTimeout(() => {
+          isResettingRef.current = false;
+        }, 0);
+      }
     }
   }, [
     selectedLicencee,
@@ -448,6 +462,7 @@ function LocationsPageContent() {
         console.log(
           '🔍 [LocationsPage] Skipping metrics fetch - no activeMetricsFilter'
         );
+        setMetricsTotalsLoading(false);
         return;
       }
 
@@ -480,7 +495,8 @@ function LocationsPageContent() {
       });
 
       setMetricsTotalsLoading(true);
-      try {
+      
+      const metricsResult = await makeMetricsRequest(async signal => {
         await new Promise<void>((resolve, reject) => {
           fetchDashboardTotals(
             activeMetricsFilter || 'Today',
@@ -506,24 +522,31 @@ function LocationsPageContent() {
               );
               resolve();
             },
-            displayCurrency
+            displayCurrency,
+            signal
           ).catch(reject);
         });
-      } catch (error) {
-        console.error(
-          '❌ [LocationsPage] Failed to fetch metrics totals:',
-          error
-        );
-        setMetricsTotals(null);
-      } finally {
-        setMetricsTotalsLoading(false);
-        metricsFetchInProgressRef.current = false;
-        console.log('🔍 [LocationsPage] Metrics totals fetch completed');
+      }, `Locations Metrics Totals (${activeMetricsFilter}, Licensee: ${selectedLicencee})`);
+      
+      // Only clear metrics if request wasn't aborted (result is not null)
+      if (!metricsResult) {
+        console.log('🔍 [LocationsPage] Metrics fetch aborted - keeping existing metrics');
       }
+      
+      // Always clear loading state, whether aborted or completed
+      setMetricsTotalsLoading(false);
+      metricsFetchInProgressRef.current = false;
+      console.log('🔍 [LocationsPage] Metrics totals fetch completed');
     };
 
     fetchMetrics();
-  }, [activeMetricsFilter, selectedLicencee, customDateRange, displayCurrency]);
+  }, [
+    activeMetricsFilter,
+    selectedLicencee,
+    customDateRange,
+    displayCurrency,
+    makeMetricsRequest,
+  ]);
 
   // Fetch new batch when crossing batch boundary
   useEffect(() => {
@@ -654,7 +677,7 @@ function LocationsPageContent() {
         {/* Header Section: Title, refresh button, and new location button */}
         <div className="mt-4 flex w-full max-w-full items-center justify-between">
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-lg font-bold text-gray-800 sm:text-2xl md:text-3xl">
+            <h1 className="flex min-w-0 items-center gap-1 truncate text-lg font-bold text-gray-800 sm:text-2xl md:text-3xl">
               Locations
               <Image
                 src={IMAGES.locationIcon}
@@ -725,13 +748,12 @@ function LocationsPageContent() {
           />
         </div>
 
-        {/* Date Filters Section: Desktop layout with date filters and machine status (lg+) */}
-        <div className="mb-0 mt-4 hidden lg:block">
+        {/* Date Filters Section: Desktop/Tablet layout with date filters and machine status (md+) */}
+        <div className="mb-0 mt-4 hidden md:block">
           <div className="mb-3">
             <DashboardDateFilters
               hideAllTime={true}
               onCustomRangeGo={fetchData}
-              disabled={isLoading}
               mode="desktop"
               showIndicatorOnly={true}
             />
@@ -741,42 +763,49 @@ function LocationsPageContent() {
               <DashboardDateFilters
                 hideAllTime={true}
                 onCustomRangeGo={fetchData}
-                disabled={isLoading}
                 mode="desktop"
                 hideIndicator={true}
               />
             </div>
             <div className="flex w-auto flex-shrink-0 items-center">
               <MachineStatusWidget
-                isLoading={machineStatsLoading}
+                isLoading={machineStatsLoading || membershipStatsLoading}
                 onlineCount={machineStats?.onlineMachines || 0}
                 offlineCount={machineStats?.offlineMachines || 0}
                 totalCount={machineStats?.totalMachines}
                 showTotal={true}
+                membershipCount={membershipStats?.membershipCount || 0}
+                showMembership={true}
               />
             </div>
           </div>
         </div>
 
-        {/* Mobile/Tablet: Date Filters and Machine Status stacked layout (<= md, and md-only before lg) */}
-        <div className="mt-4 flex flex-col gap-4 lg:hidden">
+        {/* Mobile: Date Filters and Machine Status stacked layout (< md) */}
+        <div className="mt-4 flex flex-col gap-4 md:hidden">
           <div className="w-full">
             <DashboardDateFilters
               hideAllTime={true}
               onCustomRangeGo={fetchData}
-              disabled={isLoading}
+              mode="mobile"
             />
           </div>
           <div className="w-full">
             <MachineStatusWidget
-              isLoading={machineStatsLoading}
+              isLoading={machineStatsLoading || membershipStatsLoading}
               onlineCount={machineStats?.onlineMachines || 0}
               offlineCount={machineStats?.offlineMachines || 0}
               totalCount={machineStats?.totalMachines}
               showTotal={true}
+              membershipCount={membershipStats?.membershipCount || 0}
+              showMembership={true}
             />
           </div>
-          <div className="md:hidden relative w-full">
+        </div>
+
+        {/* Mobile Search and Filters - Hidden on md+ */}
+        <div className="md:hidden">
+          <div className="relative w-full">
             <Input
               type="text"
               placeholder="Search locations..."
@@ -787,8 +816,8 @@ function LocationsPageContent() {
             <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
           </div>
 
-          {/* Mobile SMIB Filter Checkboxes */}
-          <div className="flex w-full items-center justify-center gap-4">
+          {/* Mobile Filter Checkboxes */}
+          <div className="mt-4 flex w-full flex-wrap items-center justify-center gap-4">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="mobileSmibFilter"
@@ -855,6 +884,29 @@ function LocationsPageContent() {
                 className="text-sm font-medium text-gray-700"
               >
                 Local Server
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="mobileMembershipFilter"
+                checked={selectedFilters.includes('MembershipOnly')}
+                onCheckedChange={checked => {
+                  if (checked) {
+                    setSelectedFilters(prev => [...prev, 'MembershipOnly']);
+                  } else {
+                    setSelectedFilters(prev =>
+                      prev.filter(f => f !== 'MembershipOnly')
+                    );
+                  }
+                }}
+                className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
+              />
+              <Label
+                htmlFor="mobileMembershipFilter"
+                className="text-sm font-medium text-gray-700"
+              >
+                Membership
               </Label>
             </div>
           </div>
@@ -941,6 +993,29 @@ function LocationsPageContent() {
                 className="whitespace-nowrap text-sm font-medium text-white"
               >
                 Local Server
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="membershipFilter"
+                checked={selectedFilters.includes('MembershipOnly')}
+                onCheckedChange={checked => {
+                  if (checked) {
+                    setSelectedFilters(prev => [...prev, 'MembershipOnly']);
+                  } else {
+                    setSelectedFilters(prev =>
+                      prev.filter(f => f !== 'MembershipOnly')
+                    );
+                  }
+                }}
+                className="border-white text-white focus:ring-white"
+              />
+              <Label
+                htmlFor="membershipFilter"
+                className="whitespace-nowrap text-sm font-medium text-white"
+              >
+                Membership
               </Label>
             </div>
           </div>

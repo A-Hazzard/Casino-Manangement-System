@@ -38,7 +38,8 @@ export async function fetchTopPerformingData(
   activeTab: ActiveTab,
   timePeriod: string,
   licensee?: string,
-  currency?: string
+  currency?: string,
+  signal?: AbortSignal
 ): Promise<TopPerformingData> {
   try {
     const params: Record<string, string> = { activeTab, timePeriod };
@@ -52,6 +53,7 @@ export async function fetchTopPerformingData(
     const response = await axios.get(`/api/metrics/top-performing`, {
       params,
       headers,
+      signal,
     });
 
     // The API returns { activeTab, timePeriod, data }

@@ -24,11 +24,19 @@
  * @param onSave - Callback when user is successfully updated
  */
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { MultiSelectOption } from '@/components/ui/common/MultiSelectDropdown';
 import MultiSelectDropdown from '@/components/ui/common/MultiSelectDropdown';
 import CircleCropModal from '@/components/ui/image/CircleCropModal';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import { fetchCountries } from '@/lib/helpers/countries';
@@ -38,21 +46,24 @@ import type { Country } from '@/lib/types/country';
 import type { Licensee } from '@/lib/types/licensee';
 import type { LocationSelectItem } from '@/lib/types/location';
 import {
-  detectChanges,
-  filterMeaningfulChanges,
-  getChangesSummary,
-} from '@/lib/utils/changeDetection';
-import {
   getPasswordStrengthLabel,
   isPlaceholderEmail,
   validateEmail,
   validatePasswordStrength,
   validatePhoneNumber,
 } from '@/lib/utils/validation';
-import cameraIcon from '@/public/cameraIcon.svg';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
-import { Edit3, Info, Loader2, Save, Trash2, X, XCircle } from 'lucide-react';
+import {
+  Camera,
+  Edit3,
+  Info,
+  Loader2,
+  Save,
+  Trash2,
+  X,
+  XCircle,
+} from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -1314,21 +1325,30 @@ export default function UserModal({
       }
     }
 
-    // Helper to check if a field value has changed
+    // Helper to check if a field value has actually changed
+    // CRITICAL: Only return true if the values are genuinely different
+    // Treat empty string, null, and undefined as equivalent
     const hasChanged = (
       newValue: string,
       existingValue: string | undefined | null
     ): boolean => {
-      const newTrimmed = newValue.trim();
-      const existingTrimmed = existingValue?.toString().trim() || '';
+      const newTrimmed = (newValue || '').trim();
+      const existingTrimmed = (existingValue || '').toString().trim();
+      
+      // Both empty - no change
+      if (!newTrimmed && !existingTrimmed) {
+        return false;
+      }
+      
+      // Values are different
       return newTrimmed !== existingTrimmed;
     };
 
-    // Build profile update - only include fields that have actually changed
+    // Build profile update - ONLY include fields that have actually changed
     const profileUpdate: Record<string, unknown> = {};
     const existingProfile = user?.profile || {};
 
-    // Check and include profile fields only if they've changed
+    // Check and include profile fields ONLY if they've changed
     if (hasChanged(formData.firstName, existingProfile.firstName)) {
       profileUpdate.firstName = formData.firstName.trim() || undefined;
     }
@@ -1355,7 +1375,7 @@ export default function UserModal({
       profileUpdate.phoneNumber = trimmedPhone || undefined;
     }
 
-    // Build address update - only include fields that have changed
+    // Build address update - ONLY include fields that have actually changed
     const addressUpdate: Record<string, unknown> = {};
     const existingAddress = existingProfile.address || {};
 
@@ -1375,7 +1395,8 @@ export default function UserModal({
       addressUpdate.postalCode = formData.postalCode.trim() || undefined;
     }
 
-    // Only include address if it has at least one changed field
+    // CRITICAL: Only include address if it has at least one changed field
+    // Don't send empty address object to API
     if (Object.keys(addressUpdate).length > 0) {
       profileUpdate.address = {
         ...existingAddress,
@@ -1383,21 +1404,22 @@ export default function UserModal({
       };
     }
 
-    // Build identification update - only include fields that have changed
+    // Build identification update - ONLY include fields that have actually changed
     const identificationUpdate: Record<string, unknown> = {};
     const existingIdentification = existingProfile.identification || {};
 
-    // Handle dateOfBirth specially - compare as dates
+    // Handle dateOfBirth specially - normalize for comparison
     const existingDob = existingIdentification.dateOfBirth
       ? typeof existingIdentification.dateOfBirth === 'string'
-        ? existingIdentification.dateOfBirth
+        ? existingIdentification.dateOfBirth.split('T')[0]
         : new Date(existingIdentification.dateOfBirth as Date)
             .toISOString()
             .split('T')[0]
       : '';
-    if (formData.dateOfBirth.trim() !== existingDob) {
-      identificationUpdate.dateOfBirth =
-        formData.dateOfBirth.trim() || undefined;
+    const newDob = (formData.dateOfBirth || '').trim();
+    
+    if (newDob !== existingDob && (newDob || existingDob)) {
+      identificationUpdate.dateOfBirth = newDob || undefined;
     }
 
     if (hasChanged(formData.idType, existingIdentification.idType)) {
@@ -1410,7 +1432,8 @@ export default function UserModal({
       identificationUpdate.notes = formData.notes.trim() || undefined;
     }
 
-    // Only include identification if it has at least one changed field
+    // CRITICAL: Only include identification if it has at least one changed field
+    // Don't send empty identification object to API
     if (Object.keys(identificationUpdate).length > 0) {
       profileUpdate.identification = {
         ...existingIdentification,
@@ -1503,8 +1526,8 @@ export default function UserModal({
       originalRoles.length !== newRoles.length ||
       !originalRoles.every((role, idx) => role === newRoles[idx]);
 
-    // Structure the data properly - ONLY include fields that have changed
-    // Note: Backend uses 'isEnabled' but User type uses 'enabled', so we need to allow both
+    // Structure the data properly - ONLY include fields that have ACTUALLY changed
+    // CRITICAL: Start with ONLY the _id, then add fields one by one IF they changed
     const updatedUser: Partial<User> & {
       password?: string;
       isEnabled?: boolean; // Backend field name
@@ -1512,17 +1535,28 @@ export default function UserModal({
       _id: user._id,
     };
 
-    // Only include username if it changed
+    // ONLY include username if it ACTUALLY changed
     if (usernameChanged) {
       updatedUser.username = updatedUsername;
     }
 
-    // Only include roles if they changed
+    // ONLY include email if it ACTUALLY changed AND we can edit it
+    if (canEditAccountFields && emailChanged) {
+      if (updatedEmail && updatedEmail.trim()) {
+        updatedUser.email = updatedEmail.trim();
+        updatedUser.emailAddress = updatedEmail.trim();
+      } else {
+        toast.error('Email address cannot be empty');
+        return;
+      }
+    }
+
+    // ONLY include roles if they ACTUALLY changed
     if (rolesChanged) {
       updatedUser.roles = roles;
     }
 
-    // Only include licensee fields if they changed
+    // ONLY include licensees if they ACTUALLY changed
     if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
       // Check if location admin's licensee assignment would change
       const currentUserLicenseeIdsSorted = [...currentUserLicenseeIds].sort();
@@ -1538,31 +1572,20 @@ export default function UserModal({
         updatedUser.assignedLicensees = currentUserLicenseeIds;
       }
     } else if (licenseeIdsChanged && !isManager && !isLocationAdmin) {
-      // Update licensee if it changed (and user can edit it)
+      // Update licensee ONLY if it changed (and user can edit it)
       updatedUser.assignedLicensees = selectedLicenseeIds;
     }
 
-    // Only include email if it changed and we can edit account fields
-    if (canEditAccountFields && emailChanged) {
-      if (updatedEmail && updatedEmail.trim()) {
-        updatedUser.email = updatedEmail.trim();
-        updatedUser.emailAddress = updatedEmail.trim();
-      } else {
-        toast.error('Email address cannot be empty');
-        return;
-      }
-    }
-
-    // Only update assignedLocations if locations changed
+    // ONLY include locations if they ACTUALLY changed
     if (locationIdsChanged) {
       updatedUser.assignedLocations = selectedLocationIds;
-      console.log('[UserModal] Updated assignedLocations with locations:', {
+      console.log('[UserModal] Locations changed - including in update:', {
         locationCount: selectedLocationIds.length,
         locations: selectedLocationIds,
       });
     }
 
-    // Only include profile if it has fields to update
+    // ONLY include profile if it has fields that ACTUALLY changed
     if (Object.keys(profileUpdate).length > 0) {
       updatedUser.profile = {
         ...existingProfile,
@@ -1570,18 +1593,19 @@ export default function UserModal({
       } as typeof user.profile;
     }
 
-    // Only include profilePicture if it's being updated and has changed
-    if (formData.profilePicture !== (user?.profilePicture || '')) {
-      updatedUser.profilePicture = formData.profilePicture || null;
+    // ONLY include profilePicture if it ACTUALLY changed
+    const existingProfilePic = (user?.profilePicture || '').trim();
+    const newProfilePic = (formData.profilePicture || '').trim();
+    if (existingProfilePic !== newProfilePic) {
+      updatedUser.profilePicture = newProfilePic || null;
     }
 
-    // Only include password if it's being changed
+    // ONLY include password if it's being changed
     if (password) {
       updatedUser.password = password;
     }
 
-    // Include isEnabled if it changed (only for developers, admins, or managers)
-    // Note: User type uses 'enabled' but backend uses 'isEnabled', so we send 'isEnabled'
+    // ONLY include isEnabled if it ACTUALLY changed
     if ((isDeveloper || isAdmin || isManager) && user.enabled !== isEnabled) {
       updatedUser.isEnabled = isEnabled;
     }
@@ -1607,79 +1631,101 @@ export default function UserModal({
       }
     }
 
-    // System/metadata fields to exclude from change detection
-    const systemFields = new Set([
-      '_id',
-      'createdAt',
-      'updatedAt',
-      '__v',
-      'sessionVersion',
-      'loginCount',
-      'lastLoginAt',
-      'deletedAt',
-      'passwordUpdatedAt',
-      'isEnabled', // This is handled separately if needed
-    ]);
+    // Build meaningful changes array MANUALLY based on what actually changed
+    // This ensures we only track fields that were genuinely modified
+    const meaningfulChanges: Array<{
+      field: string;
+      oldValue: unknown;
+      newValue: unknown;
+      path: string;
+    }> = [];
 
-    // Create a clean version of the user object without system fields for comparison
-    const cleanUser: Record<string, unknown> = {};
-    const fieldsToCompare = [
-      'username',
-      'email',
-      'emailAddress',
-      'roles',
-      'profile',
-      'profilePicture',
-      'rel',
-      'assignedLocations',
-      'assignedLicensees',
-    ];
-
-    for (const field of fieldsToCompare) {
-      if (field in user) {
-        cleanUser[field] = user[field as keyof typeof user];
-      }
+    // ONLY add to meaningfulChanges if the field actually changed
+    if (usernameChanged) {
+      meaningfulChanges.push({
+        field: 'username',
+        oldValue: user.username,
+        newValue: updatedUsername,
+        path: 'username',
+      });
+    }
+    
+    if (emailChanged) {
+      meaningfulChanges.push({
+        field: 'email',
+        oldValue: user.email || null,
+        newValue: updatedEmail,
+        path: 'email',
+      });
+      meaningfulChanges.push({
+        field: 'emailAddress',
+        oldValue: user.emailAddress || user.email || null,
+        newValue: updatedEmail,
+        path: 'emailAddress',
+      });
     }
 
-    // Detect actual changes between old and new user data (excluding system fields)
-    const changes = detectChanges(cleanUser, updatedUser);
-    const meaningfulChanges = filterMeaningfulChanges(changes).filter(
-      change =>
-        !systemFields.has(change.field) &&
-        !systemFields.has(change.path.split('.')[0])
-    );
+    if (rolesChanged) {
+      meaningfulChanges.push({
+        field: 'roles',
+        oldValue: user.roles,
+        newValue: roles,
+        path: 'roles',
+      });
+    }
 
-    const ensureChangeLogged = (
-      fieldPath: string,
-      oldValue: unknown,
-      newValue: unknown
-    ) => {
-      if (oldValue === newValue) return;
-      if (!meaningfulChanges.some(change => change.path === fieldPath)) {
-        meaningfulChanges.push({
-          field: fieldPath.split('.').pop() || fieldPath,
-          oldValue,
-          newValue,
-          path: fieldPath,
-        });
-      }
-    };
-
-    ensureChangeLogged('username', user.username, updatedUsername);
-    ensureChangeLogged('email', user.email || null, updatedEmail);
-    ensureChangeLogged(
-      'emailAddress',
-      user.emailAddress || user.email || null,
-      updatedEmail
-    );
-
-    // Log location and licensee changes if they changed
     if (locationIdsChanged) {
-      ensureChangeLogged('assignedLocations', oldLocationIds, newLocationIds);
+      meaningfulChanges.push({
+        field: 'assignedLocations',
+        oldValue: oldLocationIds,
+        newValue: newLocationIds,
+        path: 'assignedLocations',
+      });
     }
 
     if (licenseeIdsChanged && !isManager) {
-      ensureChangeLogged('assignedLicensees', oldLicenseeIds, newLicenseeIds);
+        meaningfulChanges.push({
+        field: 'assignedLicensees',
+        oldValue: oldLicenseeIds,
+        newValue: newLicenseeIds,
+        path: 'assignedLicensees',
+      });
+    }
+    
+    if (Object.keys(profileUpdate).length > 0) {
+      meaningfulChanges.push({
+        field: 'profile',
+        oldValue: user.profile,
+        newValue: profileUpdate,
+        path: 'profile',
+      });
+    }
+    
+    if (password) {
+      meaningfulChanges.push({
+        field: 'password',
+        oldValue: '(hidden)',
+        newValue: '(hidden)',
+        path: 'password',
+      });
+    }
+    
+    if ((isDeveloper || isAdmin || isManager) && user.enabled !== isEnabled) {
+      meaningfulChanges.push({
+        field: 'isEnabled',
+        oldValue: user.enabled,
+        newValue: isEnabled,
+        path: 'isEnabled',
+      });
+    }
+    
+    if (existingProfilePic !== newProfilePic) {
+      meaningfulChanges.push({
+        field: 'profilePicture',
+        oldValue: existingProfilePic || '(none)',
+        newValue: newProfilePic || '(none)',
+        path: 'profilePicture',
+      });
     }
 
     // Log for debugging
@@ -1707,58 +1753,49 @@ export default function UserModal({
       return;
     }
 
-    // Log the changes for debugging
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('✅ Changes detected - proceeding with save');
-      console.warn('Detected changes:', meaningfulChanges);
-      console.warn('Changes summary:', getChangesSummary(meaningfulChanges));
-      console.warn('Location IDs changed:', locationIdsChanged, {
-        oldLocationIds,
-        newLocationIds,
-      });
-      console.warn('Licensee IDs changed:', licenseeIdsChanged, {
-        old: oldLicenseeIdsSorted,
-        new: newLicenseeIdsSorted,
-      });
-    }
-
     // ============================================================================
-    // STEP: Log the complete updatedUser object before sending
+    // DETAILED CHANGE LOGGING
     // ============================================================================
     console.log('[UserModal] ============================================');
-    console.log('[UserModal] STEP 1: Complete updatedUser object:');
-    console.log('[UserModal]   _id:', updatedUser._id);
-    console.log('[UserModal]   username:', updatedUser.username);
-    console.log('[UserModal]   email:', updatedUser.email);
-    console.log('[UserModal]   emailAddress:', updatedUser.emailAddress);
-    console.log('[UserModal]   roles:', updatedUser.roles);
-    console.log(
-      '[UserModal]   assignedLocations:',
-      updatedUser.assignedLocations
-        ? `Array(${updatedUser.assignedLocations.length})`
-        : 'undefined',
-      updatedUser.assignedLocations
-    );
-    console.log(
-      '[UserModal]   assignedLicensees:',
-      updatedUser.assignedLicensees
-        ? `Array(${updatedUser.assignedLicensees.length})`
-        : 'undefined',
-      updatedUser.assignedLicensees
-    );
-    console.log(
-      '[UserModal]   profile:',
-      JSON.stringify(updatedUser.profile, null, 2)
-    );
-    console.log(
-      '[UserModal]   profilePicture:',
-      updatedUser.profilePicture ? 'present' : 'null'
-    );
-    console.log(
-      '[UserModal]   password:',
-      updatedUser.password ? 'present' : 'not included'
-    );
-    console.log('[UserModal]   isEnabled:', updatedUser.isEnabled);
+    console.log('[UserModal] CHANGE DETECTION SUMMARY:');
+    console.log('[UserModal] ============================================');
+    
+    // Log each field that changed
+    const changeLog = [];
+    if (usernameChanged) changeLog.push(`✓ Username: "${user.username}" → "${updatedUsername}"`);
+    if (emailChanged) changeLog.push(`✓ Email: "${originalEmail}" → "${newEmail}"`);
+    if (rolesChanged) changeLog.push(`✓ Roles: [${originalRoles.join(', ')}] → [${newRoles.join(', ')}]`);
+    if (licenseeIdsChanged) changeLog.push(`✓ Licensees: ${oldLicenseeIds.length} → ${newLicenseeIds.length} IDs`);
+    if (locationIdsChanged) changeLog.push(`✓ Locations: ${oldLocationIds.length} → ${newLocationIds.length} IDs`);
+    if (password) changeLog.push(`✓ Password: being updated`);
+    if (updatedUser.isEnabled !== undefined) changeLog.push(`✓ Status: ${user.enabled} → ${updatedUser.isEnabled}`);
+    
+    // Log profile changes
+    if (Object.keys(profileUpdate).length > 0) {
+      changeLog.push(`✓ Profile changes detected:`);
+      Object.keys(profileUpdate).forEach(key => {
+        if (key === 'address') {
+          const addrChanges = Object.keys(profileUpdate.address as Record<string, unknown>);
+          changeLog.push(`  - Address: ${addrChanges.join(', ')}`);
+        } else if (key === 'identification') {
+          const idChanges = Object.keys(profileUpdate.identification as Record<string, unknown>);
+          changeLog.push(`  - Identification: ${idChanges.join(', ')}`);
+        } else {
+          changeLog.push(`  - ${key}: "${existingProfile[key as keyof typeof existingProfile]}" → "${profileUpdate[key]}"`);
+        }
+      });
+    }
+    
+    if (changeLog.length > 0) {
+      console.log('[UserModal] Changes to be saved:');
+      changeLog.forEach(log => console.log(`[UserModal] ${log}`));
+    } else {
+      console.log('[UserModal] No changes detected');
+    }
+    
+    console.log('[UserModal] ============================================');
+    console.log('[UserModal] Final updatedUser object being sent:');
+    console.log('[UserModal]', JSON.stringify(updatedUser, null, 2));
     console.log('[UserModal] ============================================');
 
     setIsLoading(true);
@@ -1806,40 +1843,60 @@ export default function UserModal({
         />
         <div
           ref={modalRef}
-          className="relative flex h-full w-full flex-col overflow-y-auto border border-border bg-white p-4 animate-in lg:max-h-[95vh] lg:max-w-4xl lg:rounded-2xl lg:p-10"
+          className="relative flex h-full w-full flex-col overflow-y-auto bg-gray-50 animate-in lg:max-h-[95vh] lg:max-w-6xl lg:rounded-xl"
           style={{ opacity: 1 }}
         >
-          {/* Header with close button and edit toggle */}
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {isEditMode ? 'Edit User Details' : 'User Details'}
+          {/* Modern Header - Sticky */}
+          <div className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-5">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <h2 className="text-2xl font-semibold tracking-tight text-gray-900">
+                  {isEditMode ? 'Edit User' : 'User Profile'}
             </h2>
+                <p className="mt-1 text-sm text-gray-600">
+                  {isEditMode
+                    ? 'Update user information and permissions'
+                    : `Viewing ${user?.username || 'user'}'s profile`}
+                </p>
+              </div>
             <div className="flex items-center gap-2">
               {!isEditMode && (
                 <Button
                   onClick={handleEnterEdit}
-                  className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                    size="sm"
+                    className="gap-2 bg-blue-600 hover:bg-blue-700"
                 >
                   <Edit3 className="h-4 w-4" />
                   Edit
                 </Button>
               )}
-              <button
-                className="rounded-full bg-white p-2 shadow hover:bg-gray-100"
+                <Button
+                  variant="ghost"
+                  size="icon"
                 onClick={onClose}
-                aria-label="Close"
+                  className="h-9 w-9 rounded-full hover:bg-gray-100"
               >
-                <X className="h-6 w-6 text-gray-700" />
-              </button>
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </div>
 
-          <div className="flex w-full flex-col gap-8">
-            {/* Top section: Profile pic + username/email (left), user info fields (right) */}
-            <div className="flex w-full flex-col items-start lg:flex-row lg:items-center lg:gap-12">
-              {/* Left: Profile pic, username, and email */}
-              <div className="flex w-full flex-col items-center justify-center lg:w-1/3 lg:items-start">
-                <div className="relative mb-4 flex justify-center">
+          {/* Content Area with Cards */}
+          <div className="flex-1 space-y-6 p-6">
+            {/* Profile Overview Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Information</CardTitle>
+                <CardDescription>
+                  Basic account information and contact details
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+                  {/* Left: Profile Picture */}
+                  <div className="flex flex-col items-center lg:items-start">
+                    <div className="relative">
                   <Image
                     src={
                       formData.profilePicture ||
@@ -1847,318 +1904,672 @@ export default function UserModal({
                       defaultAvatar
                     }
                     alt="Avatar"
-                    width={160}
-                    height={160}
-                    className="rounded-full border-4 border-container bg-gray-200"
+                        width={140}
+                        height={140}
+                        className="rounded-full border-4 border-gray-100 bg-gray-50 shadow-sm"
                   />
                   {isEditMode && (
                     <>
                       <button
                         type="button"
-                        className="absolute bottom-4 right-4 flex items-center justify-center rounded-full border-2 border-border bg-transparent shadow transition-colors hover:bg-gray-100"
+                            className="absolute bottom-2 right-2 flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-blue-600 shadow-md transition-colors hover:bg-blue-700"
                         onClick={() => fileInputRef.current?.click()}
                       >
-                        <Image
-                          src={cameraIcon}
-                          alt="Edit Avatar"
-                          width={32}
-                          height={32}
-                          className="m-0 p-0"
-                        />
+                            <Camera className="h-5 w-5 text-white" />
                       </button>
                       {(formData.profilePicture || user.profilePicture) && (
                         <button
                           type="button"
-                          className="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white transition-colors hover:bg-red-600"
+                              className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 shadow-md transition-colors hover:bg-red-600"
                           onClick={handleRemoveProfilePicture}
                         >
-                          <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4 text-white" />
                         </button>
                       )}
                     </>
                   )}
                 </div>
-                <div className="flex w-full flex-col items-center space-y-4 lg:items-start">
-                  <div className="w-full">
-                    <label className="mb-1 block text-sm font-semibold text-gray-900">
-                      Username:
-                    </label>
+                    <div className="mt-3 flex flex-col items-center gap-1 lg:items-start">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {user?.username || 'User'}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {accountData.email || user?.emailAddress || 'No email'}
+                      </p>
+                      {!isEditMode && (isDeveloper || isAdmin || isManager) && (
+                        <span
+                          className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                            isEnabled
+                              ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20'
+                              : 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20'
+                          }`}
+                        >
+                          {isEnabled ? 'Active' : 'Disabled'}
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {/* Right: Account Details */}
+                  <div className="flex-1 space-y-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      {/* Username Field */}
+                      <div>
+                        <Label htmlFor="username" className="text-gray-700">
+                          Username
+                        </Label>
                     {isLoading ? (
-                      <Skeleton className="h-12 w-full" />
+                          <Skeleton className="mt-2 h-10 w-full" />
                     ) : isEditMode && canEditAccountFields ? (
-                      <div className="relative w-full">
-                        <Input
-                          value={accountData.username}
-                          onChange={e =>
-                            handleAccountInputChange('username', e.target.value)
-                          }
-                          placeholder="Enter username"
-                          className={`w-full pr-10 ${accountErrors.username ? 'border-red-500' : ''}`}
-                          required
-                        />
-                        {checkingUsername && (
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                          <div className="relative mt-2">
+                      <Input
+                              id="username"
+                        value={accountData.username}
+                        onChange={e =>
+                                handleAccountInputChange(
+                                  'username',
+                                  e.target.value
+                                )
+                        }
+                        placeholder="Enter username"
+                              className={
+                                accountErrors.username ? 'border-red-500' : ''
+                              }
+                        required
+                      />
+                            {checkingUsername && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                              </div>
+                            )}
+                            {accountErrors.username && (
+                              <p className="mt-1.5 text-sm text-red-600">
+                                {accountErrors.username}
+                              </p>
+                            )}
                           </div>
-                        )}
-                        {accountErrors.username && (
-                          <p className="mt-1 text-sm text-red-500">
-                            {accountErrors.username}
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="w-full text-center text-gray-700 lg:text-left">
+                        ) : (
+                          <p className="mt-2 break-words text-sm text-gray-900">
                         {accountData.username || 'Not specified'}
-                      </div>
-                    )}
-                  </div>
-                  <div className="w-full">
-                    <label className="mb-1 block text-sm font-semibold text-gray-900">
-                      Email Address:
-                    </label>
-                    {isLoading ? (
-                      <Skeleton className="h-12 w-full" />
-                    ) : isEditMode && canEditAccountFields ? (
-                      <div className="relative w-full">
-                        <Input
-                          type="email"
-                          value={accountData.email}
-                          onChange={e =>
-                            handleAccountInputChange('email', e.target.value)
-                          }
-                          placeholder="Enter email address"
-                          className={`w-full pr-10 ${accountErrors.email ? 'border-red-500' : ''}`}
-                          required
-                        />
-                        {checkingEmail && (
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                          </div>
-                        )}
-                        {accountErrors.email && (
-                          <p className="mt-1 text-sm text-red-500">
-                            {accountErrors.email}
                           </p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="w-full text-center text-gray-700 lg:text-left">
-                        {accountData.email || 'Not specified'}
-                      </div>
                     )}
                   </div>
-                  <div className="w-full">
-                    <label className="mb-1 block text-sm font-semibold text-gray-900">
-                      Phone Number:
-                    </label>
+
+                      {/* Email Field */}
+                      <div>
+                        <Label htmlFor="email" className="text-gray-700">
+                          Email Address
+                        </Label>
                     {isLoading ? (
-                      <Skeleton className="h-12 w-full" />
+                          <Skeleton className="mt-2 h-10 w-full" />
+                    ) : isEditMode && canEditAccountFields ? (
+                          <div className="relative mt-2">
+                      <Input
+                              id="email"
+                        type="email"
+                        value={accountData.email}
+                        onChange={e =>
+                                handleAccountInputChange(
+                                  'email',
+                                  e.target.value
+                                )
+                        }
+                        placeholder="Enter email address"
+                              className={
+                                accountErrors.email ? 'border-red-500' : ''
+                              }
+                        required
+                      />
+                            {checkingEmail && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                              </div>
+                            )}
+                            {accountErrors.email && (
+                              <p className="mt-1.5 text-sm text-red-600">
+                                {accountErrors.email}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="mt-2 break-words text-sm text-gray-900">
+                        {accountData.email || 'Not specified'}
+                          </p>
+                    )}
+                  </div>
+
+                      {/* Phone Number */}
+                      <div>
+                        <Label htmlFor="phone" className="text-gray-700">
+                          Phone Number
+                        </Label>
+                    {isLoading ? (
+                          <Skeleton className="mt-2 h-10 w-full" />
                     ) : isEditMode ? (
                       <Input
+                            id="phone"
                         type="tel"
                         value={formData.phoneNumber}
                         onChange={e =>
-                          setFormData(prev => ({
-                            ...prev,
-                            phoneNumber: e.target.value,
-                          }))
+                              handleInputChange('phoneNumber', e.target.value)
                         }
                         placeholder="Enter phone number"
-                        className="w-full"
+                            className="mt-2"
                       />
                     ) : (
-                      <div className="w-full text-center text-gray-700 lg:text-left">
+                          <p className="mt-2 break-words text-sm text-gray-900">
                         {formData.phoneNumber || 'Not specified'}
-                      </div>
+                          </p>
                     )}
                   </div>
-                  {/* Account Status - Show in view mode for admins/developers/managers */}
-                  {!isEditMode && (isDeveloper || isAdmin || isManager) && (
-                    <div className="w-full">
-                      <label className="mb-1 block text-sm font-semibold text-gray-900">
-                        Account Status:
-                      </label>
-                      <div className="w-full text-center text-gray-700 lg:text-left">
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-                            isEnabled
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          {isEnabled ? 'Enabled' : 'Disabled'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
+
+                      {/* Gender */}
+                      <div>
+                        <Label htmlFor="gender" className="text-gray-700">
+                          Gender
+                        </Label>
+                        {isLoading ? (
+                          <Skeleton className="mt-2 h-10 w-full" />
+                        ) : isEditMode ? (
+                          <select
+                            id="gender"
+                            className="mt-2 flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            value={formData.gender}
+                            onChange={e =>
+                              handleInputChange('gender', e.target.value)
+                            }
+                          >
+                            <option value="">Select gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                          </select>
+                        ) : (
+                          <p className="mt-2 break-words text-sm text-gray-900">
+                            {formData.gender
+                              ? formData.gender.charAt(0).toUpperCase() +
+                                formData.gender.slice(1)
+                              : 'Not specified'}
+                          </p>
+                        )}
               </div>
 
-              {/* Right: User info fields */}
-              <div className="mt-6 grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:mt-0 lg:w-2/3">
-                {isLoading ? (
-                  <>
-                    {Array.from({ length: 12 }).map((_, index) => (
-                      <div key={index}>
-                        <Skeleton className="mb-1 h-4 w-20" />
-                        <Skeleton className="h-12 w-full" />
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  <>
+                      {/* First Name */}
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-900">
-                        First Name:
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          className="w-full rounded-md border border-border bg-white p-3"
+                        <Label htmlFor="firstName" className="text-gray-700">
+                          First Name
+                        </Label>
+                        {isLoading ? (
+                          <Skeleton className="mt-2 h-10 w-full" />
+                        ) : isEditMode ? (
+                          <Input
+                            id="firstName"
                           value={formData.firstName}
                           onChange={e =>
                             handleInputChange('firstName', e.target.value)
                           }
-                          placeholder="Enter First Name"
+                            placeholder="Enter first name"
+                            className="mt-2"
                         />
                       ) : (
-                        <div className="w-full text-gray-700">
+                          <p className="mt-2 break-words text-sm text-gray-900">
                           {formData.firstName || 'Not specified'}
-                        </div>
+                          </p>
                       )}
                     </div>
+
+                      {/* Last Name */}
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-900">
-                        Last Name:
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          className="w-full rounded-md border border-border bg-white p-3"
+                        <Label htmlFor="lastName" className="text-gray-700">
+                          Last Name
+                        </Label>
+                        {isLoading ? (
+                          <Skeleton className="mt-2 h-10 w-full" />
+                        ) : isEditMode ? (
+                          <Input
+                            id="lastName"
                           value={formData.lastName}
                           onChange={e =>
                             handleInputChange('lastName', e.target.value)
                           }
-                          placeholder="Enter Last Name"
+                            placeholder="Enter last name"
+                            className="mt-2"
                         />
                       ) : (
-                        <div className="w-full text-gray-700">
+                          <p className="mt-2 break-words text-sm text-gray-900">
                           {formData.lastName || 'Not specified'}
+                          </p>
+                        )}
                         </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Assignments Card - Licensees and Locations */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Assignments</CardTitle>
+                <CardDescription>
+                  Licensee and location access permissions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Licensees and Locations Grid */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  {/* Licensees Section */}
+                  <div className="space-y-3">
+                    <div className="mb-4">
+                      <Label className="text-base font-medium text-gray-900">
+                        Assigned Licensees
+                      </Label>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Licensees this user has access to
+                      </p>
+                    </div>
+
+                    {/* For managers and location admins, always show as read-only */}
+                    {!canEditLicensees ? (
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <p className="text-sm text-gray-900">
+                          {allLicenseesSelected
+                            ? licensees.length === 1
+                              ? licensees[0]?.name || 'Unknown Licensee'
+                              : `All Licensees (${licensees.length} licensees)`
+                            : selectedLicenseeIds.length > 0
+                              ? selectedLicenseeIds
+                                  .map(
+                                    id =>
+                                      licensees.find(
+                                        l => String(l._id) === String(id)
+                                      )?.name
+                                  )
+                                  .filter(Boolean)
+                                  .join(', ')
+                              : 'No licensees assigned'}
+                        </p>
+                        {isManager && (
+                          <p className="mt-2 text-xs text-gray-500">
+                            Cannot be changed by managers
+                          </p>
+                        )}
+                        {isLocationAdmin && (
+                          <p className="mt-2 text-xs text-gray-500">
+                            Automatically set to your assigned licensee
+                          </p>
                       )}
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="mb-1 block text-sm font-semibold text-gray-900">
-                        Gender:
-                      </label>
+                    ) : isEditMode ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                          <Checkbox
+                            id="allLicensees"
+                            checked={allLicenseesSelected}
+                            onCheckedChange={checked =>
+                              handleAllLicenseesChange(checked === true)
+                            }
+                          />
+                          <Label
+                            htmlFor="allLicensees"
+                            className="cursor-pointer text-sm font-medium text-gray-900"
+                          >
+                            All Licensees
+                          </Label>
+                        </div>
+
+                        {!allLicenseesSelected && (
+                          <MultiSelectDropdown
+                            options={licenseeOptions}
+                            selectedIds={selectedLicenseeIds}
+                            onChange={handleLicenseeChange}
+                            placeholder="Select licensees..."
+                            searchPlaceholder="Search licensees..."
+                            label="licensees"
+                            showSelectAll={true}
+                          />
+                        )}
+
+                        {allLicenseesSelected && (
+                          <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+                            All {licensees.length} licensees selected
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {allLicenseesSelected
+                          ? licensees.length === 1
+                            ? licensees.map(l => (
+                                <span
+                                  key={l._id}
+                                  className="inline-flex items-center rounded-md bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10"
+                                >
+                                  {l.name}
+                                </span>
+                              ))
+                            : licensees.map(l => (
+                                <span
+                                  key={l._id}
+                                  className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10"
+                                >
+                                  {l.name}
+                                </span>
+                              ))
+                          : selectedLicenseeIds.length > 0
+                            ? selectedLicenseeIds
+                                .map(id => {
+                                  const licensee = licensees.find(
+                                    l => String(l._id) === String(id)
+                                  );
+                                  return licensee ? (
+                                    <span
+                                      key={id}
+                                      className="inline-flex items-center rounded-md bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10"
+                                    >
+                                      {licensee.name}
+                                    </span>
+                                  ) : null;
+                                })
+                                .filter(Boolean)
+                            : null}
+                        {selectedLicenseeIds.length === 0 &&
+                          !allLicenseesSelected && (
+                            <p className="text-sm text-gray-500">
+                              No licensees assigned
+                            </p>
+                          )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Locations Section */}
+                  <div>
+                    <div className="mb-4">
+                      <Label className="text-base font-medium text-gray-900">
+                        Allowed Locations
+                      </Label>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Specific locations this user can access
+                      </p>
+                    </div>
+
                       {isEditMode ? (
-                        <select
-                          className="w-full rounded-md border border-border bg-white p-3"
-                          value={formData.gender}
-                          onChange={e =>
-                            handleInputChange('gender', e.target.value)
-                          }
-                        >
-                          <option value="">Select</option>
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                          <option value="other">Other</option>
-                        </select>
-                      ) : (
-                        <div className="w-full text-gray-700">
-                          {formData.gender
-                            ? formData.gender.charAt(0).toUpperCase() +
-                              formData.gender.slice(1)
-                            : 'Not specified'}
+                      <div className="space-y-3">
+                        {/* Warning if no licensees selected */}
+                        {!allLicenseesSelected &&
+                          selectedLicenseeIds.length === 0 && (
+                            <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-center text-sm font-medium text-yellow-800">
+                              ⚠️ Please select at least one licensee first to
+                              assign locations
+                            </div>
+                          )}
+
+                        {/* All Locations Checkbox - only show if licensees are selected */}
+                        {(allLicenseesSelected ||
+                          selectedLicenseeIds.length > 0) && (
+                          <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
+                            <Checkbox
+                              checked={allLocationsSelected}
+                              onCheckedChange={checked =>
+                                handleAllLocationsChange(checked === true)
+                              }
+                              className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
+                            />
+                            All Locations{' '}
+                            {allLicenseesSelected
+                              ? ''
+                              : `for selected licensee${selectedLicenseeIds.length > 1 ? 's' : ''}`}
+                          </label>
+                        )}
+
+                        {/* Multi-select dropdown */}
+                        {!allLocationsSelected &&
+                          (allLicenseesSelected ||
+                            selectedLicenseeIds.length > 0) && (
+                            <MultiSelectDropdown
+                              key={`locations-${selectedLocationIds.join(',')}-${selectedLicenseeIds.join(',')}-${user?._id || 'no-user'}`}
+                              options={locationOptions}
+                              selectedIds={selectedLocationIds.filter(id =>
+                                locationOptions.some(opt => opt.id === id)
+                              )}
+                              onChange={newSelectedIds => {
+                                // When locations are changed via dropdown:
+                                // 1. Keep locations that aren't in current options (from other licensees)
+                                // 2. Update locations that are in current options based on dropdown selection
+                                setSelectedLocationIds(prevLocationIds => {
+                                  const locationsNotInOptions =
+                                    prevLocationIds.filter(
+                                      id =>
+                                        !locationOptions.some(
+                                          opt => opt.id === id
+                                        )
+                                    );
+                                  // Merge: locations from other licensees + new selections from dropdown
+                                  const merged = [
+                                    ...locationsNotInOptions,
+                                    ...newSelectedIds,
+                                  ];
+                                  console.log(
+                                    '[UserModal] Location selection changed:',
+                                    {
+                                      previous: prevLocationIds,
+                                      notInOptions: locationsNotInOptions,
+                                      newFromDropdown: newSelectedIds,
+                                      merged: merged,
+                                    }
+                                  );
+                                  return merged;
+                                });
+                              }}
+                              placeholder={
+                                availableLocations.length === 0
+                                  ? 'No locations available for selected licensees'
+                                  : 'Select locations...'
+                              }
+                              searchPlaceholder="Search locations..."
+                              label="locations"
+                              showSelectAll={true}
+                              disabled={availableLocations.length === 0}
+                            />
+                          )}
+
+                        {allLocationsSelected && (
+                          <div className="rounded-md border border-green-200 bg-green-50 p-3 text-center text-sm font-medium text-green-800">
+                            All {availableLocations.length} available locations
+                            are selected
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-full">
+                        {allLocationsSelected ? (
+                          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                            <p className="text-sm text-gray-900">
+                              All Locations ({locations.length} locations)
+                            </p>
+                          </div>
+                        ) : selectedLocationIds.length > 0 ? (
+                          <div className="max-h-[300px] overflow-hidden rounded-lg border border-gray-200">
+                            <div className="max-h-[300px] overflow-y-auto">
+                              <table className="w-full divide-y divide-gray-200">
+                                <thead className="sticky top-0 bg-gray-50">
+                                  <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">
+                                      Location
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">
+                                      Licensee
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200 bg-white">
+                                  {selectedLocationIds
+                                    .map(id => {
+                                      const location = locations.find(
+                                        l =>
+                                          String(l._id).trim() ===
+                                          String(id).trim()
+                                      );
+                                      if (!location) {
+                                        return (
+                                          <tr key={id}>
+                                            <td className="px-4 py-3 text-sm text-gray-500">
+                                              {id} (Not loaded)
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-400">
+                                              -
+                                            </td>
+                                          </tr>
+                                        );
+                                      }
+
+                                      const licensee = location.licenseeId
+                                        ? licensees.find(
+                                            l =>
+                                              String(l._id) ===
+                                              String(location.licenseeId)
+                                          )
+                                        : null;
+
+                                      return {
+                                        locationName: location.name || 'Unknown',
+                                        licenseeName: licensee?.name || 'Unknown',
+                                      };
+                                    })
+                                    .filter(
+                                      (
+                                        item
+                                      ): item is {
+                                        locationName: string;
+                                        licenseeName: string;
+                                      } => item !== null
+                                    )
+                                    .map((item, index) => (
+                                      <tr
+                                        key={index}
+                                        className="transition-colors hover:bg-gray-50"
+                                      >
+                                        <td className="px-4 py-3 text-sm text-gray-900">
+                                          {item.locationName}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-gray-600">
+                                          {item.licenseeName}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
+                            <p className="text-sm text-gray-500">
+                              No locations assigned
+                            </p>
                         </div>
                       )}
                     </div>
-                  </>
                 )}
               </div>
             </div>
+              </CardContent>
+            </Card>
 
-            {/* Address Section */}
-            <hr className="my-6 w-full border-gray-400" />
-            <div className="flex w-full flex-col items-center">
-              <h3 className="mb-4 text-center text-2xl font-bold text-gray-900">
-                Address
-              </h3>
-              <div className="grid w-full max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
+            {/* Address Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Address</CardTitle>
+                <CardDescription>
+                  Physical address and location information
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    Street:
-                  </label>
+                    <Label htmlFor="street" className="text-gray-700">
+                      Street
+                    </Label>
                   {isEditMode ? (
-                    <input
-                      className="w-full rounded-md border border-border bg-white p-3"
+                      <Input
+                        id="street"
                       value={formData.street}
                       onChange={e =>
                         handleInputChange('street', e.target.value)
                       }
-                      placeholder="Enter Street"
+                        placeholder="Enter street address"
+                        className="mt-2"
                     />
                   ) : (
-                    <div className="w-full text-gray-700">
+                      <p className="mt-2 break-words text-sm text-gray-900">
                       {formData.street || 'Not specified'}
-                    </div>
+                      </p>
                   )}
                 </div>
+
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    Town:
-                  </label>
+                    <Label htmlFor="town" className="text-gray-700">
+                      Town
+                    </Label>
                   {isEditMode ? (
-                    <input
-                      className="w-full rounded-md border border-border bg-white p-3"
+                      <Input
+                        id="town"
                       value={formData.town}
-                      onChange={e => handleInputChange('town', e.target.value)}
-                      placeholder="Enter Town"
+                        onChange={e =>
+                          handleInputChange('town', e.target.value)
+                        }
+                        placeholder="Enter town"
+                        className="mt-2"
                     />
                   ) : (
-                    <div className="w-full text-gray-700">
+                      <p className="mt-2 break-words text-sm text-gray-900">
                       {formData.town || 'Not specified'}
-                    </div>
+                      </p>
                   )}
                 </div>
+
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    Region:
-                  </label>
+                    <Label htmlFor="region" className="text-gray-700">
+                      Region
+                    </Label>
                   {isEditMode ? (
-                    <input
-                      className="w-full rounded-md border border-border bg-white p-3"
+                      <Input
+                        id="region"
                       value={formData.region}
                       onChange={e =>
                         handleInputChange('region', e.target.value)
                       }
-                      placeholder="Enter Region"
+                        placeholder="Enter region"
+                        className="mt-2"
                     />
                   ) : (
-                    <div className="w-full text-gray-700">
+                      <p className="mt-2 break-words text-sm text-gray-900">
                       {formData.region || 'Not specified'}
-                    </div>
+                      </p>
                   )}
                 </div>
+
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    Country:
-                  </label>
+                    <Label htmlFor="country" className="text-gray-700">
+                      Country
+                    </Label>
                   {isEditMode ? (
                     <select
-                      className="w-full rounded-md border border-border bg-white p-3"
+                        id="country"
+                        className="mt-2 flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                       value={formData.country}
                       onChange={e =>
                         handleInputChange('country', e.target.value)
                       }
                     >
-                      <option value="">Select Country</option>
+                        <option value="">Select country</option>
                       {countriesLoading ? (
                         <option value="" disabled>
                           Loading countries...
@@ -2172,136 +2583,160 @@ export default function UserModal({
                       )}
                     </select>
                   ) : (
-                    <div className="w-full text-gray-700">
-                      {countries.find(c => c._id === formData.country)?.name ||
+                      <p className="mt-2 break-words text-sm text-gray-900">
+                        {countries.find(c => c._id === formData.country)
+                          ?.name ||
                         formData.country ||
                         'Not specified'}
-                    </div>
+                      </p>
                   )}
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    Postal Code:
-                  </label>
+
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="postalCode" className="text-gray-700">
+                      Postal Code
+                    </Label>
                   {isEditMode ? (
-                    <input
-                      className="w-full rounded-md border border-border bg-white p-3"
+                      <Input
+                        id="postalCode"
                       value={formData.postalCode}
                       onChange={e =>
                         handleInputChange('postalCode', e.target.value)
                       }
-                      placeholder="Enter Postal Code"
+                        placeholder="Enter postal code"
+                        className="mt-2"
                     />
                   ) : (
-                    <div className="w-full text-gray-700">
+                      <p className="mt-2 break-words text-sm text-gray-900">
                       {formData.postalCode || 'Not specified'}
-                    </div>
+                      </p>
                   )}
                 </div>
               </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Identification Section */}
-            <hr className="my-6 w-full border-gray-400" />
-            <div className="flex w-full flex-col items-center">
-              <h3 className="mb-4 text-center text-2xl font-bold text-gray-900">
-                Identification
-              </h3>
-              <div className="grid w-full max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
+            {/* Identification Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Identification</CardTitle>
+                <CardDescription>
+                  Personal identification and verification details
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    D.O.B:
-                  </label>
+                    <Label htmlFor="dateOfBirth" className="text-gray-700">
+                      Date of Birth
+                    </Label>
                   {isEditMode ? (
-                    <input
-                      className="w-full rounded-md border border-border bg-white p-3"
+                      <Input
+                        id="dateOfBirth"
+                        type="date"
                       value={formData.dateOfBirth}
                       onChange={e =>
                         handleInputChange('dateOfBirth', e.target.value)
                       }
                       placeholder="YYYY-MM-DD"
-                      type="date"
+                        className="mt-2"
                     />
                   ) : (
-                    <div className="w-full text-gray-700">
-                      {formData.dateOfBirth || 'Not specified'}
-                    </div>
+                      <p className="mt-2 break-words text-sm text-gray-900">
+                        {formData.dateOfBirth
+                          ? new Date(formData.dateOfBirth).toLocaleDateString(
+                              'en-US',
+                              {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                              }
+                            )
+                          : 'Not specified'}
+                      </p>
                   )}
                 </div>
+
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    ID Type:
-                  </label>
+                    <Label htmlFor="idType" className="text-gray-700">
+                      ID Type
+                    </Label>
                   {isEditMode ? (
-                    <input
-                      className="w-full rounded-md border border-border bg-white p-3"
+                      <Input
+                        id="idType"
                       value={formData.idType}
                       onChange={e =>
                         handleInputChange('idType', e.target.value)
                       }
-                      placeholder="Enter ID Type"
+                        placeholder="Enter ID type"
+                        className="mt-2"
                     />
                   ) : (
-                    <div className="w-full text-gray-700">
+                      <p className="mt-2 break-words text-sm text-gray-900">
                       {formData.idType || 'Not specified'}
-                    </div>
+                      </p>
                   )}
                 </div>
+
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    ID Number:
-                  </label>
+                    <Label htmlFor="idNumber" className="text-gray-700">
+                      ID Number
+                    </Label>
                   {isEditMode ? (
-                    <input
-                      className="w-full rounded-md border border-border bg-white p-3"
+                      <Input
+                        id="idNumber"
                       value={formData.idNumber}
                       onChange={e =>
                         handleInputChange('idNumber', e.target.value)
                       }
-                      placeholder="Enter ID Number"
+                        placeholder="Enter ID number"
+                        className="mt-2"
                     />
                   ) : (
-                    <div className="w-full text-gray-700">
+                      <p className="mt-2 break-words text-sm text-gray-900">
                       {formData.idNumber || 'Not specified'}
-                    </div>
+                      </p>
                   )}
                 </div>
-                <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    Notes:
-                  </label>
+
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="notes" className="text-gray-700">
+                      Notes
+                    </Label>
                   {isEditMode ? (
                     <textarea
-                      className="min-h-[56px] w-full rounded-md border border-border bg-white p-3"
+                        id="notes"
+                        className="mt-2 flex min-h-[80px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                       value={formData.notes}
-                      onChange={e => handleInputChange('notes', e.target.value)}
-                      placeholder="Enter Notes"
+                        onChange={e =>
+                          handleInputChange('notes', e.target.value)
+                        }
+                        placeholder="Enter notes"
                     />
                   ) : (
-                    <div className="w-full text-gray-700">
+                      <p className="mt-2 break-words text-sm text-gray-900">
                       {formData.notes || 'No notes'}
-                    </div>
+                      </p>
                   )}
                 </div>
               </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Roles & Permissions Section */}
-            {
-              <>
-                <hr className="my-6 w-full border-gray-400" />
-                <div className="flex w-full flex-col items-center">
-                  <h3 className="mb-4 text-center text-2xl font-bold text-gray-900">
-                    Roles & Permissions
-                  </h3>
-                  <div className="w-full max-w-3xl space-y-6">
+            {/* Roles & Permissions Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Roles & Permissions</CardTitle>
+                <CardDescription>
+                  User roles, password management, and access control
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
                     {/* Password Section - Only show in edit mode */}
                     {isEditMode && (
                       <div className="space-y-4">
                         <div>
-                          <label className="text-base font-medium">
-                            Password
-                          </label>
+                      <label className="text-base font-medium">Password</label>
                           <Input
                             type="password"
                             value={password}
@@ -2494,30 +2929,42 @@ export default function UserModal({
 
                     {/* Roles Section */}
                     <div>
-                      <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Label className="text-base font-medium text-gray-900">
                         Roles
-                      </h4>
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRolePermissionsDialog({
+                          open: true,
+                          role: 'info',
+                          roleLabel: 'Role Information',
+                        })
+                      }
+                      className="rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      aria-label="View role descriptions"
+                    >
+                      <Info className="h-4 w-4" />
+                    </button>
+                  </div>
                       {isEditMode ? (
-                        <div className="grid grid-cols-2 justify-items-center gap-3 md:grid-cols-3 md:gap-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
                           {availableRoles.map(role => (
-                            <div
+                        <label
                               key={role.value}
-                              className="flex items-center gap-2"
+                          className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 transition-colors hover:bg-gray-100"
                             >
-                              <label className="flex flex-1 cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
                                 <Checkbox
                                   id={role.value}
                                   checked={roles.includes(role.value)}
                                   onCheckedChange={checked =>
-                                    handleRoleChange(
-                                      role.value,
-                                      checked === true
-                                    )
+                              handleRoleChange(role.value, checked === true)
                                   }
-                                  className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
                                 />
+                          <span className="text-sm font-medium text-gray-900">
                                 {role.label}
-                              </label>
+                          </span>
                               <button
                                 type="button"
                                 onClick={e => {
@@ -2529,16 +2976,16 @@ export default function UserModal({
                                     roleLabel: role.label,
                                   });
                                 }}
-                                className="flex items-center justify-center rounded-full p-1 text-gray-500 transition-colors hover:bg-gray-100 hover:text-blue-600"
+                            className="ml-auto rounded-full p-1 text-gray-400 hover:bg-white hover:text-blue-600"
                                 title={`View pages accessible to ${role.label}`}
                               >
                                 <Info className="h-4 w-4" />
                               </button>
-                            </div>
+                        </label>
                           ))}
                         </div>
                       ) : (
-                        <div className="flex flex-wrap items-center justify-center gap-2">
+                    <div className="flex flex-wrap gap-2">
                           {roles && roles.length > 0 ? (
                             roles.map(roleValue => {
                               const roleOption = ROLE_OPTIONS.find(
@@ -2546,13 +2993,11 @@ export default function UserModal({
                               );
                               if (!roleOption) return null;
                               return (
-                                <div
+                            <span
                                   key={roleValue}
-                                  className="flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-1"
+                              className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10"
                                 >
-                                  <span className="text-gray-700">
                                     {roleOption.label}
-                                  </span>
                                   <button
                                     type="button"
                                     onClick={() =>
@@ -2562,318 +3007,35 @@ export default function UserModal({
                                         roleLabel: roleOption.label,
                                       })
                                     }
-                                    className="flex items-center justify-center rounded-full p-0.5 text-gray-500 transition-colors hover:bg-gray-200 hover:text-blue-600"
+                                className="rounded-full text-blue-600 hover:text-blue-800"
                                     title={`View pages accessible to ${roleOption.label}`}
                                   >
                                     <Info className="h-3.5 w-3.5" />
                                   </button>
-                                </div>
+                            </span>
                               );
                             })
                           ) : (
-                            <div className="text-gray-700">
+                        <p className="text-sm text-gray-500">
                               No roles assigned
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Licensees and Locations Container */}
-                    <div className="mb-6 flex flex-col md:flex-row md:gap-6">
-                      {/* Licensees Section */}
-                      <div className="mb-6 flex-1 md:mb-0">
-                        <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
-                          Assigned Licensees
-                        </h4>
-
-                        {/* For managers and location admins, always show as read-only */}
-                        {!canEditLicensees ? (
-                          <div className="text-center">
-                            <div className="text-gray-700">
-                              {allLicenseesSelected
-                                ? licensees.length === 1
-                                  ? licensees[0]?.name || 'Unknown Licensee'
-                                  : `All Licensees (${licensees.length} licensees)`
-                                : selectedLicenseeIds.length > 0
-                                  ? selectedLicenseeIds
-                                      .map(
-                                        id =>
-                                          licensees.find(
-                                            l => String(l._id) === String(id)
-                                          )?.name
-                                      )
-                                      .filter(Boolean)
-                                      .join(', ')
-                                  : 'No licensees assigned'}
-                            </div>
-                            {isManager && (
-                              <p className="mt-2 text-xs italic text-gray-500">
-                                Licensee assignments cannot be changed by
-                                managers
-                              </p>
-                            )}
-                            {isLocationAdmin && (
-                              <p className="mt-2 text-xs italic text-gray-500">
-                                Licensee is automatically set to your assigned
-                                licensee
                               </p>
                             )}
                           </div>
-                        ) : isEditMode ? (
-                          <div className="space-y-3">
-                            {/* All Licensees Checkbox */}
-                            <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
-                              <Checkbox
-                                checked={allLicenseesSelected}
-                                onCheckedChange={checked =>
-                                  handleAllLicenseesChange(checked === true)
-                                }
-                                className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
-                              />
-                              All Licensees
-                            </label>
-
-                            {!allLicenseesSelected && (
-                              <MultiSelectDropdown
-                                options={licenseeOptions}
-                                selectedIds={selectedLicenseeIds}
-                                onChange={handleLicenseeChange}
-                                placeholder="Select licensees..."
-                                searchPlaceholder="Search licensees..."
-                                label="licensees"
-                                showSelectAll={true}
-                              />
-                            )}
-
-                            {allLicenseesSelected && (
-                              <div className="rounded-md border border-green-200 bg-green-50 p-3 text-center text-sm font-medium text-green-800">
-                                All {licensees.length} licensees are selected
+                  )}
                               </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="text-center">
-                            <div className="text-gray-700">
-                              {allLicenseesSelected
-                                ? licensees.length === 1
-                                  ? licensees[0]?.name || 'Unknown Licensee'
-                                  : `All Licensees (${licensees.length} licensees)`
-                                : selectedLicenseeIds.length > 0
-                                  ? selectedLicenseeIds
-                                      .map(
-                                        id =>
-                                          licensees.find(
-                                            l => String(l._id) === String(id)
-                                          )?.name
-                                      )
-                                      .filter(Boolean)
-                                      .join(', ')
-                                  : 'No licensees assigned'}
-                            </div>
-                          </div>
-                        )}
+              </CardContent>
+            </Card>
                       </div>
 
-                      {/* Locations Section */}
-                      <div className="flex-1">
-                        <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
-                          Allowed Locations
-                        </h4>
-
-                        {isEditMode ? (
-                          <div className="space-y-3">
-                            {/* Warning if no licensees selected */}
-                            {!allLicenseesSelected &&
-                              selectedLicenseeIds.length === 0 && (
-                                <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-center text-sm font-medium text-yellow-800">
-                                  ⚠️ Please select at least one licensee first
-                                  to assign locations
-                                </div>
-                              )}
-
-                            {/* All Locations Checkbox - only show if licensees are selected */}
-                            {(allLicenseesSelected ||
-                              selectedLicenseeIds.length > 0) && (
-                              <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
-                                <Checkbox
-                                  checked={allLocationsSelected}
-                                  onCheckedChange={checked =>
-                                    handleAllLocationsChange(checked === true)
-                                  }
-                                  className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
-                                />
-                                All Locations{' '}
-                                {allLicenseesSelected
-                                  ? ''
-                                  : `for selected licensee${selectedLicenseeIds.length > 1 ? 's' : ''}`}
-                              </label>
-                            )}
-
-                            {/* Multi-select dropdown */}
-                            {!allLocationsSelected &&
-                              (allLicenseesSelected ||
-                                selectedLicenseeIds.length > 0) && (
-                                <MultiSelectDropdown
-                                  key={`locations-${selectedLocationIds.join(',')}-${selectedLicenseeIds.join(',')}-${user?._id || 'no-user'}`}
-                                  options={locationOptions}
-                                  selectedIds={selectedLocationIds.filter(id =>
-                                    locationOptions.some(opt => opt.id === id)
-                                  )}
-                                  onChange={newSelectedIds => {
-                                    // When locations are changed via dropdown:
-                                    // 1. Keep locations that aren't in current options (from other licensees)
-                                    // 2. Update locations that are in current options based on dropdown selection
-                                    setSelectedLocationIds(prevLocationIds => {
-                                      const locationsNotInOptions =
-                                        prevLocationIds.filter(
-                                          id =>
-                                            !locationOptions.some(
-                                              opt => opt.id === id
-                                            )
-                                        );
-                                      // Merge: locations from other licensees + new selections from dropdown
-                                      const merged = [
-                                        ...locationsNotInOptions,
-                                        ...newSelectedIds,
-                                      ];
-                                      console.log(
-                                        '[UserModal] Location selection changed:',
-                                        {
-                                          previous: prevLocationIds,
-                                          notInOptions: locationsNotInOptions,
-                                          newFromDropdown: newSelectedIds,
-                                          merged: merged,
-                                        }
-                                      );
-                                      return merged;
-                                    });
-                                  }}
-                                  placeholder={
-                                    availableLocations.length === 0
-                                      ? 'No locations available for selected licensees'
-                                      : 'Select locations...'
-                                  }
-                                  searchPlaceholder="Search locations..."
-                                  label="locations"
-                                  showSelectAll={true}
-                                  disabled={availableLocations.length === 0}
-                                />
-                              )}
-
-                            {allLocationsSelected && (
-                              <div className="rounded-md border border-green-200 bg-green-50 p-3 text-center text-sm font-medium text-green-800">
-                                All {availableLocations.length} available
-                                locations are selected
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="w-full">
-                            {allLocationsSelected ? (
-                              <div className="text-center text-gray-700">
-                                All Locations ({locations.length} locations)
-                              </div>
-                            ) : selectedLocationIds.length > 0 ? (
-                              <div className="overflow-x-auto">
-                                <table className="w-full border-collapse border border-gray-300">
-                                  <thead>
-                                    <tr className="bg-gray-100">
-                                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">
-                                        Location
-                                      </th>
-                                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">
-                                        Licensee
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {selectedLocationIds
-                                      .map(id => {
-                                        // Find location in loaded locations array
-                                        const location = locations.find(
-                                          l =>
-                                            String(l._id).trim() ===
-                                            String(id).trim()
-                                        );
-                                        // If location not found in loaded locations, still show the ID
-                                        // This handles cases where locations belong to unselected licensees
-                                        if (!location) {
-                                          return (
-                                            <tr key={id}>
-                                              <td className="border border-gray-300 px-4 py-2 text-gray-600">
-                                                {id} (Location not loaded)
-                                              </td>
-                                              <td className="border border-gray-300 px-4 py-2 text-gray-500">
-                                                N/A
-                                              </td>
-                                            </tr>
-                                          );
-                                        }
-
-                                        const licensee = location.licenseeId
-                                          ? licensees.find(
-                                              l =>
-                                                String(l._id) ===
-                                                String(location.licenseeId)
-                                            )
-                                          : null;
-
-                                        return {
-                                          locationName:
-                                            location.name || 'Unknown',
-                                          licenseeName:
-                                            licensee?.name || 'Unknown',
-                                        };
-                                      })
-                                      .filter(
-                                        (
-                                          item
-                                        ): item is {
-                                          locationName: string;
-                                          licenseeName: string;
-                                        } => item !== null
-                                      )
-                                      .map((item, index) => (
-                                        <tr
-                                          key={index}
-                                          className="hover:bg-gray-50"
-                                        >
-                                          <td className="border border-gray-300 px-4 py-2 text-gray-700">
-                                            {item.locationName}
-                                          </td>
-                                          <td className="border border-gray-300 px-4 py-2 text-gray-700">
-                                            {item.licenseeName}
-                                          </td>
-                                        </tr>
-                                      ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            ) : (
-                              <div className="text-center text-gray-700">
-                                No locations assigned
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            }
-          </div>
-
-          {/* Action buttons */}
-          <div className="mt-8 flex justify-center gap-4 lg:justify-end">
-            {isEditMode ? (
-              <>
+          {/* Footer - Sticky for Edit Mode */}
+          {isEditMode && (
+            <div className="sticky bottom-0 border-t border-gray-200 bg-white px-6 py-4 shadow-lg">
+              <div className="flex justify-end gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleCancelEdit}
-                  className="flex items-center gap-2 rounded-md px-8 py-3 text-lg font-semibold"
+                  className="min-w-[100px] gap-2"
                 >
                   <XCircle className="h-4 w-4" />
                   Cancel
@@ -2881,12 +3043,17 @@ export default function UserModal({
                 <Button
                   type="button"
                   onClick={handleSave}
-                  className="flex items-center gap-2 rounded-md bg-button px-8 py-3 text-lg font-semibold text-white hover:bg-buttonActive"
-                  disabled={isLoading}
+                  disabled={
+                    isLoading ||
+                    checkingUsername ||
+                    checkingEmail ||
+                    Object.keys(accountErrors).length > 0
+                  }
+                  className="min-w-[140px] gap-2 bg-blue-600 hover:bg-blue-700"
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       Saving...
                     </>
                   ) : (
@@ -2896,18 +3063,9 @@ export default function UserModal({
                     </>
                   )}
                 </Button>
-              </>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                className="rounded-md px-8 py-3 text-lg font-semibold"
-              >
-                Close
-              </Button>
-            )}
           </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -2919,7 +3077,7 @@ export default function UserModal({
             setIsCropOpen(false);
             setRawImageSrc(null);
           }}
-          imageSrc={rawImageSrc}
+          imageSrc={rawImageSrc || ''}
           onCropped={handleCropComplete}
         />
       )}

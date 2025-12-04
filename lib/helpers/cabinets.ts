@@ -38,7 +38,8 @@ export const fetchCabinets = async (
   page?: number,
   limit?: number,
   searchTerm?: string,
-  locationId?: string
+  locationId?: string,
+  signal?: AbortSignal
 ) => {
   try {
     // Construct the URL with appropriate parameters
@@ -93,6 +94,7 @@ export const fetchCabinets = async (
     console.warn('[FETCH CABINETS] Requesting:', url);
     const response = await axios.get(url, {
       headers: getAuthHeaders(),
+      signal,
     });
 
     console.warn('[FETCH CABINETS] Response status:', response.status);
@@ -163,7 +165,8 @@ export const fetchCabinetById = async (
   timePeriod?: string,
   customDateRange?: DateRange,
   currency?: string,
-  licensee?: string | null
+  licensee?: string | null,
+  signal?: AbortSignal
 ) => {
   try {
     // Use the main machines endpoint with time period filtering
@@ -207,6 +210,7 @@ export const fetchCabinetById = async (
     console.warn('[DEBUG] fetchCabinetById calling:', endpoint);
     const response = await axios.get(endpoint, {
       headers: getAuthHeaders(),
+      signal,
     });
 
     if (response.data && response.data.success) {
@@ -493,7 +497,8 @@ export async function fetchCabinetsForLocation(
   customDateRange?: DateRange,
   page?: number,
   limit?: number,
-  currency?: string
+  currency?: string,
+  signal?: AbortSignal
 ): Promise<{
   data: GamingMachine[];
   pagination?: {
@@ -565,6 +570,7 @@ export async function fetchCabinetsForLocation(
           'Content-Type': 'application/json',
           ...getAuthHeaders(),
         },
+        signal,
       }
     );
 

@@ -3,7 +3,7 @@
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
-import { Eye, Pencil } from 'lucide-react';
+import { BadgeCheck, Eye, Pencil } from 'lucide-react';
 import { LocationCardData } from '@/lib/types/location';
 import formatCurrency from '@/lib/utils/currency';
 import {
@@ -41,19 +41,34 @@ export default function LocationCard({
       ref={cardRef}
       className="relative mx-auto w-full rounded-lg border border-border bg-container p-4 shadow-sm transition-shadow hover:shadow-md"
     >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <button
-            onClick={e => {
-              e.stopPropagation();
-              const locationName = (location as Record<string, unknown>).locationName as string;
-              copyToClipboard(locationName, 'Location Name');
-            }}
-            className="truncate text-base font-semibold hover:text-blue-600 hover:underline cursor-pointer text-left"
-            title="Click to copy location name"
-          >
+      <div className="mb-3 flex flex-col gap-2">
+        {/* Location Name with Membership Icon */}
+        <button
+          onClick={e => {
+            e.stopPropagation();
+            const locationName = (location as Record<string, unknown>).locationName as string;
+            copyToClipboard(locationName, 'Location Name');
+          }}
+          className="inline-flex items-start gap-1.5 text-base font-semibold hover:text-blue-600 hover:underline cursor-pointer text-left"
+          title="Click to copy location name"
+        >
+          <span className="break-words">
             {(location as Record<string, unknown>).locationName as string}
-          </button>
+          </span>
+          {Boolean((location as { membershipEnabled?: boolean }).membershipEnabled) && (
+            <div className="relative inline-flex flex-shrink-0 mt-0.5">
+              <div className="group inline-flex items-center">
+                <BadgeCheck className="h-4 w-4 text-green-600" />
+                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                  Membership enabled
+                </div>
+              </div>
+            </div>
+          )}
+        </button>
+
+        {/* Status Badges Below Name */}
+        <div className="flex flex-wrap items-center gap-2">
           {typeof location.onlineMachines === 'number' && typeof location.totalMachines === 'number' && (() => {
             const online = location.onlineMachines;
             const total = location.totalMachines;
@@ -61,7 +76,7 @@ export default function LocationCard({
             const isAllOffline = total > 0 && online === 0;
             const hasMachines = total > 0;
             
-            let badgeClass = 'flex-shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset';
+            let badgeClass = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset';
             let dotClass = 'h-1.5 w-1.5 rounded-full';
             
             if (!hasMachines) {
@@ -85,6 +100,12 @@ export default function LocationCard({
               </span>
             );
           })()}
+          {typeof (location as { memberCount?: number }).memberCount === 'number' && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+              {(location as { memberCount?: number }).memberCount} Members
+            </span>
+          )}
         </div>
       </div>
 

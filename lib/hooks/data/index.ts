@@ -19,6 +19,7 @@ export { useDashboardScroll } from './useDashboardScroll';
 export { useLocationData } from './useLocationData';
 export { useLocationDetails } from './useLocationDetails';
 export { useLocationMachineStats } from './useLocationMachineStats';
+export { useLocationMembershipStats } from './useLocationMembershipStats';
 export { useLocationModals } from './useLocationModals';
 export { useLocationPagination } from './useLocationPagination';
 export { useLocationSorting } from './useLocationSorting';

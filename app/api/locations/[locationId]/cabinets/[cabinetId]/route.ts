@@ -311,9 +311,6 @@ export async function PUT(
           { $set: { serialNumber: data.assetNumber } }
         );
 
-        console.warn(
-          `Updated serial number in Collections for machine ${cabinetId} from "${originalCabinet.serialNumber}" to "${data.assetNumber}"`
-        );
       } catch (collectionsError) {
         console.error(
           'Failed to update serial number in Collections:',
@@ -335,9 +332,6 @@ export async function PUT(
           { $set: { machineName: data.installedGame } }
         );
 
-        console.warn(
-          `Updated machine name in Collections for machine ${cabinetId} from "${originalCabinet.game}" to "${data.installedGame}"`
-        );
       } catch (collectionsError) {
         console.error(
           'Failed to update machine name in Collections:',

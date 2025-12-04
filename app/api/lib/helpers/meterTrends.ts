@@ -7,6 +7,8 @@
  * @module app/api/lib/helpers/meterTrends
  */
 
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Machine } from '@/app/api/lib/models/machines';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
   convertFromUSD,
@@ -790,7 +792,6 @@ export async function getMeterTrends(
     }
   }
 
-  const locationsCollection = db.collection('gaminglocations');
   const locationQuery: Record<string, unknown> = {
     $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
   };
@@ -799,17 +800,13 @@ export async function getMeterTrends(
     locationQuery['rel.licencee'] = licencee;
   }
 
-  let locations = await locationsCollection
-    .find(locationQuery, {
-      projection: {
-        _id: 1,
-        gameDayOffset: 1,
-        country: 1,
-        geoCoords: 1,
-        rel: 1,
-      },
-    })
-    .toArray();
+  let locations = await GamingLocations.find(locationQuery, {
+    _id: 1,
+    gameDayOffset: 1,
+    country: 1,
+    geoCoords: 1,
+    rel: 1,
+  }).lean();
 
   const isManager = userRoles.includes('manager');
   const isAdmin =
@@ -869,19 +866,16 @@ export async function getMeterTrends(
   );
 
   const locationIds = locations.map(location => String(location._id));
-  const machineDocs = await db
-    .collection('machines')
-    .find(
-      {
-        gamingLocation: { $in: locationIds },
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
-        ],
-      },
-      { projection: { _id: 1, gamingLocation: 1 } }
-    )
-    .toArray();
+  const machineDocs = await Machine.find(
+    {
+      gamingLocation: { $in: locationIds },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
+      ],
+    },
+    { _id: 1, gamingLocation: 1 }
+  ).lean();
 
   const machinesByLocation = buildMachinesByLocationMap(machineDocs);
 

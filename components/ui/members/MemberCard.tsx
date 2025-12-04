@@ -2,17 +2,19 @@
 
 import { Button } from '@/components/ui/button';
 import { CasinoMember as Member } from '@/shared/types/entities';
-import { Eye, Pencil, Trash2 } from 'lucide-react';
+import { ExternalLink, Eye, Pencil, Trash2 } from 'lucide-react';
 import { useRef } from 'react';
 
 export default function MemberCard({
   member,
   onMemberClick,
+  onLocationClick,
   onEdit,
   onDelete,
 }: {
   member: Member;
   onMemberClick: (id: string) => void;
+  onLocationClick: (locationId: string) => void;
   onEdit: (member: Member) => void;
   onDelete: (member: Member) => void;
 }) {
@@ -63,9 +65,17 @@ export default function MemberCard({
               ? `${member.profile.firstName} ${member.profile.lastName}`
               : member.memberId || member._id || 'Unknown Member'}
           </h3>
-          <p className="truncate text-xs text-muted-foreground">
-            {member.locationName || 'No Location'}
-          </p>
+          <button
+            onClick={() => onLocationClick(member.gamingLocation || '')}
+            className="inline-flex max-w-full items-center gap-1.5 truncate text-left text-xs text-blue-600 underline decoration-dotted hover:text-blue-800"
+            title={member.locationName}
+            disabled={!member.gamingLocation}
+          >
+            <span className="truncate">{member.locationName || 'No Location'}</span>
+            {member.gamingLocation && (
+              <ExternalLink className="h-3 w-3 flex-shrink-0" />
+            )}
+          </button>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">

@@ -74,7 +74,6 @@ export async function GET(req: NextRequest) {
     
     if (isDevMode && testUserId) {
       // Dev mode: Get user directly from DB for testing
-      console.warn('[Machine Status API] 🔧 DEV MODE: Using testUserId:', testUserId);
       const UserModel = (await import('../../lib/models/user')).default;
       const testUserResult = await UserModel.findOne({ _id: testUserId }).lean();
       if (testUserResult && !Array.isArray(testUserResult)) {
@@ -90,11 +89,6 @@ export async function GET(req: NextRequest) {
         userAccessibleLicensees = Array.isArray(testUser.assignedLicensees)
           ? testUser.assignedLicensees
           : [];
-        console.log('[Machine Status API] DEV MODE - User from DB:', {
-          roles: userRoles,
-          assignedLocations: userLocationPermissions,
-          assignedLicensees: userAccessibleLicensees,
-        });
       } else {
         return NextResponse.json({ error: 'Test user not found' }, { status: 404 });
       }
@@ -120,27 +114,12 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 4: Determine location filter based on user role and selected licensee
     // ============================================================================
-    console.log('[Machine Status API] User roles:', userRoles);
-    console.log('[Machine Status API] User assignedLocations:', userLocationPermissions);
-    console.log('[Machine Status API] User accessibleLicensees:', userAccessibleLicensees);
-    console.log('[Machine Status API] Effective licensee:', effectiveLicensee);
-    
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,
       effectiveLicensee,
       userLocationPermissions,
       userRoles
     );
-    
-    console.log(
-      '[Machine Status API] Allowed location IDs:',
-      allowedLocationIds === 'all'
-        ? 'all (no filtering)'
-        : `${Array.isArray(allowedLocationIds) ? allowedLocationIds.length : 0} locations`
-    );
-    if (Array.isArray(allowedLocationIds) && allowedLocationIds.length > 0) {
-      console.log('[Machine Status API] Allowed location IDs list:', allowedLocationIds.slice(0, 10));
-    }
 
     // ============================================================================
     // STEP 5: Query machines and calculate online/offline status

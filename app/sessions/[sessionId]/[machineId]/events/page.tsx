@@ -13,21 +13,25 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import axios from 'axios';
-import PageLayout from '@/components/layout/PageLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import PageLayout from '@/components/layout/PageLayout';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
+import axios from 'axios';
+import { useParams, useRouter } from 'next/navigation';
+import React, { useCallback, useEffect, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { toast } from 'sonner';
-import { SessionEventsPageSkeleton } from '@/components/ui/skeletons/SessionsSkeletons';
 import PaginationControls from '@/components/ui/PaginationControls';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { SessionEventsPageSkeleton } from '@/components/ui/skeletons/SessionsSkeletons';
+import { ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 import type { MachineEvent } from '@/lib/types/sessions';
+import type { SessionInfo } from '@/shared/types/entities';
 
 /**
  * Session Events Page Component
@@ -43,6 +47,9 @@ export default function SessionEventsPage() {
   const machineId = params.machineId as string;
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
 
+  // AbortController for events fetching
+  const makeEventsRequest = useAbortableRequest();
+
   // ============================================================================
   // State Management
   // ============================================================================
@@ -54,6 +61,8 @@ export default function SessionEventsPage() {
   const [totalEventsFromAPI, setTotalEventsFromAPI] = useState<number>(0);
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
   const [selectedLicencee, setSelectedLicencee] = useState('All Licensees');
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
+  const [isSettingsExpanded, setIsSettingsExpanded] = useState(true);
 
   // ============================================================================
   // Constants
@@ -66,9 +75,12 @@ export default function SessionEventsPage() {
   // Computed Values & Utilities
   // ============================================================================
   // Calculate which batch we need based on current page
-  const calculateBatchNumber = useCallback((page: number) => {
-    return Math.floor(page / pagesPerBatch) + 1;
-  }, [pagesPerBatch]);
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / pagesPerBatch) + 1;
+    },
+    [pagesPerBatch]
+  );
 
   // ============================================================================
   // Event Handlers
@@ -80,110 +92,146 @@ export default function SessionEventsPage() {
     setLoadedBatches(new Set([1]));
   }, []);
 
-  const fetchEvents = useCallback(async (batch: number = 1) => {
-    try {
+  const fetchEvents = useCallback(
+    async (batch: number = 1) => {
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams({
-        page: batch.toString(),
-        limit: itemsPerBatch.toString(),
-      });
+      await makeEventsRequest(
+        async (signal) => {
+          const params = new URLSearchParams({
+            page: batch.toString(),
+            limit: itemsPerBatch.toString(),
+          });
 
-      // Add date filtering based on activeMetricsFilter
-      if (activeMetricsFilter === 'Custom' && customDateRange) {
-        const sd =
-          customDateRange.startDate instanceof Date
-            ? customDateRange.startDate
-            : new Date(customDateRange.startDate as unknown as string);
-        const ed =
-          customDateRange.endDate instanceof Date
-            ? customDateRange.endDate
-            : new Date(customDateRange.endDate as unknown as string);
-        params.append('startDate', sd.toISOString());
-        params.append('endDate', ed.toISOString());
-      } else if (activeMetricsFilter && activeMetricsFilter !== 'Custom') {
-        // Add date filtering based on activeMetricsFilter
-        const now = new Date();
-        let startDate: Date;
-        let endDate: Date;
+          if (activeMetricsFilter === 'Custom' && customDateRange) {
+            const sd =
+              customDateRange.startDate instanceof Date
+                ? customDateRange.startDate
+                : new Date(customDateRange.startDate as unknown as string);
+            const ed =
+              customDateRange.endDate instanceof Date
+                ? customDateRange.endDate
+                : new Date(customDateRange.endDate as unknown as string);
+            params.append('startDate', sd.toISOString());
+            params.append('endDate', ed.toISOString());
+          } else if (activeMetricsFilter && activeMetricsFilter !== 'Custom') {
+            const now = new Date();
+            let startDate: Date;
+            let endDate: Date;
 
-        switch (activeMetricsFilter) {
-          case 'Today':
-            startDate = new Date(
-              now.getFullYear(),
-              now.getMonth(),
-              now.getDate()
-            );
-            endDate = new Date(
-              now.getFullYear(),
-              now.getMonth(),
-              now.getDate(),
-              23,
-              59,
-              59
-            );
-            break;
-          case 'Yesterday':
-            startDate = new Date(
-              now.getFullYear(),
-              now.getMonth(),
-              now.getDate() - 1
-            );
-            endDate = new Date(
-              now.getFullYear(),
-              now.getMonth(),
-              now.getDate() - 1,
-              23,
-              59,
-              59
-            );
-            break;
-          case 'last7days':
-            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            endDate = now;
-            break;
-          case 'last30days':
-            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            endDate = now;
-            break;
-          default:
-            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            endDate = now;
-        }
+            switch (activeMetricsFilter) {
+              case 'Today':
+                startDate = new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate()
+                );
+                endDate = new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate(),
+                  23,
+                  59,
+                  59
+                );
+                break;
+              case 'Yesterday':
+                startDate = new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate() - 1
+                );
+                endDate = new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate() - 1,
+                  23,
+                  59,
+                  59
+                );
+                break;
+              case 'last7days':
+                startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                endDate = now;
+                break;
+              case 'last30days':
+                startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                endDate = now;
+                break;
+              default:
+                startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                endDate = now;
+            }
 
-        params.append('startDate', startDate.toISOString());
-        params.append('endDate', endDate.toISOString());
-      }
+            params.append('startDate', startDate.toISOString());
+            params.append('endDate', endDate.toISOString());
+          }
 
-      const response = await axios.get(
-        `/api/sessions/${sessionId}/${machineId}/events?${params}`
+          try {
+            const response = await axios.get(
+              `/api/sessions/${sessionId}/${machineId}/events?${params}`,
+              { signal }
+            );
+
+            const data = response.data;
+            const responseData = data.data;
+            const newEvents = responseData.events || [];
+
+            if (responseData.pagination?.totalEvents) {
+              setTotalEventsFromAPI(responseData.pagination.totalEvents);
+            }
+
+            setAllEvents(prev => {
+              const existingIds = new Set(prev.map(e => e._id));
+              const uniqueNewEvents = newEvents.filter(
+                (e: MachineEvent) => !existingIds.has(e._id)
+              );
+              return [...prev, ...uniqueNewEvents];
+            });
+          } catch (err) {
+            if (process.env.NODE_ENV === 'development') {
+              console.error('❌ Events Page Error:', err);
+            }
+            toast.error('Failed to fetch events');
+            setAllEvents([]);
+          }
+        },
+        `Session Events (${sessionId}, ${machineId}, ${activeMetricsFilter || 'Last 7 Days'})`
       );
 
-      const data = response.data;
-      const newEvents = data.data.events || [];
+      setLoading(false);
+    },
+    [sessionId, machineId, activeMetricsFilter, customDateRange, itemsPerBatch, makeEventsRequest]
+  );
 
-      // Update total events count from API pagination
-      if (data.data.pagination?.totalEvents) {
-        setTotalEventsFromAPI(data.data.pagination.totalEvents);
+  const fetchSessionInfo = useCallback(async () => {
+    try {
+      const response = await axios.get(`/api/sessions/${sessionId}`);
+      if (response.data.success && response.data.data) {
+        setSessionInfo(response.data.data as SessionInfo);
       }
-
-      // Merge new events into allEvents, avoiding duplicates
-      setAllEvents(prev => {
-        const existingIds = new Set(prev.map(e => e._id));
-        const uniqueNewEvents = newEvents.filter((e: MachineEvent) => !existingIds.has(e._id));
-        return [...prev, ...uniqueNewEvents];
-      });
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('❌ Events Page Error:', err);
+        console.error('❌ Failed to fetch session info:', err);
       }
-      toast.error('Failed to fetch events');
-      setAllEvents([]);
-    } finally {
-      setLoading(false);
+      // Don't show error toast - session info is optional
     }
-  }, [sessionId, machineId, activeMetricsFilter, customDateRange, itemsPerBatch]);
+  }, [sessionId]);
+
+  const handleRefresh = useCallback(() => {
+    setCurrentPage(0);
+    setAllEvents([]);
+    setLoadedBatches(new Set([1]));
+    setSessionInfo(null);
+    fetchEvents(1);
+    fetchSessionInfo();
+  }, [fetchEvents, fetchSessionInfo]);
+
+  // Load session info on mount
+  useEffect(() => {
+    fetchSessionInfo();
+  }, [fetchSessionInfo]);
 
   // Load initial batch on mount and when filters change
   useEffect(() => {
@@ -191,7 +239,8 @@ export default function SessionEventsPage() {
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
     fetchEvents(1);
-  }, [sessionId, machineId, activeMetricsFilter, customDateRange, setAllEvents, setLoadedBatches, setCurrentPage, fetchEvents]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, machineId, activeMetricsFilter, customDateRange]);
 
   // Fetch next batch when crossing batch boundaries
   useEffect(() => {
@@ -286,6 +335,177 @@ export default function SessionEventsPage() {
     }
   };
 
+  const renderLocationSettings = () => {
+    if (loading && !sessionInfo) {
+      return (
+        <Card className="mb-6 border border-gray-200 bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CardTitle className="text-lg font-semibold text-gray-900">
+              Member Location Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {[...Array(3)].map((_, index) => (
+                <div key={index} className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (!sessionInfo || !sessionInfo.locationMembershipSettings) {
+      return null;
+    }
+
+    const {
+      locationLimit,
+      freePlayAmount,
+      enablePoints,
+      enableFreePlays,
+      pointsRatioMethod,
+      pointMethodValue,
+      gamesPlayedRatio,
+      pointsMethodGameTypes,
+      freePlayGameTypes,
+      freePlayCreditsTimeout,
+    } = sessionInfo.locationMembershipSettings;
+
+    const formatNumber = (value?: number) => {
+      if (value === undefined || value === null) {
+        return '-';
+      }
+      return value.toLocaleString();
+    };
+
+    const formatList = (values?: string[]) => {
+      if (!values || values.length === 0) {
+        return '-';
+      }
+      return values.join(', ');
+    };
+
+    return (
+      <Card className="mb-6 border border-gray-200 bg-white">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle className="text-lg font-semibold text-gray-900">
+              Member Location Settings
+            </CardTitle>
+            <p className="mt-1 text-sm text-gray-600">
+              Session {sessionInfo._id} for member {sessionInfo.memberId}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsSettingsExpanded(prev => !prev)}
+            className="flex items-center gap-2"
+          >
+            <span className="text-xs font-medium text-gray-700">
+              {isSettingsExpanded ? 'Hide' : 'Show'} settings
+            </span>
+            {isSettingsExpanded ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
+        </CardHeader>
+        {isSettingsExpanded && (
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-gray-800">
+                  Points System
+                </h3>
+                <div className="space-y-1 text-sm text-gray-700">
+                  <p>
+                    <span className="font-medium">Enable Points:</span>{' '}
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        enablePoints
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {enablePoints ? 'Yes' : 'No'}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="font-medium">Points Method:</span>{' '}
+                    {pointsRatioMethod || '-'}
+                  </p>
+                  <p>
+                    <span className="font-medium">Points Value:</span>{' '}
+                    {formatNumber(pointMethodValue)}
+                  </p>
+                  <p>
+                    <span className="font-medium">Games Played Ratio:</span>{' '}
+                    {formatNumber(gamesPlayedRatio)}
+                  </p>
+                  <p>
+                    <span className="font-medium">Game Types:</span>{' '}
+                    {formatList(pointsMethodGameTypes)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-gray-800">
+                  Free Play System
+                </h3>
+                <div className="space-y-1 text-sm text-gray-700">
+                  <p>
+                    <span className="font-medium">Enable Free Plays:</span>{' '}
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        enableFreePlays
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {enableFreePlays ? 'Yes' : 'No'}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="font-medium">Free Play Amount:</span>{' '}
+                    {formatNumber(freePlayAmount)}
+                  </p>
+                  <p>
+                    <span className="font-medium">Timeout (seconds):</span>{' '}
+                    {formatNumber(freePlayCreditsTimeout)}
+                  </p>
+                  <p>
+                    <span className="font-medium">Game Types:</span>{' '}
+                    {formatList(freePlayGameTypes)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-gray-800">
+                  Location Limits
+                </h3>
+                <div className="space-y-1 text-sm text-gray-700">
+                  <p>
+                    <span className="font-medium">Location Limit:</span>{' '}
+                    {formatNumber(locationLimit)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+    );
+  };
+
   const renderEventsTable = () => {
     if (loading && allEvents.length === 0) {
       return <SessionEventsPageSkeleton />;
@@ -293,31 +513,39 @@ export default function SessionEventsPage() {
 
     if (paginatedEvents.length === 0) {
       return (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-          <p className="text-gray-500">No events found for this session</p>
+        <div className="rounded-md border border-gray-200 bg-white p-8 text-center">
+          <p className="text-sm text-gray-500">
+            No events found for this session
+          </p>
         </div>
       );
     }
 
     return (
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className="hidden rounded-md border md:block">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr className="bg-button text-white">
-                <th className="border border-border p-3 text-sm">Type</th>
-                <th className="border border-border p-3 text-sm">Event</th>
-                <th className="border border-border p-3 text-sm">Event Code</th>
-                <th className="border border-border p-3 text-sm">Game</th>
-                <th className="border border-border p-3 text-sm">Date</th>
-                <th className="border border-border p-3 text-sm">Details</th>
+          <table className="w-full">
+            <thead className="bg-button text-white">
+              <tr>
+                <th className="p-3 text-center font-medium text-white">Type</th>
+                <th className="p-3 text-center font-medium text-white">
+                  Event
+                </th>
+                <th className="p-3 text-center font-medium text-white">
+                  Event Code
+                </th>
+                <th className="p-3 text-center font-medium text-white">Game</th>
+                <th className="p-3 text-center font-medium text-white">Date</th>
+                <th className="p-3 text-center font-medium text-white">
+                  Details
+                </th>
               </tr>
             </thead>
             <tbody>
               {paginatedEvents.map(event => (
                 <React.Fragment key={event._id}>
-                  <tr className="text-center hover:bg-muted">
-                    <td className="border border-border p-3">
+                  <tr className="border-b hover:bg-muted/30">
+                    <td className="bg-white p-3 text-center">
                       <span
                         className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getEventTypeColor(
                           event.eventType
@@ -326,25 +554,25 @@ export default function SessionEventsPage() {
                         {event.eventType}
                       </span>
                     </td>
-                    <td className="border border-border p-3 text-sm text-gray-900">
+                    <td className="bg-white p-3 text-center text-sm text-gray-900">
                       {event.description}
                     </td>
-                    <td className="border border-border p-3 text-sm text-gray-900">
+                    <td className="bg-white p-3 text-center text-sm text-gray-900">
                       {event.command || '-'}
                     </td>
-                    <td className="border border-border p-3 text-sm text-gray-900">
+                    <td className="bg-white p-3 text-center text-sm text-gray-900">
                       {event.gameName || '-'}
                     </td>
-                    <td className="border border-border p-3 text-sm text-gray-900">
+                    <td className="bg-white p-3 text-center text-sm text-gray-900">
                       {formatDate(event.date)}
                     </td>
-                    <td className="border border-border p-3 text-sm text-gray-900">
+                    <td className="bg-white p-3 text-center">
                       {event.sequence && event.sequence.length > 0 && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleEventExpansion(event._id)}
-                          className="p-1"
+                          className="h-8 w-8 p-0"
                         >
                           {expandedEvents.has(event._id) ? (
                             <ChevronUp className="h-4 w-4" />
@@ -357,21 +585,18 @@ export default function SessionEventsPage() {
                   </tr>
                   {expandedEvents.has(event._id) && event.sequence && (
                     <tr>
-                      <td
-                        colSpan={6}
-                        className="border border-border bg-gray-50 p-3"
-                      >
+                      <td colSpan={6} className="border-b bg-muted/20 p-4">
                         <div className="space-y-2">
-                          <h4 className="text-sm font-medium text-gray-700">
+                          <h4 className="text-sm font-semibold text-gray-700">
                             Sequence Details:
                           </h4>
                           {event.sequence.map((step, index) => (
                             <div
                               key={index}
-                              className="ml-4 rounded border border-gray-200 bg-white p-3"
+                              className="ml-4 rounded-md border border-gray-200 bg-white p-3 shadow-sm"
                             >
                               <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-900">
+                                <span className="text-sm font-medium text-gray-900">
                                   {step.description}
                                 </span>
                                 <div className="flex items-center space-x-2">
@@ -414,37 +639,28 @@ export default function SessionEventsPage() {
 
   const renderEventsCards = () => {
     if (loading && allEvents.length === 0) {
-      return (
-        <div className="grid grid-cols-1 gap-4">
-          {[...Array(5)].map((_, i) => (
-            <div
-              key={i}
-              className="animate-pulse rounded-lg border border-gray-200 bg-white p-4"
-            >
-              <div className="mb-2 h-4 w-3/4 rounded bg-gray-200"></div>
-              <div className="h-3 w-1/2 rounded bg-gray-200"></div>
-            </div>
-          ))}
-        </div>
-      );
+      return <SessionEventsPageSkeleton />;
     }
 
     if (paginatedEvents.length === 0) {
       return (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-          <p className="text-gray-500">No events found for this session</p>
+        <div className="rounded-md border border-gray-200 bg-white p-8 text-center">
+          <p className="text-sm text-gray-500">
+            No events found for this session
+          </p>
         </div>
       );
     }
 
     return (
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {paginatedEvents.map(event => (
           <div
             key={event._id}
-            className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
+            className="overflow-hidden rounded-lg border bg-white transition-shadow hover:shadow-md"
           >
-            <div className="flex flex-col space-y-2">
+            {/* Card Header */}
+            <div className="border-b bg-gradient-to-r from-gray-50 to-white p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="mb-2 flex items-center space-x-2">
@@ -460,7 +676,7 @@ export default function SessionEventsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => toggleEventExpansion(event._id)}
-                        className="p-1"
+                        className="h-7 w-7 p-0"
                       >
                         {expandedEvents.has(event._id) ? (
                           <ChevronUp className="h-4 w-4" />
@@ -470,37 +686,52 @@ export default function SessionEventsPage() {
                       </Button>
                     )}
                   </div>
-                  <h3 className="text-sm font-medium text-gray-900">
+                  <h3 className="text-sm font-semibold text-gray-900">
                     {event.description}
                   </h3>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-gray-500">Event Code:</span>
-                  <p className="text-gray-900">{event.command || '-'}</p>
+            </div>
+
+            {/* Card Content - 2x2 Grid */}
+            <div className="p-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground">
+                    Event Code
+                  </span>
+                  <span className="font-semibold text-gray-900">
+                    {event.command || '-'}
+                  </span>
                 </div>
-                <div>
-                  <span className="text-gray-500">Game:</span>
-                  <p className="text-gray-900">{event.gameName || '-'}</p>
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground">Game</span>
+                  <span className="font-semibold text-gray-900">
+                    {event.gameName || '-'}
+                  </span>
                 </div>
-                <div className="col-span-2">
-                  <span className="text-gray-500">Date:</span>
-                  <p className="text-gray-900">{formatDate(event.date)}</p>
+                <div className="col-span-2 flex flex-col">
+                  <span className="text-xs text-muted-foreground">
+                    Date & Time
+                  </span>
+                  <span className="font-semibold text-gray-900">
+                    {formatDate(event.date)}
+                  </span>
                 </div>
               </div>
+
               {expandedEvents.has(event._id) && event.sequence && (
-                <div className="mt-4 space-y-2">
-                  <h4 className="text-sm font-medium text-gray-700">
-                    Sequence Details:
+                <div className="mt-4 space-y-2 border-t pt-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-700">
+                    Sequence Details
                   </h4>
                   {event.sequence.map((step, index) => (
                     <div
                       key={index}
-                      className="ml-4 rounded border border-gray-200 bg-gray-50 p-3"
+                      className="rounded-md border bg-muted/10 p-3"
                     >
-                      <div className="flex flex-col space-y-1">
-                        <span className="text-sm text-gray-900">
+                      <div className="flex flex-col space-y-2">
+                        <span className="text-sm font-medium text-gray-900">
                           {step.description}
                         </span>
                         <div className="flex items-center space-x-2">
@@ -552,10 +783,21 @@ export default function SessionEventsPage() {
       >
         {/* Main Content Section: Session events display with navigation and filters */}
         <div className="mt-8 w-full">
-          {/* Navigation Section: Back button to return to sessions */}
-          <div className="mb-6">
+          {/* Navigation Section: Back button and refresh */}
+          <div className="mb-6 flex items-center gap-3">
             <Button variant="outline" size="sm" onClick={() => router.back()}>
               Back to Sessions
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              <RefreshCw
+                className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
+              />
+              Refresh
             </Button>
           </div>
 
@@ -567,11 +809,11 @@ export default function SessionEventsPage() {
             </p>
           </div>
 
-          {/* Date Filter Section: Date range filtering for events */}
-          <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
-            <h3 className="mb-4 text-lg font-semibold text-gray-900">
-              Filter Events by Date
-            </h3>
+          {/* Member Location Settings Section: Session membership configuration */}
+          {renderLocationSettings()}
+
+          {/* Date Filter Section: Auto mode shows buttons on md+, select on mobile */}
+          <div className="mb-6">
             <DashboardDateFilters
               onCustomRangeGo={handleFilter}
               hideAllTime={false}

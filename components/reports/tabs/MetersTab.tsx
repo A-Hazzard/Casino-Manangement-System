@@ -55,9 +55,14 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { toast } from 'sonner';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 
 export default function MetersTab() {
   const router = useRouter();
+  
+  // AbortController for meters data fetching
+  const makeMetersRequest = useAbortableRequest();
+  
   const [allMetersData, setAllMetersData] = useState<MetersReportData[]>([]); // Store all fetched data (batches)
   const [locations, setLocations] = useState<
     { id: string; name: string; sasEnabled: boolean }[]
@@ -453,103 +458,102 @@ export default function MetersTab() {
       }
 
       setLoading(true);
-      setReportsLoading(true); // Set reports store loading state
+      setReportsLoading(true);
       setError(null);
 
-      try {
-        const params = new URLSearchParams({
-          locations: selectedLocations.join(','),
-          timePeriod: activeMetricsFilter,
-          page: batch.toString(),
-          limit: itemsPerBatch.toString(),
-        });
+      await makeMetersRequest(
+        async (signal) => {
+          const params = new URLSearchParams({
+            locations: selectedLocations.join(','),
+            timePeriod: activeMetricsFilter,
+            page: batch.toString(),
+            limit: itemsPerBatch.toString(),
+          });
 
-        // Add custom dates if needed (in YYYY-MM-DD format)
-        if (activeMetricsFilter === 'Custom' && customDateRange) {
-          params.append(
-            'startDate',
-            customDateRange.startDate.toISOString().split('T')[0]
-          );
-          params.append(
-            'endDate',
-            customDateRange.endDate.toISOString().split('T')[0]
-          );
-        }
-
-        // Add licensee filter if selected
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.append('licencee', selectedLicencee);
-        }
-
-        // Add currency parameter
-        if (displayCurrency) {
-          params.append('currency', displayCurrency);
-        }
-
-        // Add includeHourlyData parameter when location is selected
-        if (selectedLocations.length > 0) {
-          params.append('includeHourlyData', 'true');
-          setHourlyChartLoading(true);
-        }
-
-        const response = await axios.get<
-          MetersReportResponse & {
-            hourlyChartData?: Array<{
-              day: string;
-              hour: string;
-              gamesPlayed: number;
-              coinIn: number;
-              coinOut: number;
-            }>;
+          if (activeMetricsFilter === 'Custom' && customDateRange) {
+            params.append(
+              'startDate',
+              customDateRange.startDate.toISOString().split('T')[0]
+            );
+            params.append(
+              'endDate',
+              customDateRange.endDate.toISOString().split('T')[0]
+            );
           }
-        >(`/api/reports/meters?${params}`);
 
-        const newMetersData = response.data.data || [];
+          if (selectedLicencee && selectedLicencee !== 'all') {
+            params.append('licencee', selectedLicencee);
+          }
 
-        // Update hourly chart data if provided
-        if (response.data.hourlyChartData) {
-          setHourlyChartData(response.data.hourlyChartData);
-          setAllHourlyChartData(response.data.hourlyChartData); // Store original data for when search is cleared
-        }
-        setHourlyChartLoading(false);
+          if (displayCurrency) {
+            params.append('currency', displayCurrency);
+          }
 
-        // Merge new meters data into allMetersData, avoiding duplicates
-        setAllMetersData(prev => {
-          const existingIds = new Set(
-            prev.map(
-              m => m.machineId || ((m as Record<string, unknown>)._id as string)
-            )
-          );
-          const uniqueNewMeters = newMetersData.filter(
-            (m: MetersReportData) => {
-              const id =
-                m.machineId || ((m as Record<string, unknown>)._id as string);
-              return !existingIds.has(id);
+          if (selectedLocations.length > 0) {
+            params.append('includeHourlyData', 'true');
+            setHourlyChartLoading(true);
+          }
+
+          try {
+            const response = await axios.get<
+              MetersReportResponse & {
+                hourlyChartData?: Array<{
+                  day: string;
+                  hour: string;
+                  gamesPlayed: number;
+                  coinIn: number;
+                  coinOut: number;
+                }>;
+              }
+            >(`/api/reports/meters?${params}`, { signal });
+
+            const newMetersData = response.data.data || [];
+
+            if (response.data.hourlyChartData) {
+              setHourlyChartData(response.data.hourlyChartData);
+              setAllHourlyChartData(response.data.hourlyChartData);
             }
-          );
-          return [...prev, ...uniqueNewMeters];
-        });
-      } catch (err: unknown) {
-        console.error('Error fetching meters data:', err);
-        const errorMessage =
-          (
-            (
-              (err as Record<string, unknown>)?.response as Record<
-                string,
-                unknown
-              >
-            )?.data as Record<string, unknown>
-          )?.error ||
-          (err as Error)?.message ||
-          'Failed to load meters data';
-        setError(errorMessage as string);
-        toast.error(errorMessage as string, {
-          duration: 3000,
-        });
-      } finally {
-        setLoading(false);
-        setReportsLoading(false); // Clear reports store loading state
-      }
+            setHourlyChartLoading(false);
+
+            setAllMetersData(prev => {
+              const existingIds = new Set(
+                prev.map(
+                  m => m.machineId || ((m as Record<string, unknown>)._id as string)
+                )
+              );
+              const uniqueNewMeters = newMetersData.filter(
+                (m: MetersReportData) => {
+                  const id =
+                    m.machineId || ((m as Record<string, unknown>)._id as string);
+                  return !existingIds.has(id);
+                }
+              );
+              return [...prev, ...uniqueNewMeters];
+            });
+          } catch (err: unknown) {
+            console.error('Error fetching meters data:', err);
+            const errorMessage =
+              (
+                (
+                  (err as Record<string, unknown>)?.response as Record<
+                    string,
+                    unknown
+                  >
+                )?.data as Record<string, unknown>
+              )?.error ||
+              (err as Error)?.message ||
+              'Failed to load meters data';
+            setError(errorMessage as string);
+            toast.error(errorMessage as string, {
+              duration: 3000,
+            });
+          }
+        },
+        `Meters Report (Batch ${batch}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
+      );
+
+      setLoading(false);
+      setReportsLoading(false);
     },
     [
       selectedLocations,
@@ -559,6 +563,7 @@ export default function MetersTab() {
       displayCurrency,
       itemsPerBatch,
       setReportsLoading,
+      makeMetersRequest,
     ]
   );
 

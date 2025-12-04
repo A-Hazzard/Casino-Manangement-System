@@ -6,38 +6,39 @@ import MemberDetailsModal from '@/components/members/MemberDetailsModal';
 import { Button } from '@/components/ui/button';
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useDebounce } from '@/lib/utils/hooks';
 import { formatPhoneNumber } from '@/lib/utils/phoneFormatter';
 import type {
-    Location,
-    MemberSummary,
-    SummaryStats,
+  Location,
+  MemberSummary,
+  SummaryStats,
 } from '@/shared/types/entities';
 import type { PaginationInfo } from '@/shared/types/reports';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import {
-    Activity,
-    Calendar,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    ChevronsLeft,
-    ChevronsRight,
-    Download,
-    Eye,
-    FileSpreadsheet,
-    FileText,
-    MapPin,
-    RefreshCw,
-    Search,
-    Users,
+  Activity,
+  Calendar,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Download,
+  ExternalLink,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  MapPin,
+  RefreshCw,
+  Search,
+  Users,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -75,12 +76,15 @@ export default function MembersSummaryTab() {
     setRefreshing: setRefreshingContext,
   } = useMembersHandlers();
 
-  // Fetch locations for the filter dropdown
+  // Fetch locations for the filter dropdown (membership-enabled only)
   const fetchLocations = useCallback(async () => {
     try {
       const params = new URLSearchParams();
+      params.append('membershipOnly', 'true');
 
-      const response = await axios.get(`/api/machines/locations?${params}`);
+      const response = await axios.get(
+        `/api/machines/locations?${params.toString()}`
+      );
       const data = response.data;
       if (data.locations && Array.isArray(data.locations)) {
         setLocations(data.locations);
@@ -854,7 +858,14 @@ export default function MembersSummaryTab() {
     if (!summaryStats) return null;
 
     return (
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div
+        className={`mb-6 grid grid-cols-1 gap-4 ${
+          typeof window !== 'undefined' &&
+          window.location.hostname === 'localhost'
+            ? 'md:grid-cols-3'
+            : 'md:grid-cols-2'
+        }`}
+      >
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="flex items-center">
             <div className="rounded-lg bg-blue-100 p-2">
@@ -883,21 +894,24 @@ export default function MembersSummaryTab() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center">
-            <div className="rounded-lg bg-orange-100 p-2">
-              <Calendar className="h-6 w-6 text-orange-600" />
+        {typeof window !== 'undefined' &&
+          window.location.hostname === 'localhost' && (
+            <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="flex items-center">
+                <div className="rounded-lg bg-orange-100 p-2">
+                  <Calendar className="h-6 w-6 text-orange-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">
+                    Active Members
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {summaryStats.activeMembers}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">
-                Active Members
-              </p>
-              <p className="text-2xl font-bold text-gray-900">
-                {summaryStats.activeMembers}
-              </p>
-            </div>
-          </div>
-        </div>
+          )}
       </div>
     );
   };
@@ -1038,7 +1052,22 @@ export default function MembersSummaryTab() {
                       {formatDate(member.createdAt)}
                     </td>
                     <td className="border border-border p-3">
-                      {member.locationName}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (member.gamingLocation) {
+                            router.push(`/locations/${member.gamingLocation}`);
+                          }
+                        }}
+                        className="inline-flex max-w-[200px] items-center gap-1.5 truncate text-left text-sm font-medium text-blue-600 underline decoration-dotted hover:text-blue-800"
+                        title={member.locationName}
+                        disabled={!member.gamingLocation}
+                      >
+                        {member.locationName || 'Unknown Location'}
+                        {member.gamingLocation && (
+                          <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                        )}
+                      </button>
                     </td>
                     <td className="border border-border p-3">
                       <div
@@ -1120,12 +1149,29 @@ export default function MembersSummaryTab() {
                     <h3 className="truncate text-base font-semibold text-gray-900">
                       {member.fullName}
                     </h3>
-                    <p className="truncate text-xs text-gray-500">
-                      {member.locationName}
-                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (member.gamingLocation) {
+                          router.push(`/locations/${member.gamingLocation}`);
+                        }
+                      }}
+                      className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate text-xs font-medium text-blue-600 hover:underline"
+                      title={member.locationName}
+                      disabled={!member.gamingLocation}
+                    >
+                      <span className="truncate">
+                        {member.locationName || 'Unknown Location'}
+                      </span>
+                      {member.gamingLocation && (
+                        <ExternalLink className="h-3 w-3 flex-shrink-0 text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
+                      )}
+                    </button>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span className={`text-xs font-medium ${(member.winLoss || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <span
+                      className={`text-xs font-medium ${(member.winLoss || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    >
                       {formatCurrency(member.winLoss || 0)}
                     </span>
                   </div>
@@ -1157,7 +1203,7 @@ export default function MembersSummaryTab() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleViewMember(member)}
-                    className="flex items-center justify-center gap-1.5 text-xs h-9"
+                    className="flex h-9 items-center justify-center gap-1.5 text-xs"
                   >
                     <Eye className="h-3.5 w-3.5" />
                     <span>Details</span>
@@ -1166,7 +1212,7 @@ export default function MembersSummaryTab() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleViewSessions(member._id)}
-                    className="flex items-center justify-center gap-1.5 text-xs h-9"
+                    className="flex h-9 items-center justify-center gap-1.5 text-xs"
                   >
                     <Activity className="h-3.5 w-3.5" />
                     <span>Sessions</span>

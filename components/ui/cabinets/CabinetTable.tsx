@@ -1,7 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -11,20 +10,23 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import Image from 'next/image';
+import { IMAGES } from '@/lib/constants/images';
 import formatCurrency from '@/lib/utils/currency';
 import {
+  getGrossColorClass,
   getMoneyInColorClass,
   getMoneyOutColorClass,
-  getGrossColorClass,
 } from '@/lib/utils/financialColors';
-import { formatDistanceToNow } from 'date-fns';
-import type { GamingMachine as Cabinet } from '@/shared/types/entities';
-import type { DataTableProps } from '@/shared/types/components';
 import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
+import type { DataTableProps } from '@/shared/types/components';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { ClockIcon, Cross1Icon, MobileIcon } from '@radix-ui/react-icons';
+import { formatDistanceToNow } from 'date-fns';
+import { ExternalLink, Eye } from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useRef } from 'react';
 import { toast } from 'sonner';
-import { Eye, ExternalLink } from 'lucide-react';
 type CabinetTableProps = DataTableProps<Cabinet> & {
   onMachineClick?: (machineId: string) => void;
   showLocation?: boolean;
@@ -32,9 +34,16 @@ type CabinetTableProps = DataTableProps<Cabinet> & {
   showMetrics?: boolean;
   canEditMachines?: boolean; // If false, hide edit button
   canDeleteMachines?: boolean; // If false, hide delete button
+  /**
+   * When false, disable header click sorting.
+   * Used on pages that provide separate sort controls.
+   */
+  enableHeaderSorting?: boolean;
+  /**
+   * When false, hide the sort direction icon in the header.
+   */
+  showSortIcons?: boolean;
 };
-import { ClockIcon, Cross1Icon, MobileIcon } from '@radix-ui/react-icons';
-import { IMAGES } from '@/lib/constants/images';
 
 export default function CabinetTable({
   data: cabinets,
@@ -47,6 +56,8 @@ export default function CabinetTable({
   onDelete,
   canEditMachines = true, // Default to true for backward compatibility
   canDeleteMachines = true, // Default to true for backward compatibility
+  enableHeaderSorting = true,
+  showSortIcons = true,
 }: CabinetTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
   const router = useRouter();
@@ -96,56 +107,64 @@ export default function CabinetTable({
         <TableHeader>
           <TableRow className="bg-[#00b517] hover:bg-[#00b517]">
             <TableHead
-              className="relative cursor-pointer font-semibold text-white w-[240px]"
-              onClick={() => onSort('assetNumber')}
+              className="relative w-[240px] font-semibold text-white"
+              onClick={
+                enableHeaderSorting ? () => onSort('assetNumber') : undefined
+              }
               isFirstColumn={true}
             >
               <span>ASSET NUMBER</span>
-              {sortOption === 'assetNumber' && (
+              {showSortIcons && sortOption === 'assetNumber' && (
                 <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                   {sortOrder === 'desc' ? '▼' : '▲'}
                 </span>
               )}
             </TableHead>
             <TableHead
-              className="relative cursor-pointer font-semibold text-white"
-              onClick={() => onSort('moneyIn')}
+              className="relative font-semibold text-white"
+              onClick={
+                enableHeaderSorting ? () => onSort('moneyIn') : undefined
+              }
             >
               <span>MONEY IN</span>
-              {sortOption === 'moneyIn' && (
+              {showSortIcons && sortOption === 'moneyIn' && (
                 <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                   {sortOrder === 'desc' ? '▼' : '▲'}
                 </span>
               )}
             </TableHead>
             <TableHead
-              className="relative cursor-pointer font-semibold text-white"
-              onClick={() => onSort('moneyOut')}
+              className="relative font-semibold text-white"
+              onClick={
+                enableHeaderSorting ? () => onSort('moneyOut') : undefined
+              }
             >
               <span>MONEY OUT</span>
-              {sortOption === 'moneyOut' && (
+              {showSortIcons && sortOption === 'moneyOut' && (
                 <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                   {sortOrder === 'desc' ? '▼' : '▲'}
                 </span>
               )}
             </TableHead>
             <TableHead
-              className="relative cursor-pointer font-semibold text-white"
-              onClick={() => onSort('jackpot')}
+              className="relative font-semibold text-white"
+              onClick={
+                enableHeaderSorting ? () => onSort('jackpot') : undefined
+              }
             >
               <span>JACKPOT</span>
-              {sortOption === 'jackpot' && (
+              {showSortIcons && sortOption === 'jackpot' && (
                 <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                   {sortOrder === 'desc' ? '▼' : '▲'}
                 </span>
               )}
             </TableHead>
             <TableHead
-              className="relative cursor-pointer font-semibold text-white"
-              onClick={() => onSort('gross')}
+              className="relative font-semibold text-white"
+              onClick={enableHeaderSorting ? () => onSort('gross') : undefined}
             >
               <span>GROSS</span>
-              {sortOption === 'gross' && (
+              {showSortIcons && sortOption === 'gross' && (
                 <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                   {sortOrder === 'desc' ? '▼' : '▲'}
                 </span>
@@ -168,10 +187,7 @@ export default function CabinetTable({
             const smbId = cab.smbId || '';
 
             return (
-              <TableRow
-                key={cab._id}
-                className="hover:bg-grayHighlight/10"
-              >
+              <TableRow key={cab._id} className="hover:bg-grayHighlight/10">
                 <TableCell isFirstColumn={true} className="w-[240px]">
                   <div className="space-y-1">
                     {/* Row 1: Serial Number/Asset Number - Navigate to cabinet details */}
@@ -181,7 +197,7 @@ export default function CabinetTable({
                           e.stopPropagation();
                           navigateToCabinet(cab._id);
                         }}
-                        className="font-medium text-sm hover:text-blue-600 hover:underline cursor-pointer text-left break-words whitespace-normal"
+                        className="cursor-pointer whitespace-normal break-words text-left text-sm font-medium hover:text-blue-600 hover:underline"
                         title="Click to view cabinet details"
                       >
                         {formatMachineDisplayNameWithBold(cab)}
@@ -196,11 +212,11 @@ export default function CabinetTable({
                             router.push(`/locations/${cab.locationId}`);
                           }
                         }}
-                        className="text-xs font-semibold text-gray-600 hover:text-blue-600 hover:underline cursor-pointer break-words whitespace-normal flex items-center gap-1"
+                        className="flex cursor-pointer items-center gap-1 whitespace-normal break-words text-xs font-semibold text-gray-600 hover:text-blue-600 hover:underline"
                         title="Click to view location details"
                         disabled={!cab.locationId}
                       >
-                      {cab.locationName || '(No Location)'}
+                        {cab.locationName || '(No Location)'}
                       </button>
                       {cab.locationId && (
                         <button
@@ -211,13 +227,11 @@ export default function CabinetTable({
                           className="flex-shrink-0"
                           title="View location details"
                         >
-                          <ExternalLink
-                            className="h-3 w-3 text-gray-500 hover:text-blue-600 cursor-pointer transition-transform hover:scale-110"
-                          />
+                          <ExternalLink className="h-3 w-3 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
                         </button>
                       )}
                     </div>
-                    
+
                     {/* Row 2: SMIB and Status */}
                     <div className="flex items-center gap-2">
                       <button
@@ -227,7 +241,7 @@ export default function CabinetTable({
                             copyToClipboard(smbId, 'SMIB');
                           }
                         }}
-                        className={`text-xs break-words whitespace-normal ${smbId ? 'text-gray-500 hover:text-blue-600 hover:underline cursor-pointer' : 'text-gray-400'}`}
+                        className={`whitespace-normal break-words text-xs ${smbId ? 'cursor-pointer text-gray-500 hover:text-blue-600 hover:underline' : 'text-gray-400'}`}
                         title={smbId ? 'Click to copy SMIB' : 'No SMIB'}
                         disabled={!smbId}
                       >
@@ -235,7 +249,7 @@ export default function CabinetTable({
                       </button>
                       <Badge
                         variant={isOnline ? 'default' : 'destructive'}
-                        className={`ml-auto inline-block w-fit rounded-full px-2 py-0.5 text-xs flex-shrink-0 ${
+                        className={`ml-auto inline-block w-fit flex-shrink-0 rounded-full px-2 py-0.5 text-xs ${
                           isOnline
                             ? 'bg-green-100 text-green-700 hover:bg-green-200'
                             : 'bg-red-100 text-red-700 hover:bg-red-200'
@@ -249,21 +263,27 @@ export default function CabinetTable({
                         {isOnline ? 'Online' : 'Offline'}
                       </Badge>
                     </div>
-                    
+
                     {/* Row 3: Last Activity */}
                     <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <ClockIcon className="h-3 w-3 flex-shrink-0" /> 
-                      <span className="break-words whitespace-normal">{lastOnlineText}</span>
+                      <ClockIcon className="h-3 w-3 flex-shrink-0" />
+                      <span className="whitespace-normal break-words">
+                        {lastOnlineText}
+                      </span>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <span className={`font-semibold ${getMoneyInColorClass(cab.moneyIn)}`}>
+                  <span
+                    className={`font-semibold ${getMoneyInColorClass(cab.moneyIn)}`}
+                  >
                     {formatCurrency(cab.moneyIn)}
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span className={`font-semibold ${getMoneyOutColorClass(cab.moneyOut, cab.moneyIn)}`}>
+                  <span
+                    className={`font-semibold ${getMoneyOutColorClass(cab.moneyOut, cab.moneyIn)}`}
+                  >
                     {formatCurrency(cab.moneyOut)}
                   </span>
                 </TableCell>
@@ -273,7 +293,9 @@ export default function CabinetTable({
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span className={`font-semibold ${getGrossColorClass(cab.gross)}`}>
+                  <span
+                    className={`font-semibold ${getGrossColorClass(cab.gross)}`}
+                  >
                     {formatCurrency(cab.gross)}
                   </span>
                 </TableCell>
@@ -291,42 +313,42 @@ export default function CabinetTable({
                       <Eye className="h-4 w-4" />
                     </Button>
                     {canEditMachines && (
-                    <Button
-                      variant="ghost"
-                      onClick={e => {
-                        e.stopPropagation();
-                        onEdit?.(cab);
-                      }}
-                      className="h-8 w-8 p-1 hover:bg-accent"
-                      title="Edit"
-                    >
-                      <Image
-                        src={IMAGES.editIcon}
-                        alt="Edit"
-                        width={16}
-                        height={16}
-                        className="h-4 w-4"
-                      />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={e => {
+                          e.stopPropagation();
+                          onEdit?.(cab);
+                        }}
+                        className="h-8 w-8 p-1 hover:bg-accent"
+                        title="Edit"
+                      >
+                        <Image
+                          src={IMAGES.editIcon}
+                          alt="Edit"
+                          width={16}
+                          height={16}
+                          className="h-4 w-4"
+                        />
+                      </Button>
                     )}
                     {canDeleteMachines && (
-                    <Button
-                      variant="ghost"
-                      onClick={e => {
-                        e.stopPropagation();
-                        onDelete?.(cab);
-                      }}
-                      className="h-8 w-8 p-1 hover:bg-accent"
-                      title="Delete"
-                    >
-                      <Image
-                        src={IMAGES.deleteIcon}
-                        alt="Delete"
-                        width={16}
-                        height={16}
-                        className="h-4 w-4"
-                      />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={e => {
+                          e.stopPropagation();
+                          onDelete?.(cab);
+                        }}
+                        className="h-8 w-8 p-1 hover:bg-accent"
+                        title="Delete"
+                      >
+                        <Image
+                          src={IMAGES.deleteIcon}
+                          alt="Delete"
+                          width={16}
+                          height={16}
+                          className="h-4 w-4"
+                        />
+                      </Button>
                     )}
                   </div>
                 </TableCell>

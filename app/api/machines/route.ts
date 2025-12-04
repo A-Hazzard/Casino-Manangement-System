@@ -94,9 +94,38 @@ export async function GET(request: NextRequest) {
 
   try {
     // ============================================================================
-    // STEP 1: Connect to database
+    // STEP 1: Connect to database and authenticate user
     // ============================================================================
     await connectDB();
+
+    // Get authenticated user and check permissions
+    const user = await getUserFromServer();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is a collector (collectors should not access machines/cabinets)
+    const userRoles = (user.roles as string[])?.map(r => r.toLowerCase()) || [];
+    const isCollectorOnly =
+      userRoles.includes('collector') &&
+      !userRoles.includes('developer') &&
+      !userRoles.includes('admin') &&
+      !userRoles.includes('manager') &&
+      !userRoles.includes('location admin') &&
+      !userRoles.includes('technician');
+
+    if (isCollectorOnly) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Collectors do not have access to cabinets/machines',
+        },
+        { status: 403 }
+      );
+    }
 
     // ============================================================================
     // STEP 2: Parse query parameters
@@ -952,10 +981,105 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Activity logging is handled by the frontend to ensure user context is available
+    // ============================================================================
+    // STEP 8: Log activity with accurate change tracking
+    // ============================================================================
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        // Build changes array - ONLY for fields that were actually updated
+        const updateChanges: Array<{
+          field: string;
+          oldValue: unknown;
+          newValue: unknown;
+        }> = [];
+
+        if (data.serialNumber !== undefined) {
+          updateChanges.push({
+            field: 'serialNumber',
+            oldValue: originalMachine.serialNumber,
+            newValue: data.serialNumber,
+          });
+        }
+        if (data.game !== undefined) {
+          updateChanges.push({
+            field: 'game',
+            oldValue: originalMachine.game,
+            newValue: data.game,
+          });
+        }
+        if (data.gameType !== undefined) {
+          updateChanges.push({
+            field: 'gameType',
+            oldValue: originalMachine.gameType,
+            newValue: data.gameType,
+          });
+        }
+        if (data.isCronosMachine !== undefined) {
+          updateChanges.push({
+            field: 'isCronosMachine',
+            oldValue: originalMachine.isCronosMachine,
+            newValue: data.isCronosMachine,
+          });
+        }
+        if (data.cabinetType !== undefined) {
+          updateChanges.push({
+            field: 'cabinetType',
+            oldValue: originalMachine.cabinetType,
+            newValue: data.cabinetType,
+          });
+        }
+        if (data.assetStatus !== undefined) {
+          updateChanges.push({
+            field: 'assetStatus',
+            oldValue: originalMachine.assetStatus,
+            newValue: data.assetStatus,
+          });
+        }
+        if (data.gamingLocation !== undefined) {
+          updateChanges.push({
+            field: 'gamingLocation',
+            oldValue: originalMachine.gamingLocation,
+            newValue: data.gamingLocation,
+          });
+        }
+        if (data.smibBoard !== undefined) {
+          updateChanges.push({
+            field: 'smibBoard',
+            oldValue: originalMachine.smibBoard,
+            newValue: data.smibBoard,
+          });
+        }
+        if (data.accountingDenomination !== undefined) {
+          updateChanges.push({
+            field: 'accountingDenomination',
+            oldValue: originalMachine.accountingDenomination,
+            newValue: data.accountingDenomination,
+          });
+        }
+
+        await logActivity({
+          action: 'UPDATE',
+          details: `Updated machine "${originalMachine.serialNumber}" (${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''})`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'machine',
+            resourceId: id,
+            resourceName: originalMachine.serialNumber,
+            changes: updateChanges,
+          },
+        });
+      } catch (logError) {
+        console.error('Failed to log activity:', logError);
+      }
+    }
 
     // ============================================================================
-    // STEP 8: Return updated machine
+    // STEP 9: Return updated machine
     // ============================================================================
     return NextResponse.json({
       success: true,
@@ -1024,12 +1148,15 @@ export async function DELETE(request: NextRequest) {
     // STEP 4: Perform soft delete
     // ============================================================================
     // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-    await Machine.findOneAndUpdate({ _id: id }, {
-      $set: {
-        deletedAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
+    await Machine.findOneAndUpdate(
+      { _id: id },
+      {
+        $set: {
+          deletedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      }
+    );
 
     // ============================================================================
     // STEP 5: Log activity

@@ -26,6 +26,8 @@ type MachineStatusWidgetProps = {
   offlineCount: number;
   totalCount?: number; // Optional total count to show "X/Y" format
   showTotal?: boolean; // Whether to show total count
+  membershipCount?: number; // Optional membership count
+  showMembership?: boolean; // Whether to show membership count
 };
 
 export default function MachineStatusWidget({
@@ -34,6 +36,8 @@ export default function MachineStatusWidget({
   offlineCount = 0,
   totalCount,
   showTotal = false,
+  membershipCount = 0,
+  showMembership = false,
 }: MachineStatusWidgetProps) {
   const total = totalCount ?? (onlineCount + offlineCount);
   if (isLoading) {
@@ -44,6 +48,7 @@ export default function MachineStatusWidget({
         <div className="flex min-w-0 flex-1 gap-2 sm:gap-3">
           <Skeleton className="h-6 w-16 flex-shrink-0 rounded-full sm:w-24" />
           <Skeleton className="h-6 w-16 flex-shrink-0 rounded-full sm:w-24" />
+          {showMembership && <Skeleton className="h-6 w-20 flex-shrink-0 rounded-full sm:w-28" />}
         </div>
       </div>
     );
@@ -80,6 +85,14 @@ export default function MachineStatusWidget({
             {offlineCount.toLocaleString()} Offline
           </span>
         </span>
+        {showMembership && (
+          <span className="flex min-w-0 flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-blue-50 px-1.5 py-1 text-xs text-blue-700 sm:px-2">
+            <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500 sm:h-2 sm:w-2" />
+            <span className="truncate">
+              {membershipCount.toLocaleString()} {membershipCount === 1 ? 'Member' : 'Members'}
+            </span>
+          </span>
+        )}
       </div>
     </div>
   );

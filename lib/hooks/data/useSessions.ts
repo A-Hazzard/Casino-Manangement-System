@@ -5,6 +5,7 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { buildSessionsQueryParams } from '@/lib/helpers/sessions';
 import { useDebounce } from '@/lib/utils/hooks';
 import type { Session, PaginationData } from '@/lib/types/sessions';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 
 /**
  * Custom hook for managing sessions data and state
@@ -30,6 +31,9 @@ export function useSessions() {
   const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
 
+  // AbortController for canceling previous requests
+  const makeRequest = useAbortableRequest();
+
   // Calculate which batch we need based on current page
   const calculateBatchNumber = useCallback((page: number) => {
     return Math.floor(page / pagesPerBatch) + 1;
@@ -39,80 +43,83 @@ export function useSessions() {
    * Fetch sessions from API
    */
   const fetchSessions = useCallback(async (batch: number = 1) => {
-    try {
-      setLoading(true);
-      setError(null);
+    await makeRequest(async (signal) => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      // Build query parameters
-      let startDate: Date | undefined;
-      let endDate: Date | undefined;
+        // Build query parameters
+        let startDate: Date | undefined;
+        let endDate: Date | undefined;
 
-      if (activeMetricsFilter === 'Custom' && customDateRange) {
-        startDate = customDateRange.startDate;
-        endDate = customDateRange.endDate;
-      } else {
-        // Handle other filter types
-        const now = new Date();
-        switch (activeMetricsFilter) {
-          case 'Today':
-            startDate = new Date(now.setHours(0, 0, 0, 0));
-            endDate = new Date(now.setHours(23, 59, 59, 999));
-            break;
-          case 'Yesterday':
-            const yesterday = new Date(now);
-            yesterday.setDate(yesterday.getDate() - 1);
-            startDate = new Date(yesterday.setHours(0, 0, 0, 0));
-            endDate = new Date(yesterday.setHours(23, 59, 59, 999));
-            break;
-          case 'last7days':
-            startDate = new Date(now.setDate(now.getDate() - 7));
-            endDate = new Date();
-            break;
-          case 'last30days':
-            startDate = new Date(now.setDate(now.getDate() - 30));
-            endDate = new Date();
-            break;
+        if (activeMetricsFilter === 'Custom' && customDateRange) {
+          startDate = customDateRange.startDate;
+          endDate = customDateRange.endDate;
+        } else {
+          // Handle other filter types
+          const now = new Date();
+          switch (activeMetricsFilter) {
+            case 'Today':
+              startDate = new Date(now.setHours(0, 0, 0, 0));
+              endDate = new Date(now.setHours(23, 59, 59, 999));
+              break;
+            case 'Yesterday':
+              const yesterday = new Date(now);
+              yesterday.setDate(yesterday.getDate() - 1);
+              startDate = new Date(yesterday.setHours(0, 0, 0, 0));
+              endDate = new Date(yesterday.setHours(23, 59, 59, 999));
+              break;
+            case 'last7days':
+              startDate = new Date(now.setDate(now.getDate() - 7));
+              endDate = new Date();
+              break;
+            case 'last30days':
+              startDate = new Date(now.setDate(now.getDate() - 30));
+              endDate = new Date();
+              break;
+          }
         }
-      }
 
-      const queryParams = buildSessionsQueryParams({
-        page: batch,
-        limit: itemsPerBatch,
-        search: debouncedSearchTerm,
-        sortBy,
-        sortOrder,
-        licensee: selectedLicencee === 'all' ? undefined : selectedLicencee,
-        startDate,
-        endDate,
-      });
+        const queryParams = buildSessionsQueryParams({
+          page: batch,
+          limit: itemsPerBatch,
+          search: debouncedSearchTerm,
+          sortBy,
+          sortOrder,
+          licensee: selectedLicencee === 'all' ? undefined : selectedLicencee,
+          startDate,
+          endDate,
+        });
 
-      const response = await axios.get(
-        `/api/sessions?${queryParams.toString()}`
-      );
-      const data = response.data;
-      // API returns { success: true, data: { sessions, pagination } }
-      const newSessions = data.data?.sessions || data.sessions || [];
-      
-      // Update total sessions count from API pagination
-      if (data.data?.pagination?.totalSessions) {
-        setTotalSessionsFromAPI(data.data.pagination.totalSessions);
+        const response = await axios.get(
+          `/api/sessions?${queryParams.toString()}`,
+          { signal }
+        );
+        const data = response.data;
+        // API returns { success: true, data: { sessions, pagination } }
+        const newSessions = data.data?.sessions || data.sessions || [];
+        
+        // Update total sessions count from API pagination
+        if (data.data?.pagination?.totalSessions) {
+          setTotalSessionsFromAPI(data.data.pagination.totalSessions);
+        }
+        
+        // Merge new sessions into allSessions, avoiding duplicates
+        setAllSessions(prev => {
+          const existingIds = new Set(prev.map(s => s._id));
+          const uniqueNewSessions = newSessions.filter((s: Session) => !existingIds.has(s._id));
+          return [...prev, ...uniqueNewSessions];
+        });
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to fetch sessions';
+        setError(errorMessage);
+        toast.error(errorMessage);
+        setAllSessions([]);
+      } finally {
+        setLoading(false);
       }
-      
-      // Merge new sessions into allSessions, avoiding duplicates
-      setAllSessions(prev => {
-        const existingIds = new Set(prev.map(s => s._id));
-        const uniqueNewSessions = newSessions.filter((s: Session) => !existingIds.has(s._id));
-        return [...prev, ...uniqueNewSessions];
-      });
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to fetch sessions';
-      setError(errorMessage);
-      toast.error(errorMessage);
-      setAllSessions([]);
-    } finally {
-      setLoading(false);
-    }
+    }, `Sessions (${activeMetricsFilter}, Licensee: ${selectedLicencee})`);
   }, [
     debouncedSearchTerm, // Use debounced value instead of searchTerm
     sortBy,
@@ -121,6 +128,7 @@ export function useSessions() {
     activeMetricsFilter,
     customDateRange,
     itemsPerBatch,
+    makeRequest,
   ]);
 
   /**

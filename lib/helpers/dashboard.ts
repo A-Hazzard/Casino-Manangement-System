@@ -1,10 +1,10 @@
 import {
-    ActiveFilters,
-    ActiveTab,
-    dashboardData,
-    DashboardTotals,
-    locations,
-    TopPerformingData,
+  ActiveFilters,
+  ActiveTab,
+  dashboardData,
+  DashboardTotals,
+  locations,
+  TopPerformingData,
 } from '@/lib/types';
 
 import getAllGamingLocations from '@/lib/helpers/locations';
@@ -83,7 +83,8 @@ export const fetchDashboardTotals = async (
   customDateRange: { startDate: Date; endDate: Date },
   selectedLicencee: string | undefined,
   setTotals: (totals: DashboardTotals | null) => void,
-  displayCurrency?: string
+  displayCurrency?: string,
+  signal?: AbortSignal
 ) => {
   try {
     let url = `/api/locationAggregation?timePeriod=${activeMetricsFilter}`;
@@ -112,42 +113,60 @@ export const fetchDashboardTotals = async (
     url += `&clearCache=true`;
 
     console.log('🔍 [fetchDashboardTotals] Calling API:', url);
-    const response = await axios.get(url);
+    const response = await axios.get(url, { signal });
     const locationData = response.data;
 
     console.log('🔍 [fetchDashboardTotals] API Response:', {
       hasData: !!locationData.data,
       dataLength: locationData.data?.length || 0,
       responseKeys: Object.keys(locationData),
-      firstFewLocations: (locationData.data || []).slice(0, 3).map((loc: { name?: string; locationName?: string; moneyIn?: number; _id?: string }) => ({
-        name: loc.name || loc.locationName,
-        _id: loc._id,
-        moneyIn: loc.moneyIn
-      })),
-      fullResponse: locationData // Log full response for debugging
+      firstFewLocations: (locationData.data || [])
+        .slice(0, 3)
+        .map(
+          (loc: {
+            name?: string;
+            locationName?: string;
+            moneyIn?: number;
+            _id?: string;
+          }) => ({
+            name: loc.name || loc.locationName,
+            _id: loc._id,
+            moneyIn: loc.moneyIn,
+          })
+        ),
+      fullResponse: locationData, // Log full response for debugging
     });
 
     // Check if response has error
     if (locationData.error) {
-      console.error('❌ [fetchDashboardTotals] API returned error:', locationData.error);
+      console.error(
+        '❌ [fetchDashboardTotals] API returned error:',
+        locationData.error
+      );
       setTotals(null);
       return;
     }
 
     // Verify data structure
     if (!Array.isArray(locationData.data)) {
-      console.error('❌ [fetchDashboardTotals] API response.data is not an array:', {
-        type: typeof locationData.data,
-        value: locationData.data,
-        responseKeys: Object.keys(locationData)
-      });
+      console.error(
+        '❌ [fetchDashboardTotals] API response.data is not an array:',
+        {
+          type: typeof locationData.data,
+          value: locationData.data,
+          responseKeys: Object.keys(locationData),
+        }
+      );
       setTotals(null);
       return;
     }
 
     // Sum up totals from all locations (same logic as locations page)
     const totals = locationData.data.reduce(
-      (acc: DashboardTotals, loc: { moneyIn?: number; moneyOut?: number; gross?: number }) => ({
+      (
+        acc: DashboardTotals,
+        loc: { moneyIn?: number; moneyOut?: number; gross?: number }
+      ) => ({
         moneyIn: acc.moneyIn + (loc.moneyIn || 0),
         moneyOut: acc.moneyOut + (loc.moneyOut || 0),
         gross: acc.gross + (loc.gross || 0),
@@ -160,22 +179,34 @@ export const fetchDashboardTotals = async (
       moneyOut: totals.moneyOut,
       gross: totals.gross,
       locationCount: locationData.data.length,
-      locationsWithData: locationData.data.filter((loc: { moneyIn?: number }) => (loc.moneyIn || 0) > 0).length
+      locationsWithData: locationData.data.filter(
+        (loc: { moneyIn?: number }) => (loc.moneyIn || 0) > 0
+      ).length,
     });
 
     // Convert to DashboardTotals format
     setTotals(totals);
     console.log('🔍 [fetchDashboardTotals] setTotals called with:', totals);
   } catch (error) {
+    // Silently handle aborted requests - this is expected behavior
+    if (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) {
+      console.log('🔍 [fetchDashboardTotals] Request aborted (filter/page change)');
+      return;
+    }
+    
     const apiError = classifyError(error);
     showErrorNotification(apiError, 'Dashboard Totals');
 
-    console.error('❌ [fetchDashboardTotals] Error fetching dashboard totals:', {
-      error,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      response: (error as { response?: { data?: unknown; status?: number } })?.response?.data,
-      status: (error as { response?: { status?: number } })?.response?.status
-    });
+    console.error(
+      '❌ [fetchDashboardTotals] Error fetching dashboard totals:',
+      {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        response: (error as { response?: { data?: unknown; status?: number } })
+          ?.response?.data,
+        status: (error as { response?: { status?: number } })?.response?.status,
+      }
+    );
 
     setTotals(null);
   }
@@ -192,7 +223,8 @@ export const fetchMetricsData = async (
   setChartData: (data: dashboardData[]) => void,
   setActiveFilters: (filters: ActiveFilters) => void,
   setShowDatePicker: (show: boolean) => void,
-  displayCurrency?: string
+  displayCurrency?: string,
+  signal?: AbortSignal
 ) => {
   // Fetch totals using the dedicated API
   await fetchDashboardTotals(
@@ -200,7 +232,8 @@ export const fetchMetricsData = async (
     customDateRange,
     selectedLicencee,
     setTotals,
-    displayCurrency
+    displayCurrency,
+    signal
   );
 
   // Fetch chart data using the existing method
@@ -214,7 +247,8 @@ export const fetchMetricsData = async (
       selectedLicencee,
       setActiveFilters,
       setShowDatePicker,
-      displayCurrency
+      displayCurrency,
+      signal
     );
   } else {
     await switchFilter(
@@ -226,7 +260,8 @@ export const fetchMetricsData = async (
       undefined,
       setActiveFilters,
       setShowDatePicker,
-      displayCurrency
+      displayCurrency,
+      signal
     );
   }
 };
@@ -240,7 +275,8 @@ export const fetchTopPerformingDataHelper = async (
   setTopPerformingData: (data: TopPerformingData) => void,
   setLoadingTopPerforming: (loading: boolean) => void,
   selectedLicencee?: string,
-  currency?: string
+  currency?: string,
+  signal?: AbortSignal
 ) => {
   // Only fetch data if there's a valid filter
   if (!activePieChartFilter) {
@@ -254,7 +290,8 @@ export const fetchTopPerformingDataHelper = async (
       activeTab,
       activePieChartFilter,
       selectedLicencee,
-      currency
+      currency,
+      signal
     );
     setTopPerformingData(data);
   } catch (error) {

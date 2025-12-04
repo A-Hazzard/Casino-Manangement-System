@@ -3,8 +3,8 @@
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { Input } from '@/components/ui/input';
-import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { SESSION_SORT_OPTIONS } from '@/lib/constants/sessions';
+import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 
 type SessionsFiltersProps = {
   searchTerm: string;
@@ -38,10 +38,10 @@ export default function SessionsFilters({
   };
 
   return (
-    <div className="space-y-4 w-full max-w-full">
+    <div className="w-full max-w-full space-y-4">
       {/* Date Filters */}
       <div>
-        <DashboardDateFilters hideAllTime={false} />
+        <DashboardDateFilters hideAllTime={false} mode="desktop" />
       </div>
 
       {/* Mobile: Search + Horizontal scroll filters */}
@@ -59,14 +59,17 @@ export default function SessionsFilters({
         </div>
 
         {/* Filters - Horizontal scrollable */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-          <div className="flex gap-2 min-w-max">
+        <div className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 flex gap-2 overflow-x-auto pb-2">
+          <div className="flex min-w-max gap-2">
             {/* Sort Field */}
-            <div className="w-40 flex-shrink-0 relative">
+            <div className="relative w-40 flex-shrink-0">
               <CustomSelect
                 value={sortBy}
                 onValueChange={handleSortFieldChange}
-                options={SESSION_SORT_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
+                options={SESSION_SORT_OPTIONS.map(o => ({
+                  value: o.value,
+                  label: o.label,
+                }))}
                 placeholder="Sort By"
                 className="w-full"
                 triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm whitespace-nowrap"
@@ -76,7 +79,7 @@ export default function SessionsFilters({
             </div>
 
             {/* Sort Order */}
-            <div className="w-28 flex-shrink-0 relative">
+            <div className="relative w-28 flex-shrink-0">
               <CustomSelect
                 value={sortOrder}
                 onValueChange={handleSortOrderChange}
@@ -112,7 +115,10 @@ export default function SessionsFilters({
           <CustomSelect
             value={sortBy}
             onValueChange={handleSortFieldChange}
-            options={SESSION_SORT_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
+            options={SESSION_SORT_OPTIONS.map(o => ({
+              value: o.value,
+              label: o.label,
+            }))}
             placeholder="Sort By"
             className="w-full"
             triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"

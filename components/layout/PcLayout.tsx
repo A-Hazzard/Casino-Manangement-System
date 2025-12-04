@@ -201,10 +201,7 @@ export default function PcLayout(props: PcLayoutProps) {
         <div className="col-span-3 space-y-6">
           {/* Date Filter Controls */}
           <div className="flex flex-wrap items-center gap-2">
-            <DashboardDateFilters
-              disabled={props.loadingChartData || props.refreshing}
-              hideAllTime={true}
-            />
+            <DashboardDateFilters hideAllTime={true} />
           </div>
 
           {/* Metrics Description Text */}

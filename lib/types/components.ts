@@ -370,6 +370,9 @@ export type CabinetGridProps = {
   currentPage: number;
   itemsPerPage: number;
   router: AppRouterInstance;
+  sortOption?: 'assetNumber' | 'locationName' | 'moneyIn' | 'moneyOut' | 'jackpot' | 'gross' | 'cancelledCredits' | 'game' | 'smbId' | 'serialNumber' | 'lastOnline';
+  sortOrder?: 'asc' | 'desc';
+  onSortChange?: (option: 'assetNumber' | 'locationName' | 'moneyIn' | 'moneyOut' | 'jackpot' | 'gross' | 'cancelledCredits' | 'game' | 'smbId' | 'serialNumber' | 'lastOnline', order: 'asc' | 'desc') => void;
 };
 
 export type ActivityLogModalProps = {

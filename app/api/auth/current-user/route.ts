@@ -17,7 +17,7 @@ import {
 } from '@/app/api/lib/helpers/profileValidation';
 import { getUserById, getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 /**
  * Main GET handler for current user
@@ -29,7 +29,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 4. Validate profile fields
  * 5. Return user data with validation status
  */
-export async function GET(_request: NextRequest) {
+export async function GET() {
   const startTime = Date.now();
 
   try {

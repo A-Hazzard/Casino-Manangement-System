@@ -210,11 +210,17 @@ export default function CabinetGrid({
   currentPage,
   itemsPerPage,
   router,
+  sortOption: externalSortOption,
+  sortOrder: externalSortOrder,
+  onSortChange,
 }: CabinetGridProps) {
-  // Handle sorting for the table view
-  const [sortOption, setSortOption] =
+  // Use external sort state if provided, otherwise use local state
+  const [internalSortOption, setInternalSortOption] =
     React.useState<CabinetSortOption>('moneyIn');
-  const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('desc');
+  const [internalSortOrder, setInternalSortOrder] = React.useState<'asc' | 'desc'>('desc');
+  
+  const sortOption = externalSortOption || internalSortOption;
+  const sortOrder = externalSortOrder || internalSortOrder;
 
   // Use cabinet actions store for modal management
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
@@ -287,11 +293,18 @@ export default function CabinetGrid({
   }, [user]);
 
   const handleColumnSort = (column: CabinetSortOption) => {
-    if (sortOption === column) {
-      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    if (onSortChange) {
+      // If external sort handler provided, use it
+      const newOrder = sortOption === column ? (sortOrder === 'asc' ? 'desc' : 'asc') : 'desc';
+      onSortChange(column, newOrder);
     } else {
-      setSortOption(column);
-      setSortOrder('desc');
+      // Otherwise use internal state
+      if (sortOption === column) {
+        setInternalSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+      } else {
+        setInternalSortOption(column);
+        setInternalSortOrder('desc');
+      }
     }
   };
 

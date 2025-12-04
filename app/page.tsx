@@ -30,20 +30,21 @@ import { TimePeriod } from '@/shared/types/common';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import {
-    fetchMetricsData,
-    fetchTopPerformingDataHelper,
-    loadGamingLocations,
+  fetchMetricsData,
+  fetchTopPerformingDataHelper,
+  loadGamingLocations,
 } from '@/lib/helpers/dashboard';
 import { DashboardTotals, TopPerformingData } from '@/lib/types';
 import { CustomizedLabelProps } from '@/lib/types/componentProps';
 
 // Custom hooks
 import {
-    useDashboardFilters,
-    useDashboardRefresh,
-    useDashboardScroll,
+  useDashboardFilters,
+  useDashboardRefresh,
+  useDashboardScroll,
 } from '@/lib/hooks/data';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 
@@ -73,6 +74,10 @@ function DashboardContent() {
   const { handleApiCallWithRetry } = useGlobalErrorHandler();
   const { displayCurrency } = useCurrency();
   const user = useUserStore(state => state.user);
+
+  // AbortController for metrics and top performing queries
+  const makeMetricsRequest = useAbortableRequest();
+  const makeTopPerformingRequest = useAbortableRequest();
 
   // Create a stable reference to prevent infinite loops
   const stableHandleApiCallWithRetry = useCallback(handleApiCallWithRetry, [
@@ -202,9 +207,9 @@ function DashboardContent() {
           'Dashboard Locations'
         );
 
-        await stableHandleApiCallWithRetry(
-          () =>
-            fetchMetricsData(
+        await makeMetricsRequest(
+          async signal => {
+            await fetchMetricsData(
               activeMetricsFilter as TimePeriod,
               effectiveDateRange,
               selectedLicencee,
@@ -212,9 +217,11 @@ function DashboardContent() {
               setChartData,
               setActiveFilters,
               setShowDatePicker,
-              displayCurrency
-            ),
-          'Dashboard Metrics'
+              displayCurrency,
+              signal
+            );
+          },
+          `Dashboard Metrics (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
         );
       } finally {
         setLoadingChartData(false);
@@ -233,6 +240,7 @@ function DashboardContent() {
     displayCurrency,
     isAdminUser,
     stableHandleApiCallWithRetry,
+    makeMetricsRequest,
   ]);
 
   // Track if we're in initial load phase for automatic fallback
@@ -255,9 +263,9 @@ function DashboardContent() {
       fallbackAttemptsRef.current = [];
     }
 
-    stableHandleApiCallWithRetry(
-      () =>
-        fetchTopPerformingDataHelper(
+    makeTopPerformingRequest(
+      async signal => {
+        await fetchTopPerformingDataHelper(
           activeTab,
           currentFilter,
           (data: TopPerformingData) => {
@@ -272,11 +280,19 @@ function DashboardContent() {
               fallbackAttemptsRef.current.push(currentFilter);
 
               // Define fallback order: Today -> Yesterday -> 7d -> 30d
-              const fallbackOrder: TimePeriod[] = ['Today', 'Yesterday', '7d', '30d'];
+              const fallbackOrder: TimePeriod[] = [
+                'Today',
+                'Yesterday',
+                '7d',
+                '30d',
+              ];
               const currentIndex = fallbackOrder.indexOf(currentFilter);
               const nextFallback = fallbackOrder[currentIndex + 1];
 
-              if (nextFallback && !fallbackAttemptsRef.current.includes(nextFallback)) {
+              if (
+                nextFallback &&
+                !fallbackAttemptsRef.current.includes(nextFallback)
+              ) {
                 // Automatically switch to next fallback period
                 isAutomaticFallbackRef.current = true;
                 setActivePieChartFilter(nextFallback);
@@ -296,10 +312,12 @@ function DashboardContent() {
             }
           },
           setLoadingTopPerforming,
-          selectedLicencee, // Pass selected licensee for filtering
-          displayCurrency // Pass display currency
-        ),
-      'Dashboard Top Performing Data'
+          selectedLicencee,
+          displayCurrency,
+          signal
+        );
+      },
+      `Dashboard Top Performing (${activeTab}, ${currentFilter}, Licensee: ${selectedLicencee || 'all'})`
     );
     // Zustand setters are stable and don't need to be in dependencies
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -308,7 +326,7 @@ function DashboardContent() {
     activePieChartFilter,
     selectedLicencee,
     displayCurrency,
-    stableHandleApiCallWithRetry,
+    makeTopPerformingRequest,
   ]);
 
   // Update previous totals reference when new data arrives

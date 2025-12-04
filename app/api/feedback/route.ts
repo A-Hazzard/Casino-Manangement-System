@@ -524,13 +524,6 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    console.log('📥 PATCH /api/feedback - Received data:', {
-      _id,
-      archived,
-      status,
-      notes,
-    });
-
     const updateData: Record<string, unknown> = {};
 
     if (archived !== undefined) {
@@ -558,11 +551,6 @@ export async function PATCH(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    console.log(
-      '💾 EXECUTING PATCH with:',
-      JSON.stringify(updateData, null, 2)
-    );
 
     // Use updateOne for a direct MongoDB update, bypassing Mongoose document middleware if any
     const result = await FeedbackModel.collection.updateOne(
@@ -682,13 +670,6 @@ export async function PUT(request: NextRequest) {
     const { _id, status, archived, notes, reviewedBy, reviewedAt } =
       validationResult.data;
 
-    console.log('📥 PUT /api/feedback - Received data:', {
-      _id,
-      status,
-      archived,
-      notes,
-    });
-
     // Get existing feedback
     const existingFeedback = await FeedbackModel.findOne({ _id }).lean();
     if (!existingFeedback) {
@@ -697,17 +678,6 @@ export async function PUT(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    const existingFeedbackData = existingFeedback as {
-      _id?: unknown;
-      archived?: boolean;
-      status?: string;
-    };
-    console.log('📋 Existing feedback:', {
-      _id: existingFeedbackData._id,
-      archived: existingFeedbackData.archived,
-      status: existingFeedbackData.status,
-    });
 
     // Build update object
     const updateData: Record<string, unknown> = {};
@@ -727,21 +697,8 @@ export async function PUT(request: NextRequest) {
       }
     }
     // Handle archived field - explicitly check for both true and false
-    // Always set archived if it's provided in the request, even if it's false
     if (archived !== undefined && archived !== null) {
       updateData.archived = Boolean(archived);
-      console.log('✅ Archived field will be updated:', {
-        oldValue: existingFeedbackData.archived,
-        newValue: updateData.archived,
-        rawValue: archived,
-        type: typeof archived,
-        convertedValue: updateData.archived,
-      });
-    } else {
-      console.log('⚠️ Archived field not provided in request:', {
-        archived,
-        type: typeof archived,
-      });
     }
     if (notes !== undefined) updateData.notes = notes;
     if (reviewedBy !== undefined) updateData.reviewedBy = reviewedBy || null;
@@ -753,24 +710,7 @@ export async function PUT(request: NextRequest) {
         : null;
     }
 
-    console.log('💾 Update data to save:', JSON.stringify(updateData, null, 2));
-    console.log('💾 Update data keys:', Object.keys(updateData));
-    if ('archived' in updateData) {
-      console.log(
-        '💾 Update data archived value:',
-        updateData.archived,
-        typeof updateData.archived
-      );
-    } else {
-      console.log('💾 WARNING: archived NOT in updateData!');
-    }
-
     // Update feedback - use findOneAndUpdate with explicit $set
-    console.log(
-      '💾 EXECUTING UPDATE with:',
-      JSON.stringify(updateData, null, 2)
-    );
-
     const updatedFeedback = await FeedbackModel.findOneAndUpdate(
       { _id },
       { $set: updateData },
@@ -796,20 +736,10 @@ export async function PUT(request: NextRequest) {
     const verifiedDoc = await FeedbackModel.findOne({ _id }).lean();
     const verifiedData = verifiedDoc as { archived?: boolean };
 
-    console.log('💾 VERIFICATION POST-UPDATE:', {
-      returnedFromUpdate: (updatedFeedback as { archived?: boolean }).archived,
-      persistedInDb: verifiedData.archived,
-      updateDataArchived: updateData.archived,
-    });
-
     const responseFeedback = {
       ...updatedFeedback,
       archived: verifiedData.archived ?? false, // Use verified DB value
     };
-    console.log('📤 Response feedback includes archived:', {
-      hasArchived: 'archived' in responseFeedback,
-      archivedValue: responseFeedback.archived,
-    });
 
     // Log activity - admin updated feedback
     try {

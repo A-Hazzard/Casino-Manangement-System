@@ -33,6 +33,7 @@ import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from '@radix-ui/react-icons';
+import { ExternalLink } from 'lucide-react';
 import React from 'react';
 import editIcon from '@/public/editIcon.svg';
 import deleteIcon from '@/public/deleteIcon.svg';
@@ -44,6 +45,7 @@ type MemberTableProps = {
   sortOrder: 'asc' | 'desc';
   onSort: (column: MemberSortOption) => void;
   onMemberClick: (id: string) => void;
+  onLocationClick?: (locationId?: string) => void;
   onAction: (action: 'edit' | 'delete', member: Member) => void;
 };
 
@@ -53,6 +55,7 @@ const MemberTable: React.FC<MemberTableProps> = ({
   sortOrder,
   onSort,
   onMemberClick,
+  onLocationClick,
   onAction,
 }) => {
   const tableRef = useRef<HTMLTableElement>(null);
@@ -170,7 +173,21 @@ const MemberTable: React.FC<MemberTableProps> = ({
                 }}
               >
                 <TableCell isFirstColumn={true}>
-                  {member.locationName || 'Unknown Location'}
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      onLocationClick?.(member.gamingLocation);
+                    }}
+                    className="inline-flex max-w-[200px] items-center gap-1.5 truncate text-left text-sm font-medium text-blue-600 underline decoration-dotted hover:text-blue-800"
+                    title={member.locationName}
+                    disabled={!member.gamingLocation}
+                  >
+                    {member.locationName || 'Unknown Location'}
+                    {member.gamingLocation && (
+                      <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                    )}
+                  </button>
                 </TableCell>
                 <TableCell centered>
                   <div>{`${member.profile.firstName} ${member.profile.lastName}`}</div>

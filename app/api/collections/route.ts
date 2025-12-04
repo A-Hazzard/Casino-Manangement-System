@@ -241,19 +241,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
 
-  // Log route access for debugging
-  console.log(
-    '[Collections POST API] Route accessed at:',
-    new Date().toISOString()
-  );
-  console.log('[Collections POST API] Request URL:', req.url);
-
   try {
     // ============================================================================
     // STEP 1: Connect to database
     // ============================================================================
     await connectDB();
-    console.log('[Collections POST API] Database connected successfully');
 
     // ============================================================================
     // STEP 2: Parse and validate request body
@@ -574,10 +566,7 @@ export async function PATCH(req: NextRequest) {
     // STEP 6: Recalculate prevIn/prevOut and movement if meters changed
     // ============================================================================
     if (metersChanged) {
-      console.warn(
-        '🔄 Meters changed, recalculating prevIn/prevOut and movement for collection:',
-        id
-      );
+      // Meters changed, recalculating prevIn/prevOut and movement
 
       // Find actual previous collection (NOT from machine.collectionMeters)
       const previousCollection = await Collections.findOne({
@@ -598,18 +587,10 @@ export async function PATCH(req: NextRequest) {
       if (previousCollection) {
         updateData.prevIn = previousCollection.metersIn || 0;
         updateData.prevOut = previousCollection.metersOut || 0;
-        console.warn('✅ Found previous collection, set prevIn/prevOut:', {
-          prevIn: updateData.prevIn,
-          prevOut: updateData.prevOut,
-          previousCollectionId: previousCollection._id,
-        });
       } else {
         // No previous collection, this is first collection
         updateData.prevIn = 0;
         updateData.prevOut = 0;
-        console.warn(
-          '✅ No previous collection found, set prevIn/prevOut to 0'
-        );
       }
 
       // Recalculate movement using the correct prevIn/prevOut
@@ -632,24 +613,15 @@ export async function PATCH(req: NextRequest) {
           movementIn = ramClearMetersIn - updateData.prevIn + currentMetersIn;
           movementOut =
             ramClearMetersOut - updateData.prevOut + currentMetersOut;
-          console.warn('  RAM Clear with ramClearMeters:', {
-            movementIn,
-            movementOut,
-          });
         } else {
           // RAM clear without ramClearMeters: use current values directly
           movementIn = currentMetersIn;
           movementOut = currentMetersOut;
-          console.warn('  RAM Clear without ramClearMeters:', {
-            movementIn,
-            movementOut,
-          });
         }
       } else {
         // Standard: current - previous
         movementIn = currentMetersIn - updateData.prevIn;
         movementOut = currentMetersOut - updateData.prevOut;
-        console.warn('  Standard movement:', { movementIn, movementOut });
       }
 
       const movementGross = movementIn - movementOut;
@@ -659,21 +631,13 @@ export async function PATCH(req: NextRequest) {
         metersOut: Number(movementOut.toFixed(2)),
         gross: Number(movementGross.toFixed(2)),
       };
-
-      console.warn('✅ Recalculated movement:', updateData.movement);
     }
 
     // ============================================================================
     // STEP 7: Recalculate SAS metrics if timestamp or meters changed
     // ============================================================================
     // CRITICAL FIX: When timestamp changes, recalculate SAS times and metrics
-    // This ensures "Update All Dates" button properly updates SAS windows
     if (timestampChanged || metersChanged) {
-      console.warn(
-        '🔄 Timestamp or meters changed, recalculating SAS times and metrics for collection:',
-        id
-      );
-
       try {
         // Use the new timestamp if provided, otherwise use original
         const collectionTimestamp = updateData.timestamp
@@ -708,15 +672,8 @@ export async function PATCH(req: NextRequest) {
             originalCollection.sasMeters?.machine ||
             originalCollection.machineId,
         };
-
-        console.warn('✅ Recalculated SAS times and metrics:', {
-          sasStartTime: sasMetrics.sasStartTime,
-          sasEndTime: sasMetrics.sasEndTime,
-          drop: sasMetrics.drop,
-          gross: sasMetrics.gross,
-        });
       } catch (sasError) {
-        console.error('❌ Error recalculating SAS metrics:', sasError);
+        console.error('[Collections API] Error recalculating SAS metrics:', sasError);
         // Continue with update even if SAS calculation fails
         // This prevents the entire update from failing
       }
@@ -844,18 +801,6 @@ export async function DELETE(req: NextRequest) {
     // Revert machine's collectionMeters and remove collection history entry
     if (collectionToDelete.machineId) {
       try {
-        console.warn(
-          '🔄 Reverting machine collectionMeters and removing history after collection deletion:',
-          {
-            machineId: collectionToDelete.machineId,
-            prevIn: collectionToDelete.prevIn,
-            prevOut: collectionToDelete.prevOut,
-            currentMetersIn: collectionToDelete.metersIn,
-            currentMetersOut: collectionToDelete.metersOut,
-            locationReportId: collectionToDelete.locationReportId,
-          }
-        );
-
         // CRITICAL: ALWAYS revert meters AND remove any history entries
         // Even if locationReportId is empty, there might be orphaned history entries
         const updateOperation: {
@@ -882,13 +827,6 @@ export async function DELETE(req: NextRequest) {
         await Machine.findOneAndUpdate(
           { _id: collectionToDelete.machineId },
           updateOperation
-        );
-
-        console.warn(
-          '✅ Machine collectionMeters reverted' +
-            (collectionToDelete.locationReportId
-              ? ` and history entry removed for locationReportId: ${collectionToDelete.locationReportId}`
-              : ' (no locationReportId, no history entry to remove)')
         );
       } catch (machineUpdateError) {
         console.error(

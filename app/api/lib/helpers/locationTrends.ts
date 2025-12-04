@@ -14,6 +14,7 @@ import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion'
 import { convertFromUSD, convertToUSD, getCountryCurrency } from '@/lib/helpers/rates';
 import type { TimePeriod } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
+import { Countries } from '@/app/api/lib/models/countries';
 import type { PipelineStage } from 'mongoose';
 import type { Db } from 'mongodb';
 
@@ -197,11 +198,13 @@ async function getLocationCurrencies(
     licenseeIdToName.set(lic._id.toString(), lic.name);
   });
 
-  const countriesData = await db.collection('countries').find({}).toArray();
-  const countryIdToName = new Map<string, string>();
-  countriesData.forEach(country => {
-    countryIdToName.set(country._id.toString(), country.name);
-  });
+    const countriesData = await Countries.find({}).lean();
+    const countryIdToName = new Map<string, string>();
+    countriesData.forEach(country => {
+      if (country._id && country.name) {
+        countryIdToName.set(String(country._id), country.name);
+      }
+    });
 
   const locationCurrencies = new Map<string, string>();
   locationsData.forEach(loc => {

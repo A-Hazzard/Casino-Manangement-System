@@ -113,10 +113,6 @@ export async function GET(req: NextRequest) {
       name: loc.name,
     }));
 
-    const duration = Date.now() - startTime;
-    console.log(
-      `[Collection Report Locations GET API] Successfully fetched ${locationsWithId.length} locations after ${duration}ms.`
-    );
     return NextResponse.json({ locations: locationsWithId });
   } catch (error: unknown) {
     const duration = Date.now() - startTime;

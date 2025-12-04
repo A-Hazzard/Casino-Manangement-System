@@ -48,6 +48,9 @@ export async function GET(request: NextRequest) {
     // Support both 'licensee' and 'licencee' spelling for backwards compatibility
     const licencee = searchParams.get('licencee');
     const licensee = searchParams.get('licensee');
+    const membershipOnly =
+      searchParams.get('membershipOnly') === 'true' ||
+      searchParams.get('membershipOnly') === '1';
 
     // ============================================================================
     // STEP 3: Get user's accessible licensees and permissions
@@ -82,12 +85,22 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     type MatchStage = Record<string, unknown>;
 
-    const matchStage: MatchStage = {
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
-      ],
-    };
+    const matchStage: MatchStage = {};
+
+    // Exclude soft-deleted locations
+    // For membership-only flows, use a stricter cutoff (2025) as requested
+    const deletionCutoff = membershipOnly
+      ? new Date('2025-01-01')
+      : new Date('2020-01-01');
+
+    matchStage.$or = [
+      { deletedAt: null },
+      { deletedAt: { $lt: deletionCutoff } },
+    ];
+
+    if (membershipOnly) {
+      matchStage.membershipEnabled = true;
+    }
 
     // Apply location filter based on user permissions
     if (allowedLocationIds !== 'all') {

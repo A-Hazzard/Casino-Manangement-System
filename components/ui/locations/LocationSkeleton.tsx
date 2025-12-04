@@ -21,12 +21,27 @@ export default function LocationSkeleton() {
           <tbody>
             {Array.from({ length: 8 }).map((_, idx) => (
               <tr key={idx}>
-                {Array.from({ length: 6 }).map((__, colIdx) => (
+                {/* First column: Location name with two rows */}
+                <td className="border-2 border-gray-200 bg-white p-3">
+                  <div className="flex flex-col gap-1.5">
+                    {/* Row 1: Location name with membership icon */}
+                    <div className="flex items-center gap-1.5">
+                      <div className="skeleton-bg h-4 w-32" />
+                      <div className="skeleton-bg h-4 w-4 rounded-full flex-shrink-0" />
+                    </div>
+                    {/* Row 2: Status badges */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <div className="skeleton-bg h-6 w-20 rounded-full" />
+                      <div className="skeleton-bg h-6 w-20 rounded-full" />
+                    </div>
+                  </div>
+                </td>
+                {/* Other columns: Financial data */}
+                {Array.from({ length: 5 }).map((__, colIdx) => (
                   <td
                     key={colIdx}
                     className="h-10 border-2 border-gray-200 bg-white p-3"
                   >
-                    {/* Apply skeleton-bg */}
                     <div className="skeleton-bg mx-auto h-4 w-3/4"></div>
                   </td>
                 ))}
@@ -41,17 +56,26 @@ export default function LocationSkeleton() {
         {Array.from({ length: 5 }).map((_, idx) => (
           <div
             key={idx}
-            className="relative mb-4 rounded-lg bg-white p-4 shadow-md"
+            className="relative mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
           >
-            {/* Status dot (top right) */}
-            <span className="absolute right-3 top-3 h-3 w-3 rounded-full bg-gray-200" />
-            
-            {/* Title */}
-            <div className="mb-2">
-              <div className="skeleton-bg h-6 w-2/3 rounded" />
+            {/* Location Name - can wrap to multiple lines */}
+            <div className="mb-3 flex flex-col gap-2">
+              <div className="flex items-start gap-1.5">
+                <div className="skeleton-bg h-6 w-3/4 rounded" />
+                {/* Membership icon placeholder */}
+                <div className="skeleton-bg h-4 w-4 rounded-full flex-shrink-0 mt-0.5" />
+              </div>
+              
+              {/* Status Badges Below Name */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Online/Offline Badge */}
+                <div className="skeleton-bg h-6 w-24 rounded-full" />
+                {/* Members Badge */}
+                <div className="skeleton-bg h-6 w-20 rounded-full" />
+              </div>
             </div>
 
-            {/* Money In & Out */}
+            {/* Financial Metrics */}
             <div className="mb-2 flex flex-col space-y-2 text-sm">
               <div className="flex justify-between">
                 <div className="skeleton-bg h-4 w-20 rounded" />
@@ -61,18 +85,10 @@ export default function LocationSkeleton() {
                 <div className="skeleton-bg h-4 w-20 rounded" />
                 <div className="skeleton-bg h-4 w-24 rounded" />
               </div>
-            </div>
-
-            {/* Gross */}
-            <div className="mb-3 mt-1 flex justify-between">
-              <div className="skeleton-bg h-4 w-16 rounded" />
-              <div className="skeleton-bg h-4 w-24 rounded" />
-            </div>
-
-            {/* Machines & Online Info */}
-            <div className="mt-2 flex justify-between gap-2">
-              <div className="skeleton-bg h-7 w-28 rounded" />
-              <div className="skeleton-bg h-7 w-28 rounded" />
+              <div className="flex justify-between">
+                <div className="skeleton-bg h-4 w-16 rounded" />
+                <div className="skeleton-bg h-4 w-24 rounded" />
+              </div>
             </div>
 
             {/* Action Buttons */}

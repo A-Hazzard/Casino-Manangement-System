@@ -103,17 +103,12 @@ export async function GET(
       try {
         const { default: mongoose } = await import('mongoose');
         const objectId = new mongoose.Types.ObjectId(machineId);
-        // Use native MongoDB query to bypass schema type enforcement
-        const db = mongoose.connection.db;
-        if (db) {
-          const machinesCollection = db.collection('machines');
-          const machineDoc = await machinesCollection.findOne({
-            _id: objectId,
-          });
-          if (machineDoc) {
-            // Convert to Mongoose document format
-            machine = machineDoc as MachineDocument;
-          }
+        // Use Mongoose model with ObjectId for legacy data
+        const machineDoc = await Machine.findOne({
+          _id: objectId as unknown as string,
+        }).lean();
+        if (machineDoc) {
+          machine = machineDoc as MachineDocument;
         }
       } catch (objectIdError) {
         // Invalid ObjectId format or DB error, continue with 404

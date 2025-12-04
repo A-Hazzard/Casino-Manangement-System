@@ -87,15 +87,12 @@ export async function GET(
       try {
         const { default: mongoose } = await import('mongoose');
         const objectId = new mongoose.Types.ObjectId(machineId);
-        const db = mongoose.connection.db;
-        if (db) {
-          const machinesCollection = db.collection('machines');
-          const machineDoc = await machinesCollection.findOne({
-            _id: objectId,
-          });
-          if (machineDoc) {
-            machine = machineDoc;
-          }
+        // Use Mongoose model with ObjectId for legacy data
+        const machineDoc = await Machine.findOne({
+          _id: objectId as unknown as string,
+        }).lean();
+        if (machineDoc) {
+          machine = machineDoc;
         }
       } catch (objectIdError) {
         console.warn(`[Machine Chart API] Failed to query as ObjectId:`, objectIdError);

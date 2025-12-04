@@ -13,12 +13,15 @@
  * @module app/api/collections/[id]/route
  */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { recalculateMachineCollections } from '@/app/api/lib/helpers/collectionRecalculation';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { PreviousCollectionMeters } from '@/lib/types/collections';
+import { getClientIP } from '@/lib/utils/ipAddress';
 import { calculateMovement } from '@/lib/utils/movementCalculation';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -688,6 +691,77 @@ export async function PATCH(
           'Failed to recalculate machine collections:',
           recalcError
         );
+      }
+    }
+
+    // ============================================================================
+    // STEP 10: Log activity with accurate change tracking
+    // ============================================================================
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        // Fetch original collection for comparison (before update)
+        // Note: We need to get this BEFORE the update, but we already updated above
+        // So we'll compare updateData fields against what was in updatedCollection before changes
+        const originalCollection = updatedCollection;
+        
+        // Build changes array - ONLY for fields that were actually updated
+        const updateChanges: Array<{
+          field: string;
+          oldValue: unknown;
+          newValue: unknown;
+        }> = [];
+
+        // Check each possible update field
+        if (updateData.metersIn !== undefined && originalCollection) {
+          updateChanges.push({
+            field: 'metersIn',
+            oldValue: originalCollection.metersIn,
+            newValue: updateData.metersIn,
+          });
+        }
+        if (updateData.metersOut !== undefined && originalCollection) {
+          updateChanges.push({
+            field: 'metersOut',
+            oldValue: originalCollection.metersOut,
+            newValue: updateData.metersOut,
+          });
+        }
+        if (updateData.notes !== undefined && originalCollection) {
+          updateChanges.push({
+            field: 'notes',
+            oldValue: originalCollection.notes,
+            newValue: updateData.notes,
+          });
+        }
+        if (updateData.ramClear !== undefined && originalCollection) {
+          updateChanges.push({
+            field: 'ramClear',
+            oldValue: originalCollection.ramClear,
+            newValue: updateData.ramClear,
+          });
+        }
+
+        // Only log if there are actual changes
+        if (updateChanges.length > 0) {
+          await logActivity({
+            action: 'UPDATE',
+            details: `Updated collection meters for machine ${updatedCollection.serialNumber || updatedCollection.machineId} (${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''})`,
+            ipAddress: getClientIP(request) || undefined,
+            userAgent: request.headers.get('user-agent') || undefined,
+            metadata: {
+              userId: currentUser._id as string,
+              userEmail: currentUser.emailAddress as string,
+              userRole: (currentUser.roles as string[])?.[0] || 'user',
+              resource: 'collection',
+              resourceId: collectionId,
+              resourceName: updatedCollection.serialNumber || String(updatedCollection.machineId),
+              changes: updateChanges,
+            },
+          });
+        }
+      } catch (logError) {
+        console.error('Failed to log activity:', logError);
       }
     }
 

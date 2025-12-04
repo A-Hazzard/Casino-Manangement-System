@@ -12,7 +12,7 @@
 
 import { discoverSMIBDevices } from '@/app/api/lib/helpers/smibDiscovery';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 /**
  * Main GET handler for discovering SMIB devices
@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 2. Discover SMIB devices
  * 3. Return SMIB device list
  */
-export async function GET(_request: NextRequest) {
+export async function GET() {
   const startTime = Date.now();
 
   try {

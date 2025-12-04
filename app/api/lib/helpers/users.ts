@@ -1099,11 +1099,6 @@ export async function updateUser(
     updateOperation[key] = mongoOperators[key];
   });
 
-  console.log(
-    '[updateUser] Update operation:',
-    JSON.stringify(updateOperation, null, 2)
-  );
-
   // Update user - catch MongoDB duplicate key errors
   let updatedUser;
   try {

@@ -13,13 +13,13 @@
  * Re-exports shared report types from shared/types/reports.
  */
 import type {
-  ReportsLocationData,
   PaginationInfo,
+  ReportsLocationData,
   ReportsLocationsResponse,
 } from '@shared/types/reports';
 
 // Re-export shared types for convenience
-export type { ReportsLocationData, PaginationInfo, ReportsLocationsResponse };
+export type { PaginationInfo, ReportsLocationData, ReportsLocationsResponse };
 
 // Backend-specific report types
 export type ReportQuery = {
@@ -123,60 +123,6 @@ export type DailyCountsReport = {
     actualCash: number;
     variance: number;
   };
-};
-
-export type ActiveCustomersReport = {
-  totalRegistered: number;
-  activeToday: number;
-  activeThisWeek: number;
-  activeThisMonth: number;
-  locationBreakdown: Array<{
-    locationId: string;
-    locationName: string;
-    activeCustomers: number;
-    signInRecords: number;
-  }>;
-};
-
-export type LocationStatsReport = {
-  locationId: string;
-  locationName: string;
-  machineCount: number;
-  onlineMachines: number;
-  offlineMachines: number;
-  dailyIntake: number;
-  dailyPayouts: number;
-  netRevenue: number;
-  uptime: number;
-  performance: string;
-};
-
-export type MachinePerformanceReport = {
-  machineId: string;
-  machineName: string;
-  locationName: string;
-  moneyIn: number;
-  moneyOut: number;
-  playCount: number;
-  averagePlayDuration: number;
-  totalIncome: number;
-  holdPercentage: number;
-  payoutRatio: number;
-  manufacturer: string;
-  gameType: string;
-};
-
-export type TerminalCountsReport = {
-  manufacturer: string;
-  gameType: string;
-  totalTerminals: number;
-  onlineTerminals: number;
-  offlineTerminals: number;
-  locations: Array<{
-    locationId: string;
-    locationName: string;
-    count: number;
-  }>;
 };
 
 // Additional report types for analytics store

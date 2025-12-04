@@ -24,6 +24,7 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
+import { Countries } from '@/app/api/lib/models/countries';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
@@ -659,10 +660,12 @@ export async function GET(req: NextRequest) {
       // Get country details for currency mapping
       const { getCountryCurrency, getLicenseeCurrency, convertToUSD } =
         await import('@/lib/helpers/rates');
-      const countriesData = await db.collection('countries').find({}).toArray();
+      const countriesData = await Countries.find({}).lean();
       const countryIdToName = new Map<string, string>();
       countriesData.forEach(country => {
-        countryIdToName.set(country._id.toString(), country.name);
+        if (country._id && country.name) {
+          countryIdToName.set(String(country._id), country.name);
+        }
       });
 
       // Get location details for each machine to determine licensee
@@ -727,6 +730,18 @@ export async function GET(req: NextRequest) {
           coinOut: convertFromUSD(coinOutUSD, displayCurrency),
         };
       });
+    }
+
+    // ============================================================================
+    // STEP 10.5: Sort machines by moneyIn descending (default sort)
+    // ============================================================================
+    // Sort machines by moneyIn (highest first) so pagination returns top performers first
+    // This ensures the first page shows machines with actual financial data
+    const beforeSort = filteredMachines.slice(0, 3).map(m => ({ id: m._id, moneyIn: m.moneyIn }));
+    filteredMachines.sort((a, b) => (b.moneyIn || 0) - (a.moneyIn || 0));
+    const afterSort = filteredMachines.slice(0, 3).map(m => ({ id: m._id, moneyIn: m.moneyIn }));
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Machines Aggregation] Sort applied:', { beforeSort, afterSort, totalMachines: filteredMachines.length });
     }
 
     // ============================================================================

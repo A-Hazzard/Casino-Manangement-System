@@ -34,10 +34,6 @@ function validateDatabaseContext(
     return false;
   }
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[MIDDLEWARE] Database context validation passed`);
-  }
-
   return true;
 }
 
@@ -73,11 +69,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Debug logging for infinite loop investigation
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[MIDDLEWARE] Processing: ${pathname}`);
-  }
-
   const token = request.cookies.get('token')?.value;
   let isAuthenticated = false;
 
@@ -91,8 +82,6 @@ export async function middleware(request: NextRequest) {
           console.warn(
             '🔴 [MIDDLEWARE] Database context mismatch - forcing re-authentication'
           );
-          console.warn('🔍 Payload dbContext:', payload.dbContext);
-          console.warn('🔍 Current DB:', getCurrentDbConnectionString());
           return createLogoutResponse(request, 'database_context_mismatch');
         }
 
@@ -105,69 +94,26 @@ export async function middleware(request: NextRequest) {
         }
 
         isAuthenticated = true;
-        console.warn(
-          '✅ [MIDDLEWARE] Token validated successfully for:',
-          payload.emailAddress
-        );
 
-        if (process.env.NODE_ENV === 'development') {
-          console.log(
-            `[MIDDLEWARE] User authenticated: ${
-              payload.emailAddress || 'NO_EMAIL'
-            }`
-          );
-        }
       }
     } catch (err) {
       console.error('JWT verification failed:', err);
       return createLogoutResponse(request, 'invalid_token');
     }
-  } else {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[MIDDLEWARE] No token found for ${pathname}`);
-    }
-  }
+  } 
 
   const isPublicPath = publicPaths.includes(pathname);
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log(
-      `[MIDDLEWARE] isAuthenticated: ${isAuthenticated}, isPublicPath: ${isPublicPath}, pathname: ${pathname}`
-    );
-  }
-
   // Redirect logged-in users away from public pages
   if (isAuthenticated && isPublicPath) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(
-        `[MIDDLEWARE] Redirecting authenticated user from ${pathname} to /`
-      );
-    }
     const redirectUrl = new URL('/', request.url);
-    console.warn(
-      '🔀 [MIDDLEWARE] Authenticated user on public page, redirecting to:',
-      redirectUrl.toString()
-    );
     return NextResponse.redirect(redirectUrl);
   }
 
   // Redirect unauthenticated users away from protected pages
   if (!isAuthenticated && !isPublicPath) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(
-        `[MIDDLEWARE] Redirecting unauthenticated user from ${pathname} to /login`
-      );
-    }
     const redirectUrl = new URL('/login', request.url);
-    console.warn(
-      '🔀 [MIDDLEWARE] Unauthenticated user on protected page, redirecting to:',
-      redirectUrl.toString()
-    );
     return NextResponse.redirect(redirectUrl);
-  }
-
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[MIDDLEWARE] Allowing access to ${pathname}`);
   }
 
   return NextResponse.next();
@@ -193,7 +139,7 @@ function createLogoutResponse(
   response.cookies.set('token', '', {
     expires: new Date(0),
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: true,
     sameSite: 'lax',
     path: '/',
   });
@@ -201,7 +147,7 @@ function createLogoutResponse(
   response.cookies.set('refreshToken', '', {
     expires: new Date(0),
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: true,
     sameSite: 'lax',
     path: '/',
   });
@@ -210,7 +156,7 @@ function createLogoutResponse(
   response.cookies.set('user', '', {
     expires: new Date(0),
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: true,
     sameSite: 'lax',
     path: '/',
   });

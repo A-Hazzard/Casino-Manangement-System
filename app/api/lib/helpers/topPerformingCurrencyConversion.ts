@@ -5,14 +5,16 @@
  * between different currencies based on licensee and country settings.
  */
 
+import { Countries } from '@/app/api/lib/models/countries';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import {
-    convertFromUSD,
-    convertToUSD,
-    getCountryCurrency,
-    getLicenseeCurrency,
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+  getLicenseeCurrency,
 } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
-import { Db } from 'mongodb';
 
 // Define the type for top performing items (matches the one in lib/types/index.ts)
 export interface TopPerformingItem {
@@ -38,42 +40,39 @@ export interface TopPerformingItem {
  *
  * @param data - Array of top performing items
  * @param displayCurrency - Target currency code
- * @param licencee - Licensee filter (if any)
- * @param db - MongoDB database instance
  * @returns Promise<TopPerformingItem[]>
  */
 export async function convertTopPerformingCurrency(
   data: TopPerformingItem[],
-  displayCurrency: CurrencyCode,
-  licencee: string | undefined,
-  db: Db
+  displayCurrency: CurrencyCode
 ): Promise<TopPerformingItem[]> {
   // Always convert when this function is called
   // Each machine's native currency is determined by its location's licensee
 
   // Get currency mappings
-  const licenseesData = await db
-    .collection('licencees')
-    .find(
-      {
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
-        ],
-      },
-      { projection: { _id: 1, name: 1 } }
-    )
-    .toArray();
+  const licenseesData = await Licencee.find(
+    {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
+      ],
+    },
+    { _id: 1, name: 1 }
+  ).lean();
 
   const licenseeIdToName = new Map<string, string>();
   licenseesData.forEach(lic => {
-    licenseeIdToName.set(lic._id.toString(), lic.name);
+    if (lic._id && lic.name) {
+      licenseeIdToName.set(String(lic._id), lic.name);
+    }
   });
 
-  const countriesData = await db.collection('countries').find({}).toArray();
+  const countriesData = await Countries.find({}).lean();
   const countryIdToName = new Map<string, string>();
   countriesData.forEach(country => {
-    countryIdToName.set(country._id.toString(), country.name);
+    if (country._id && country.name) {
+      countryIdToName.set(String(country._id), country.name);
+    }
   });
 
   // We need to fetch location details to know the licensee/country for each item
@@ -85,32 +84,23 @@ export async function convertTopPerformingCurrency(
     }
   });
 
-  // Fetch location details
-  console.log('[TopPerforming Currency] Converting', data.length, 'items to', displayCurrency);
-  console.log('[TopPerforming Currency] Location IDs:', Array.from(locationIds));
-  
-  // Note: Database uses string IDs, not ObjectIds
-  const locationsCollection = db.collection<{
-    _id: string;
-    rel?: { licencee?: string };
-    country?: string;
-  }>('gaminglocations');
+  // Fetch location details using Mongoose model
+  const locationsData = await GamingLocations.find(
+    { _id: { $in: Array.from(locationIds) } },
+    { _id: 1, 'rel.licencee': 1, country: 1 }
+  ).lean();
 
-  const locationsData = await locationsCollection
-    .find(
-      { _id: { $in: Array.from(locationIds) } },
-      { projection: { _id: 1, 'rel.licencee': 1, country: 1 } }
-    )
-    .toArray();
-
-  console.log('[TopPerforming Currency] Found', locationsData.length, 'locations');
-
-  const locationDetails = new Map<string, { licenseeId?: string; countryId?: string }>();
+  const locationDetails = new Map<
+    string,
+    { licenseeId?: string; countryId?: string }
+  >();
   locationsData.forEach(loc => {
-    locationDetails.set(loc._id.toString(), {
-      licenseeId: loc.rel?.licencee,
-      countryId: loc.country,
-    });
+    if (loc._id) {
+      locationDetails.set(String(loc._id), {
+        licenseeId: loc.rel?.licencee,
+        countryId: loc.country,
+      });
+    }
   });
 
   // Convert each item's financial data
@@ -122,12 +112,15 @@ export async function convertTopPerformingCurrency(
       if (details) {
         if (details.licenseeId) {
           // Get licensee's native currency
-          const licenseeName = licenseeIdToName.get(details.licenseeId.toString()) || 'Unknown';
+          const licenseeName =
+            licenseeIdToName.get(details.licenseeId.toString()) || 'Unknown';
           nativeCurrency = getLicenseeCurrency(licenseeName);
         } else if (details.countryId) {
           // Unassigned locations - determine currency from country
           const countryName = countryIdToName.get(details.countryId.toString());
-          nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
+          nativeCurrency = countryName
+            ? getCountryCurrency(countryName)
+            : 'USD';
         }
       }
     }
@@ -147,8 +140,6 @@ export async function convertTopPerformingCurrency(
       totalCancelledCredits: convertValue(item.totalCancelledCredits),
       totalJackpot: convertValue(item.totalJackpot),
     };
-
-    console.log(`[TopPerforming Currency] ${item.name}: ${item.totalDrop} ${nativeCurrency} -> ${converted.totalDrop} ${displayCurrency}`);
 
     return converted;
   });

@@ -73,10 +73,6 @@ export async function GET(req: NextRequest) {
           undefined;
 
         const result = await fetchLocationsWithMachines(rawLicenseeParam);
-        const duration = Date.now() - startTime;
-        console.log(
-          `[Collection Report GET API] Fetched locations with machines after ${duration}ms.`
-        );
         return NextResponse.json(result);
       } catch (error: unknown) {
         const duration = Date.now() - startTime;
@@ -126,10 +122,6 @@ export async function GET(req: NextRequest) {
         new Date(endDateStr),
         locationName,
         licencee
-      );
-      const duration = Date.now() - startTime;
-      console.log(
-        `[Collection Report GET API] Fetched monthly report summary after ${duration}ms.`
       );
       return NextResponse.json({ summary, details });
     }
@@ -184,10 +176,6 @@ export async function GET(req: NextRequest) {
     );
 
     if (allowedLocationIds !== 'all' && allowedLocationIds.length === 0) {
-      const duration = Date.now() - startTime;
-      console.log(
-        `[Collection Report GET API] User has no accessible locations after ${duration}ms.`
-      );
       return NextResponse.json([]);
     }
 
@@ -226,10 +214,6 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 9: Return paginated results
     // ============================================================================
-    const duration = Date.now() - startTime;
-    console.log(
-      `[Collection Report GET API] Successfully fetched ${totalCount} reports (returning ${paginatedReports.length} on page ${page}) after ${duration}ms.`
-    );
     return NextResponse.json({
       data: paginatedReports,
       pagination: {
@@ -387,10 +371,6 @@ export async function POST(req: NextRequest) {
     // ============================================================================
     // STEP 6: Return success response
     // ============================================================================
-    const duration = Date.now() - startTime;
-    console.log(
-      `[Collection Report POST API] Successfully created collection report ${result.data} after ${duration}ms.`
-    );
     return NextResponse.json({ success: true, data: result.data });
   } catch (error: unknown) {
     const duration = Date.now() - startTime;

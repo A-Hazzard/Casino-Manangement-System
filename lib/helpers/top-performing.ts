@@ -12,14 +12,14 @@
  * - Includes location and machine details via lookups.
  */
 
-import { Db } from 'mongodb';
 import { getDatesForTimePeriod } from '../utils/dates';
 import {
-  PipelineStage,
   QueryFilter,
   TimePeriod,
   CustomDate,
 } from '@/lib/types/api';
+import { Meters } from '@/app/api/lib/models/meters';
+import type { PipelineStage } from 'mongoose';
 
 // ============================================================================
 // Type Definitions
@@ -34,13 +34,11 @@ type ActiveTab = 'locations' | 'Cabinets';
 /**
  * Fetches the top 5 performing locations or Cabinets based on total moneyIn (drop).
  *
- * @param db - MongoDB database instance.
  * @param activeTab - The current tab the user is on ("locations" or "Cabinets").
  * @param timePeriod - The time range (e.g., "7d", "30d").
  * @returns Promise resolving to aggregated results sorted by performance.
  */
 export async function getTopPerformingMetrics(
-  db: Db,
   activeTab: ActiveTab,
   timePeriod: TimePeriod
 ) {
@@ -58,7 +56,7 @@ export async function getTopPerformingMetrics(
       ? aggregateMetersForTop5Machines(filter)
       : aggregateMetersForTop5Locations(filter);
 
-  return db.collection('meters').aggregate(aggregationQuery).toArray();
+  return Meters.aggregate(aggregationQuery);
 }
 
 // ============================================================================

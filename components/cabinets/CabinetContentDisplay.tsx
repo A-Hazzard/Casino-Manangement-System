@@ -39,6 +39,15 @@ type CabinetContentDisplayProps = {
   onRetry: () => void;
   transformCabinet: (cabinet: Machine) => Machine;
   selectedLicencee?: string;
+  /**
+   * When false, disable header click sorting in the table.
+   * Useful for pages that provide separate sort controls.
+   */
+  enableHeaderSorting?: boolean;
+  /**
+   * When false, hide the sort direction icons in the table header.
+   */
+  showSortIcons?: boolean;
 };
 
 export const CabinetContentDisplay = ({
@@ -59,6 +68,8 @@ export const CabinetContentDisplay = ({
   onRetry,
   transformCabinet,
   selectedLicencee = 'all',
+  enableHeaderSorting = true,
+  showSortIcons = true,
 }: CabinetContentDisplayProps) => {
   const tableRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
@@ -257,6 +268,8 @@ export const CabinetContentDisplay = ({
           onDelete={handleDelete}
           canEditMachines={canEditMachines}
           canDeleteMachines={canDeleteMachines}
+          enableHeaderSorting={enableHeaderSorting}
+          showSortIcons={showSortIcons}
         />
       </div>
 

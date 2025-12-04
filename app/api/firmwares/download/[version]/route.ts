@@ -26,7 +26,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 4. Return file with appropriate headers for SMIB OTA
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ version: string }> }
 ) {
   const startTime = Date.now();

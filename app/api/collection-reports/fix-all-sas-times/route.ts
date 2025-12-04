@@ -15,7 +15,7 @@
  * @module app/api/collection-reports/fix-all-sas-times/route
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { fixAllSasTimesData } from '../../lib/helpers/bulkSasTimesFix';
 import { getUserById, getUserIdFromServer } from '../../lib/helpers/users';
 import { connectDB } from '../../lib/middleware/db';
@@ -28,7 +28,7 @@ import { connectDB } from '../../lib/middleware/db';
  * 2. Execute bulk fix operation for all reports
  * 3. Return detailed summary of all fixes and errors
  */
-export async function POST(_request: NextRequest) {
+export async function POST() {
   const startTime = Date.now();
 
   try {

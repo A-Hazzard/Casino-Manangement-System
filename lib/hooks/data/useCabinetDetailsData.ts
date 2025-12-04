@@ -9,6 +9,7 @@ import { fetchCabinetById } from '@/lib/helpers/cabinets';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 import { toast } from 'sonner';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 
 type UseCabinetDetailsDataProps = {
   slug: string;
@@ -51,6 +52,9 @@ export function useCabinetDetailsData({
   // Get display currency from context (synced with store) for currency conversion
   const { displayCurrency } = useCurrency();
 
+  // AbortController for cabinet details queries
+  const makeRequest = useAbortableRequest();
+
   // ============================================================================
   // Data Fetching
   // ============================================================================
@@ -81,21 +85,25 @@ export function useCabinetDetailsData({
       // are returned in the header-selected currency.
       const currency = displayCurrency;
 
-      const cabinetData = await fetchCabinetById(
-        slug,
-        activeMetricsFilter,
-        activeMetricsFilter === 'Custom' && customDateRange
-          ? { from: customDateRange.startDate, to: customDateRange.endDate }
-          : undefined,
-        currency,
-        selectedLicencee || null
+      const cabinetData = await makeRequest(
+        async (signal) => {
+          return await fetchCabinetById(
+            slug,
+            activeMetricsFilter,
+            activeMetricsFilter === 'Custom' && customDateRange
+              ? { from: customDateRange.startDate, to: customDateRange.endDate }
+              : undefined,
+            currency,
+            selectedLicencee || null,
+            signal
+          );
+        },
+        `Cabinet Details (${slug}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
       );
 
-      // Check if cabinet was not found
+      // Check if request was aborted
       if (!cabinetData) {
-        setError('Cabinet not found');
-        setErrorType('not-found');
-        setCabinet(null);
+        setMetricsLoading(false);
         return;
       }
 
@@ -164,7 +172,7 @@ export function useCabinetDetailsData({
     } finally {
       setMetricsLoading(false);
     }
-  }, [slug, activeMetricsFilter, customDateRange, selectedLicencee, displayCurrency]);
+  }, [slug, activeMetricsFilter, customDateRange, selectedLicencee, displayCurrency, makeRequest]);
 
   // Callback function to refresh cabinet data after updates
   const handleCabinetUpdated = useCallback(() => {

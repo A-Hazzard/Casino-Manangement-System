@@ -425,7 +425,8 @@ export const searchAllLocations = async (
   licensee?: string,
   displayCurrency?: string,
   timePeriod?: string,
-  customDateRange?: { from: Date; to: Date }
+  customDateRange?: { from: Date; to: Date },
+  signal?: AbortSignal
 ): Promise<AggregatedLocation[]> => {
   try {
     const params: Record<string, string> = {};
@@ -438,7 +439,7 @@ export const searchAllLocations = async (
       params.endDate = customDateRange.to.toISOString();
     }
 
-    const response = await axios.get('/api/locations/search-all', { params });
+    const response = await axios.get('/api/locations/search-all', { params, signal });
     return response.data || [];
   } catch (error) {
     console.error('Failed to search all locations:', error);
@@ -468,7 +469,8 @@ export async function fetchAggregatedLocationsData(
   dateRange?: { from: Date; to: Date },
   displayCurrency?: string,
   page?: number,
-  limit?: number
+  limit?: number,
+  signal?: AbortSignal
 ): Promise<{ data: AggregatedLocation[]; pagination?: { page: number; limit: number; total?: number; totalCount?: number; totalPages: number } }> {
   try {
     // Construct the URL with appropriate parameters
@@ -508,6 +510,7 @@ export async function fetchAggregatedLocationsData(
 
     const response = await axios.get(url, {
       headers: getAuthHeaders(),
+      signal,
     });
 
     if (response.status !== 200) {
@@ -536,6 +539,19 @@ export async function fetchAggregatedLocationsData(
       return { data: [] };
     }
   } catch (error) {
+    // Check if this is an axios cancellation using axios.isCancel()
+    if (axios.isCancel(error)) {
+      console.log('[fetchAggregatedLocationsData] Request canceled (filter/page change)');
+      throw error; // Re-throw so caller (useAbortableRequest) can handle it silently
+    }
+    
+    // Check for AbortError (fetch API)
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.log('[fetchAggregatedLocationsData] Request aborted');
+      throw error; // Re-throw so caller can handle it silently
+    }
+    
+    // Real errors - log and return empty data
     console.error('Error fetching locations data:', error);
     return { data: [] };
   }

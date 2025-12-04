@@ -16,8 +16,8 @@
 import { motion } from 'framer-motion';
 
 // Layout components
-import PageLayout from '@/components/layout/PageLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import PageLayout from '@/components/layout/PageLayout';
 
 // Store
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -36,10 +36,10 @@ import PaginationControls from '@/components/ui/PaginationControls';
 import { SessionsPageSkeleton } from '@/components/ui/skeletons/SessionsSkeletons';
 
 // Constants
-import { SESSIONS_ANIMATIONS } from '@/lib/constants/sessions';
-import Image from 'next/image';
 import { IMAGES } from '@/lib/constants/images';
+import { SESSIONS_ANIMATIONS } from '@/lib/constants/sessions';
 import { RefreshCw } from 'lucide-react';
+import Image from 'next/image';
 import { useState } from 'react';
 
 /**
@@ -62,11 +62,25 @@ function SessionsPageContent() {
   // ============================================================================
   // Custom Hooks
   // ============================================================================
-  const { sessions, loading, error, pagination, currentPage, handlePageChange, refreshSessions } =
-    useSessions();
-  
-  const { searchTerm, sortBy, sortOrder, setSearchTerm, setSortBy, setSortOrder, handleSort } =
-    useSessionsFilters();
+  const {
+    sessions,
+    loading,
+    error,
+    pagination,
+    currentPage,
+    handlePageChange,
+    refreshSessions,
+  } = useSessions();
+
+  const {
+    searchTerm,
+    sortBy,
+    sortOrder,
+    setSearchTerm,
+    setSortBy,
+    setSortOrder,
+    handleSort,
+  } = useSessionsFilters();
 
   const { navigateToSessionEvents } = useSessionsNavigation();
 
@@ -127,11 +141,11 @@ function SessionsPageContent() {
                   setRefreshing(false);
                 }}
                 disabled={loading || refreshing}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                className="flex-shrink-0 p-2 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Refresh"
               >
                 <RefreshCw
-                  className={`h-5 w-5 ${loading || refreshing ? "animate-spin" : ""}`}
+                  className={`h-5 w-5 ${loading || refreshing ? 'animate-spin' : ''}`}
                 />
               </button>
             </div>
@@ -177,7 +191,7 @@ function SessionsPageContent() {
                   currentPage={currentPage}
                   totalPages={pagination.totalPages}
                   setCurrentPage={handlePageChange}
-              />
+                />
               )}
             </>
           )}

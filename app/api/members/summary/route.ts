@@ -54,7 +54,6 @@ export async function GET(request: NextRequest) {
     const locationFilter = searchParams.get('location') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
-    const filterBy = searchParams.get('filterBy') || 'createdAt';
     const skip = (page - 1) * limit;
 
     // ============================================================================
@@ -192,50 +191,9 @@ export async function GET(request: NextRequest) {
       totalMembersConditions
     );
 
-    // Count deleted members for logging (only those deleted in 2025 or later)
-    const deletedMembersCount = await Member.countDocuments({
-      deletedAt: { $exists: true, $gte: new Date('2025-01-01') },
-    });
-
-    // Count all members (including deleted) for comparison
-    const allMembersCount = await Member.countDocuments({});
-
-    // Debug logging
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Members Summary API] Debug:', {
-        totalMembersCount,
-        deletedMembersCount,
-        allMembersCount,
-        nonDeletedMembers: totalMembersCount,
-        deletedMembers: deletedMembersCount,
-        totalMembersConditions: JSON.stringify(totalMembersConditions, null, 2),
-        matchConditionsKeys: Object.keys(matchConditions),
-        hasGamingLocation: !!matchConditions.gamingLocation,
-        hasSearchOr: !!(
-          matchConditions.$or &&
-          Array.isArray(matchConditions.$or) &&
-          matchConditions.$or.length > 0
-        ),
-        hasAnd: !!matchConditions.$and,
-        dateFilter,
-        filterBy,
-        dateFilterConditions: JSON.stringify(dateFilterConditions, null, 2),
-      });
-    }
-
     // ============================================================================
     // STEP 7: Aggregate member data with financial metrics
     // ============================================================================
-    // Count members matching the filter conditions (for debugging)
-    const filteredMembersCount = await Member.countDocuments(matchConditions);
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Members Summary API] Filtered Members Count:', {
-        filteredMembersCount,
-        matchConditions: JSON.stringify(matchConditions, null, 2),
-      });
-    }
-
     const memberSummary = await Member.aggregate([
       { $match: matchConditions },
       {
@@ -404,23 +362,12 @@ export async function GET(request: NextRequest) {
       activeMembersConditions
     );
 
-    // Debug logging
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Members Summary API] Active Members Debug:', {
-        activeMembersCount,
-        thirtyDaysAgo: thirtyDaysAgo.toISOString(),
-      });
-    }
-
-    // Calculate total locations count from locations API, not from member data
-    // This ensures we get the actual count of locations, not just locations that have members
+    // Calculate total locations count from locations collection, not from member data
+    // Only count membership-enabled locations that are not soft-deleted in 2025 or later
     let totalLocationsCount = 0;
-    let deletedLocationsCount = 0;
-    let allLocationsCount = 0;
     try {
-      // Build location filter (no licensee filtering - show all locations)
-      // Exclude only locations deleted in 2025 or later
       const locationMatchConditions: Record<string, unknown> = {
+        membershipEnabled: true,
         $or: [
           { deletedAt: null },
           { deletedAt: { $exists: false } },
@@ -431,25 +378,6 @@ export async function GET(request: NextRequest) {
       totalLocationsCount = await GamingLocations.countDocuments(
         locationMatchConditions
       );
-
-      // Count deleted locations for logging (only those deleted in 2025 or later)
-      deletedLocationsCount = await GamingLocations.countDocuments({
-        deletedAt: { $exists: true, $gte: new Date('2025-01-01') },
-      });
-
-      // Count all locations (including deleted) for comparison
-      allLocationsCount = await GamingLocations.countDocuments({});
-
-      // Debug logging
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Members Summary API] Locations Debug:', {
-          totalLocationsCount,
-          deletedLocationsCount,
-          allLocationsCount,
-          nonDeletedLocations: totalLocationsCount,
-          deletedLocations: deletedLocationsCount,
-        });
-      }
     } catch (error) {
       console.warn('Failed to fetch total locations count:', error);
       // Fallback to counting unique locations from member data

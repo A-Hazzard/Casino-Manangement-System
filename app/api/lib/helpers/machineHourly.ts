@@ -8,14 +8,19 @@
  * @module app/api/lib/helpers/machineHourly
  */
 
-import { getDatesForTimePeriod } from '@/lib/utils/dates';
+import { Countries } from '@/app/api/lib/models/countries';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
-import { convertFromUSD, convertToUSD, getCountryCurrency } from '@/lib/helpers/rates';
+import {
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+} from '@/lib/helpers/rates';
+import { getDatesForTimePeriod } from '@/lib/utils/dates';
 import type { TimePeriod } from '@/shared/types';
-import type { CurrencyCode } from '@/shared/types/currency';
 import type { StackedData } from '@/shared/types/analytics';
-import type { PipelineStage } from 'mongoose';
+import type { CurrencyCode } from '@/shared/types/currency';
 import type { Db } from 'mongodb';
+import type { PipelineStage } from 'mongoose';
 
 export type HourlyDataItem = {
   hour: number;
@@ -226,7 +231,11 @@ function calculateHourlyTotals(
  */
 async function getLocationCurrenciesForMachineHourly(
   db: Db,
-  locationsData: Array<{ _id: unknown; rel?: { licencee?: unknown }; country?: unknown }>
+  locationsData: Array<{
+    _id: unknown;
+    rel?: { licencee?: unknown };
+    country?: unknown;
+  }>
 ): Promise<Map<string, string>> {
   const licenseesData = await db
     .collection('licencees')
@@ -246,10 +255,12 @@ async function getLocationCurrenciesForMachineHourly(
     licenseeIdToName.set(lic._id.toString(), lic.name);
   });
 
-  const countriesData = await db.collection('countries').find({}).toArray();
+  const countriesData = await Countries.find({}).lean();
   const countryIdToName = new Map<string, string>();
   countriesData.forEach(country => {
-    countryIdToName.set(country._id.toString(), country.name);
+    if (country._id && country.name) {
+      countryIdToName.set(String(country._id), country.name);
+    }
   });
 
   const locationCurrencies = new Map<string, string>();
@@ -258,7 +269,10 @@ async function getLocationCurrenciesForMachineHourly(
     if (locationLicenseeId) {
       const licenseeName =
         licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
-      locationCurrencies.set((loc._id as { toString: () => string }).toString(), licenseeName);
+      locationCurrencies.set(
+        (loc._id as { toString: () => string }).toString(),
+        licenseeName
+      );
     } else {
       const countryId = loc.country;
       const countryName = countryId
@@ -267,7 +281,10 @@ async function getLocationCurrenciesForMachineHourly(
       const nativeCurrency = countryName
         ? getCountryCurrency(countryName)
         : 'USD';
-      locationCurrencies.set((loc._id as { toString: () => string }).toString(), nativeCurrency);
+      locationCurrencies.set(
+        (loc._id as { toString: () => string }).toString(),
+        nativeCurrency
+      );
     }
   });
 
@@ -432,10 +449,9 @@ export async function getMachineHourlyData(
   const locationStringIds = Object.keys(locationHourlyData);
   const locationsData = await db
     .collection('gaminglocations')
-    .find(
-      { _id: { $in: locationStringIds } } as never,
-      { projection: { _id: 1, name: 1, rel: 1, country: 1 } }
-    )
+    .find({ _id: { $in: locationStringIds } } as never, {
+      projection: { _id: 1, name: 1, rel: 1, country: 1 },
+    })
     .toArray();
 
   const locationNames: Record<string, string> = {};
@@ -479,4 +495,3 @@ export async function getMachineHourlyData(
     converted: shouldApplyCurrencyConversion(licencee),
   };
 }
-

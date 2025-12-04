@@ -209,21 +209,6 @@ export async function GET(req: NextRequest) {
       queryEndDate
     );
 
-    // Debug logging for specific machine
-    if (machineIds.includes('08408bfd3a0edc031f495867')) {
-      const debugMeter = metersMap.get('08408bfd3a0edc031f495867');
-      console.warn('🔍 [METERS API DEBUG] Machine 08408bfd3a0edc031f495867:', {
-        coinIn: debugMeter?.coinIn,
-        totalWonCredits: debugMeter?.totalWonCredits,
-        drop: debugMeter?.drop,
-        totalCancelledCredits: debugMeter?.totalCancelledCredits,
-        jackpot: debugMeter?.jackpot,
-        gamesPlayed: debugMeter?.gamesPlayed,
-        queryStartDate: queryStartDate.toISOString(),
-        queryEndDate: queryEndDate.toISOString(),
-      });
-    }
-
     // ============================================================================
     // STEP 7: Optionally aggregate hourly chart data
     // ============================================================================
@@ -257,22 +242,6 @@ export async function GET(req: NextRequest) {
       metersMap,
       locationMap
     );
-
-    // Debug logging for specific machine after transformation
-    const debugTransformed = transformedData.find(
-      item => item.machineDocumentId === '08408bfd3a0edc031f495867'
-    );
-    if (debugTransformed) {
-      console.warn('🔍 [METERS API DEBUG] After transformation:', {
-        machineId: debugTransformed.machineId,
-        metersIn: debugTransformed.metersIn,
-        metersOut: debugTransformed.metersOut,
-        billIn: debugTransformed.billIn,
-        voucherOut: debugTransformed.voucherOut,
-        jackpot: debugTransformed.jackpot,
-        gamesPlayed: debugTransformed.gamesPlayed,
-      });
-    }
 
     // ============================================================================
     // STEP 9: Apply search filter if provided
@@ -332,43 +301,6 @@ export async function GET(req: NextRequest) {
         licenseeMap,
         params.displayCurrency
       );
-
-      // Debug logging after currency conversion
-      const debugConverted = convertedData.find(
-        item => item.machineDocumentId === '08408bfd3a0edc031f495867'
-      );
-      if (debugConverted) {
-        console.warn('🔍 [METERS API DEBUG] After currency conversion:', {
-          machineId: debugConverted.machineId,
-          metersIn: debugConverted.metersIn,
-          metersOut: debugConverted.metersOut,
-          billIn: debugConverted.billIn,
-          voucherOut: debugConverted.voucherOut,
-          jackpot: debugConverted.jackpot,
-          displayCurrency: params.displayCurrency,
-        });
-      }
-    } else {
-      // Debug logging when conversion is skipped
-      const debugSkipped = paginatedData.find(
-        item => item.machineDocumentId === '08408bfd3a0edc031f495867'
-      );
-      if (debugSkipped) {
-        console.warn('🔍 [METERS API DEBUG] Currency conversion SKIPPED:', {
-          machineId: debugSkipped.machineId,
-          metersIn: debugSkipped.metersIn,
-          metersOut: debugSkipped.metersOut,
-          billIn: debugSkipped.billIn,
-          voucherOut: debugSkipped.voucherOut,
-          jackpot: debugSkipped.jackpot,
-          isAdminOrDev,
-          licencee: params.licencee,
-          licenceeParam,
-          displayCurrency: params.displayCurrency,
-          currencyParamProvided,
-          shouldConvert,
-        });
-      }
     }
 
     // ============================================================================
@@ -379,9 +311,9 @@ export async function GET(req: NextRequest) {
       locationList.length > 0 ? locationList : actualLocationIds;
 
     const duration = Date.now() - startTime;
-    console.warn(
-      `Meters report completed successfully in ${duration}ms - ${totalCount} machines`
-    );
+    if (duration > 2000) {
+      console.warn(`[Meters Report API] Slow response: ${duration}ms for ${totalCount} machines`);
+    }
 
     // Convert Date objects to ISO strings for JSON serialization
     const serializedData = convertedData.map(item => ({

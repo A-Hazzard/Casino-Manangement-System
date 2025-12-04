@@ -5,11 +5,10 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { AggregatedLocation } from '@/shared/types/common';
-import { LocationFilter, LocationSortOption } from '@/lib/types/location';
+import { LocationSortOption } from '@/lib/types/location';
 
 type UseLocationSortingProps = {
   locationData: AggregatedLocation[];
-  selectedFilters: LocationFilter[];
   currentPage?: number;
   totalCount?: number;
   itemsPerPage?: number;
@@ -34,11 +33,10 @@ type UseLocationSortingReturn = {
 
 export function useLocationSorting({
   locationData,
-  selectedFilters,
   currentPage: externalCurrentPage = 0,
   totalCount,
   itemsPerPage: externalItemsPerPage = 10,
-}: UseLocationSortingProps): UseLocationSortingReturn {
+}: Omit<UseLocationSortingProps, 'selectedFilters'>): UseLocationSortingReturn {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [sortOption, setSortOption] = useState<LocationSortOption>('moneyIn');
   
@@ -48,20 +46,12 @@ export function useLocationSorting({
   const setCurrentPage = externalCurrentPage !== undefined ? () => {} : setInternalCurrentPage;
 
   // Memoized filtered data to prevent unnecessary recalculations
+  // NOTE: Filters are now handled by the backend API, so we just pass through the data
+  // The selectedFilters are sent to the API which returns pre-filtered results
   const filtered = useMemo(() => {
-    const result = locationData.filter(loc => {
-      // Filter by selected filters only (search is now handled by backend)
-      if (selectedFilters.length === 0) return true;
-      return selectedFilters.some(filter => {
-        if (filter === 'LocalServersOnly' && loc.isLocalServer) return true;
-        if (filter === 'SMIBLocationsOnly' && !loc.noSMIBLocation) return true;
-        if (filter === 'NoSMIBLocation' && loc.noSMIBLocation === true)
-          return true;
-        return false;
-      });
-    });
-    return result;
-  }, [locationData, selectedFilters]);
+    // No frontend filtering needed - backend handles all filters
+    return locationData;
+  }, [locationData]);
 
   // Memoized sorted data
   const sortedData = useMemo(() => {

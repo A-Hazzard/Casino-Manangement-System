@@ -24,6 +24,11 @@ type UseCabinetSortingProps = {
   filteredCabinets: Cabinet[];
   itemsPerPage?: number;
   onPageChange?: (page: number) => void;
+  /**
+   * When true (default), use 50-item batch pagination (5 pages per batch).
+   * When false, use simple global pagination over the entire dataset.
+   */
+  useBatchPagination?: boolean;
 };
 
 type UseCabinetSortingReturn = {
@@ -42,6 +47,7 @@ type UseCabinetSortingReturn = {
 export const useCabinetSorting = ({
   filteredCabinets,
   itemsPerPage = 10,
+  useBatchPagination = true,
 }: UseCabinetSortingProps): UseCabinetSortingReturn => {
   // Sort state management
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -97,44 +103,77 @@ export const useCabinetSorting = ({
 
   // Paginate sorted cabinets - slice from the current batch (50 items)
   const paginatedCabinets = useMemo(() => {
-    // Calculate which items to show from the current batch (10 items per page from 50-item batch)
-    const positionInBatch = (currentPage % 5) * itemsPerPage;
-    const startIndex = positionInBatch;
+    if (useBatchPagination) {
+      // Batch mode: 50-item batches, 5 pages per batch (used by cabinets page)
+      const positionInBatch = (currentPage % 5) * itemsPerPage;
+      const startIndex = positionInBatch;
+      const endIndex = startIndex + itemsPerPage;
+      const paginated = sortedCabinets.slice(startIndex, endIndex);
+
+      console.warn('Paginated cabinets (batched mode):', {
+        currentPage,
+        itemsPerPage,
+        positionInBatch,
+        startIndex,
+        endIndex,
+        totalItemsInBatch: sortedCabinets.length,
+        paginatedItems: paginated.length,
+      });
+
+      return paginated;
+    }
+
+    // Simple mode: standard global pagination over all sorted cabinets
+    const startIndex = currentPage * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const paginated = sortedCabinets.slice(startIndex, endIndex);
 
-    console.warn('Paginated cabinets:', {
+    console.warn('Paginated cabinets (simple mode):', {
       currentPage,
       itemsPerPage,
-      positionInBatch,
       startIndex,
       endIndex,
-      totalItemsInBatch: sortedCabinets.length,
+      totalItems: sortedCabinets.length,
       paginatedItems: paginated.length,
     });
 
     return paginated;
-  }, [sortedCabinets, currentPage, itemsPerPage]);
+  }, [sortedCabinets, currentPage, itemsPerPage, useBatchPagination]);
 
-  // Calculate total pages based on current batch size (50 items = 5 pages)
-  // Each batch has 50 items, which equals 5 pages of 10 items each
+  // Calculate total pages
   const totalPages = useMemo(() => {
-    // For the current batch, we always have 5 pages (50 items / 10 per page)
-    // But if we have fewer items than a full batch, calculate based on actual items
-    const pagesInCurrentBatch = Math.min(
-      5,
+    if (useBatchPagination) {
+      // Batched mode: each batch can show up to 5 pages (50 items / 10 per page)
+      // If we have fewer than a full batch, clamp to the actual number of pages
+      const pagesInCurrentBatch = Math.min(
+        5,
+        Math.ceil(sortedCabinets.length / itemsPerPage)
+      );
+      const total = pagesInCurrentBatch > 0 ? pagesInCurrentBatch : 1;
+      console.warn(
+        'Total pages calculated (batched mode):',
+        total,
+        'for current batch with',
+        sortedCabinets.length,
+        'items (max 5 pages per batch)'
+      );
+      return total;
+    }
+
+    // Simple mode: total pages based on full dataset
+    const total = Math.max(
+      1,
       Math.ceil(sortedCabinets.length / itemsPerPage)
     );
-    const total = pagesInCurrentBatch > 0 ? pagesInCurrentBatch : 1;
     console.warn(
-      'Total pages calculated:',
+      'Total pages calculated (simple mode):',
       total,
-      'for current batch with',
+      'for dataset with',
       sortedCabinets.length,
-      'items (max 5 pages per batch)'
+      'items'
     );
     return total;
-  }, [sortedCabinets.length, itemsPerPage]);
+  }, [sortedCabinets.length, itemsPerPage, useBatchPagination]);
 
   // Cabinet transformation function
   const transformCabinet = useMemo(() => {

@@ -1059,36 +1059,59 @@ function AdministrationPageContent() {
       ).trim();
 
       // ============================================================================
-      // STEP 4: Build comparison objects - compare API data to what's being sent
+      // STEP 4: Build comparison objects - ONLY include fields that were actually sent from UserModal
       // ============================================================================
-      const originalData = {
-        username: selectedUser.username,
-        email: normalizedOriginalEmail,
-        emailAddress: (
-          selectedUser.emailAddress ||
-          selectedUser.email ||
-          ''
-        ).trim(),
-        profile: selectedUser.profile,
-        roles: selectedUser.roles || [],
-        profilePicture: selectedUser.profilePicture,
-        // Include new fields for comparison
-        assignedLocations: selectedUser.assignedLocations,
-        assignedLicensees: selectedUser.assignedLicensees,
-      };
+      // CRITICAL: Only compare fields that are present in the updated object
+      // This prevents false positives where undefined !== existingValue
+      console.log(
+        '[Administration] Fields present in updated object:',
+        Object.keys(updated)
+      );
 
-      const formDataComparison = {
-        username: updated.username,
-        email: normalizedUpdatedEmail,
-        emailAddress: normalizedUpdatedEmail,
-        profile: updated.profile,
-        roles: updated.roles || [],
-        profilePicture: updated.profilePicture,
-        password: updated.password, // Include if changing password
-        // Include new fields for comparison
-        assignedLocations: updated.assignedLocations,
-        assignedLicensees: updated.assignedLicensees,
-      };
+      const originalData: Record<string, unknown> = {};
+      const formDataComparison: Record<string, unknown> = {};
+
+      // Only compare fields that are present in the update
+      if (updated.username !== undefined) {
+        originalData.username = selectedUser.username;
+        formDataComparison.username = updated.username;
+      }
+
+      if (updated.email !== undefined || updated.emailAddress !== undefined) {
+        originalData.email = normalizedOriginalEmail;
+        formDataComparison.email = normalizedUpdatedEmail;
+        originalData.emailAddress = normalizedOriginalEmail;
+        formDataComparison.emailAddress = normalizedUpdatedEmail;
+      }
+
+      if (updated.roles !== undefined) {
+        originalData.roles = selectedUser.roles || [];
+        formDataComparison.roles = updated.roles || [];
+      }
+
+      if (updated.profile !== undefined) {
+        originalData.profile = selectedUser.profile;
+        formDataComparison.profile = updated.profile;
+      }
+
+      if (updated.profilePicture !== undefined) {
+        originalData.profilePicture = selectedUser.profilePicture;
+        formDataComparison.profilePicture = updated.profilePicture;
+      }
+
+      if (updated.assignedLocations !== undefined) {
+        originalData.assignedLocations = selectedUser.assignedLocations;
+        formDataComparison.assignedLocations = updated.assignedLocations;
+      }
+
+      if (updated.assignedLicensees !== undefined) {
+        originalData.assignedLicensees = selectedUser.assignedLicensees;
+        formDataComparison.assignedLicensees = updated.assignedLicensees;
+      }
+
+      if (updated.password !== undefined) {
+        formDataComparison.password = updated.password;
+      }
 
       // ============================================================================
       // STEP 5: Detect ALL differences between API data and what's being sent

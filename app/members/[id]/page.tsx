@@ -31,7 +31,13 @@ import PlayerSessionTableSkeleton from '@/components/members/PlayerSessionTableS
 import FilterControlsSkeleton from '@/components/members/FilterControlsSkeleton';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Download } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ChevronLeft, Download, RefreshCw, FileSpreadsheet, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
@@ -79,39 +85,43 @@ function MemberDetailsPageContent() {
   const isInitialMount = useRef(true);
 
   // ============================================================================
+  // Data Fetching Functions
+  // ============================================================================
+  const fetchMemberData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const memberResponse = await axios.get(`/api/members/${memberId}`);
+      const memberData: Member = memberResponse.data;
+
+      const sessionsResponse = await axios.get(
+        `/api/members/${memberId}/sessions?filter=${filter}&page=${
+          currentPage + 1
+        }&limit=10`
+      );
+      const sessionsData = sessionsResponse.data;
+
+      setMember({
+        ...memberData,
+        sessions: sessionsData.data.sessions,
+        pagination: sessionsData.data.pagination,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ============================================================================
   // Effects - Data Fetching
   // ============================================================================
   useEffect(() => {
-    const fetchMemberData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const memberResponse = await axios.get(`/api/members/${memberId}`);
-        const memberData: Member = memberResponse.data;
-
-        const sessionsResponse = await axios.get(
-          `/api/members/${memberId}/sessions?filter=${filter}&page=${
-            currentPage + 1
-          }&limit=10`
-        );
-        const sessionsData = sessionsResponse.data;
-
-        setMember({
-          ...memberData,
-          sessions: sessionsData.data.sessions,
-          pagination: sessionsData.data.pagination,
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (memberId) {
       fetchMemberData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberId, filter, currentPage]);
 
   // Separate effect for initial data fetch to prevent double calls
@@ -125,6 +135,11 @@ function MemberDetailsPageContent() {
   // ============================================================================
   // Event Handlers
   // ============================================================================
+  const handleRefresh = () => {
+    setCurrentPage(0);
+    fetchMemberData();
+  };
+
   const handleToggleTotals = () => {
     setShowTotals(!showTotals);
   };
@@ -152,7 +167,7 @@ function MemberDetailsPageContent() {
   };
 
   // Export functionality
-  const handleExport = async (format: 'csv' | 'excel' = 'csv') => {
+  const handleExport = async (format: 'csv' | 'pdf' = 'csv') => {
     try {
       setLoading(true);
 
@@ -256,16 +271,20 @@ function MemberDetailsPageContent() {
   // Render Helper Functions
   // ============================================================================
   const renderContent = () => {
-    if (loading) {
+    if (loading && !member) {
       return (
         <>
-          <div className="mb-6">
+          <div className="mb-6 flex items-center gap-3">
             <Link href="/members">
               <Button variant="outline">
                 <ChevronLeft className="mr-2 h-4 w-4" />
                 Back to Members
               </Button>
             </Link>
+            <Button variant="outline" disabled>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
           </div>
 
           <PlayerHeaderSkeleton />
@@ -297,14 +316,23 @@ function MemberDetailsPageContent() {
 
     return (
       <div className="space-y-6">
-        {/* Navigation Section: Back button to return to members list */}
-        <div className="mb-4">
+        {/* Navigation Section: Back button and refresh */}
+        <div className="mb-4 flex items-center gap-3">
           <Link href="/members">
             <Button variant="outline" size="sm">
               <ChevronLeft className="mr-2 h-4 w-4" />
               Back to Members
             </Button>
           </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
 
         {/* Member Header Section: Member information and details */}
@@ -343,16 +371,29 @@ function MemberDetailsPageContent() {
 
             {/* Export Controls */}
             <div className="flex items-center gap-2">
-              <Button
-                onClick={() => handleExport('csv')}
-                disabled={loading || !member}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Export CSV
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    disabled={loading || !member}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport('csv')}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Export as CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

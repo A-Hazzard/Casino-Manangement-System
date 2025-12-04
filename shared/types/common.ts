@@ -1,5 +1,6 @@
 // Shared common types used across frontend and backend
 import { Types } from 'mongoose';
+import type { LocationMembershipSettings } from './entities';
 
 // Generic API response type
 export type ApiResponse<T = unknown> = {
@@ -219,6 +220,8 @@ export type Location = {
   hasSmib?: boolean;
   noSMIBLocation?: boolean;
   deletedAt?: Date | null;
+  membershipEnabled?: boolean;
+  locationMembershipSettings?: LocationMembershipSettings;
 };
 
 export type AggregatedLocation = {
@@ -247,4 +250,8 @@ export type AggregatedLocation = {
   noSMIBLocation: boolean;
   country?: string; // For currency conversion
   totalDrop?: number; // Alias for moneyIn in some contexts
+  enableMembership?: boolean; // Membership enabled flag
+  membershipEnabled?: boolean; // Alias for enableMembership
+  memberCount?: number; // Number of members at this location
+  locationMembershipSettings?: LocationMembershipSettings;
 };

@@ -60,6 +60,7 @@ export type LocationFilter =
   | 'NoSMIBLocation'
   | 'SMIBLocationsOnly'
   | 'LocalServersOnly'
+  | 'MembershipOnly'
   | ''
   | null;
 

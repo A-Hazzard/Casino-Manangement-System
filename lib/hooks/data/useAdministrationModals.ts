@@ -9,7 +9,6 @@ import { UserData, LicenseeData, ActivityLogData } from '@/lib/types/hooks';
 type UseAdministrationModalsReturn = {
   // User modals
   isUserModalOpen: boolean;
-  isAddUserDetailsModalOpen: boolean;
   isDeleteUserModalOpen: boolean;
   isUserActivityLogModalOpen: boolean;
 
@@ -32,8 +31,6 @@ type UseAdministrationModalsReturn = {
   // User modal actions
   openUserModal: (user?: UserData) => void;
   closeUserModal: () => void;
-  openAddUserDetailsModal: () => void;
-  closeAddUserDetailsModal: () => void;
   openDeleteUserModal: (user: UserData) => void;
   closeDeleteUserModal: () => void;
   openUserActivityLogModal: (user: UserData) => void;
@@ -65,8 +62,6 @@ export function useAdministrationModals(): UseAdministrationModalsReturn {
 
   // User modal states
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [isAddUserDetailsModalOpen, setIsAddUserDetailsModalOpen] =
-    useState(false);
   const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
   const [isUserActivityLogModalOpen, setIsUserActivityLogModalOpen] =
     useState(false);
@@ -107,14 +102,6 @@ export function useAdministrationModals(): UseAdministrationModalsReturn {
   const closeUserModal = useCallback(() => {
     setSelectedUser(null);
     setIsUserModalOpen(false);
-  }, []);
-
-  const openAddUserDetailsModal = useCallback(() => {
-    setIsAddUserDetailsModalOpen(true);
-  }, []);
-
-  const closeAddUserDetailsModal = useCallback(() => {
-    setIsAddUserDetailsModalOpen(false);
   }, []);
 
   const openDeleteUserModal = useCallback((user: UserData) => {
@@ -214,7 +201,6 @@ export function useAdministrationModals(): UseAdministrationModalsReturn {
   return {
     // User modals
     isUserModalOpen,
-    isAddUserDetailsModalOpen,
     isDeleteUserModalOpen,
     isUserActivityLogModalOpen,
 
@@ -237,8 +223,6 @@ export function useAdministrationModals(): UseAdministrationModalsReturn {
     // User modal actions
     openUserModal,
     closeUserModal,
-    openAddUserDetailsModal,
-    closeAddUserDetailsModal,
     openDeleteUserModal,
     closeDeleteUserModal,
     openUserActivityLogModal,

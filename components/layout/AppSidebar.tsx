@@ -473,21 +473,6 @@ export default function AppSidebar() {
                             {item.label}
                           </span>
                         </Link>
-
-                        {/* Tooltip for collapsed sidebar */}
-                        {collapsed &&
-                          hoveredItem === item.href &&
-                          tooltipPosition && (
-                            <div
-                              className="pointer-events-none absolute z-50 rounded bg-gray-900 px-2 py-1 text-sm text-white shadow-lg"
-                              style={{
-                                top: tooltipPosition.top,
-                                left: tooltipPosition.left,
-                              }}
-                            >
-                              {item.label}
-                            </div>
-                          )}
                       </div>
                     );
                   })

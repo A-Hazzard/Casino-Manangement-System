@@ -10,17 +10,17 @@
  * @module app/api/admin/create-indexes/route
  */
 
-import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { Machine } from '@/app/api/lib/models/machines';
+import { CollectionReport } from '@/app/api/lib/models/collectionReport';
+import { Collections } from '@/app/api/lib/models/collections';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
-import { Meters } from '@/app/api/lib/models/meters';
-import { Collections } from '@/app/api/lib/models/collections';
-import { CollectionReport } from '@/app/api/lib/models/collectionReport';
-import { Member } from '@/app/api/lib/models/members';
+import { Machine } from '@/app/api/lib/models/machines';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
+import { Member } from '@/app/api/lib/models/members';
+import { Meters } from '@/app/api/lib/models/meters';
 import UserModel from '@/app/api/lib/models/user';
+import { NextResponse } from 'next/server';
 
 /**
  * Main POST handler for creating database indexes
@@ -30,7 +30,7 @@ import UserModel from '@/app/api/lib/models/user';
  * 2. Create indexes for each collection (with individual error handling)
  * 3. Return results summary
  */
-export async function POST(_request: NextRequest) {
+export async function POST() {
   const startTime = Date.now();
 
   try {

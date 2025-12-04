@@ -14,10 +14,9 @@
  * - Fetches licensees for frontend consumption.
  */
 
-import { NextRequest } from 'next/server';
+import { generateMongoId } from '@/lib/utils/id';
 import { Licencee } from '../../app/api/lib/models/licencee';
 import { generateUniqueLicenseKey } from '../utils/licenseKey';
-import { generateMongoId } from '@/lib/utils/id';
 
 // ============================================================================
 // Licensee Data Formatting
@@ -88,16 +87,13 @@ export async function getAllLicensees() {
 /**
  * Creates a new licensee with activity logging
  */
-export async function createLicensee(
-  data: {
-    name: string;
-    description?: string;
-    country: string;
-    startDate?: string;
-    expiryDate?: string;
-  },
-  _request: NextRequest
-) {
+export async function createLicensee(data: {
+  name: string;
+  description?: string;
+  country: string;
+  startDate?: string;
+  expiryDate?: string;
+}) {
   const { name, description, country, startDate, expiryDate } = data;
   const newId = await generateMongoId();
   const licenseKey = await generateUniqueLicenseKey();
@@ -130,20 +126,17 @@ export async function createLicensee(
 /**
  * Updates an existing licensee with activity logging
  */
-export async function updateLicensee(
-  data: {
-    _id: string;
-    name?: string;
-    description?: string;
-    country?: string;
-    startDate?: string;
-    expiryDate?: string;
-    isPaid?: boolean;
-    prevStartDate?: string;
-    prevExpiryDate?: string;
-  },
-  _request: NextRequest
-) {
+export async function updateLicensee(data: {
+  _id: string;
+  name?: string;
+  description?: string;
+  country?: string;
+  startDate?: string;
+  expiryDate?: string;
+  isPaid?: boolean;
+  prevStartDate?: string;
+  prevExpiryDate?: string;
+}) {
   const {
     _id,
     name,
@@ -234,7 +227,7 @@ export async function updateLicensee(
 /**
  * Soft deletes a licensee with activity logging
  */
-export async function deleteLicensee(_id: string, _request: NextRequest) {
+export async function deleteLicensee(_id: string) {
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
   const licenseeToDelete = await Licencee.findOne({ _id });
 

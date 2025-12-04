@@ -20,10 +20,6 @@ export default function ReportsDateFilters() {
     setCustomDateRange,
     pendingCustomDateRange,
     setPendingCustomDateRange,
-    loadingChartData,
-    loadingTopPerforming,
-    refreshing,
-    selectedLicencee: _selectedLicencee,
   } = useDashBoardStore();
 
   const { setDateRange, activeView } = useReportsStore();
@@ -59,11 +55,6 @@ export default function ReportsDateFilters() {
   };
 
   const timeFilterButtons = getTimeFilterButtons();
-
-  // Check if any loading state is active (dashboard store + reports store)
-  const { isLoading: reportsLoading } = useReportsStore();
-  const isLoading =
-    loadingChartData || loadingTopPerforming || refreshing || reportsLoading;
 
   /**
    * Apply custom date range to both stores
@@ -169,7 +160,6 @@ export default function ReportsDateFilters() {
           value={activeMetricsFilter}
           onChange={e => handleFilterClick(e.target.value as TimePeriod)}
           className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
-          disabled={isLoading}
         >
           {timeFilterButtons.map(filter => (
             <option key={filter.value} value={filter.value}>
@@ -188,9 +178,8 @@ export default function ReportsDateFilters() {
               activeMetricsFilter === filter.value
                 ? 'bg-buttonActive text-white'
                 : 'bg-button text-white hover:bg-button/90'
-            } ${isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
+            }`}
             onClick={() => handleFilterClick(filter.value)}
-            disabled={isLoading}
           >
             {filter.label}
           </Button>

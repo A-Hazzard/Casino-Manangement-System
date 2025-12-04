@@ -9,10 +9,10 @@
  * @module app/api/collection-reports/investigate-issues/route
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../lib/middleware/db';
-import { getUserIdFromServer, getUserById } from '../../lib/helpers/users';
 import { investigateMostRecentReport } from '@/app/api/lib/helpers/collectionIssueChecker';
+import { NextResponse } from 'next/server';
+import { getUserById, getUserIdFromServer } from '../../lib/helpers/users';
+import { connectDB } from '../../lib/middleware/db';
 
 /**
  * Main GET handler for investigating issues
@@ -23,7 +23,7 @@ import { investigateMostRecentReport } from '@/app/api/lib/helpers/collectionIss
  * 3. Investigate most recent report using helper
  * 4. Return investigation results
  */
-export async function GET(_request: NextRequest) {
+export async function GET() {
   const startTime = Date.now();
 
   try {

@@ -8,6 +8,7 @@ import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
 import { useDebounce } from '@/lib/utils/hooks';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 type CustomDateRange = {
   startDate: Date;
   endDate: Date;
@@ -86,6 +87,9 @@ export const useCabinetData = ({
   } | null>(null);
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
   const [lastFilterBackendKey, setLastFilterBackendKey] = useState<string>('');
+
+  // AbortController for canceling previous requests
+  const makeRequest = useAbortableRequest();
 
   // PERFORMANCE OPTIMIZATION: Memoize financial totals calculation (for backward compatibility)
   // Note: This is now only used for table display, metrics cards use metricsTotals from API
@@ -190,7 +194,7 @@ export const useCabinetData = ({
   // Load cabinets with proper error handling and logging
   const loadCabinets = useCallback(
     async (page?: number, limit?: number) => {
-      try {
+      const result = await makeRequest(async (signal) => {
         console.warn('Loading cabinets with filters:', {
           selectedLicencee,
           activeMetricsFilter,
@@ -231,33 +235,45 @@ export const useCabinetData = ({
           effectivePage,
           effectiveLimit,
           debouncedSearchTerm,
-          selectedLocation // Pass locationId to filter at API level
+          selectedLocation, // Pass locationId to filter at API level
+          signal
         );
 
+        return cabinetsData;
+      }, `Cabinets (${activeMetricsFilter}, Licensee: ${selectedLicencee})`);
+
+      // Only update state if request wasn't aborted (result is not null)
+      if (!result) {
+        console.log('[useCabinetData] Fetch aborted - keeping loading state and existing data');
+        // If aborted, keep loading state active so skeleton continues to show
+        return;
+      }
+
+      try {
         console.warn('✅ [USE CABINET DATA] Fetch completed, received:', {
-          isArray: Array.isArray(cabinetsData),
+          isArray: Array.isArray(result),
           isObject:
-            typeof cabinetsData === 'object' &&
-            cabinetsData !== null &&
-            !Array.isArray(cabinetsData),
-          length: Array.isArray(cabinetsData)
-            ? cabinetsData.length
-            : cabinetsData &&
-                typeof cabinetsData === 'object' &&
-                'cabinets' in cabinetsData
-              ? (cabinetsData as { cabinets: unknown[] }).cabinets.length
+            typeof result === 'object' &&
+            result !== null &&
+            !Array.isArray(result),
+          length: Array.isArray(result)
+            ? result.length
+            : result &&
+                typeof result === 'object' &&
+                'cabinets' in result
+              ? (result as { cabinets: unknown[] }).cabinets.length
               : 0,
-          type: typeof cabinetsData,
+          type: typeof result,
         });
 
         // Handle paginated response
         if (
-          cabinetsData &&
-          typeof cabinetsData === 'object' &&
-          !Array.isArray(cabinetsData) &&
-          'cabinets' in cabinetsData
+          result &&
+          typeof result === 'object' &&
+          !Array.isArray(result) &&
+          'cabinets' in result
         ) {
-          const paginatedResponse = cabinetsData as {
+          const paginatedResponse = result as {
             cabinets: Cabinet[];
             pagination?: {
               total: number;
@@ -286,19 +302,19 @@ export const useCabinetData = ({
             )
           ).sort();
           setGameTypes(uniqueGameTypes);
-        } else if (Array.isArray(cabinetsData)) {
+        } else if (Array.isArray(result)) {
           // Backward compatibility: direct array response
           console.warn(
             '✅ [USE CABINET DATA] Successfully loaded cabinets (array):',
-            cabinetsData.length
+            result.length
           );
-          setAllCabinets(cabinetsData);
-          setTotalCount(cabinetsData.length);
+          setAllCabinets(result);
+          setTotalCount(result.length);
 
           // PERFORMANCE OPTIMIZATION: Extract unique game types efficiently
           const uniqueGameTypes = Array.from(
             new Set(
-              cabinetsData
+              result
                 .map(cabinet => cabinet.game || cabinet.installedGame)
                 .filter(game => game && game.trim() !== '')
             )
@@ -307,7 +323,7 @@ export const useCabinetData = ({
         } else {
           console.error(
             '❌ [USE CABINET DATA] Cabinets data is not in expected format:',
-            cabinetsData
+            result
           );
           setAllCabinets([]);
           setTotalCount(0);
@@ -349,6 +365,7 @@ export const useCabinetData = ({
       displayCurrency,
       debouncedSearchTerm,
       selectedLocation,
+      makeRequest,
     ]
   );
 

@@ -12,7 +12,7 @@
  * @features Session Management, Cookie Clearing, Authentication
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 /**
  * Main POST handler for clearing user session
@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 2. Clear all authentication cookies (token, refreshToken, user)
  * 3. Return success response
  */
-export async function POST(_request: NextRequest) {
+export async function POST() {
   const startTime = Date.now();
 
   try {

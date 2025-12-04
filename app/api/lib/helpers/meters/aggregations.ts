@@ -1,3 +1,4 @@
+import { Machine } from '@/app/api/lib/models/machines';
 import { Db } from 'mongodb';
 import { PipelineStage } from 'mongoose';
 import { CustomDate, QueryFilter } from '../../types';
@@ -141,10 +142,10 @@ export async function getMetricsForLocations(
 ) {
   // 🚀 OPTIMIZED: Pre-filter machines by licensee to avoid expensive lookups in aggregation
   let machineIds: string[] | undefined;
-  
+
   if (licencee) {
     // Step 1: Get machines for this licensee's locations (ONE lookup, not per-meter)
-    const machinesForLicensee = await db.collection('machines').aggregate([
+    const machinesForLicensee = await Machine.aggregate([
       {
         $match: {
           $or: [
@@ -170,10 +171,12 @@ export async function getMetricsForLocations(
       },
       { $match: { location: { $ne: [] } } },
       { $project: { _id: 1 } },
-    ]).toArray();
-    
-    machineIds = machinesForLicensee.map(m => m._id.toString());
-    
+    ]);
+
+    machineIds = machinesForLicensee.map((m: { _id: unknown }) =>
+      String(m._id)
+    );
+
     // If no machines found for this licensee, return empty array
     if (machineIds.length === 0) {
       return [];
@@ -186,7 +189,7 @@ export async function getMetricsForLocations(
   if (timeframe.startDate && timeframe.endDate) {
     filter.readAt = { $gte: timeframe.startDate, $lte: timeframe.endDate };
   }
-  
+
   // Add machine filter if we have licensee-specific machines
   if (machineIds) {
     filter.machine = { $in: machineIds };
@@ -287,7 +290,12 @@ export async function getMetricsForLocations(
         totalCancelledCredits: '$totalCancelledCredits',
         gross: {
           $subtract: [
-            { $subtract: [{ $ifNull: ['$totalDrop', 0] }, { $ifNull: ['$totalJackpot', 0] }] },
+            {
+              $subtract: [
+                { $ifNull: ['$totalDrop', 0] },
+                { $ifNull: ['$totalJackpot', 0] },
+              ],
+            },
             { $ifNull: ['$totalCancelledCredits', 0] },
           ],
         },

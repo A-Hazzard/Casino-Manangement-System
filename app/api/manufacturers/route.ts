@@ -10,9 +10,9 @@
  * @module app/api/manufacturers/route
  */
 
-import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { NextRequest, NextResponse } from 'next/server';
+import { Machine } from '@/app/api/lib/models/machines';
+import { NextResponse } from 'next/server';
 
 /**
  * Main GET handler for fetching manufacturers
@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 4. Sort alphabetically
  * 5. Return manufacturers list
  */
-export async function GET(_request: NextRequest) {
+export async function GET() {
   const startTime = Date.now();
 
   try {
@@ -85,11 +85,12 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json(sortedManufacturers);
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch manufacturers';
-    console.error(`[Manufacturers API] Error after ${duration}ms:`, errorMessage);
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch manufacturers';
+    console.error(
+      `[Manufacturers API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

@@ -228,24 +228,11 @@ export async function validateLicenseeAccess(
 export async function getLicenseeLocationFilter(
   userAccessibleLicensees: string[] | 'all'
 ): Promise<string[] | 'all'> {
-  console.log('🔍 [getLicenseeLocationFilter] Input:', {
-    userAccessibleLicensees,
-    isAll: userAccessibleLicensees === 'all',
-    isArray: Array.isArray(userAccessibleLicensees),
-    length: Array.isArray(userAccessibleLicensees)
-      ? userAccessibleLicensees.length
-      : 0,
-  });
-
   if (userAccessibleLicensees === 'all') {
-    console.log('🔍 [getLicenseeLocationFilter] Returning "all"');
     return 'all';
   }
 
   if (userAccessibleLicensees.length === 0) {
-    console.log(
-      '🔍 [getLicenseeLocationFilter] No licensees - returning empty array'
-    );
     return [];
   }
 
@@ -254,10 +241,6 @@ export async function getLicenseeLocationFilter(
     throw new Error('Database connection failed');
   }
 
-  console.log(
-    '🔍 [getLicenseeLocationFilter] Querying locations for licensees:',
-    userAccessibleLicensees
-  );
   const locations = await GamingLocations.find(
     {
       'rel.licencee': { $in: userAccessibleLicensees },
@@ -266,28 +249,10 @@ export async function getLicenseeLocationFilter(
         { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     },
-    { _id: 1, name: 1, 'rel.licencee': 1 }
+    { _id: 1 }
   ).lean();
 
-  const locationIds = locations.map(loc => String(loc._id));
-  console.log('🔍 [getLicenseeLocationFilter] Found locations:', {
-    count: locationIds.length,
-    firstFew: locations
-      .slice(0, 5)
-      .map(
-        (loc: {
-          _id: unknown;
-          name?: string;
-          rel?: { licencee?: string };
-        }) => ({
-          _id: String(loc._id),
-          name: loc.name,
-          licensee: loc.rel?.licencee,
-        })
-      ),
-  });
-
-  return locationIds;
+  return locations.map(loc => String(loc._id));
 }
 
 /**
@@ -321,28 +286,14 @@ export async function getUserLocationFilter(
   const isManager = normalizedRoles.includes('manager');
   const isLocationAdmin = normalizedRoles.includes('location admin');
 
-  console.log('[getUserLocationFilter] User roles:', userRoles);
-  console.log('[getUserLocationFilter] Is Admin:', isAdmin);
-  console.log('[getUserLocationFilter] Is Manager:', isManager);
-  console.log(
-    '[getUserLocationFilter] Selected licensee filter:',
-    selectedLicenseeFilter
-  );
-
   if (isAdmin) {
     const hasSpecificLicensee =
       selectedLicenseeFilter &&
       selectedLicenseeFilter !== '' &&
       selectedLicenseeFilter !== 'all';
     if (!hasSpecificLicensee) {
-      console.log(
-        '[getUserLocationFilter] Admin user detected with no specific licensee filter - granting access to all locations'
-      );
       return 'all';
     }
-    console.log(
-      '[getUserLocationFilter] Admin user with specific licensee filter - continuing with licensee-based filtering'
-    );
   }
 
   // Get locations from selected licensee or all user's licensees
@@ -361,16 +312,6 @@ export async function getUserLocationFilter(
       );
 
       if (!normalizedAccessible.includes(normalizedSelected)) {
-        console.warn(
-          `[getUserLocationFilter] ⚠️ User attempted to access licensee they don't have access to: ${selectedLicenseeFilter}`
-        );
-        console.warn(
-          `[getUserLocationFilter] User's accessible licensees:`,
-          normalizedAccessible
-        );
-        console.warn(
-          `[getUserLocationFilter] Ignoring invalid licensee filter and using user's assigned licensees instead`
-        );
         // Ignore the invalid licensee filter and use user's assigned licensees
         selectedLicenseeFilter = undefined;
       }
@@ -396,19 +337,9 @@ export async function getUserLocationFilter(
 
       if (licenseeDoc && !Array.isArray(licenseeDoc)) {
         licenseeId = String(licenseeDoc._id);
-        console.log(
-          '[getUserLocationFilter] Resolved licensee filter:',
-          selectedLicenseeFilter,
-          '->',
-          licenseeId
-        );
       }
-    } catch (error) {
-      console.warn(
-        '[getUserLocationFilter] Failed to resolve licensee, using as-is:',
-        selectedLicenseeFilter,
-        error
-      );
+    } catch {
+      // Failed to resolve licensee - use as-is
     }
 
     // Now query locations by licensee ID
@@ -424,97 +355,34 @@ export async function getUserLocationFilter(
       { _id: 1 }
     ).lean();
     licenseeLocations = locations.map(loc => String(loc._id));
-    console.log(
-      '[getUserLocationFilter] Filtered by specific licensee:',
-      selectedLicenseeFilter,
-      '(ID:',
-      licenseeId,
-      ') - Found',
-      licenseeLocations.length,
-      'locations'
-    );
   } else {
     // Get all locations from user's licensees
-    console.log(
-      '🔍 [getUserLocationFilter] Getting all locations from user licensees:',
-      userAccessibleLicensees
-    );
     licenseeLocations = await getLicenseeLocationFilter(
       userAccessibleLicensees
     );
-    console.log(
-      '🔍 [getUserLocationFilter] All licensee locations:',
-      licenseeLocations === 'all'
-        ? 'all'
-        : `${licenseeLocations.length} locations`
-    );
-    if (Array.isArray(licenseeLocations) && licenseeLocations.length > 0) {
-      console.log(
-        '🔍 [getUserLocationFilter] Licensee location IDs (first 10):',
-        licenseeLocations.slice(0, 10)
-      );
-    }
   }
 
   // If licenseeLocations is 'all', check if user has location restrictions
   if (licenseeLocations === 'all') {
     // Admin user - check if they have location restrictions
-    const result =
-      userLocationPermissions.length > 0 ? userLocationPermissions : 'all';
-    console.log(
-      '[getUserLocationFilter] Admin user - result:',
-      result === 'all' ? 'all' : result.length
-    );
-    return result;
+    return userLocationPermissions.length > 0 ? userLocationPermissions : 'all';
   }
 
   // LOCATION ADMINS see their assigned locations OR all locations from their assigned licensees
-  // If they have specific location assignments, use those. Otherwise, show all locations from their licensees.
   if (isLocationAdmin) {
     if (userLocationPermissions.length > 0) {
-      // Return location admin's assigned locations directly (no licensee filtering)
-      // This allows location admins to see their assigned locations even if they belong to different licensees
-      console.log(
-        '[getUserLocationFilter] Location Admin - returning assigned locations directly:',
-        userLocationPermissions.length
-      );
       return userLocationPermissions;
     }
-    // Location admin with no specific location assignments should see all locations from their assigned licensees
-    // This is a fallback for location admins who are assigned to a licensee but don't have specific location restrictions
-    console.log(
-      '[getUserLocationFilter] Location Admin with no specific location assignments - falling back to licensee locations:',
-      Array.isArray(licenseeLocations) ? licenseeLocations.length : 'all'
-    );
     return licenseeLocations;
   }
 
-  // MANAGERS OR ADMINS see ALL locations for their assigned/selected licensees (no location permission intersection)
+  // MANAGERS OR ADMINS see ALL locations for their assigned/selected licensees
   if (isManager || isAdmin) {
-    console.log(
-      '[getUserLocationFilter] Manager/Admin - returning ALL licensee locations:',
-      licenseeLocations.length
-    );
     return licenseeLocations;
   }
 
   // NON-MANAGERS, NON-ADMINS (collectors, technicians) must intersect with location permissions
   if (userLocationPermissions.length > 0) {
-    console.log(
-      '[getUserLocationFilter] 🔍 COLLECTOR/TECHNICIAN - Intersecting locations:'
-    );
-    console.log('  📍 Licensee locations count:', licenseeLocations.length);
-    console.log(
-      '  📍 Licensee locations (first 10):',
-      licenseeLocations.slice(0, 10)
-    );
-    console.log(
-      '  👤 User location permissions count:',
-      userLocationPermissions.length
-    );
-    console.log('  👤 User location permissions:', userLocationPermissions);
-
-    // Normalize IDs to strings for comparison (trim whitespace and convert to lowercase for comparison)
     // Create a map of normalized -> original for licensee locations
     const licenseeLocationMap = new Map<string, string>();
     licenseeLocations.forEach(id => {
@@ -529,61 +397,18 @@ export async function getUserLocationFilter(
       String(id).trim().toLowerCase()
     );
 
-    console.log(
-      '  🔄 Normalized licensee locations (first 5):',
-      normalizedLicenseeLocations.slice(0, 5)
-    );
-    console.log('  🔄 Normalized user permissions:', normalizedUserPermissions);
-
     // Perform case-insensitive intersection
     const intersectionNormalized = normalizedLicenseeLocations.filter(id =>
       normalizedUserPermissions.includes(id)
     );
 
-    // Map back to original format (use the licensee locations format as source of truth)
-    const intersectionResult = intersectionNormalized
+    // Map back to original format
+    return intersectionNormalized
       .map(normalized => licenseeLocationMap.get(normalized)!)
       .filter(Boolean);
-
-    console.log('  ✅ Intersection result count:', intersectionResult.length);
-    console.log('  ✅ Intersection result:', intersectionResult);
-
-    if (intersectionResult.length === 0) {
-      console.warn(
-        '[getUserLocationFilter] ⚠️⚠️⚠️ NO LOCATIONS IN INTERSECTION! ⚠️⚠️⚠️'
-      );
-      console.warn(
-        "  This means the user's allowed location(s) don't belong to their assigned licensees"
-      );
-      console.warn('  Checking for partial matches...');
-
-      // Check if any user permissions match any licensee locations (case-insensitive)
-      const partialMatches = normalizedUserPermissions.filter(userId =>
-        normalizedLicenseeLocations.some(licenseeId => userId === licenseeId)
-      );
-
-      if (partialMatches.length > 0) {
-        console.warn('  ⚠️ Found case-insensitive matches:', partialMatches);
-        console.warn('  ⚠️ This suggests an ID format mismatch issue');
-      }
-
-      console.warn('  User needs either:');
-      console.warn(
-        '    1. Location assigned that belongs to one of their licensees, OR'
-      );
-      console.warn(
-        '    2. Licensee assigned that owns their allowed location(s)'
-      );
-    }
-
-    return intersectionResult;
   }
 
   // Non-manager, non-admin with NO location permissions should see NOTHING
-  console.warn(
-    '[getUserLocationFilter] ⚠️ Non-manager/admin with NO location permissions - returning empty array!'
-  );
-  console.warn('  User needs specific location assignments to see any data');
   return [];
 }
 

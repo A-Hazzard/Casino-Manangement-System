@@ -41,7 +41,7 @@ type ProfileUpdatePayload = {
   gender?: string;
   emailAddress: string;
   phone: string;
-  dateOfBirth: string;
+  dateOfBirth?: string; // Optional - only validated if provided
   currentPassword?: string;
   newPassword?: string;
   confirmPassword?: string;
@@ -145,15 +145,16 @@ export async function PUT(request: NextRequest) {
       errors.phone = 'Phone number cannot match the username.';
     }
 
-    if (!dateOfBirth) {
-      errors.dateOfBirth = 'Date of birth is required.';
-    } else if (!isValidDateInput(dateOfBirth)) {
-      errors.dateOfBirth = 'Provide a valid date of birth.';
-    } else {
-      const parsedDob = new Date(dateOfBirth);
-      const today = new Date();
-      if (parsedDob > today) {
-        errors.dateOfBirth = 'Date of birth cannot be in the future.';
+    // Only validate dateOfBirth if provided (it's optional for profile validation updates)
+    if (dateOfBirth) {
+      if (!isValidDateInput(dateOfBirth)) {
+        errors.dateOfBirth = 'Provide a valid date of birth.';
+      } else {
+        const parsedDob = new Date(dateOfBirth);
+        const today = new Date();
+        if (parsedDob > today) {
+          errors.dateOfBirth = 'Date of birth cannot be in the future.';
+        }
       }
     }
 

@@ -14,9 +14,9 @@
  */
 
 import { dashboardData } from '@/lib/types';
+import { formatISODate } from '@/shared/utils/dateFormat';
 import { TimePeriod } from '@shared/types';
 import axios from 'axios';
-import { formatISODate } from '@/shared/utils/dateFormat';
 
 // ============================================================================
 // Metrics Data Fetching and Processing
@@ -40,7 +40,8 @@ export async function getMetrics(
   startDate?: Date | string,
   endDate?: Date | string,
   licencee?: string,
-  displayCurrency?: string
+  displayCurrency?: string,
+  signal?: AbortSignal
 ): Promise<dashboardData[]> {
   try {
     let url = `/api/metrics/meters?timePeriod=${timePeriod}`;
@@ -79,6 +80,7 @@ export async function getMetrics(
       headers: {
         'Cache-Control': 'no-cache',
       },
+      signal,
     });
     if (!Array.isArray(data) || data.length === 0) return [];
 

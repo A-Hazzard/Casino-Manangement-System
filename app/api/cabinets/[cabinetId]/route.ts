@@ -40,9 +40,35 @@ export async function GET(
     const { cabinetId } = await params;
 
     // ============================================================================
-    // STEP 2: Connect to database
+    // STEP 2: Connect to database and check permissions
     // ============================================================================
     await connectDB();
+
+    // Import getUserFromServer for role check
+    const { getUserFromServer } = await import('@/app/api/lib/helpers/users');
+    const user = await getUserFromServer();
+
+    if (user) {
+      const userRoles =
+        (user.roles as string[])?.map(r => r.toLowerCase()) || [];
+      const isCollectorOnly =
+        userRoles.includes('collector') &&
+        !userRoles.includes('developer') &&
+        !userRoles.includes('admin') &&
+        !userRoles.includes('manager') &&
+        !userRoles.includes('location admin') &&
+        !userRoles.includes('technician');
+
+      if (isCollectorOnly) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Collectors do not have access to cabinets',
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     // ============================================================================
     // STEP 3: Find cabinet (machine) by ID

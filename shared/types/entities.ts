@@ -29,6 +29,8 @@ export type Location = {
   onlineMachines?: number;
   hasSmib?: boolean;
   noSMIBLocation?: boolean;
+  membershipEnabled?: boolean;
+  locationMembershipSettings?: LocationMembershipSettings;
 };
 
 export type Address = {
@@ -75,6 +77,9 @@ export type AggregatedLocation = {
   rel?: { licencee?: string | null }; // For currency conversion
   country?: string; // For currency conversion
   totalDrop?: number; // Alias for moneyIn in some contexts
+  enableMembership?: boolean; // Membership enabled flag
+  membershipEnabled?: boolean; // Alias for enableMembership
+  memberCount?: number; // Number of members at this location
 };
 
 // Location metrics for reports and analytics
@@ -661,6 +666,12 @@ export type MemberSession = {
   duration?: number;
 };
 
+export type SessionInfo = {
+  _id: string;
+  memberId: string;
+  locationMembershipSettings?: LocationMembershipSettings;
+};
+
 // Members UI types
 export type MembersView = 'members' | 'summary-report';
 
@@ -679,6 +690,7 @@ export type MemberSummary = {
   lastLogin: string;
   createdAt: string;
   locationName: string;
+  gamingLocation?: string;
   winLoss?: number;
 };
 

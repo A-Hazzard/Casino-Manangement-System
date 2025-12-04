@@ -421,6 +421,51 @@ export async function fetchData(params: any, db: any): Promise<any> {
 
 ## Database Query Standards
 
+### Use Mongoose Models, Never Direct Collection Access
+
+**CRITICAL**: Always use Mongoose models instead of direct `db.collection()` access:
+
+- ✅ **Use Mongoose models** - Import from `@/app/api/lib/models/`
+- ❌ **NEVER use `db.collection('name')`** - Bypasses type safety and indexes
+- ✅ **Models provide**: Automatic indexing, type safety, validation, and optimization
+- ❌ **Direct collection access**: No type safety, manual indexes required, error-prone
+
+### Example
+
+```typescript
+// ✅ GOOD - Use Mongoose model
+import { Member } from '@/app/api/lib/models/members';
+const members = await Member.find(query).lean();
+const count = await Member.countDocuments(query);
+
+// ❌ BAD - Direct collection access
+const members = await db.collection('members').find(query).toArray();
+const count = await db.collection('members').countDocuments(query);
+```
+
+### Available Models
+
+Import models from `@/app/api/lib/models/`:
+- `Member` - members collection
+- `Machine` - machines collection
+- `GamingLocations` - gaminglocations collection
+- `Meters` - meters collection
+- `MachineSession` - machineSessions collection
+- `MachineEvents` - machineEvents collection
+- `Licencee` - licencees collection
+- `Countries` - countries collection
+- `Collections` - collections collection
+- `CollectionReport` - collectionReports collection
+- `MovementRequest` - movementRequests collection
+- `Feedback` - feedback collection
+- `Firmware` - firmwares collection
+- `Scheduler` - schedulers collection
+- `AcceptedBills` - acceptedBills collection
+- `ActivityLog` - activityLog collection
+- `User` - users collection
+
+**Reference:** See `app/api/lib/models/` directory for all available models.
+
 ### Query Methods
 
 **CRITICAL**: Use correct MongoDB query methods:
@@ -433,11 +478,15 @@ export async function fetchData(params: any, db: any): Promise<any> {
 ### Example
 
 ```typescript
-// ✅ GOOD - Correct query method
+// ✅ GOOD - Correct query method with model
+import { Machine } from '@/app/api/lib/models/machines';
 const machine = await Machine.findOne({ _id: machineId });
 
 // ❌ BAD - Wrong query method
 const machine = await Machine.findById(machineId);
+
+// ❌ BAD - Direct collection access
+const machine = await db.collection('machines').findOne({ _id: machineId });
 ```
 
 ### Licensee Filtering

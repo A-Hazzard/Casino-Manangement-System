@@ -49,17 +49,6 @@ export type DeleteUserModalProps = {
   onDelete: () => void;
 };
 
-export type UserDetailsModalProps = {
-  open: boolean;
-  user: User | null;
-  onClose: () => void;
-  onSave: (
-    data: Partial<User> & {
-      password?: string;
-    }
-  ) => void;
-};
-
 // Hook types for useAdministrationData
 export type UseAdministrationDataProps = {
   selectedLicencee: string;

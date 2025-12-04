@@ -9,6 +9,7 @@
 
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
+import { Countries } from '@/app/api/lib/models/countries';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
 import type { MachineAnalytics } from '@/lib/types/reports';
@@ -436,21 +437,19 @@ export async function getMachineStatsForAnalytics(
   // Count totals and online in parallel
   const [totalMachines, onlineMachines, sasMachines, financialTotals] =
     await Promise.all([
-      db.collection('machines').countDocuments({
+      Machine.countDocuments({
         ...machineMatchStage,
         lastActivity: { $exists: true },
       }),
-      db.collection('machines').countDocuments({
+      Machine.countDocuments({
         ...machineMatchStage,
         lastActivity: { $gte: onlineThreshold },
       }),
-      db.collection('machines').countDocuments({
+      Machine.countDocuments({
         ...machineMatchStage,
         isSasMachine: true,
       }),
-      db
-        .collection('machines')
-        .aggregate([
+      Machine.aggregate([
           { $match: machineMatchStage },
           {
             $group: {
@@ -469,8 +468,7 @@ export async function getMachineStatsForAnalytics(
               },
             },
           },
-        ])
-        .toArray(),
+        ]),
     ]);
 
   const financials = financialTotals[0] || {
@@ -941,10 +939,12 @@ export async function getTopLocationsAnalytics(
       licenseeIdToName.set(lic._id.toString(), lic.name);
     });
 
-    const countriesData = await db.collection('countries').find({}).toArray();
+    const countriesData = await Countries.find({}).lean();
     const countryIdToName = new Map<string, string>();
     countriesData.forEach(country => {
-      countryIdToName.set(country._id.toString(), country.name);
+      if (country._id && country.name) {
+        countryIdToName.set(String(country._id), country.name);
+      }
     });
 
     topLocationsWithMetrics = topLocationsWithMetrics.map(location => {
