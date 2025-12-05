@@ -45,26 +45,36 @@ function createEmptyResponse(
   queryStartDate: Date,
   queryEndDate: Date
 ) {
-  return NextResponse.json({
-    data: [],
-    totalCount: 0,
-    totalPages: 0,
-    currentPage: params.page,
-    limit: params.limit,
-    locations: [],
-    dateRange: { start: queryStartDate, end: queryEndDate },
-    timePeriod: params.timePeriod,
-    currency: params.displayCurrency,
-    converted: false,
-    pagination: {
-      page: params.page,
-      limit: params.limit,
+  return NextResponse.json(
+    {
+      data: [],
       totalCount: 0,
       totalPages: 0,
-      hasNextPage: false,
-      hasPrevPage: false,
+      currentPage: params.page,
+      limit: params.limit,
+      locations: [],
+      dateRange: { start: queryStartDate, end: queryEndDate },
+      timePeriod: params.timePeriod,
+      currency: params.displayCurrency,
+      converted: false,
+      pagination: {
+        page: params.page,
+        limit: params.limit,
+        totalCount: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
     },
-  });
+    {
+      headers: {
+        'Cache-Control':
+          'no-store, no-cache, must-revalidate, proxy-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
+    }
+  );
 }
 
 /**
@@ -110,13 +120,26 @@ export async function GET(req: NextRequest) {
     if (!db) {
       return NextResponse.json(
         { error: 'DB connection failed' },
-        { status: 500 }
+        {
+          status: 500,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+          },
+        }
       );
     }
 
     const userPayload = await getUserFromServer();
     if (!userPayload) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        {
+          status: 401,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+          },
+        }
+      );
     }
 
     const userRoles = (userPayload?.roles as string[]) || [];
@@ -386,7 +409,16 @@ export async function GET(req: NextRequest) {
       duration: `${duration}ms`,
     });
 
-    return NextResponse.json(response);
+    // Prevent caching to avoid stale data issues
+    return NextResponse.json(response, {
+      headers: {
+        'Cache-Control':
+          'no-store, no-cache, must-revalidate, proxy-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+        'X-Content-Type-Options': 'nosniff',
+      },
+    });
   } catch (err) {
     const duration = Date.now() - startTime;
     const errorMessage = err instanceof Error ? err.message : 'Server Error';
@@ -395,9 +427,25 @@ export async function GET(req: NextRequest) {
 
     // Handle validation errors with 400 status
     if (err instanceof Error && err.message.includes('required')) {
-      return NextResponse.json({ error: errorMessage }, { status: 400 });
+      return NextResponse.json(
+        { error: errorMessage },
+        {
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+          },
+        }
+      );
     }
 
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json(
+      { error: errorMessage },
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   }
 }
