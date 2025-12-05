@@ -1007,6 +1007,10 @@ export default function ProfileModal({
 
     // Build update payload with only changed fields + required _id
     const updatePayload: Record<string, unknown> = { _id: userData._id };
+    
+    // Track profile changes separately to build a minimal profile object
+    const profileChanges: Record<string, unknown> = {};
+    
     meaningfulChanges.forEach(change => {
       const fieldPath = change.path; // Use full path for nested fields
 
@@ -1014,9 +1018,19 @@ export default function ProfileModal({
       if (fieldPath.includes('.')) {
         const [parent, child] = fieldPath.split('.');
 
-        // Special handling for objects that must be sent whole
+        // Build profile object with only changed fields
         if (parent === 'profile') {
-          updatePayload.profile = formData;
+          // Handle nested profile fields like profile.identification.dateOfBirth
+          if (child.includes('.')) {
+            const [nestedParent, nestedChild] = child.split('.');
+            if (!profileChanges[nestedParent]) {
+              profileChanges[nestedParent] = {};
+            }
+            (profileChanges[nestedParent] as Record<string, unknown>)[nestedChild] =
+              change.newValue;
+          } else {
+            profileChanges[child] = change.newValue;
+          }
         } else {
           if (!updatePayload[parent]) {
             updatePayload[parent] = {};
@@ -1029,11 +1043,20 @@ export default function ProfileModal({
           updatePayload.profilePicture = profilePicture ?? null;
         } else if (fieldPath === 'roles') {
           updatePayload.roles = selectedRoles;
+        } else if (fieldPath === 'assignedLicensees') {
+          updatePayload.assignedLicensees = normalizedSelectedLicensees;
+        } else if (fieldPath === 'assignedLocations') {
+          updatePayload.assignedLocations = normalizedSelectedLocations;
         } else {
           updatePayload[fieldPath] = payload[fieldPath as keyof typeof payload];
         }
       }
     });
+
+    // Only include profile if there are profile changes
+    if (Object.keys(profileChanges).length > 0) {
+      updatePayload.profile = profileChanges;
+    }
 
     // Add password if changing
     if (hasPasswordChange) {

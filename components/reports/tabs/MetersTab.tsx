@@ -530,6 +530,24 @@ export default function MetersTab() {
 
             const newMetersData = response.data.data || [];
 
+            // Log response for debugging (especially in production)
+            if (
+              process.env.NODE_ENV === 'development' ||
+              !newMetersData.length
+            ) {
+              console.log('[MetersTab] API Response:', {
+                batch,
+                dataLength: newMetersData.length,
+                totalCount: response.data.totalCount,
+                locations: selectedLocations,
+                timePeriod: activeMetricsFilter,
+                licensee: selectedLicencee,
+                currency: displayCurrency,
+                hasHourlyData: !!response.data.hourlyChartData,
+                responseKeys: Object.keys(response.data),
+              });
+            }
+
             if (response.data.hourlyChartData) {
               setHourlyChartData(response.data.hourlyChartData);
               setAllHourlyChartData(response.data.hourlyChartData);
@@ -558,9 +576,17 @@ export default function MetersTab() {
             // Check if request was aborted - don't show error for cancelled requests
             const axios = (await import('axios')).default;
             if (axios.isCancel(err)) {
+              // Request was cancelled - ensure loading states are cleared
+              setLoading(false);
+              setReportsLoading(false);
+              setHourlyChartLoading(false);
               return; // Request was cancelled, don't show error
             }
             if (err instanceof Error && err.name === 'AbortError') {
+              // Request was aborted - ensure loading states are cleared
+              setLoading(false);
+              setReportsLoading(false);
+              setHourlyChartLoading(false);
               return; // Request was aborted, don't show error
             }
 
@@ -577,16 +603,20 @@ export default function MetersTab() {
               (err as Error)?.message ||
               'Failed to load meters data';
             setError(errorMessage as string);
+            setLoading(false);
+            setReportsLoading(false);
+            setHourlyChartLoading(false);
             toast.error(errorMessage as string, {
               duration: 3000,
             });
+          } finally {
+            // Always clear loading states, even if request was aborted
+            setLoading(false);
+            setReportsLoading(false);
           }
         },
         `Meters Report (Batch ${batch}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
       );
-
-      setLoading(false);
-      setReportsLoading(false);
     },
     [
       selectedLocations,
