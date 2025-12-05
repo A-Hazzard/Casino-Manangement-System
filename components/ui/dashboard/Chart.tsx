@@ -34,7 +34,13 @@ export default function Chart({
     return <DashboardChartSkeleton />;
   }
 
-  if (!chartData || chartData.length === 0) {
+  // Check if chartData is valid and has data
+  // Allow empty array only if we're not loading (to show "no data" message)
+  // But check more carefully - sometimes chartData might be undefined or null
+  const hasValidData =
+    chartData && Array.isArray(chartData) && chartData.length > 0;
+
+  if (!hasValidData) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md">
         <div className="mb-2 text-lg text-gray-500">No Metrics Data</div>
@@ -177,9 +183,48 @@ export default function Chart({
     console.warn('Final chart data (aggregated):', finalChartData);
   }
 
+  // Filter out leading and trailing zero-value entries to show only actual data range
+  // This removes empty lines before data starts and after data ends
+  let trimmedChartData = finalChartData;
+  if (finalChartData.length > 0) {
+    // Find first non-zero entry
+    let firstNonZeroIndex = 0;
+    for (let i = 0; i < finalChartData.length; i++) {
+      const item = finalChartData[i];
+      const hasData =
+        (item.moneyIn || 0) > 0 ||
+        (item.moneyOut || 0) > 0 ||
+        (item.gross || 0) > 0;
+      if (hasData) {
+        firstNonZeroIndex = i;
+        break;
+      }
+    }
+
+    // Find last non-zero entry
+    let lastNonZeroIndex = finalChartData.length - 1;
+    for (let i = finalChartData.length - 1; i >= 0; i--) {
+      const item = finalChartData[i];
+      const hasData =
+        (item.moneyIn || 0) > 0 ||
+        (item.moneyOut || 0) > 0 ||
+        (item.gross || 0) > 0;
+      if (hasData) {
+        lastNonZeroIndex = i;
+        break;
+      }
+    }
+
+    // Trim the data to only include the range with actual data
+    trimmedChartData = finalChartData.slice(
+      firstNonZeroIndex,
+      lastNonZeroIndex + 1
+    );
+  }
+
   // Calculate Y-axis domain from actual data to avoid showing negative values when data doesn't go negative
   const allValues: number[] = [];
-  finalChartData.forEach(item => {
+  trimmedChartData.forEach(item => {
     allValues.push(item.moneyIn || 0);
     allValues.push(item.moneyOut || 0);
     allValues.push(item.gross || 0);
@@ -199,116 +244,130 @@ export default function Chart({
     ];
   }
 
+  // Shared chart component JSX
+  const chartJSX = (
+    <AreaChart data={trimmedChartData}>
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis
+        dataKey={isHourlyChart ? 'time' : 'day'}
+        tickFormatter={(val, index) => {
+          if (isHourlyChart) {
+            const day = trimmedChartData[index]?.day;
+            const fullUTCDate = `${day}T${val}:00Z`;
+            return formatTime(fullUTCDate);
+          } else {
+            return formatDisplayDate(val);
+          }
+        }}
+      />
+      <YAxis
+        domain={yAxisDomain || ['auto', 'auto']}
+        tickFormatter={value => {
+          // Format large numbers compactly for Y-axis to prevent overflow
+          const numValue =
+            typeof value === 'number' ? value : parseFloat(String(value)) || 0;
+          if (numValue === 0) return '0';
+          if (numValue < 1000) return numValue.toFixed(0);
+          if (numValue < 1000000) return `${(numValue / 1000).toFixed(1)}K`;
+          if (numValue < 1000000000)
+            return `${(numValue / 1000000).toFixed(1)}M`;
+          if (numValue < 1000000000000)
+            return `${(numValue / 1000000000).toFixed(1)}B`;
+          return `${(numValue / 1000000000000).toFixed(1)}T`;
+        }}
+      />
+      <Tooltip
+        formatter={(value, name) => {
+          // Format value with full number (not abbreviated) in tooltip
+          const numValue =
+            typeof value === 'number' ? value : parseFloat(String(value)) || 0;
+          const formattedValue = numValue.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+          return [formattedValue, name];
+        }}
+        labelFormatter={(label, payload) => {
+          if (isHourlyChart && payload && payload[0]) {
+            const day = payload[0].payload?.day;
+            if (day) {
+              const fullUTCDate = `${day}T${label}:00Z`;
+              return formatTime(fullUTCDate);
+            }
+          }
+          return formatDisplayDate(label);
+        }}
+      />
+      <Legend />
+      <defs>
+        <linearGradient id="colorMoneyIn" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8} />
+          <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+        </linearGradient>
+        <linearGradient id="colorMoneyOut" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+        </linearGradient>
+        <linearGradient id="colorWager" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor="#8A7FFF" stopOpacity={0.8} />
+          <stop offset="95%" stopColor="#8A7FFF" stopOpacity={0} />
+        </linearGradient>
+        <linearGradient id="colorGross" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor="#f97316" stopOpacity={0.8} />
+          <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <Area
+        type="monotone"
+        dataKey="moneyIn"
+        stroke="#a855f7"
+        strokeWidth={3}
+        fill="url(#colorMoneyIn)"
+        stackId="1"
+      />
+      <Area
+        type="monotone"
+        dataKey="moneyOut"
+        stroke="#3b82f6"
+        strokeWidth={3}
+        fill="url(#colorMoneyOut)"
+        stackId="2"
+      />
+      <Area
+        type="monotone"
+        dataKey="jackpot"
+        stroke="#8A7FFF"
+        strokeWidth={3}
+        fill="url(#colorWager)"
+        stackId="3"
+      />
+      <Area
+        type="monotone"
+        dataKey="gross"
+        stroke="#f97316"
+        strokeWidth={3}
+        fill="url(#colorGross)"
+        stackId="1"
+      />
+    </AreaChart>
+  );
+
   return (
-    <div className="rounded-lg bg-container p-6 shadow-md">
-      <ResponsiveContainer width="100%" height={320}>
-        <AreaChart data={finalChartData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey={isHourlyChart ? 'time' : 'day'}
-            tickFormatter={(val, index) => {
-              if (isHourlyChart) {
-                const day = finalChartData[index]?.day;
-                const fullUTCDate = `${day}T${val}:00Z`;
-                return formatTime(fullUTCDate);
-              } else {
-                return formatDisplayDate(val);
-              }
-            }}
-          />
-          <YAxis
-            domain={yAxisDomain || ['auto', 'auto']}
-            tickFormatter={value => {
-              // Format large numbers compactly for Y-axis to prevent overflow
-              const numValue =
-                typeof value === 'number'
-                  ? value
-                  : parseFloat(String(value)) || 0;
-              if (numValue === 0) return '0';
-              if (numValue < 1000) return numValue.toFixed(0);
-              if (numValue < 1000000) return `${(numValue / 1000).toFixed(1)}K`;
-              if (numValue < 1000000000)
-                return `${(numValue / 1000000).toFixed(1)}M`;
-              if (numValue < 1000000000000)
-                return `${(numValue / 1000000000).toFixed(1)}B`;
-              return `${(numValue / 1000000000000).toFixed(1)}T`;
-            }}
-          />
-          <Tooltip
-            formatter={(value, name) => {
-              // Format value with full number (not abbreviated) in tooltip
-              const numValue =
-                typeof value === 'number'
-                  ? value
-                  : parseFloat(String(value)) || 0;
-              const formattedValue = numValue.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              });
-              return [formattedValue, name];
-            }}
-            labelFormatter={label => {
-              // Format the date label properly
-              return label;
-            }}
-          />
-          <Legend
-            formatter={value => {
-              if (value === 'moneyIn') return 'Money In';
-              if (value === 'moneyOut') return 'Money Out';
-              if (value === 'gross') return 'Gross';
-              return value;
-            }}
-            payload={[
-              { value: 'moneyIn', type: 'line', color: '#8884d8' },
-              { value: 'moneyOut', type: 'line', color: '#4EA7FF' },
-              { value: 'gross', type: 'line', color: '#FFA203' },
-            ]}
-          />
-          <defs>
-            <linearGradient id="colorGross" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="67%" stopColor="#FFA203" stopOpacity={1} />
-              <stop offset="100%" stopColor="#ECF0F9" stopOpacity={1} />
-            </linearGradient>
-          </defs>
-          <defs>
-            <linearGradient id="colorGamesWon" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="56%" stopColor="#4EA7FF" stopOpacity={1} />
-              <stop offset="100%" stopColor="#ECF0F9" stopOpacity={1} />
-            </linearGradient>
-          </defs>
-          <Area
-            type="monotone"
-            dataKey="moneyOut"
-            stroke="#4EA7FF"
-            strokeWidth={3}
-            fill="url(#colorGamesWon)"
-            stackId="2"
-          />
-          <defs>
-            <linearGradient id="colorWager" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="49%" stopColor="#8A7FFF" stopOpacity={1} />
-              <stop offset="100%" stopColor="#ECF0F9" stopOpacity={1} />
-            </linearGradient>
-          </defs>
-          <Area
-            type="monotone"
-            dataKey="moneyIn"
-            stroke="#8A7FFF"
-            strokeWidth={3}
-            fill="url(#colorWager)"
-            stackId="3"
-          />
-          <Area
-            type="monotone"
-            dataKey="gross"
-            stroke="#FFA203"
-            strokeWidth={3}
-            fill="url(#colorGross)"
-            stackId="1"
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+    <div className="rounded-lg bg-container p-0 shadow-md">
+      {/* Mobile: Make chart horizontally scrollable without padding */}
+      <div className="touch-pan-x overflow-x-auto md:hidden">
+        <div className="min-w-[600px]">
+          <ResponsiveContainer width="100%" height={320}>
+            {chartJSX}
+          </ResponsiveContainer>
+        </div>
+      </div>
+      {/* Desktop: Normal chart without horizontal scroll */}
+      <div className="hidden md:block">
+        <ResponsiveContainer width="100%" height={320}>
+          {chartJSX}
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

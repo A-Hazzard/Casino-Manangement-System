@@ -34,8 +34,24 @@ export default function GlobalErrorBoundary({
   // ============================================================================
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
-      console.error("Global error caught:", event.error);
-      setGlobalError(event.error);
+      const error = event.error;
+      
+      // For ChunkLoadError, automatically reload the page to fetch fresh chunks
+      if (
+        error?.name === 'ChunkLoadError' ||
+        error?.message?.includes('chunk') ||
+        error?.message?.includes('Loading chunk')
+      ) {
+        console.warn('ChunkLoadError detected, reloading page...');
+        // Small delay to allow error logging, then reload
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+        return;
+      }
+      
+      console.error("Global error caught:", error);
+      setGlobalError(error);
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {

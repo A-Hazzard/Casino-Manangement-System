@@ -21,14 +21,12 @@
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import TopPerformingLocationModal from '@/components/modals/TopPerformingLocationModal';
 import TopPerformingMachineModal from '@/components/modals/TopPerformingMachineModal';
-import CustomSelect from '@/components/ui/CustomSelect';
 import Chart from '@/components/ui/dashboard/Chart';
 import FinancialMetricsCards from '@/components/ui/FinancialMetricsCards';
 import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
 import MapPreview from '@/components/ui/MapPreview';
 import { RefreshButtonSkeleton } from '@/components/ui/skeletons/ButtonSkeletons';
 import { DashboardChartSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
-import { timeFrames } from '@/lib/constants/uiConstants';
 import type { TopPerformingItem } from '@/lib/types';
 import { MobileLayoutProps } from '@/lib/types/componentProps';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
@@ -215,24 +213,39 @@ export default function MobileLayout(props: MobileLayoutProps) {
         <div className="space-y-2">
           <h2 className="text-lg">Top Performing</h2>
           <div className="relative flex w-full flex-col rounded-lg rounded-tl-3xl rounded-tr-3xl bg-container shadow-md">
+            {/* Tabs skeleton */}
             <div className="flex">
-              <div className="w-full rounded-tl-xl rounded-tr-3xl bg-gray-100 px-4 py-2"></div>
-              <div className="w-full rounded-tr-3xl bg-gray-100 px-4 py-2"></div>
+              <div className="w-full rounded-tl-xl rounded-tr-3xl bg-gray-100 px-4 py-2">
+                <div className="h-5 w-20 animate-pulse rounded bg-gray-200"></div>
+              </div>
+              <div className="w-full rounded-tr-3xl bg-gray-100 px-4 py-2">
+                <div className="h-5 w-20 animate-pulse rounded bg-gray-200"></div>
+              </div>
             </div>
             <div className="mb-0 rounded-lg rounded-tl-none rounded-tr-3xl bg-container p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
-                {/* Skeleton for sort by select */}
+                {/* Empty space for sort by select (removed on mobile) */}
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex-1 space-y-2">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-4">
+                {/* List skeleton - matches actual list structure */}
+                <ul className="flex-1 space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      {/* Colored dot skeleton */}
                       <div className="h-4 w-4 flex-shrink-0 animate-pulse rounded-full bg-gray-200"></div>
+                      {/* Name text skeleton */}
                       <div className="h-4 flex-1 animate-pulse rounded bg-gray-200"></div>
-                    </div>
+                      {/* External link icon skeleton (only for some items) */}
+                      {i < 3 && (
+                        <div className="h-3.5 w-3.5 flex-shrink-0 animate-pulse rounded bg-gray-200"></div>
+                      )}
+                    </li>
                   ))}
+                </ul>
+                {/* Pie chart skeleton - matches ResponsiveContainer width={160} height={160} */}
+                <div className="h-40 w-40 flex-shrink-0">
+                  <div className="h-full w-full animate-pulse rounded-full bg-gray-200"></div>
                 </div>
-                <div className="h-40 w-40 flex-shrink-0 animate-pulse rounded-full bg-gray-200"></div>
               </div>
             </div>
           </div>
@@ -241,20 +254,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-lg">Top Performing</h2>
-            <CustomSelect
-              timeFrames={timeFrames}
-              selectedFilter={props.activePieChartFilter}
-              activePieChartFilter={props.activePieChartFilter}
-              activeFilters={props.activeFilters}
-              onSelect={value => {
-                if (!props.loadingTopPerforming) {
-                  props.setActivePieChartFilter(value);
-                }
-              }}
-              isActive={true}
-              placeholder="Select Time Frame"
-              disabled={props.loadingTopPerforming}
-            />
+            {/* Date filter removed - now synced with chart/metrics filters */}
           </div>
           <div
             className={`relative flex flex-col ${

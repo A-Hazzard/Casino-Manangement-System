@@ -123,10 +123,8 @@ function DashboardContent() {
   // ============================================================================
   const {
     activeMetricsFilter,
-    activePieChartFilter,
     customDateRange,
     setActiveMetricsFilter,
-    setActivePieChartFilter,
     setShowDatePicker,
   } = useDashboardFilters({ selectedLicencee });
 
@@ -135,7 +133,7 @@ function DashboardContent() {
   const { refreshing, handleRefresh } = useDashboardRefresh({
     selectedLicencee,
     activeMetricsFilter,
-    activePieChartFilter,
+    activePieChartFilter: activeMetricsFilter, // Sync with activeMetricsFilter
     customDateRange,
     activeTab,
     displayCurrency, // ✅ ADDED: Pass currency to refresh hook
@@ -249,13 +247,14 @@ function DashboardContent() {
   const isAutomaticFallbackRef = useRef(false);
 
   // Fetch top performing data when tab or filter changes
+  // Use activeMetricsFilter instead of activePieChartFilter to sync with chart/metrics
   useEffect(() => {
     // Fetch top performing data whenever we have a valid filter
-    if (!activePieChartFilter) {
+    if (!activeMetricsFilter) {
       return;
     }
 
-    const currentFilter = (activePieChartFilter || 'Today') as TimePeriod;
+    const currentFilter = (activeMetricsFilter || 'Today') as TimePeriod;
 
     // If this is not an automatic fallback and we're not in initial load, user manually changed filter
     if (!isAutomaticFallbackRef.current && !isInitialLoadRef.current) {
@@ -295,7 +294,7 @@ function DashboardContent() {
               ) {
                 // Automatically switch to next fallback period
                 isAutomaticFallbackRef.current = true;
-                setActivePieChartFilter(nextFallback);
+                setActiveMetricsFilter(nextFallback);
                 // Reset flag after state update
                 setTimeout(() => {
                   isAutomaticFallbackRef.current = false;
@@ -323,7 +322,7 @@ function DashboardContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
-    activePieChartFilter,
+    activeMetricsFilter, // Use activeMetricsFilter instead of activePieChartFilter
     selectedLicencee,
     displayCurrency,
     makeTopPerformingRequest,
@@ -388,7 +387,7 @@ function DashboardContent() {
           refreshing={refreshing}
           pieChartSortIsOpen={pieChartSortIsOpen}
           activeMetricsFilter={activeMetricsFilter as TimePeriod}
-          activePieChartFilter={(activePieChartFilter || 'Today') as TimePeriod}
+          activePieChartFilter={(activeMetricsFilter || 'Today') as TimePeriod}
           topPerformingData={topPerformingData}
           setLoadingChartData={setLoadingChartData}
           setRefreshing={() => {}}
@@ -401,7 +400,7 @@ function DashboardContent() {
             setTopPerformingData(data)
           }
           setActiveMetricsFilter={setActiveMetricsFilter}
-          setActivePieChartFilter={setActivePieChartFilter}
+          setActivePieChartFilter={setActiveMetricsFilter}
           renderCustomizedLabel={renderCustomizedLabel}
           selectedLicencee={selectedLicencee}
           loadingTopPerforming={loadingTopPerforming}
@@ -422,7 +421,7 @@ function DashboardContent() {
           refreshing={refreshing}
           pieChartSortIsOpen={pieChartSortIsOpen}
           activeMetricsFilter={activeMetricsFilter as TimePeriod}
-          activePieChartFilter={(activePieChartFilter || 'Today') as TimePeriod}
+          activePieChartFilter={(activeMetricsFilter || 'Today') as TimePeriod}
           topPerformingData={topPerformingData}
           setLoadingChartData={setLoadingChartData}
           setRefreshing={() => {}}
@@ -435,7 +434,7 @@ function DashboardContent() {
             setTopPerformingData(data)
           }
           setActiveMetricsFilter={setActiveMetricsFilter}
-          setActivePieChartFilter={setActivePieChartFilter}
+          setActivePieChartFilter={setActiveMetricsFilter}
           renderCustomizedLabel={renderCustomizedLabel}
           selectedLicencee={selectedLicencee}
           loadingTopPerforming={loadingTopPerforming}

@@ -30,7 +30,6 @@ import {
   DashboardFinancialMetricsSkeleton,
   DashboardTopPerformingSkeleton,
 } from '@/components/ui/skeletons/DashboardSkeletons';
-import { timeFrames } from '@/lib/constants/uiConstants';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { TopPerformingItem } from '@/lib/types';
@@ -47,7 +46,6 @@ import { ExternalLink, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
-import CustomSelect from '../ui/CustomSelect';
 
 export default function PcLayout(props: PcLayoutProps) {
   // ============================================================================
@@ -362,20 +360,7 @@ export default function PcLayout(props: PcLayoutProps) {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold">Top Performing</h2>
-                  <CustomSelect
-                    timeFrames={timeFrames}
-                    selectedFilter={props.activePieChartFilter}
-                    activePieChartFilter={props.activePieChartFilter}
-                    activeFilters={props.activeFilters}
-                    onSelect={value => {
-                      if (!props.loadingTopPerforming) {
-                        props.setActivePieChartFilter(value);
-                      }
-                    }}
-                    isActive={true}
-                    placeholder="Select Time Frame"
-                    disabled={props.loadingTopPerforming}
-                  />
+                  {/* Date filter removed - now synced with chart/metrics filters */}
                 </div>
 
                 {/* Tabs with curved design matching mobile */}

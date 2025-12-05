@@ -27,14 +27,27 @@ export default function PageErrorBoundary({
     setIsRetrying(true);
     setError(null);
 
+    // For ChunkLoadError, reload the page to fetch fresh chunks
+    if (error?.name === 'ChunkLoadError' || error?.message?.includes('chunk')) {
+      window.location.reload();
+      return;
+    }
+
     // Wait a moment before retrying
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     setIsRetrying(false);
-  }, []);
+  }, [error]);
 
   const handleErrorBoundary = useCallback(
     (error: Error, _errorInfo: React.ErrorInfo) => {
+      // For ChunkLoadError, automatically reload the page
+      if (error.name === 'ChunkLoadError' || error.message?.includes('chunk')) {
+        // Small delay to show error message, then reload
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
       setError(error);
       handleError(error, 'Page Error');
       onError?.(error);
