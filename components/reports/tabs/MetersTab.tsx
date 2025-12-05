@@ -60,8 +60,10 @@ import { toast } from 'sonner';
 export default function MetersTab() {
   const router = useRouter();
 
-  // AbortController for meters data fetching
+  // AbortController for different query types
   const makeMetersRequest = useAbortableRequest();
+  const makeLocationsRequest = useAbortableRequest();
+  const makeHourlyChartRequest = useAbortableRequest();
 
   const [allMetersData, setAllMetersData] = useState<MetersReportData[]>([]); // Store all fetched data (batches)
   const [locations, setLocations] = useState<
@@ -258,88 +260,116 @@ export default function MetersTab() {
 
   // Fetch locations data
   const fetchLocations = useCallback(async () => {
-    try {
-      setLocationsLoading(true);
+    await makeLocationsRequest(
+      async signal => {
+        try {
+          setLocationsLoading(true);
 
-      // For location admins with stale JWT, fetch fresh permissions first
-      if (isLocationAdmin) {
-        await fetchUserPermissions();
-      }
+          // For location admins with stale JWT, fetch fresh permissions first
+          if (isLocationAdmin) {
+            await fetchUserPermissions();
+          }
 
-      // Build API parameters
-      const params: Record<string, string> = {};
-      // Location admin should not filter by licensee (they only see their assigned location)
-      if (!isLocationAdmin && selectedLicencee && selectedLicencee !== 'all') {
-        params.licencee = selectedLicencee;
-      }
+          // Build API parameters
+          const params: Record<string, string> = {};
+          // Location admin should not filter by licensee (they only see their assigned location)
+          if (
+            !isLocationAdmin &&
+            selectedLicencee &&
+            selectedLicencee !== 'all'
+          ) {
+            params.licencee = selectedLicencee;
+          }
 
-      const response = await axios.get('/api/locations', { params });
+          const response = await axios.get('/api/locations', {
+            params,
+            signal,
+          });
 
-      const locationsData = response.data.locations || [];
-      const mappedLocations = locationsData.map(
-        (loc: Record<string, unknown>) => ({
-          id: loc._id,
-          name: loc.name,
-          sasEnabled: loc.sasEnabled || false, // Default to false if not available
-        })
-      );
-
-      console.log('[MetersTab] Fetched locations:', {
-        total: mappedLocations.length,
-        locationAdmin: isLocationAdmin,
-        assignedLocations: locationAdminLocations,
-        fetchedLocationIds: mappedLocations.map(
-          (l: { id: string; name: string; sasEnabled: boolean }) => l.id
-        ),
-      });
-
-      setLocations(mappedLocations);
-
-      // Don't auto-select locations - user must manually select
-      // For location admins, the API returns only their accessible locations,
-      // but we still require manual selection
-      if (isLocationAdmin) {
-        if (mappedLocations.length === 0 && locationAdminLocations.length > 0) {
-          // JWT has locations but API returned none - might be a permission mismatch
-          console.warn(
-            '[MetersTab] JWT has location permissions but API returned no locations. This may indicate a permission mismatch.'
+          const locationsData = response.data.locations || [];
+          const mappedLocations = locationsData.map(
+            (loc: Record<string, unknown>) => ({
+              id: loc._id,
+              name: loc.name,
+              sasEnabled: loc.sasEnabled || false, // Default to false if not available
+            })
           );
-          toast.warning(
-            'No locations found. Your permissions may have changed. Please refresh the page or log out and log back in.',
-            { duration: 3000 }
-          );
-        } else if (
-          mappedLocations.length === 0 &&
-          locationAdminLocations.length === 0
-        ) {
-          // No locations in JWT and API returned none - user has no location access
-          console.warn('[MetersTab] Location admin has no assigned locations.');
+
+          console.log('[MetersTab] Fetched locations:', {
+            total: mappedLocations.length,
+            locationAdmin: isLocationAdmin,
+            assignedLocations: locationAdminLocations,
+            fetchedLocationIds: mappedLocations.map(
+              (l: { id: string; name: string; sasEnabled: boolean }) => l.id
+            ),
+          });
+
+          setLocations(mappedLocations);
+
+          // Don't auto-select locations - user must manually select
+          // For location admins, the API returns only their accessible locations,
+          // but we still require manual selection
+          if (isLocationAdmin) {
+            if (
+              mappedLocations.length === 0 &&
+              locationAdminLocations.length > 0
+            ) {
+              // JWT has locations but API returned none - might be a permission mismatch
+              console.warn(
+                '[MetersTab] JWT has location permissions but API returned no locations. This may indicate a permission mismatch.'
+              );
+              toast.warning(
+                'No locations found. Your permissions may have changed. Please refresh the page or log out and log back in.',
+                { duration: 3000 }
+              );
+            } else if (
+              mappedLocations.length === 0 &&
+              locationAdminLocations.length === 0
+            ) {
+              // No locations in JWT and API returned none - user has no location access
+              console.warn(
+                '[MetersTab] Location admin has no assigned locations.'
+              );
+            }
+          }
+        } catch (err: unknown) {
+          // Check if request was aborted - don't show error for cancelled requests
+          // useAbortableRequest already handles abort errors, but check here as well for safety
+          if (err instanceof Error && err.name === 'AbortError') {
+            setLocationsLoading(false);
+            return; // Request was aborted, don't show error
+          }
+          if (axios.isCancel && axios.isCancel(err)) {
+            setLocationsLoading(false);
+            return; // Request was cancelled, don't show error
+          }
+
+          console.error('Error fetching locations:', err);
+          const errorMessage =
+            (
+              (
+                (err as Record<string, unknown>)?.response as Record<
+                  string,
+                  unknown
+                >
+              )?.data as Record<string, unknown>
+            )?.error ||
+            (err as Error)?.message ||
+            'Failed to load locations';
+          toast.error(errorMessage as string, {
+            duration: 3000,
+          });
+          setLocationsLoading(false);
         }
-      }
-    } catch (err: unknown) {
-      console.error('Error fetching locations:', err);
-      const errorMessage =
-        (
-          (
-            (err as Record<string, unknown>)?.response as Record<
-              string,
-              unknown
-            >
-          )?.data as Record<string, unknown>
-        )?.error ||
-        (err as Error)?.message ||
-        'Failed to load locations';
-      toast.error(errorMessage as string, {
-        duration: 3000,
-      });
-    } finally {
-      setLocationsLoading(false);
-    }
+      },
+      `Locations (Licensee: ${selectedLicencee || 'all'})`
+    );
   }, [
     selectedLicencee,
     isLocationAdmin,
     locationAdminLocations,
     fetchUserPermissions,
+    makeLocationsRequest,
   ]);
 
   // Calculate top performing machines from table data
@@ -525,6 +555,15 @@ export default function MetersTab() {
               return [...prev, ...uniqueNewMeters];
             });
           } catch (err: unknown) {
+            // Check if request was aborted - don't show error for cancelled requests
+            const axios = (await import('axios')).default;
+            if (axios.isCancel(err)) {
+              return; // Request was cancelled, don't show error
+            }
+            if (err instanceof Error && err.name === 'AbortError') {
+              return; // Request was aborted, don't show error
+            }
+
             console.error('Error fetching meters data:', err);
             const errorMessage =
               (
@@ -665,61 +704,78 @@ export default function MetersTab() {
         return;
       }
 
-      try {
-        setHourlyChartLoading(true);
-        setReportsLoading(true); // Set reports store loading state
-        const params = new URLSearchParams({
-          locations: selectedLocations.join(','),
-          timePeriod: activeMetricsFilter,
-          includeHourlyData: 'true',
-          hourlyDataMachineIds: filteredMachineIds.join(','),
-        });
+      await makeHourlyChartRequest(
+        async signal => {
+          try {
+            setHourlyChartLoading(true);
+            setReportsLoading(true); // Set reports store loading state
+            const params = new URLSearchParams({
+              locations: selectedLocations.join(','),
+              timePeriod: activeMetricsFilter,
+              includeHourlyData: 'true',
+              hourlyDataMachineIds: filteredMachineIds.join(','),
+            });
 
-        // Add custom dates if needed
-        if (activeMetricsFilter === 'Custom' && customDateRange) {
-          params.append(
-            'startDate',
-            customDateRange.startDate.toISOString().split('T')[0]
-          );
-          params.append(
-            'endDate',
-            customDateRange.endDate.toISOString().split('T')[0]
-          );
-        }
+            // Add custom dates if needed
+            if (activeMetricsFilter === 'Custom' && customDateRange) {
+              params.append(
+                'startDate',
+                customDateRange.startDate.toISOString().split('T')[0]
+              );
+              params.append(
+                'endDate',
+                customDateRange.endDate.toISOString().split('T')[0]
+              );
+            }
 
-        // Add licensee filter if selected
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.append('licencee', selectedLicencee);
-        }
+            // Add licensee filter if selected
+            if (selectedLicencee && selectedLicencee !== 'all') {
+              params.append('licencee', selectedLicencee);
+            }
 
-        // Add currency parameter
-        if (displayCurrency) {
-          params.append('currency', displayCurrency);
-        }
+            // Add currency parameter
+            if (displayCurrency) {
+              params.append('currency', displayCurrency);
+            }
 
-        const response = await axios.get<{
-          hourlyChartData?: Array<{
-            day: string;
-            hour: string;
-            gamesPlayed: number;
-            coinIn: number;
-            coinOut: number;
-          }>;
-        }>(`/api/reports/meters?${params}`);
+            const response = await axios.get<{
+              hourlyChartData?: Array<{
+                day: string;
+                hour: string;
+                gamesPlayed: number;
+                coinIn: number;
+                coinOut: number;
+              }>;
+            }>(`/api/reports/meters?${params}`, { signal });
 
-        if (response.data.hourlyChartData) {
-          setHourlyChartData(response.data.hourlyChartData);
-        } else {
-          setHourlyChartData([]);
-        }
-      } catch (error) {
-        console.error('Error fetching filtered hourly chart data:', error);
-        // On error, fall back to all data
-        setHourlyChartData(allHourlyChartData);
-      } finally {
-        setHourlyChartLoading(false);
-        setReportsLoading(false); // Clear reports store loading state
-      }
+            if (response.data.hourlyChartData) {
+              setHourlyChartData(response.data.hourlyChartData);
+            } else {
+              setHourlyChartData([]);
+            }
+          } catch (error) {
+            // Check if request was aborted - don't show error for cancelled requests
+            // useAbortableRequest already handles abort errors, but check here as well for safety
+            if (error instanceof Error && error.name === 'AbortError') {
+              setHourlyChartLoading(false);
+              setReportsLoading(false);
+              return; // Request was aborted, don't show error
+            }
+            if (axios.isCancel && axios.isCancel(error)) {
+              setHourlyChartLoading(false);
+              setReportsLoading(false);
+              return; // Request was cancelled, don't show error
+            }
+
+            console.error('Error fetching filtered hourly chart data:', error);
+            // On error, fall back to all data
+            setHourlyChartData(allHourlyChartData);
+            setHourlyChartLoading(false);
+            setReportsLoading(false);
+          }
+        },
+        `Hourly Chart Data (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
+      );
     };
 
     fetchFilteredHourlyData();
@@ -733,6 +789,7 @@ export default function MetersTab() {
     displayCurrency,
     allHourlyChartData,
     setReportsLoading,
+    makeHourlyChartRequest,
   ]);
 
   // Get items for current page from filtered data
@@ -1150,59 +1207,59 @@ export default function MetersTab() {
 
                 {/* Desktop table skeleton with proper column structure */}
                 <div className="hidden min-w-0 overflow-x-auto md:block">
-              <div className="min-w-full">
-                <table className="w-full min-w-[800px]">
-                  <thead className="border-b border-gray-200 bg-gray-50">
-                    <tr>
-                      {Array.from({ length: 10 }).map((_, i) => (
-                        <th key={i} className="px-4 py-3 text-center">
-                          <Skeleton className="mx-auto h-4 w-20" />
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <tr key={i}>
-                        {Array.from({ length: 10 }).map((_, j) => (
-                          <td key={j} className="px-4 py-3 text-center">
-                            <Skeleton className="mx-auto h-4 w-16" />
-                          </td>
+                  <div className="min-w-full">
+                    <table className="w-full min-w-[800px]">
+                      <thead className="border-b border-gray-200 bg-gray-50">
+                        <tr>
+                          {Array.from({ length: 10 }).map((_, i) => (
+                            <th key={i} className="px-4 py-3 text-center">
+                              <Skeleton className="mx-auto h-4 w-20" />
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {Array.from({ length: 10 }).map((_, i) => (
+                          <tr key={i}>
+                            {Array.from({ length: 10 }).map((_, j) => (
+                              <td key={j} className="px-4 py-3 text-center">
+                                <Skeleton className="mx-auto h-4 w-16" />
+                              </td>
+                            ))}
+                          </tr>
                         ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Mobile cards skeleton */}
-            <div className="space-y-4 md:hidden">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-lg border border-gray-200 bg-white p-4"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
-                      </div>
-                      <Skeleton className="h-3 w-20" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      {Array.from({ length: 6 }).map((_, j) => (
-                        <div key={j}>
-                          <Skeleton className="mb-1 h-3 w-20" />
-                          <Skeleton className="h-4 w-16" />
-                        </div>
-                      ))}
-                    </div>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Mobile cards skeleton */}
+                <div className="space-y-4 md:hidden">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-gray-200 bg-white p-4"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
+                          </div>
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {Array.from({ length: 6 }).map((_, j) => (
+                            <div key={j}>
+                              <Skeleton className="mb-1 h-3 w-20" />
+                              <Skeleton className="h-4 w-16" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
                 {/* Pagination skeleton */}
                 <div className="mt-6 flex items-center justify-between">
@@ -1320,251 +1377,253 @@ export default function MetersTab() {
 
                   {/* Desktop Table View - lg and above */}
                   <div className="hidden min-w-0 overflow-x-auto lg:block">
-                  <div className="min-w-full">
-                    <table className="w-full min-w-[800px]">
-                      <thead className="border-b border-gray-200 bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Machine ID
-                          </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Location
-                          </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Meters In
-                          </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Money Won
-                          </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Jackpot
-                          </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Bill In
-                          </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Voucher Out
-                          </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Hand Paid Cancelled Credits
-                          </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Games Played
-                          </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Date
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 bg-white">
-                        {paginatedMetersData.map((item, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="whitespace-nowrap px-4 py-3 text-center">
-                              {item.machineDocumentId ? (
-                                <button
-                                  onClick={() => {
-                                    router.push(
-                                      `/cabinets/${item.machineDocumentId}`
-                                    );
-                                  }}
-                                  className="group mx-auto flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
-                                >
-                                  <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
-                                    {/* machineId is already computed by the API with proper fallback:
+                    <div className="min-w-full">
+                      <table className="w-full min-w-[800px]">
+                        <thead className="border-b border-gray-200 bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Machine ID
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Location
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Meters In
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Money Won
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Jackpot
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Bill In
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Voucher Out
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Hand Paid Cancelled Credits
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Games Played
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Date
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {paginatedMetersData.map((item, index) => (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                {item.machineDocumentId ? (
+                                  <button
+                                    onClick={() => {
+                                      router.push(
+                                        `/cabinets/${item.machineDocumentId}`
+                                      );
+                                    }}
+                                    className="group mx-auto flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                                  >
+                                    <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                      {/* machineId is already computed by the API with proper fallback:
                                         1. serialNumber (if not blank/whitespace)
                                         2. custom.name (if serialNumber is blank) */}
+                                      {item.machineId}
+                                    </span>
+                                    <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                  </button>
+                                ) : (
+                                  <div className="font-mono text-sm text-gray-900">
                                     {item.machineId}
-                                  </span>
-                                  <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
-                                </button>
-                              ) : (
-                                <div className="font-mono text-sm text-gray-900">
-                                  {item.machineId}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {item.location}
                                 </div>
-                              )}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-center">
-                              <div className="text-sm font-medium text-gray-900">
-                                {item.location}
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-center">
-                              <div
-                                className={`text-sm ${getFinancialColorClass(item.metersIn)}`}
-                              >
-                                {item.metersIn.toLocaleString()}
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-center">
-                              <div
-                                className={`text-sm ${getFinancialColorClass(item.metersOut)}`}
-                              >
-                                {item.metersOut.toLocaleString()}
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-center">
-                              <div
-                                className={`text-sm ${getFinancialColorClass(item.jackpot)}`}
-                              >
-                                {item.jackpot.toLocaleString()}
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-center">
-                              <div
-                                className={`text-sm ${getFinancialColorClass(item.billIn)}`}
-                              >
-                                {item.billIn.toLocaleString()}
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-center">
-                              <div
-                                className={`text-sm ${getFinancialColorClass(item.voucherOut)}`}
-                              >
-                                {item.voucherOut.toLocaleString()}
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-center">
-                              <div
-                                className={`text-sm ${getFinancialColorClass(item.attPaidCredits)}`}
-                              >
-                                {item.attPaidCredits.toLocaleString()}
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-center">
-                              <div className="text-sm text-gray-900">
-                                {item.gamesPlayed.toLocaleString()}
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-center">
-                              <div className="text-sm text-gray-900">
-                                {new Date(item.createdAt).toLocaleDateString()}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                <div
+                                  className={`text-sm ${getFinancialColorClass(item.metersIn)}`}
+                                >
+                                  {item.metersIn.toLocaleString()}
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                <div
+                                  className={`text-sm ${getFinancialColorClass(item.metersOut)}`}
+                                >
+                                  {item.metersOut.toLocaleString()}
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                <div
+                                  className={`text-sm ${getFinancialColorClass(item.jackpot)}`}
+                                >
+                                  {item.jackpot.toLocaleString()}
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                <div
+                                  className={`text-sm ${getFinancialColorClass(item.billIn)}`}
+                                >
+                                  {item.billIn.toLocaleString()}
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                <div
+                                  className={`text-sm ${getFinancialColorClass(item.voucherOut)}`}
+                                >
+                                  {item.voucherOut.toLocaleString()}
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                <div
+                                  className={`text-sm ${getFinancialColorClass(item.attPaidCredits)}`}
+                                >
+                                  {item.attPaidCredits.toLocaleString()}
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                <div className="text-sm text-gray-900">
+                                  {item.gamesPlayed.toLocaleString()}
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                <div className="text-sm text-gray-900">
+                                  {new Date(
+                                    item.createdAt
+                                  ).toLocaleDateString()}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
 
-                {/* Card View - md and below (2x2 grid on md, single column on mobile) */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
-                  {paginatedMetersData.map((item, index) => (
-                    <div
-                      key={index}
-                      className="group relative overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-5 shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
-                    >
-                      {/* Header */}
-                      <div className="mb-4 flex flex-col border-b border-gray-100 pb-3">
-                        <div className="mb-2 w-fit flex-shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                          {new Date(item.createdAt).toLocaleDateString()}
-                        </div>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <h3 className="break-words font-mono text-base font-semibold text-gray-900">
-                              {/* machineId is already computed by the API with proper fallback:
+                  {/* Card View - md and below (2x2 grid on md, single column on mobile) */}
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
+                    {paginatedMetersData.map((item, index) => (
+                      <div
+                        key={index}
+                        className="group relative overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-5 shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
+                      >
+                        {/* Header */}
+                        <div className="mb-4 flex flex-col border-b border-gray-100 pb-3">
+                          <div className="mb-2 w-fit flex-shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                            {new Date(item.createdAt).toLocaleDateString()}
+                          </div>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <h3 className="break-words font-mono text-base font-semibold text-gray-900">
+                                {/* machineId is already computed by the API with proper fallback:
                                   1. serialNumber (if not blank/whitespace)
                                   2. custom.name (if serialNumber is blank) */}
-                              {item.machineId}
-                            </h3>
-                            <p className="mt-1 truncate text-sm text-gray-600">
-                              {item.location}
+                                {item.machineId}
+                              </h3>
+                              <p className="mt-1 truncate text-sm text-gray-600">
+                                {item.location}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Metrics Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="rounded-lg bg-white p-3 shadow-sm">
+                            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                              Meters In
+                            </p>
+                            <p
+                              className={`text-base font-bold ${getFinancialColorClass(item.metersIn)}`}
+                            >
+                              {item.metersIn.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-white p-3 shadow-sm">
+                            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                              Money Won
+                            </p>
+                            <p
+                              className={`text-base font-bold ${getFinancialColorClass(item.metersOut)}`}
+                            >
+                              {item.metersOut.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-white p-3 shadow-sm">
+                            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                              Jackpot
+                            </p>
+                            <p
+                              className={`text-base font-bold ${getFinancialColorClass(item.jackpot)}`}
+                            >
+                              {item.jackpot.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-white p-3 shadow-sm">
+                            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                              Bill In
+                            </p>
+                            <p
+                              className={`text-base font-bold ${getFinancialColorClass(item.billIn)}`}
+                            >
+                              {item.billIn.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-white p-3 shadow-sm">
+                            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                              Voucher Out
+                            </p>
+                            <p
+                              className={`text-base font-bold ${getFinancialColorClass(item.voucherOut)}`}
+                            >
+                              {item.voucherOut.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-white p-3 shadow-sm">
+                            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                              Hand Paid
+                            </p>
+                            <p
+                              className={`text-base font-bold ${getFinancialColorClass(item.attPaidCredits)}`}
+                            >
+                              {item.attPaidCredits.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="col-span-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-3 shadow-sm">
+                            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-600">
+                              Games Played
+                            </p>
+                            <p className="text-lg font-bold text-gray-900">
+                              {item.gamesPlayed.toLocaleString()}
                             </p>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Metrics Grid */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="rounded-lg bg-white p-3 shadow-sm">
-                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                            Meters In
-                          </p>
-                          <p
-                            className={`text-base font-bold ${getFinancialColorClass(item.metersIn)}`}
-                          >
-                            {item.metersIn.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="rounded-lg bg-white p-3 shadow-sm">
-                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                            Money Won
-                          </p>
-                          <p
-                            className={`text-base font-bold ${getFinancialColorClass(item.metersOut)}`}
-                          >
-                            {item.metersOut.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="rounded-lg bg-white p-3 shadow-sm">
-                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                            Jackpot
-                          </p>
-                          <p
-                            className={`text-base font-bold ${getFinancialColorClass(item.jackpot)}`}
-                          >
-                            {item.jackpot.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="rounded-lg bg-white p-3 shadow-sm">
-                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                            Bill In
-                          </p>
-                          <p
-                            className={`text-base font-bold ${getFinancialColorClass(item.billIn)}`}
-                          >
-                            {item.billIn.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="rounded-lg bg-white p-3 shadow-sm">
-                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                            Voucher Out
-                          </p>
-                          <p
-                            className={`text-base font-bold ${getFinancialColorClass(item.voucherOut)}`}
-                          >
-                            {item.voucherOut.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="rounded-lg bg-white p-3 shadow-sm">
-                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                            Hand Paid
-                          </p>
-                          <p
-                            className={`text-base font-bold ${getFinancialColorClass(item.attPaidCredits)}`}
-                          >
-                            {item.attPaidCredits.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="col-span-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-3 shadow-sm">
-                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-600">
-                            Games Played
-                          </p>
-                          <p className="text-lg font-bold text-gray-900">
-                            {item.gamesPlayed.toLocaleString()}
-                          </p>
-                        </div>
+                        {/* View Machine Button */}
+                        {item.machineDocumentId && (
+                          <div className="mt-4 border-t border-gray-100 pt-4">
+                            <button
+                              onClick={() => {
+                                router.push(
+                                  `/cabinets/${item.machineDocumentId}`
+                                );
+                              }}
+                              className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              View Machine
+                            </button>
+                          </div>
+                        )}
                       </div>
-
-                      {/* View Machine Button */}
-                      {item.machineDocumentId && (
-                        <div className="mt-4 border-t border-gray-100 pt-4">
-                          <button
-                            onClick={() => {
-                              router.push(
-                                `/cabinets/${item.machineDocumentId}`
-                              );
-                            }}
-                            className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                            View Machine
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
 
                   {/* Pagination Controls - Mobile Responsive */}
                   {!loading && totalPages > 1 && (
