@@ -268,37 +268,7 @@ export default function NewCollectionModal({
     [locations]
   );
 
-  // Function to generate collector name from user profile
-  const getCollectorName = useCallback(() => {
-    if (!user) return 'Unknown Collector';
-
-    // Check if user has profile with firstName and lastName
-    if (user.profile?.firstName && user.profile?.lastName) {
-      return `${user.profile.firstName} ${user.profile.lastName}`;
-    }
-
-    // If only firstName exists, use it
-    if (user.profile?.firstName && !user.profile?.lastName) {
-      return user.profile.firstName;
-    }
-
-    // If only lastName exists, use it
-    if (!user.profile?.firstName && user.profile?.lastName) {
-      return user.profile.lastName;
-    }
-
-    // Fallback to username if available
-    if (user.username) {
-      return user.username;
-    }
-
-    // Final fallback to email address
-    if (user.emailAddress) {
-      return user.emailAddress;
-    }
-
-    return 'Unknown Collector';
-  }, [user]);
+  // REMOVED: getCollectorName function - now using userId directly for collector field
 
   const [selectedLocationId, setSelectedLocationId] = useState<
     string | undefined
@@ -1484,7 +1454,7 @@ export default function NewCollectionModal({
           : undefined,
         notes: currentMachineNotes || '',
         location: selectedLocationName || '',
-        collector: getCollectorName() || '',
+        collector: userId || '', // Use user ID directly instead of display name
         locationReportId: '',
         ...(customSasStartTime && {
           sasMeters: {
@@ -1583,7 +1553,6 @@ export default function NewCollectionModal({
     userId,
     customSasStartTime,
     resetMachineSpecificInputFields,
-    getCollectorName,
     logActivity,
   ]);
 
@@ -2032,7 +2001,7 @@ export default function NewCollectionModal({
           financials.advance && financials.advance.trim() !== ''
             ? Number(financials.advance)
             : 0,
-        collectorName: getCollectorName(),
+        collector: userId || '',
         locationName: selectedLocationName,
         locationReportId: reportId,
         location: selectedLocationId || '',
@@ -2156,11 +2125,11 @@ export default function NewCollectionModal({
     collectedMachineEntries,
     currentCollectionTime,
     financials,
-    getCollectorName,
     selectedLocationName,
     selectedLocationId,
     handleClose,
     onRefresh,
+    userId,
   ]);
 
   const handleCreateMultipleReports = useCallback(async () => {

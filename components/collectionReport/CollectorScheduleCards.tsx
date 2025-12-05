@@ -60,7 +60,7 @@ export default function CollectorScheduleCards({
               <div className="flex justify-between">
                 <span className="font-medium text-gray-700">Collector</span>
                 <span className="font-semibold">
-                  {schedule.collector || schedule.collectorName}
+                  {schedule.collector || 'Unknown'}
                 </span>
               </div>
               <div className="flex justify-between">

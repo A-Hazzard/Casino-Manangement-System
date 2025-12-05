@@ -610,7 +610,7 @@ export async function investigateMostRecentReport(): Promise<{
   reportDetails?: {
     locationName: string;
     timestamp: Date;
-    collectorName: string;
+    collector: string;
   };
   totalCollections?: number;
   collectionsWithIssues?: number;
@@ -807,7 +807,7 @@ export async function investigateMostRecentReport(): Promise<{
     reportDetails: {
       locationName: mostRecentReport.locationName || '',
       timestamp: mostRecentReport.timestamp,
-      collectorName: mostRecentReport.collectorName || '',
+      collector: mostRecentReport.collector || '',
     },
     totalCollections: reportCollections.length,
     collectionsWithIssues: issues.length,

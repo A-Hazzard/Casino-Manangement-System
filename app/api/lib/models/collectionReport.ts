@@ -1,5 +1,5 @@
-import mongoose, { Schema } from "mongoose";
 import type { ICollectionReport } from "@/lib/types/api";
+import mongoose, { Schema } from "mongoose";
 
 const collectionReportSchema = new Schema<ICollectionReport>(
   {
@@ -13,7 +13,8 @@ const collectionReportSchema = new Schema<ICollectionReport>(
     partnerProfit: { type: Number, required: true },
     taxes: { type: Number, required: true },
     advance: { type: Number, required: true },
-    collectorName: { type: String, required: true },
+    collector: { type: String },
+    collectorName: { type: String },
     locationName: { type: String, required: true },
     locationReportId: { type: String, required: true },
     location: { type: String, required: true },

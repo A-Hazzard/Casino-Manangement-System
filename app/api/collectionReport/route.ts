@@ -202,6 +202,32 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
+    // STEP 7.5: Apply search filter if provided
+    // ============================================================================
+    const searchTerm = searchParams.get('search');
+    if (searchTerm && searchTerm.trim()) {
+      const search = searchTerm.trim().toLowerCase();
+      filteredReports = filteredReports.filter(report => {
+        // Search across multiple fields in priority order:
+        // 1. collector (user ID - primary)
+        // 2. locationReportId (report ID)
+        // 3. _id (document ID)
+        // 4. collectorFullName (LAST FALLBACK - display only, for legacy data)
+        const collector = (report.collector || '').toLowerCase();
+        const locationReportId = (report.locationReportId || '').toLowerCase();
+        const reportId = (report._id || '').toLowerCase();
+        const collectorFullName = (report.collectorFullName || '').toLowerCase(); // DEPRECATED: Display only
+        
+        return (
+          collector.includes(search) ||
+          locationReportId.includes(search) ||
+          reportId.includes(search) ||
+          collectorFullName.includes(search) // LAST fallback for legacy data
+        );
+      });
+    }
+
+    // ============================================================================
     // STEP 8: Apply pagination
     // ============================================================================
     const page = parseInt(searchParams.get('page') || '1');
@@ -309,9 +335,9 @@ export async function POST(req: NextRequest) {
             newValue: body.locationName,
           },
           {
-            field: 'collectorName',
+            field: 'collector',
             oldValue: null,
-            newValue: body.collectorName,
+            newValue: body.collector,
           },
           {
             field: 'amountCollected',
@@ -345,7 +371,7 @@ export async function POST(req: NextRequest) {
         await logActivity({
           action: 'CREATE',
           details: `Created collection report for ${body.locationName} by ${
-            body.collectorName
+            body.collector || 'Unknown'
           } (${body.machines?.length || 0} machines, $${
             body.amountCollected
           } collected)`,
@@ -359,7 +385,7 @@ export async function POST(req: NextRequest) {
             userRole: (currentUser.roles as string[])?.[0] || 'user',
             resource: 'collection',
             resourceId: result.data ? String(result.data) : sanitizedBody.locationReportId,
-            resourceName: `${body.locationName} - ${body.collectorName}`,
+            resourceName: `${body.locationName} - ${body.collector || 'Unknown'}`,
             changes: createChanges,
           },
         });

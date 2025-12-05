@@ -105,6 +105,7 @@ export type TransformedMeterData = {
   machineDocumentId: string;
   customName?: string;
   serialNumber?: string;
+  game?: string;
 };
 
 /**

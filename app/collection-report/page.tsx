@@ -116,6 +116,7 @@ import { COLLECTION_TABS_CONFIG } from '@/lib/constants/collection';
 import { IMAGES } from '@/lib/constants/images';
 import { useCollectionNavigation } from '@/lib/hooks/navigation';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useUrlProtection } from '@/lib/hooks/useUrlProtection';
 import type { CollectionView } from '@/lib/types/collection';
 import { PlusCircle, RefreshCw } from 'lucide-react';
@@ -276,7 +277,7 @@ function CollectionReportContent() {
   // ============================================================================
   // State Management - Collection Reports
   // ============================================================================
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Always start with loading true
   const [isSearching, setIsSearching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [allReports, setAllReports] = useState<CollectionReportRow[]>([]);
@@ -365,6 +366,7 @@ function CollectionReportContent() {
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [showUncollectedOnly, setShowUncollectedOnly] = useState(false);
   const [search, setSearch] = useState<string>('');
+  const debouncedSearch = useDebounce(search, 300); // Debounce search input by 300ms
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 
   // Manager Schedule state
@@ -599,6 +601,17 @@ function CollectionReportContent() {
     [pagesPerBatch]
   );
 
+  // Set loading state immediately when time period changes or tab switches (before data fetch)
+  // This ensures the skeleton loader shows instantly when user clicks date filter buttons
+  useEffect(() => {
+    if (activeTab === 'collection') {
+      setLoading(true);
+    } else {
+      // Set loading to false for other tabs to prevent showing collection skeleton
+      setLoading(false);
+    }
+  }, [activeTab, activeMetricsFilter, customDateRange]);
+
   // Fetch collection reports data when collection tab is active (initial batch)
   useEffect(() => {
     if (activeTab === 'collection') {
@@ -639,10 +652,11 @@ function CollectionReportContent() {
             1,
             itemsPerBatch,
             0, // retryCount
-            signal
+            signal,
+            debouncedSearch // Pass debounced search term
           );
         },
-        `Collection Reports (Batch 1, ${activeMetricsFilter || 'Today'}, Licensee: ${selectedLicencee || 'all'})`
+        `Collection Reports (Batch 1, ${activeMetricsFilter || 'Today'}, Licensee: ${selectedLicencee || 'all'}${debouncedSearch ? ', Search: ' + debouncedSearch : ''})`
       )
         .then(async result => {
           if (!result) {
@@ -669,11 +683,17 @@ function CollectionReportContent() {
     handleError,
     itemsPerBatch,
     makeCollectionRequest,
+    debouncedSearch,
   ]);
 
   // Fetch next batch when crossing batch boundaries
   useEffect(() => {
     if (loading || activeTab !== 'collection') return;
+
+    // Skip batch fetching when searching - search results should be from a single request
+    if (debouncedSearch && debouncedSearch.trim()) {
+      return;
+    }
 
     const currentBatch = calculateBatchNumber(currentPage);
 
@@ -709,7 +729,10 @@ function CollectionReportContent() {
         dateRangeForFetch,
         timePeriodForFetch,
         nextBatch, // page
-        itemsPerBatch // limit
+        itemsPerBatch, // limit
+        0, // retryCount
+        undefined, // signal
+        debouncedSearch // search
       )
         .then(result => {
           setAllReports(prev => {
@@ -736,7 +759,10 @@ function CollectionReportContent() {
         dateRangeForFetch,
         timePeriodForFetch,
         currentBatch, // page
-        itemsPerBatch // limit
+        itemsPerBatch, // limit
+        0, // retryCount
+        undefined, // signal
+        debouncedSearch // search
       )
         .then(result => {
           setAllReports(prev => {
@@ -765,6 +791,7 @@ function CollectionReportContent() {
     itemsPerBatch,
     pagesPerBatch,
     calculateBatchNumber,
+    debouncedSearch,
   ]);
 
   const refreshCollectionReports = useCallback(() => {
@@ -798,7 +825,10 @@ function CollectionReportContent() {
         dateRangeForFetch,
         timePeriodForFetch,
         1, // page
-        itemsPerBatch // limit
+        itemsPerBatch, // limit
+        0, // retryCount
+        undefined, // signal
+        debouncedSearch // search
       )
         .then(async result => {
           setAllReports(result.data);
@@ -821,6 +851,7 @@ function CollectionReportContent() {
     customDateRange,
     handleError,
     itemsPerBatch,
+    debouncedSearch,
   ]);
 
   useEffect(() => {
@@ -867,7 +898,7 @@ function CollectionReportContent() {
     console.warn(`Reports count: ${paginatedReports?.length || 0}`);
     console.warn(`Selected location: "${selectedLocation}"`);
     console.warn(`Locations count: ${locations?.length || 0}`);
-    console.warn(`Search term: "${search}"`);
+    console.warn(`Search term: "${search}" (debounced: "${debouncedSearch}")`);
     console.warn(`Show uncollected only: ${showUncollectedOnly}`);
     console.warn(`Selected filters: ${JSON.stringify(selectedFilters)}`);
 
@@ -901,10 +932,12 @@ function CollectionReportContent() {
       }
     }
 
+    // NOTE: Search filtering is now done server-side via debouncedSearch
+    // Only apply client-side filters: location, uncollected, SMIB
     const filtered = filterCollectionReports(
       paginatedReports,
       selectedLocation,
-      search,
+      '', // Pass empty search since server-side search is active
       showUncollectedOnly,
       locations
     );
@@ -966,7 +999,8 @@ function CollectionReportContent() {
     paginatedReports,
     selectedLocation,
     showUncollectedOnly,
-    search,
+    search, // Include raw search for logging
+    debouncedSearch, // Use debounced search for actual filtering
     locations,
     selectedFilters,
     selectedLicencee, // Add selectedLicencee to dependencies

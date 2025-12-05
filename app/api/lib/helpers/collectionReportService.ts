@@ -49,37 +49,53 @@ export async function getAllCollectionReportsWithMachineCounts(
     matchCriteria.timestamp = { $gte: startDate, $lte: endDate };
   }
 
-  if (!licenceeId) {
-    // No licencee filter, just apply date filter and deletedAt filter
-    rawReports = await CollectionReport.find(matchCriteria)
-      .sort({ timestamp: -1 })
-      .lean();
-  } else {
-    // Apply licencee filter with aggregation, plus date filter and deletedAt filter
-    const aggregationPipeline: PipelineStage[] = [
-      {
-        $match: deletedAtFilter,
+  // Always use aggregation to include collector details lookup
+  const aggregationPipeline: PipelineStage[] = [
+    {
+      $match: matchCriteria,
+    },
+    {
+      $lookup: {
+        from: "gaminglocations",
+        localField: "location",
+        foreignField: "_id",
+        as: "locationDetails",
       },
-      {
-        $lookup: {
-          from: "gaminglocations",
-          localField: "location",
-          foreignField: "_id",
-          as: "locationDetails",
-        },
+    },
+    { 
+      $unwind: { 
+        path: "$locationDetails", 
+        preserveNullAndEmptyArrays: true 
+      } 
+    },
+    // Lookup collector details from users collection
+    {
+      $lookup: {
+        from: "users",
+        let: { collectorId: "$collector" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$collectorId"] } } },
+          { $project: { username: 1, emailAddress: 1, profile: 1 } }
+        ],
+        as: "collectorDetails"
+      }
+    },
+    {
+      $unwind: {
+        path: "$collectorDetails",
+        preserveNullAndEmptyArrays: true
+      }
+    },
+    // Apply licencee filter only if provided
+    ...(licenceeId ? [{
+      $match: {
+        "locationDetails.rel.licencee": licenceeId,
       },
-      { $unwind: "$locationDetails" },
-      {
-        $match: {
-          "locationDetails.rel.licencee": licenceeId,
-          ...(startDate && endDate ? { timestamp: { $gte: startDate, $lte: endDate } } : {}),
-        },
-      },
-      { $sort: { timestamp: -1 } },
-    ];
-    
-    rawReports = await CollectionReport.aggregate(aggregationPipeline);
-  }
+    }] : []),
+    { $sort: { timestamp: -1 } },
+  ];
+  
+  rawReports = await CollectionReport.aggregate(aggregationPipeline);
 
   // PERFORMANCE OPTIMIZATION: Use aggregation to get all data in fewer queries
   // Instead of N+1 queries, we'll use aggregation pipelines to get machine counts and collection data
@@ -145,55 +161,127 @@ export async function getAllCollectionReportsWithMachineCounts(
     machineCounts.map(item => [item._id, item.totalMachines])
   );
 
-  // Map to CollectionReportRow with optimized data access
-  const enrichedReports = rawReports.map((doc: Record<string, unknown>) => {
-    const locationReportId = (doc.locationReportId as string) || "";
-    const locationName = (doc.locationName as string) || "";
-
-    // Get collection data from batch query
-    const collectionData = collectionDataMap.get(locationReportId) || {
-      collectedMachines: 0,
-      calculatedGross: 0,
-      calculatedSasGross: 0
+    // Define type for the enriched report from aggregation
+    type EnrichedCollectionReport = {
+      _id: string;
+      locationReportId?: string;
+      locationName?: string;
+      location?: string | { _id?: string; id?: string };
+      locationDetails?: { _id?: string; id?: string };
+      amountCollected?: number;
+      partnerProfit?: number;
+      currentBalance?: number;
+      amountUncollected?: number | string;
+      timestamp?: Date | string | { $date: string };
+      noSMIBLocation?: boolean;
+      isLocalServer?: boolean;
+      collectorName?: string;
+      collector?: string;
+      collectorDetails?: {
+        username: string;
+        profile?: {
+          firstName?: string;
+          lastName?: string;
+        };
+      };
+      [key: string]: unknown;
     };
 
-    // Get location ID for machine count lookup
-    let locationId = doc.location;
-    if (typeof locationId === "object" && locationId !== null) {
-      if ("_id" in locationId) locationId = (locationId as { _id: string })._id;
-      else if ("id" in locationId) locationId = (locationId as { id: string }).id;
-    }
-    if (!locationId && doc.locationDetails && typeof doc.locationDetails === "object") {
-      const locationDetails = doc.locationDetails as { _id?: string; id?: string };
-      locationId = locationDetails._id || locationDetails.id;
-    }
-
-    // Get total machines from batch query
-    const totalMachines = machineCountMap.get(locationId as string) || collectionData.collectedMachines;
-
-    // Calculate variation (metersGross - sasGross)
-    const calculatedVariation = collectionData.calculatedGross - collectionData.calculatedSasGross;
-
-    // Use stored values for financial data (not calculated from meters)
-    const calculatedCollected = (doc.amountCollected as number) || 0;
-    const calculatedLocationRevenue = (doc.partnerProfit as number) || 0;
-    const calculatedBalance = (doc.currentBalance as number) || 0;
-
-    const result = {
-      _id: (doc._id as string) || "",
-      locationReportId,
-      collector: (doc.collectorName as string) || "",
-      location: locationName,
-      gross: formatSmartDecimal(collectionData.calculatedGross),
-      machines: `${collectionData.collectedMachines || 0}/${totalMachines || 0}`,
-      collected: formatSmartDecimal(calculatedCollected),
-      uncollected:
-        typeof doc.amountUncollected === "number"
-          ? formatSmartDecimal(doc.amountUncollected as number)
-          : (doc.amountUncollected as string) || "-",
-      variation: formatSmartDecimal(calculatedVariation),
-      balance: formatSmartDecimal(calculatedBalance),
-      locationRevenue: formatSmartDecimal(calculatedLocationRevenue),
+    const enrichedReports = (rawReports as unknown as EnrichedCollectionReport[]).map((doc) => {
+      const locationReportId = (doc.locationReportId as string) || "";
+      const locationName = (doc.locationName as string) || "";
+  
+      // Get collection data from batch query
+      const collectionData = collectionDataMap.get(locationReportId) || {
+        collectedMachines: 0,
+        calculatedGross: 0,
+        calculatedSasGross: 0
+      };
+  
+      // Get location ID for machine count lookup
+      let locationId = doc.location;
+      if (typeof locationId === "object" && locationId !== null) {
+        if ("_id" in locationId) locationId = (locationId as { _id: string })._id;
+        else if ("id" in locationId) locationId = (locationId as { id: string }).id;
+      }
+      if (!locationId && doc.locationDetails && typeof doc.locationDetails === "object") {
+        const locationDetails = doc.locationDetails as { _id?: string; id?: string };
+        locationId = locationDetails._id || locationDetails.id;
+      }
+  
+      // Get total machines from batch query
+      const totalMachines = machineCountMap.get(locationId as string) || collectionData.collectedMachines;
+  
+      // Calculate variation (metersGross - sasGross)
+      const calculatedVariation = collectionData.calculatedGross - collectionData.calculatedSasGross;
+  
+      // Use stored values for financial data (not calculated from meters)
+      const calculatedCollected = (doc.amountCollected as number) || 0;
+      const calculatedLocationRevenue = (doc.partnerProfit as number) || 0;
+      const calculatedBalance = (doc.currentBalance as number) || 0;
+  
+      // Determine collector value (user ID) and display name
+      const collectorUserId = (doc.collector as string) || "";
+      const collectorDetails = doc.collectorDetails as {
+        username?: string;
+        profile?: { firstName?: string; lastName?: string };
+        emailAddress?: string;
+      } | undefined;
+      
+      // Compute display name with priority: username → firstName → emailAddress → collectorName
+      let collectorDisplayName = "";
+      let collectorFullName = ""; // For tooltip (firstName + lastName when both available)
+      
+      if (collectorDetails) {
+        // Check if we have firstName + lastName for tooltip (regardless of display priority)
+        if (collectorDetails.profile?.firstName && collectorDetails.profile?.lastName) {
+          collectorFullName = `${collectorDetails.profile.firstName} ${collectorDetails.profile.lastName}`;
+        }
+        
+        // Priority 1: username
+        if (collectorDetails.username) {
+          collectorDisplayName = collectorDetails.username;
+        }
+        // Priority 2: firstName only (for main display)
+        else if (collectorDetails.profile?.firstName) {
+          collectorDisplayName = collectorDetails.profile.firstName;
+        }
+        // Priority 3: emailAddress
+        else if (collectorDetails.emailAddress) {
+          collectorDisplayName = collectorDetails.emailAddress;
+        }
+      }
+      
+      // Priority 4: Fallback to legacy collectorName if no user details found
+      if (!collectorDisplayName) {
+        collectorDisplayName = (doc.collectorName as string) || "";
+      }
+      
+      // If we have displayName but no fullName set, use displayName as fullName
+      if (!collectorFullName && collectorDisplayName) {
+        collectorFullName = collectorDisplayName;
+      }
+      
+      const collectorUserNotFound = !collectorDetails && !!collectorUserId;
+  
+      const result = {
+        _id: doc._id || "",
+        locationReportId,
+        collector: collectorUserId, // User ID (primary field)
+        collectorFullName: collectorDisplayName || undefined, // Display name (username → firstName → email → collectorName)
+        collectorFullNameTooltip: collectorFullName || undefined, // Full name for tooltip (firstName + lastName when available)
+        collectorUserNotFound, // Flag to indicate user no longer exists
+        location: locationName,
+        gross: formatSmartDecimal(collectionData.calculatedGross),
+        machines: `${collectionData.collectedMachines || 0}/${totalMachines || 0}`,
+        collected: formatSmartDecimal(calculatedCollected),
+        uncollected:
+          typeof doc.amountUncollected === "number"
+            ? formatSmartDecimal(doc.amountUncollected as number)
+            : (doc.amountUncollected as string) || "-",
+        variation: formatSmartDecimal(calculatedVariation),
+        balance: formatSmartDecimal(calculatedBalance),
+        locationRevenue: formatSmartDecimal(calculatedLocationRevenue),
         time: (() => {
           const ts = doc.timestamp;
           if (ts) {
@@ -205,7 +293,7 @@ export async function getAllCollectionReportsWithMachineCounts(
                   typeof ts.$date === "string"
                 ? new Date(ts.$date)
                 : null;
-
+  
             if (date) {
               // Format in local time (not UTC)
               return date.toLocaleString(undefined, {
@@ -224,18 +312,9 @@ export async function getAllCollectionReportsWithMachineCounts(
         noSMIBLocation: (doc.noSMIBLocation as boolean) || false,
         isLocalServer: (doc.isLocalServer as boolean) || false,
       };
-
-      // Debug logging for the specific report we're seeing in the UI
-      // if (locationReportId === "fb04dd8f-943d-423f-8059-7bcbccc6d459") {
-      //   console.log("🔍 DEBUG: Raw document data for report fb04dd8f-943d-423f-8059-7bcbccc6d459:", doc);
-      //   console.log("🔍 DEBUG: Processed result:", result);
-      //   console.log("🔍 DEBUG: totalGross value:", doc.totalGross);
-      //   console.log("🔍 DEBUG: amountCollected value:", doc.amountCollected);
-      //   console.log("🔍 DEBUG: partnerProfit value:", doc.partnerProfit);
-      // }
-
-    return result;
-  });
+  
+      return result;
+    });
 
   return enrichedReports;
 }

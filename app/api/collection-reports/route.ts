@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
       limit: searchParams.get('limit'),
       sortBy: searchParams.get('sortBy') || 'updatedAt',
       sortOrder: searchParams.get('sortOrder') || 'desc',
+      search: searchParams.get('search'),
     };
 
     // ============================================================================

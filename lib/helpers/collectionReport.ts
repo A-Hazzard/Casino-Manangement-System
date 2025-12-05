@@ -106,7 +106,8 @@ export async function getAllCollectionReports(
       return {
         _id: (doc._id as string) || "",
         locationReportId,
-        collector: (doc.collectorName as string) || "",
+        collector: (doc.collector as string) || "",
+        collectorFullName: (doc.collectorName as string) || "", // Display only (deprecated field)
         location: locationName,
         gross: (doc.totalGross as number) || 0,
         machines: collectedMachines.toString(),
@@ -174,11 +175,11 @@ export async function getCollectorsByLicencee(
   licenceeId?: string
 ): Promise<string[]> {
   if (!licenceeId) {
-    // All collectors from all reports
-    return getDistinct<string>(CollectionReport, "collectorName");
+    // All collectors from all reports (use collector field = user ID)
+    return getDistinct<string>(CollectionReport, "collector");
   }
 
-  // Aggregate: join with gaminglocations and filter by rel.licencee, then get distinct collectorName
+  // Aggregate: join with gaminglocations and filter by rel.licencee, then get distinct collector
   const result = await CollectionReport.aggregate([
     {
       $lookup: {
@@ -190,10 +191,10 @@ export async function getCollectorsByLicencee(
     },
     { $unwind: "$locationDetails" },
     { $match: { "locationDetails.rel.licencee": licenceeId } },
-    { $group: { _id: "$collectorName" } },
-    { $project: { _id: 0, collectorName: "$_id" } },
+    { $group: { _id: "$collector" } },
+    { $project: { _id: 0, collector: "$_id" } },
   ]);
-  return result.map((row) => row.collectorName);
+  return result.map((row) => row.collector);
 }
 
 /**
@@ -217,10 +218,10 @@ export async function getCollectorsPaginated(
   let allCollectors: string[] = [];
 
   if (!licenceeId) {
-    // Get all unique collector names without filtering
+    // Get all unique collector IDs without filtering
     allCollectors = await getDistinct<string>(
       CollectionReport,
-      "collectorName"
+      "collector"
     );
   } else {
     // Filter by licencee using aggregation
@@ -235,11 +236,11 @@ export async function getCollectorsPaginated(
       },
       { $unwind: "$locationDetails" },
       { $match: { "locationDetails.rel.licencee": licenceeId } },
-      { $group: { _id: "$collectorName" } },
-      { $project: { _id: 0, collectorName: "$_id" } },
-      { $sort: { collectorName: 1 } },
+      { $group: { _id: "$collector" } },
+      { $project: { _id: 0, collector: "$_id" } },
+      { $sort: { collector: 1 } },
     ]);
-    allCollectors = result.map((row) => row.collectorName);
+    allCollectors = result.map((row) => row.collector);
   }
 
   const total = allCollectors.length;
@@ -684,7 +685,8 @@ export async function fetchCollectionReportsByLicencee(
   page: number = 1,
   limit: number = 50,
   retryCount = 0,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  search?: string
 ): Promise<{ data: CollectionReportRow[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
   const maxRetries = 2;
 
@@ -709,6 +711,11 @@ export async function fetchCollectionReportsByLicencee(
       // CRITICAL: Explicitly set timePeriod to 'Custom' so the API route knows 
       // to return the collection reports list, not the monthly report summary.
       params.timePeriod = 'Custom';
+    }
+
+    // Add search parameter if provided
+    if (search && search.trim()) {
+      params.search = search.trim();
     }
 
     // Add pagination parameters

@@ -394,10 +394,24 @@ function LoginPageContent() {
         setMessage('Login successful. Redirecting...');
         setMessageType('success');
 
-        // Get redirect path based on user roles
-        const redirectPath = getDefaultRedirectPathFromRoles(
-          response.user?.roles || []
-        );
+        // Determine redirect path based on licensee and roles
+        const licenseeMapping = (await import('@/lib/utils/licenseeMapping')).LICENSEE_MAPPING;
+        const barbadosId = licenseeMapping.Barbados;
+
+        // Normalize assignedLicensees from response.user
+        const assignedLicensees: string[] = Array.isArray(response.user?.assignedLicensees)
+          ? response.user!.assignedLicensees.map((id: string) => String(id))
+          : [];
+
+        const rolesLower = (response.user?.roles || []).map((r: string) => String(r).toLowerCase());
+
+        // If user is assigned to Barbados and role is admin, location admin, or manager -> redirect to meters export report
+        const isBarbados = assignedLicensees.includes(barbadosId) || assignedLicensees.includes('Barbados');
+        const privilegedRoles = ['admin', 'location admin', 'manager'];
+        let redirectPath = getDefaultRedirectPathFromRoles(response.user?.roles || []);
+        if (isBarbados && rolesLower.some(r => privilegedRoles.includes(r))) {
+          redirectPath = '/reports?section=meters';
+        }
 
         console.warn('🚀 Login fully verified, redirecting to:', redirectPath);
 

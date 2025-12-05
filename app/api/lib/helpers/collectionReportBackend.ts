@@ -204,7 +204,8 @@ export async function getAllCollectionReportsWithMachineCounts(
       const result = {
         _id: (doc._id as string) || '',
         locationReportId,
-        collector: (doc.collectorName as string) || '',
+        collector: (doc.collector as string) || '',
+        collectorFullName: (doc.collectorName as string) || '', // Display only (deprecated field)
         location: locationName,
         gross: formatSmartDecimal(calculatedGross),
         machines: `${collectedMachines || 0}/${totalMachines || 0}`,

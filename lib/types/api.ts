@@ -81,7 +81,8 @@ export type CreateCollectionReportPayload = {
   partnerProfit: number;
   taxes: number;
   advance: number;
-  collectorName: string;
+  collector?: string;
+  collectorName?: string;
   locationName: string;
   locationReportId: string;
   location: string;
@@ -190,7 +191,8 @@ export type ICollectionReport = Document & {
   partnerProfit: number;
   taxes: number;
   advance: number;
-  collectorName: string;
+  collector?: string;
+  collectorName?: string;
   locationName: string;
   locationReportId: string;
   location: string;

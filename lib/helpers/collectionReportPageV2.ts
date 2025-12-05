@@ -1,14 +1,14 @@
-import type {
-  CollectionReportRow,
-  SchedulerTableRow,
-} from '@/lib/types/componentProps';
+import { fetchSchedulersWithFilters } from '@/lib/helpers/schedulers';
 import type { CollectionView } from '@/lib/types/collection';
 import type { CollectionDocument } from '@/lib/types/collections';
-import { formatDateString } from '@/lib/utils/dateUtils';
-import { fetchSchedulersWithFilters } from '@/lib/helpers/schedulers';
+import type {
+    CollectionReportRow,
+    SchedulerTableRow,
+} from '@/lib/types/componentProps';
 import type { LocationSelectItem } from '@/lib/types/location';
-import type { DateRange as RDPDateRange } from 'react-day-picker';
+import { formatDateString } from '@/lib/utils/dateUtils';
 import { parse } from 'date-fns';
+import type { DateRange as RDPDateRange } from 'react-day-picker';
 
 /**
  * Collection report page helper functions V2 - CSS-based animations instead of GSAP
@@ -220,7 +220,9 @@ export function filterCollectionReports(
     const matchesSearch =
       !search ||
       r.collector.toLowerCase().includes(search.toLowerCase()) ||
-      r.location.toLowerCase().includes(search.toLowerCase());
+      r.location.toLowerCase().includes(search.toLowerCase()) ||
+      r.locationReportId.toLowerCase().includes(search.toLowerCase()) ||
+      r._id.toLowerCase().includes(search.toLowerCase());
     const uncollectedStr = String(r.uncollected).trim();
     const matchesUncollected =
       !showUncollectedOnly || Number(uncollectedStr) > 0;

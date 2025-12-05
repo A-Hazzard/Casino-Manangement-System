@@ -160,6 +160,9 @@ export type CollectionReportRow = {
   _id: string;
   locationReportId: string;
   collector: string;
+  collectorFullName?: string; // Display name (username → firstName → email → collectorName)
+  collectorFullNameTooltip?: string; // Full name for tooltip (firstName + lastName when available)
+  collectorUserNotFound?: boolean; // True if collector user no longer exists
   location: string;
   gross: number | string;
   machines: string;

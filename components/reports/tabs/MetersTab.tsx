@@ -22,6 +22,7 @@ import PaginationControls from '@/components/ui/PaginationControls';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MetersTabSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
 import { colorPalette } from '@/lib/constants/uiConstants';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
 import { useUserStore } from '@/lib/store/userStore';
@@ -55,14 +56,13 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { toast } from 'sonner';
-import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 
 export default function MetersTab() {
   const router = useRouter();
-  
+
   // AbortController for meters data fetching
   const makeMetersRequest = useAbortableRequest();
-  
+
   const [allMetersData, setAllMetersData] = useState<MetersReportData[]>([]); // Store all fetched data (batches)
   const [locations, setLocations] = useState<
     { id: string; name: string; sasEnabled: boolean }[]
@@ -207,15 +207,6 @@ export default function MetersTab() {
     setSearchTerm(value);
     setCurrentPage(0); // Reset to first page when searching
   };
-
-  // Get filtered data for export (uses frontend filtering)
-  const getDataForExport = useCallback(
-    (search: string = '') => {
-      // Use the already-fetched allMetersData and apply frontend filtering
-      return filterMetersData(allMetersData, search);
-    },
-    [allMetersData, filterMetersData]
-  );
 
   // Fetch current user's permissions from server if JWT is stale (for location admins)
   const fetchUserPermissions = useCallback(async () => {
@@ -462,7 +453,7 @@ export default function MetersTab() {
       setError(null);
 
       await makeMetersRequest(
-        async (signal) => {
+        async signal => {
           const params = new URLSearchParams({
             locations: selectedLocations.join(','),
             timePeriod: activeMetricsFilter,
@@ -518,13 +509,16 @@ export default function MetersTab() {
             setAllMetersData(prev => {
               const existingIds = new Set(
                 prev.map(
-                  m => m.machineId || ((m as Record<string, unknown>)._id as string)
+                  m =>
+                    m.machineId ||
+                    ((m as Record<string, unknown>)._id as string)
                 )
               );
               const uniqueNewMeters = newMetersData.filter(
                 (m: MetersReportData) => {
                   const id =
-                    m.machineId || ((m as Record<string, unknown>)._id as string);
+                    m.machineId ||
+                    ((m as Record<string, unknown>)._id as string);
                   return !existingIds.has(id);
                 }
               );
@@ -775,8 +769,31 @@ export default function MetersTab() {
       .map(loc => loc.name);
 
     try {
-      // Get filtered data for export (frontend filtering)
-      const allData = getDataForExport(searchTerm);
+      // Fetch ALL data for export (not just loaded batches)
+      // Use a high limit to get all records in one request
+      const params = new URLSearchParams({
+        locations: selectedLocations.join(','),
+        timePeriod: activeMetricsFilter,
+        page: '1',
+        limit: '10000', // High limit to get all data
+        search: searchTerm || '',
+        ...(selectedLicencee &&
+          selectedLicencee !== 'all' && {
+            licencee: selectedLicencee,
+          }),
+        ...(displayCurrency && { currency: displayCurrency }),
+        ...(activeMetricsFilter === 'Custom' &&
+          customDateRange && {
+            startDate: customDateRange.startDate.toISOString().split('T')[0],
+            endDate: customDateRange.endDate.toISOString().split('T')[0],
+          }),
+      });
+
+      const response = await axios.get<MetersReportResponse>(
+        `/api/reports/meters?${params}`
+      );
+
+      const allData = response.data.data || [];
 
       if (allData.length === 0) {
         toast.error('No data found for export', {
@@ -802,14 +819,8 @@ export default function MetersTab() {
       // Prepare data for export
       // If custom.name has a value, only export custom.name (not serialNumber)
       const exportData = allData.map(item => {
-        const itemRecord = item as Record<string, unknown>;
-        const customName =
-          (itemRecord.customName as string)?.trim() || undefined;
-        const serialNumber =
-          (itemRecord.serialNumber as string)?.trim() || undefined;
-        const origSerialNumber = itemRecord.origSerialNumber as
-          | string
-          | undefined;
+        const customName = item.customName?.trim() || undefined;
+        const serialNumber = item.serialNumber?.trim() || undefined;
 
         // For export: if customName exists, use only customName, otherwise use machineId
         const exportMachineId = customName || item.machineId;
@@ -827,7 +838,6 @@ export default function MetersTab() {
           createdAt: item.createdAt,
           // Don't include serialNumber in export if customName exists
           serialNumber: customName ? undefined : serialNumber,
-          origSerialNumber: customName ? undefined : origSerialNumber?.trim(),
         };
       });
 
@@ -851,12 +861,15 @@ export default function MetersTab() {
 
   // (deduped) Load locations handled above
 
-  // Mark locations as initialized (no auto-select - user must manually select)
+  // Auto-select location if there's only one location available
   useEffect(() => {
-    if (locations.length > 0 && !locationsInitialized.current) {
+    if (locations.length === 1 && selectedLocations.length === 0) {
+      setSelectedLocations([locations[0].id]);
+      locationsInitialized.current = true;
+    } else if (locations.length > 0 && !locationsInitialized.current) {
       locationsInitialized.current = true;
     }
-  }, [locations]);
+  }, [locations, selectedLocations.length]);
 
   // This effect is now handled by the main fetchMetersData effect above
 
@@ -1126,42 +1139,17 @@ export default function MetersTab() {
             <Skeleton className="h-4 w-96" />
           </CardHeader>
           <CardContent>
-            {/* Hourly Charts Skeleton - Matches MetersHourlyCharts loading state */}
-            {selectedLocations.length > 0 && (
-              <div className="mb-6 space-y-4">
-                {/* Games Played - Full Width Skeleton */}
-                <Card>
-                  <CardHeader>
-                    <Skeleton className="h-6 w-48" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-64 w-full" />
-                  </CardContent>
-                </Card>
-                {/* Coin In and Coin Out - Side by Side Skeleton */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {[1, 2].map(i => (
-                    <Card key={i}>
-                      <CardHeader>
-                        <Skeleton className="h-6 w-32" />
-                      </CardHeader>
-                      <CardContent>
-                        <Skeleton className="h-64 w-full" />
-                      </CardContent>
-                    </Card>
-                  ))}
+            <div className="flex flex-col">
+              {/* Search bar and Table Skeleton - Order 1 on mobile, Order 2 on md+ (appears first on desktop) */}
+              <div className="order-2 flex flex-col md:order-1">
+                {/* Search bar skeleton */}
+                <div className="mb-4">
+                  <Skeleton className="h-10 w-full max-w-md" />
+                  <Skeleton className="mt-2 h-4 w-48" />
                 </div>
-              </div>
-            )}
 
-            {/* Search bar skeleton */}
-            <div className="mb-4">
-              <Skeleton className="h-10 w-full max-w-md" />
-              <Skeleton className="mt-2 h-4 w-48" />
-            </div>
-
-            {/* Desktop table skeleton with proper column structure */}
-            <div className="hidden min-w-0 overflow-x-auto md:block">
+                {/* Desktop table skeleton with proper column structure */}
+                <div className="hidden min-w-0 overflow-x-auto md:block">
               <div className="min-w-full">
                 <table className="w-full min-w-[800px]">
                   <thead className="border-b border-gray-200 bg-gray-50">
@@ -1216,15 +1204,45 @@ export default function MetersTab() {
               ))}
             </div>
 
-            {/* Pagination skeleton */}
-            <div className="mt-6 flex items-center justify-between">
-              <Skeleton className="h-4 w-32" />
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-8 w-8" />
-                <Skeleton className="h-8 w-8" />
-                <Skeleton className="h-8 w-8" />
-                <Skeleton className="h-8 w-8" />
+                {/* Pagination skeleton */}
+                <div className="mt-6 flex items-center justify-between">
+                  <Skeleton className="h-4 w-32" />
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </div>
               </div>
+
+              {/* Hourly Charts Skeleton - Order 1 on mobile (appears first), Order 2 on md+ (appears after table) */}
+              {selectedLocations.length > 0 && (
+                <div className="order-1 mb-6 space-y-4 md:order-2">
+                  {/* Games Played - Full Width Skeleton */}
+                  <Card>
+                    <CardHeader>
+                      <Skeleton className="h-6 w-48" />
+                    </CardHeader>
+                    <CardContent>
+                      <Skeleton className="h-64 w-full" />
+                    </CardContent>
+                  </Card>
+                  {/* Coin In and Coin Out - Side by Side Skeleton */}
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {[1, 2].map(i => (
+                      <Card key={i}>
+                        <CardHeader>
+                          <Skeleton className="h-6 w-32" />
+                        </CardHeader>
+                        <CardContent>
+                          <Skeleton className="h-64 w-full" />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -1277,39 +1295,31 @@ export default function MetersTab() {
                 </div>
               </>
             ) : (
-              <>
-                {/* Hourly Charts - Only show when location is selected */}
-                {selectedLocations.length > 0 && (
-                  <div className="mb-6">
-                    <MetersHourlyCharts
-                      data={hourlyChartData}
-                      loading={hourlyChartLoading}
-                    />
+              <div className="flex flex-col">
+                {/* Search bar and Table Section - Order 1 on mobile, Order 2 on md+ (appears first on desktop) */}
+                <div className="order-2 flex flex-col md:order-1">
+                  {/* Search bar - Right above the table */}
+                  <div className="mb-4">
+                    <div className="relative max-w-md">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+                      <Input
+                        type="text"
+                        placeholder="Search by Serial Number, Custom Name, or Location..."
+                        value={searchTerm}
+                        onChange={e => handleSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <p className="mt-2 text-sm text-gray-600">
+                      Showing {paginatedMetersData.length} of{' '}
+                      {filteredMetersData.length} records
+                      {debouncedSearchTerm &&
+                        ` (filtered by "${debouncedSearchTerm}")`}
+                    </p>
                   </div>
-                )}
 
-                {/* Search bar - Right above the table */}
-                <div className="mb-4">
-                  <div className="relative max-w-md">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-                    <Input
-                      type="text"
-                      placeholder="Search by Serial Number, Custom Name, or Location..."
-                      value={searchTerm}
-                      onChange={e => handleSearch(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <p className="mt-2 text-sm text-gray-600">
-                    Showing {paginatedMetersData.length} of{' '}
-                    {filteredMetersData.length} records
-                    {debouncedSearchTerm &&
-                      ` (filtered by "${debouncedSearchTerm}")`}
-                  </p>
-                </div>
-
-                {/* Desktop Table View - lg and above */}
-                <div className="hidden min-w-0 overflow-x-auto lg:block">
+                  {/* Desktop Table View - lg and above */}
+                  <div className="hidden min-w-0 overflow-x-auto lg:block">
                   <div className="min-w-full">
                     <table className="w-full min-w-[800px]">
                       <thead className="border-b border-gray-200 bg-gray-50">
@@ -1556,15 +1566,26 @@ export default function MetersTab() {
                   ))}
                 </div>
 
-                {/* Pagination Controls - Mobile Responsive */}
-                {!loading && totalPages > 1 && (
-                  <PaginationControls
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    setCurrentPage={setCurrentPage}
-                  />
+                  {/* Pagination Controls - Mobile Responsive */}
+                  {!loading && totalPages > 1 && (
+                    <PaginationControls
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      setCurrentPage={setCurrentPage}
+                    />
+                  )}
+                </div>
+
+                {/* Hourly Charts Section - Order 1 on mobile (appears first), Order 2 on md+ (appears after table) */}
+                {selectedLocations.length > 0 && (
+                  <div className="order-1 mb-6 md:order-2">
+                    <MetersHourlyCharts
+                      data={hourlyChartData}
+                      loading={hourlyChartLoading}
+                    />
+                  </div>
                 )}
-              </>
+              </div>
             )}
           </CardContent>
         </Card>

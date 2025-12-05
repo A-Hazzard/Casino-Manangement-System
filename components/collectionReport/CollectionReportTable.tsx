@@ -21,36 +21,36 @@
  * @param onSort - Callback to request column sort
  * @param editableReportIds - Set of report IDs that can be edited
  */
-import React, { useMemo } from "react";
-import Image from "next/image";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from "@/components/ui/table";
+import Image from "next/image";
+import { useMemo } from "react";
 
 // Import SVG icons for pre-rendering
-import detailsIcon from "@/public/details.svg";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { CollectionReportRow } from "@/lib/types/componentProps";
-import { useRouter } from "next/navigation";
-import {
-  Edit3,
-  Trash2,
-  AlertTriangle,
-  ChevronUp,
-  ChevronDown,
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
-import {
-  getGrossColorClass,
-} from '@/lib/utils/financialColors';
 import { useUserStore } from "@/lib/store/userStore";
+import type { CollectionReportRow } from "@/lib/types/componentProps";
+import {
+    getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { hasAdminAccess, hasManagerAccess } from "@/lib/utils/permissions";
+import detailsIcon from "@/public/details.svg";
+import {
+    AlertTriangle,
+    ChevronDown,
+    ChevronUp,
+    Edit3,
+    Trash2,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 
 type ExtendedCollectionReportTableProps = {
   data: CollectionReportRow[];
@@ -247,7 +247,29 @@ export default function CollectionReportTable({
                     {hasIssues && (
                       <AlertTriangle className="h-4 w-4 text-yellow-600" />
                     )}
-                    {row?.collector || "-"}
+                    {row.collectorUserNotFound ? (
+                      <div className="group relative">
+                        <span className="cursor-help border-b-2 border-dotted border-orange-500 text-orange-600">
+                          {row.collectorFullName || row.collector || "-"}
+                        </span>
+                        <div className="absolute left-0 top-full z-50 mt-1 hidden w-max rounded bg-orange-600 px-3 py-2 text-xs text-white shadow-lg group-hover:block">
+                          ⚠️ User no longer exists (ID: {row.collector})
+                        </div>
+                      </div>
+                    ) : row.collectorFullName ? (
+                      <div className="group relative">
+                        <span className="cursor-help border-b border-dotted border-gray-400">
+                          {row.collectorFullName}
+                        </span>
+                        <div className="absolute left-0 top-full z-50 mt-1 hidden w-max rounded bg-gray-800 px-2 py-1 text-xs text-white shadow-lg group-hover:block">
+                          {row.collectorFullNameTooltip && row.collectorFullNameTooltip !== row.collectorFullName
+                            ? row.collectorFullNameTooltip
+                            : `ID: ${row.collector}`}
+                        </div>
+                      </div>
+                    ) : (
+                      <span>{row.collector || "-"}</span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell centered={false}>{row?.location || "-"}</TableCell>

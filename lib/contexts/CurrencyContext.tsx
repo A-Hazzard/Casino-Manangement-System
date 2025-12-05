@@ -78,8 +78,16 @@ export function CurrencyProvider({
   // IMPORTANT: This must run BEFORE the localStorage effect to prevent race conditions
   useEffect(() => {
     if (!user) {
+      // Clear currency when user logs out
       lastAutoSetUserId.current = null;
       lastAutoSetLicenseeId.current = null;
+      // Reset to USD when no user (will be set correctly when user logs in)
+      if (displayCurrency !== 'USD') {
+        setDisplayCurrency('USD');
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('evolution-currency');
+        }
+      }
       return;
     }
 
@@ -106,81 +114,66 @@ export function CurrencyProvider({
     if (userLicensees.length === 1) {
       const singleLicenseeId = userLicensees[0];
 
-      // Skip if we already set currency for this user/licensee combination
-      if (
+      // Get the correct currency for this licensee (synchronous, immediate)
+      const mappedLicenseeCurrency = getLicenseeCurrency(singleLicenseeId);
+
+      // For single-licensee users, ALWAYS set currency to their licensee's currency
+      // This overrides any existing currency (including stale values from localStorage)
+      // Only skip if we've already set it correctly for this user/licensee combination
+      const alreadySetCorrectly =
         lastAutoSetUserId.current === userId &&
-        lastAutoSetLicenseeId.current === singleLicenseeId
+        lastAutoSetLicenseeId.current === singleLicenseeId &&
+        displayCurrency === mappedLicenseeCurrency;
+
+      if (
+        !alreadySetCorrectly &&
+        mappedLicenseeCurrency &&
+        mappedLicenseeCurrency !== 'USD'
       ) {
-        return; // Already set, don't re-fetch
+        // Set currency immediately using mapping (no API delay)
+        // This ensures currency is correct even if localStorage has stale value
+        handleSetDisplayCurrency(mappedLicenseeCurrency);
+        lastAutoSetUserId.current = userId;
+        lastAutoSetLicenseeId.current = singleLicenseeId;
+
+        console.log(
+          `💰 [CurrencyContext] Auto-set currency to ${mappedLicenseeCurrency} for single licensee user (${singleLicenseeId}, userId: ${userId}) - was ${displayCurrency} (using immediate mapping)`
+        );
+      } else if (alreadySetCorrectly) {
+        // Currency already correctly set, just ensure tracking is up to date
+        lastAutoSetUserId.current = userId;
+        lastAutoSetLicenseeId.current = singleLicenseeId;
       }
 
-      // Fetch licensee name to properly resolve currency
-      // getLicenseeCurrency uses getLicenseeName which relies on LICENSEE_MAPPING,
-      // but we should fetch from API to ensure accuracy
+      // Then verify with API call (async, but currency already set above)
+      // This ensures accuracy if API returns different name than mapping
       fetchLicenseeById(singleLicenseeId)
         .then(licensee => {
           if (licensee?.name) {
-            const licenseeCurrency = getLicenseeCurrency(licensee.name);
+            const apiLicenseeCurrency = getLicenseeCurrency(licensee.name);
 
-            if (process.env.NODE_ENV === 'development') {
-              console.log(
-                `💰 [CurrencyContext] Fetched licensee: ${licensee.name} (${singleLicenseeId}) -> Currency: ${licenseeCurrency}`
-              );
-            }
+            console.log(
+              `💰 [CurrencyContext] Verified licensee: ${licensee.name} (${singleLicenseeId}) -> Currency: ${apiLicenseeCurrency}`
+            );
 
-            // For single-licensee users, ALWAYS ensure currency matches their licensee currency
-            // This overrides localStorage and any previous state
-            if (licenseeCurrency !== displayCurrency) {
-              handleSetDisplayCurrency(licenseeCurrency);
-              lastAutoSetUserId.current = userId;
-              lastAutoSetLicenseeId.current = singleLicenseeId;
-
-              if (process.env.NODE_ENV === 'development') {
-                console.log(
-                  `💰 [CurrencyContext] Auto-set currency to ${licenseeCurrency} for single licensee user (${licensee.name}/${singleLicenseeId}, userId: ${userId}) - was ${displayCurrency}`
-                );
-              }
-            } else {
-              // Currency already matches, just update tracking
-              lastAutoSetUserId.current = userId;
-              lastAutoSetLicenseeId.current = singleLicenseeId;
-            }
-          } else {
-            // Fallback: use getLicenseeCurrency with ID (uses LICENSEE_MAPPING)
-            const licenseeCurrency = getLicenseeCurrency(singleLicenseeId);
+            // Update if API returns different currency than mapping
             if (
-              licenseeCurrency !== displayCurrency &&
-              licenseeCurrency !== 'USD'
+              apiLicenseeCurrency !== mappedLicenseeCurrency &&
+              apiLicenseeCurrency !== 'USD'
             ) {
-              handleSetDisplayCurrency(licenseeCurrency);
-              lastAutoSetUserId.current = userId;
-              lastAutoSetLicenseeId.current = singleLicenseeId;
-
-              if (process.env.NODE_ENV === 'development') {
-                console.log(
-                  `💰 [CurrencyContext] Auto-set currency to ${licenseeCurrency} for single licensee user (${singleLicenseeId}, userId: ${userId}) - was ${displayCurrency} (using fallback mapping)`
-                );
-              }
+              handleSetDisplayCurrency(apiLicenseeCurrency);
+              console.log(
+                `💰 [CurrencyContext] Updated currency to ${apiLicenseeCurrency} based on API (was ${mappedLicenseeCurrency})`
+              );
             }
           }
         })
         .catch(error => {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn(
-              '[CurrencyContext] Failed to fetch licensee for currency auto-set:',
-              error
-            );
-          }
-          // Fallback: use getLicenseeCurrency with ID
-          const licenseeCurrency = getLicenseeCurrency(singleLicenseeId);
-          if (
-            licenseeCurrency !== displayCurrency &&
-            licenseeCurrency !== 'USD'
-          ) {
-            handleSetDisplayCurrency(licenseeCurrency);
-            lastAutoSetUserId.current = userId;
-            lastAutoSetLicenseeId.current = singleLicenseeId;
-          }
+          console.warn(
+            '[CurrencyContext] Failed to verify licensee via API (using mapping):',
+            error
+          );
+          // Currency already set via mapping, so this is fine
         });
     } else {
       // User has 0 or multiple licensees - reset tracking
@@ -203,16 +196,8 @@ export function CurrencyProvider({
     if (typeof window !== 'undefined') {
       // Wait for user data to be available before loading from localStorage
       if (!user) {
-        // If no user yet, load from localStorage as fallback (will be overridden if single-licensee user)
-        const savedCurrency = localStorage.getItem(
-          'evolution-currency'
-        ) as CurrencyCode;
-        if (
-          savedCurrency &&
-          ['USD', 'TTD', 'GYD', 'BBD'].includes(savedCurrency)
-        ) {
-          setDisplayCurrency(savedCurrency);
-        }
+        // If no user yet, don't load from localStorage (currency should be USD)
+        // This prevents stale currency from persisting
         return;
       }
 
@@ -227,9 +212,22 @@ export function CurrencyProvider({
           : [];
       const isSingleLicenseeNonAdmin = !isAdmin && userLicensees.length === 1;
 
-      // Don't load from localStorage for single-licensee non-admin users
-      // Their currency is auto-set based on their licensee (handled in the previous effect)
-      // Also skip if we've already auto-set currency for this user
+      // NEVER load from localStorage for single-licensee non-admin users
+      // Their currency is ALWAYS auto-set based on their licensee (handled in the previous effect)
+      // This prevents stale currency (like TTD) from overriding the correct currency (like BBD)
+      if (isSingleLicenseeNonAdmin) {
+        // Clear any stale currency from localStorage for single-licensee users
+        const savedCurrency = localStorage.getItem('evolution-currency');
+        if (savedCurrency) {
+          console.log(
+            `💰 [CurrencyContext] Clearing stale currency from localStorage for single-licensee user: ${savedCurrency}`
+          );
+          localStorage.removeItem('evolution-currency');
+        }
+        return;
+      }
+
+      // For admins or multi-licensee users, load from localStorage if not already auto-set
       if (!isSingleLicenseeNonAdmin && lastAutoSetUserId.current !== user._id) {
         const savedCurrency = localStorage.getItem(
           'evolution-currency'

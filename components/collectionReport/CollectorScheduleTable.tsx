@@ -83,7 +83,7 @@ export default function CollectorScheduleTable({
                 className="hover:bg-gray-50"
               >
                 <TableCell className="font-medium">
-                  {schedule.collector || schedule.collectorName}
+                  {schedule.collector || 'Unknown'}
                 </TableCell>
                 <TableCell>
                   {schedule.location || schedule.locationName}

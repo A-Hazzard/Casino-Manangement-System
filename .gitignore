@@ -46,8 +46,8 @@ tsconfig.tsbuildinfo
 /backup/
 backup/
 
+scripts/
 scripts/backups
 scripts/backups/*.js
-/scripts
 scripts/backup-meters-range.js
 oldSystem/

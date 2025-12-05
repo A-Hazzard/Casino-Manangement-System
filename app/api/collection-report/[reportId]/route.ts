@@ -10,21 +10,21 @@
  * @module app/api/collection-report/[reportId]/route
  */
 
-import { NextResponse, NextRequest } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
 import { getCollectionReportById } from '@/app/api/lib/helpers/accountingDetails';
-import { CollectionReport } from '@/app/api/lib/models/collectionReport';
-import { Collections } from '@/app/api/lib/models/collections';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '../../lib/helpers/users';
-import { getClientIP } from '@/lib/utils/ipAddress';
-import type { CreateCollectionReportPayload } from '@/lib/types/api';
-import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
 import {
-  updateCollectionReport,
   removeCollectionHistoryFromMachines,
   revertMachineCollectionMeters,
+  updateCollectionReport,
 } from '@/app/api/lib/helpers/collectionReportOperations';
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { CollectionReport } from '@/app/api/lib/models/collectionReport';
+import { Collections } from '@/app/api/lib/models/collections';
+import type { CreateCollectionReportPayload } from '@/lib/types/api';
+import { getClientIP } from '@/lib/utils/ipAddress';
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromServer } from '../../lib/helpers/users';
 
 /**
  * Main GET handler for collection report by ID
@@ -120,9 +120,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         locationReportId: reportId,
       });
       if (reportDoc?.timestamp) {
-        reportData.collectionDate = new Date(
-          reportDoc.timestamp
-        ).toISOString();
+        reportData.collectionDate = new Date(reportDoc.timestamp).toISOString();
       }
     }
 
@@ -237,11 +235,12 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             newValue: body.locationName,
           });
         }
-        if (body.collectorName !== undefined) {
+        // REMOVED: collectorName field - use collector (user ID) instead
+        if (body.collector !== undefined) {
           updateChanges.push({
-            field: 'collectorName',
-            oldValue: existingReport.collectorName,
-            newValue: body.collectorName,
+            field: 'collector',
+            oldValue: existingReport.collector,
+            newValue: body.collector,
           });
         }
         if (body.amountCollected !== undefined) {
@@ -298,7 +297,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             userRole: (currentUser.roles as string[])?.[0] || 'user',
             resource: 'collection',
             resourceId: reportId,
-            resourceName: `${existingReport.locationName} - ${existingReport.collectorName}`,
+            resourceName: `${existingReport.locationName} - ${existingReport.collectorName || existingReport.collector || 'Unknown'}`, // Use collectorName for display only (legacy), fallback to collector ID
             changes: updateChanges,
           },
         });

@@ -36,7 +36,7 @@ export function validateCollectionReportPayload(
   errors: string[];
 } {
   const errors: string[] = [];
-  if (!payload.collectorName) errors.push('Collector name is required.');
+  if (!payload.collector) errors.push('Collector ID is required.');
   if (!payload.locationName) errors.push('Location name is required.');
   if (!payload.locationReportId) errors.push('Location report ID is required.');
   if (!payload.location) errors.push('Location ID is required.');

@@ -62,6 +62,8 @@ export async function logoutUser(): Promise<AuthResult> {
     // Clear client-side storage regardless of API response
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user-auth-store');
+      localStorage.removeItem('evolution-currency'); // Clear currency preference
+      localStorage.removeItem('dashboard-store'); // Clear dashboard store
       // Clear sessionStorage but preserve the just-logged-out flag
       const justLoggedOutFlag = Date.now().toString();
       sessionStorage.clear();
@@ -78,6 +80,8 @@ export async function logoutUser(): Promise<AuthResult> {
     console.error('Logout error:', error);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user-auth-store');
+      localStorage.removeItem('evolution-currency'); // Clear currency preference
+      localStorage.removeItem('dashboard-store'); // Clear dashboard store
       // Clear sessionStorage but preserve the just-logged-out flag
       const justLoggedOutFlag = Date.now().toString();
       sessionStorage.clear();

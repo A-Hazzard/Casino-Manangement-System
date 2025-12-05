@@ -1,19 +1,16 @@
 /**
  * Collection Report Creation Helper
- *
- * This file contains helper functions for creating collection reports,
- * including validation, sanitization, and updating related collections and machines.
  */
 
+import { CollectionReport } from '@/app/api/lib/models/collectionReport';
+import { Collections } from '@/app/api/lib/models/collections';
+import { Machine } from '@/app/api/lib/models/machines';
+import { calculateCollectionReportTotals } from '@/lib/helpers/collectionReportCalculations';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
-import { CollectionReport } from '../models/collectionReport';
-import { calculateCollectionReportTotals } from './collectionReportCalculations';
-import { Collections } from '../models/collections';
-import { Machine } from '../models/machines';
 import mongoose from 'mongoose';
 
 /**
- * Validates required fields in collection report payload
+ * Validates collection report payload
  *
  * @param body - The collection report payload
  * @returns { isValid: boolean; error?: string }
@@ -31,7 +28,7 @@ export function validateCollectionReportPayload(
     'partnerProfit',
     'taxes',
     'advance',
-    'collectorName',
+    'collector', // User ID (changed from collectorName)
     'locationName',
     'locationReportId',
     'location',
@@ -63,7 +60,7 @@ export function sanitizeCollectionReportPayload(
   body: CreateCollectionReportPayload
 ): CreateCollectionReportPayload {
   const stringFields = [
-    'collectorName',
+    'collector',
     'locationName',
     'locationReportId',
     'location',
@@ -90,7 +87,11 @@ export function sanitizeCollectionReportPayload(
  * @returns Promise<void>
  */
 export async function updateCollectionsWithReportId(
-  machines: Array<{ machineId?: string; metersIn?: number; metersOut?: number }>,
+  machines: Array<{
+    machineId?: string;
+    metersIn?: number;
+    metersOut?: number;
+  }>,
   locationReportId: string
 ): Promise<void> {
   for (const m of machines) {
@@ -116,7 +117,7 @@ export async function updateCollectionsWithReportId(
           updatedAt: new Date(),
         },
       }
-    ).catch(err => {
+    ).catch((err: unknown) => {
       console.warn(
         `Failed to update collection documents for machine ${m.machineId}:`,
         err
@@ -147,12 +148,12 @@ export async function updateMachineCollectionData(
   if (!currentMachine) return;
 
   const currentMachineData = currentMachine as Record<string, unknown>;
-  const currentCollectionMeters =
-    currentMachineData.collectionMeters as
-      | { metersIn: number; metersOut: number }
-      | undefined;
-  const currentMachineCollectionTime =
-    currentMachineData.collectionTime as Date | undefined;
+  const currentCollectionMeters = currentMachineData.collectionMeters as
+    | { metersIn: number; metersOut: number }
+    | undefined;
+  const currentMachineCollectionTime = currentMachineData.collectionTime as
+    | Date
+    | undefined;
 
   // Find the collection document we just marked as completed
   const collectionDocument = await Collections.findOne({
@@ -197,7 +198,7 @@ export async function updateMachineCollectionData(
           prevOut: baselinePrevOut,
         },
       }
-    ).catch(err => {
+    ).catch((err: unknown) => {
       console.error(
         `Failed to update prevIn/prevOut for collection ${collectionDocument._id}:`,
         err
@@ -207,15 +208,18 @@ export async function updateMachineCollectionData(
 
   // Update machine collectionMeters + timestamps
   // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-  await Machine.findOneAndUpdate({ _id: machineId }, {
-    $set: {
-      'collectionMeters.metersIn': metersIn,
-      'collectionMeters.metersOut': metersOut,
-      collectionTime,
-      previousCollectionTime: currentMachineCollectionTime || undefined,
-      updatedAt: new Date(),
-    },
-  }).catch(err => {
+  await Machine.findOneAndUpdate(
+    { _id: machineId },
+    {
+      $set: {
+        'collectionMeters.metersIn': metersIn,
+        'collectionMeters.metersOut': metersOut,
+        collectionTime,
+        previousCollectionTime: currentMachineCollectionTime || undefined,
+        updatedAt: new Date(),
+      },
+    }
+  ).catch((err: unknown) => {
     console.error(
       `Failed to update collectionMeters for machine ${machineId}:`,
       err
@@ -244,7 +248,7 @@ export async function updateMachineCollectionData(
       ],
       new: true,
     }
-  ).catch(err => {
+  ).catch((err: unknown) => {
     console.error(
       `Failed to update history entry identifiers for machine ${machineId}:`,
       err
@@ -263,11 +267,14 @@ export async function updateMachineCollectionData(
   };
 
   // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-  await Machine.findOneAndUpdate({ _id: machineId }, {
-    $push: {
-      collectionMetersHistory: historyEntry,
-    },
-  });
+  await Machine.findOneAndUpdate(
+    { _id: machineId },
+    {
+      $push: {
+        collectionMetersHistory: historyEntry,
+      },
+    }
+  );
 
   // Update gaming location's previousCollectionTime
   const gamingLocationId = currentMachineData.gamingLocation as string;
@@ -285,7 +292,7 @@ export async function updateMachineCollectionData(
         },
       },
       { new: true }
-    ).catch(err => {
+    ).catch((err: unknown) => {
       console.error(
         `Failed to update previousCollectionTime for gaming location ${gamingLocationId}:`,
         err
@@ -323,11 +330,23 @@ export async function createCollectionReport(
     // Update all collection documents with the locationReportId
     if (body.machines && Array.isArray(body.machines)) {
       await updateCollectionsWithReportId(
-        body.machines.map(m => ({
-          machineId: m.machineId,
-          metersIn: typeof m.metersIn === 'string' ? parseFloat(m.metersIn) : (m.metersIn ?? 0),
-          metersOut: typeof m.metersOut === 'string' ? parseFloat(m.metersOut) : (m.metersOut ?? 0),
-        })),
+        body.machines.map(
+          (m: {
+            machineId: string;
+            metersIn: number | string;
+            metersOut: number | string;
+          }) => ({
+            machineId: m.machineId,
+            metersIn:
+              typeof m.metersIn === 'string'
+                ? parseFloat(m.metersIn)
+                : (m.metersIn ?? 0),
+            metersOut:
+              typeof m.metersOut === 'string'
+                ? parseFloat(m.metersOut)
+                : (m.metersOut ?? 0),
+          })
+        ),
         body.locationReportId
       );
 
@@ -358,4 +377,3 @@ export async function createCollectionReport(
     return { success: false, error: errorMessage };
   }
 }
-

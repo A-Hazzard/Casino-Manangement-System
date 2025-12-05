@@ -27,6 +27,7 @@ export type CollectionReportsQueryParams = {
   limit?: string | null;
   sortBy?: string;
   sortOrder?: string;
+  search?: string | null;
 };
 
 /**
@@ -112,12 +113,29 @@ export function buildCollectionReportsQuery(
     query.isEditing = true;
   }
 
+  // Handle search parameter - search across multiple fields
+  if (params.search && params.search.trim()) {
+    const searchTerm = params.search.trim();
+    
+    // Build search query to check multiple fields in order:
+    // 1. collector (user ID - primary field)
+    // 2. locationReportId (report ID)
+    // 3. _id (document ID)
+    // 4. collectorName (LAST FALLBACK - display name only, deprecated for writes)
+    query.$or = [
+      { collector: { $regex: searchTerm, $options: 'i' } },
+      { locationReportId: { $regex: searchTerm, $options: 'i' } },
+      { _id: { $regex: searchTerm, $options: 'i' } },
+      { collectorName: { $regex: searchTerm, $options: 'i' } }, // DEPRECATED: Last fallback for legacy data
+    ];
+  }
+
   if (locationFilter !== null) {
     if (locationFilter.length === 0) {
       // Empty array means user has no access - return impossible query
       query._id = { $in: [] };
     } else {
-      query.locationId = { $in: locationFilter };
+      query.location = { $in: locationFilter };
     }
   }
 

@@ -19,19 +19,19 @@
  * @param onDelete - Callback when delete is clicked
  * @param editableReportIds - Set of report IDs that can be edited
  */
-import React, { useMemo } from "react";
-import Image from "next/image";
-import type { CollectionReportRow } from "@/lib/types/componentProps";
-import { useRouter } from "next/navigation";
-import { Edit3, Trash2, AlertTriangle } from "lucide-react";
-import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
-import {
-  getGrossColorClass,
-} from '@/lib/utils/financialColors';
-import { useUserStore } from "@/lib/store/userStore";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
+import { useUserStore } from "@/lib/store/userStore";
+import type { CollectionReportRow } from "@/lib/types/componentProps";
+import {
+    getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { hasAdminAccess, hasManagerAccess } from "@/lib/utils/permissions";
+import { AlertTriangle, Edit3, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 
 // Import SVG icons for pre-rendering
 import detailsIcon from "@/public/details.svg";
@@ -111,7 +111,20 @@ export default function CollectionReportCards({
                 } text-white`}
               >
                 <div className="flex items-center justify-between">
-                  <span>Collector: {row?.collector || "-"}</span>
+                  <div className="flex items-center gap-2">
+                    <span>Collector:</span>
+                    {row.collectorUserNotFound ? (
+                      <span className="border-b-2 border-dotted border-orange-300 text-orange-100">
+                        {row.collectorFullName || row?.collector || "-"}
+                      </span>
+                    ) : row.collectorFullName ? (
+                      <span className="border-b border-dotted border-white/50">
+                        {row.collectorFullName}
+                      </span>
+                    ) : (
+                      <span>{row?.collector || "-"}</span>
+                    )}
+                  </div>
                   {hasIssues && (
                     <Badge
                       variant="secondary"
@@ -122,6 +135,18 @@ export default function CollectionReportCards({
                     </Badge>
                   )}
                 </div>
+                {row.collectorUserNotFound && (
+                  <div className="text-xs text-orange-200 mt-1">
+                    ⚠️ User no longer exists (ID: {row.collector})
+                  </div>
+                )}
+                {row.collectorFullName && !row.collectorUserNotFound && (
+                  <div className="text-xs text-white/70 mt-1">
+                    {row.collectorFullNameTooltip && row.collectorFullNameTooltip !== row.collectorFullName
+                      ? row.collectorFullNameTooltip
+                      : `ID: ${row.collector}`}
+                  </div>
+                )}
               </div>
               <div className="p-4 flex flex-col gap-3 bg-white">
                 <div className="flex justify-between">
