@@ -7,13 +7,20 @@ const nextConfig: NextConfig = {
     loader: 'default',
   },
   // Exclude folders from build output
+  // NOTE: Do NOT exclude '.next/**' as it contains Next.js runtime files needed for production
   outputFileTracingExcludes: {
     '*': [
-      '.next/**',
       'scripts/**',
       'backup/**',
       'mongo-migration/**',
-      'node_modules/**',
+      // Exclude node_modules but keep Next.js dependencies
+      'node_modules/**/test/**',
+      'node_modules/**/tests/**',
+      'node_modules/**/*.test.js',
+      'node_modules/**/*.spec.js',
+      'node_modules/**/README.md',
+      'node_modules/**/CHANGELOG.md',
+      'node_modules/**/LICENSE',
     ],
   },
   async redirects() {
