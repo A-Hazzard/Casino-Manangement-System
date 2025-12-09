@@ -72,8 +72,8 @@ function determineAggregationGranularity(
   }
 
   if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
-    // Default to minute-level for Today/Yesterday (can be overridden by manualGranularity)
-    return { useHourly: false, useMinute: true };
+    // Default to hourly for Today/Yesterday (can be overridden by manualGranularity)
+    return { useHourly: true, useMinute: false };
   }
 
   if (timePeriod === 'Custom' && startDate && endDate) {
@@ -84,18 +84,14 @@ function determineAggregationGranularity(
       (startDateParam.includes('T') || endDateParam.includes('T'));
 
     if (hasTimeComponents) {
-      // Calculate time difference in hours and days
-    const diffInMs = endDate.getTime() - startDate.getTime();
-      const diffInHours = diffInMs / (1000 * 60 * 60);
-    const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+      // Calculate time difference in days
+      const diffInMs = endDate.getTime() - startDate.getTime();
+      const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
 
       // For custom ranges with time inputs:
-      // - Use minute-level if range <= 10 hours (as per user requirement)
-      // - Use hourly if > 10 hours but <= 1 day
+      // - Default to hourly for all ranges <= 1 day
       // - Use daily if > 1 day
-      if (diffInHours <= 10 && diffInDays <= 1) {
-        return { useHourly: false, useMinute: true };
-      } else if (diffInDays <= 1) {
+      if (diffInDays <= 1) {
         return { useHourly: true, useMinute: false };
       }
       // For ranges > 1 day, return daily (default)
@@ -259,13 +255,13 @@ async function getLocationCurrencies(
     licenseeIdToName.set(lic._id.toString(), lic.name);
   });
 
-    const countriesData = await Countries.find({}).lean();
-    const countryIdToName = new Map<string, string>();
-    countriesData.forEach(country => {
-      if (country._id && country.name) {
-        countryIdToName.set(String(country._id), country.name);
-      }
-    });
+  const countriesData = await Countries.find({}).lean();
+  const countryIdToName = new Map<string, string>();
+  countriesData.forEach(country => {
+    if (country._id && country.name) {
+      countryIdToName.set(String(country._id), country.name);
+    }
+  });
 
   const locationCurrencies = new Map<string, string>();
   locationsData.forEach(loc => {
@@ -636,17 +632,17 @@ export async function getLocationTrends(
     ? // For minute-level, use data as-is (already has minute-level grouping from pipeline)
       convertDailyTrendsToLocationTrends(convertedData, targetLocations)
     : useHourly
-    ? formatHourlyTrends(
-        convertedData,
-        targetLocations,
-        convertedData[0]?.day || new Date().toISOString().split('T')[0]
-      )
-    : formatDailyTrends(
-        convertedData,
-        targetLocations,
-        queryStartDate,
-        queryEndDate
-      );
+      ? formatHourlyTrends(
+          convertedData,
+          targetLocations,
+          convertedData[0]?.day || new Date().toISOString().split('T')[0]
+        )
+      : formatDailyTrends(
+          convertedData,
+          targetLocations,
+          queryStartDate,
+          queryEndDate
+        );
 
   // Calculate totals
   const totals = calculateLocationTotals(convertedData, targetLocations);

@@ -140,9 +140,9 @@ function CabinetDetailPageContent() {
   const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
   const [chartData, setChartData] = useState<dashboardData[]>([]);
   const [loadingChart, setLoadingChart] = useState(false);
-  // Chart granularity selector (only shown for Today/Yesterday)
+  // Chart granularity selector (only shown for Today/Yesterday/Custom)
   const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
-    'minute'
+    'hourly'
   );
 
   // ============================================================================

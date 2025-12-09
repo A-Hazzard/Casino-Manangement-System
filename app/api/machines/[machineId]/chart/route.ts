@@ -232,16 +232,12 @@ export async function GET(
 
         if (hasTimeComponents) {
           const diffInMs = endDate.getTime() - startDate.getTime();
-          const diffInHours = diffInMs / (1000 * 60 * 60);
           const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
 
           // For custom ranges with time inputs:
-          // - Use minute-level if range <= 10 hours (as per user requirement)
-          // - Use hourly if > 10 hours but <= 1 day
+          // - Default to hourly for all ranges <= 1 day
           // - Use daily if > 1 day
-          if (diffInHours <= 10 && diffInDays <= 1) {
-            useMinute = true;
-          } else if (diffInDays <= 1) {
+          if (diffInDays <= 1) {
             useHourly = true;
           }
           // For ranges > 1 day, use daily (default)

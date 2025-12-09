@@ -171,9 +171,9 @@ export default function LocationPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [chartData, setChartData] = useState<dashboardData[]>([]);
   const [loadingChartData, setLoadingChartData] = useState(false);
-  // Chart granularity selector (only shown for Today/Yesterday)
+  // Chart granularity selector (only shown for Today/Yesterday/Custom)
   const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
-    'minute'
+    'hourly'
   );
   // Prevent premature data fetching
   const [filtersInitialized, setFiltersInitialized] = useState(false);

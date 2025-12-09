@@ -114,7 +114,7 @@ function DashboardContent() {
   // State - Chart Granularity
   // ============================================================================
   const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
-    'minute'
+    'hourly'
   );
 
   // ============================================================================

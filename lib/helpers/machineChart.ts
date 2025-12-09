@@ -222,63 +222,31 @@ export async function getMachineChartData(
       }
     } else {
       // Auto-detect granularity based on API response and time period
-      // Only use hourly for predefined periods (Today, Yesterday) OR date-only custom ranges
+      // Default to hourly for Today, Yesterday, and Custom ranges <= 1 day
       const shouldUseHourly =
         timePeriod === 'Today' || timePeriod === 'Yesterday';
 
-      // For custom ranges: use hourly only if date-only (no time inputs) AND API didn't return minute data
-      // If API returns minute data, preserve it (don't use hourly aggregation)
-      const isCustomDateOnly =
+      // For custom ranges: default to hourly if <= 1 day (unless API returns minute data and user wants to preserve it)
+      const isCustomRangeOneDayOrLess =
         timePeriod === 'Custom' &&
         startDate &&
         endDate &&
-        !hasMinuteLevelData &&
         (() => {
           const sd =
             startDate instanceof Date ? startDate : new Date(startDate);
           const ed = endDate instanceof Date ? endDate : new Date(endDate);
-          // Check if dates have no time components (midnight = date-only)
-          const hasNoTime =
-            sd.getHours() === 0 &&
-            sd.getMinutes() === 0 &&
-            sd.getSeconds() === 0 &&
-            ed.getHours() === 0 &&
-            ed.getMinutes() === 0 &&
-            ed.getSeconds() === 0;
-          if (!hasNoTime) return false;
-          // Check if range is <= 1 day
           const diffInMs = ed.getTime() - sd.getTime();
           const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
           return diffInDays <= 1;
         })();
 
-      // Use hourly only for predefined periods or date-only custom ranges (without minute data)
-      useHourly = Boolean(shouldUseHourly || isCustomDateOnly);
+      // Default to hourly for Today, Yesterday, and Custom ranges <= 1 day
+      // Only use minute if API explicitly returns minute-level data (user can manually select minute granularity)
+      useHourly = Boolean(shouldUseHourly || isCustomRangeOneDayOrLess);
 
-      // Detect if we should use minute-level aggregation
-      // For Custom: use minute if time inputs are provided OR API returns minute data
-      // For Today/Yesterday: use minute if API returns minute data
-      if (timePeriod === 'Custom' && startDate && endDate) {
-        const sd = startDate instanceof Date ? startDate : new Date(startDate);
-        const ed = endDate instanceof Date ? endDate : new Date(endDate);
-        // Check if custom range has time components (not date-only)
-        const hasTime =
-          sd.getHours() !== 0 ||
-          sd.getMinutes() !== 0 ||
-          sd.getSeconds() !== 0 ||
-          ed.getHours() !== 0 ||
-          ed.getMinutes() !== 0 ||
-          ed.getSeconds() !== 0;
-
-        // If custom range has time inputs, use minute-level
-        if (hasTime || hasMinuteLevelData) {
-          useMinute = true;
-          useHourly = false;
-        }
-      } else if (
-        (timePeriod === 'Today' || timePeriod === 'Yesterday') &&
-        hasMinuteLevelData
-      ) {
+      // Only use minute-level if API explicitly returned minute data
+      // This preserves minute data when user manually selects minute granularity
+      if (hasMinuteLevelData) {
         useMinute = true;
         useHourly = false;
       }
