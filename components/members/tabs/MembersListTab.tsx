@@ -9,17 +9,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PaginationControls from '@/components/ui/PaginationControls';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useMemberActionsStore } from '@/lib/store/memberActionsStore';
 import type { CasinoMember as Member } from '@/shared/types/entities';
-import {
-    MagnifyingGlassIcon,
-} from '@radix-ui/react-icons';
+import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { ArrowUpDown, Calendar, MapPin, Users } from 'lucide-react';
 type MemberSortOption =
   | 'name'
@@ -47,7 +45,13 @@ import MemberTable from '@/components/ui/members/MemberTable';
 import MemberTableSkeleton from '@/components/ui/members/MemberTableSkeleton';
 import NewMemberModal from '@/components/ui/members/NewMemberModal';
 
-export default function MembersListTab() {
+interface MembersListTabProps {
+  forcedLocationId?: string;
+}
+
+export default function MembersListTab({
+  forcedLocationId,
+}: MembersListTabProps) {
   const {
     selectedMember,
     isEditModalOpen,
@@ -57,7 +61,11 @@ export default function MembersListTab() {
     closeEditModal,
     closeDeleteModal,
   } = useMemberActionsStore();
-  const { setOnRefresh, setOnNewMember, setRefreshing: setRefreshingContext } = useMembersHandlers();
+  const {
+    setOnRefresh,
+    setOnNewMember,
+    setRefreshing: setRefreshingContext,
+  } = useMembersHandlers();
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -73,7 +81,9 @@ export default function MembersListTab() {
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
   const [isNewMemberModalOpen, setIsNewMemberModalOpen] = useState(false);
   const [locationFilter, setLocationFilter] = useState('all');
-  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [locations, setLocations] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [summaryStats, setSummaryStats] = useState<{
     totalMembers: number;
     totalLocations: number;
@@ -85,9 +95,12 @@ export default function MembersListTab() {
   const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
   // Calculate which batch we need based on current page
-  const calculateBatchNumber = useCallback((page: number) => {
-    return Math.floor(page / pagesPerBatch) + 1;
-  }, [pagesPerBatch]);
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / pagesPerBatch) + 1;
+    },
+    [pagesPerBatch]
+  );
 
   // Fetch members data with backend pagination
   const fetchMembers = useCallback(
@@ -95,7 +108,8 @@ export default function MembersListTab() {
       batch: number = 1,
       search: string = '',
       sortBy: string = 'name',
-      sortOrder: 'asc' | 'desc' = 'asc'
+      sortOrder: 'asc' | 'desc' = 'asc',
+      locFilter: string = forcedLocationId || locationFilter
     ) => {
       try {
         setLoading(true);
@@ -106,6 +120,7 @@ export default function MembersListTab() {
           search: search,
           sortBy: sortBy,
           sortOrder: sortOrder,
+          locationFilter: locFilter !== 'all' ? locFilter : '',
         });
 
         const response = await axios.get(`/api/members?${params}`);
@@ -116,7 +131,9 @@ export default function MembersListTab() {
           // Merge new members into allMembers, avoiding duplicates
           setAllMembers(prev => {
             const existingIds = new Set(prev.map(m => m._id));
-            const uniqueNewMembers = newMembers.filter((m: Member) => !existingIds.has(m._id));
+            const uniqueNewMembers = newMembers.filter(
+              (m: Member) => !existingIds.has(m._id)
+            );
             return [...prev, ...uniqueNewMembers];
           });
         } else {
@@ -130,7 +147,7 @@ export default function MembersListTab() {
         setLoading(false);
       }
     },
-    [itemsPerBatch]
+    [itemsPerBatch, forcedLocationId, locationFilter]
   );
 
   // Fetch locations for the filter dropdown (membership-enabled only)
@@ -156,7 +173,9 @@ export default function MembersListTab() {
   // Fetch summary stats
   const fetchSummaryStats = useCallback(async () => {
     try {
-      const response = await axios.get('/api/members/summary?page=1&limit=1&dateFilter=all');
+      const response = await axios.get(
+        '/api/members/summary?page=1&limit=1&dateFilter=all'
+      );
       const data = response.data;
       if (data.data?.summary) {
         setSummaryStats(data.data.summary);
@@ -176,8 +195,24 @@ export default function MembersListTab() {
     setAllMembers([]);
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
-    fetchMembers(1, debouncedSearchTerm, sortOption, sortOrder);
-  }, [debouncedSearchTerm, sortOption, sortOrder, setAllMembers, setLoadedBatches, setCurrentPage, fetchMembers]);
+    fetchMembers(
+      1,
+      debouncedSearchTerm,
+      sortOption,
+      sortOrder,
+      forcedLocationId || locationFilter
+    );
+  }, [
+    debouncedSearchTerm,
+    sortOption,
+    sortOrder,
+    setAllMembers,
+    setLoadedBatches,
+    setCurrentPage,
+    fetchMembers,
+    forcedLocationId,
+    locationFilter,
+  ]);
 
   // Fetch summary stats on mount
   useEffect(() => {
@@ -211,13 +246,25 @@ export default function MembersListTab() {
     // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
     if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
       setLoadedBatches(prev => new Set([...prev, nextBatch]));
-      fetchMembers(nextBatch, searchTerm, sortOption, sortOrder);
+      fetchMembers(
+        nextBatch,
+        searchTerm,
+        sortOption,
+        sortOrder,
+        forcedLocationId || locationFilter
+      );
     }
 
     // Also ensure current batch is loaded
     if (!loadedBatches.has(currentBatch)) {
       setLoadedBatches(prev => new Set([...prev, currentBatch]));
-      fetchMembers(currentBatch, searchTerm, sortOption, sortOrder);
+      fetchMembers(
+        currentBatch,
+        searchTerm,
+        sortOption,
+        sortOrder,
+        forcedLocationId || locationFilter
+      );
     }
   }, [
     currentPage,
@@ -230,6 +277,8 @@ export default function MembersListTab() {
     searchTerm,
     sortOption,
     sortOrder,
+    forcedLocationId,
+    locationFilter,
   ]);
 
   // Sorting functionality - now handled by backend
@@ -247,20 +296,24 @@ export default function MembersListTab() {
   // Filter by location and search term (frontend filtering)
   const filteredMembers = useMemo(() => {
     let filtered = allMembers;
-    
+
     // Apply location filter
     if (locationFilter !== 'all') {
       filtered = filtered.filter(member => {
         const memberLocationId = member.gamingLocation || '';
-        return memberLocationId === locationFilter || member.locationName === locationFilter;
+        return (forcedLocationId || locationFilter) !== 'all'
+          ? memberLocationId === (forcedLocationId || locationFilter) ||
+              member.locationName === (forcedLocationId || locationFilter)
+          : true;
       });
     }
-    
+
     // Apply frontend search filter
     if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
       const lowerSearchValue = debouncedSearchTerm.toLowerCase().trim();
       filtered = filtered.filter(member => {
-        const fullName = `${member.profile?.firstName || ''} ${member.profile?.lastName || ''}`.toLowerCase();
+        const fullName =
+          `${member.profile?.firstName || ''} ${member.profile?.lastName || ''}`.toLowerCase();
         const phoneNumber = (member.phoneNumber || '').toLowerCase();
         const locationName = (member.locationName || '').toLowerCase();
         const memberId = String(member._id || '').toLowerCase();
@@ -273,9 +326,9 @@ export default function MembersListTab() {
         );
       });
     }
-    
+
     return filtered;
-  }, [allMembers, locationFilter, debouncedSearchTerm]);
+  }, [allMembers, locationFilter, forcedLocationId, debouncedSearchTerm]);
 
   // Sort members (backend already sorts, but we keep this for consistency)
   const sortedMembers = useMemo(() => {
@@ -372,10 +425,25 @@ export default function MembersListTab() {
     setAllMembers([]);
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
-    await fetchMembers(1, debouncedSearchTerm, sortOption, sortOrder);
+    await fetchMembers(
+      1,
+      debouncedSearchTerm,
+      sortOption,
+      sortOrder,
+      forcedLocationId || locationFilter
+    );
     await fetchSummaryStats();
     setRefreshingContext(false);
-  }, [debouncedSearchTerm, sortOption, sortOrder, fetchMembers, fetchSummaryStats, setRefreshingContext]);
+  }, [
+    debouncedSearchTerm,
+    sortOption,
+    sortOrder,
+    fetchMembers,
+    fetchSummaryStats,
+    setRefreshingContext,
+    forcedLocationId,
+    locationFilter,
+  ]);
 
   // Register handlers with context
   useEffect(() => {
@@ -405,7 +473,13 @@ export default function MembersListTab() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearchTerm, sortOption, sortOrder, fetchMembers, fetchSummaryStats]);
+  }, [
+    debouncedSearchTerm,
+    sortOption,
+    sortOrder,
+    fetchMembers,
+    fetchSummaryStats,
+  ]);
 
   const handleMemberUpdated = useCallback(async () => {
     // Reset state and refetch all members (like page load)
@@ -421,7 +495,13 @@ export default function MembersListTab() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearchTerm, sortOption, sortOrder, fetchMembers, fetchSummaryStats]);
+  }, [
+    debouncedSearchTerm,
+    sortOption,
+    sortOrder,
+    fetchMembers,
+    fetchSummaryStats,
+  ]);
 
   // Date formatting helpers were used for exports only; keep here if needed in future.
 
@@ -430,11 +510,14 @@ export default function MembersListTab() {
     if (!summaryStats) return null;
 
     return (
-      <div className={`mb-6 grid grid-cols-1 gap-4 ${
-        typeof window !== 'undefined' && window.location.hostname === 'localhost'
-          ? 'md:grid-cols-3'
-          : 'md:grid-cols-2'
-      }`}>
+      <div
+        className={`mb-6 grid grid-cols-1 gap-4 ${
+          typeof window !== 'undefined' &&
+          window.location.hostname === 'localhost'
+            ? 'md:grid-cols-3'
+            : 'md:grid-cols-2'
+        }`}
+      >
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="flex items-center">
             <div className="rounded-lg bg-blue-100 p-2">
@@ -463,30 +546,30 @@ export default function MembersListTab() {
           </div>
         </div>
 
-        {typeof window !== 'undefined' && window.location.hostname === 'localhost' && (
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center">
-              <div className="rounded-lg bg-orange-100 p-2">
-                <Calendar className="h-6 w-6 text-orange-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">
-                  Active Members
-                </p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {summaryStats.activeMembers}
-                </p>
+        {typeof window !== 'undefined' &&
+          window.location.hostname === 'localhost' && (
+            <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="flex items-center">
+                <div className="rounded-lg bg-orange-100 p-2">
+                  <Calendar className="h-6 w-6 text-orange-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">
+                    Active Members
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {summaryStats.activeMembers}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
     );
   };
 
   return (
     <>
-
       {/* Mobile: Search */}
       {/* Mobile: Search and Sort */}
       <div className="mt-4 flex flex-col gap-3 lg:hidden">
@@ -523,10 +606,14 @@ export default function MembersListTab() {
           <Button
             variant="outline"
             className="h-10 w-10 shrink-0 p-0"
-            onClick={() => setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'))}
+            onClick={() =>
+              setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'))
+            }
             aria-label="Toggle sort order"
           >
-            <ArrowUpDown className={`h-4 w-4 ${sortOrder === 'desc' ? 'rotate-180' : ''}`} />
+            <ArrowUpDown
+              className={`h-4 w-4 ${sortOrder === 'desc' ? 'rotate-180' : ''}`}
+            />
           </Button>
         </div>
       </div>
@@ -546,7 +633,7 @@ export default function MembersListTab() {
           />
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
-        {locations.length > 0 && (
+        {!forcedLocationId && locations.length > 0 && (
           <LocationSingleSelect
             locations={locations}
             selectedLocation={locationFilter}
@@ -566,13 +653,13 @@ export default function MembersListTab() {
         {/* Mobile View */}
         <div className="mt-4 space-y-4 pb-24 lg:hidden">
           {loading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <MemberSkeleton key={i} />
-            ))
+            Array.from({ length: 3 }).map((_, i) => <MemberSkeleton key={i} />)
           ) : paginatedMembers.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 py-12 text-center">
               <Users className="mb-3 h-10 w-10 text-gray-400" />
-              <h3 className="text-lg font-medium text-gray-900">No members found</h3>
+              <h3 className="text-lg font-medium text-gray-900">
+                No members found
+              </h3>
               <p className="text-sm text-gray-500">
                 Try adjusting your search or filters
               </p>
@@ -596,9 +683,9 @@ export default function MembersListTab() {
           {loading ? (
             <MemberTableSkeleton />
           ) : paginatedMembers.length === 0 ? (
-             <div className="flex items-center justify-center py-12">
-               <span className="text-lg text-gray-500">No members found.</span>
-             </div>
+            <div className="flex items-center justify-center py-12">
+              <span className="text-lg text-gray-500">No members found.</span>
+            </div>
           ) : (
             <MemberTable
               members={paginatedMembers}
@@ -643,7 +730,6 @@ export default function MembersListTab() {
         onClose={handleCloseNewMemberModal}
         onMemberCreated={handleMemberCreated}
       />
-
     </>
   );
 }

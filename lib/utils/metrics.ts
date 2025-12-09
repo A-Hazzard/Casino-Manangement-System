@@ -71,7 +71,8 @@ export async function switchFilter(
   setActiveFilters?: (filters: ActiveFilters) => void,
   setShowDatePicker?: (state: boolean) => void,
   displayCurrency?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  granularity?: 'hourly' | 'minute'
 ): Promise<void> {
   try {
     // If setActiveFilters is provided, update the filter state
@@ -97,7 +98,8 @@ export async function switchFilter(
       endDate,
       licencee,
       displayCurrency,
-      signal
+      signal,
+      granularity
     );
 
     if (data.length > 0) {

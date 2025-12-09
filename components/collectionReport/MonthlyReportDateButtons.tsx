@@ -8,7 +8,7 @@
  * - "Go" button to apply date range
  * - Responsive design
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   DateRangePicker,
   DateRange as RDPDateRange,

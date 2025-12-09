@@ -277,37 +277,34 @@ export default function LocationsTab() {
 
   // Fast fetch for gaming locations (Phase 1)
   const fetchGamingLocationsAsync = useCallback(async () => {
-    await makeGamingLocationsRequest(
-      async signal => {
-        setGamingLocationsLoading(true);
-        try {
-          const params = new URLSearchParams();
-          if (selectedLicencee && selectedLicencee !== 'all') {
-            params.append('licencee', selectedLicencee);
-          }
-
-          const response = await axios.get(
-            `/api/locations?${params.toString()}`,
-            {
-              signal,
-            }
-          );
-          const { locations: locationsData } = response.data;
-          console.warn(
-            `🗺️ Gaming locations fetched: ${locationsData?.length || 0} locations`
-          );
-          setGamingLocations(locationsData || []);
-        } catch (error) {
-          if (!axios.isCancel(error)) {
-            console.error('Error loading gaming locations:', error);
-            setGamingLocations([]);
-          }
-        } finally {
-          setGamingLocationsLoading(false);
+    await makeGamingLocationsRequest(async signal => {
+      setGamingLocationsLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.append('licencee', selectedLicencee);
         }
-      },
-      `Reports Gaming Locations (${selectedLicencee || 'all'})`
-    );
+
+        const response = await axios.get(
+          `/api/locations?${params.toString()}`,
+          {
+            signal,
+          }
+        );
+        const { locations: locationsData } = response.data;
+        console.warn(
+          `🗺️ Gaming locations fetched: ${locationsData?.length || 0} locations`
+        );
+        setGamingLocations(locationsData || []);
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.error('Error loading gaming locations:', error);
+          setGamingLocations([]);
+        }
+      } finally {
+        setGamingLocationsLoading(false);
+      }
+    });
   }, [selectedLicencee, makeGamingLocationsRequest]);
 
   // Calculate which batch we need based on current page (each batch covers 5 pages of 10 items)
@@ -382,36 +379,33 @@ export default function LocationsTab() {
   // Simplified data fetching for locations with batch loading
   const fetchLocationDataAsync = useCallback(
     async (specificLocations?: string[]) => {
-      const result = await makeLocationDataRequest(
-        async signal => {
-          console.warn(
-            `🔍 Starting fetchLocationDataAsync: ${JSON.stringify({
-              specificLocations,
-            })}`
-          );
-          setGamingLocationsLoading(true);
-          setLocationsLoading(true);
-          setMetricsLoading(true);
-          setPaginationLoading(true);
-          setLoading(true); // Set reports store loading state
-          // setIsInitialLoadComplete(false);
+      const result = await makeLocationDataRequest(async signal => {
+        console.warn(
+          `🔍 Starting fetchLocationDataAsync: ${JSON.stringify({
+            specificLocations,
+          })}`
+        );
+        setGamingLocationsLoading(true);
+        setLocationsLoading(true);
+        setMetricsLoading(true);
+        setPaginationLoading(true);
+        setLoading(true); // Set reports store loading state
+        // setIsInitialLoadComplete(false);
 
-          // Fetch gaming locations first (for map) - show immediately when ready
-          await fetchGamingLocationsAsync();
-          setGamingLocationsLoading(false);
+        // Fetch gaming locations first (for map) - show immediately when ready
+        await fetchGamingLocationsAsync();
+        setGamingLocationsLoading(false);
 
-          // Reset accumulated locations and batches when filters change
-          setAccumulatedLocations([]);
-          setLoadedBatches(new Set());
-          setCurrentPage(1);
+        // Reset accumulated locations and batches when filters change
+        setAccumulatedLocations([]);
+        setLoadedBatches(new Set());
+        setCurrentPage(1);
 
-          // Fetch first batch (50 items) for table
-          const firstBatchResult = await fetchBatch(1, itemsPerBatch, signal);
+        // Fetch first batch (50 items) for table
+        const firstBatchResult = await fetchBatch(1, itemsPerBatch, signal);
 
-          return firstBatchResult;
-        },
-        `Reports Locations Data (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
-      );
+        return firstBatchResult;
+      });
 
       if (!result) {
         // Request aborted - keep existing state
@@ -797,87 +791,84 @@ export default function LocationsTab() {
       return;
     }
 
-    await makeTopMachinesRequest(
-      async signal => {
-        setTopMachinesLoading(true);
-        setLoading(true); // Set reports store loading state
-        try {
-          const params: Record<string, string> = {
-            type: 'all', // Get all machines for the selected locations
-          };
+    await makeTopMachinesRequest(async signal => {
+      setTopMachinesLoading(true);
+      setLoading(true); // Set reports store loading state
+      try {
+        const params: Record<string, string> = {
+          type: 'all', // Get all machines for the selected locations
+        };
 
-          if (selectedLicencee && selectedLicencee !== 'all') {
-            params.licencee = selectedLicencee;
-          }
-
-          // Add date parameters
-          if (activeMetricsFilter === 'Today') {
-            params.timePeriod = 'Today';
-          } else if (activeMetricsFilter === 'Yesterday') {
-            params.timePeriod = 'Yesterday';
-          } else if (
-            activeMetricsFilter === 'last7days' ||
-            activeMetricsFilter === '7d'
-          ) {
-            params.timePeriod = '7d';
-          } else if (
-            activeMetricsFilter === 'last30days' ||
-            activeMetricsFilter === '30d'
-          ) {
-            params.timePeriod = '30d';
-          } else if (activeMetricsFilter === 'All Time') {
-            params.timePeriod = 'All Time';
-          } else if (
-            activeMetricsFilter === 'Custom' &&
-            customDateRange?.startDate &&
-            customDateRange?.endDate
-          ) {
-            const sd =
-              customDateRange.startDate instanceof Date
-                ? customDateRange.startDate
-                : new Date(customDateRange.startDate as string);
-            const ed =
-              customDateRange.endDate instanceof Date
-                ? customDateRange.endDate
-                : new Date(customDateRange.endDate as string);
-
-            // Send dates in local format (YYYY-MM-DD) to avoid double timezone conversion
-            params.startDate = sd.toISOString().split('T')[0];
-            params.endDate = ed.toISOString().split('T')[0];
-          } else {
-            params.timePeriod = 'Today';
-          }
-
-          const response = await axios.get('/api/reports/machines', {
-            params,
-            signal,
-          });
-          const { data: machinesData } = response.data;
-
-          // Filter machines by selected locations and sort by netWin
-          const filteredMachines = machinesData
-            .filter((machine: MachineData) =>
-              currentSelectedLocations.includes(machine.locationId)
-            )
-            .sort((a: MachineData, b: MachineData) => b.netWin - a.netWin)
-            .slice(0, 5);
-
-          setTopMachinesData(filteredMachines);
-        } catch (error) {
-          if (!axios.isCancel(error)) {
-            console.error('Error fetching top machines:', error);
-            toast.error('Failed to fetch top machines data', {
-              duration: 3000,
-            });
-            setTopMachinesData([]);
-          }
-        } finally {
-          setTopMachinesLoading(false);
-          setLoading(false); // Clear reports store loading state
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.licencee = selectedLicencee;
         }
-      },
-      `Reports Top Machines (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
-    );
+
+        // Add date parameters
+        if (activeMetricsFilter === 'Today') {
+          params.timePeriod = 'Today';
+        } else if (activeMetricsFilter === 'Yesterday') {
+          params.timePeriod = 'Yesterday';
+        } else if (
+          activeMetricsFilter === 'last7days' ||
+          activeMetricsFilter === '7d'
+        ) {
+          params.timePeriod = '7d';
+        } else if (
+          activeMetricsFilter === 'last30days' ||
+          activeMetricsFilter === '30d'
+        ) {
+          params.timePeriod = '30d';
+        } else if (activeMetricsFilter === 'All Time') {
+          params.timePeriod = 'All Time';
+        } else if (
+          activeMetricsFilter === 'Custom' &&
+          customDateRange?.startDate &&
+          customDateRange?.endDate
+        ) {
+          const sd =
+            customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate as string);
+          const ed =
+            customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate as string);
+
+          // Send dates in local format (YYYY-MM-DD) to avoid double timezone conversion
+          params.startDate = sd.toISOString().split('T')[0];
+          params.endDate = ed.toISOString().split('T')[0];
+        } else {
+          params.timePeriod = 'Today';
+        }
+
+        const response = await axios.get('/api/reports/machines', {
+          params,
+          signal,
+        });
+        const { data: machinesData } = response.data;
+
+        // Filter machines by selected locations and sort by netWin
+        const filteredMachines = machinesData
+          .filter((machine: MachineData) =>
+            currentSelectedLocations.includes(machine.locationId)
+          )
+          .sort((a: MachineData, b: MachineData) => b.netWin - a.netWin)
+          .slice(0, 5);
+
+        setTopMachinesData(filteredMachines);
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.error('Error fetching top machines:', error);
+          toast.error('Failed to fetch top machines data', {
+            duration: 3000,
+          });
+          setTopMachinesData([]);
+        }
+      } finally {
+        setTopMachinesLoading(false);
+        setLoading(false); // Clear reports store loading state
+      }
+    });
   }, [
     selectedSasLocations,
     selectedRevenueLocations,
@@ -901,81 +892,78 @@ export default function LocationsTab() {
       return;
     }
 
-    await makeTrendDataRequest(
-      async signal => {
-        setLocationTrendLoading(true);
-        setLoading(true); // Set reports store loading state
-        try {
-          const params: Record<string, string> = {
-            locationIds: currentSelectedLocations.join(','),
-          };
+    await makeTrendDataRequest(async signal => {
+      setLocationTrendLoading(true);
+      setLoading(true); // Set reports store loading state
+      try {
+        const params: Record<string, string> = {
+          locationIds: currentSelectedLocations.join(','),
+        };
 
-          if (selectedLicencee && selectedLicencee !== 'all') {
-            params.licencee = selectedLicencee;
-          }
-
-          // Add currency parameter
-          if (displayCurrency) {
-            params.currency = displayCurrency;
-          }
-
-          // Add date parameters
-          if (activeMetricsFilter === 'Today') {
-            params.timePeriod = 'Today';
-          } else if (activeMetricsFilter === 'Yesterday') {
-            params.timePeriod = 'Yesterday';
-          } else if (
-            activeMetricsFilter === 'last7days' ||
-            activeMetricsFilter === '7d'
-          ) {
-            params.timePeriod = '7d';
-          } else if (
-            activeMetricsFilter === 'last30days' ||
-            activeMetricsFilter === '30d'
-          ) {
-            params.timePeriod = '30d';
-          } else if (activeMetricsFilter === 'All Time') {
-            params.timePeriod = 'All Time';
-          } else if (
-            activeMetricsFilter === 'Custom' &&
-            customDateRange?.startDate &&
-            customDateRange?.endDate
-          ) {
-            const sd =
-              customDateRange.startDate instanceof Date
-                ? customDateRange.startDate
-                : new Date(customDateRange.startDate as string);
-            const ed =
-              customDateRange.endDate instanceof Date
-                ? customDateRange.endDate
-                : new Date(customDateRange.endDate as string);
-
-            // Send dates in local format (YYYY-MM-DD) to avoid double timezone conversion
-            params.startDate = sd.toISOString().split('T')[0];
-            params.endDate = ed.toISOString().split('T')[0];
-          } else {
-            params.timePeriod = 'Today';
-          }
-
-          const response = await axios.get('/api/analytics/location-trends', {
-            params,
-            signal,
-          });
-          setLocationTrendData(response.data);
-        } catch (error) {
-          if (!axios.isCancel(error)) {
-            console.error('Error fetching location trend data:', error);
-            toast.error('Failed to fetch location trend data', {
-              duration: 3000,
-            });
-            setLocationTrendData(null);
-          }
-        } finally {
-          setLocationTrendLoading(false);
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.licencee = selectedLicencee;
         }
-      },
-      `Reports Location Trends (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
-    );
+
+        // Add currency parameter
+        if (displayCurrency) {
+          params.currency = displayCurrency;
+        }
+
+        // Add date parameters
+        if (activeMetricsFilter === 'Today') {
+          params.timePeriod = 'Today';
+        } else if (activeMetricsFilter === 'Yesterday') {
+          params.timePeriod = 'Yesterday';
+        } else if (
+          activeMetricsFilter === 'last7days' ||
+          activeMetricsFilter === '7d'
+        ) {
+          params.timePeriod = '7d';
+        } else if (
+          activeMetricsFilter === 'last30days' ||
+          activeMetricsFilter === '30d'
+        ) {
+          params.timePeriod = '30d';
+        } else if (activeMetricsFilter === 'All Time') {
+          params.timePeriod = 'All Time';
+        } else if (
+          activeMetricsFilter === 'Custom' &&
+          customDateRange?.startDate &&
+          customDateRange?.endDate
+        ) {
+          const sd =
+            customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate as string);
+          const ed =
+            customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate as string);
+
+          // Send dates in local format (YYYY-MM-DD) to avoid double timezone conversion
+          params.startDate = sd.toISOString().split('T')[0];
+          params.endDate = ed.toISOString().split('T')[0];
+        } else {
+          params.timePeriod = 'Today';
+        }
+
+        const response = await axios.get('/api/analytics/location-trends', {
+          params,
+          signal,
+        });
+        setLocationTrendData(response.data);
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.error('Error fetching location trend data:', error);
+          toast.error('Failed to fetch location trend data', {
+            duration: 3000,
+          });
+          setLocationTrendData(null);
+        }
+      } finally {
+        setLocationTrendLoading(false);
+      }
+    });
   }, [
     selectedSasLocations,
     selectedRevenueLocations,
@@ -1011,54 +999,51 @@ export default function LocationsTab() {
           : null,
       });
 
-      await makeMetricsRequest(
-        async _signal => {
-          setMetricsTotalsLoading(true);
-          try {
-            await new Promise<void>((resolve, reject) => {
-              // Note: fetchDashboardTotals doesn't support signal yet, but wrapping prevents overlapping calls
-              fetchDashboardTotals(
-                activeMetricsFilter || 'Today',
-                customDateRange || {
-                  startDate: new Date(),
-                  endDate: new Date(),
-                },
-                selectedLicencee,
-                totals => {
-                  console.log(
-                    '🔍 [LocationsTab] fetchDashboardTotals callback received:',
-                    {
-                      totals,
-                      moneyIn: totals?.moneyIn,
-                      moneyOut: totals?.moneyOut,
-                      gross: totals?.gross,
-                    }
-                  );
-                  setMetricsTotals(totals);
-                  console.log(
-                    '🔍 [LocationsTab] setMetricsTotals called with:',
-                    totals
-                  );
-                  resolve();
-                },
-                displayCurrency
-              ).catch(reject);
-            });
-          } catch (error) {
-            if (!axios.isCancel(error)) {
-              console.error(
-                '❌ [LocationsTab] Failed to fetch metrics totals:',
-                error
-              );
-              setMetricsTotals(null);
-            }
-          } finally {
-            setMetricsTotalsLoading(false);
-            console.log('🔍 [LocationsTab] Metrics totals fetch completed');
+      await makeMetricsRequest(async _signal => {
+        setMetricsTotalsLoading(true);
+        try {
+          await new Promise<void>((resolve, reject) => {
+            // Note: fetchDashboardTotals doesn't support signal yet, but wrapping prevents overlapping calls
+            fetchDashboardTotals(
+              activeMetricsFilter || 'Today',
+              customDateRange || {
+                startDate: new Date(),
+                endDate: new Date(),
+              },
+              selectedLicencee,
+              totals => {
+                console.log(
+                  '🔍 [LocationsTab] fetchDashboardTotals callback received:',
+                  {
+                    totals,
+                    moneyIn: totals?.moneyIn,
+                    moneyOut: totals?.moneyOut,
+                    gross: totals?.gross,
+                  }
+                );
+                setMetricsTotals(totals);
+                console.log(
+                  '🔍 [LocationsTab] setMetricsTotals called with:',
+                  totals
+                );
+                resolve();
+              },
+              displayCurrency
+            ).catch(reject);
+          });
+        } catch (error) {
+          if (!axios.isCancel(error)) {
+            console.error(
+              '❌ [LocationsTab] Failed to fetch metrics totals:',
+              error
+            );
+            setMetricsTotals(null);
           }
-        },
-        `Reports Metrics Totals (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
-      );
+        } finally {
+          setMetricsTotalsLoading(false);
+          console.log('🔍 [LocationsTab] Metrics totals fetch completed');
+        }
+      });
     };
 
     fetchMetrics();

@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { Button } from '@/components/ui/button';
 import { WifiOff, RefreshCw, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';

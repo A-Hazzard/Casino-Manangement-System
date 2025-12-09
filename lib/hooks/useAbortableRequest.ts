@@ -24,19 +24,20 @@
  * ```
  */
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 export function useAbortableRequest() {
-  // Ref to hold the current AbortController
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // Map of AbortControllers keyed by purpose (e.g., 'chart', 'cabinets', 'totals')
+  const controllersRef = useRef<Map<string, AbortController>>(new Map());
 
   // Cleanup on unmount - abort any in-flight requests
   useEffect(() => {
+    // Copy ref value to variable to ensure cleanup uses the correct value
+    const controllers = controllersRef.current;
     return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
+      // Abort all in-flight requests on unmount
+      controllers.forEach(controller => controller.abort());
+      controllers.clear();
     };
   }, []);
 
@@ -45,22 +46,20 @@ export function useAbortableRequest() {
    * Aborts any previous request and executes the new one
    *
    * @param requestFn - Async function that accepts an AbortSignal
-   * @param queryName - Optional name to identify the query in logs
    * @returns Promise that resolves when request completes or rejects with non-abort errors
    */
   const makeRequest = useCallback(
     async <T = void>(
       requestFn: (signal: AbortSignal) => Promise<T>,
-      queryName?: string
+      key: string = 'default'
     ): Promise<T | null> => {
-      // Abort any existing request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      // Abort any existing request for this key
+      const existing = controllersRef.current.get(key);
+      if (existing) existing.abort();
 
-      // Create new AbortController for this request
+      // Create and store new controller for this key
       const controller = new AbortController();
-      abortControllerRef.current = controller;
+      controllersRef.current.set(key, controller);
 
       try {
         const result = await requestFn(controller.signal);
@@ -69,20 +68,32 @@ export function useAbortableRequest() {
         // Check for axios cancellation using axios.isCancel()
         const axios = (await import('axios')).default;
         if (axios.isCancel(error)) {
-          if (queryName) {
-            console.log(`[Query Canceled] ${queryName}`);
-          }
+          // Silently handle canceled requests - don't log or re-throw
           return null;
         }
-        
-        // Check for standard AbortError (fetch API)
-        if (error instanceof Error && error.name === 'AbortError') {
-          if (queryName) {
-            console.log(`[Query Aborted] ${queryName}`);
-          }
+
+        // Check for standard AbortError (fetch API) or CanceledError
+        if (
+          (error instanceof Error && error.name === 'AbortError') ||
+          (error instanceof Error && error.message === 'canceled') ||
+          (error instanceof Error &&
+            error.message === 'The user aborted a request.')
+        ) {
+          // Silently handle aborted requests - don't log or re-throw
           return null;
         }
-        
+
+        // Check for CanceledError type (Axios)
+        if (
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED')
+        ) {
+          // Silently handle canceled requests
+          return null;
+        }
+
         // Re-throw other errors so they can be handled by the caller
         throw error;
       }
@@ -92,4 +103,3 @@ export function useAbortableRequest() {
 
   return makeRequest;
 }
-

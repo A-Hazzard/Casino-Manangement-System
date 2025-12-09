@@ -20,7 +20,6 @@
  * @param formatter - Value formatter function
  * @param locationNames - Mapping of location IDs to names
  */
-import React from 'react';
 import {
   BarChart,
   Bar,

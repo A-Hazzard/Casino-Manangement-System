@@ -5,6 +5,7 @@ type CabinetFormData = Partial<GamingMachine>;
 
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
+import { formatLocalDateTimeString } from '@/shared/utils/dateFormat';
 import { DateRange } from 'react-day-picker';
 // Activity logging removed - handled via API calls
 
@@ -59,11 +60,28 @@ export const fetchCabinets = async (
       customDateRange?.from &&
       customDateRange?.to
     ) {
-      // Extract just the date part (YYYY-MM-DD)
-      const fromDate = customDateRange.from.toISOString().split('T')[0];
-      const toDate = customDateRange.to.toISOString().split('T')[0];
-      queryParams.push(`startDate=${fromDate}`);
-      queryParams.push(`endDate=${toDate}`);
+      // Check if dates have time components (not midnight)
+      const hasTime =
+        customDateRange.from.getHours() !== 0 ||
+        customDateRange.from.getMinutes() !== 0 ||
+        customDateRange.from.getSeconds() !== 0 ||
+        customDateRange.to.getHours() !== 0 ||
+        customDateRange.to.getMinutes() !== 0 ||
+        customDateRange.to.getSeconds() !== 0;
+
+      if (hasTime) {
+        // Send local time with timezone offset to preserve user's time selection
+        const fromDate = formatLocalDateTimeString(customDateRange.from, -4);
+        const toDate = formatLocalDateTimeString(customDateRange.to, -4);
+        queryParams.push(`startDate=${fromDate}`);
+        queryParams.push(`endDate=${toDate}`);
+      } else {
+        // Date-only: send ISO date format for gaming day offset to apply
+        const fromDate = customDateRange.from.toISOString().split('T')[0];
+        const toDate = customDateRange.to.toISOString().split('T')[0];
+        queryParams.push(`startDate=${fromDate}`);
+        queryParams.push(`endDate=${toDate}`);
+      }
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
@@ -143,6 +161,26 @@ export const fetchCabinets = async (
       `Failed to fetch cabinets data. Status: ${response.status}`
     );
   } catch (error) {
+    // Check if this is a cancellation error (expected behavior when filters change)
+    const axios = await import('axios');
+    if (axios.default.isCancel && axios.default.isCancel(error)) {
+      // Silently handle cancellation - this is expected when filters change rapidly
+      // The error will be handled by useAbortableRequest, no need to log here
+      // Re-throw so useAbortableRequest can handle it properly (returns null instead of logging)
+      throw error;
+    }
+
+    // Check for CanceledError (axios cancel token)
+    if (
+      error &&
+      typeof error === 'object' &&
+      'message' in error &&
+      error.message === 'canceled'
+    ) {
+      // Also silently handle CanceledError - this is expected when filters change
+      throw error;
+    }
+
     console.error('❌ [FETCH CABINETS] Error fetching cabinets:', error);
     if (error instanceof Error) {
       console.error('   Error message:', error.message);
@@ -182,11 +220,29 @@ export const fetchCabinetById = async (
           'Custom start and end dates are required for Custom time period'
         );
       }
-      // Extract just the date part (YYYY-MM-DD)
-      const fromDate = customDateRange.from.toISOString().split('T')[0];
-      const toDate = customDateRange.to.toISOString().split('T')[0];
-      queryParams.push(`startDate=${fromDate}`);
-      queryParams.push(`endDate=${toDate}`);
+      // Check if dates have time components (not midnight)
+      const hasTime =
+        customDateRange.from.getHours() !== 0 ||
+        customDateRange.from.getMinutes() !== 0 ||
+        customDateRange.from.getSeconds() !== 0 ||
+        customDateRange.to.getHours() !== 0 ||
+        customDateRange.to.getMinutes() !== 0 ||
+        customDateRange.to.getSeconds() !== 0;
+
+      if (hasTime) {
+        // Send local time with timezone offset to preserve user's time selection
+        // This ensures 11:45 AM AST stays as 11:45 AM, not converted to 15:45 UTC
+        const fromDate = formatLocalDateTimeString(customDateRange.from, -4);
+        const toDate = formatLocalDateTimeString(customDateRange.to, -4);
+        queryParams.push(`startDate=${fromDate}`);
+        queryParams.push(`endDate=${toDate}`);
+      } else {
+        // Date-only: send ISO date format for gaming day offset to apply
+        const fromDate = customDateRange.from.toISOString().split('T')[0];
+        const toDate = customDateRange.to.toISOString().split('T')[0];
+        queryParams.push(`startDate=${fromDate}`);
+        queryParams.push(`endDate=${toDate}`);
+      }
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
@@ -312,11 +368,28 @@ export const updateCabinet = async (
       customDateRange?.from &&
       customDateRange?.to
     ) {
-      // Extract just the date part (YYYY-MM-DD)
-      const fromDate = customDateRange.from.toISOString().split('T')[0];
-      const toDate = customDateRange.to.toISOString().split('T')[0];
-      queryParams.push(`startDate=${fromDate}`);
-      queryParams.push(`endDate=${toDate}`);
+      // Check if dates have time components (not midnight)
+      const hasTime =
+        customDateRange.from.getHours() !== 0 ||
+        customDateRange.from.getMinutes() !== 0 ||
+        customDateRange.from.getSeconds() !== 0 ||
+        customDateRange.to.getHours() !== 0 ||
+        customDateRange.to.getMinutes() !== 0 ||
+        customDateRange.to.getSeconds() !== 0;
+
+      if (hasTime) {
+        // Send local time with timezone offset to preserve user's time selection
+        const fromDate = formatLocalDateTimeString(customDateRange.from, -4);
+        const toDate = formatLocalDateTimeString(customDateRange.to, -4);
+        queryParams.push(`startDate=${fromDate}`);
+        queryParams.push(`endDate=${toDate}`);
+      } else {
+        // Date-only: send ISO date format for gaming day offset to apply
+        const fromDate = customDateRange.from.toISOString().split('T')[0];
+        const toDate = customDateRange.to.toISOString().split('T')[0];
+        queryParams.push(`startDate=${fromDate}`);
+        queryParams.push(`endDate=${toDate}`);
+      }
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
@@ -391,11 +464,28 @@ export const deleteCabinet = async (
       customDateRange?.from &&
       customDateRange?.to
     ) {
-      // Extract just the date part (YYYY-MM-DD)
-      const fromDate = customDateRange.from.toISOString().split('T')[0];
-      const toDate = customDateRange.to.toISOString().split('T')[0];
-      queryParams.push(`startDate=${fromDate}`);
-      queryParams.push(`endDate=${toDate}`);
+      // Check if dates have time components (not midnight)
+      const hasTime =
+        customDateRange.from.getHours() !== 0 ||
+        customDateRange.from.getMinutes() !== 0 ||
+        customDateRange.from.getSeconds() !== 0 ||
+        customDateRange.to.getHours() !== 0 ||
+        customDateRange.to.getMinutes() !== 0 ||
+        customDateRange.to.getSeconds() !== 0;
+
+      if (hasTime) {
+        // Send local time with timezone offset to preserve user's time selection
+        const fromDate = formatLocalDateTimeString(customDateRange.from, -4);
+        const toDate = formatLocalDateTimeString(customDateRange.to, -4);
+        queryParams.push(`startDate=${fromDate}`);
+        queryParams.push(`endDate=${toDate}`);
+      } else {
+        // Date-only: send ISO date format for gaming day offset to apply
+        const fromDate = customDateRange.from.toISOString().split('T')[0];
+        const toDate = customDateRange.to.toISOString().split('T')[0];
+        queryParams.push(`startDate=${fromDate}`);
+        queryParams.push(`endDate=${toDate}`);
+      }
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
@@ -551,13 +641,24 @@ export async function fetchCabinetsForLocation(
       customDateRange?.from &&
       customDateRange?.to
     ) {
-      // Extract just the date part (YYYY-MM-DD) from the Date objects
-      // Backend will apply gaming day offset to these dates
-      const fromDate = customDateRange.from.toISOString().split('T')[0];
-      const toDate = customDateRange.to.toISOString().split('T')[0];
+      // Check if dates have time components (not midnight)
+      const hasTime =
+        customDateRange.from.getHours() !== 0 ||
+        customDateRange.from.getMinutes() !== 0 ||
+        customDateRange.from.getSeconds() !== 0 ||
+        customDateRange.to.getHours() !== 0 ||
+        customDateRange.to.getMinutes() !== 0 ||
+        customDateRange.to.getSeconds() !== 0;
 
-      params.startDate = fromDate;
-      params.endDate = toDate;
+      if (hasTime) {
+        // Send local time with timezone offset to preserve user's time selection
+        params.startDate = formatLocalDateTimeString(customDateRange.from, -4);
+        params.endDate = formatLocalDateTimeString(customDateRange.to, -4);
+      } else {
+        // Date-only: send ISO date format for gaming day offset to apply
+        params.startDate = customDateRange.from.toISOString().split('T')[0];
+        params.endDate = customDateRange.to.toISOString().split('T')[0];
+      }
       params.timePeriod = 'Custom';
     }
 
@@ -836,7 +937,8 @@ export async function fetchCabinetTotals(
   activeMetricsFilter: string,
   customDateRange: { startDate: Date; endDate: Date } | undefined,
   selectedLicencee: string | undefined,
-  displayCurrency?: string
+  displayCurrency?: string,
+  signal?: AbortSignal
 ): Promise<{ moneyIn: number; moneyOut: number; gross: number } | null> {
   try {
     let url = `/api/machines/aggregation?timePeriod=${activeMetricsFilter}`;
@@ -859,7 +961,7 @@ export async function fetchCabinetTotals(
       url += `&currency=${displayCurrency}`;
     }
 
-    const response = await axios.get(url);
+    const response = await axios.get(url, { signal });
     const machineData = response.data.data || [];
 
     // Sum up totals from all machines

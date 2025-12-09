@@ -4,7 +4,19 @@ const compat = new FlatCompat({
   baseDirectory: import.meta.dirname,
 });
 
-export default [
+const eslintConfig = [
+  // Ignore patterns for build and script folders
+  {
+    ignores: [
+      '.next/**',
+      'scripts/**',
+      'backup/**',
+      'mongo-migration/**',
+      'node_modules/**',
+      'out/**',
+      'build/**',
+    ],
+  },
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
   {
     rules: {
@@ -25,3 +37,5 @@ export default [
     },
   },
 ];
+
+export default eslintConfig;

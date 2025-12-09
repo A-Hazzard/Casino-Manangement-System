@@ -1,4 +1,3 @@
-import React from 'react';
 
 /**
  * Skeleton component for monthly table loading state

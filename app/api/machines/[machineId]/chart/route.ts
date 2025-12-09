@@ -14,9 +14,9 @@
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
-import { Licencee } from '@/app/api/lib/models/licencee';
 import {
   convertFromUSD,
   convertToUSD,
@@ -25,6 +25,8 @@ import {
 } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
+import type { GamingMachine } from '@/shared/types/entities';
+import { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -59,6 +61,10 @@ export async function GET(
     const endDateParam = searchParams.get('endDate');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
+    const granularity = searchParams.get('granularity') as
+      | 'hourly'
+      | 'minute'
+      | null;
 
     // ============================================================================
     // STEP 2: Validate timePeriod or date range parameters
@@ -78,24 +84,30 @@ export async function GET(
     // ============================================================================
     // STEP 4: Fetch machine by ID
     // ============================================================================
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let machine: any = await Machine.findOne({
+    let machine = await Machine.findOne({
       _id: machineId,
-    }).lean();
+    }).lean<GamingMachine | null>();
 
-    if (!machine && machineId.length === 24 && /^[0-9a-fA-F]{24}$/.test(machineId)) {
+    if (
+      !machine &&
+      machineId.length === 24 &&
+      /^[0-9a-fA-F]{24}$/.test(machineId)
+    ) {
       try {
         const { default: mongoose } = await import('mongoose');
         const objectId = new mongoose.Types.ObjectId(machineId);
         // Use Mongoose model with ObjectId for legacy data
         const machineDoc = await Machine.findOne({
           _id: objectId as unknown as string,
-        }).lean();
+        }).lean<GamingMachine | null>();
         if (machineDoc) {
           machine = machineDoc;
         }
       } catch (objectIdError) {
-        console.warn(`[Machine Chart API] Failed to query as ObjectId:`, objectIdError);
+        console.warn(
+          `[Machine Chart API] Failed to query as ObjectId:`,
+          objectIdError
+        );
       }
     }
 
@@ -130,12 +142,15 @@ export async function GET(
     let gameDayOffset = 8; // Default to 8 AM
     if (machine.gamingLocation) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const location: any = await GamingLocations.findOne({
+        const location = await GamingLocations.findOne({
           _id: machine.gamingLocation,
         })
           .select('gameDayOffset rel country')
-          .lean();
+          .lean<{
+            gameDayOffset?: number;
+            rel?: { licencee?: string };
+            country?: string;
+          } | null>();
 
         if (location) {
           gameDayOffset = location.gameDayOffset ?? 8;
@@ -152,18 +167,28 @@ export async function GET(
     let endDate: Date | undefined;
 
     if (timePeriod === 'Custom' && startDateParam && endDateParam) {
-      const customStart = new Date(startDateParam + 'T00:00:00.000Z');
-      const customEnd = new Date(endDateParam + 'T00:00:00.000Z');
+      // Parse ISO timestamps with timezone offset (sent from frontend with local time + offset)
+      // Frontend sends with times: "2025-12-07T11:45:00-04:00" (Trinidad local time with offset)
+      // Frontend sends date-only: "2025-12-07" (for gaming day offset to apply)
+      // new Date() correctly parses timezone-aware strings and converts to UTC internally
+      // For custom time periods, use the exact times provided without gaming day expansion
+      // This ensures the chart and metrics match the user's selected time range exactly
+      const customStart = new Date(startDateParam);
+      const customEnd = new Date(endDateParam);
 
-      const gamingDayRange = getGamingDayRangeForPeriod(
-        'Custom',
-        gameDayOffset,
-        customStart,
-        customEnd
-      );
+      // Validate dates
+      if (isNaN(customStart.getTime()) || isNaN(customEnd.getTime())) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid date parameters' },
+          { status: 400 }
+        );
+      }
 
-      startDate = gamingDayRange.rangeStart;
-      endDate = gamingDayRange.rangeEnd;
+      // Use exact times provided - no gaming day expansion for custom ranges
+      // Date objects are already in UTC internally (JavaScript Date always stores UTC)
+      // This is correct for MongoDB queries which expect UTC dates
+      startDate = customStart;
+      endDate = customEnd;
     } else if (timePeriod === 'All Time') {
       startDate = undefined;
       endDate = undefined;
@@ -180,27 +205,65 @@ export async function GET(
     // ============================================================================
     // STEP 8: Aggregate meter data by hour/day for chart
     // ============================================================================
-    // Determine if we should use hourly aggregation
-    const shouldUseHourly = timePeriod === 'Today' || timePeriod === 'Yesterday';
-    const isCustomHourly =
-      timePeriod === 'Custom' &&
-      startDate &&
-      endDate &&
-      (() => {
-        const diffInMs = endDate.getTime() - startDate.getTime();
-        const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
-        return diffInDays <= 1;
-      })();
+    // Determine aggregation granularity based on time range and manual granularity
+    let useHourly = false;
+    let useMinute = false;
 
-    const useHourly = shouldUseHourly || isCustomHourly;
+    // If granularity is manually specified, use it
+    if (granularity) {
+      if (granularity === 'minute') {
+        useHourly = false;
+        useMinute = true;
+      } else if (granularity === 'hourly') {
+        useHourly = true;
+        useMinute = false;
+      }
+    } else {
+      // Auto-detect granularity
+      const shouldUseHourly =
+        timePeriod === 'Today' || timePeriod === 'Yesterday';
+
+      if (timePeriod === 'Custom' && startDate && endDate) {
+        // Check if date strings have time components (not date-only)
+        const hasTimeComponents =
+          startDateParam &&
+          endDateParam &&
+          (startDateParam.includes('T') || endDateParam.includes('T'));
+
+        if (hasTimeComponents) {
+          const diffInMs = endDate.getTime() - startDate.getTime();
+          const diffInHours = diffInMs / (1000 * 60 * 60);
+          const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+
+          // For custom ranges with time inputs:
+          // - Use minute-level if range <= 10 hours (as per user requirement)
+          // - Use hourly if > 10 hours but <= 1 day
+          // - Use daily if > 1 day
+          if (diffInHours <= 10 && diffInDays <= 1) {
+            useMinute = true;
+          } else if (diffInDays <= 1) {
+            useHourly = true;
+          }
+          // For ranges > 1 day, use daily (default)
+        } else {
+          // Date-only custom range: use hourly if <= 1 day
+          const diffInMs = endDate.getTime() - startDate.getTime();
+          const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+          if (diffInDays <= 1) {
+            useHourly = true;
+          }
+        }
+      } else {
+        // For Today/Yesterday, default to hourly (unless granularity is specified)
+        useHourly = shouldUseHourly;
+      }
+    }
 
     // Build aggregation pipeline
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pipeline: any[] = [];
+    const pipeline: PipelineStage[] = [];
 
     // Match stage
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const matchStage: any = { machine: machineId };
+    const matchStage: Record<string, unknown> = { machine: machineId };
     if (startDate && endDate) {
       matchStage.readAt = { $gte: startDate, $lte: endDate };
     }
@@ -216,15 +279,23 @@ export async function GET(
             timezone: 'UTC',
           },
         },
-        time: useHourly
+        time: useMinute
           ? {
               $dateToString: {
                 date: '$readAt',
-                format: '%H:00',
+                format: '%H:%M',
                 timezone: 'UTC',
               },
             }
-          : '00:00',
+          : useHourly
+            ? {
+                $dateToString: {
+                  date: '$readAt',
+                  format: '%H:00',
+                  timezone: 'UTC',
+                },
+              }
+            : '00:00',
       },
     });
 
@@ -340,10 +411,7 @@ export async function GET(
         return {
           ...item,
           drop: convertFromUSD(dropUSD, displayCurrency),
-          totalCancelledCredits: convertFromUSD(
-            cancelledUSD,
-            displayCurrency
-          ),
+          totalCancelledCredits: convertFromUSD(cancelledUSD, displayCurrency),
           gross: convertFromUSD(grossUSD, displayCurrency),
         };
       });
@@ -372,7 +440,9 @@ export async function GET(
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =
-      error instanceof Error ? error.message : 'Failed to fetch machine chart data';
+      error instanceof Error
+        ? error.message
+        : 'Failed to fetch machine chart data';
     console.error(
       `[Machine Chart API] Error after ${duration}ms:`,
       errorMessage
@@ -383,6 +453,3 @@ export async function GET(
     );
   }
 }
-
-
-

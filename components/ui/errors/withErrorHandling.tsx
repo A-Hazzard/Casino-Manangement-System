@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ComponentType, useState, useCallback } from 'react';
+import { ComponentType, useState, useCallback } from 'react';
 import { classifyError } from '@/lib/utils/errorHandling';
 import type { ApiError } from '@/lib/types/errors';
 import type { WithErrorHandlingProps } from '@/lib/types/errorHandlingHOC';

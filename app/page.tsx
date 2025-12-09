@@ -27,7 +27,7 @@ import { PieChartLabelRenderer } from '@/components/ui/PieChartLabelRenderer';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { TimePeriod } from '@/shared/types/common';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   fetchMetricsData,
@@ -111,12 +111,21 @@ function DashboardContent() {
   } = useDashBoardStore();
 
   // ============================================================================
+  // State - Chart Granularity
+  // ============================================================================
+  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
+    'minute'
+  );
+
+  // ============================================================================
   // Refs
   // ============================================================================
   // To compare new totals with previous ones.
   const prevTotals = useRef<DashboardTotals | null>(null);
   // Track previous fetch parameters to prevent duplicate API calls
   const prevFetchParams = useRef<string>('');
+  // Track if we've done an initial fetch to distinguish between "no data loaded" and "loaded but empty"
+  const hasInitialFetchRef = useRef(false);
 
   // ============================================================================
   // Custom Hooks
@@ -127,6 +136,15 @@ function DashboardContent() {
     setActiveMetricsFilter,
     setShowDatePicker,
   } = useDashboardFilters({ selectedLicencee });
+
+  // Show granularity selector for Today/Yesterday/Custom
+  const showGranularitySelector = useMemo(() => {
+    return (
+      activeMetricsFilter === 'Today' ||
+      activeMetricsFilter === 'Yesterday' ||
+      activeMetricsFilter === 'Custom'
+    );
+  }, [activeMetricsFilter]);
 
   const { showFloatingRefresh } = useDashboardScroll();
 
@@ -174,6 +192,7 @@ function DashboardContent() {
   // ============================================================================
   // Effects - Data Fetching
   // ============================================================================
+
   // Fetch metrics and locations data when filters change
   useEffect(() => {
     // Skip if no active filter
@@ -182,19 +201,20 @@ function DashboardContent() {
     }
 
     // Create a unique key for this fetch to prevent duplicate calls
-    const fetchKey = `${activeMetricsFilter}-${selectedLicencee}-${dateRangeKey}-${displayCurrency}-${isAdminUser}`;
+    // Use dateRangeKey (string) for comparison, but effectiveDateRange is in dependencies
+    // Include chartGranularity to trigger refetch when granularity changes
+    const currentDateRangeKey = dateRangeKey;
+    const fetchKey = `${activeMetricsFilter}-${selectedLicencee}-${currentDateRangeKey}-${displayCurrency}-${isAdminUser}-${chartGranularity}`;
 
-    // Skip if this exact fetch was already triggered
+    // Skip if this exact fetch was already triggered and completed
     if (prevFetchParams.current === fetchKey) {
       return;
     }
 
-    // Update the previous fetch params
-    prevFetchParams.current = fetchKey;
+    // Set loading to true before starting fetch to show skeleton immediately
+    setLoadingChartData(true);
 
     const fetchMetrics = async () => {
-      setLoadingChartData(true);
-
       try {
         // Wrap API calls with error handling
         await stableHandleApiCallWithRetry(
@@ -205,46 +225,69 @@ function DashboardContent() {
           'Dashboard Locations'
         );
 
-        await makeMetricsRequest(
-          async signal => {
-            await fetchMetricsData(
-              activeMetricsFilter as TimePeriod,
-              effectiveDateRange,
-              selectedLicencee,
-              setTotals,
-              setChartData,
-              setActiveFilters,
-              setShowDatePicker,
-              displayCurrency,
-              signal
-            );
-          },
-          `Dashboard Metrics (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
-        );
-      } finally {
-        setLoadingChartData(false);
+        await makeMetricsRequest(async signal => {
+          await fetchMetricsData(
+            activeMetricsFilter as TimePeriod,
+            effectiveDateRange,
+            selectedLicencee,
+            setTotals,
+            setChartData,
+            setActiveFilters,
+            setShowDatePicker,
+            displayCurrency,
+            signal,
+            chartGranularity === 'minute' ? 'minute' : 'hourly'
+          );
+        });
+
+        // Only update previous fetch params AFTER successful fetch
+        // This ensures that if filters change while fetch is in progress, we can fetch again
+        prevFetchParams.current = fetchKey;
+        hasInitialFetchRef.current = true; // Mark that we've done at least one fetch
+
+        // Set loading to false after a delay to ensure both totals and chartData state updates have propagated
+        // This prevents the skeleton from disappearing before data is visible
+        // The delay allows React to batch state updates and ensures both totals and chartData are set
+        setTimeout(() => {
+          setLoadingChartData(false);
+        }, 200);
+      } catch (error) {
+        // On error, reset fetch key so we can retry
+        prevFetchParams.current = '';
+        hasInitialFetchRef.current = true; // Still mark as fetched even on error
+        // Set loading to false on error as well, but after a brief delay
+        setTimeout(() => {
+          setLoadingChartData(false);
+        }, 200);
+        throw error;
       }
     };
 
     fetchMetrics();
-    // Note: We use dateRangeKey (string) instead of effectiveDateRange (object) in dependencies
-    // to prevent re-runs when object reference changes but dates are the same.
-    // Zustand setters are stable and don't need to be in dependencies.
+    // Note: dateRangeKey is used in fetchKey, so it must be in dependencies
+    // effectiveDateRange is also included to ensure effect runs when dates change
+    // Zustand setters (setGamingLocations, setTotals, etc.) are stable and don't need to be in dependencies.
+    // loadGamingLocations is a stable function import and doesn't need to be in dependencies.
+    // makeMetricsRequest and stableHandleApiCallWithRetry are stable (from useCallback/useAbortableRequest).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeMetricsFilter,
     selectedLicencee,
-    dateRangeKey, // String key - only changes when actual dates change
+    dateRangeKey, // Used in fetchKey - must be in dependencies
+    effectiveDateRange, // Memoized - only changes when dates actually change
     displayCurrency,
     isAdminUser,
     stableHandleApiCallWithRetry,
     makeMetricsRequest,
+    chartGranularity,
   ]);
 
   // Track if we're in initial load phase for automatic fallback
   const isInitialLoadRef = useRef(true);
   const fallbackAttemptsRef = useRef<TimePeriod[]>([]);
   const isAutomaticFallbackRef = useRef(false);
+  const lastProcessedKeyRef = useRef<string>('');
+  const hasTopPerformingFetchedRef = useRef(false);
 
   // Fetch top performing data when tab or filter changes
   // Use activeMetricsFilter instead of activePieChartFilter to sync with chart/metrics
@@ -254,7 +297,25 @@ function DashboardContent() {
       return;
     }
 
+    // Skip if we're in automatic fallback mode to prevent loops
+    if (isAutomaticFallbackRef.current) {
+      return;
+    }
+
+    // Create a unique key combining tab and filter to detect both changes
+    const currentKey = `${activeTab}-${activeMetricsFilter}`;
+
+    // Skip if we've already processed this exact combination
+    // This prevents re-processing when the effect runs due to other dependency changes
+    if (lastProcessedKeyRef.current === currentKey) {
+      return;
+    }
+
     const currentFilter = (activeMetricsFilter || 'Today') as TimePeriod;
+    lastProcessedKeyRef.current = currentKey;
+
+    // Reset fetch status when tab or filter changes to show skeleton during new fetch
+    hasTopPerformingFetchedRef.current = false;
 
     // If this is not an automatic fallback and we're not in initial load, user manually changed filter
     if (!isAutomaticFallbackRef.current && !isInitialLoadRef.current) {
@@ -262,70 +323,73 @@ function DashboardContent() {
       fallbackAttemptsRef.current = [];
     }
 
-    makeTopPerformingRequest(
-      async signal => {
-        await fetchTopPerformingDataHelper(
-          activeTab,
-          currentFilter,
-          (data: TopPerformingData) => {
-            setTopPerformingData(data);
+    // Set loading to true before starting fetch
+    setLoadingTopPerforming(true);
 
-            // If no data and we're in initial load, try fallback periods
+    makeTopPerformingRequest(async signal => {
+      await fetchTopPerformingDataHelper(
+        activeTab,
+        currentFilter,
+        (data: TopPerformingData) => {
+          setTopPerformingData(data);
+          hasTopPerformingFetchedRef.current = true; // Mark that we've completed a fetch
+
+          // If no data and we're in initial load, try fallback periods
+          if (
+            isInitialLoadRef.current &&
+            data.length === 0 &&
+            !fallbackAttemptsRef.current.includes(currentFilter)
+          ) {
+            fallbackAttemptsRef.current.push(currentFilter);
+
+            // Define fallback order: Today -> Yesterday -> 7d -> 30d
+            const fallbackOrder: TimePeriod[] = [
+              'Today',
+              'Yesterday',
+              '7d',
+              '30d',
+            ];
+            const currentIndex = fallbackOrder.indexOf(currentFilter);
+            const nextFallback = fallbackOrder[currentIndex + 1];
+
             if (
-              isInitialLoadRef.current &&
-              data.length === 0 &&
-              !fallbackAttemptsRef.current.includes(currentFilter)
+              nextFallback &&
+              !fallbackAttemptsRef.current.includes(nextFallback)
             ) {
-              fallbackAttemptsRef.current.push(currentFilter);
-
-              // Define fallback order: Today -> Yesterday -> 7d -> 30d
-              const fallbackOrder: TimePeriod[] = [
-                'Today',
-                'Yesterday',
-                '7d',
-                '30d',
-              ];
-              const currentIndex = fallbackOrder.indexOf(currentFilter);
-              const nextFallback = fallbackOrder[currentIndex + 1];
-
-              if (
-                nextFallback &&
-                !fallbackAttemptsRef.current.includes(nextFallback)
-              ) {
-                // Automatically switch to next fallback period
-                isAutomaticFallbackRef.current = true;
-                setActiveMetricsFilter(nextFallback);
-                // Reset flag after state update
-                setTimeout(() => {
-                  isAutomaticFallbackRef.current = false;
-                }, 0);
-              } else {
-                // All fallbacks exhausted, mark initial load as complete
-                isInitialLoadRef.current = false;
+              // Set flag BEFORE state update to prevent effect from running
+              isAutomaticFallbackRef.current = true;
+              lastProcessedKeyRef.current = ''; // Reset to allow processing of new filter
+              setActiveMetricsFilter(nextFallback);
+              // Reset flag after a delay to allow the new filter to load
+              setTimeout(() => {
                 isAutomaticFallbackRef.current = false;
-              }
-            } else if (data.length > 0) {
-              // Data found, mark initial load as complete
+              }, 500); // Increased delay to ensure state update completes
+            } else {
+              // All fallbacks exhausted, mark initial load as complete
               isInitialLoadRef.current = false;
               isAutomaticFallbackRef.current = false;
             }
-          },
-          setLoadingTopPerforming,
-          selectedLicencee,
-          displayCurrency,
-          signal
-        );
-      },
-      `Dashboard Top Performing (${activeTab}, ${currentFilter}, Licensee: ${selectedLicencee || 'all'})`
-    );
-    // Zustand setters are stable and don't need to be in dependencies
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+          } else if (data.length > 0) {
+            // Data found, mark initial load as complete
+            isInitialLoadRef.current = false;
+            isAutomaticFallbackRef.current = false;
+          }
+        },
+        setLoadingTopPerforming,
+        selectedLicencee,
+        displayCurrency,
+        signal
+      );
+    });
   }, [
     activeTab,
-    activeMetricsFilter, // Use activeMetricsFilter instead of activePieChartFilter
+    activeMetricsFilter,
     selectedLicencee,
     displayCurrency,
     makeTopPerformingRequest,
+    setActiveMetricsFilter,
+    setLoadingTopPerforming,
+    setTopPerformingData,
   ]);
 
   // Update previous totals reference when new data arrives
@@ -404,8 +468,12 @@ function DashboardContent() {
           renderCustomizedLabel={renderCustomizedLabel}
           selectedLicencee={selectedLicencee}
           loadingTopPerforming={loadingTopPerforming}
+          hasTopPerformingFetched={hasTopPerformingFetchedRef.current}
           onRefresh={handleRefresh}
           isChangingDateFilter={false}
+          chartGranularity={chartGranularity}
+          setChartGranularity={setChartGranularity}
+          showGranularitySelector={showGranularitySelector}
         />
       </div>
 
@@ -438,7 +506,11 @@ function DashboardContent() {
           renderCustomizedLabel={renderCustomizedLabel}
           selectedLicencee={selectedLicencee}
           loadingTopPerforming={loadingTopPerforming}
+          hasTopPerformingFetched={hasTopPerformingFetchedRef.current}
           onRefresh={handleRefresh}
+          chartGranularity={chartGranularity}
+          setChartGranularity={setChartGranularity}
+          showGranularitySelector={showGranularitySelector}
         />
       </div>
 

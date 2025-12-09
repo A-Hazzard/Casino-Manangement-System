@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { toast } from 'sonner';
-import axios from 'axios';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { buildSessionsQueryParams } from '@/lib/helpers/sessions';
-import { useDebounce } from '@/lib/utils/hooks';
-import type { Session, PaginationData } from '@/lib/types/sessions';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import type { PaginationData, Session } from '@/lib/types/sessions';
+import { useDebounce } from '@/lib/utils/hooks';
+import axios from 'axios';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 /**
  * Custom hook for managing sessions data and state
@@ -35,101 +35,133 @@ export function useSessions() {
   const makeRequest = useAbortableRequest();
 
   // Calculate which batch we need based on current page
-  const calculateBatchNumber = useCallback((page: number) => {
-    return Math.floor(page / pagesPerBatch) + 1;
-  }, [pagesPerBatch]);
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / pagesPerBatch) + 1;
+    },
+    [pagesPerBatch]
+  );
 
   /**
    * Fetch sessions from API
    */
-  const fetchSessions = useCallback(async (batch: number = 1) => {
-    await makeRequest(async (signal) => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchSessions = useCallback(
+    async (batch: number = 1) => {
+      await makeRequest(async signal => {
+        try {
+          setLoading(true);
+          setError(null);
 
-        // Build query parameters
-        let startDate: Date | undefined;
-        let endDate: Date | undefined;
+          // Build query parameters
+          let startDate: Date | undefined;
+          let endDate: Date | undefined;
 
-        if (activeMetricsFilter === 'Custom' && customDateRange) {
-          startDate = customDateRange.startDate;
-          endDate = customDateRange.endDate;
-        } else {
-          // Handle other filter types
-          const now = new Date();
-          switch (activeMetricsFilter) {
-            case 'Today':
-              startDate = new Date(now.setHours(0, 0, 0, 0));
-              endDate = new Date(now.setHours(23, 59, 59, 999));
-              break;
-            case 'Yesterday':
-              const yesterday = new Date(now);
-              yesterday.setDate(yesterday.getDate() - 1);
-              startDate = new Date(yesterday.setHours(0, 0, 0, 0));
-              endDate = new Date(yesterday.setHours(23, 59, 59, 999));
-              break;
-            case 'last7days':
-              startDate = new Date(now.setDate(now.getDate() - 7));
-              endDate = new Date();
-              break;
-            case 'last30days':
-              startDate = new Date(now.setDate(now.getDate() - 30));
-              endDate = new Date();
-              break;
+          if (activeMetricsFilter === 'Custom' && customDateRange) {
+            startDate = customDateRange.startDate;
+            endDate = customDateRange.endDate;
+          } else {
+            // Handle other filter types
+            const now = new Date();
+            switch (activeMetricsFilter) {
+              case 'Today':
+                startDate = new Date(now.setHours(0, 0, 0, 0));
+                endDate = new Date(now.setHours(23, 59, 59, 999));
+                break;
+              case 'Yesterday':
+                const yesterday = new Date(now);
+                yesterday.setDate(yesterday.getDate() - 1);
+                startDate = new Date(yesterday.setHours(0, 0, 0, 0));
+                endDate = new Date(yesterday.setHours(23, 59, 59, 999));
+                break;
+              case 'last7days':
+                startDate = new Date(now.setDate(now.getDate() - 7));
+                endDate = new Date();
+                break;
+              case 'last30days':
+                startDate = new Date(now.setDate(now.getDate() - 30));
+                endDate = new Date();
+                break;
+            }
           }
+
+          const queryParams = buildSessionsQueryParams({
+            page: batch,
+            limit: itemsPerBatch,
+            search: debouncedSearchTerm,
+            sortBy,
+            sortOrder,
+            licensee: selectedLicencee === 'all' ? undefined : selectedLicencee,
+            startDate,
+            endDate,
+          });
+
+          const response = await axios.get(
+            `/api/sessions?${queryParams.toString()}`,
+            { signal }
+          );
+          const data = response.data;
+          // API returns { success: true, data: { sessions, pagination } }
+          const newSessions = data.data?.sessions || data.sessions || [];
+
+          // Update total sessions count from API pagination
+          if (data.data?.pagination?.totalSessions) {
+            setTotalSessionsFromAPI(data.data.pagination.totalSessions);
+          }
+
+          // Merge new sessions into allSessions, avoiding duplicates
+          setAllSessions(prev => {
+            const existingIds = new Set(prev.map(s => s._id));
+            const uniqueNewSessions = newSessions.filter(
+              (s: Session) => !existingIds.has(s._id)
+            );
+            return [...prev, ...uniqueNewSessions];
+          });
+        } catch (err) {
+          // Check if this is a cancelled request - don't treat as error
+          if (axios.isCancel && axios.isCancel(err)) {
+            // Request was cancelled, silently return without changing loading state
+            // The next request will handle loading state
+            return;
+          }
+
+          // Check for standard abort errors
+          if (
+            (err instanceof Error && err.name === 'AbortError') ||
+            (err instanceof Error && err.message === 'canceled') ||
+            (err &&
+              typeof err === 'object' &&
+              'code' in err &&
+              (err.code === 'ERR_CANCELED' || err.code === 'ECONNABORTED'))
+          ) {
+            // Request was cancelled, silently return without changing loading state
+            // The next request will handle loading state
+            return;
+          }
+
+          // Only show error for actual errors
+          const errorMessage =
+            err instanceof Error ? err.message : 'Failed to fetch sessions';
+          setError(errorMessage);
+          toast.error(errorMessage);
+          setAllSessions([]);
+          setLoading(false);
         }
 
-        const queryParams = buildSessionsQueryParams({
-          page: batch,
-          limit: itemsPerBatch,
-          search: debouncedSearchTerm,
-          sortBy,
-          sortOrder,
-          licensee: selectedLicencee === 'all' ? undefined : selectedLicencee,
-          startDate,
-          endDate,
-        });
-
-        const response = await axios.get(
-          `/api/sessions?${queryParams.toString()}`,
-          { signal }
-        );
-        const data = response.data;
-        // API returns { success: true, data: { sessions, pagination } }
-        const newSessions = data.data?.sessions || data.sessions || [];
-        
-        // Update total sessions count from API pagination
-        if (data.data?.pagination?.totalSessions) {
-          setTotalSessionsFromAPI(data.data.pagination.totalSessions);
-        }
-        
-        // Merge new sessions into allSessions, avoiding duplicates
-        setAllSessions(prev => {
-          const existingIds = new Set(prev.map(s => s._id));
-          const uniqueNewSessions = newSessions.filter((s: Session) => !existingIds.has(s._id));
-          return [...prev, ...uniqueNewSessions];
-        });
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : 'Failed to fetch sessions';
-        setError(errorMessage);
-        toast.error(errorMessage);
-        setAllSessions([]);
-      } finally {
+        // Only set loading to false on successful completion
         setLoading(false);
-      }
-    }, `Sessions (${activeMetricsFilter}, Licensee: ${selectedLicencee})`);
-  }, [
-    debouncedSearchTerm, // Use debounced value instead of searchTerm
-    sortBy,
-    sortOrder,
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-    itemsPerBatch,
-    makeRequest,
-  ]);
+      });
+    },
+    [
+      debouncedSearchTerm, // Use debounced value instead of searchTerm
+      sortBy,
+      sortOrder,
+      selectedLicencee,
+      activeMetricsFilter,
+      customDateRange,
+      itemsPerBatch,
+      makeRequest,
+    ]
+  );
 
   /**
    * Handle search input change
@@ -171,6 +203,9 @@ export function useSessions() {
     setCurrentPage(0);
     setTotalSessionsFromAPI(0); // Reset API total when filters change
     fetchSessions(1);
+    // Note: fetchSessions is a useCallback with all necessary dependencies
+    // We don't include fetchSessions in deps to avoid re-triggering when it's recreated
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     debouncedSearchTerm,
     sortBy,
@@ -178,11 +213,6 @@ export function useSessions() {
     selectedLicencee,
     activeMetricsFilter,
     customDateRange,
-    setAllSessions,
-    setLoadedBatches,
-    setCurrentPage,
-    setTotalSessionsFromAPI,
-    fetchSessions,
   ]);
 
   // Fetch next batch when crossing batch boundaries
@@ -204,10 +234,12 @@ export function useSessions() {
       setLoadedBatches(prev => new Set([...prev, currentBatch]));
       fetchSessions(currentBatch);
     }
+    // Note: fetchSessions is a useCallback with all necessary dependencies
+    // We don't include fetchSessions in deps to avoid re-triggering when it's recreated
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentPage,
     loading,
-    fetchSessions,
     itemsPerBatch,
     pagesPerBatch,
     loadedBatches,
@@ -237,7 +269,8 @@ export function useSessions() {
   // Create pagination object for compatibility
   const pagination: PaginationData | null = useMemo(() => {
     // Use API total if available, otherwise use loaded sessions count
-    const totalCount = totalSessionsFromAPI > 0 ? totalSessionsFromAPI : allSessions.length;
+    const totalCount =
+      totalSessionsFromAPI > 0 ? totalSessionsFromAPI : allSessions.length;
     if (totalCount === 0 && allSessions.length === 0) return null;
     return {
       currentPage: currentPage + 1, // Convert to 1-based for display

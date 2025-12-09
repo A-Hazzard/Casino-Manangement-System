@@ -8,7 +8,6 @@
  * - 9 columns (Collector, Location, Gross, Machines, Collected, Uncollected, Location Revenue, Time, Details)
  * - Responsive design (desktop only)
  */
-import React from 'react';
 
 export default function CollectionReportTableSkeleton() {
   // ============================================================================

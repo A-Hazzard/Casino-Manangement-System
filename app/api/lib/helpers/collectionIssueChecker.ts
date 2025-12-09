@@ -75,10 +75,7 @@ export function validateSasTimes(
 ): CollectionIssue[] {
   const issues: CollectionIssue[] = [];
 
-  if (
-    collection.sasMeters?.sasStartTime &&
-    collection.sasMeters?.sasEndTime
-  ) {
+  if (collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime) {
     const sasStartTime = new Date(collection.sasMeters.sasStartTime);
     const sasEndTime = new Date(collection.sasMeters.sasEndTime);
 
@@ -87,9 +84,7 @@ export function validateSasTimes(
       issues.push({
         collectionId: collection._id.toString(),
         machineName:
-          collection.machineName ||
-          collection.machineCustomName ||
-          'Unknown',
+          collection.machineName || collection.machineCustomName || 'Unknown',
         issueType: 'inverted_times',
         details: {
           current: {
@@ -115,9 +110,7 @@ export function validateSasTimes(
       issues.push({
         collectionId: collection._id.toString(),
         machineName:
-          collection.machineName ||
-          collection.machineCustomName ||
-          'Unknown',
+          collection.machineName || collection.machineCustomName || 'Unknown',
         issueType: 'wrong_sas_start_time',
         details: {
           current: {
@@ -147,9 +140,7 @@ export function validateSasTimes(
       issues.push({
         collectionId: collection._id.toString(),
         machineName:
-          collection.machineName ||
-          collection.machineCustomName ||
-          'Unknown',
+          collection.machineName || collection.machineCustomName || 'Unknown',
         issueType: 'wrong_sas_end_time',
         details: {
           current: {
@@ -211,10 +202,7 @@ export function validatePreviousMeters(
 ): CollectionIssue[] {
   const issues: CollectionIssue[] = [];
 
-  if (
-    collection.prevIn === undefined ||
-    collection.prevOut === undefined
-  ) {
+  if (collection.prevIn === undefined || collection.prevOut === undefined) {
     return issues;
   }
 
@@ -235,9 +223,7 @@ export function validatePreviousMeters(
       issues.push({
         collectionId: collection._id.toString(),
         machineName:
-          collection.machineName ||
-          collection.machineCustomName ||
-          'Unknown',
+          collection.machineName || collection.machineCustomName || 'Unknown',
         issueType: 'prev_meters_mismatch',
         details: {
           current: {
@@ -266,25 +252,23 @@ export function validatePreviousMeters(
  * @param collection - The collection to validate
  * @returns Array of issues found
  */
-export function validateMovementCalculation(
-  collection: {
-    _id: string;
-    machineName?: string;
-    machineCustomName?: string;
-    metersIn?: number;
-    metersOut?: number;
-    prevIn?: number;
-    prevOut?: number;
-    ramClear?: boolean;
-    ramClearMetersIn?: number;
-    ramClearMetersOut?: number;
-    movement?: {
-      metersIn: number;
-      metersOut: number;
-      gross: number;
-    };
-  }
-): CollectionIssue[] {
+export function validateMovementCalculation(collection: {
+  _id: string;
+  machineName?: string;
+  machineCustomName?: string;
+  metersIn?: number;
+  metersOut?: number;
+  prevIn?: number;
+  prevOut?: number;
+  ramClear?: boolean;
+  ramClearMetersIn?: number;
+  ramClearMetersOut?: number;
+  movement?: {
+    metersIn: number;
+    metersOut: number;
+    gross: number;
+  };
+}): CollectionIssue[] {
   const issues: CollectionIssue[] = [];
 
   if (!collection.movement) {
@@ -318,12 +302,10 @@ export function validateMovementCalculation(
       (collection.metersOut || 0) - (collection.prevOut || 0);
   }
 
-  const expectedGross =
-    expectedMetersInMovement - expectedMetersOutMovement;
+  const expectedGross = expectedMetersInMovement - expectedMetersOutMovement;
 
   if (
-    Math.abs(collection.movement.metersIn - expectedMetersInMovement) >
-      0.01 ||
+    Math.abs(collection.movement.metersIn - expectedMetersInMovement) > 0.01 ||
     Math.abs(collection.movement.metersOut - expectedMetersOutMovement) >
       0.01 ||
     Math.abs(collection.movement.gross - expectedGross) > 0.01
@@ -374,6 +356,7 @@ export async function checkCollectionHistoryIssues(
       throw new Error('Database connection not available');
     }
 
+    // Convert string IDs to ObjectIds for query
     const machineObjectIds = machineIds
       .map(id => {
         try {
@@ -382,17 +365,12 @@ export async function checkCollectionHistoryIssues(
           return null;
         }
       })
-      .filter(Boolean);
+      .filter((id): id is NonNullable<typeof id> => id !== null);
 
     const machinesWithHistory = await db
       .collection('machines')
       .find({
-        $or: [
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          { _id: { $in: machineObjectIds as any } },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          { _id: { $in: machineIds as any } },
-        ],
+        _id: { $in: machineObjectIds },
         collectionMetersHistory: { $exists: true, $ne: [] },
       })
       .toArray();
@@ -574,9 +552,7 @@ export async function checkCollectionReportIssues(
   const machineIdsInReport = [
     ...new Set(collections.map(c => c.machineId).filter(Boolean)),
   ];
-  const historyIssues = await checkCollectionHistoryIssues(
-    machineIdsInReport
-  );
+  const historyIssues = await checkCollectionHistoryIssues(machineIdsInReport);
   issues.push(...historyIssues);
 
   // Add affected machines from history issues
@@ -737,8 +713,13 @@ export async function investigateMostRecentReport(): Promise<{
     // Check Machine History Issues
     if (collection.machineId) {
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const machine = await Machine.findOne({ _id: collection.machineId }).lean();
-      if (machine && (machine as Record<string, unknown>).collectionMetersHistory) {
+      const machine = await Machine.findOne({
+        _id: collection.machineId,
+      }).lean();
+      if (
+        machine &&
+        (machine as Record<string, unknown>).collectionMetersHistory
+      ) {
         const history = (machine as Record<string, unknown>)
           .collectionMetersHistory as Array<{
           metersIn?: number;
@@ -815,5 +796,3 @@ export async function investigateMostRecentReport(): Promise<{
     issues,
   };
 }
-
-

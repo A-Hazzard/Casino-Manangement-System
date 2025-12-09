@@ -21,15 +21,16 @@ import {
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
-import { Countries } from '@/app/api/lib/models/countries';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { MachineAggregationMatchStage } from '@/shared/types/mongo';
+import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -101,8 +102,13 @@ export async function GET(req: NextRequest) {
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
     let userLocationPermissions: string[] = [];
-    if (Array.isArray((userPayload as { assignedLocations?: string[] })?.assignedLocations)) {
-      userLocationPermissions = (userPayload as { assignedLocations: string[] }).assignedLocations;
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
     }
 
     // ============================================================================
@@ -148,9 +154,39 @@ export async function GET(req: NextRequest) {
 
     if (timePeriod === 'Custom' && startDateParam && endDateParam) {
       timePeriodForGamingDay = 'Custom';
-      // Parse dates - gaming day offset will be applied by getGamingDayRangeForPeriod
-      customStartDateForGamingDay = new Date(startDateParam + 'T00:00:00.000Z');
-      customEndDateForGamingDay = new Date(endDateParam + 'T00:00:00.000Z');
+      // Parse dates - handle both date-only strings ("2025-12-07") and timezone-aware strings ("2025-12-07T10:00:00-04:00")
+      // Check each date independently to determine its format
+      // If the string includes 'T', it's already a full ISO string with time/timezone - parse directly
+      // Otherwise, append time component for gaming day offset calculation
+      if (startDateParam.includes('T')) {
+        // Timezone-aware date string - parse directly (e.g., "2025-12-07T10:00:00-04:00")
+        // new Date() correctly parses timezone-aware strings and converts to UTC internally
+        customStartDateForGamingDay = new Date(startDateParam);
+      } else {
+        // Date-only string - append time for gaming day offset calculation
+        customStartDateForGamingDay = new Date(
+          startDateParam + 'T00:00:00.000Z'
+        );
+      }
+
+      if (endDateParam.includes('T')) {
+        // Timezone-aware date string - parse directly
+        customEndDateForGamingDay = new Date(endDateParam);
+      } else {
+        // Date-only string - append time for gaming day offset calculation
+        customEndDateForGamingDay = new Date(endDateParam + 'T00:00:00.000Z');
+      }
+
+      // Validate dates
+      if (
+        isNaN(customStartDateForGamingDay.getTime()) ||
+        isNaN(customEndDateForGamingDay.getTime())
+      ) {
+        return NextResponse.json(
+          { error: 'Invalid date parameters' },
+          { status: 400 }
+        );
+      }
     } else {
       timePeriodForGamingDay = timePeriod;
     }
@@ -208,8 +244,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // 🚀 OPTIMIZED: For 30d periods, use single aggregation across all machines
     // For shorter periods, use parallel batch processing per location
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allMachines: any[] = [];
+    const allMachines: Array<Record<string, unknown>> = [];
     const useSingleAggregation = timePeriod === '30d' || timePeriod === '7d';
 
     if (useSingleAggregation) {
@@ -265,8 +300,7 @@ export async function GET(req: NextRequest) {
         });
 
         // Aggregate meters per location to respect gaming day ranges
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const allMetrics: any[] = [];
+        const allMetrics: Array<Record<string, unknown>> = [];
 
         // Process each location's machines with their specific gaming day range
         await Promise.all(
@@ -275,8 +309,7 @@ export async function GET(req: NextRequest) {
               const gameDayRange = locationRanges.get(locationId);
               if (!gameDayRange) return;
 
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const locationPipeline: any[] = [
+              const locationPipeline: PipelineStage[] = [
                 {
                   $match: {
                     machine: { $in: machineIds },
@@ -449,10 +482,8 @@ export async function GET(req: NextRequest) {
               (machine._id as { toString: () => string }).toString()
             );
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const batchPipeline: any[] = [];
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const batchMatchStage: any = {
+            const batchPipeline: PipelineStage[] = [];
+            const batchMatchStage: Record<string, unknown> = {
               machine: { $in: machineIds },
             };
 
@@ -585,18 +616,24 @@ export async function GET(req: NextRequest) {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filteredMachines = allMachines.filter(machine => {
-        // Search in serialNumber (which already includes custom.name fallback)
-        const matchesSerialNumber = machine.serialNumber
-          ?.toLowerCase()
-          .includes(searchLower);
-        const matchesRelayId = machine.relayId
-          ?.toLowerCase()
-          .includes(searchLower);
-        const matchesSmbId = machine.smbId?.toLowerCase().includes(searchLower);
-        // Search by _id (case-insensitive)
-        const matchesId = machine._id?.toLowerCase().includes(searchLower);
-        // Also check custom.name directly if available
         const machineRecord = machine as Record<string, unknown>;
+        // Search in serialNumber (which already includes custom.name fallback)
+        const matchesSerialNumber = (
+          machineRecord.serialNumber as string | undefined
+        )
+          ?.toLowerCase()
+          .includes(searchLower);
+        const matchesRelayId = (machineRecord.relayId as string | undefined)
+          ?.toLowerCase()
+          .includes(searchLower);
+        const matchesSmbId = (machineRecord.smbId as string | undefined)
+          ?.toLowerCase()
+          .includes(searchLower);
+        // Search by _id (case-insensitive)
+        const matchesId = (machineRecord._id as string | undefined)
+          ?.toLowerCase()
+          .includes(searchLower);
+        // Also check custom.name directly if available
         const customName =
           (
             (machineRecord.custom as Record<string, unknown>)?.name ||
@@ -705,16 +742,35 @@ export async function GET(req: NextRequest) {
         }
 
         // Convert from native currency to USD, then to display currency
-        const moneyInUSD = convertToUSD(machine.moneyIn || 0, nativeCurrency);
-        const moneyOutUSD = convertToUSD(machine.moneyOut || 0, nativeCurrency);
-        const cancelledCreditsUSD = convertToUSD(
-          machine.cancelledCredits || 0,
+        const machineRecord = machine as Record<string, unknown>;
+        const moneyInUSD = convertToUSD(
+          (machineRecord.moneyIn as number) || 0,
           nativeCurrency
         );
-        const jackpotUSD = convertToUSD(machine.jackpot || 0, nativeCurrency);
-        const grossUSD = convertToUSD(machine.gross || 0, nativeCurrency);
-        const coinInUSD = convertToUSD(machine.coinIn || 0, nativeCurrency);
-        const coinOutUSD = convertToUSD(machine.coinOut || 0, nativeCurrency);
+        const moneyOutUSD = convertToUSD(
+          (machineRecord.moneyOut as number) || 0,
+          nativeCurrency
+        );
+        const cancelledCreditsUSD = convertToUSD(
+          (machineRecord.cancelledCredits as number) || 0,
+          nativeCurrency
+        );
+        const jackpotUSD = convertToUSD(
+          (machineRecord.jackpot as number) || 0,
+          nativeCurrency
+        );
+        const grossUSD = convertToUSD(
+          (machineRecord.gross as number) || 0,
+          nativeCurrency
+        );
+        const coinInUSD = convertToUSD(
+          (machineRecord.coinIn as number) || 0,
+          nativeCurrency
+        );
+        const coinOutUSD = convertToUSD(
+          (machineRecord.coinOut as number) || 0,
+          nativeCurrency
+        );
 
         return {
           ...machine,
@@ -737,11 +793,33 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // Sort machines by moneyIn (highest first) so pagination returns top performers first
     // This ensures the first page shows machines with actual financial data
-    const beforeSort = filteredMachines.slice(0, 3).map(m => ({ id: m._id, moneyIn: m.moneyIn }));
-    filteredMachines.sort((a, b) => (b.moneyIn || 0) - (a.moneyIn || 0));
-    const afterSort = filteredMachines.slice(0, 3).map(m => ({ id: m._id, moneyIn: m.moneyIn }));
+    const beforeSort = filteredMachines.slice(0, 3).map(m => {
+      const mRecord = m as Record<string, unknown>;
+      return {
+        id: mRecord._id as string,
+        moneyIn: (mRecord.moneyIn as number) || 0,
+      };
+    });
+    filteredMachines.sort((a, b) => {
+      const aRecord = a as Record<string, unknown>;
+      const bRecord = b as Record<string, unknown>;
+      return (
+        ((bRecord.moneyIn as number) || 0) - ((aRecord.moneyIn as number) || 0)
+      );
+    });
+    const afterSort = filteredMachines.slice(0, 3).map(m => {
+      const mRecord = m as Record<string, unknown>;
+      return {
+        id: mRecord._id as string,
+        moneyIn: (mRecord.moneyIn as number) || 0,
+      };
+    });
     if (process.env.NODE_ENV === 'development') {
-      console.log('[Machines Aggregation] Sort applied:', { beforeSort, afterSort, totalMachines: filteredMachines.length });
+      console.log('[Machines Aggregation] Sort applied:', {
+        beforeSort,
+        afterSort,
+        totalMachines: filteredMachines.length,
+      });
     }
 
     // ============================================================================

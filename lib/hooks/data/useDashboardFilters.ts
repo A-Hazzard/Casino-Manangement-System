@@ -3,13 +3,13 @@
  * Handles filter initialization, validation, and state management
  */
 
-import { useEffect, useCallback, useMemo } from 'react';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { TimePeriod, dateRange } from '@/lib/types';
 import type {
   UseDashboardFiltersProps,
   UseDashboardFiltersReturn,
 } from '@/lib/types/dashboard';
+import { useCallback, useEffect, useMemo } from 'react';
 
 export function useDashboardFilters({
   selectedLicencee,
@@ -62,17 +62,44 @@ export function useDashboardFilters({
     setShowDatePicker,
   ]);
 
+  // Memoize setters to prevent unnecessary re-renders
+  const memoizedSetActiveMetricsFilter = useCallback(
+    (filter: TimePeriod | '') => {
+      setActiveMetricsFilter(filter);
+    },
+    [setActiveMetricsFilter]
+  );
+
+  const memoizedSetActivePieChartFilter = useCallback(
+    (filter: TimePeriod | '') => {
+      setActivePieChartFilter(filter);
+    },
+    [setActivePieChartFilter]
+  );
+
+  const memoizedSetCustomDateRange = useCallback(
+    (range: dateRange) => {
+      setCustomDateRange(range);
+    },
+    [setCustomDateRange]
+  );
+
+  const memoizedSetShowDatePicker = useCallback(
+    (show: boolean) => {
+      setShowDatePicker(show);
+    },
+    [setShowDatePicker]
+  );
+
   return {
     activeMetricsFilter,
     activePieChartFilter,
     customDateRange,
     showDatePicker: isShowDatePicker,
-    setActiveMetricsFilter: (filter: TimePeriod | '') =>
-      setActiveMetricsFilter(filter),
-    setActivePieChartFilter: (filter: TimePeriod | '') =>
-      setActivePieChartFilter(filter),
-    setCustomDateRange: (range: dateRange) => setCustomDateRange(range),
-    setShowDatePicker: (show: boolean) => setShowDatePicker(show),
+    setActiveMetricsFilter: memoizedSetActiveMetricsFilter,
+    setActivePieChartFilter: memoizedSetActivePieChartFilter,
+    setCustomDateRange: memoizedSetCustomDateRange,
+    setShowDatePicker: memoizedSetShowDatePicker,
     isFilterValid,
     resetFilters,
   };

@@ -15,7 +15,7 @@
  */
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
 import { TimePeriod } from '@/app/api/lib/types';

@@ -1,24 +1,32 @@
 import type {
-    ApiResponse,
-    CustomDate,
-    DateRange,
-    MongoMatchStage,
-    MongooseId,
-    ParamsType,
-    PipelineStage,
-    QueryFilter,
-    RegexFilter,
-    TimePeriod,
-    WithTimestamps,
-} from "@shared/types";
-import type { Document } from "mongoose";
-import type { CollectionReportMachineEntry } from "./collections";
+  ApiResponse,
+  CustomDate,
+  DateRange,
+  MongoMatchStage,
+  MongooseId,
+  ParamsType,
+  PipelineStage,
+  QueryFilter,
+  RegexFilter,
+  TimePeriod,
+  WithTimestamps,
+} from '@shared/types';
+import type { Document } from 'mongoose';
+import type { CollectionReportMachineEntry } from './collections';
 
 // Re-export shared types for convenience
 export type {
-    ApiResponse, CustomDate, DateRange, MongoMatchStage, MongooseId, ParamsType, PipelineStage,
-    QueryFilter, RegexFilter,
-    TimePeriod, WithTimestamps
+  ApiResponse,
+  CustomDate,
+  DateRange,
+  MongoMatchStage,
+  MongooseId,
+  ParamsType,
+  PipelineStage,
+  QueryFilter,
+  RegexFilter,
+  TimePeriod,
+  WithTimestamps,
 };
 
 export type AcceptedBill = {
@@ -65,7 +73,7 @@ export type SchedulerData = {
   location: string;
   startTime: string;
   endTime: string;
-  status: "pending" | "completed" | "canceled";
+  status: 'pending' | 'completed' | 'canceled';
   createdAt: string;
   updatedAt: string;
   __v: number;
@@ -98,6 +106,7 @@ export type CreateCollectionReportPayload = {
   balanceCorrection?: number;
   balanceCorrectionReas?: string;
   machines: CollectionReportMachineEntry[];
+  collectionIds?: string[]; // Optional: collection _id array for faster lookup
 };
 
 export type CollectionReportMachineSummary = {
@@ -221,7 +230,7 @@ export type IScheduler = Document & {
   creator: string;
   startTime: Date;
   endTime: Date;
-  status: "pending" | "completed" | "canceled";
+  status: 'pending' | 'completed' | 'canceled';
   notes?: string;
   createdAt?: Date;
   updatedAt?: Date;

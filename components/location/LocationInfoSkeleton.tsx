@@ -7,7 +7,6 @@
  * - Header, address, and metric button skeletons
  * - Responsive design
  */
-import React from 'react';
 
 export default function LocationInfoSkeleton() {
   // ============================================================================

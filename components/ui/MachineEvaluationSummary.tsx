@@ -11,7 +11,6 @@
  * @param percOfTopMachines - Percentage of top machines
  * @param percOfTopMachCoinIn - Percentage of top machine coin-in
  */
-import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type MachineEvaluationSummaryProps = {

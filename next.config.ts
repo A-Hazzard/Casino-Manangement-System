@@ -1,9 +1,20 @@
 import type { NextConfig } from 'next';
+import type { Configuration } from 'webpack';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   images: {
     loader: 'default',
+  },
+  // Exclude folders from build output
+  outputFileTracingExcludes: {
+    '*': [
+      '.next/**',
+      'scripts/**',
+      'backup/**',
+      'mongo-migration/**',
+      'node_modules/**',
+    ],
   },
   async redirects() {
     return [
@@ -29,7 +40,11 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  webpack: config => {
+  webpack: (config: Configuration) => {
+    if (!config.resolve) {
+      config.resolve = {};
+    }
+
     // Fix for react-day-picker and SendGrid internal module resolution issues
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -57,24 +72,39 @@ const nextConfig: NextConfig = {
     };
 
     // Ignore case sensitivity warnings for module resolution
-    if (config.resolve) {
-      config.resolve.modules = config.resolve.modules || [];
+    if (!config.resolve.modules) {
+      config.resolve.modules = [];
+    }
+
+    if (!config.module) {
+      config.module = { rules: [] };
+    }
+
+    if (!config.module.rules) {
+      config.module.rules = [];
     }
 
     // Ignore problematic internal module requests
-    config.module.rules.push({
-      test: /\.js$/,
-      resolve: {
-        fullySpecified: false,
-      },
-    });
+    if (Array.isArray(config.module.rules)) {
+      config.module.rules.push({
+        test: /\.js$/,
+        resolve: {
+          fullySpecified: false,
+        },
+      });
+    }
 
     // Ignore SendGrid modules that use Node.js APIs in client-side code
-    config.externals = config.externals || [];
-    config.externals.push({
-      '@sendgrid/helpers': 'commonjs @sendgrid/helpers',
-      '@sendgrid/mail': 'commonjs @sendgrid/mail',
-    });
+    if (!config.externals) {
+      config.externals = [];
+    }
+
+    if (Array.isArray(config.externals)) {
+      config.externals.push({
+        '@sendgrid/helpers': 'commonjs @sendgrid/helpers',
+        '@sendgrid/mail': 'commonjs @sendgrid/mail',
+      });
+    }
 
     // Suppress case sensitivity warnings
     config.ignoreWarnings = [
@@ -88,6 +118,10 @@ const nextConfig: NextConfig = {
 
     return config;
   },
+  // Turbopack configuration for Next.js 16+
+  // Turbopack handles most module resolution automatically
+  // This empty config silences the warning about webpack config with no turbopack config
+  turbopack: {},
 };
 
 export default nextConfig;

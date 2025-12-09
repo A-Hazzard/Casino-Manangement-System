@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMovementRequestActionsStore } from '@/lib/store/movementRequestActionsStore';
 import { MovementRequest } from '@/lib/types/movementRequests';
 import { Button } from '@/components/ui/button';

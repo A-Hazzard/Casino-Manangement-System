@@ -3,12 +3,16 @@
  * Handles loading, filtering, and error states for cabinet operations
  */
 
-import { fetchCabinetLocations, fetchCabinets, fetchCabinetTotals } from '@/lib/helpers/cabinets';
+import {
+  fetchCabinetLocations,
+  fetchCabinets,
+  fetchCabinetTotals,
+} from '@/lib/helpers/cabinets';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
 import { useDebounce } from '@/lib/utils/hooks';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 type CustomDateRange = {
   startDate: Date;
   endDate: Date;
@@ -194,7 +198,7 @@ export const useCabinetData = ({
   // Load cabinets with proper error handling and logging
   const loadCabinets = useCallback(
     async (page?: number, limit?: number) => {
-      const result = await makeRequest(async (signal) => {
+      const result = await makeRequest(async signal => {
         console.warn('Loading cabinets with filters:', {
           selectedLicencee,
           activeMetricsFilter,
@@ -240,11 +244,13 @@ export const useCabinetData = ({
         );
 
         return cabinetsData;
-      }, `Cabinets (${activeMetricsFilter}, Licensee: ${selectedLicencee})`);
+      }, 'cabinets');
 
       // Only update state if request wasn't aborted (result is not null)
       if (!result) {
-        console.log('[useCabinetData] Fetch aborted - keeping loading state and existing data');
+        console.log(
+          '[useCabinetData] Fetch aborted - keeping loading state and existing data'
+        );
         // If aborted, keep loading state active so skeleton continues to show
         return;
       }
@@ -258,9 +264,7 @@ export const useCabinetData = ({
             !Array.isArray(result),
           length: Array.isArray(result)
             ? result.length
-            : result &&
-                typeof result === 'object' &&
-                'cabinets' in result
+            : result && typeof result === 'object' && 'cabinets' in result
               ? (result as { cabinets: unknown[] }).cabinets.length
               : 0,
           type: typeof result,
@@ -330,22 +334,7 @@ export const useCabinetData = ({
           setError('Invalid data format received from server');
         }
 
-        // Fetch metrics totals separately (for metrics cards) - always fetch all machines totals
-        setMetricsTotalsLoading(true);
-        try {
-          const totals = await fetchCabinetTotals(
-            activeMetricsFilter,
-            customDateRange,
-            selectedLicencee,
-            displayCurrency
-          );
-          setMetricsTotals(totals);
-        } catch (error) {
-          console.error('Failed to fetch cabinet metrics totals:', error);
-          setMetricsTotals(null);
-        } finally {
-          setMetricsTotalsLoading(false);
-        }
+        // Metrics totals fetch moved to dedicated effect to avoid race conditions
       } catch (error) {
         console.error('Error fetching cabinet data:', error);
         setAllCabinets([]);
@@ -369,14 +358,22 @@ export const useCabinetData = ({
     ]
   );
 
+  // Ref to store the latest loadCabinets function to avoid dependency issues in useEffect
+  const loadCabinetsRef = useRef(loadCabinets);
+
+  // Update ref whenever loadCabinets changes
+  useEffect(() => {
+    loadCabinetsRef.current = loadCabinets;
+  }, [loadCabinets]);
+
   // Effect hooks for data loading
   useEffect(() => {
     loadLocations();
   }, [loadLocations]);
 
-  useEffect(() => {
-    loadCabinets();
-  }, [loadCabinets]);
+  // REMOVED: Automatic loadCabinets() call
+  // The page component should explicitly control when to load cabinets
+  // This prevents redundant calls and unnecessary cancellations
 
   // Frontend-first filtering for location/status, with backend fallback when no results
   useEffect(() => {
@@ -387,9 +384,7 @@ export const useCabinetData = ({
 
     const hasLocationOrStatusFilter =
       (selectedLocation && selectedLocation !== 'all') ||
-      (selectedStatus &&
-        selectedStatus !== 'All' &&
-        selectedStatus !== 'all');
+      (selectedStatus && selectedStatus !== 'All' && selectedStatus !== 'all');
 
     if (!hasLocationOrStatusFilter) {
       return;
@@ -411,8 +406,12 @@ export const useCabinetData = ({
       // Passing undefined page/limit lets the API decide (typically "all").
       // We intentionally ignore the returned promise here – errors are
       // handled inside loadCabinets.
-      void loadCabinets(undefined, undefined);
+      if (loadCabinetsRef.current) {
+        void loadCabinetsRef.current(undefined, undefined);
+      }
     }
+    // Note: loadCabinetsRef is a stable ref that always points to the latest loadCabinets function
+    // We only want to reload when the actual filter values change, not when the function is recreated
   }, [
     allCabinets.length,
     filteredCabinets.length,
@@ -422,10 +421,56 @@ export const useCabinetData = ({
     debouncedSearchTerm,
     loading,
     lastFilterBackendKey,
-    loadCabinets,
+    loadCabinetsRef, // Include ref to satisfy exhaustive-deps (refs are stable)
   ]);
 
   // Removed useEffect for filtering - now handled by memoized filteredCabinets
+  // Dedicated effect to fetch metrics totals reliably when filters change
+  useEffect(() => {
+    const shouldFetchCustom =
+      activeMetricsFilter !== 'Custom' ||
+      (customDateRange && customDateRange.startDate && customDateRange.endDate);
+
+    if (!activeMetricsFilter || !shouldFetchCustom) {
+      return;
+    }
+
+    setMetricsTotalsLoading(true);
+    (async () => {
+      try {
+        const totals = await makeRequest(
+          async signal =>
+            fetchCabinetTotals(
+              activeMetricsFilter,
+              customDateRange,
+              selectedLicencee,
+              displayCurrency,
+              signal
+            ),
+          'totals'
+        );
+        if (totals) {
+          setMetricsTotals(totals);
+        } else {
+          setMetricsTotals(null);
+        }
+      } catch (error) {
+        console.error(
+          '[useCabinetData] Failed to fetch metrics totals:',
+          error
+        );
+        setMetricsTotals(null);
+      } finally {
+        setMetricsTotalsLoading(false);
+      }
+    })();
+  }, [
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicencee,
+    displayCurrency,
+    makeRequest,
+  ]);
 
   return {
     // Data states

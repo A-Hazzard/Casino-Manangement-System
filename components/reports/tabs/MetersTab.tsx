@@ -3,18 +3,18 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/ui/card';
 import LocationMultiSelect from '@/components/ui/common/LocationMultiSelect';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { MetersHourlyCharts } from '@/components/ui/MetersHourlyCharts';
@@ -29,28 +29,28 @@ import { useUserStore } from '@/lib/store/userStore';
 import type { TopPerformingItem } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils/currency';
 import {
-  exportMetersReportExcel,
-  exportMetersReportPDF,
+    exportMetersReportExcel,
+    exportMetersReportPDF,
 } from '@/lib/utils/export';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
 import { useDebounce } from '@/lib/utils/hooks';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import type {
-  MetersReportData,
-  MetersReportResponse,
+    MetersReportData,
+    MetersReportResponse,
 } from '@/shared/types/meters';
 import axios from 'axios';
 import {
-  AlertCircle,
-  BarChart3,
-  ChevronDown,
-  Download,
-  ExternalLink,
-  FileSpreadsheet,
-  FileText,
-  Monitor,
-  RefreshCw,
-  Search,
+    AlertCircle,
+    BarChart3,
+    ChevronDown,
+    Download,
+    ExternalLink,
+    FileSpreadsheet,
+    FileText,
+    Monitor,
+    RefreshCw,
+    Search,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -361,8 +361,7 @@ export default function MetersTab() {
           });
           setLocationsLoading(false);
         }
-      },
-      `Locations (Licensee: ${selectedLicencee || 'all'})`
+      }
     );
   }, [
     selectedLicencee,
@@ -614,8 +613,7 @@ export default function MetersTab() {
             setLoading(false);
             setReportsLoading(false);
           }
-        },
-        `Meters Report (Batch ${batch}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
+        }
       );
     },
     [
@@ -803,8 +801,7 @@ export default function MetersTab() {
             setHourlyChartLoading(false);
             setReportsLoading(false);
           }
-        },
-        `Hourly Chart Data (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
+        }
       );
     };
 

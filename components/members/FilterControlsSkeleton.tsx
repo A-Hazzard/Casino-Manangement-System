@@ -6,7 +6,6 @@
  * - Matches filter controls layout structure
  * - Label and filter button skeletons
  */
-import React from 'react';
 
 export default function FilterControlsSkeleton() {
   // ============================================================================

@@ -1,4 +1,3 @@
-import React from 'react';
 import LiquidGradient from '@/components/ui/LiquidGradient';
 import { Skeleton } from '@/components/ui/skeleton';
 

@@ -6,7 +6,6 @@
  * - Matches PlayerHeader layout structure
  * - Avatar and name/occupation skeletons
  */
-import React from 'react';
 
 export default function PlayerHeaderSkeleton() {
   // ============================================================================

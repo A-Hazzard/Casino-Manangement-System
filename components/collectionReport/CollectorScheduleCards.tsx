@@ -14,7 +14,6 @@
  * @param data - Array of collector schedule rows
  * @param loading - Whether data is loading
  */
-import React from 'react';
 import { formatDateString } from '@/lib/utils/dateUtils';
 import { CollectorScheduleCardsProps } from '@/lib/types/componentProps';
 

@@ -643,21 +643,18 @@ function CollectionReportContent() {
       }
 
       // Fetch first batch
-      makeCollectionRequest(
-        async signal => {
-          return await fetchCollectionReportsByLicencee(
-            selectedLicencee === '' ? undefined : selectedLicencee,
-            dateRangeForFetch,
-            timePeriodForFetch,
-            1,
-            itemsPerBatch,
-            0, // retryCount
-            signal,
-            debouncedSearch // Pass debounced search term
-          );
-        },
-        `Collection Reports (Batch 1, ${activeMetricsFilter || 'Today'}, Licensee: ${selectedLicencee || 'all'}${debouncedSearch ? ', Search: ' + debouncedSearch : ''})`
-      )
+      makeCollectionRequest(async signal => {
+        return await fetchCollectionReportsByLicencee(
+          selectedLicencee === '' ? undefined : selectedLicencee,
+          dateRangeForFetch,
+          timePeriodForFetch,
+          1,
+          itemsPerBatch,
+          0, // retryCount
+          signal,
+          debouncedSearch // Pass debounced search term
+        );
+      })
         .then(async result => {
           if (!result) {
             setLoading(false);
@@ -1077,18 +1074,15 @@ function CollectionReportContent() {
           )?.name || monthlyLocation
         : undefined;
 
-    makeMonthlyRequest(
-      async signal => {
-        return await fetchMonthlyReportSummaryAndDetails({
-          startDate,
-          endDate,
-          locationName,
-          licencee: selectedLicencee,
-          signal,
-        });
-      },
-      `Monthly Report (${monthlyLocation === 'all' ? 'All Locations' : locationName || 'Unknown'}, Licensee: ${selectedLicencee})`
-    )
+    makeMonthlyRequest(async signal => {
+      return await fetchMonthlyReportSummaryAndDetails({
+        startDate,
+        endDate,
+        locationName,
+        licencee: selectedLicencee,
+        signal,
+      });
+    })
       .then(result => {
         // Handle aborted requests (result will be null)
         if (!result) {

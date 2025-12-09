@@ -26,7 +26,10 @@ import FinancialMetricsCards from '@/components/ui/FinancialMetricsCards';
 import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
 import MapPreview from '@/components/ui/MapPreview';
 import { RefreshButtonSkeleton } from '@/components/ui/skeletons/ButtonSkeletons';
-import { DashboardChartSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
+import {
+  DashboardChartSkeleton,
+  DashboardTopPerformingSkeleton,
+} from '@/components/ui/skeletons/DashboardSkeletons';
 import type { TopPerformingItem } from '@/lib/types';
 import { MobileLayoutProps } from '@/lib/types/componentProps';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
@@ -193,11 +196,38 @@ export default function MobileLayout(props: MobileLayoutProps) {
       {props.loadingChartData ? (
         <DashboardChartSkeleton />
       ) : (
-        <Chart
-          loadingChartData={props.loadingChartData}
-          chartData={props.chartData}
-          activeMetricsFilter={props.activeMetricsFilter}
-        />
+        <>
+          {/* Granularity Selector - Only show for Today/Yesterday/Custom */}
+          {props.showGranularitySelector && (
+            <div className="mb-3 flex items-center justify-end gap-2">
+              <label
+                htmlFor="chart-granularity-mobile"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                Granularity:
+              </label>
+              <select
+                id="chart-granularity-mobile"
+                value={props.chartGranularity}
+                onChange={e =>
+                  props.setChartGranularity?.(
+                    e.target.value as 'hourly' | 'minute'
+                  )
+                }
+                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+              >
+                <option value="minute">Minute</option>
+                <option value="hourly">Hourly</option>
+              </select>
+            </div>
+          )}
+          <Chart
+            loadingChartData={props.loadingChartData}
+            chartData={props.chartData}
+            activeMetricsFilter={props.activeMetricsFilter}
+            totals={props.totals}
+          />
+        </>
       )}
 
       {props.loadingChartData ? (
@@ -209,7 +239,9 @@ export default function MobileLayout(props: MobileLayoutProps) {
       )}
 
       {/* Top Performing Section */}
-      {props.loadingTopPerforming ? (
+      {props.loadingTopPerforming ||
+      (!props.hasTopPerformingFetched &&
+        props.topPerformingData.length === 0) ? (
         <div className="space-y-2">
           <h2 className="text-lg">Top Performing</h2>
           <div className="relative flex w-full flex-col rounded-lg rounded-tl-3xl rounded-tr-3xl bg-container shadow-md">
@@ -309,7 +341,11 @@ export default function MobileLayout(props: MobileLayoutProps) {
             </div>
 
             <div className="mb-0 rounded-lg rounded-tl-none rounded-tr-3xl bg-container p-6 shadow-sm">
-              {props.topPerformingData.length === 0 ? (
+              {props.loadingTopPerforming ||
+              (!props.hasTopPerformingFetched &&
+                props.topPerformingData.length === 0) ? (
+                <DashboardTopPerformingSkeleton />
+              ) : props.topPerformingData.length === 0 ? (
                 <NoDataMessage
                   message={`No metrics found for ${props.selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}
                 />

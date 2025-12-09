@@ -27,7 +27,6 @@ import type { CollectionDocument } from '@/lib/types/collections';
 import { formatDate } from '@/lib/utils/formatting';
 import { calculateMachineMovement } from '@/lib/utils/frontendMovementCalculation';
 import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
-import { getUserDisplayName } from '@/lib/utils/userDisplay';
 import axios, { type AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -468,7 +467,11 @@ export default function MobileCollectionModal({
     }
 
     // Validation is now handled inline in the form components
-  }, [modalState.selectedMachineData, modalState.formData.metersIn, modalState.formData.metersOut]);
+  }, [
+    modalState.selectedMachineData,
+    modalState.formData.metersIn,
+    modalState.formData.metersOut,
+  ]);
 
   // Debounced validation on input changes (3 seconds)
   const debouncedValidateMeterInputs = useDebouncedCallback(
@@ -626,7 +629,7 @@ export default function MobileCollectionModal({
       const collectionPayload = {
         machineId: String(modalState.selectedMachineData._id),
         location: selectedLocationName,
-        collector: getUserDisplayName(user),
+        collector: user?._id || '',
         metersIn: Number(modalState.formData.metersIn),
         metersOut: Number(modalState.formData.metersOut),
         // CRITICAL: Don't send prevIn/prevOut values - let the API calculate them from machine history
@@ -671,9 +674,15 @@ export default function MobileCollectionModal({
         // This prevents "N/A" from showing up in the list after an update
         const enrichedCollection = {
           ...createdCollection,
-          machineName: modalState.selectedMachineData?.name || createdCollection.machineName,
-          serialNumber: modalState.selectedMachineData?.serialNumber || createdCollection.serialNumber,
-          machineCustomName: modalState.selectedMachineData?.custom?.name || createdCollection.machineCustomName,
+          machineName:
+            modalState.selectedMachineData?.name ||
+            createdCollection.machineName,
+          serialNumber:
+            modalState.selectedMachineData?.serialNumber ||
+            createdCollection.serialNumber,
+          machineCustomName:
+            modalState.selectedMachineData?.custom?.name ||
+            createdCollection.machineCustomName,
           game: modalState.selectedMachineData?.game || createdCollection.game,
         };
 
@@ -776,7 +785,9 @@ export default function MobileCollectionModal({
             m => m._id !== entryId
           );
           const newLockedLocationId =
-            newCollectedMachines.length === 0 ? undefined : prev.lockedLocationId;
+            newCollectedMachines.length === 0
+              ? undefined
+              : prev.lockedLocationId;
 
           return {
             ...prev,
@@ -878,7 +889,10 @@ export default function MobileCollectionModal({
       // Use modalState.collectedMachines for current state
       const machinesToUpdate = modalState.collectedMachines;
       
-      console.warn('🔄 Updating machines:', machinesToUpdate.map(m => ({ id: m._id, has_id: !!m._id })));
+      console.warn(
+        '🔄 Updating machines:',
+        machinesToUpdate.map(m => ({ id: m._id, has_id: !!m._id }))
+      );
 
       // Update all collections in database
       const results = await Promise.allSettled(
@@ -888,7 +902,9 @@ export default function MobileCollectionModal({
             return;
           }
           
-          console.warn(`📝 Updating collection ${entry._id} to ${updateAllDate.toISOString()}`);
+          console.warn(
+            `📝 Updating collection ${entry._id} to ${updateAllDate.toISOString()}`
+          );
           return await axios.patch(`/api/collections?id=${entry._id}`, {
             timestamp: updateAllDate.toISOString(),
             collectionTime: updateAllDate.toISOString(),
@@ -1015,7 +1031,7 @@ export default function MobileCollectionModal({
           modalState.financials.advance.trim() !== ''
             ? Number(modalState.financials.advance)
             : 0,
-        collectorName: getUserDisplayName(user),
+        collector: user?._id || '',
         locationName: selectedLocationName,
         locationReportId: reportId,
         location: selectedLocationId || '',
@@ -1056,7 +1072,7 @@ export default function MobileCollectionModal({
 
       // Validate payload before sending
       console.warn('📱 Mobile - Validating payload:', {
-        hasCollectorName: !!payload.collectorName,
+        hasCollector: !!payload.collector,
         hasLocationName: !!payload.locationName,
         hasLocationReportId: !!payload.locationReportId,
         hasLocation: !!payload.location,
@@ -1078,7 +1094,9 @@ export default function MobileCollectionModal({
       console.warn('📱 Mobile - Report created successfully:', result);
 
       // Step 2: ONLY AFTER report is successfully created, update collections with the report ID
-      console.warn('📱 Mobile - Updating collections with reportId and isCompleted: true...');
+      console.warn(
+        '📱 Mobile - Updating collections with reportId and isCompleted: true...'
+      );
       const updatePromises = machinesForReport.map(async collection => {
         try {
           await axios.patch(`/api/collections?id=${collection._id}`, {
@@ -1112,15 +1130,18 @@ export default function MobileCollectionModal({
       let errorMessage = 'Unknown error';
       if (error instanceof Error) {
         errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+      } else if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error
+      ) {
         const axiosError = error as { response?: { data?: unknown } };
         errorMessage = JSON.stringify(axiosError.response?.data || error);
       }
       
-      toast.error(
-        `Failed to create collection report: ${errorMessage}`,
-        { duration: 8000 }
-      );
+      toast.error(`Failed to create collection report: ${errorMessage}`, {
+        duration: 8000,
+      });
     } finally {
       setModalState(prev => ({ ...prev, isProcessing: false }));
     }
@@ -1235,7 +1256,12 @@ export default function MobileCollectionModal({
 
           // Also update modalState directly to ensure UI updates immediately
           setModalState(prev => {
-            console.warn('🔄 Mobile: Updating modalState.collectedMachines from', prev.collectedMachines.length, 'to', response.data.length);
+            console.warn(
+              '🔄 Mobile: Updating modalState.collectedMachines from',
+              prev.collectedMachines.length,
+              'to',
+              response.data.length
+            );
             return {
               ...prev,
               collectedMachines: response.data,
@@ -1308,7 +1334,9 @@ export default function MobileCollectionModal({
   useEffect(() => {
     if (show && locations.length > 0) {
       if (!hasFetchedOnOpenRef.current) {
-        console.warn('🔄 Mobile: Modal opened - fetching fresh collections data');
+        console.warn(
+          '🔄 Mobile: Modal opened - fetching fresh collections data'
+        );
         // Always fetch fresh data when modal opens, regardless of current state
         // Don't pass locationId on initial fetch to get all incomplete collections
         fetchExistingCollections(undefined);
@@ -1323,12 +1351,19 @@ export default function MobileCollectionModal({
   // Sync modalState.collectedMachines and lockedLocationId to Zustand store when they change
   // This handles updates from deleteMachineFromList and other local state changes
   useEffect(() => {
-    if (modalState.isLoadingCollections || isUpdatingFromModalStateRef.current) {
+    if (
+      modalState.isLoadingCollections ||
+      isUpdatingFromModalStateRef.current
+    ) {
       return; // Don't sync while loading collections or when we're updating from Zustand
     }
     // Only sync if modalState.collectedMachines is different from Zustand store
-    if (modalState.collectedMachines.length !== collectedMachines.length ||
-        modalState.collectedMachines.some((m, i) => m._id !== collectedMachines[i]?._id)) {
+    if (
+      modalState.collectedMachines.length !== collectedMachines.length ||
+      modalState.collectedMachines.some(
+        (m, i) => m._id !== collectedMachines[i]?._id
+      )
+    ) {
       isUpdatingFromModalStateRef.current = true;
       setStoreCollectedMachines(modalState.collectedMachines);
       // Also sync lockedLocationId if it changed
@@ -1363,7 +1398,10 @@ export default function MobileCollectionModal({
 
   // Sync other Zustand store values to modalState
   useEffect(() => {
-    if (modalState.isLoadingCollections || isUpdatingFromModalStateRef.current) {
+    if (
+      modalState.isLoadingCollections ||
+      isUpdatingFromModalStateRef.current
+    ) {
       return; // Don't sync while loading collections or when we're updating from modalState
     }
     setModalState(prev => ({
@@ -1386,19 +1424,33 @@ export default function MobileCollectionModal({
   // Reset modal state when modal opens to ensure CollectedMachinesList is hidden
   useEffect(() => {
     if (show) {
-      console.warn('🔄 Mobile: Modal opened effect - checking collectedMachines');
-      console.warn('🔄 Mobile: Store collectedMachines.length:', collectedMachines.length);
-      console.warn('🔄 Mobile: modalState.collectedMachines.length:', modalState.collectedMachines.length);
-      console.warn('🔄 Mobile: isLoadingCollections:', modalState.isLoadingCollections);
+      console.warn(
+        '🔄 Mobile: Modal opened effect - checking collectedMachines'
+      );
+      console.warn(
+        '🔄 Mobile: Store collectedMachines.length:',
+        collectedMachines.length
+      );
+      console.warn(
+        '🔄 Mobile: modalState.collectedMachines.length:',
+        modalState.collectedMachines.length
+      );
+      console.warn(
+        '🔄 Mobile: isLoadingCollections:',
+        modalState.isLoadingCollections
+      );
       
       // Wait for collections to load before making decisions
       if (modalState.isLoadingCollections) {
-        console.warn('🔄 Mobile: Still loading collections, skipping state reset');
+        console.warn(
+          '🔄 Mobile: Still loading collections, skipping state reset'
+        );
         return;
       }
       
       // Check both store and modalState to see if we have collections
-      const hasCollections = collectedMachines.length > 0 || modalState.collectedMachines.length > 0;
+      const hasCollections =
+        collectedMachines.length > 0 || modalState.collectedMachines.length > 0;
       console.warn('🔄 Mobile: hasCollections:', hasCollections);
       
       // If we have collected machines, show the collected machines list
@@ -1421,7 +1473,13 @@ export default function MobileCollectionModal({
         }));
       }
     }
-  }, [show, setModalState, collectedMachines, modalState.collectedMachines.length, modalState.isLoadingCollections]);
+  }, [
+    show,
+    setModalState,
+    collectedMachines,
+    modalState.collectedMachines.length,
+    modalState.isLoadingCollections,
+  ]);
 
   if (!show) return null;
 
@@ -1595,8 +1653,14 @@ export default function MobileCollectionModal({
 
                         {/* View Form Button - Show when there are collected machines */}
                         {(() => {
-                          const hasCollections = modalState.collectedMachines.length > 0;
-                          console.warn('🔍 Mobile: View Form button check - modalState.collectedMachines.length:', modalState.collectedMachines.length, 'hasCollections:', hasCollections);
+                          const hasCollections =
+                            modalState.collectedMachines.length > 0;
+                          console.warn(
+                            '🔍 Mobile: View Form button check - modalState.collectedMachines.length:',
+                            modalState.collectedMachines.length,
+                            'hasCollections:',
+                            hasCollections
+                          );
                           return hasCollections ? (
                             <button
                               onClick={() => {
@@ -1620,8 +1684,14 @@ export default function MobileCollectionModal({
                         })()}
 
                         {(() => {
-                          const hasCollections = modalState.collectedMachines.length > 0;
-                          console.warn('🔍 Mobile: View Collected Machines button check - modalState.collectedMachines.length:', modalState.collectedMachines.length, 'hasCollections:', hasCollections);
+                          const hasCollections =
+                            modalState.collectedMachines.length > 0;
+                          console.warn(
+                            '🔍 Mobile: View Collected Machines button check - modalState.collectedMachines.length:',
+                            modalState.collectedMachines.length,
+                            'hasCollections:',
+                            hasCollections
+                          );
                           return (
                             <button
                               onClick={() => {
@@ -1642,8 +1712,7 @@ export default function MobileCollectionModal({
                               }`}
                             >
                               View Collected Machines (
-                              {modalState.collectedMachines.length}
-                              )
+                              {modalState.collectedMachines.length})
                             </button>
                           );
                         })()}

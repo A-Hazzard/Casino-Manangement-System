@@ -8,7 +8,6 @@
  * - Mobile cards skeleton (5 cards)
  * - Responsive design
  */
-import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const ActivityLogSkeleton = () => (

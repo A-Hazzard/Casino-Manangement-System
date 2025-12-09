@@ -60,7 +60,7 @@ export default function SMIBManagementTab({
   // Initialize selected SMIB from URL on mount (only once)
   useEffect(() => {
     if (hasInitializedFromUrl.current) return;
-    
+
     const smibFromUrl = searchParams?.get('smib');
     if (smibFromUrl && smibFromUrl !== selectedRelayId) {
       setSelectedRelayId(smibFromUrl);
@@ -69,32 +69,36 @@ export default function SMIBManagementTab({
       // Mark as initialized even if no SMIB in URL
       hasInitializedFromUrl.current = true;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+    // Note: hasInitializedFromUrl guard prevents multiple initializations
+    // setSelectedRelayId is a state setter and doesn't need to be in dependencies
+  }, [searchParams, selectedRelayId]);
 
   // Update URL when SMIB selection changes (but only if different from URL)
-  const handleSmibSelection = useCallback((relayId: string) => {
-    const currentSmibInUrl = searchParams?.get('smib');
-    
-    // Only update if the relayId is different from what's in the URL
-    if (relayId !== currentSmibInUrl) {
-      setSelectedRelayId(relayId);
+  const handleSmibSelection = useCallback(
+    (relayId: string) => {
+      const currentSmibInUrl = searchParams?.get('smib');
 
-      // Update URL with smib parameter
-      const params = new URLSearchParams(searchParams?.toString() || '');
-      if (relayId) {
-        params.set('smib', relayId);
-      } else {
-        params.delete('smib');
+      // Only update if the relayId is different from what's in the URL
+      if (relayId !== currentSmibInUrl) {
+        setSelectedRelayId(relayId);
+
+        // Update URL with smib parameter
+        const params = new URLSearchParams(searchParams?.toString() || '');
+        if (relayId) {
+          params.set('smib', relayId);
+        } else {
+          params.delete('smib');
+        }
+
+        // Update URL without scroll
+        router.push(`?${params.toString()}`, { scroll: false });
+      } else if (relayId !== selectedRelayId) {
+        // If URL matches but state doesn't, just sync state
+        setSelectedRelayId(relayId);
       }
-
-      // Update URL without scroll
-      router.push(`?${params.toString()}`, { scroll: false });
-    } else if (relayId !== selectedRelayId) {
-      // If URL matches but state doesn't, just sync state
-      setSelectedRelayId(relayId);
-    }
-  }, [searchParams, router, selectedRelayId]);
+    },
+    [searchParams, router, selectedRelayId]
+  );
 
   // Store smibConfig functions in refs to avoid dependency issues
   const connectToConfigStreamRef = useRef(smibConfig.connectToConfigStream);
@@ -156,7 +160,12 @@ export default function SMIBManagementTab({
       // Don't disconnect on every render - let connectToConfigStream handle reusing connections
       setIsInitialLoading(false);
     };
-  }, [selectedRelayId, availableSmibs, selectedMachineId, setSelectedMachineId]);
+  }, [
+    selectedRelayId,
+    availableSmibs,
+    selectedMachineId,
+    setSelectedMachineId,
+  ]);
 
   // Stop loading skeleton when we receive actual config data
   // Use refs to track formData to avoid dependency issues

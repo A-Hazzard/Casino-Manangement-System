@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import {
   convertCurrency,

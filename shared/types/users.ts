@@ -41,6 +41,20 @@ export type UserDocumentWithPassword = UserDocument & {
     lastLoginAt?: Date | string | null;
     [key: string]: unknown;
   };
+  toJSON: () => {
+    _id: string;
+    emailAddress: string;
+    username: string;
+    isEnabled: boolean;
+    roles: string[];
+    permissions?: string[];
+    sessionVersion?: number;
+    loginCount?: number;
+    lastLoginAt?: Date | string | null;
+    assignedLocations?: string[];
+    assignedLicensees?: string[];
+    [key: string]: unknown;
+  };
   updateOne: (update: Record<string, unknown>) => Promise<unknown>;
 };
 

@@ -14,18 +14,17 @@
  * @param issue - Collection issue object to display
  * @param onClose - Callback to close the modal
  */
-import React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Clock, Database, RefreshCw } from 'lucide-react';
 import type { CollectionIssue } from '@/shared/types/entities';
+import { AlertTriangle, Clock, Database, RefreshCw } from 'lucide-react';
 
 // ============================================================================
 // Types & Constants
@@ -175,19 +174,23 @@ export function CollectionIssueModal({
                 <Badge variant="destructive">Current</Badge>
               </h4>
               <div className="space-y-2 text-sm">
-                {Object.entries(issue.details.current).map(([key, value]) => (
-                  <div key={key} className="flex justify-between">
-                    <span className="font-medium capitalize">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}:
-                    </span>
-                    <span className="text-muted-foreground">
-                      {key.toLowerCase().includes('time') ||
-                      key.toLowerCase().includes('timestamp')
-                        ? formatTimestamp(value)
-                        : formatValue(value)}
-                    </span>
-                  </div>
-                ))}
+                {issue.details.current ? (
+                  Object.entries(issue.details.current).map(([key, value]) => (
+                    <div key={key} className="flex justify-between">
+                      <span className="font-medium capitalize">
+                        {key.replace(/([A-Z])/g, ' $1').trim()}:
+                      </span>
+                      <span className="text-muted-foreground">
+                        {key.toLowerCase().includes('time') ||
+                        key.toLowerCase().includes('timestamp')
+                          ? formatTimestamp(value)
+                          : formatValue(value)}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">No current data</p>
+                )}
               </div>
             </div>
 
@@ -196,19 +199,23 @@ export function CollectionIssueModal({
                 <Badge variant="default">Expected</Badge>
               </h4>
               <div className="space-y-2 text-sm">
-                {Object.entries(issue.details.expected).map(([key, value]) => (
-                  <div key={key} className="flex justify-between">
-                    <span className="font-medium capitalize">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}:
-                    </span>
-                    <span className="text-muted-foreground">
-                      {key.toLowerCase().includes('time') ||
-                      key.toLowerCase().includes('timestamp')
-                        ? formatTimestamp(value)
-                        : formatValue(value)}
-                    </span>
-                  </div>
-                ))}
+                {issue.details.expected ? (
+                  Object.entries(issue.details.expected).map(([key, value]) => (
+                    <div key={key} className="flex justify-between">
+                      <span className="font-medium capitalize">
+                        {key.replace(/([A-Z])/g, ' $1').trim()}:
+                      </span>
+                      <span className="text-muted-foreground">
+                        {key.toLowerCase().includes('time') ||
+                        key.toLowerCase().includes('timestamp')
+                          ? formatTimestamp(value)
+                          : formatValue(value)}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">No expected data</p>
+                )}
               </div>
             </div>
           </div>

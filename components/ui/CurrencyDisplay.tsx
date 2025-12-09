@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type { CurrencyCode } from '@/shared/types/currency';
 

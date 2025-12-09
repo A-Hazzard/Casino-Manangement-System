@@ -19,7 +19,7 @@
  */
 'use client';
 
-import React from 'react';
+import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { MemberSession } from '@/shared/types/entities';
 import { formatCurrency } from '@/lib/utils/formatters';
@@ -253,7 +253,7 @@ export default function PlayerSessionTable({
     currentPage < totalPages - 1 && onPageChange(currentPage + 1);
 
   // Sort sessions based on current sort option and order
-  const sortedSessions = React.useMemo(() => {
+  const sortedSessions = useMemo(() => {
     return [...sessions].sort((a, b) => {
       let aValue: string | number;
       let bValue: string | number;

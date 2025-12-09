@@ -158,7 +158,7 @@ export default function UserModal({
       ).map(id => String(id)),
     [currentUser?.assignedLicensees]
   );
-
+  
   // Get location admin's assigned locations
   const currentUserLocationPermissions = useMemo(
     () =>
@@ -352,7 +352,7 @@ export default function UserModal({
         console.log('[UserModal] New user detected, initializing form:', {
           userId,
           previousUserId: currentUserIdRef.current,
-          username: user.username,
+        username: user.username,
           assignedLicensees: user.assignedLicensees,
           locationPermissions: user.assignedLocations,
         });
@@ -361,13 +361,13 @@ export default function UserModal({
         // Reset initialization refs when user changes
         hasInitializedLocationsFromUserRef.current = false;
         hasInitializedLicenseesFromLocationsRef.current = false;
-        setIsLoading(false);
-        hydrateFormFromUser(user);
+      setIsLoading(false);
+      hydrateFormFromUser(user);
       }
     } else if (open) {
       currentUserIdRef.current = null;
       setIsLoading(true);
-
+      
       // For location admins creating new user, auto-set licensee
       if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
         setSelectedLicenseeIds(currentUserLicenseeIds);
@@ -759,7 +759,7 @@ export default function UserModal({
         if (cancelled) return;
 
         hasLoadedLicenseesRef.current = true;
-
+        
         // Extract licensees array from the result
         let lics = Array.isArray(result.licensees) ? result.licensees : [];
 
@@ -1126,7 +1126,7 @@ export default function UserModal({
         currentUserLocationPermissions.includes(loc._id)
       );
     }
-
+    
     // For other roles, filter by selected licensees
     return allLicenseesSelected
       ? locations
@@ -1189,7 +1189,7 @@ export default function UserModal({
       });
 
       const validLocationIds = prevLocationIds.filter(locId => {
-        const location = locations.find(l => l._id === locId);
+      const location = locations.find(l => l._id === locId);
         // Keep location if:
         // 1. It exists in locations array AND belongs to a selected licensee, OR
         // 2. It doesn't exist in locations array (preserve unknown locations)
@@ -1220,10 +1220,10 @@ export default function UserModal({
 
       if (validLocationIds.length !== prevLocationIds.length) {
         const removedCount = prevLocationIds.length - validLocationIds.length;
-        toast.info(
+      toast.info(
           `${removedCount} location${removedCount > 1 ? 's' : ''} removed because ${removedCount > 1 ? "they don't" : "it doesn't"} belong to the selected licensee${newSelectedIds.length > 1 ? 's' : ''}`
-        );
-      }
+      );
+    }
 
       return validLocationIds;
     });
@@ -1542,14 +1542,14 @@ export default function UserModal({
 
     // ONLY include email if it ACTUALLY changed AND we can edit it
     if (canEditAccountFields && emailChanged) {
-      if (updatedEmail && updatedEmail.trim()) {
-        updatedUser.email = updatedEmail.trim();
-        updatedUser.emailAddress = updatedEmail.trim();
-      } else {
-        toast.error('Email address cannot be empty');
-        return;
+        if (updatedEmail && updatedEmail.trim()) {
+          updatedUser.email = updatedEmail.trim();
+          updatedUser.emailAddress = updatedEmail.trim();
+        } else {
+          toast.error('Email address cannot be empty');
+          return;
+        }
       }
-    }
 
     // ONLY include roles if they ACTUALLY changed
     if (rolesChanged) {

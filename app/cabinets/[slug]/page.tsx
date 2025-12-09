@@ -27,33 +27,38 @@ import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import { Button } from '@/components/ui/button';
 import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
 import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
+import { useCurrency } from '@/lib/contexts/CurrencyContext';
+import { fetchLicenseeById } from '@/lib/helpers/clientLicensees';
+import { fetchLocationDetails } from '@/lib/helpers/locations';
+import { getCountryCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
 import { useCabinetDetailsData, useSmibConfiguration } from '@/lib/hooks/data';
 import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
-import { fetchLocationDetails } from '@/lib/helpers/locations';
-import { getLicenseeCurrency, getCountryCurrency } from '@/lib/helpers/rates';
-import { fetchLicenseeById } from '@/lib/helpers/clientLicensees';
 import type { CurrencyCode } from '@/shared/types/currency';
-import { useCurrency } from '@/lib/contexts/CurrencyContext';
-import axios from 'axios';
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
   Cross2Icon,
   Pencil2Icon,
 } from '@radix-ui/react-icons';
-import { ExternalLink, Copy } from 'lucide-react';
+import axios from 'axios';
 import { AnimatePresence, motion, Variants } from 'framer-motion';
+import { Copy, ExternalLink } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 // GSAP import removed - animations were causing performance issues
 import AccountingDetails from '@/components/cabinetDetails/AccountingDetails';
-import { NetworkError, NotFoundError, UnauthorizedError } from '@/components/ui/errors';
-import RefreshButton from '@/components/ui/RefreshButton';
 import Chart from '@/components/ui/dashboard/Chart';
+import {
+  NetworkError,
+  NotFoundError,
+  UnauthorizedError,
+} from '@/components/ui/errors';
+import RefreshButton from '@/components/ui/RefreshButton';
 import { getMachineChartData } from '@/lib/helpers/machineChart';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import type { dashboardData } from '@/lib/types';
 import { format } from 'date-fns';
 import { Check, Pencil, RefreshCw } from 'lucide-react';
@@ -135,12 +140,16 @@ function CabinetDetailPageContent() {
   const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
   const [chartData, setChartData] = useState<dashboardData[]>([]);
   const [loadingChart, setLoadingChart] = useState(false);
+  // Chart granularity selector (only shown for Today/Yesterday)
+  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
+    'minute'
+  );
 
   // ============================================================================
   // Computed Values - Permissions
   // ============================================================================
   const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
-  
+
   // Only Developer, Admin, and Technician can access SMIB Configuration
   const canAccessSmibConfig =
     user &&
@@ -149,6 +158,12 @@ function CabinetDetailPageContent() {
     user.roles.some(role =>
       ['technician', 'admin', 'developer'].includes(role)
     );
+
+  // Show granularity selector for Today, Yesterday, or Custom
+  const showGranularitySelector =
+    activeMetricsFilter === 'Today' ||
+    activeMetricsFilter === 'Yesterday' ||
+    activeMetricsFilter === 'Custom';
 
   // Check if user can edit/delete machines
   // Technicians can edit but not delete, collectors cannot edit or delete
@@ -160,9 +175,13 @@ function CabinetDetailPageContent() {
       return false;
     }
     // Technicians, managers, admins, developers, and location admins can edit
-    return ['developer', 'admin', 'manager', 'location admin', 'technician'].some(
-      role => userRoles.includes(role)
-    );
+    return [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
+    ].some(role => userRoles.includes(role));
   }, [user]);
 
   // ============================================================================
@@ -203,7 +222,7 @@ function CabinetDetailPageContent() {
       try {
         // Fetch location details to get licensee
         const locationData = await fetchLocationDetails(cabinet.gamingLocation);
-        
+
         if (!locationData) return;
 
         let defaultCurrency: CurrencyCode = 'USD';
@@ -222,7 +241,8 @@ function CabinetDetailPageContent() {
             const response = await axios.get(`/api/countries`, {
               params: { country: locationData.country },
             });
-            const countries = response.data?.countries || response.data?.data || [];
+            const countries =
+              response.data?.countries || response.data?.data || [];
             const country = Array.isArray(countries) ? countries[0] : countries;
             const countryName = country?.name;
             if (countryName) {
@@ -239,7 +259,10 @@ function CabinetDetailPageContent() {
 
         // Only set default currency when "all licensees" is selected (selectedLicencee is null/empty)
         // This ensures the currency matches the location's licensee currency
-        if ((!selectedLicencee || selectedLicencee === '') && (hasMultipleLicensees || defaultCurrency !== 'USD')) {
+        if (
+          (!selectedLicencee || selectedLicencee === '') &&
+          (hasMultipleLicensees || defaultCurrency !== 'USD')
+        ) {
           setDisplayCurrency(defaultCurrency);
           setDashboardCurrency(defaultCurrency);
         }
@@ -257,39 +280,54 @@ function CabinetDetailPageContent() {
     setDashboardCurrency,
   ]);
 
+  // AbortController for chart data requests
+  const makeChartRequest = useAbortableRequest();
+
   // Fetch chart data for this specific machine
   useEffect(() => {
-    const fetchChartData = async () => {
-      if (!cabinet?._id || !activeMetricsFilter) return;
+    if (!cabinet?._id || !activeMetricsFilter) return;
 
+    makeChartRequest(async signal => {
       setLoadingChart(true);
       try {
+        // Pass granularity preference for Today/Yesterday
+        const granularity = showGranularitySelector
+          ? chartGranularity
+          : undefined;
         const data = await getMachineChartData(
           String(cabinet._id),
           activeMetricsFilter,
           customDateRange.startDate,
           customDateRange.endDate,
           displayCurrency,
-          selectedLicencee
+          selectedLicencee,
+          granularity,
+          signal
         );
+
+        // Check if request was aborted (returns empty array, not null)
+        if (!data || data.length === 0) {
+          return;
+        }
 
         setChartData(data);
       } catch (error) {
+        // Errors are handled by getMachineChartData (including cancellations)
         console.error('Error fetching chart data:', error);
         setChartData([]);
       } finally {
         setLoadingChart(false);
       }
-    };
-
-    fetchChartData();
+    }, 'chart');
   }, [
     cabinet?._id,
     activeMetricsFilter,
-    customDateRange.startDate,
-    customDateRange.endDate,
+    customDateRange, // Include full object to ensure updates are detected
     displayCurrency,
     selectedLicencee,
+    showGranularitySelector,
+    chartGranularity, // Refetch when granularity changes
+    makeChartRequest, // Stable ref from useAbortableRequest
   ]);
 
   // ============================================================================
@@ -387,7 +425,7 @@ function CabinetDetailPageContent() {
   // ============================================================================
   // Track cabinet ID to prevent unnecessary re-runs
   const lastCabinetIdRef = useRef<string | null>(null);
-  
+
   // Store functions in refs to avoid dependency issues
   const fetchMqttConfigRef = useRef(fetchMqttConfig);
   const setCommunicationModeFromDataRef = useRef(setCommunicationModeFromData);
@@ -414,7 +452,7 @@ function CabinetDetailPageContent() {
     }
 
     const cabinetId = String(cabinet._id);
-    
+
     // Only run if cabinet ID actually changed
     if (lastCabinetIdRef.current === cabinetId) {
       return;
@@ -878,10 +916,15 @@ function CabinetDetailPageContent() {
                     height={32}
                     className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
                   />
-                  <span>Name: {cabinet ? getSerialNumberIdentifier(cabinet) : 'GMID1'}</span>
+                  <span>
+                    Name:{' '}
+                    {cabinet ? getSerialNumberIdentifier(cabinet) : 'GMID1'}
+                  </span>
                   <button
                     onClick={() => {
-                      const cabinetName = cabinet ? getSerialNumberIdentifier(cabinet) : 'GMID1';
+                      const cabinetName = cabinet
+                        ? getSerialNumberIdentifier(cabinet)
+                        : 'GMID1';
                       copyToClipboard(cabinetName, 'Cabinet Name');
                     }}
                     className="ml-1 rounded p-1 transition-colors hover:bg-gray-100"
@@ -890,18 +933,18 @@ function CabinetDetailPageContent() {
                     <Copy className="h-4 w-4 text-gray-500 hover:text-blue-600" />
                   </button>
                   {canEditMachines && (
-                  <motion.button
-                    className="ml-2 rounded-full p-2 transition-colors hover:bg-gray-100"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => {
-                      if (cabinet) {
-                        openEditModal(cabinet);
-                      }
-                    }}
-                  >
-                    <Pencil2Icon className="h-5 w-5 text-button" />
-                  </motion.button>
+                    <motion.button
+                      className="ml-2 rounded-full p-2 transition-colors hover:bg-gray-100"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => {
+                        if (cabinet) {
+                          openEditModal(cabinet);
+                        }
+                      }}
+                    >
+                      <Pencil2Icon className="h-5 w-5 text-button" />
+                    </motion.button>
                   )}
                 </h1>
                 {/* Show deleted status if cabinet has deletedAt field and it's greater than year 2020 */}
@@ -941,7 +984,7 @@ function CabinetDetailPageContent() {
                             router.push(`/locations/${cabinet.gamingLocation}`);
                           }
                         }}
-                        className="hover:text-blue-600 hover:underline cursor-pointer"
+                        className="cursor-pointer hover:text-blue-600 hover:underline"
                         disabled={!cabinet?.gamingLocation}
                         title="Click to view location details"
                       >
@@ -949,17 +992,19 @@ function CabinetDetailPageContent() {
                       </button>
                     )}
                   </span>
-                  {cabinet?.gamingLocation && locationName !== 'Location Not Found' && locationName !== 'No Location Assigned' && (
-                    <button
-                      onClick={() => {
-                        router.push(`/locations/${cabinet.gamingLocation}`);
-                      }}
-                      className="flex-shrink-0"
-                      title="View location details"
-                    >
-                      <ExternalLink className="h-4 w-4 text-gray-500 hover:text-blue-600 cursor-pointer transition-transform hover:scale-110" />
-                    </button>
-                  )}
+                  {cabinet?.gamingLocation &&
+                    locationName !== 'Location Not Found' &&
+                    locationName !== 'No Location Assigned' && (
+                      <button
+                        onClick={() => {
+                          router.push(`/locations/${cabinet.gamingLocation}`);
+                        }}
+                        className="flex-shrink-0"
+                        title="View location details"
+                      >
+                        <ExternalLink className="h-4 w-4 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
+                      </button>
+                    )}
                   <span className="text-grayHighlight">
                     ,{' '}
                     {selectedLicencee === 'TTG'
@@ -1058,7 +1103,7 @@ function CabinetDetailPageContent() {
                             router.push(`/locations/${cabinet.gamingLocation}`);
                           }
                         }}
-                        className="hover:text-blue-600 hover:underline cursor-pointer"
+                        className="cursor-pointer hover:text-blue-600 hover:underline"
                         disabled={!cabinet?.gamingLocation}
                         title="Click to view location details"
                       >
@@ -1066,17 +1111,19 @@ function CabinetDetailPageContent() {
                       </button>
                     )}
                   </span>
-                  {cabinet?.gamingLocation && locationName !== 'Location Not Found' && locationName !== 'No Location Assigned' && (
-                    <button
-                      onClick={() => {
-                        router.push(`/locations/${cabinet.gamingLocation}`);
-                      }}
-                      className="flex-shrink-0"
-                      title="View location details"
-                    >
-                      <ExternalLink className="h-4 w-4 text-gray-500 hover:text-blue-600 cursor-pointer transition-transform hover:scale-110" />
-                    </button>
-                  )}
+                  {cabinet?.gamingLocation &&
+                    locationName !== 'Location Not Found' &&
+                    locationName !== 'No Location Assigned' && (
+                      <button
+                        onClick={() => {
+                          router.push(`/locations/${cabinet.gamingLocation}`);
+                        }}
+                        className="flex-shrink-0"
+                        title="View location details"
+                      >
+                        <ExternalLink className="h-4 w-4 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
+                      </button>
+                    )}
                   <span className="text-grayHighlight">
                     ,{' '}
                     {selectedLicencee === 'TTG'
@@ -1229,13 +1276,14 @@ function CabinetDetailPageContent() {
                     <p className="text-xs text-grayHighlight sm:text-sm">
                       <span className="font-medium">SMIB ID:</span>{' '}
                       <span className="flex items-center gap-1">
-                      {cabinet?.relayId ||
-                        cabinet?.smibBoard ||
-                        'No Value Provided'}
+                        {cabinet?.relayId ||
+                          cabinet?.smibBoard ||
+                          'No Value Provided'}
                         {(cabinet?.relayId || cabinet?.smibBoard) && (
                           <button
                             onClick={() => {
-                              const smibId = cabinet?.relayId || cabinet?.smibBoard || '';
+                              const smibId =
+                                cabinet?.relayId || cabinet?.smibBoard || '';
                               copyToClipboard(smibId, 'SMIB ID');
                             }}
                             className="rounded p-0.5 transition-colors hover:bg-gray-100"
@@ -2116,7 +2164,7 @@ function CabinetDetailPageContent() {
 
         {/* Date Filters */}
         {/* Desktop/tablet (md and up): use button-style filters */}
-        <div className="hidden md:block mb-4 mt-4">
+        <div className="mb-4 mt-4 hidden md:block">
           {hasMounted ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -2125,7 +2173,6 @@ function CabinetDetailPageContent() {
             >
               <DashboardDateFilters
                 hideAllTime={false}
-                onCustomRangeGo={fetchCabinetDetailsData}
                 enableTimeInputs={true}
                 mode="desktop"
               />
@@ -2133,7 +2180,6 @@ function CabinetDetailPageContent() {
           ) : (
             <DashboardDateFilters
               hideAllTime={false}
-              onCustomRangeGo={fetchCabinetDetailsData}
               enableTimeInputs={true}
               mode="desktop"
             />
@@ -2141,10 +2187,9 @@ function CabinetDetailPageContent() {
         </div>
 
         {/* Mobile (below md): use CustomSelect-based dropdown */}
-        <div className="block md:hidden mb-4 mt-4">
+        <div className="mb-4 mt-4 block md:hidden">
           <DashboardDateFilters
             hideAllTime={false}
-            onCustomRangeGo={fetchCabinetDetailsData}
             enableTimeInputs={true}
             mode="mobile"
           />
@@ -2180,7 +2225,7 @@ function CabinetDetailPageContent() {
         </div>
 
         {/* Chart - Above Accounting Details on md+ screens, below on mobile */}
-        <div className="hidden md:block mb-6">
+        <div className="mb-6 hidden md:block">
           {loadingChart ? (
             <div className="rounded-lg bg-container p-6 shadow-md">
               <div className="mb-4 flex items-center justify-between">
@@ -2190,11 +2235,35 @@ function CabinetDetailPageContent() {
               <div className="h-[320px] w-full animate-pulse rounded-md bg-gray-200" />
             </div>
           ) : (
-            <Chart
-              loadingChartData={loadingChart}
-              chartData={chartData}
-              activeMetricsFilter={activeMetricsFilter}
-            />
+            <>
+              {/* Granularity Selector - Only show for Today/Yesterday */}
+              {showGranularitySelector && (
+                <div className="mb-3 flex items-center justify-end gap-2">
+                  <label
+                    htmlFor="chart-granularity-detail"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Granularity:
+                  </label>
+                  <select
+                    id="chart-granularity-detail"
+                    value={chartGranularity}
+                    onChange={e =>
+                      setChartGranularity(e.target.value as 'hourly' | 'minute')
+                    }
+                    className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                  >
+                    <option value="minute">Minute</option>
+                    <option value="hourly">Hourly</option>
+                  </select>
+                </div>
+              )}
+              <Chart
+                loadingChartData={loadingChart}
+                chartData={chartData}
+                activeMetricsFilter={activeMetricsFilter}
+              />
+            </>
           )}
         </div>
 
@@ -2210,7 +2279,7 @@ function CabinetDetailPageContent() {
         ) : null}
 
         {/* Chart - Below Accounting Details on mobile */}
-        <div className="md:hidden mt-6">
+        <div className="mt-6 md:hidden">
           {loadingChart ? (
             <div className="rounded-lg bg-container p-6 shadow-md">
               <div className="mb-4 flex items-center justify-between">
@@ -2220,11 +2289,35 @@ function CabinetDetailPageContent() {
               <div className="h-[320px] w-full animate-pulse rounded-md bg-gray-200" />
             </div>
           ) : (
-            <Chart
-              loadingChartData={loadingChart}
-              chartData={chartData}
-              activeMetricsFilter={activeMetricsFilter}
-            />
+            <>
+              {/* Granularity Selector - Only show for Today/Yesterday */}
+              {showGranularitySelector && (
+                <div className="mb-3 flex items-center justify-end gap-2">
+                  <label
+                    htmlFor="chart-granularity-detail"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Granularity:
+                  </label>
+                  <select
+                    id="chart-granularity-detail"
+                    value={chartGranularity}
+                    onChange={e =>
+                      setChartGranularity(e.target.value as 'hourly' | 'minute')
+                    }
+                    className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                  >
+                    <option value="minute">Minute</option>
+                    <option value="hourly">Hourly</option>
+                  </select>
+                </div>
+              )}
+              <Chart
+                loadingChartData={loadingChart}
+                chartData={chartData}
+                activeMetricsFilter={activeMetricsFilter}
+              />
+            </>
           )}
         </div>
 

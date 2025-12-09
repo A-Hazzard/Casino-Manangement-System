@@ -10,7 +10,6 @@
  *
  * @param member - Member/CasinoMember object
  */
-import React from 'react';
 import { CasinoMember as Member } from '@/shared/types/entities';
 import { User } from 'lucide-react';
 

@@ -84,6 +84,23 @@ export async function fetchTopPerformingData(
       };
     });
   } catch (error) {
+    // Check if this is an axios cancellation - re-throw so caller (useAbortableRequest) can handle it silently
+    if (axios.isCancel && axios.isCancel(error)) {
+      throw error; // Re-throw so caller (useAbortableRequest) can handle it silently
+    }
+
+    // Check for standard AbortError (fetch API) or CanceledError
+    if (
+      (error instanceof Error && error.name === 'AbortError') ||
+      (error instanceof Error && error.message === 'canceled') ||
+      (error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'))
+    ) {
+      throw error; // Re-throw so caller (useAbortableRequest) can handle it silently
+    }
+
     // Error handling for top-performing data fetch
     if (process.env.NODE_ENV === 'development') {
       console.error(`Failed to fetch top-performing ${activeTab}:`, error);

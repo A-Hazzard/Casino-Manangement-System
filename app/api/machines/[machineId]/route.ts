@@ -20,14 +20,15 @@ import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import {
-  convertFromUSD,
-  convertToUSD,
-  getCountryCurrency,
-  getLicenseeCurrency,
+    convertFromUSD,
+    convertToUSD,
+    getCountryCurrency,
+    getLicenseeCurrency,
 } from '@/lib/helpers/rates';
 import type { MachineDocument } from '@/lib/types/mongo';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
+import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -178,21 +179,28 @@ export async function GET(
     let endDate: Date | undefined;
 
     if (timePeriod === 'Custom' && startDateParam && endDateParam) {
-      // For Custom dates, parse and let gaming day offset be applied by getGamingDayRangeForPeriod
-      // User sends: "2025-10-31" meaning Oct 31 gaming day
-      // With 8 AM offset: Oct 31, 8:00 AM → Nov 1, 8:00 AM
-      const customStart = new Date(startDateParam + 'T00:00:00.000Z');
-      const customEnd = new Date(endDateParam + 'T00:00:00.000Z');
+      // Parse ISO timestamps with timezone offset (sent from frontend with local time + offset)
+      // Frontend sends with times: "2025-12-07T11:45:00-04:00" (Trinidad local time with offset)
+      // Frontend sends date-only: "2025-12-07" (for gaming day offset to apply)
+      // new Date() correctly parses timezone-aware strings and converts to UTC internally
+      // For custom time periods, use the exact times provided without gaming day expansion
+      // This ensures metrics match the chart data for the exact selected time range
+      const customStart = new Date(startDateParam);
+      const customEnd = new Date(endDateParam);
 
-      const gamingDayRange = getGamingDayRangeForPeriod(
-        'Custom',
-        gameDayOffset,
-        customStart,
-        customEnd
-      );
+      // Validate dates
+      if (isNaN(customStart.getTime()) || isNaN(customEnd.getTime())) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid date parameters' },
+          { status: 400 }
+        );
+      }
 
-      startDate = gamingDayRange.rangeStart;
-      endDate = gamingDayRange.rangeEnd;
+      // Use exact times provided - no gaming day expansion for custom ranges
+      // Date objects are already in UTC internally (JavaScript Date always stores UTC)
+      // This is correct for MongoDB queries which expect UTC dates
+      startDate = customStart;
+      endDate = customEnd;
     } else if (timePeriod === 'All Time') {
       // For "All Time", don't apply any date filtering - query all records
       startDate = undefined;
@@ -212,12 +220,10 @@ export async function GET(
     // STEP 8: Aggregate meter data for the time period
     // ============================================================================
     // Use aggregation to sum deltas (movement.* fields contain deltas, not cumulative values)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pipeline: any[] = [];
+    const pipeline: PipelineStage[] = [];
 
     // Add match stage with date filtering (only if dates are provided)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const matchStage: any = { machine: machineId };
+    const matchStage: Record<string, unknown> = { machine: machineId };
     if (startDate && endDate) {
       matchStage.readAt = { $gte: startDate, $lte: endDate };
     }

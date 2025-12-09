@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "baseUrl": ".",
     "allowJs": true,
     "skipLibCheck": true,
@@ -13,7 +17,7 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
       {
@@ -21,12 +25,19 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
-      "@shared/*": ["./shared/*"],
-      "@/public/*": ["./public/*"],
-      "/public/*": ["./public/*"]
+      "@/*": [
+        "./*"
+      ],
+      "@shared/*": [
+        "./shared/*"
+      ],
+      "@/public/*": [
+        "./public/*"
+      ],
+      "/public/*": [
+        "./public/*"
+      ]
     },
-
     "target": "ES2017",
     // Strict unused code detection
     "noUnusedLocals": true,
@@ -40,7 +51,12 @@
     "**/*.ts",
     "**/*.tsx",
     "**/*.d.ts",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "scripts"]
+  "exclude": [
+    "node_modules",
+    "scripts",
+    ".next"
+  ]
 }

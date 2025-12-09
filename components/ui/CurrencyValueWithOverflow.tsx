@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import MobileValuePopover from '@/components/ui/MobileValuePopover';
 import { useTextOverflow } from '@/lib/hooks/useTextOverflow';
 import { formatCurrency } from '@/lib/utils/currency';

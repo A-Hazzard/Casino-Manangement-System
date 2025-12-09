@@ -42,6 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { logoutUser } from '@/lib/helpers/clientAuth';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
@@ -65,7 +66,8 @@ import type {
   InvalidProfileFields,
   ProfileValidationReasons,
 } from '@/shared/types/auth';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type ProfileValidationModalProps = {
@@ -104,7 +106,8 @@ export default function ProfileValidationModal({
   enforceUpdate = false,
   reasons = {},
 }: ProfileValidationModalProps) {
-  const { user: authUser } = useUserStore();
+  const { user: authUser, clearUser } = useUserStore();
+  const router = useRouter();
   const normalizedRoles =
     authUser?.roles?.map(role => role.toLowerCase()) || [];
   const canManageAssignments =
@@ -1087,31 +1090,49 @@ export default function ProfileValidationModal({
             </div>
           )}
 
-          <DialogFooter className="pt-2">
-            {!enforceUpdate && (
+          <DialogFooter className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-between">
+            <div className="flex w-full justify-start sm:w-auto">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onClose()}
+                onClick={async () => {
+                  await logoutUser();
+                  clearUser();
+                  router.push('/login?logout=success');
+                }}
                 disabled={loading}
+                className="flex items-center gap-2"
               >
-                Cancel
+                <LogOut className="h-4 w-4" />
+                Logout
               </Button>
-            )}
-            <Button
-              type="submit"
-              disabled={loading || !isFormValid}
-              className="min-w-[140px]"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating…
-                </>
-              ) : (
-                'Update Profile'
+            </div>
+            <div className="flex w-full gap-2 sm:w-auto sm:justify-end">
+              {!enforceUpdate && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onClose()}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
               )}
-            </Button>
+              <Button
+                type="submit"
+                disabled={loading || !isFormValid}
+                className="min-w-[140px]"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating…
+                  </>
+                ) : (
+                  'Update Profile'
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

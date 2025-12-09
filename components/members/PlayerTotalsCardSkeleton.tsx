@@ -6,7 +6,6 @@
  * - Matches PlayerTotalsCard layout structure
  * - Header, stats, and toggle button skeletons
  */
-import React from 'react';
 
 export default function PlayerTotalsCardSkeleton() {
   // ============================================================================

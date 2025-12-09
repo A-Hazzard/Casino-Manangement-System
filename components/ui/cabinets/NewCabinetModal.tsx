@@ -1,25 +1,25 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { gsap } from 'gsap';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Cross2Icon } from '@radix-ui/react-icons';
-import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { NewCabinetFormData } from '@/shared/types/entities';
+import { Input } from '@/components/ui/input';
+import { ModernCalendar } from '@/components/ui/ModernCalendar';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { createCabinet } from '@/lib/helpers/cabinets';
 import { fetchManufacturers } from '@/lib/helpers/manufacturers';
-import { toast } from 'sonner';
-import { PCDateTimePicker } from '@/components/ui/pc-date-time-picker';
+import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
 import { useUserStore } from '@/lib/store/userStore';
+import { NewCabinetFormData } from '@/shared/types/entities';
+import { Cross2Icon } from '@radix-ui/react-icons';
+import { gsap } from 'gsap';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 type NewCabinetModalProps = {
   locations?: { _id: string; name: string }[];
@@ -745,11 +745,11 @@ export const NewCabinetModal = ({
                     <label className="mb-2 block text-sm font-medium">
                       Last Collection Time
                     </label>
-                    <PCDateTimePicker
-                      date={collectionTime}
-                      setDate={handleCollectionTimeChange}
-                      disabled={loading}
-                      placeholder="Select collection time"
+                    <ModernCalendar
+                      date={{ from: collectionTime, to: collectionTime }}
+                      onSelect={(range) => handleCollectionTimeChange(range?.from)}
+                      enableTimeInputs={true}
+                      mode="single"
                     />
                   </div>
                   <div>

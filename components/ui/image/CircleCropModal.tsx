@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import Image from 'next/image';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import ReactCrop, {
   Crop,
   PixelCrop,
@@ -53,20 +54,51 @@ export default function CircleCropModal({
   onCropped,
 }: CircleCropModalProps) {
   const imgRef = useRef<HTMLImageElement>(null);
+  const imageWrapperRef = useRef<HTMLDivElement>(null);
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
 
-  const onImageLoad = useCallback(
-    (e: React.SyntheticEvent<HTMLImageElement>) => {
-      if (aspect) {
-        const { width, height } = e.currentTarget;
-        setCrop(centerAspectCrop(width, height, aspect));
-      }
-    },
-    []
-  );
-
   const aspect = 1; // Square aspect ratio for circular crop
+
+  // Extract underlying img element from Next.js Image for react-image-crop
+  useEffect(() => {
+    if (imageWrapperRef.current && open) {
+      // Next.js Image renders an img element inside a span/div wrapper
+      const nextImageElement = imageWrapperRef.current.querySelector('img');
+      if (nextImageElement instanceof HTMLImageElement) {
+        // Sync our ref to point to Next.js Image's underlying img element
+        if (imgRef.current !== nextImageElement) {
+          // Store reference to the actual img element from Next.js Image
+          Object.defineProperty(imgRef, 'current', {
+            value: nextImageElement,
+            writable: true,
+            configurable: true,
+          });
+        }
+        const handleLoad = () => {
+          if (nextImageElement && aspect) {
+            setCrop(
+              centerAspectCrop(
+                nextImageElement.naturalWidth,
+                nextImageElement.naturalHeight,
+                aspect
+              )
+            );
+          }
+        };
+        if (nextImageElement.complete) {
+          handleLoad();
+          return undefined;
+        } else {
+          nextImageElement.addEventListener('load', handleLoad);
+          return () => {
+            nextImageElement.removeEventListener('load', handleLoad);
+          };
+        }
+      }
+    }
+    return undefined;
+  }, [imageSrc, open, aspect]);
 
   const getCroppedImg = useCallback(
     (image: HTMLImageElement, crop: PixelCrop): Promise<{ url: string }> => {
@@ -163,6 +195,7 @@ export default function CircleCropModal({
 
         <div className="flex flex-col gap-6">
           <div className="flex justify-center">
+            <div ref={imageWrapperRef} className="relative">
             <ReactCrop
               crop={crop}
               onChange={(_, percentCrop) => setCrop(percentCrop)}
@@ -171,19 +204,24 @@ export default function CircleCropModal({
               circularCrop
               className="max-h-96"
             >
-              {/* Using img instead of Next.js Image because react-image-crop requires direct HTMLImageElement ref access */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                ref={imgRef}
-                alt="Crop me"
+                {/* 
+                  Next.js Image component - react-image-crop accesses the underlying img element
+                  via the ref sync in useEffect. The library will work with the img element
+                  that Next.js Image renders internally.
+                */}
+                <Image
                 src={imageSrc}
+                  alt="Image to crop"
+                  width={800}
+                  height={800}
+                  unoptimized
                 style={{
                   maxHeight: '400px',
                   maxWidth: '100%',
                 }}
-                onLoad={onImageLoad}
               />
             </ReactCrop>
+            </div>
           </div>
         </div>
 

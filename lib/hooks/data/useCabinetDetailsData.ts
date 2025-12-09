@@ -3,13 +3,13 @@
  * Extracts complex cabinet details logic from the Cabinet Details page
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { differenceInMinutes } from 'date-fns';
-import { fetchCabinetById } from '@/lib/helpers/cabinets';
-import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
-import { toast } from 'sonner';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
+import { fetchCabinetById } from '@/lib/helpers/cabinets';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
+import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
+import { differenceInMinutes } from 'date-fns';
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 type UseCabinetDetailsDataProps = {
   slug: string;
@@ -75,7 +75,9 @@ export function useCabinetDetailsData({
       // This prevents the 500 error "Custom start and end dates are required"
       if (
         activeMetricsFilter === 'Custom' &&
-        (!customDateRange || !customDateRange.startDate || !customDateRange.endDate)
+        (!customDateRange ||
+          !customDateRange.startDate ||
+          !customDateRange.endDate)
       ) {
         setMetricsLoading(false);
         return;
@@ -85,21 +87,18 @@ export function useCabinetDetailsData({
       // are returned in the header-selected currency.
       const currency = displayCurrency;
 
-      const cabinetData = await makeRequest(
-        async (signal) => {
-          return await fetchCabinetById(
-            slug,
-            activeMetricsFilter,
-            activeMetricsFilter === 'Custom' && customDateRange
-              ? { from: customDateRange.startDate, to: customDateRange.endDate }
-              : undefined,
-            currency,
-            selectedLicencee || null,
-            signal
-          );
-        },
-        `Cabinet Details (${slug}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
-      );
+      const cabinetData = await makeRequest(async signal => {
+        return await fetchCabinetById(
+          slug,
+          activeMetricsFilter,
+          activeMetricsFilter === 'Custom' && customDateRange
+            ? { from: customDateRange.startDate, to: customDateRange.endDate }
+            : undefined,
+          currency,
+          selectedLicencee || null,
+          signal
+        );
+      });
 
       // Check if request was aborted
       if (!cabinetData) {
@@ -128,7 +127,11 @@ export function useCabinetDetailsData({
       // Determine error type based on the error
       if (err instanceof Error) {
         // Check for unauthorized access (403)
-        const errorWithStatus = err as Error & { status?: number; isUnauthorized?: boolean; response?: { status?: number } };
+        const errorWithStatus = err as Error & {
+          status?: number;
+          isUnauthorized?: boolean;
+          response?: { status?: number };
+        };
         if (
           errorWithStatus.status === 403 ||
           errorWithStatus.isUnauthorized ||
@@ -138,7 +141,10 @@ export function useCabinetDetailsData({
         ) {
           setError('You are not authorized to view this cabinet');
           setErrorType('unauthorized');
-        } else if (err.message.includes('404') || err.message.includes('not found')) {
+        } else if (
+          err.message.includes('404') ||
+          err.message.includes('not found')
+        ) {
           setError('Cabinet not found');
           setErrorType('not-found');
         } else if (
@@ -157,22 +163,36 @@ export function useCabinetDetailsData({
       }
 
       // Only show toast for non-unauthorized errors
-      const errorWithStatus = err instanceof Error ? err as Error & { status?: number; isUnauthorized?: boolean; response?: { status?: number } } : null;
-      const isUnauthorized = 
+      const errorWithStatus =
+        err instanceof Error
+          ? (err as Error & {
+              status?: number;
+              isUnauthorized?: boolean;
+              response?: { status?: number };
+            })
+          : null;
+      const isUnauthorized =
         errorWithStatus &&
         (errorWithStatus.status === 403 ||
-        errorWithStatus.isUnauthorized ||
-        errorWithStatus.response?.status === 403 ||
-        errorWithStatus.message.includes('Unauthorized') ||
-        errorWithStatus.message.includes('do not have access'));
-      
+          errorWithStatus.isUnauthorized ||
+          errorWithStatus.response?.status === 403 ||
+          errorWithStatus.message.includes('Unauthorized') ||
+          errorWithStatus.message.includes('do not have access'));
+
       if (!isUnauthorized) {
         toast.error('Failed to fetch cabinet details');
       }
     } finally {
       setMetricsLoading(false);
     }
-  }, [slug, activeMetricsFilter, customDateRange, selectedLicencee, displayCurrency, makeRequest]);
+  }, [
+    slug,
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicencee,
+    displayCurrency,
+    makeRequest,
+  ]);
 
   // Callback function to refresh cabinet data after updates
   const handleCabinetUpdated = useCallback(() => {
@@ -184,7 +204,14 @@ export function useCabinetDetailsData({
     if (activeMetricsFilter && dateFilterInitialized) {
       fetchCabinetDetailsData();
     }
-  }, [slug, activeMetricsFilter, dateFilterInitialized, customDateRange, displayCurrency, fetchCabinetDetailsData]);
+  }, [
+    slug,
+    activeMetricsFilter,
+    dateFilterInitialized,
+    customDateRange,
+    displayCurrency,
+    fetchCabinetDetailsData,
+  ]);
 
   return {
     cabinet,

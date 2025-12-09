@@ -25,26 +25,26 @@
  */
 'use client';
 
-import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
-import { InfoConfirmationDialog } from '@/components/ui/InfoConfirmationDialog';
 import { Button } from '@/components/ui/button';
+import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
 import { LocationSelect } from '@/components/ui/custom-select';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
+import { InfoConfirmationDialog } from '@/components/ui/InfoConfirmationDialog';
 import { Input } from '@/components/ui/input';
-import { PCDateTimePicker } from '@/components/ui/pc-date-time-picker';
+import { ModernCalendar } from '@/components/ui/ModernCalendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { updateMachineCollectionHistory } from '@/lib/helpers/cabinets';
 import { updateCollectionReport } from '@/lib/helpers/collectionReport';
@@ -53,13 +53,13 @@ import { updateCollection } from '@/lib/helpers/collections';
 import { useDebounce, useDebouncedCallback } from '@/lib/hooks/useDebounce';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
-  CollectionReportData,
-  CollectionReportLocationWithMachines,
-  CollectionReportMachineSummary,
+    CollectionReportData,
+    CollectionReportLocationWithMachines,
+    CollectionReportMachineSummary,
 } from '@/lib/types/api';
 import type {
-  CollectionDocument,
-  PreviousCollectionMeters,
+    CollectionDocument,
+    PreviousCollectionMeters,
 } from '@/lib/types/collections';
 import { calculateDefaultCollectionTime } from '@/lib/utils/collectionTime';
 import { formatDate } from '@/lib/utils/formatting';
@@ -67,7 +67,6 @@ import { calculateMachineMovement } from '@/lib/utils/frontendMovementCalculatio
 import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
 import { calculateMovement } from '@/lib/utils/movementCalculation';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
-import { getUserDisplayName } from '@/lib/utils/userDisplay';
 import axios from 'axios';
 import { Edit, ExternalLink, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -419,7 +418,9 @@ export default function EditCollectionModal({
   useEffect(() => {
     if (selectedMachineId) {
       axios
-        .get(`/api/collections/check-first-collection?machineId=${selectedMachineId}`)
+        .get(
+          `/api/collections/check-first-collection?machineId=${selectedMachineId}`
+        )
         .then(response => {
           setIsFirstCollection(response.data.isFirstCollection);
         })
@@ -434,9 +435,8 @@ export default function EditCollectionModal({
 
   // Filter machines based on search term
   // Utility function for proper alphabetical and numerical sorting
-  const sortMachinesAlphabetically = useCallback(<
-    T extends { name?: string; serialNumber?: string },
-  >(
+  const sortMachinesAlphabetically = useCallback(
+    <T extends { name?: string; serialNumber?: string }>(
     machines: T[]
   ): T[] => {
     return machines.sort((a, b) => {
@@ -466,7 +466,9 @@ export default function EditCollectionModal({
 
       return numAInt - numBInt;
     });
-  }, []);
+    },
+    []
+  );
 
   const filteredMachines = useMemo(() => {
     let result = machinesOfSelectedLocation;
@@ -486,7 +488,11 @@ export default function EditCollectionModal({
 
     // Always sort alphabetically and numerically
     return sortMachinesAlphabetically(result);
-  }, [machinesOfSelectedLocation, machineSearchTerm, sortMachinesAlphabetically]);
+  }, [
+    machinesOfSelectedLocation,
+    machineSearchTerm,
+    sortMachinesAlphabetically,
+  ]);
 
   // Function to handle clicks on disabled input fields
   const handleDisabledFieldClick = useCallback(() => {
@@ -983,8 +989,14 @@ export default function EditCollectionModal({
   const debouncedCurrentMetersIn = useDebounce(currentMetersIn, 1500);
   const debouncedCurrentMetersOut = useDebounce(currentMetersOut, 1500);
   const debouncedCurrentMachineNotes = useDebounce(currentMachineNotes, 1500);
-  const debouncedCurrentRamClearMetersIn = useDebounce(currentRamClearMetersIn, 1500);
-  const debouncedCurrentRamClearMetersOut = useDebounce(currentRamClearMetersOut, 1500);
+  const debouncedCurrentRamClearMetersIn = useDebounce(
+    currentRamClearMetersIn,
+    1500
+  );
+  const debouncedCurrentRamClearMetersOut = useDebounce(
+    currentRamClearMetersOut,
+    1500
+  );
 
   useEffect(() => {
     if (
@@ -1186,7 +1198,7 @@ export default function EditCollectionModal({
           timestamp: currentCollectionTime,
           location: selectedLocationName,
           locationReportId: reportId,
-          collector: getUserDisplayName(user),
+          collector: userId || '',
           isCompleted: false,
           softMetersIn: 0,
           softMetersOut: 0,
@@ -1228,7 +1240,7 @@ export default function EditCollectionModal({
             timestamp: currentCollectionTime,
             location: selectedLocationName,
             locationReportId: reportId,
-            collector: getUserDisplayName(user),
+            collector: userId || '',
             // Only include sasStartTime if custom SAS time is set (matches NewCollectionModal)
             ...(customSasStartTime && {
               sasMeters: {
@@ -1306,7 +1318,7 @@ export default function EditCollectionModal({
     customSasStartTime,
     reportId,
     selectedLocationName,
-    user,
+    // Note: user is not used directly in the callback, only userId (derived from user?._id) is used
   ]);
 
   const confirmUpdateEntry = useCallback(() => {
@@ -1603,6 +1615,7 @@ export default function EditCollectionModal({
         reasonShortagePayment: financials.reasonForShortagePayment,
         balanceCorrection: Number(financials.balanceCorrection) || 0,
         balanceCorrectionReas: financials.balanceCorrectionReason,
+        collector: userId || '', // Ensure collector is set to current user's _id
       };
 
       await updateCollectionReport(reportId, updateData);
@@ -1762,24 +1775,27 @@ export default function EditCollectionModal({
               {/* Update All Dates - Show if there are 2 or more machines in collected view */}
               {viewMode === 'collected' &&
                 collectedMachineEntries.length >= 2 && (
-                  <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5">
+                  <div className="mt-2 w-full rounded-lg border border-blue-200 bg-blue-50 p-2.5">
                     <label className="mb-1 block text-xs font-medium text-gray-700">
                       Update All Dates
                     </label>
-                    <PCDateTimePicker
-                      date={updateAllDate}
-                      setDate={date => {
-                        if (
-                          date &&
-                          date instanceof Date &&
-                          !isNaN(date.getTime())
-                        ) {
-                          setUpdateAllDate(date);
+                    <div className="w-full min-w-0">
+                    <ModernCalendar
+                        date={
+                          updateAllDate
+                            ? { from: updateAllDate, to: updateAllDate }
+                            : undefined
+                        }
+                        onSelect={range => {
+                        if (range?.from) {
+                          setUpdateAllDate(range.from);
                         }
                       }}
-                      disabled={isProcessing}
-                      placeholder="Select date/time"
+                      enableTimeInputs={true}
+                      mode="single"
+                        className="w-full min-w-0"
                     />
+                    </div>
                     <Button
                       onClick={async () => {
                         if (!updateAllDate) return;
@@ -1791,17 +1807,28 @@ export default function EditCollectionModal({
                             id: 'update-all-dates',
                           });
 
-                          console.warn('🔄 Updating machines:', collectedMachineEntries.map(m => ({ id: m._id, has_id: !!m._id })));
+                          console.warn(
+                            '🔄 Updating machines:',
+                            collectedMachineEntries.map(m => ({
+                              id: m._id,
+                              has_id: !!m._id,
+                            }))
+                          );
 
                           // Update all collections in database
                           const results = await Promise.allSettled(
                             collectedMachineEntries.map(async entry => {
                               if (!entry._id) {
-                                console.warn('⚠️ Skipping entry without _id:', entry);
+                                console.warn(
+                                  '⚠️ Skipping entry without _id:',
+                                  entry
+                                );
                                 return;
                               }
                               
-                              console.warn(`📝 Updating collection ${entry._id} to ${updateAllDate.toISOString()}`);
+                              console.warn(
+                                `📝 Updating collection ${entry._id} to ${updateAllDate.toISOString()}`
+                              );
                               return await axios.patch(
                                 `/api/collections?id=${entry._id}`,
                                 {
@@ -2115,27 +2142,26 @@ export default function EditCollectionModal({
                     <label className="mb-2 block text-sm font-medium text-grayHighlight">
                       Collection Time:
                     </label>
-                    <PCDateTimePicker
-                      date={currentCollectionTime}
-                      setDate={date => {
-                        if (
-                          date &&
-                          date instanceof Date &&
-                          !isNaN(date.getTime())
-                        ) {
-                          console.warn(
+                    <ModernCalendar
+                      date={{
+                        from: currentCollectionTime,
+                        to: currentCollectionTime,
+                      }}
+                      onSelect={range => {
+                        if (range?.from) {
+                            console.warn(
                             '🕐 Collection time changed in edit modal:',
                             {
-                              newDate: date.toISOString(),
-                              newDateLocal: date.toLocaleString(),
+                              newDate: range.from.toISOString(),
+                              newDateLocal: range.from.toLocaleString(),
                               previousTime: currentCollectionTime.toISOString(),
                             }
                           );
-                          setCurrentCollectionTime(date);
+                          setCurrentCollectionTime(range.from);
                         }
                       }}
-                      disabled={isProcessing}
-                      placeholder="Select collection time"
+                      enableTimeInputs={true}
+                      mode="single"
                     />
                     <p className="mt-1 text-xs text-gray-500">
                       This time applies to the current machine being
@@ -2162,21 +2188,24 @@ export default function EditCollectionModal({
                       <label className="mb-2 block text-sm font-medium text-grayHighlight">
                         Previous SAS Start (optional):
                       </label>
-                      <PCDateTimePicker
-                        date={customSasStartTime || undefined}
-                        setDate={date => {
-                          if (
-                            date &&
-                            date instanceof Date &&
-                            !isNaN(date.getTime())
-                          ) {
-                            setCustomSasStartTime(date);
-                          } else if (!date) {
+                      <ModernCalendar
+                        date={
+                          customSasStartTime
+                            ? {
+                                from: customSasStartTime,
+                                to: customSasStartTime,
+                              }
+                            : undefined
+                        }
+                        onSelect={range => {
+                          if (range?.from) {
+                            setCustomSasStartTime(range.from);
+                          } else {
                             setCustomSasStartTime(null);
                           }
                         }}
-                        disabled={isProcessing}
-                        placeholder="Select previous SAS start (optional)"
+                        enableTimeInputs={true}
+                        mode="single"
                       />
                       <p className="mt-1 text-xs text-gray-500">
                         Leave empty to auto-use last collection time or 24h
@@ -2213,9 +2242,9 @@ export default function EditCollectionModal({
                         Number(debouncedCurrentMetersIn) < Number(prevIn) && (
                           <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                             <p className="text-xs text-red-600">
-                              Warning: Meters In ({debouncedCurrentMetersIn}) should be
-                              higher than or equal to Previous Meters In (
-                              {prevIn})
+                              Warning: Meters In ({debouncedCurrentMetersIn})
+                              should be higher than or equal to Previous Meters
+                              In ({prevIn})
                             </p>
                           </div>
                         )}
@@ -2247,9 +2276,9 @@ export default function EditCollectionModal({
                         Number(debouncedCurrentMetersOut) < Number(prevOut) && (
                           <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                             <p className="text-xs text-red-600">
-                              Warning: Meters Out ({debouncedCurrentMetersOut}) should be
-                              higher than or equal to Previous Meters Out (
-                              {prevOut})
+                              Warning: Meters Out ({debouncedCurrentMetersOut})
+                              should be higher than or equal to Previous Meters
+                              Out ({prevOut})
                             </p>
                           </div>
                         )}
@@ -2285,7 +2314,8 @@ export default function EditCollectionModal({
                             className={`border-blue-300 focus:border-blue-500 ${
                               debouncedCurrentRamClearMetersIn &&
                               prevIn &&
-                              Number(debouncedCurrentRamClearMetersIn) > Number(prevIn)
+                              Number(debouncedCurrentRamClearMetersIn) >
+                                Number(prevIn)
                                 ? 'border-red-500 focus:border-red-500'
                                 : ''
                             }`}
@@ -2298,8 +2328,9 @@ export default function EditCollectionModal({
                               <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                                 <p className="text-xs text-red-600">
                                   Warning: RAM Clear Meters In (
-                                  {debouncedCurrentRamClearMetersIn}) should be lower
-                                  than or equal to Previous Meters In ({prevIn})
+                                  {debouncedCurrentRamClearMetersIn}) should be
+                                  lower than or equal to Previous Meters In (
+                                  {prevIn})
                                 </p>
                               </div>
                             )}
@@ -2322,7 +2353,8 @@ export default function EditCollectionModal({
                             className={`border-blue-300 focus:border-blue-500 ${
                               debouncedCurrentRamClearMetersOut &&
                               prevOut &&
-                              Number(debouncedCurrentRamClearMetersOut) > Number(prevOut)
+                              Number(debouncedCurrentRamClearMetersOut) >
+                                Number(prevOut)
                                 ? 'border-red-500 focus:border-red-500'
                                 : ''
                             }`}
@@ -2335,8 +2367,8 @@ export default function EditCollectionModal({
                               <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                                 <p className="text-xs text-red-600">
                                   Warning: RAM Clear Meters Out (
-                                  {debouncedCurrentRamClearMetersOut}) should be lower
-                                  than or equal to Previous Meters Out (
+                                  {debouncedCurrentRamClearMetersOut}) should be
+                                  lower than or equal to Previous Meters Out (
                                   {prevOut})
                                 </p>
                               </div>

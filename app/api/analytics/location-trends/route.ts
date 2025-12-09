@@ -15,8 +15,8 @@
 
 import { getLocationTrends } from '@/app/api/lib/helpers/locationTrends';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import type { CurrencyCode } from '@/shared/types/currency';
 import { TimePeriod } from '@/shared/types';
+import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -55,6 +55,10 @@ export async function GET(req: NextRequest) {
     const endDateParam = searchParams.get('endDate');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
+    const granularity = searchParams.get('granularity') as
+      | 'hourly'
+      | 'minute'
+      | null;
 
     if (!locationIds) {
       return NextResponse.json(
@@ -73,7 +77,8 @@ export async function GET(req: NextRequest) {
       licencee,
       startDateParam,
       endDateParam,
-      displayCurrency
+      displayCurrency,
+      granularity || undefined
     );
 
     // ============================================================================
@@ -81,7 +86,9 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
-      console.warn(`[Analytics Location Trends GET API] Completed in ${duration}ms`);
+      console.warn(
+        `[Analytics Location Trends GET API] Completed in ${duration}ms`
+      );
     }
 
     return NextResponse.json(trendsData);
@@ -99,4 +106,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

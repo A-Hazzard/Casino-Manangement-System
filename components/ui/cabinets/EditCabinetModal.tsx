@@ -1,35 +1,35 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { gsap } from 'gsap';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { ModernCalendar } from '@/components/ui/ModernCalendar';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Cross2Icon } from '@radix-ui/react-icons';
-import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
-import type { GamingMachine } from '@/shared/types/entities';
-type CabinetFormData = Partial<GamingMachine>;
 import { fetchCabinetById, updateCabinet } from '@/lib/helpers/cabinets';
 import { fetchManufacturers } from '@/lib/helpers/manufacturers';
-import { toast } from 'sonner';
-import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import {
-  detectChanges,
-  filterMeaningfulChanges,
-  getChangesSummary,
+    detectChanges,
+    filterMeaningfulChanges,
+    getChangesSummary,
 } from '@/lib/utils/changeDetection';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
+import type { GamingMachine } from '@/shared/types/entities';
+import { Cross2Icon } from '@radix-ui/react-icons';
 import axios from 'axios';
-import { Checkbox } from '@/components/ui/checkbox';
-import { PCDateTimePicker } from '@/components/ui/pc-date-time-picker';
+import { gsap } from 'gsap';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+type CabinetFormData = Partial<GamingMachine>;
 
 const normalizeStatusValue = (value?: string): 'functional' | 'non_functional' => {
   if (!value) return 'functional';
@@ -1271,9 +1271,10 @@ export const EditCabinetModal = ({
                       <label className="mb-2 block text-sm font-medium text-grayHighlight">
                         Last Collection Time
                       </label>
-                      <PCDateTimePicker
-                        date={collectionTime}
-                        setDate={date => {
+                      <ModernCalendar
+                        date={{ from: collectionTime, to: collectionTime }}
+                        onSelect={(range: { from?: Date; to?: Date } | undefined) => {
+                          const date = range?.from;
                           if (!date) return;
                           setCollectionTime(date);
                           setFormData(prev => ({
@@ -1284,8 +1285,8 @@ export const EditCabinetModal = ({
                             },
                           }));
                         }}
-                        disabled={loading}
-                        placeholder="Select collection time"
+                        enableTimeInputs={true}
+                        mode="single"
                       />
                     </div>
                     <div>

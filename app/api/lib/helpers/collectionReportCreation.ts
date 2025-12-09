@@ -141,10 +141,31 @@ export async function updateMachineCollectionData(
   metersIn: number,
   metersOut: number,
   collectionTime: Date,
-  locationReportId: string
+  locationReportId: string,
+  collectionId?: string
 ): Promise<void> {
-  // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const currentMachine = await Machine.findOne({ _id: machineId }).lean();
+  // Run initial queries in parallel for better performance
+  const [currentMachine, collectionDocument] = await Promise.all([
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    Machine.findOne({ _id: machineId }).lean(),
+    // Find the collection document we just marked as completed
+    // If collectionId is provided, use it directly to avoid ambiguity
+    // Otherwise, match by locationReportId, meters, and collectionTime to ensure we get the correct document
+    collectionId
+      ? Collections.findOne({ _id: collectionId, locationReportId })
+      : Collections.findOne({
+          machineId,
+          locationReportId,
+          metersIn,
+          metersOut,
+          // Also match on collectionTime to ensure we get the exact document that was just updated
+          $or: [
+            { collectionTime: collectionTime },
+            { timestamp: collectionTime },
+          ],
+        }).sort({ timestamp: -1 }),
+  ]);
+
   if (!currentMachine) return;
 
   const currentMachineData = currentMachine as Record<string, unknown>;
@@ -154,14 +175,6 @@ export async function updateMachineCollectionData(
   const currentMachineCollectionTime = currentMachineData.collectionTime as
     | Date
     | undefined;
-
-  // Find the collection document we just marked as completed
-  const collectionDocument = await Collections.findOne({
-    machineId,
-    locationReportId,
-    metersIn,
-    metersOut,
-  }).sort({ timestamp: -1 });
 
   // Determine true previous meters from the latest completed collection
   const previousCompletedCollection = await Collections.findOne({
@@ -188,73 +201,6 @@ export async function updateMachineCollectionData(
     currentCollectionMeters?.metersOut ??
     0;
 
-  // Update collection document with prevIn/prevOut
-  if (collectionDocument?._id) {
-    await Collections.updateOne(
-      { _id: collectionDocument._id },
-      {
-        $set: {
-          prevIn: baselinePrevIn,
-          prevOut: baselinePrevOut,
-        },
-      }
-    ).catch((err: unknown) => {
-      console.error(
-        `Failed to update prevIn/prevOut for collection ${collectionDocument._id}:`,
-        err
-      );
-    });
-  }
-
-  // Update machine collectionMeters + timestamps
-  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-  await Machine.findOneAndUpdate(
-    { _id: machineId },
-    {
-      $set: {
-        'collectionMeters.metersIn': metersIn,
-        'collectionMeters.metersOut': metersOut,
-        collectionTime,
-        previousCollectionTime: currentMachineCollectionTime || undefined,
-        updatedAt: new Date(),
-      },
-    }
-  ).catch((err: unknown) => {
-    console.error(
-      `Failed to update collectionMeters for machine ${machineId}:`,
-      err
-    );
-  });
-
-  // Backfill locationReportId for any pre-existing history entries
-  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-  await Machine.findOneAndUpdate(
-    { _id: machineId },
-    {
-      $set: {
-        'collectionMetersHistory.$[elem].locationReportId': locationReportId,
-      },
-    },
-    {
-      arrayFilters: [
-        {
-          'elem.metersIn': metersIn,
-          'elem.metersOut': metersOut,
-          $or: [
-            { 'elem.locationReportId': '' },
-            { 'elem.locationReportId': { $exists: false } },
-          ],
-        },
-      ],
-      new: true,
-    }
-  ).catch((err: unknown) => {
-    console.error(
-      `Failed to update history entry identifiers for machine ${machineId}:`,
-      err
-    );
-  });
-
   // Create collection history entry
   const historyEntry = {
     _id: new mongoose.Types.ObjectId(),
@@ -266,39 +212,110 @@ export async function updateMachineCollectionData(
     locationReportId,
   };
 
+  // Prepare all update operations
+  const updatePromises: Promise<unknown>[] = [];
+
+  // Update collection document with prevIn/prevOut
+  if (collectionDocument?._id) {
+    updatePromises.push(
+      Collections.updateOne(
+        { _id: collectionDocument._id },
+        {
+          $set: {
+            prevIn: baselinePrevIn,
+            prevOut: baselinePrevOut,
+          },
+        }
+      ).catch((err: unknown) => {
+        console.error(
+          `Failed to update prevIn/prevOut for collection ${collectionDocument._id}:`,
+          err
+        );
+      })
+    );
+  }
+
+  // Update machine collectionMeters + timestamps
   // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-  await Machine.findOneAndUpdate(
-    { _id: machineId },
-    {
-      $push: {
-        collectionMetersHistory: historyEntry,
-      },
-    }
+  updatePromises.push(
+    Machine.findOneAndUpdate(
+      { _id: machineId },
+      {
+        $set: {
+          'collectionMeters.metersIn': metersIn,
+          'collectionMeters.metersOut': metersOut,
+          collectionTime,
+          previousCollectionTime: currentMachineCollectionTime || undefined,
+          updatedAt: new Date(),
+        },
+      }
+    ).catch((err: unknown) => {
+      console.error(
+        `Failed to update collectionMeters for machine ${machineId}:`,
+        err
+      );
+    })
   );
 
-  // Update gaming location's previousCollectionTime
+  // Backfill locationReportId for any pre-existing history entries and push new entry
+  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+  updatePromises.push(
+    Machine.findOneAndUpdate(
+      { _id: machineId },
+      {
+        $set: {
+          'collectionMetersHistory.$[elem].locationReportId': locationReportId,
+        },
+        $push: {
+          collectionMetersHistory: historyEntry,
+        },
+      },
+      {
+        arrayFilters: [
+          {
+            'elem.metersIn': metersIn,
+            'elem.metersOut': metersOut,
+            $or: [
+              { 'elem.locationReportId': '' },
+              { 'elem.locationReportId': { $exists: false } },
+            ],
+          },
+        ],
+        new: true,
+      }
+    ).catch((err: unknown) => {
+      console.error(`Failed to update history for machine ${machineId}:`, err);
+    })
+  );
+
+  // Update gaming location's previousCollectionTime (if needed)
   const gamingLocationId = currentMachineData.gamingLocation as string;
   if (gamingLocationId) {
     const { GamingLocations } = await import(
       '@/app/api/lib/models/gaminglocations'
     );
     // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-    await GamingLocations.findOneAndUpdate(
-      { _id: gamingLocationId },
-      {
-        $set: {
-          previousCollectionTime: collectionTime,
-          updatedAt: new Date(),
+    updatePromises.push(
+      GamingLocations.findOneAndUpdate(
+        { _id: gamingLocationId },
+        {
+          $set: {
+            previousCollectionTime: collectionTime,
+            updatedAt: new Date(),
+          },
         },
-      },
-      { new: true }
-    ).catch((err: unknown) => {
-      console.error(
-        `Failed to update previousCollectionTime for gaming location ${gamingLocationId}:`,
-        err
-      );
-    });
+        { new: true }
+      ).catch((err: unknown) => {
+        console.error(
+          `Failed to update previousCollectionTime for gaming location ${gamingLocationId}:`,
+          err
+        );
+      })
+    );
   }
+
+  // Execute all updates in parallel
+  await Promise.all(updatePromises);
 }
 
 /**
@@ -310,9 +327,19 @@ export async function updateMachineCollectionData(
 export async function createCollectionReport(
   body: CreateCollectionReportPayload
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
+  const startTime = Date.now();
+
   try {
+    console.log('🔄 [createCollectionReport] Starting report creation...', {
+      locationReportId: body.locationReportId,
+      machinesCount: body.machines?.length || 0,
+      collectionIdsCount: body.collectionIds?.length || 0,
+    });
+
     // Calculate totals on backend
+    console.log('🔄 [createCollectionReport] Calculating totals...');
     const calculated = await calculateCollectionReportTotals(body);
+    console.log('✅ [createCollectionReport] Totals calculated:', calculated);
 
     // Convert timestamp fields
     const doc = {
@@ -325,10 +352,20 @@ export async function createCollectionReport(
         : undefined,
     };
 
+    console.log(
+      '🔄 [createCollectionReport] Creating CollectionReport document...'
+    );
     const created = await CollectionReport.create(doc);
+    console.log(
+      '✅ [createCollectionReport] CollectionReport document created:',
+      created._id
+    );
 
     // Update all collection documents with the locationReportId
     if (body.machines && Array.isArray(body.machines)) {
+      console.log(
+        '🔄 [createCollectionReport] Updating collections with report ID...'
+      );
       await updateCollectionsWithReportId(
         body.machines.map(
           (m: {
@@ -349,31 +386,88 @@ export async function createCollectionReport(
         ),
         body.locationReportId
       );
+      console.log(
+        '✅ [createCollectionReport] Collections updated with report ID'
+      );
 
-      // Update machine collection data for each machine
-      for (const m of body.machines) {
-        if (!m.machineId) continue;
+      // Update machine collection data for all machines in parallel
+      const machinesToUpdate = body.machines.filter(m => m.machineId);
+      const collectionIds = body.collectionIds || [];
+      console.log(
+        `🔄 [createCollectionReport] Updating machine collection data for ${machinesToUpdate.length} machines in parallel...`
+      );
+      const machineUpdatePromises = machinesToUpdate.map(async (m, index) => {
+        try {
+          const normalizedMetersIn = Number(m.metersIn) || 0;
+          const normalizedMetersOut = Number(m.metersOut) || 0;
+          const collectionTimestamp = new Date(
+            m.collectionTime || body.timestamp
+          );
+          // Use collection ID if available to ensure we update the correct document
+          const collectionId = collectionIds[index] || undefined;
 
-        const normalizedMetersIn = Number(m.metersIn) || 0;
-        const normalizedMetersOut = Number(m.metersOut) || 0;
-        const collectionTimestamp = new Date(
-          m.collectionTime || body.timestamp
-        );
+          console.log(
+            `🔄 [createCollectionReport] Updating machine ${index + 1}/${machinesToUpdate.length}: ${m.machineId}${collectionId ? ` (collectionId: ${collectionId})` : ''}`
+          );
+          await updateMachineCollectionData(
+            m.machineId!,
+            normalizedMetersIn,
+            normalizedMetersOut,
+            collectionTimestamp,
+            body.locationReportId,
+            collectionId
+          );
+          return { success: true, machineId: m.machineId };
+        } catch (machineError) {
+          console.error(
+            `❌ [createCollectionReport] Error updating machine ${m.machineId}:`,
+            machineError
+          );
+          return {
+            success: false,
+            machineId: m.machineId,
+            error: machineError,
+          };
+        }
+      });
 
-        await updateMachineCollectionData(
-          m.machineId,
-          normalizedMetersIn,
-          normalizedMetersOut,
-          collectionTimestamp,
-          body.locationReportId
+      const machineUpdateResults = await Promise.all(machineUpdatePromises);
+      const successful = machineUpdateResults.filter(r => r.success).length;
+      const failed = machineUpdateResults.filter(r => !r.success).length;
+
+      console.log(
+        `✅ [createCollectionReport] Machine collection data updated: ${successful} successful, ${failed} failed`
+      );
+
+      if (failed > 0) {
+        console.warn(
+          `⚠️ [createCollectionReport] ${failed} machine(s) failed to update:`,
+          machineUpdateResults.filter(r => !r.success).map(r => r.machineId)
         );
       }
     }
 
+    const duration = Date.now() - startTime;
+    console.log(
+      `✅ [createCollectionReport] Report creation completed successfully in ${duration}ms`
+    );
+
     return { success: true, data: created._id };
   } catch (error) {
+    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
+
+    console.error(
+      `❌ [createCollectionReport] Report creation failed after ${duration}ms:`,
+      {
+        error: errorMessage,
+        errorType:
+          error instanceof Error ? error.constructor.name : typeof error,
+        stack: error instanceof Error ? error.stack : undefined,
+      }
+    );
+
     return { success: false, error: errorMessage };
   }
 }

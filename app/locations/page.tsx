@@ -110,6 +110,10 @@ function LocationsPageContent() {
   );
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(true);
 
+  // Prevent premature data fetching - wait for filters to be initialized
+  const [filtersInitialized, setFiltersInitialized] = useState(false);
+  const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
+
   // AbortController for metrics totals
   const makeMetricsRequest = useAbortableRequest();
 
@@ -294,66 +298,165 @@ function LocationsPageContent() {
   const hasInitialFetchRef = useRef(false);
   const lastFetchParamsRef = useRef<string>('');
 
+  // Memoize fetchData call to avoid recreating on every render
+  const triggerFetchData = useCallback(async () => {
+    console.log('[LocationsPage] triggerFetchData called');
+    await fetchData(1, itemsPerBatch);
+  }, [fetchData, itemsPerBatch]);
+
+  // Detect when date filter is properly initialized (like location details page)
+  useEffect(() => {
+    if (activeMetricsFilter) {
+      console.log('[LocationsPage] 🔧 Setting dateFilterInitialized = true');
+      setDateFilterInitialized(true);
+    }
+  }, [activeMetricsFilter]);
+
+  // Initialize filters flag - set immediately when activeMetricsFilter is available
+  // This must be in a separate effect to ensure flags are set before other effects check them
+  // IMPORTANT: This effect must run BEFORE the main fetch effect
+  useEffect(() => {
+    if (activeMetricsFilter) {
+      if (!dateFilterInitialized) {
+        setDateFilterInitialized(true);
+      }
+      if (!filtersInitialized) {
+        console.log('[LocationsPage] ✅ Setting filtersInitialized = true');
+        setFiltersInitialized(true);
+      }
+    }
+  }, [activeMetricsFilter, dateFilterInitialized, filtersInitialized]);
+
   // Initialize: fetch first batch on mount and when filters change
   // Search is handled with frontend filtering first, backend only if needed
   useEffect(() => {
-    // Only fetch batch data when search is cleared or not active
-    if (!searchTerm.trim()) {
-      // Create a unique key for this fetch to prevent duplicate calls
-      const fetchKey = `${selectedLicencee}-${activeMetricsFilter}-${startDateTimestamp}-${endDateTimestamp}-${selectedFiltersKey}-${displayCurrency}`;
+    console.log('[LocationsPage] Main fetch effect triggered:', {
+      user: !!user,
+      activeMetricsFilter,
+      filtersInitialized,
+      dateFilterInitialized,
+      selectedLicencee,
+      searchTerm,
+    });
 
-      // Skip if this exact fetch was already triggered
-      if (
-        lastFetchParamsRef.current === fetchKey &&
-        hasInitialFetchRef.current
-      ) {
+    const fetchLocations = async () => {
+      // Wait for user to be loaded before fetching
+      if (!user) {
+        console.log('[LocationsPage] ⏸️ Waiting for user to load...');
         return;
       }
 
-      // Update the last fetch params
-      lastFetchParamsRef.current = fetchKey;
-
-      // Reset accumulated data when filters change (but not on initial mount)
-      if (hasInitialFetchRef.current) {
-        isResettingRef.current = true;
-        setAccumulatedLocations([]);
-        setLoadedBatches(new Set());
-        lastLocationDataRef.current = [];
+      // Only proceed if filters are initialized (like location details page)
+      // Check inside async function to avoid race conditions
+      if (
+        !activeMetricsFilter ||
+        !dateFilterInitialized ||
+        !filtersInitialized
+      ) {
+        console.log('[LocationsPage] ⏸️ Waiting for filters to initialize:', {
+          activeMetricsFilter: !!activeMetricsFilter,
+          filtersInitialized,
+          dateFilterInitialized,
+        });
+        return;
       }
-      
-      fetchData(1, itemsPerBatch);
-      hasInitialFetchRef.current = true;
 
-      // Reset flag after a short delay to allow state updates to complete
-      if (isResettingRef.current) {
-        setTimeout(() => {
-          isResettingRef.current = false;
-        }, 0);
+      // Ensure we have a valid filter before fetching
+      const effectiveFilter = activeMetricsFilter || 'Today';
+
+      // Only fetch batch data when search is cleared or not active
+      if (!searchTerm.trim()) {
+        // Create a unique key for this fetch to prevent duplicate calls
+        // Use empty string for undefined/null values to ensure consistent keys
+        const fetchKey = `${selectedLicencee || ''}-${effectiveFilter}-${startDateTimestamp || ''}-${endDateTimestamp || ''}-${selectedFiltersKey}-${displayCurrency || ''}`;
+
+        // Skip if this exact fetch was already triggered
+        if (
+          lastFetchParamsRef.current === fetchKey &&
+          hasInitialFetchRef.current
+        ) {
+          console.log('[LocationsPage] ⏭️ Skipping duplicate fetch:', fetchKey);
+          return;
+        }
+
+        // Update the last fetch params BEFORE triggering to prevent race conditions
+        lastFetchParamsRef.current = fetchKey;
+
+        // Mark as fetched BEFORE triggering to prevent duplicate triggers
+        const wasInitialFetch = !hasInitialFetchRef.current;
+        hasInitialFetchRef.current = true;
+
+        // Reset accumulated data when filters change (but not on initial mount)
+        if (!wasInitialFetch) {
+          isResettingRef.current = true;
+          setAccumulatedLocations([]);
+          setLoadedBatches(new Set());
+          lastLocationDataRef.current = [];
+        }
+
+        console.log('[LocationsPage] ✅ Fetching locations data:', {
+          selectedLicencee,
+          activeMetricsFilter: effectiveFilter,
+          startDateTimestamp,
+          endDateTimestamp,
+          selectedFiltersKey,
+          displayCurrency,
+          isInitialFetch: wasInitialFetch,
+          userLoaded: !!user,
+          filtersInitialized,
+          dateFilterInitialized,
+          fetchKey,
+        });
+
+        // Trigger fetch - it will work even if selectedLicencee is empty (API handles it)
+        console.log('[LocationsPage] 🚀 Triggering fetchData...');
+        triggerFetchData();
+
+        // Reset flag after a short delay to allow state updates to complete
+        if (isResettingRef.current) {
+          setTimeout(() => {
+            isResettingRef.current = false;
+          }, 0);
+        }
+      } else {
+        console.log(
+          '[LocationsPage] ⏸️ Skipping fetch - search term is active:',
+          searchTerm
+        );
       }
-    }
+    };
+
+    fetchLocations();
   }, [
+    user,
     selectedLicencee,
     activeMetricsFilter,
     startDateTimestamp,
     endDateTimestamp,
     selectedFiltersKey,
-    itemsPerBatch,
-    fetchData,
     displayCurrency,
-    searchTerm, // Include searchTerm to reset when search is cleared
+    searchTerm,
+    triggerFetchData,
+    filtersInitialized,
+    dateFilterInitialized,
   ]);
+
+  // Memoize backend search trigger
+  const triggerBackendSearch = useCallback(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Trigger backend search only if frontend filter found no results
   useEffect(() => {
     if (shouldUseBackendSearch) {
       // Use debounced search term for backend query
       const timeoutId = setTimeout(() => {
-        fetchData();
+        triggerBackendSearch();
       }, 500); // Debounce backend search
       return () => clearTimeout(timeoutId);
     }
     return undefined;
-  }, [shouldUseBackendSearch, fetchData]);
+  }, [shouldUseBackendSearch, triggerBackendSearch]);
 
   // Update accumulated locations when new data arrives
   useEffect(() => {
@@ -395,9 +498,12 @@ function LocationsPageContent() {
   // Initialize selectedLicencee based on user's assigned licensees
   // Auto-select single licensee for non-admin users
   const hasInitializedLicenseeRef = useRef(false);
+  const licenseeInitializedRef = useRef(false);
+
   useEffect(() => {
     if (!user) {
       hasInitializedLicenseeRef.current = false;
+      licenseeInitializedRef.current = false;
       return;
     }
 
@@ -425,6 +531,8 @@ function LocationsPageContent() {
 
     // Initialize on first load
     const defaultLicensee = getDefaultSelectedLicensee(user);
+    const previousLicensee = selectedLicencee;
+
     if (defaultLicensee && (!selectedLicencee || selectedLicencee === '')) {
       setSelectedLicencee(defaultLicensee);
       if (process.env.NODE_ENV === 'development') {
@@ -443,6 +551,11 @@ function LocationsPageContent() {
     }
 
     hasInitializedLicenseeRef.current = true;
+
+    // Mark as initialized if licensee changed or was set
+    if (previousLicensee !== selectedLicencee || selectedLicencee) {
+      licenseeInitializedRef.current = true;
+    }
   }, [user, selectedLicencee, setSelectedLicencee]);
 
   // Reset page when search changes
@@ -457,33 +570,71 @@ function LocationsPageContent() {
   // Separate useEffect to fetch metrics totals independently (like dashboard does)
   // This ensures metrics cards always show totals from all locations, separate from table pagination
   useEffect(() => {
+    console.log('[LocationsPage] Metrics fetch effect triggered:', {
+      activeMetricsFilter,
+      filtersInitialized,
+      dateFilterInitialized,
+      selectedLicencee,
+    });
+
     const fetchMetrics = async () => {
-      if (!activeMetricsFilter) {
+      // Only proceed if filters are initialized (like location details page)
+      if (
+        !activeMetricsFilter ||
+        !filtersInitialized ||
+        !dateFilterInitialized
+      ) {
         console.log(
-          '🔍 [LocationsPage] Skipping metrics fetch - no activeMetricsFilter'
+          '[LocationsPage] ⏸️ Metrics: Waiting for filters to initialize:',
+          {
+            activeMetricsFilter: !!activeMetricsFilter,
+            filtersInitialized,
+            dateFilterInitialized,
+          }
+        );
+        setMetricsTotalsLoading(false);
+        return;
+      }
+
+      // Use default filter if none is set
+      const effectiveFilter = activeMetricsFilter || 'Today';
+
+      if (!effectiveFilter) {
+        console.log(
+          '🔍 [LocationsPage] ⏸️ Skipping metrics fetch - no activeMetricsFilter'
         );
         setMetricsTotalsLoading(false);
         return;
       }
 
       // Create unique key for this fetch
-      const metricsFetchKey = `${activeMetricsFilter}-${selectedLicencee}-${customDateRange?.startDate?.getTime()}-${customDateRange?.endDate?.getTime()}-${displayCurrency}`;
+      // Use empty string for undefined/null values to ensure consistent keys
+      const metricsFetchKey = `${effectiveFilter}-${selectedLicencee || ''}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${displayCurrency || ''}`;
 
-      // Skip if this exact fetch was already triggered or is in progress
-      if (
-        (lastMetricsFetchRef.current === metricsFetchKey &&
-          metricsFetchInProgressRef.current) ||
-        metricsFetchInProgressRef.current
-      ) {
+      // Skip if this exact fetch is currently in progress
+      if (metricsFetchInProgressRef.current) {
+        console.log(
+          '🔍 [LocationsPage] Metrics fetch already in progress, skipping:',
+          metricsFetchKey
+        );
         return;
       }
 
-      // Mark as in progress and update key
+      // Skip if this exact fetch was already completed
+      if (lastMetricsFetchRef.current === metricsFetchKey) {
+        console.log(
+          '🔍 [LocationsPage] Metrics fetch already completed for:',
+          metricsFetchKey
+        );
+        return;
+      }
+
+      // Mark as in progress and update key BEFORE triggering to prevent race conditions
       metricsFetchInProgressRef.current = true;
       lastMetricsFetchRef.current = metricsFetchKey;
 
       console.log('🔍 [LocationsPage] Starting metrics totals fetch:', {
-        activeMetricsFilter,
+        activeMetricsFilter: effectiveFilter,
         selectedLicencee,
         displayCurrency,
         customDateRange: customDateRange
@@ -495,11 +646,11 @@ function LocationsPageContent() {
       });
 
       setMetricsTotalsLoading(true);
-      
-      const metricsResult = await makeMetricsRequest(async signal => {
-        await new Promise<void>((resolve, reject) => {
-          fetchDashboardTotals(
-            activeMetricsFilter || 'Today',
+
+      try {
+        const metricsResult = await makeMetricsRequest(async signal => {
+          await fetchDashboardTotals(
+            effectiveFilter,
             customDateRange || {
               startDate: new Date(),
               endDate: new Date(),
@@ -520,23 +671,32 @@ function LocationsPageContent() {
                 '🔍 [LocationsPage] setMetricsTotals called with:',
                 totals
               );
-              resolve();
             },
             displayCurrency,
             signal
-          ).catch(reject);
-        });
-      }, `Locations Metrics Totals (${activeMetricsFilter}, Licensee: ${selectedLicencee})`);
-      
-      // Only clear metrics if request wasn't aborted (result is not null)
-      if (!metricsResult) {
-        console.log('🔍 [LocationsPage] Metrics fetch aborted - keeping existing metrics');
+          );
+        }, 'metrics'); // Use unique key to prevent cancellation from other requests
+
+        // makeMetricsRequest returns null if aborted, undefined if successful
+        // Only clear loading state if request completed (not aborted)
+        if (metricsResult !== null) {
+          setMetricsTotalsLoading(false);
+          metricsFetchInProgressRef.current = false;
+          console.log('🔍 [LocationsPage] Metrics totals fetch completed');
+        } else {
+          console.log(
+            '🔍 [LocationsPage] Metrics fetch aborted - keeping loading state'
+          );
+          // If aborted, keep loading state active so skeleton continues to show
+          // The next request will complete and update the loading state
+          metricsFetchInProgressRef.current = false;
+        }
+      } catch (error) {
+        // Handle real errors (not cancellations - those are handled by makeMetricsRequest)
+        console.error('🔍 [LocationsPage] Error fetching metrics:', error);
+        setMetricsTotalsLoading(false);
+        metricsFetchInProgressRef.current = false;
       }
-      
-      // Always clear loading state, whether aborted or completed
-      setMetricsTotalsLoading(false);
-      metricsFetchInProgressRef.current = false;
-      console.log('🔍 [LocationsPage] Metrics totals fetch completed');
     };
 
     fetchMetrics();
@@ -546,6 +706,8 @@ function LocationsPageContent() {
     customDateRange,
     displayCurrency,
     makeMetricsRequest,
+    filtersInitialized,
+    dateFilterInitialized,
   ]);
 
   // Fetch new batch when crossing batch boundary

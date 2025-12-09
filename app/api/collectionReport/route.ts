@@ -11,6 +11,17 @@
  */
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  createCollectionReport,
+  sanitizeCollectionReportPayload,
+  validateCollectionReportPayload,
+} from '@/app/api/lib/helpers/collectionReportCreation';
+import {
+  calculateDateRangeForTimePeriod,
+  determineAllowedLocationIds,
+  fetchLocationsWithMachines,
+  getLocationNamesFromIds,
+} from '@/app/api/lib/helpers/collectionReportQueries';
 import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReportService';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
@@ -23,17 +34,6 @@ import { getClientIP } from '@/lib/utils/ipAddress';
 import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../lib/helpers/users';
-import {
-  fetchLocationsWithMachines,
-  calculateDateRangeForTimePeriod,
-  determineAllowedLocationIds,
-  getLocationNamesFromIds,
-} from '@/app/api/lib/helpers/collectionReportQueries';
-import {
-  validateCollectionReportPayload,
-  sanitizeCollectionReportPayload,
-  createCollectionReport,
-} from '@/app/api/lib/helpers/collectionReportCreation';
 
 /**
  * Main GET handler for collection reports
@@ -192,9 +192,8 @@ export async function GET(req: NextRequest) {
     // Note: Collection reports store location NAME in the location field, not ID
     let filteredReports = reports;
     if (allowedLocationIds !== 'all') {
-      const allowedLocationNames = await getLocationNamesFromIds(
-        allowedLocationIds
-      );
+      const allowedLocationNames =
+        await getLocationNamesFromIds(allowedLocationIds);
       filteredReports = reports.filter(report => {
         const reportLocationName = String(report.location);
         return allowedLocationNames.includes(reportLocationName);
@@ -216,8 +215,10 @@ export async function GET(req: NextRequest) {
         const collector = (report.collector || '').toLowerCase();
         const locationReportId = (report.locationReportId || '').toLowerCase();
         const reportId = (report._id || '').toLowerCase();
-        const collectorFullName = (report.collectorFullName || '').toLowerCase(); // DEPRECATED: Display only
-        
+        const collectorFullName = (
+          report.collectorFullName || ''
+        ).toLowerCase(); // DEPRECATED: Display only
+
         return (
           collector.includes(search) ||
           locationReportId.includes(search) ||
@@ -288,7 +289,6 @@ export async function POST(req: NextRequest) {
     // STEP 2: Parse and validate request body
     // ============================================================================
     const body = (await req.json()) as CreateCollectionReportPayload;
-
     const validation = validateCollectionReportPayload(body);
     if (!validation.isValid) {
       const duration = Date.now() - startTime;
@@ -317,7 +317,10 @@ export async function POST(req: NextRequest) {
         `[Collection Report POST API] Failed to create report after ${duration}ms: ${result.error}`
       );
       return NextResponse.json(
-        { success: false, error: result.error || 'Failed to create collection report' },
+        {
+          success: false,
+          error: result.error || 'Failed to create collection report',
+        },
         { status: 500 }
       );
     }
@@ -384,7 +387,9 @@ export async function POST(req: NextRequest) {
             userEmail: currentUser.emailAddress as string,
             userRole: (currentUser.roles as string[])?.[0] || 'user',
             resource: 'collection',
-            resourceId: result.data ? String(result.data) : sanitizedBody.locationReportId,
+            resourceId: result.data
+              ? String(result.data)
+              : sanitizedBody.locationReportId,
             resourceName: `${body.locationName} - ${body.collector || 'Unknown'}`,
             changes: createChanges,
           },

@@ -23,23 +23,16 @@ import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import TopPerformingLocationModal from '@/components/modals/TopPerformingLocationModal';
 import TopPerformingMachineModal from '@/components/modals/TopPerformingMachineModal';
 import Chart from '@/components/ui/dashboard/Chart';
+import FinancialMetricsCards from '@/components/ui/FinancialMetricsCards';
 import MapPreview from '@/components/ui/MapPreview';
 import { RefreshButtonSkeleton } from '@/components/ui/skeletons/ButtonSkeletons';
 import {
   DashboardChartSkeleton,
-  DashboardFinancialMetricsSkeleton,
   DashboardTopPerformingSkeleton,
 } from '@/components/ui/skeletons/DashboardSkeletons';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { TopPerformingItem } from '@/lib/types';
 import { PcLayoutProps } from '@/lib/types/componentProps';
-import { formatCurrency } from '@/lib/utils/currency';
-import {
-  getGrossColorClass,
-  getMoneyInColorClass,
-  getMoneyOutColorClass,
-} from '@/lib/utils/financialColors';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import axios from 'axios';
 import { ExternalLink, RefreshCw } from 'lucide-react';
@@ -68,26 +61,8 @@ export default function PcLayout(props: PcLayoutProps) {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const { activeMetricsFilter, customDateRange, selectedLicencee } =
     useDashBoardStore();
-  const { shouldShowCurrency, displayCurrency } = useCurrencyFormat();
   const licenseeName =
     getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
-
-  // ============================================================================
-  // Helper Functions
-  // ============================================================================
-  // Format amount with currency code (BBD) instead of symbol (Bds$)
-  const formatAmountWithCode = (amount: number, currency: string) => {
-    const hasDecimals = amount % 1 !== 0;
-    const decimalPart = Math.abs(amount % 1);
-    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
-
-    const formatted = new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
-      maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
-    }).format(amount);
-
-    return `${currency} ${formatted}`;
-  };
 
   // ============================================================================
   // Helper Components
@@ -234,92 +209,46 @@ export default function PcLayout(props: PcLayoutProps) {
           </div>
 
           {/* Financial Metrics Cards */}
-          {props.loadingChartData ? (
-            <DashboardFinancialMetricsSkeleton />
-          ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {/* Money In Card */}
-              <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6">
-                <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
-                  Money In
-                </p>
-                <div className="my-2 h-[4px] w-full rounded-full bg-buttonActive"></div>
-                <div className="flex flex-1 items-center justify-center">
-                  <p
-                    className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getMoneyInColorClass(
-                      props.totals?.moneyIn
-                    )}`}
-                  >
-                    {props.totals
-                      ? shouldShowCurrency()
-                        ? formatAmountWithCode(
-                            props.totals.moneyIn,
-                            displayCurrency
-                          )
-                        : formatCurrency(props.totals.moneyIn)
-                      : '--'}
-                  </p>
-                </div>
-              </div>
-              {/* Money Out Card */}
-              <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6">
-                <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
-                  Money Out
-                </p>
-                <div className="my-2 h-[4px] w-full rounded-full bg-lighterBlueHighlight"></div>
-                <div className="flex flex-1 items-center justify-center">
-                  <p
-                    className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getMoneyOutColorClass(
-                      props.totals?.moneyOut,
-                      props.totals?.moneyIn
-                    )}`}
-                  >
-                    {props.totals
-                      ? shouldShowCurrency()
-                        ? formatAmountWithCode(
-                            props.totals.moneyOut,
-                            displayCurrency
-                          )
-                        : formatCurrency(props.totals.moneyOut)
-                      : '--'}
-                  </p>
-                </div>
-              </div>
-              {/* Gross Card - Will wrap to new line when space is limited */}
-              <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6 md:col-span-2 lg:col-span-2 xl:col-span-1">
-                <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
-                  Gross
-                </p>
-                <div className="my-2 h-[4px] w-full rounded-full bg-orangeHighlight"></div>
-                <div className="flex flex-1 items-center justify-center">
-                  <p
-                    className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getGrossColorClass(
-                      props.totals?.gross
-                    )}`}
-                  >
-                    {props.totals
-                      ? shouldShowCurrency()
-                        ? formatAmountWithCode(
-                            props.totals.gross,
-                            displayCurrency
-                          )
-                        : formatCurrency(props.totals.gross)
-                      : '--'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          <FinancialMetricsCards
+            totals={props.totals}
+            loading={props.loadingChartData}
+            title="Total for all Locations and Machines"
+          />
 
           {/* Trend Chart Section */}
           {props.loadingChartData ? (
             <DashboardChartSkeleton />
           ) : (
             <div className="rounded-lg bg-container p-6 shadow-md">
+              {/* Granularity Selector - Only show for Today/Yesterday/Custom */}
+              {props.showGranularitySelector && (
+                <div className="mb-3 flex items-center justify-end gap-2">
+                  <label
+                    htmlFor="chart-granularity-dashboard"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Granularity:
+                  </label>
+                  <select
+                    id="chart-granularity-dashboard"
+                    value={props.chartGranularity}
+                    onChange={e =>
+                      props.setChartGranularity?.(
+                        e.target.value as 'hourly' | 'minute'
+                      )
+                    }
+                    className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                  >
+                    <option value="minute">Minute</option>
+                    <option value="hourly">Hourly</option>
+                  </select>
+                </div>
+              )}
               <Chart
                 loadingChartData={props.loadingChartData}
                 chartData={props.chartData}
                 activeMetricsFilter={props.activeMetricsFilter}
+                totals={props.totals}
               />
             </div>
           )}
@@ -354,7 +283,9 @@ export default function PcLayout(props: PcLayoutProps) {
 
           {/* Top Performing Section */}
           <div className="rounded-lg bg-container p-6 shadow-md">
-            {props.loadingTopPerforming ? (
+            {props.loadingTopPerforming ||
+            (!props.hasTopPerformingFetched &&
+              props.topPerformingData.length === 0) ? (
               <DashboardTopPerformingSkeleton />
             ) : (
               <div className="space-y-4">
@@ -420,7 +351,11 @@ export default function PcLayout(props: PcLayoutProps) {
 
                   {/* Content area */}
                   <div className="mb-0 rounded-lg rounded-tl-none rounded-tr-3xl bg-container p-6 shadow-sm">
-                    {props.topPerformingData.length === 0 ? (
+                    {props.loadingTopPerforming ||
+                    (!props.hasTopPerformingFetched &&
+                      props.topPerformingData.length === 0) ? (
+                      <DashboardTopPerformingSkeleton />
+                    ) : props.topPerformingData.length === 0 ? (
                       <NoDataMessage
                         message={`No metrics found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}
                       />

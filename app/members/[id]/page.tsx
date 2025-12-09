@@ -14,22 +14,21 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
-import axios from 'axios';
-import { CasinoMember as Member } from '@/shared/types/entities';
-import PageLayout from '@/components/layout/PageLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import PageLayout from '@/components/layout/PageLayout';
 import NotFoundError from '@/components/ui/errors/NotFoundError';
+import { CasinoMember as Member } from '@/shared/types/entities';
+import axios from 'axios';
+import { useParams } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import PlayerHeader from '@/components/members/PlayerHeader';
-import PlayerTotalsCard from '@/components/members/PlayerTotalsCard';
-import PlayerSessionTable from '@/components/members/PlayerSessionTable';
-import PlayerHeaderSkeleton from '@/components/members/PlayerHeaderSkeleton';
-import PlayerTotalsCardSkeleton from '@/components/members/PlayerTotalsCardSkeleton';
-import PlayerSessionTableSkeleton from '@/components/members/PlayerSessionTableSkeleton';
 import FilterControlsSkeleton from '@/components/members/FilterControlsSkeleton';
-import Link from 'next/link';
+import PlayerHeader from '@/components/members/PlayerHeader';
+import PlayerHeaderSkeleton from '@/components/members/PlayerHeaderSkeleton';
+import PlayerSessionTable from '@/components/members/PlayerSessionTable';
+import PlayerSessionTableSkeleton from '@/components/members/PlayerSessionTableSkeleton';
+import PlayerTotalsCard from '@/components/members/PlayerTotalsCard';
+import PlayerTotalsCardSkeleton from '@/components/members/PlayerTotalsCardSkeleton';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -37,9 +36,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronLeft, Download, RefreshCw, FileSpreadsheet, FileText } from 'lucide-react';
-import { toast } from 'sonner';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import {
+  ChevronLeft,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  RefreshCw,
+} from 'lucide-react';
+import Link from 'next/link';
+import { toast } from 'sonner';
 
 type FilterType = 'session' | 'day' | 'week' | 'month';
 type SortOption =
@@ -87,7 +93,7 @@ function MemberDetailsPageContent() {
   // ============================================================================
   // Data Fetching Functions
   // ============================================================================
-  const fetchMemberData = async () => {
+  const fetchMemberData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -112,7 +118,7 @@ function MemberDetailsPageContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [memberId, filter, currentPage]);
 
   // ============================================================================
   // Effects - Data Fetching
@@ -121,8 +127,7 @@ function MemberDetailsPageContent() {
     if (memberId) {
       fetchMemberData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memberId, filter, currentPage]);
+  }, [memberId, fetchMemberData]);
 
   // Separate effect for initial data fetch to prevent double calls
   useEffect(() => {
@@ -311,7 +316,8 @@ function MemberDetailsPageContent() {
     }
 
     const pages = member.pagination?.totalPages || 1;
-    const totalPages = pages > 0 ? pages : ((member.sessions?.length ?? 0) > 0 ? 1 : 0);
+    const totalPages =
+      pages > 0 ? pages : (member.sessions?.length ?? 0) > 0 ? 1 : 0;
     const currentSessions = member.sessions || [];
 
     return (
@@ -330,7 +336,9 @@ function MemberDetailsPageContent() {
             onClick={handleRefresh}
             disabled={loading}
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
+            />
             Refresh
           </Button>
         </div>

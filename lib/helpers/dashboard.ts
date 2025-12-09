@@ -189,11 +189,16 @@ export const fetchDashboardTotals = async (
     console.log('🔍 [fetchDashboardTotals] setTotals called with:', totals);
   } catch (error) {
     // Silently handle aborted requests - this is expected behavior
-    if (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) {
-      console.log('🔍 [fetchDashboardTotals] Request aborted (filter/page change)');
+    if (
+      error instanceof Error &&
+      (error.name === 'AbortError' || error.name === 'CanceledError')
+    ) {
+      console.log(
+        '🔍 [fetchDashboardTotals] Request aborted (filter/page change)'
+      );
       return;
     }
-    
+
     const apiError = classifyError(error);
     showErrorNotification(apiError, 'Dashboard Totals');
 
@@ -224,46 +229,56 @@ export const fetchMetricsData = async (
   setActiveFilters: (filters: ActiveFilters) => void,
   setShowDatePicker: (show: boolean) => void,
   displayCurrency?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  granularity?: 'hourly' | 'minute'
 ) => {
-  // Fetch totals using the dedicated API
-  await fetchDashboardTotals(
-    activeMetricsFilter,
-    customDateRange,
-    selectedLicencee,
-    setTotals,
-    displayCurrency,
-    signal
-  );
-
-  // Fetch chart data using the existing method
-  if (selectedLicencee) {
-    await switchFilter(
+  // Fetch both totals and chart data in parallel to ensure they complete together
+  // This prevents the skeleton from disappearing when totals is set but chartData is still loading
+  await Promise.all([
+    fetchDashboardTotals(
       activeMetricsFilter,
-      () => {}, // Don't set totals here, we already did it above
-      setChartData,
-      activeMetricsFilter === 'Custom' ? customDateRange.startDate : undefined,
-      activeMetricsFilter === 'Custom' ? customDateRange.endDate : undefined,
+      customDateRange,
       selectedLicencee,
-      setActiveFilters,
-      setShowDatePicker,
+      setTotals,
       displayCurrency,
       signal
-    );
-  } else {
-    await switchFilter(
-      activeMetricsFilter,
-      () => {}, // Don't set totals here, we already did it above
-      setChartData,
-      activeMetricsFilter === 'Custom' ? customDateRange.startDate : undefined,
-      activeMetricsFilter === 'Custom' ? customDateRange.endDate : undefined,
-      undefined,
-      setActiveFilters,
-      setShowDatePicker,
-      displayCurrency,
-      signal
-    );
-  }
+    ),
+    selectedLicencee
+      ? switchFilter(
+          activeMetricsFilter,
+          () => {}, // Don't set totals here, we already did it above
+          setChartData,
+          activeMetricsFilter === 'Custom'
+            ? customDateRange.startDate
+            : undefined,
+          activeMetricsFilter === 'Custom'
+            ? customDateRange.endDate
+            : undefined,
+          selectedLicencee,
+          setActiveFilters,
+          setShowDatePicker,
+          displayCurrency,
+          signal,
+          granularity
+        )
+      : switchFilter(
+          activeMetricsFilter,
+          () => {}, // Don't set totals here, we already did it above
+          setChartData,
+          activeMetricsFilter === 'Custom'
+            ? customDateRange.startDate
+            : undefined,
+          activeMetricsFilter === 'Custom'
+            ? customDateRange.endDate
+            : undefined,
+          undefined,
+          setActiveFilters,
+          setShowDatePicker,
+          displayCurrency,
+          signal,
+          granularity
+        ),
+  ]);
 };
 
 /**
@@ -295,6 +310,27 @@ export const fetchTopPerformingDataHelper = async (
     );
     setTopPerformingData(data);
   } catch (error) {
+    // Check if this is a cancelled request - don't treat as error
+    const axios = (await import('axios')).default;
+    if (axios.isCancel && axios.isCancel(error)) {
+      // Request was cancelled, silently return
+      return;
+    }
+
+    // Check for standard abort errors
+    if (
+      (error instanceof Error && error.name === 'AbortError') ||
+      (error instanceof Error && error.message === 'canceled') ||
+      (error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'))
+    ) {
+      // Request was cancelled, silently return
+      return;
+    }
+
+    // Only show error notification for actual errors
     const apiError = classifyError(error);
     showErrorNotification(apiError, 'Top Performing Data');
 

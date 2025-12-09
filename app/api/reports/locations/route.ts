@@ -21,21 +21,25 @@ import {
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
-import { Countries } from '@/app/api/lib/models/countries';
 import { TimePeriod } from '@/app/api/lib/types';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
-  getLicenseeCurrency,
-  getCountryCurrency,
-  convertToUSD,
   convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+  getLicenseeCurrency,
 } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
+import type {
+  AggregatedLocation,
+  GamingMachine,
+} from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -71,7 +75,7 @@ export async function GET(req: NextRequest) {
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;
     let displayCurrency: CurrencyCode = currencyParam || 'USD';
     const searchTerm = searchParams.get('search')?.trim() || '';
-    
+
     // Parse filters parameter (e.g., "MembershipOnly", "SMIBLocationsOnly", etc.)
     const filtersParam = searchParams.get('filters');
     const filters = filtersParam ? filtersParam.split(',') : [];
@@ -295,9 +299,8 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const gamingDayStart = Date.now();
     const gamingDayRanges = getGamingDayRangesForLocations(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      locations.map((loc: any) => ({
-        _id: loc._id.toString(),
+      locations.map(loc => ({
+        _id: (loc._id as { toString: () => string }).toString(),
         gameDayOffset: loc.gameDayOffset ?? 8, // Default to 8 AM Trinidad time (Rule 1)
       })),
       timePeriod,
@@ -310,7 +313,7 @@ export async function GET(req: NextRequest) {
     // STEP 9: Aggregate financial metrics per location
     // ============================================================================
     const processingStart = Date.now();
-    const locationResults = [];
+    const locationResults: AggregatedLocation[] = [];
 
     // 🚀 OPTIMIZED: Use single aggregation for 7d/30d periods (much faster)
     // For shorter periods (Today/Yesterday/Custom), use batch processing
@@ -319,7 +322,6 @@ export async function GET(req: NextRequest) {
       timePeriod === '30d' ||
       timePeriod === 'last7days' ||
       timePeriod === 'last30days';
-
 
     if (useSingleAggregation) {
       // 🚀 SUPER OPTIMIZED: Single aggregation for ALL locations (much faster for 30d/7d)
@@ -456,14 +458,14 @@ export async function GET(req: NextRequest) {
         // Calculate machine status metrics
         const totalMachines = machines.length;
         const onlineMachines = machines.filter(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (m: any) =>
+          (m: GamingMachine) =>
             m.lastActivity &&
             new Date(m.lastActivity) >
               new Date(Date.now() - 24 * 60 * 60 * 1000)
         ).length;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sasMachines = machines.filter((m: any) => m.isSasMachine).length;
+        const sasMachines = machines.filter(
+          (m: GamingMachine) => m.isSasMachine
+        ).length;
         const nonSasMachines = totalMachines - sasMachines;
 
         // Skip locations with no data if showAllLocations is false
@@ -481,23 +483,25 @@ export async function GET(req: NextRequest) {
           location: locationId,
           locationName: location.name,
           isLocalServer: location.isLocalServer || false,
-          membershipEnabled: Boolean(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (location as any).membershipEnabled
-          ),
+          membershipEnabled: Boolean(location.membershipEnabled),
           moneyIn: locationMetrics.moneyIn,
           moneyOut: locationMetrics.moneyOut,
           gross: gross,
+          coinIn: 0, // Default value - can be calculated if needed
+          coinOut: 0, // Default value - can be calculated if needed
+          jackpot: 0, // Default value - can be calculated if needed
           totalMachines: totalMachines,
           onlineMachines: onlineMachines,
           sasMachines: sasMachines,
           nonSasMachines: nonSasMachines,
           hasSasMachines: sasMachines > 0,
           hasNonSasMachines: nonSasMachines > 0,
+          noSMIBLocation: location.noSMIBLocation || false,
+          hasSmib: location.hasSmib || false,
+          gamesPlayed: 0, // Default value - can be calculated if needed
           rel: location.rel,
           country: location.country,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          machines: machines.map((m: any) => ({
+          machines: machines.map((m: GamingMachine) => ({
             _id: m._id.toString(),
             assetNumber: m.assetNumber,
             serialNumber: m.serialNumber,
@@ -510,7 +514,6 @@ export async function GET(req: NextRequest) {
       // 🚀 OPTIMIZED: Use smaller batch size for shorter periods
       // (Today/Yesterday/Custom/All Time) - these are already fast with smaller batches
       const BATCH_SIZE = 20;
-
 
       for (let i = 0; i < locations.length; i += BATCH_SIZE) {
         const batch = locations.slice(i, i + BATCH_SIZE);
@@ -631,6 +634,14 @@ export async function GET(req: NextRequest) {
                 nonSasMachines: nonSasMachines,
                 hasSasMachines: sasMachines > 0,
                 hasNonSasMachines: nonSasMachines > 0,
+                coinIn: 0, // Default value - can be calculated if needed
+                coinOut: 0, // Default value - can be calculated if needed
+                jackpot: 0, // Default value - can be calculated if needed
+                noSMIBLocation:
+                  (location as { noSMIBLocation?: boolean }).noSMIBLocation ||
+                  false,
+                hasSmib: (location as { hasSmib?: boolean }).hasSmib || false,
+                gamesPlayed: 0, // Default value - can be calculated if needed
                 rel: (location as { rel?: { licencee?: string } }).rel, // Include rel for licensee information
                 country: (location as { country?: string }).country, // Include country for currency mapping
                 machines: machines.map(
@@ -674,10 +685,10 @@ export async function GET(req: NextRequest) {
     const membershipEnabledLocations = locationResults
       .filter(loc => loc.membershipEnabled)
       .map(loc => loc._id);
-    
+
     if (membershipEnabledLocations.length > 0) {
       const { Member } = await import('@/app/api/lib/models/members');
-      
+
       // Count members for each membership-enabled location
       const memberCounts = await Member.aggregate([
         {
@@ -693,17 +704,18 @@ export async function GET(req: NextRequest) {
           },
         },
       ]);
-      
+
       // Create a map of location ID to member count
       const memberCountMap = new Map<string, number>();
       memberCounts.forEach((item: { _id: string; count: number }) => {
         memberCountMap.set(item._id, item.count);
       });
-      
+
       // Add member counts to locations
       locationResults.forEach(loc => {
-        if (loc.membershipEnabled) {
-          (loc as { memberCount?: number }).memberCount = memberCountMap.get(loc._id) || 0;
+        if (loc.membershipEnabled && loc._id) {
+          (loc as { memberCount?: number }).memberCount =
+            memberCountMap.get(loc._id) || 0;
         }
       });
     }
@@ -714,7 +726,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const filterStart = Date.now();
     let filteredResults = locationResults;
-    
+
     if (filters.length > 0) {
       filteredResults = locationResults.filter(loc => {
         return filters.every(filter => {
@@ -795,8 +807,7 @@ export async function GET(req: NextRequest) {
           });
 
           // Convert each location's financial data
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          convertedData = paginatedData.map((location: any) => {
+          convertedData = paginatedData.map(location => {
             const locationLicenseeId = location.rel?.licencee as
               | string
               | undefined;
@@ -815,7 +826,8 @@ export async function GET(req: NextRequest) {
             } else {
               // Get licensee's native currency
               const licenseeName =
-                licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
+                licenseeIdToName.get(locationLicenseeId.toString()) ||
+                'Unknown';
               if (!licenseeName || licenseeName === 'Unknown') {
                 // Fallback to country-based currency if licensee not found
                 const countryId = location.country as string | undefined;
@@ -840,7 +852,10 @@ export async function GET(req: NextRequest) {
 
             if (typeof location.moneyIn === 'number') {
               const usdValue = convertToUSD(location.moneyIn, nativeCurrency);
-              convertedLocation.moneyIn = convertFromUSD(usdValue, displayCurrency);
+              convertedLocation.moneyIn = convertFromUSD(
+                usdValue,
+                displayCurrency
+              );
             }
 
             if (typeof location.moneyOut === 'number') {
@@ -853,7 +868,10 @@ export async function GET(req: NextRequest) {
 
             if (typeof location.gross === 'number') {
               const usdValue = convertToUSD(location.gross, nativeCurrency);
-              convertedLocation.gross = convertFromUSD(usdValue, displayCurrency);
+              convertedLocation.gross = convertFromUSD(
+                usdValue,
+                displayCurrency
+              );
             }
 
             return convertedLocation;

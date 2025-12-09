@@ -12,7 +12,6 @@
  * @param data - Array of scheduler table rows
  * @param loading - Whether data is loading
  */
-import React from 'react';
 import {
   Table,
   TableBody,

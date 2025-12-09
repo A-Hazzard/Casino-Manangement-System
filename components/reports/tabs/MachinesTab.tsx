@@ -3,19 +3,19 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -23,14 +23,14 @@ import { useReportsStore } from '@/lib/store/reportsStore';
 import { useDebounce } from '@/lib/utils/hooks';
 import axios from 'axios';
 import {
-  BarChart3,
-  ChevronDown,
-  ChevronUp,
-  Download,
-  FileSpreadsheet,
-  FileText,
-  Monitor,
-  RefreshCw,
+    BarChart3,
+    ChevronDown,
+    ChevronUp,
+    Download,
+    FileSpreadsheet,
+    FileText,
+    Monitor,
+    RefreshCw,
 } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -38,16 +38,16 @@ import { toast } from 'sonner';
 
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  handleExportMeters as handleExportMetersHelper,
-  handleMachineSort as handleMachineSortHelper,
-  sortEvaluationData as sortEvaluationDataHelper,
+    handleExportMeters as handleExportMetersHelper,
+    handleMachineSort as handleMachineSortHelper,
+    sortEvaluationData as sortEvaluationDataHelper,
 } from '@/lib/helpers/reportsPage';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
@@ -60,28 +60,28 @@ import { MachineEvaluationSummary } from '@/components/ui/MachineEvaluationSumma
 import { ManufacturerPerformanceChart } from '@/components/ui/ManufacturerPerformanceChart';
 import PaginationControls from '@/components/ui/PaginationControls';
 import {
-  ChartNoData,
-  ChartSkeleton,
-  MachinesEvaluationSkeleton,
-  MachinesOfflineSkeleton,
-  MachinesOverviewSkeleton,
+    ChartNoData,
+    ChartSkeleton,
+    MachinesEvaluationSkeleton,
+    MachinesOfflineSkeleton,
+    MachinesOverviewSkeleton,
 } from '@/components/ui/skeletons/ReportsSkeletons';
 import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import type { MachineEvaluationData } from '@/lib/types';
 import type {
-  MachineData,
-  MachinesApiResponse,
-  MachineStats,
-  MachineStatsApiResponse,
+    MachineData,
+    MachinesApiResponse,
+    MachineStats,
+    MachineStatsApiResponse,
 } from '@/shared/types/machines';
 import { Pencil2Icon } from '@radix-ui/react-icons';
 import { Trash2 } from 'lucide-react';
 
 import StatusIcon from '@/components/ui/common/StatusIcon';
 import {
-  getGrossColorClass,
-  getMoneyInColorClass,
-  getMoneyOutColorClass,
+    getGrossColorClass,
+    getMoneyInColorClass,
+    getMoneyOutColorClass,
 } from '@/lib/utils/financialColors';
 
 // Sortable table header component
@@ -344,8 +344,7 @@ export default function MachinesTab() {
             { params, signal }
           );
           setMachineStats(response.data);
-        },
-        `Machine Stats (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
+        }
       );
     } catch (error) {
       console.error('Failed to fetch machine stats:', error);
@@ -429,8 +428,7 @@ export default function MachinesTab() {
               duration: 3000,
             });
           }
-        },
-        `Machine Overview (Page ${page}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
+        }
       );
 
       setOverviewLoading(false);
@@ -500,8 +498,7 @@ export default function MachinesTab() {
             duration: 3000,
           });
         }
-      },
-      `Machine Evaluation (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
+      }
     );
 
     setLoading(false);
@@ -571,8 +568,7 @@ export default function MachinesTab() {
               duration: 3000,
             });
           }
-        },
-        `Machine Offline (Batch ${batch}, ${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`
+        }
       );
 
       setOfflineLoading(false);

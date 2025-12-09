@@ -98,7 +98,10 @@ export default function AddUserModal({
   const isManager =
     currentUserRoles.includes('manager') && !isAdmin && !isDeveloper;
   const isLocationAdmin =
-    currentUserRoles.includes('location admin') && !isAdmin && !isDeveloper && !isManager;
+    currentUserRoles.includes('location admin') &&
+    !isAdmin &&
+    !isDeveloper &&
+    !isManager;
 
   // Filter available roles based on creator's permissions
   const availableRoles = useMemo(() => {
@@ -130,19 +133,19 @@ export default function AddUserModal({
       ).map(id => String(id)),
     [currentUser?.assignedLicensees]
   );
-  
+
   // Get location admin's assigned locations
-  const currentUserLocationPermissions = useMemo(
-    () => {
-      // Use only new field
-      let locationIds: string[] = [];
-      if (Array.isArray(currentUser?.assignedLocations) && currentUser.assignedLocations.length > 0) {
-        locationIds = currentUser.assignedLocations;
-      }
-      return locationIds.map(id => String(id));
-    },
-    [currentUser?.assignedLocations]
-  );
+  const currentUserLocationPermissions = useMemo(() => {
+    // Use only new field
+    let locationIds: string[] = [];
+    if (
+      Array.isArray(currentUser?.assignedLocations) &&
+      currentUser.assignedLocations.length > 0
+    ) {
+      locationIds = currentUser.assignedLocations;
+    }
+    return locationIds.map(id => String(id));
+  }, [currentUser?.assignedLocations]);
 
   const [isCropOpen, setIsCropOpen] = useState(false);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
@@ -179,13 +182,45 @@ export default function AddUserModal({
   });
 
   // Initialize selected licensee IDs based on manager's or location admin's licensees - only when modal opens
+  // Use a ref to track if we've already initialized to prevent infinite loops
+  const hasInitializedLicenseeIds = useRef(false);
+  const previousOpenState = useRef(false);
+  const formStateRef = useRef(formState);
+
+  // Update ref when formState changes (for reading current value without triggering effect)
   useEffect(() => {
-    if (!open) return;
-    if ((isManager || isLocationAdmin) && currentUserLicenseeIds.length > 0) {
-      setFormState({ ...formState, licenseeIds: currentUserLicenseeIds });
+    formStateRef.current = formState;
+  }, [formState]);
+
+  useEffect(() => {
+    // Detect when modal opens (transitions from closed to open)
+    const justOpened = open && !previousOpenState.current;
+    previousOpenState.current = open;
+
+    if (!open) {
+      // Reset initialization flag when modal closes
+      hasInitializedLicenseeIds.current = false;
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isManager, isLocationAdmin, currentUserLicenseeIds]); // Only depend on 'open' - initialize once when modal opens
+
+    // Only initialize once when modal first opens
+    if (
+      justOpened &&
+      (isManager || isLocationAdmin) &&
+      currentUserLicenseeIds.length > 0
+    ) {
+      // Only set if we haven't initialized yet
+      if (!hasInitializedLicenseeIds.current) {
+        // Read current formState from ref to avoid including it in dependencies
+        const currentFormState = formStateRef.current;
+        setFormState({
+          ...currentFormState,
+          licenseeIds: currentUserLicenseeIds,
+        });
+        hasInitializedLicenseeIds.current = true;
+      }
+    }
+  }, [open, isManager, isLocationAdmin, currentUserLicenseeIds, setFormState]);
 
   useEffect(() => {
     if (open && modalRef.current && backdropRef.current) {
@@ -241,7 +276,7 @@ export default function AddUserModal({
       try {
         const result = await fetchLicensees();
         if (cancelled) return;
-        
+
         // Extract licensees array from the result
         let lics = Array.isArray(result.licensees) ? result.licensees : [];
 
@@ -282,7 +317,17 @@ export default function AddUserModal({
     return () => {
       cancelled = true;
     };
-  }, [open, setFormState, formState, setAllLicenseesSelected, setLicensees, setIsLoadingAssignments, isManager, currentUserLicenseeIds, isLocationAdmin]);
+  }, [
+    open,
+    setFormState,
+    formState,
+    setAllLicenseesSelected,
+    setLicensees,
+    setIsLoadingAssignments,
+    isManager,
+    currentUserLicenseeIds,
+    isLocationAdmin,
+  ]);
 
   // Load locations based on selected licensees
   useEffect(() => {
@@ -356,7 +401,12 @@ export default function AddUserModal({
     return () => {
       cancelled = true;
     };
-  }, [open, formState.licenseeIds, isLocationAdmin, currentUserLocationPermissions]);
+  }, [
+    open,
+    formState.licenseeIds,
+    isLocationAdmin,
+    currentUserLocationPermissions,
+  ]);
 
   // Debounced validation - only validate fields that have been touched or on submit
   // Debounced username and email availability check
@@ -364,14 +414,26 @@ export default function AddUserModal({
     const username = (formState.username || '').trim();
 
     // Check username availability
-    if (username && username.length >= 3 && touched.username && validateUsername(username) && !containsEmailPattern(username) && !containsPhonePattern(username)) {
+    if (
+      username &&
+      username.length >= 3 &&
+      touched.username &&
+      validateUsername(username) &&
+      !containsEmailPattern(username) &&
+      !containsPhonePattern(username)
+    ) {
       const timeoutId = setTimeout(async () => {
         setCheckingUsername(true);
         try {
-          const response = await fetch(`/api/users/check-username?username=${encodeURIComponent(username)}`);
+          const response = await fetch(
+            `/api/users/check-username?username=${encodeURIComponent(username)}`
+          );
           const data = await response.json();
           if (data.success && data.usernameExists) {
-            setErrors(prev => ({ ...prev, username: 'This username is already taken.' }));
+            setErrors(prev => ({
+              ...prev,
+              username: 'This username is already taken.',
+            }));
           } else {
             setErrors(prev => {
               const newErrors = { ...prev };
@@ -399,18 +461,30 @@ export default function AddUserModal({
     const email = (formState.email || '').trim();
 
     // Check email availability
-    if (email && validateEmail(email) && !isPlaceholderEmail(email) && touched.email) {
+    if (
+      email &&
+      validateEmail(email) &&
+      !isPlaceholderEmail(email) &&
+      touched.email
+    ) {
       const timeoutId = setTimeout(async () => {
         setCheckingEmail(true);
         try {
-          const response = await fetch(`/api/users/check-username?email=${encodeURIComponent(email)}`);
+          const response = await fetch(
+            `/api/users/check-username?email=${encodeURIComponent(email)}`
+          );
           const data = await response.json();
           if (data.success && data.emailExists) {
-            setErrors(prev => ({ ...prev, email: 'This email address is already registered.' }));
+            setErrors(prev => ({
+              ...prev,
+              email: 'This email address is already registered.',
+            }));
           } else {
             setErrors(prev => {
               const newErrors = { ...prev };
-              if (newErrors.email === 'This email address is already registered.') {
+              if (
+                newErrors.email === 'This email address is already registered.'
+              ) {
                 delete newErrors.email;
               }
               return newErrors;
@@ -487,7 +561,10 @@ export default function AddUserModal({
           } else if (isPlaceholderEmail(email)) {
             newErrors.email =
               'Please use a real email address. Placeholder emails like example@example.com are not allowed.';
-          } else if (username && email.toLowerCase() === username.toLowerCase()) {
+          } else if (
+            username &&
+            email.toLowerCase() === username.toLowerCase()
+          ) {
             newErrors.email = 'Email address must differ from your username.';
           } else if (containsPhonePattern(email)) {
             newErrors.email = 'Email address cannot resemble a phone number.';
@@ -791,9 +868,10 @@ export default function AddUserModal({
     }
 
     // For location admins, ensure licensee is set to their licensee
-    const finalLicenseeIds = isLocationAdmin && currentUserLicenseeIds.length > 0
-      ? currentUserLicenseeIds
-      : (formState.licenseeIds || []);
+    const finalLicenseeIds =
+      isLocationAdmin && currentUserLicenseeIds.length > 0
+        ? currentUserLicenseeIds
+        : formState.licenseeIds || [];
 
     // Update form state and ensure licenseeIds is set
     setFormState({
@@ -1443,7 +1521,8 @@ export default function AddUserModal({
                     </h4>
 
                     {/* For managers and location admins, show as read-only */}
-                    {managerHasSingleLicensee || locationAdminHasSingleLicensee ? (
+                    {managerHasSingleLicensee ||
+                    locationAdminHasSingleLicensee ? (
                       <div className="text-center">
                         <div className="text-gray-700">
                           {licensees.find(
@@ -1456,7 +1535,8 @@ export default function AddUserModal({
                             : 'Licensee is automatically assigned based on your access'}
                         </p>
                       </div>
-                    ) : (managerHasMultipleLicensees || (isLocationAdmin && !canEditLicensees)) ? (
+                    ) : managerHasMultipleLicensees ||
+                      (isLocationAdmin && !canEditLicensees) ? (
                       <div className="space-y-3">
                         <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
                           <Checkbox
@@ -1478,7 +1558,10 @@ export default function AddUserModal({
                             searchPlaceholder="Search licensees..."
                             label="licensees"
                             showSelectAll={true}
-                            disabled={isLoadingAssignments || (isLocationAdmin && !canEditLicensees)}
+                            disabled={
+                              isLoadingAssignments ||
+                              (isLocationAdmin && !canEditLicensees)
+                            }
                           />
                         )}
 
@@ -1510,7 +1593,10 @@ export default function AddUserModal({
                             searchPlaceholder="Search licensees..."
                             label="licensees"
                             showSelectAll={true}
-                            disabled={isLoadingAssignments || (isLocationAdmin && !canEditLicensees)}
+                            disabled={
+                              isLoadingAssignments ||
+                              (isLocationAdmin && !canEditLicensees)
+                            }
                           />
                         )}
 

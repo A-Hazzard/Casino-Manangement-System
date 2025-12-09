@@ -8,11 +8,11 @@ import {
   fetchAggregatedLocationsData,
   searchAllLocations,
 } from '@/lib/helpers/locations';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { LocationFilter } from '@/lib/types/location';
 import { useDebounce } from '@/lib/utils/hooks';
 import { AggregatedLocation, TimePeriod } from '@/shared/types/common';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 
 type UseLocationDataProps = {
   selectedLicencee: string;
@@ -148,10 +148,10 @@ export function useLocationData({
         return;
       }
 
-      // Mark as in progress and update key
+      // Mark as in progress and update key BEFORE making request
       fetchInProgressRef.current = true;
       lastFetchKeyRef.current = fetchKey;
-      
+
       console.log('[useLocationData] Starting fetch:', {
         isInitialMount: isInitialMountRef.current,
         hasCompletedFirst: hasCompletedFirstFetchRef.current,
@@ -162,14 +162,13 @@ export function useLocationData({
       // This prevents the "blank screen" issue when navigating or changing filters
       setLoading(true);
       setError(null);
-      
+
       // Mark that we're no longer on initial mount after first fetch
-      const wasInitialMount = isInitialMountRef.current;
       if (isInitialMountRef.current) {
         isInitialMountRef.current = false;
       }
 
-      const result = await makeRequest(async (signal) => {
+      const result = await makeRequest(async signal => {
         // Only use backend search if debounced search term exists
         // Frontend filtering is handled in the component
         if (debouncedSearchTerm.trim()) {
@@ -194,22 +193,25 @@ export function useLocationData({
         const result = await fetchAggregatedLocationsData(
           (activeMetricsFilter || 'Today') as TimePeriod,
           selectedLicencee || '',
-          selectedFiltersRef.current.length ? selectedFiltersRef.current.join(',') : '',
+          selectedFiltersRef.current.length
+            ? selectedFiltersRef.current.join(',')
+            : '',
           dateRangeForFetch,
           displayCurrency,
           page || 1,
           limit || 50,
           signal
         );
-        
+
         return result;
-      }, `Locations (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})${wasInitialMount ? ' [Initial]' : ''}`);
+      }, 'locations'); // Use unique key to prevent cancellation from other requests
 
       // Only update state if request wasn't aborted (result is not null)
       if (result) {
         setLocationData(result.data);
         if (result.pagination) {
-          const total = result.pagination.totalCount ?? result.pagination.total ?? 0;
+          const total =
+            result.pagination.totalCount ?? result.pagination.total ?? 0;
           setTotalCount(total);
         } else {
           setTotalCount(result.data.length);
@@ -221,11 +223,14 @@ export function useLocationData({
         setSearchLoading(false);
         lastFetchRef.current = Date.now();
       } else {
-        console.log('[useLocationData] Fetch aborted - keeping loading state and existing data');
+        console.log(
+          '[useLocationData] Fetch aborted - keeping loading state and existing data'
+        );
         // If aborted, keep loading state active so skeleton continues to show
         // The next request will complete and update the loading state
       }
 
+      // Clear in-progress flag AFTER request completes (success or abort)
       fetchInProgressRef.current = false;
     },
     [

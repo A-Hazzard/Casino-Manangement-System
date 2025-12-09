@@ -197,3 +197,45 @@ export function endOfDay(date: DateInput): Date {
   newDate.setHours(23, 59, 59, 999);
   return newDate;
 }
+
+/**
+ * Format date as local time string with timezone offset
+ * Preserves the local time intent by including timezone offset in the string
+ *
+ * Example: If user selects 11:45 AM in Trinidad (UTC-4), this formats as
+ * "2025-12-07T11:45:00-04:00" instead of converting to UTC "2025-12-07T15:45:00.000Z"
+ *
+ * @param date - Date object representing local time
+ * @param timezoneOffset - UTC offset in hours (default: -4 for Trinidad/Guyana/Barbados)
+ * @returns ISO 8601 formatted string with timezone offset (e.g., "2025-12-07T11:45:00-04:00")
+ */
+export function formatLocalDateTimeString(
+  date: DateInput,
+  timezoneOffset: number = -4
+): string {
+  const dateObj =
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
+
+  if (isNaN(dateObj.getTime())) {
+    throw new Error('Invalid date');
+  }
+
+  // Extract local time components (not UTC)
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  const hours = String(dateObj.getHours()).padStart(2, '0');
+  const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+  const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+
+  // Format timezone offset (e.g., -04:00, +05:30)
+  const offsetHours = Math.abs(timezoneOffset);
+  const offsetSign = timezoneOffset >= 0 ? '+' : '-';
+  const offsetHoursStr = String(offsetHours).padStart(2, '0');
+  const offsetMinutes = Math.abs((timezoneOffset % 1) * 60);
+  const offsetMinutesStr = String(Math.floor(offsetMinutes)).padStart(2, '0');
+
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${offsetHoursStr}:${offsetMinutesStr}`;
+}

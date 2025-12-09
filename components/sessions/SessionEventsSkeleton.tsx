@@ -1,4 +1,3 @@
-import React from 'react';
 
 export const SessionEventsSkeleton = () => (
   <div className="w-full rounded-lg bg-container p-6 shadow">

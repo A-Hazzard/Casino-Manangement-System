@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils';

@@ -21,7 +21,6 @@
  * @param onReset - Callback to reset all filters
  * @param loading - Whether data is loading
  */
-import React from 'react';
 import type { LocationSelectItem } from '@/lib/types/location';
 
 type Props = {

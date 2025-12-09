@@ -16,11 +16,11 @@
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import PageLayout from '@/components/layout/PageLayout';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
-import React, { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 
 import PaginationControls from '@/components/ui/PaginationControls';
 import { Button } from '@/components/ui/button';
@@ -97,112 +97,141 @@ export default function SessionEventsPage() {
       setLoading(true);
       setError(null);
 
-      await makeEventsRequest(
-        async (signal) => {
-          const params = new URLSearchParams({
-            page: batch.toString(),
-            limit: itemsPerBatch.toString(),
-          });
+      await makeEventsRequest(async signal => {
+        const params = new URLSearchParams({
+          page: batch.toString(),
+          limit: itemsPerBatch.toString(),
+        });
 
-          if (activeMetricsFilter === 'Custom' && customDateRange) {
-            const sd =
-              customDateRange.startDate instanceof Date
-                ? customDateRange.startDate
-                : new Date(customDateRange.startDate as unknown as string);
-            const ed =
-              customDateRange.endDate instanceof Date
-                ? customDateRange.endDate
-                : new Date(customDateRange.endDate as unknown as string);
-            params.append('startDate', sd.toISOString());
-            params.append('endDate', ed.toISOString());
-          } else if (activeMetricsFilter && activeMetricsFilter !== 'Custom') {
-            const now = new Date();
-            let startDate: Date;
-            let endDate: Date;
+        if (activeMetricsFilter === 'Custom' && customDateRange) {
+          const sd =
+            customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate as unknown as string);
+          const ed =
+            customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate as unknown as string);
+          params.append('startDate', sd.toISOString());
+          params.append('endDate', ed.toISOString());
+        } else if (activeMetricsFilter && activeMetricsFilter !== 'Custom') {
+          const now = new Date();
+          let startDate: Date;
+          let endDate: Date;
 
-            switch (activeMetricsFilter) {
-              case 'Today':
-                startDate = new Date(
-                  now.getFullYear(),
-                  now.getMonth(),
-                  now.getDate()
-                );
-                endDate = new Date(
-                  now.getFullYear(),
-                  now.getMonth(),
-                  now.getDate(),
-                  23,
-                  59,
-                  59
-                );
-                break;
-              case 'Yesterday':
-                startDate = new Date(
-                  now.getFullYear(),
-                  now.getMonth(),
-                  now.getDate() - 1
-                );
-                endDate = new Date(
-                  now.getFullYear(),
-                  now.getMonth(),
-                  now.getDate() - 1,
-                  23,
-                  59,
-                  59
-                );
-                break;
-              case 'last7days':
-                startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                endDate = now;
-                break;
-              case 'last30days':
-                startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                endDate = now;
-                break;
-              default:
-                startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                endDate = now;
-            }
-
-            params.append('startDate', startDate.toISOString());
-            params.append('endDate', endDate.toISOString());
-          }
-
-          try {
-            const response = await axios.get(
-              `/api/sessions/${sessionId}/${machineId}/events?${params}`,
-              { signal }
-            );
-
-            const data = response.data;
-            const responseData = data.data;
-            const newEvents = responseData.events || [];
-
-            if (responseData.pagination?.totalEvents) {
-              setTotalEventsFromAPI(responseData.pagination.totalEvents);
-            }
-
-            setAllEvents(prev => {
-              const existingIds = new Set(prev.map(e => e._id));
-              const uniqueNewEvents = newEvents.filter(
-                (e: MachineEvent) => !existingIds.has(e._id)
+          switch (activeMetricsFilter) {
+            case 'Today':
+              startDate = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate()
               );
-              return [...prev, ...uniqueNewEvents];
-            });
-          } catch (err) {
-            if (process.env.NODE_ENV === 'development') {
-              console.error('❌ Events Page Error:', err);
-            }
-            toast.error('Failed to fetch events');
-            setAllEvents([]);
+              endDate = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate(),
+                23,
+                59,
+                59
+              );
+              break;
+            case 'Yesterday':
+              startDate = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate() - 1
+              );
+              endDate = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate() - 1,
+                23,
+                59,
+                59
+              );
+              break;
+            case 'last7days':
+              startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+              endDate = now;
+              break;
+            case 'last30days':
+              startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+              endDate = now;
+              break;
+            default:
+              startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+              endDate = now;
           }
-        },
-        `Session Events (${sessionId}, ${machineId}, ${activeMetricsFilter || 'Last 7 Days'})`
-      );
 
-      setLoading(false);
+          params.append('startDate', startDate.toISOString());
+          params.append('endDate', endDate.toISOString());
+        }
+
+        try {
+          const response = await axios.get(
+            `/api/sessions/${sessionId}/${machineId}/events?${params}`,
+            { signal }
+          );
+
+          const data = response.data;
+          const responseData = data.data;
+          const newEvents = responseData.events || [];
+
+          if (responseData.pagination?.totalEvents) {
+            setTotalEventsFromAPI(responseData.pagination.totalEvents);
+          }
+
+          setAllEvents(prev => {
+            const existingIds = new Set(prev.map(e => e._id));
+            const uniqueNewEvents = newEvents.filter(
+              (e: MachineEvent) => !existingIds.has(e._id)
+            );
+            return [...prev, ...uniqueNewEvents];
+          });
+        } catch (err) {
+          // Check if this is a cancelled request - don't treat as error
+          const axios = (await import('axios')).default;
+          if (axios.isCancel && axios.isCancel(err)) {
+            // Request was cancelled, silently return without changing loading state
+            // The next request will handle loading state
+            return;
+          }
+
+          // Check for standard abort errors
+          if (
+            (err instanceof Error && err.name === 'AbortError') ||
+            (err instanceof Error && err.message === 'canceled') ||
+            (err &&
+              typeof err === 'object' &&
+              'code' in err &&
+              (err.code === 'ERR_CANCELED' || err.code === 'ECONNABORTED'))
+          ) {
+            // Request was cancelled, silently return without changing loading state
+            // The next request will handle loading state
+            return;
+          }
+
+          // Only show error for actual errors
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ Events Page Error:', err);
+          }
+          toast.error('Failed to fetch events');
+          setAllEvents([]);
+          setLoading(false);
+        }
+
+        // Only set loading to false on successful completion
+        setLoading(false);
+      });
     },
-    [sessionId, machineId, activeMetricsFilter, customDateRange, itemsPerBatch, makeEventsRequest]
+    [
+      sessionId,
+      machineId,
+      activeMetricsFilter,
+      customDateRange,
+      itemsPerBatch,
+      makeEventsRequest,
+    ]
   );
 
   const fetchSessionInfo = useCallback(async () => {
@@ -239,6 +268,8 @@ export default function SessionEventsPage() {
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
     fetchEvents(1);
+    // Note: fetchEvents is a useCallback with all necessary dependencies
+    // We don't include fetchEvents in deps to avoid re-triggering when it's recreated
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, machineId, activeMetricsFilter, customDateRange]);
 
@@ -261,10 +292,12 @@ export default function SessionEventsPage() {
       setLoadedBatches(prev => new Set([...prev, currentBatch]));
       fetchEvents(currentBatch);
     }
+    // Note: fetchEvents is a useCallback with all necessary dependencies
+    // We don't include fetchEvents in deps to avoid re-triggering when it's recreated
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentPage,
     loading,
-    fetchEvents,
     itemsPerBatch,
     pagesPerBatch,
     loadedBatches,
@@ -272,7 +305,7 @@ export default function SessionEventsPage() {
   ]);
 
   // Get items for current page from the current batch
-  const paginatedEvents = React.useMemo(() => {
+  const paginatedEvents = useMemo(() => {
     const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
     const startIndex = positionInBatch;
     const endIndex = startIndex + itemsPerPage;
@@ -280,7 +313,7 @@ export default function SessionEventsPage() {
   }, [allEvents, currentPage, itemsPerPage, pagesPerBatch]);
 
   // Calculate total pages - use API total if available, otherwise use loaded events
-  const totalPages = React.useMemo(() => {
+  const totalPages = useMemo(() => {
     if (totalEventsFromAPI > 0) {
       // Use API total for accurate pagination
       return Math.ceil(totalEventsFromAPI / itemsPerPage);
@@ -543,7 +576,7 @@ export default function SessionEventsPage() {
             </thead>
             <tbody>
               {paginatedEvents.map(event => (
-                <React.Fragment key={event._id}>
+                <Fragment key={event._id}>
                   <tr className="border-b hover:bg-muted/30">
                     <td className="bg-white p-3 text-center">
                       <span
@@ -628,7 +661,7 @@ export default function SessionEventsPage() {
                       </td>
                     </tr>
                   )}
-                </React.Fragment>
+                </Fragment>
               ))}
             </tbody>
           </table>

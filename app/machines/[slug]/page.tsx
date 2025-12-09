@@ -17,7 +17,7 @@
 
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 

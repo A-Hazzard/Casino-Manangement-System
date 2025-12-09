@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import MapLoader from '@/components/ui/MapLoader';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -612,7 +612,7 @@ export default function LocationMap({
           // Hard cap to ensure loading never lingers beyond 2s
           setTimeout(() => setLoading(false), 2000);
         }
-      }, `Reports Map Data (${activeMetricsFilter}, Licensee: ${selectedLicencee || 'all'})`);
+      });
     };
     fetchData();
   }, [

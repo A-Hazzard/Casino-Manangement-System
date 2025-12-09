@@ -44,7 +44,7 @@ import gsap from 'gsap';
 import { Copy, Eye, Pencil, Trash2 } from 'lucide-react';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import Image from 'next/image';
-import React from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -68,8 +68,8 @@ function CabinetCardMobile({
   canDeleteMachines?: boolean;
   copyToClipboard: (text: string, label: string) => void;
 }) {
-  const statusRef = React.useRef<HTMLSpanElement>(null);
-  React.useEffect(() => {
+  const statusRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
     if (cabinet.isOnline && statusRef.current) {
       const tl = gsap.timeline({ repeat: -1, yoyo: true });
       tl.to(statusRef.current, {
@@ -216,8 +216,8 @@ export default function CabinetGrid({
 }: CabinetGridProps) {
   // Use external sort state if provided, otherwise use local state
   const [internalSortOption, setInternalSortOption] =
-    React.useState<CabinetSortOption>('moneyIn');
-  const [internalSortOrder, setInternalSortOrder] = React.useState<'asc' | 'desc'>('desc');
+    useState<CabinetSortOption>('moneyIn');
+  const [internalSortOrder, setInternalSortOrder] = useState<'asc' | 'desc'>('desc');
   
   const sortOption = externalSortOption || internalSortOption;
   const sortOrder = externalSortOrder || internalSortOrder;
@@ -262,7 +262,7 @@ export default function CabinetGrid({
 
   // Check if user can edit/delete machines
   // Technicians can edit but not delete, collectors cannot edit or delete
-  const canEditMachines = React.useMemo(() => {
+  const canEditMachines = useMemo(() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles || [];
     // Collectors cannot edit machines
@@ -279,7 +279,7 @@ export default function CabinetGrid({
     ].some(role => userRoles.includes(role));
   }, [user]);
 
-  const canDeleteMachines = React.useMemo(() => {
+  const canDeleteMachines = useMemo(() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles || [];
     // Collectors and technicians cannot delete machines

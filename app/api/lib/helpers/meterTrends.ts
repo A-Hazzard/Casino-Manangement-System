@@ -95,7 +95,77 @@ export function validateCustomDateRange(
 }
 
 /**
- * Determines if hourly aggregation should be used
+ * Determines aggregation granularity for custom time ranges
+ *
+ * @param timePeriod - Time period string
+ * @param customStartDate - Optional custom start date
+ * @param customEndDate - Optional custom end date
+ * @param startDateParam - Optional start date string (to detect time components)
+ * @param endDateParam - Optional end date string (to detect time components)
+ * @returns Object with useHourly, useMinute flags
+ */
+export function determineAggregationGranularity(
+  timePeriod: string,
+  customStartDate?: Date,
+  customEndDate?: Date,
+  startDateParam?: string | null,
+  endDateParam?: string | null,
+  manualGranularity?: 'hourly' | 'minute'
+): { useHourly: boolean; useMinute: boolean } {
+  // If manual granularity is specified, use it (but only for Today/Yesterday or appropriate custom ranges)
+  if (manualGranularity) {
+    if (manualGranularity === 'minute') {
+      return { useHourly: false, useMinute: true };
+    } else if (manualGranularity === 'hourly') {
+      return { useHourly: true, useMinute: false };
+    }
+  }
+
+  if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
+    // Default to minute-level for Today/Yesterday unless overridden
+    return { useHourly: false, useMinute: true };
+  }
+
+  if (timePeriod === 'Custom' && customStartDate && customEndDate) {
+    // Check if date strings have time components (not date-only)
+    const hasTimeComponents =
+      startDateParam &&
+      endDateParam &&
+      (startDateParam.includes('T') || endDateParam.includes('T'));
+
+    if (hasTimeComponents) {
+      // Calculate time difference in hours and days
+      const diffInMs = customEndDate.getTime() - customStartDate.getTime();
+      const diffInHours = diffInMs / (1000 * 60 * 60);
+      const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+
+      // For custom ranges with time inputs:
+      // - Use minute-level if range <= 10 hours (as per user requirement)
+      // - Use hourly if > 10 hours but <= 1 day
+      // - Use daily if > 1 day
+      if (diffInHours <= 10 && diffInDays <= 1) {
+        return { useHourly: false, useMinute: true };
+      } else if (diffInDays <= 1) {
+        return { useHourly: true, useMinute: false };
+      }
+      // For ranges > 1 day, return daily (default)
+    } else {
+      // Date-only custom range: use hourly if <= 1 day (for gaming day offset)
+      const diffInDays = Math.ceil(
+        (customEndDate.getTime() - customStartDate.getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
+      if (diffInDays <= 1) {
+        return { useHourly: true, useMinute: false };
+      }
+    }
+  }
+
+  return { useHourly: false, useMinute: false };
+}
+
+/**
+ * Determines if hourly aggregation should be used (legacy function for backward compatibility)
  *
  * @param timePeriod - Time period string
  * @param customStartDate - Optional custom start date
@@ -107,23 +177,12 @@ export function shouldUseHourlyAggregation(
   customStartDate?: Date,
   customEndDate?: Date
 ): boolean {
-  if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
-    return true;
-  }
-
-  if (
-    timePeriod === 'Custom' &&
-    customStartDate &&
-    customEndDate &&
-    Math.ceil(
-      (customEndDate.getTime() - customStartDate.getTime()) /
-        (1000 * 60 * 60 * 24)
-    ) <= 1
-  ) {
-    return true;
-  }
-
-  return false;
+  const { useHourly } = determineAggregationGranularity(
+    timePeriod,
+    customStartDate,
+    customEndDate
+  );
+  return useHourly;
 }
 
 /**
@@ -200,7 +259,8 @@ export function buildLocationMetricsPipeline(
   machineIds: string[],
   rangeStart: Date,
   rangeEnd: Date,
-  shouldUseHourly: boolean
+  shouldUseHourly: boolean,
+  shouldUseMinute?: boolean
 ): PipelineStage[] {
   return [
     {
@@ -221,15 +281,25 @@ export function buildLocationMetricsPipeline(
             timezone: 'UTC',
           },
         },
-        time: shouldUseHourly
+        time: shouldUseMinute
           ? {
+              // Minute-level: format as HH:MM
               $dateToString: {
                 date: '$readAt',
                 format: '%H:%M',
                 timezone: 'UTC',
               },
             }
-          : '00:00',
+          : shouldUseHourly
+            ? {
+                // Hourly: format as HH:00
+                $dateToString: {
+                  date: '$readAt',
+                  format: '%H:00',
+                  timezone: 'UTC',
+                },
+              }
+            : '00:00',
       },
     },
     {
@@ -289,7 +359,8 @@ async function processLocationMetricsSingleAggregation(
   locations: LocationData[],
   machinesByLocation: Map<string, string[]>,
   gamingDayRanges: Map<string, { rangeStart: Date; rangeEnd: Date }>,
-  shouldUseHourly: boolean
+  shouldUseHourly: boolean,
+  shouldUseMinute?: boolean
 ): Promise<MeterTrendMetric[]> {
   console.log(
     `[processLocationMetricsSingleAggregation] Processing ${locations.length} locations with single aggregation`
@@ -339,15 +410,25 @@ async function processLocationMetricsSingleAggregation(
             timezone: 'UTC',
           },
         },
-        time: shouldUseHourly
+        time: shouldUseMinute
           ? {
+              // Minute-level: format as HH:MM
               $dateToString: {
                 date: '$readAt',
                 format: '%H:%M',
                 timezone: 'UTC',
               },
             }
-          : '00:00',
+          : shouldUseHourly
+            ? {
+                // Hourly: format as HH:00
+                $dateToString: {
+                  date: '$readAt',
+                  format: '%H:00',
+                  timezone: 'UTC',
+                },
+              }
+            : '00:00',
       },
     },
     {
@@ -484,6 +565,7 @@ export async function processLocationMetricsBatches(
   machinesByLocation: Map<string, string[]>,
   gamingDayRanges: Map<string, { rangeStart: Date; rangeEnd: Date }>,
   shouldUseHourly: boolean,
+  shouldUseMinute?: boolean,
   batchSize: number = 20
 ): Promise<MeterTrendMetric[]> {
   const metricsPerLocation: MeterTrendMetric[] = [];
@@ -507,7 +589,8 @@ export async function processLocationMetricsBatches(
           machineIds,
           range.rangeStart,
           range.rangeEnd,
-          shouldUseHourly
+          shouldUseHourly,
+          shouldUseMinute
         );
 
         type PipelineMetric = {
@@ -519,6 +602,8 @@ export async function processLocationMetricsBatches(
           gamesPlayed: number;
           jackpot: number;
         };
+
+        // Check aggregation results directly without preflight read
 
         const results = await db
           .collection('meters')
@@ -770,12 +855,20 @@ export async function getMeterTrends(
     startDate?: string | null;
     endDate?: string | null;
     displayCurrency: CurrencyCode;
+    granularity?: 'hourly' | 'minute';
   },
   accessibleLicensees: string[] | 'all',
   userRoles: string[],
   userLocationPermissions: string[]
 ): Promise<AggregatedMetric[]> {
-  const { timePeriod, licencee, startDate, endDate, displayCurrency } = params;
+  const {
+    timePeriod,
+    licencee,
+    startDate,
+    endDate,
+    displayCurrency,
+    granularity,
+  } = params;
 
   const isAdminOrDev =
     userRoles.includes('admin') || userRoles.includes('developer');
@@ -859,10 +952,15 @@ export async function getMeterTrends(
     customEndDate
   );
 
-  const shouldUseHourly = shouldUseHourlyAggregation(
+  // Determine aggregation granularity (hourly, minute, or daily)
+  // If granularity is manually specified, override the automatic detection
+  const { useHourly, useMinute } = determineAggregationGranularity(
     timePeriod,
     customStartDate,
-    customEndDate
+    customEndDate,
+    startDate,
+    endDate,
+    granularity // Pass manual granularity to override defaults
   );
 
   const locationIds = locations.map(location => String(location._id));
@@ -876,7 +974,6 @@ export async function getMeterTrends(
     },
     { _id: 1, gamingLocation: 1 }
   ).lean();
-
   const machinesByLocation = buildMachinesByLocationMap(machineDocs);
 
   // 🚀 OPTIMIZED: Use single aggregation for 7d/30d periods (much faster)
@@ -888,14 +985,16 @@ export async function getMeterTrends(
         locations as LocationData[],
         machinesByLocation,
         gamingDayRanges,
-        shouldUseHourly
+        useHourly,
+        useMinute
       )
     : await processLocationMetricsBatches(
         db,
         locations as LocationData[],
         machinesByLocation,
         gamingDayRanges,
-        shouldUseHourly
+        useHourly,
+        useMinute
       );
 
   if (metricsPerLocation.length === 0) {

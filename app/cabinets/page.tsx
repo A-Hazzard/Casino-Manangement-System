@@ -19,7 +19,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
 import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 import Image from 'next/image';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 // Modal components
 import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
@@ -48,358 +48,338 @@ import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
 import { RefreshCw } from 'lucide-react';
 
 // Custom hooks
+import { IMAGES } from '@/lib/constants/images';
+import { getMetrics } from '@/lib/helpers/metrics';
 import {
   useCabinetData,
-  useCabinetFilters,
-  useCabinetModals,
   useCabinetSorting,
   useLocationMachineStats,
 } from '@/lib/hooks/data';
-import { useCabinetNavigation } from '@/lib/hooks/navigation';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-
-// Store hooks
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
-
-// Utilities
-import { getMetrics } from '@/lib/helpers/metrics';
-import type { dashboardData } from '@/lib/types';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
-import { TimePeriod } from '@/shared/types/common';
+import type { TimePeriod } from '@/shared/types';
 
-// Constants and types
-import { CABINET_TABS_CONFIG } from '@/lib/constants/cabinets';
-import { IMAGES } from '@/lib/constants/images';
-// Removed unused Cabinet type import
+// Configuration
+const CABINET_TABS_CONFIG: {
+  id: 'cabinets' | 'movement' | 'smib' | 'firmware';
+  label: string;
+  icon: string;
+}[] = [
+  { id: 'cabinets', label: 'Cabinets', icon: '🎰' },
+  { id: 'movement', label: 'Movement Requests', icon: '🔄' },
+  { id: 'smib', label: 'SMIB Management', icon: '🧩' },
+  { id: 'firmware', label: 'Firmware', icon: '🛠️' },
+];
 
 /**
  * Cabinets Page Content Component
- * Handles all state management and data fetching for the cabinets page
+ * Handles all state management and data fetching for the page
  */
 function CabinetsPageContent() {
   // ============================================================================
-  // Hooks & Context
+  // Hooks & State
   // ============================================================================
   const {
+    activeMetricsFilter,
     selectedLicencee,
     setSelectedLicencee,
-    activeMetricsFilter,
     customDateRange,
+    displayCurrency,
+    setChartData,
+    setLoadingChartData,
+    setTotals: setFinancialTotals,
   } = useDashBoardStore();
 
-  const user = useUserStore(state => state.user);
+  const { user } = useUserStore();
+  const [activeSection, setActiveSection] = useState<
+    'cabinets' | 'movement' | 'smib' | 'firmware'
+  >('cabinets');
+  const [selectedLocation, setSelectedLocation] = useState<string>('all');
+  const [selectedGameType, setSelectedGameType] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [smibRefreshTrigger, setSmibRefreshTrigger] = useState(0);
+  const [movementRefreshTrigger, setMovementRefreshTrigger] = useState(0);
+  const [firmwareRefreshTrigger, setFirmwareRefreshTrigger] = useState(0);
+  const [isNewMovementRequestModalOpen, setIsNewMovementRequestModalOpen] =
+    useState(false);
+  const [isUploadSmibDataModalOpen, setIsUploadSmibDataModalOpen] =
+    useState(false);
 
-  const { displayCurrency } = useCurrencyFormat();
+  const closeUploadSmibDataModal = () => {
+    setIsUploadSmibDataModalOpen(false);
+  };
+
+  // Chart granularity state
+  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
+    'hourly'
+  );
 
   // ============================================================================
-  // Custom Hooks
+  // Data Fetching Hooks
   // ============================================================================
-  const {
-    isNewMovementRequestModalOpen,
-    isUploadSmibDataModalOpen,
-    openNewMovementRequestModal,
-    closeNewMovementRequestModal,
-    closeUploadSmibDataModal,
-  } = useCabinetModals();
-
-  const {
-    searchTerm,
-    selectedLocation,
-    selectedGameType,
-    selectedStatus,
-    setSearchTerm,
-    setSelectedLocation,
-    setSelectedGameType,
-    setSelectedStatus,
-  } = useCabinetFilters();
-
   const {
     allCabinets,
     filteredCabinets,
+    loading,
+    error,
     locations,
     gameTypes,
-    financialTotals,
+    financialTotals: hookFinancialTotals,
     metricsTotals,
     initialLoading,
-    loading,
     metricsTotalsLoading,
-    error,
     loadCabinets,
   } = useCabinetData({
     selectedLicencee,
     activeMetricsFilter,
     customDateRange,
-    searchTerm,
+    displayCurrency,
     selectedLocation,
     selectedGameType,
     selectedStatus,
-    displayCurrency,
+    searchTerm,
   });
 
-  // ============================================================================
-  // Constants
-  // ============================================================================
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5 pages per batch
-
   const {
-    sortOrder,
     sortOption,
-    currentPage,
-    paginatedCabinets,
-    totalPages,
+    sortOrder,
     handleColumnSort,
+    currentPage,
+    totalPages,
     setCurrentPage,
+    paginatedCabinets,
     transformCabinet,
   } = useCabinetSorting({
     filteredCabinets,
-    itemsPerPage,
+    itemsPerPage: 10,
+    useBatchPagination: true,
   });
 
-  const { activeSection, handleSectionChange } = useCabinetNavigation();
-
-  // Machine status stats from dedicated API
-  const { machineStats, machineStatsLoading, refreshMachineStats } =
-    useLocationMachineStats();
+  // Get machine stats for all locations (no locationId specified)
+  const { machineStats, machineStatsLoading } = useLocationMachineStats();
 
   // ============================================================================
-  // State Management
+  // Chart Data & Metrics
   // ============================================================================
-  const [refreshing, setRefreshing] = useState(false);
-  const [movementRefreshTrigger, setMovementRefreshTrigger] = useState(0);
-  const [smibRefreshTrigger, setSmibRefreshTrigger] = useState(0);
-  const [firmwareRefreshTrigger, setFirmwareRefreshTrigger] = useState(0);
-  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
-  const [chartData, setChartData] = useState<dashboardData[]>([]);
-  const [loadingChartData, setLoadingChartData] = useState(false);
+  const makeRequest = useAbortableRequest();
+  const [localChartData, setLocalChartData] = useState<
+    Array<{ day: string; time: string; drop: number; gross: number }>
+  >([]);
+  const [loadingChartData, setLoadingChartDataLocal] = useState(false);
+  const chartRequestIdRef = useRef(0);
 
-  // ============================================================================
-  // Computed Values
-  // ============================================================================
-  const showLocationFilter =
-    new Set(locations.map(location => String(location._id ?? ''))).size > 1;
+  // Show granularity selector for Today/Yesterday
+  const showGranularitySelector = useMemo(() => {
+    return (
+      activeMetricsFilter === 'Today' ||
+      activeMetricsFilter === 'Yesterday' ||
+      activeMetricsFilter === 'Custom'
+    );
+  }, [activeMetricsFilter]);
 
-  // Calculate which batch of 50 items we need (each batch covers 5 pages of 10 items)
-  // Page 0-4 = batch 1, Page 5-9 = batch 2, etc.
-  const calculateBatchNumber = (page: number) => {
-    return Math.floor(page / (itemsPerBatch / itemsPerPage)) + 1;
-  };
+  // Track if filters are initialized (similar to location page pattern)
+  // This prevents premature requests before dependencies are ready
+  const [filtersInitialized, setFiltersInitialized] = useState(false);
 
-  // ============================================================================
-  // Effects - Data Fetching
-  // ============================================================================
-  // Reset to default view when search is cleared (use debounced value to avoid flicker)
-  // Note: The actual API call is handled by useCabinetData hook with debouncing
-  // This effect only handles UI state reset
+  // Initialize filters flag - wait until activeMetricsFilter is available
+  // This ensures dependencies are stable before making the first request
   useEffect(() => {
-    if (!searchTerm?.trim()) {
-      // Reset to first page when search is cleared
-      setCurrentPage(0);
-      setLoadedBatches(new Set([1]));
+    if (activeMetricsFilter && !filtersInitialized) {
+      setFiltersInitialized(true);
     }
-  }, [searchTerm, setCurrentPage]);
+  }, [activeMetricsFilter, filtersInitialized]);
 
-  // Load initial batch on mount and when filters change (excluding searchTerm)
-  // Search is handled internally by useCabinetData hook with debouncing
+  // Load initial data on mount and when filters change
   useEffect(() => {
-    // Reset batches when filters change
-    setLoadedBatches(new Set([1]));
-    loadCabinets(1, itemsPerBatch);
+    // Skip if filters are not yet initialized
+    if (!filtersInitialized || !activeMetricsFilter) {
+      return;
+    }
+
+    // Load cabinets when filters change
+    loadCabinets();
   }, [
-    selectedLicencee,
+    filtersInitialized,
     activeMetricsFilter,
+    selectedLicencee,
     customDateRange,
     displayCurrency,
     selectedLocation,
     selectedGameType,
-    setLoadedBatches,
-    loadCabinets,
-    itemsPerBatch,
     selectedStatus,
-    // Note: searchTerm is NOT in dependencies - it's handled by useCabinetData hook with debouncing
-  ]);
-
-  // Fetch next batch when crossing batch boundaries
-  useEffect(() => {
-    if (loading) return;
-
-    const currentBatch = calculateBatchNumber(currentPage);
-
-    // Check if we're on the last page of the current batch
-    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
-    const nextBatch = currentBatch + 1;
-
-    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
-    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
-      setLoadedBatches(prev => new Set([...prev, nextBatch]));
-      loadCabinets(nextBatch, itemsPerBatch);
-    }
-
-    // Also ensure current batch is loaded
-    if (!loadedBatches.has(currentBatch)) {
-      setLoadedBatches(prev => new Set([...prev, currentBatch]));
-      loadCabinets(currentBatch, itemsPerBatch);
-    }
-  }, [
-    currentPage,
-    loading,
     loadCabinets,
-    itemsPerBatch,
-    pagesPerBatch,
-    loadedBatches,
   ]);
 
-  // Fetch chart data for cabinets based on time period and filters
+  // Fetch chart data and metrics totals
   useEffect(() => {
-    if (activeSection !== 'cabinets') return;
+    if (!activeMetricsFilter || !filtersInitialized) {
+      return;
+    }
 
-    const fetchChartData = async () => {
+    if (
+      activeMetricsFilter === 'Custom' &&
+      (!customDateRange?.startDate || !customDateRange?.endDate)
+    ) {
+      return;
+    }
+
+    const fetchChartAndMetrics = async () => {
+      chartRequestIdRef.current += 1;
+      const reqId = chartRequestIdRef.current;
+      setLoadingChartDataLocal(true);
       setLoadingChartData(true);
+
       try {
-        const timePeriod = activeMetricsFilter as TimePeriod;
-
-        // Fetch chart data using the same API as top performing locations
-        const allChartData = await getMetrics(
-          timePeriod,
-          customDateRange.startDate,
-          customDateRange.endDate,
-          selectedLicencee && selectedLicencee !== 'all'
-            ? selectedLicencee
-            : undefined,
-          displayCurrency
-        );
-
-        // Filter chart data by selected location if a specific location is selected
-        let filteredChartData = allChartData;
-        if (selectedLocation && selectedLocation !== 'all') {
-          const selectedLocationObj = locations.find(
-            loc => String(loc._id) === selectedLocation
+        await makeRequest(async (signal: AbortSignal) => {
+          const metricsData = await getMetrics(
+            activeMetricsFilter as TimePeriod,
+            customDateRange?.startDate,
+            customDateRange?.endDate,
+            selectedLicencee,
+            displayCurrency,
+            signal,
+            chartGranularity === 'minute' ? 'minute' : 'hourly'
           );
-          const locationName = selectedLocationObj?.name;
 
-          // Filter by location ID or name - try multiple matching strategies
-          filteredChartData = allChartData.filter(item => {
-            const itemLocation = item.location;
-            if (!itemLocation) return false;
-
-            // Convert to strings for comparison
-            const selectedLocationStr = String(selectedLocation);
-            const locationIdStr = selectedLocationObj?._id
-              ? String(selectedLocationObj._id)
-              : '';
-            const locationNameStr = locationName
-              ? String(locationName).toLowerCase()
-              : '';
-            const itemLocationStr = String(itemLocation).toLowerCase();
-
-            return (
-              itemLocation === selectedLocation ||
-              itemLocation === selectedLocationStr ||
-              itemLocation === locationIdStr ||
-              itemLocation === locationName ||
-              itemLocationStr === locationNameStr ||
-              // Also check if location name matches (case-insensitive)
-              (locationName && itemLocationStr.includes(locationNameStr)) ||
-              (locationName && locationNameStr.includes(itemLocationStr))
-            );
-          });
-        }
-
-        setChartData(filteredChartData);
+          if (reqId !== chartRequestIdRef.current) return;
+          // Check if request was aborted (returns empty array)
+          if (!metricsData || metricsData.length === 0) {
+            setLocalChartData([]);
+            setChartData([]);
+            return;
+          }
+          // Convert dashboardData[] to chart format
+          const chartDataFormatted = metricsData.map(item => ({
+            day: item.day || '',
+            time: item.time || '',
+            drop: item.moneyIn || 0,
+            gross: item.gross || 0,
+          }));
+          setLocalChartData(chartDataFormatted);
+          setChartData(
+            chartDataFormatted.map(item => ({
+              xValue: item.time || item.day,
+              day: item.day,
+              time: item.time,
+              moneyIn: item.drop,
+              moneyOut: 0,
+              gross: item.gross,
+            }))
+          );
+        }, 'chart');
       } catch (error) {
-        console.error('Error fetching chart data:', error);
+        if (reqId !== chartRequestIdRef.current) return;
+        console.error('Error fetching chart and metrics data:', error);
+        setLocalChartData([]);
         setChartData([]);
       } finally {
+        if (reqId !== chartRequestIdRef.current) return;
+        setLoadingChartDataLocal(false);
         setLoadingChartData(false);
       }
     };
 
-    fetchChartData();
+    fetchChartAndMetrics();
   }, [
-    activeSection,
     activeMetricsFilter,
-    customDateRange.startDate,
-    customDateRange.endDate,
+    customDateRange,
     selectedLicencee,
-    selectedLocation,
-    locations,
     displayCurrency,
+    chartGranularity,
+    filtersInitialized,
+    makeRequest,
+    setChartData,
+    setLoadingChartData,
+    setFinancialTotals,
   ]);
 
   // ============================================================================
   // Event Handlers
   // ============================================================================
-  // Context-aware refresh handler based on active section
+  const handleSectionChange = (
+    section: 'cabinets' | 'movement' | 'smib' | 'firmware'
+  ) => {
+    setActiveSection(section);
+  };
+
+  const openNewMovementRequestModal = () => {
+    setIsNewMovementRequestModalOpen(true);
+  };
+
+  const closeNewMovementRequestModal = () => {
+    setIsNewMovementRequestModalOpen(false);
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
+
     try {
-      // Refresh machine status stats
-      await refreshMachineStats();
       if (activeSection === 'cabinets') {
+        // Refresh cabinets data
         await loadCabinets();
+
         // Refresh chart data
-        setLoadingChartData(true);
-        try {
-          const timePeriod = activeMetricsFilter as TimePeriod;
-          const allChartData = await getMetrics(
-            timePeriod,
-            customDateRange.startDate,
-            customDateRange.endDate,
-            selectedLicencee && selectedLicencee !== 'all'
-              ? selectedLicencee
-              : undefined,
-            displayCurrency
-          );
-
-          // Filter chart data by selected location if a specific location is selected
-          let filteredChartData = allChartData;
-          if (selectedLocation && selectedLocation !== 'all') {
-            const selectedLocationObj = locations.find(
-              loc => String(loc._id) === selectedLocation
-            );
-            const locationName = selectedLocationObj?.name;
-
-            // Filter by location ID or name - try multiple matching strategies
-            filteredChartData = allChartData.filter(item => {
-              const itemLocation = item.location;
-              if (!itemLocation) return false;
-
-              // Convert to strings for comparison
-              const selectedLocationStr = String(selectedLocation);
-              const locationIdStr = selectedLocationObj?._id
-                ? String(selectedLocationObj._id)
-                : '';
-              const locationNameStr = locationName
-                ? String(locationName).toLowerCase()
-                : '';
-              const itemLocationStr = String(itemLocation).toLowerCase();
-
-              return (
-                itemLocation === selectedLocation ||
-                itemLocation === selectedLocationStr ||
-                itemLocation === locationIdStr ||
-                itemLocation === locationName ||
-                itemLocationStr === locationNameStr ||
-                // Also check if location name matches (case-insensitive)
-                (locationName && itemLocationStr.includes(locationNameStr)) ||
-                (locationName && locationNameStr.includes(itemLocationStr))
+        if (
+          activeMetricsFilter === 'Custom' &&
+          (!customDateRange?.startDate || !customDateRange?.endDate)
+        ) {
+          // Skip chart refresh until valid dates are present
+        } else {
+          setLoadingChartDataLocal(true);
+          setLoadingChartData(true);
+          chartRequestIdRef.current += 1;
+          const reqId = chartRequestIdRef.current;
+          try {
+            await makeRequest(async (signal: AbortSignal) => {
+              const metricsData = await getMetrics(
+                activeMetricsFilter as TimePeriod,
+                customDateRange?.startDate,
+                customDateRange?.endDate,
+                selectedLicencee,
+                displayCurrency,
+                signal,
+                chartGranularity === 'minute' ? 'minute' : 'hourly'
               );
-            });
-          }
 
-          // If no filtered data found, try showing all data (might be aggregated already)
-          if (filteredChartData.length === 0 && allChartData.length > 0) {
-            filteredChartData = allChartData;
+              if (reqId !== chartRequestIdRef.current) return;
+              // Check if request was aborted (returns empty array)
+              if (!metricsData || metricsData.length === 0) {
+                setLocalChartData([]);
+                setChartData([]);
+                return;
+              }
+              // Convert dashboardData[] to chart format
+              const chartDataFormatted = metricsData.map(item => ({
+                day: item.day || '',
+                time: item.time || '',
+                drop: item.moneyIn || 0,
+                gross: item.gross || 0,
+              }));
+              setLocalChartData(chartDataFormatted);
+              setChartData(
+                chartDataFormatted.map(item => ({
+                  xValue: item.time || item.day,
+                  day: item.day,
+                  time: item.time,
+                  moneyIn: item.drop,
+                  moneyOut: 0,
+                  gross: item.gross,
+                }))
+              );
+            }, 'chart');
+          } catch (error) {
+            console.error('Error refreshing chart data:', error);
+            setLocalChartData([]);
+            setChartData([]);
+          } finally {
+            if (reqId !== chartRequestIdRef.current) return;
+            setLoadingChartDataLocal(false);
+            setLoadingChartData(false);
           }
-
-          setChartData(filteredChartData);
-        } catch (error) {
-          console.error('Error refreshing chart data:', error);
-          setChartData([]);
-        } finally {
-          setLoadingChartData(false);
         }
       } else if (activeSection === 'movement') {
         setMovementRefreshTrigger(prev => prev + 1);
@@ -415,7 +395,7 @@ function CabinetsPageContent() {
 
   const handleMovementRequestSubmit = () => {
     loadCabinets();
-    setMovementRefreshTrigger(prev => prev + 1); // 🔧 FIX: Trigger movement requests refresh
+    setMovementRefreshTrigger(prev => prev + 1);
     closeNewMovementRequestModal();
   };
 
@@ -432,7 +412,6 @@ function CabinetsPageContent() {
   // Sort change handler
   const handleSortChange = (_option: string, _order: 'asc' | 'desc') => {
     // This will be handled by the useCabinetSorting hook
-    // Sort logic is managed by the hook
   };
 
   // ============================================================================
@@ -440,6 +419,7 @@ function CabinetsPageContent() {
   // ============================================================================
   // Show "No Licensee Assigned" message for non-admin users without licensees
   const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+
   if (showNoLicenseeMessage) {
     return (
       <PageLayout
@@ -496,7 +476,6 @@ function CabinetsPageContent() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
-        {/* <MaintenanceBanner /> */}
         {/* Mobile-friendly header layout */}
         <div className="mt-4 w-full max-w-full">
           {/* Mobile Layout - All on same line */}
@@ -591,7 +570,7 @@ function CabinetsPageContent() {
         {activeSection === 'cabinets' && (
           <>
             <FinancialMetricsCards
-              totals={metricsTotals || financialTotals}
+              totals={metricsTotals || hookFinancialTotals}
               loading={loading || metricsTotalsLoading}
               title="Total for all Machines"
               className="mb-4 mt-4"
@@ -599,9 +578,38 @@ function CabinetsPageContent() {
 
             {/* Chart - Only show on cabinets section */}
             <div className="mb-4">
+              {/* Granularity Selector - Only show for Today/Yesterday */}
+              {showGranularitySelector && (
+                <div className="mb-3 flex items-center justify-end gap-2">
+                  <label
+                    htmlFor="chart-granularity"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Granularity:
+                  </label>
+                  <select
+                    id="chart-granularity"
+                    value={chartGranularity}
+                    onChange={e =>
+                      setChartGranularity(e.target.value as 'hourly' | 'minute')
+                    }
+                    className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                  >
+                    <option value="minute">Minute</option>
+                    <option value="hourly">Hourly</option>
+                  </select>
+                </div>
+              )}
               <Chart
                 loadingChartData={loadingChartData}
-                chartData={chartData}
+                chartData={localChartData.map(item => ({
+                  xValue: item.time || item.day,
+                  day: item.day,
+                  time: item.time,
+                  moneyIn: item.drop,
+                  moneyOut: 0,
+                  gross: item.gross,
+                }))}
                 activeMetricsFilter={activeMetricsFilter as TimePeriod}
               />
             </div>
@@ -611,23 +619,19 @@ function CabinetsPageContent() {
         {/* Date Filters and Machine Status - Only show on cabinets section */}
         {activeSection === 'cabinets' && (
           <div className="mb-2 mt-4">
-            <div className="mb-3">
+            <div className="mb-3 md:hidden">
               <DashboardDateFilters
                 hideAllTime={true}
                 onCustomRangeGo={loadCabinets}
                 enableTimeInputs={true}
-                mode="auto"
-                showIndicatorOnly={true}
               />
             </div>
             <div className="flex items-center justify-between gap-4">
-              <div className="flex min-w-0 flex-1 items-center">
+              <div className="hidden min-w-0 flex-1 items-center md:flex">
                 <DashboardDateFilters
                   hideAllTime={true}
                   onCustomRangeGo={loadCabinets}
                   enableTimeInputs={true}
-                  mode="auto"
-                  hideIndicator={true}
                 />
               </div>
               <div className="flex w-auto flex-shrink-0 items-center">
@@ -651,7 +655,7 @@ function CabinetsPageContent() {
             selectedLocation={selectedLocation}
             locations={locations}
             onLocationChange={handleLocationChange}
-            showLocationFilter={showLocationFilter}
+            showLocationFilter={true}
             selectedGameType={selectedGameType}
             gameTypes={gameTypes}
             onGameTypeChange={handleGameTypeChange}

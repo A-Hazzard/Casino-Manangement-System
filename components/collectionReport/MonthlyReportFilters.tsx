@@ -8,7 +8,6 @@
  * - Export Excel button
  * - Responsive design
  */
-import React from 'react';
 
 export default function MonthlyReportFilters() {
   // ============================================================================

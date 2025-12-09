@@ -6,8 +6,6 @@
  * - Matches AccountingDetails layout structure
  * - Header, metrics grid, and content area skeletons
  */
-import React from 'react';
-
 export const AccountingDetailsSkeleton = () => (
   <div className="rounded-lg bg-white p-6 shadow-sm">
     <div className="skeleton-bg mb-4 h-8 w-48"></div>

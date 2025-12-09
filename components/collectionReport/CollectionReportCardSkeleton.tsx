@@ -11,7 +11,6 @@
  * @param gridLayout - Whether to use grid layout
  * @param count - Number of skeleton cards to display
  */
-import React from 'react';
 
 type CollectionReportCardSkeletonProps = {
   gridLayout?: boolean;

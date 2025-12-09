@@ -21,7 +21,11 @@ import { Button } from '@/components/ui/button';
 import Chart from '@/components/ui/dashboard/Chart';
 import { DashboardChartSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
-import { getMachineChartData, getMachineMetrics, type MachineMetricsData } from '@/lib/helpers/machineChart';
+import {
+  getMachineChartData,
+  getMachineMetrics,
+  type MachineMetricsData,
+} from '@/lib/helpers/machineChart';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { dashboardData } from '@/lib/types';
 import { formatCurrencyWithCode } from '@/lib/utils/currency';
@@ -30,7 +34,7 @@ import { TimePeriod } from '@/shared/types/common';
 import gsap from 'gsap';
 import { ExternalLink, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type TopPerformingMachineModalProps = {
   open: boolean;
@@ -54,13 +58,28 @@ export default function TopPerformingMachineModal({
 }: TopPerformingMachineModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
-  const [machineData, setMachineData] = useState<MachineMetricsData | null>(null);
+  const [machineData, setMachineData] = useState<MachineMetricsData | null>(
+    null
+  );
   const [chartData, setChartData] = useState<dashboardData[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingChart, setLoadingChart] = useState(false);
+  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
+    'minute'
+  );
   const router = useRouter();
   const { displayCurrency } = useCurrency();
   const { activePieChartFilter, customDateRange } = useDashBoardStore();
+
+  // Show granularity selector for Today/Yesterday/Custom
+  const showGranularitySelector = useMemo(() => {
+    const timePeriod = (activePieChartFilter || 'Today') as TimePeriod;
+    return (
+      timePeriod === 'Today' ||
+      timePeriod === 'Yesterday' ||
+      timePeriod === 'Custom'
+    );
+  }, [activePieChartFilter]);
 
   // Fetch machine data and chart data
   useEffect(() => {
@@ -76,7 +95,7 @@ export default function TopPerformingMachineModal({
       try {
         // Use activePieChartFilter (from top performing filter) instead of activeMetricsFilter
         const timePeriod = (activePieChartFilter || 'Today') as TimePeriod;
-        
+
         // Fetch machine metrics and chart data in parallel
         const [metrics, chart] = await Promise.all([
           getMachineMetrics(
@@ -91,7 +110,9 @@ export default function TopPerformingMachineModal({
             timePeriod,
             startDate,
             endDate,
-            displayCurrency
+            displayCurrency,
+            undefined,
+            chartGranularity === 'minute' ? 'minute' : 'hourly'
           ),
         ]);
 
@@ -106,7 +127,14 @@ export default function TopPerformingMachineModal({
     };
 
     fetchData();
-  }, [open, machineId, activePieChartFilter, customDateRange, displayCurrency]);
+  }, [
+    open,
+    machineId,
+    activePieChartFilter,
+    customDateRange,
+    displayCurrency,
+    chartGranularity,
+  ]);
 
   // Animate modal on open/close
   useEffect(() => {
@@ -163,25 +191,27 @@ export default function TopPerformingMachineModal({
   };
 
   return (
+    <div
+      ref={backdropRef}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
       <div
-        ref={backdropRef}
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
-        onClick={onClose}
+        ref={modalRef}
+        className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white shadow-xl"
+        onClick={e => e.stopPropagation()}
       >
-        <div
-          ref={modalRef}
-          className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow-xl"
-          onClick={e => e.stopPropagation()}
-        >
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white p-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Machine Preview</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              {formattedMachineName}
-            </p>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Machine Preview
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">{formattedMachineName}</p>
             {locationName && (
-              <p className="mt-1 text-sm text-gray-500">Location: {locationName}</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Location: {locationName}
+              </p>
             )}
           </div>
           <button
@@ -215,7 +245,10 @@ export default function TopPerformingMachineModal({
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                 <p className="text-sm font-medium text-gray-600">Money Out</p>
                 <p className="mt-1 text-2xl font-bold text-gray-900">
-                  {formatCurrencyWithCode(machineData.moneyOut, displayCurrency)}
+                  {formatCurrencyWithCode(
+                    machineData.moneyOut,
+                    displayCurrency
+                  )}
                 </p>
               </div>
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -235,11 +268,39 @@ export default function TopPerformingMachineModal({
             {loadingChart ? (
               <DashboardChartSkeleton />
             ) : (
-              <Chart
-                loadingChartData={loadingChart}
-                chartData={chartData}
-                activeMetricsFilter={(activePieChartFilter || 'Today') as TimePeriod}
-              />
+              <>
+                {/* Granularity Selector - Only show for Today/Yesterday/Custom */}
+                {showGranularitySelector && (
+                  <div className="mb-3 flex items-center justify-end gap-2">
+                    <label
+                      htmlFor="chart-granularity-machine-modal"
+                      className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      Granularity:
+                    </label>
+                    <select
+                      id="chart-granularity-machine-modal"
+                      value={chartGranularity}
+                      onChange={e =>
+                        setChartGranularity(
+                          e.target.value as 'hourly' | 'minute'
+                        )
+                      }
+                      className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                    >
+                      <option value="minute">Minute</option>
+                      <option value="hourly">Hourly</option>
+                    </select>
+                  </div>
+                )}
+                <Chart
+                  loadingChartData={loadingChart}
+                  chartData={chartData}
+                  activeMetricsFilter={
+                    (activePieChartFilter || 'Today') as TimePeriod
+                  }
+                />
+              </>
             )}
           </div>
 
@@ -256,7 +317,9 @@ export default function TopPerformingMachineModal({
           ) : machineData ? (
             <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
               <div className="rounded-lg border border-gray-200 bg-white p-3">
-                <p className="text-xs font-medium text-gray-600">Games Played</p>
+                <p className="text-xs font-medium text-gray-600">
+                  Games Played
+                </p>
                 <p className="mt-1 text-lg font-semibold text-gray-900">
                   {machineData.gamesPlayed.toLocaleString()}
                 </p>
@@ -287,7 +350,10 @@ export default function TopPerformingMachineModal({
             <Button variant="outline" onClick={onClose}>
               Close
             </Button>
-            <Button onClick={handleNavigate} className="flex items-center gap-2">
+            <Button
+              onClick={handleNavigate}
+              className="flex items-center gap-2"
+            >
               <ExternalLink className="h-4 w-4" />
               View Machine
             </Button>
@@ -297,4 +363,3 @@ export default function TopPerformingMachineModal({
     </div>
   );
 }
-

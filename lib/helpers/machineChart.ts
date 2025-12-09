@@ -12,7 +12,10 @@
  */
 
 import type { dashboardData } from '@/lib/types';
-import { formatISODate } from '@/shared/utils/dateFormat';
+import {
+  formatISODate,
+  formatLocalDateTimeString,
+} from '@/shared/utils/dateFormat';
 import { TimePeriod } from '@shared/types';
 import axios from 'axios';
 
@@ -58,7 +61,23 @@ export async function getMachineMetrics(
     if (timePeriod === 'Custom' && startDate && endDate) {
       const sd = startDate instanceof Date ? startDate : new Date(startDate);
       const ed = endDate instanceof Date ? endDate : new Date(endDate);
-      url += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
+
+      // Check if dates have time components (not midnight)
+      const hasTime =
+        sd.getHours() !== 0 ||
+        sd.getMinutes() !== 0 ||
+        sd.getSeconds() !== 0 ||
+        ed.getHours() !== 0 ||
+        ed.getMinutes() !== 0 ||
+        ed.getSeconds() !== 0;
+
+      if (hasTime) {
+        // Send local time with timezone offset to preserve user's time selection
+        url += `&startDate=${formatLocalDateTimeString(sd, -4)}&endDate=${formatLocalDateTimeString(ed, -4)}`;
+      } else {
+        // Date-only: send ISO date format for gaming day offset to apply
+        url += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
+      }
     }
 
     if (displayCurrency) {
@@ -112,7 +131,9 @@ export async function getMachineChartData(
   startDate?: Date | string,
   endDate?: Date | string,
   displayCurrency?: string,
-  selectedLicencee?: string | null
+  selectedLicencee?: string | null,
+  granularity?: 'hourly' | 'minute',
+  signal?: AbortSignal
 ): Promise<dashboardData[]> {
   try {
     // Build URL for machine chart API
@@ -121,7 +142,23 @@ export async function getMachineChartData(
     if (timePeriod === 'Custom' && startDate && endDate) {
       const sd = startDate instanceof Date ? startDate : new Date(startDate);
       const ed = endDate instanceof Date ? endDate : new Date(endDate);
-      url += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
+
+      // Check if dates have time components (not midnight)
+      const hasTime =
+        sd.getHours() !== 0 ||
+        sd.getMinutes() !== 0 ||
+        sd.getSeconds() !== 0 ||
+        ed.getHours() !== 0 ||
+        ed.getMinutes() !== 0 ||
+        ed.getSeconds() !== 0;
+
+      if (hasTime) {
+        // Send local time with timezone offset to preserve user's time selection
+        url += `&startDate=${formatLocalDateTimeString(sd, -4)}&endDate=${formatLocalDateTimeString(ed, -4)}`;
+      } else {
+        // Date-only: send ISO date format for gaming day offset to apply
+        url += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
+      }
     }
 
     if (displayCurrency) {
@@ -131,6 +168,11 @@ export async function getMachineChartData(
     // Pass selectedLicencee to API so it can check if "all licensees" is selected
     if (selectedLicencee !== undefined && selectedLicencee !== null) {
       url += `&licensee=${encodeURIComponent(selectedLicencee)}`;
+    }
+
+    // Pass granularity preference if specified
+    if (granularity) {
+      url += `&granularity=${granularity}`;
     }
 
     const response = await axios.get<{
@@ -146,6 +188,7 @@ export async function getMachineChartData(
       headers: {
         'Cache-Control': 'no-cache',
       },
+      signal,
     });
 
     if (!response.data.success || !Array.isArray(response.data.data)) {
@@ -154,32 +197,114 @@ export async function getMachineChartData(
 
     const rawData = response.data.data;
 
-    // Determine if we should use hourly aggregation
-    const shouldUseHourly =
-      timePeriod === 'Today' || timePeriod === 'Yesterday';
-    const isCustomHourly =
-      timePeriod === 'Custom' &&
-      startDate &&
-      endDate &&
-      (() => {
+    // Check if API response contains minute-level data (time format is "HH:MM" with non-zero minutes)
+    const hasMinuteLevelData = rawData.some(item => {
+      if (!item.time) return false;
+      const timeParts = item.time.split(':');
+      if (timeParts.length !== 2) return false;
+      const minutes = parseInt(timeParts[1], 10);
+      return !isNaN(minutes) && minutes !== 0; // Has non-zero minutes
+    });
+
+    // Determine if we should use hourly or minute aggregation
+    // If granularity was manually specified, use it
+    let useHourly = false;
+    let useMinute = false;
+
+    if (granularity) {
+      // Manual granularity override (from selector)
+      if (granularity === 'hourly') {
+        useHourly = true;
+        useMinute = false;
+      } else if (granularity === 'minute') {
+        useHourly = false;
+        useMinute = true;
+      }
+    } else {
+      // Auto-detect granularity based on API response and time period
+      // Only use hourly for predefined periods (Today, Yesterday) OR date-only custom ranges
+      const shouldUseHourly =
+        timePeriod === 'Today' || timePeriod === 'Yesterday';
+
+      // For custom ranges: use hourly only if date-only (no time inputs) AND API didn't return minute data
+      // If API returns minute data, preserve it (don't use hourly aggregation)
+      const isCustomDateOnly =
+        timePeriod === 'Custom' &&
+        startDate &&
+        endDate &&
+        !hasMinuteLevelData &&
+        (() => {
+          const sd =
+            startDate instanceof Date ? startDate : new Date(startDate);
+          const ed = endDate instanceof Date ? endDate : new Date(endDate);
+          // Check if dates have no time components (midnight = date-only)
+          const hasNoTime =
+            sd.getHours() === 0 &&
+            sd.getMinutes() === 0 &&
+            sd.getSeconds() === 0 &&
+            ed.getHours() === 0 &&
+            ed.getMinutes() === 0 &&
+            ed.getSeconds() === 0;
+          if (!hasNoTime) return false;
+          // Check if range is <= 1 day
+          const diffInMs = ed.getTime() - sd.getTime();
+          const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+          return diffInDays <= 1;
+        })();
+
+      // Use hourly only for predefined periods or date-only custom ranges (without minute data)
+      useHourly = Boolean(shouldUseHourly || isCustomDateOnly);
+
+      // Detect if we should use minute-level aggregation
+      // For Custom: use minute if time inputs are provided OR API returns minute data
+      // For Today/Yesterday: use minute if API returns minute data
+      if (timePeriod === 'Custom' && startDate && endDate) {
         const sd = startDate instanceof Date ? startDate : new Date(startDate);
         const ed = endDate instanceof Date ? endDate : new Date(endDate);
-        const diffInMs = ed.getTime() - sd.getTime();
-        const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
-        return diffInDays <= 1;
-      })();
+        // Check if custom range has time components (not date-only)
+        const hasTime =
+          sd.getHours() !== 0 ||
+          sd.getMinutes() !== 0 ||
+          sd.getSeconds() !== 0 ||
+          ed.getHours() !== 0 ||
+          ed.getMinutes() !== 0 ||
+          ed.getSeconds() !== 0;
 
-    const useHourly = shouldUseHourly || isCustomHourly;
+        // If custom range has time inputs, use minute-level
+        if (hasTime || hasMinuteLevelData) {
+          useMinute = true;
+          useHourly = false;
+        }
+      } else if (
+        (timePeriod === 'Today' || timePeriod === 'Yesterday') &&
+        hasMinuteLevelData
+      ) {
+        useMinute = true;
+        useHourly = false;
+      }
+    }
 
     // Transform to dashboardData format
     const chartData: dashboardData[] = rawData.map(item => {
       const day = item.day;
       let time = '';
-      if (useHourly && item.time) {
-        const [hh] = item.time.split(':');
-        time = `${hh.padStart(2, '0')}:00`;
+
+      if (item.time) {
+        if (useHourly) {
+          // For hourly: strip minutes (convert "14:15" to "14:00")
+          const [hh] = item.time.split(':');
+          time = `${hh.padStart(2, '0')}:00`;
+        } else if (useMinute) {
+          // For minute-level: preserve original time from API (e.g., "14:15")
+          time = item.time;
+        } else {
+          // For daily: preserve time as-is (may be empty or "00:00")
+          time = item.time || '';
+        }
       }
-      const xValue = useHourly ? time : day;
+
+      // xValue: use time for hourly/minute charts, day for daily charts
+      const xValue = useHourly || useMinute ? time : day;
 
       return {
         xValue,
@@ -191,10 +316,19 @@ export async function getMachineChartData(
       };
     });
 
-    // Group by day/hour if needed (in case API returns duplicate entries)
+    // Group by day/hour/minute if needed (in case API returns duplicate entries)
     const grouped: Record<string, dashboardData> = {};
     chartData.forEach(item => {
-      const key = useHourly ? `${item.day}_${item.time}` : item.day;
+      // Use different grouping keys for hourly, minute, and daily
+      let key: string;
+      if (useHourly) {
+        key = `${item.day}_${item.time}`; // e.g., "2025-12-07_14:00"
+      } else if (useMinute) {
+        key = `${item.day}_${item.time}`; // e.g., "2025-12-07_14:15"
+      } else {
+        key = item.day; // Daily grouping
+      }
+
       if (!grouped[key]) {
         grouped[key] = { ...item };
       } else {
@@ -229,9 +363,28 @@ export async function getMachineChartData(
         : endDate
           ? new Date(endDate)
           : undefined,
-      useHourly || false
+      useHourly,
+      useMinute
     );
   } catch (error: unknown) {
+    // Handle cancelled/aborted requests first - these are expected when user changes filters
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED')
+    ) {
+      // Silently handle cancelled requests - this is expected when user changes filters
+      return [];
+    }
+
+    // Check for axios.isCancel() to properly detect cancelled requests
+    const axios = (await import('axios')).default;
+    if (axios.isCancel && axios.isCancel(error)) {
+      // Silently handle cancelled requests
+      return [];
+    }
+
     console.error('Failed to fetch machine chart data:', error);
     return [];
   }
@@ -245,13 +398,32 @@ function fillMissingIntervals(
   timePeriod: TimePeriod,
   startDate?: Date,
   endDate?: Date,
-  isHourly?: boolean
+  isHourly?: boolean,
+  isMinute?: boolean
 ): dashboardData[] {
   if (data.length === 0) return [];
 
   const filledData: dashboardData[] = [];
 
+  // For ALL minute granularity (Custom, Today, Yesterday): Only show actual data points (don't fill zeros)
+  // User wants to see ONLY times that are in the JSON response, not filled-in zeros
+  if (
+    isMinute &&
+    (timePeriod === 'Custom' ||
+      timePeriod === 'Today' ||
+      timePeriod === 'Yesterday')
+  ) {
+    // Return data as-is - no filling for any minute granularity
+    // This ensures only actual data points from the API response are displayed
+    return data;
+  }
+
+  // Store original data length for safety check (after early returns)
+  const originalDataLength = data.length;
+
+  // Hourly filling logic
   if (isHourly) {
+    // Hourly filling for predefined periods
     const baseDay = data[0]?.day || formatISODate(new Date());
     for (let hour = 0; hour < 24; hour++) {
       const timeKey = `${hour.toString().padStart(2, '0')}:00`;
@@ -272,12 +444,13 @@ function fillMissingIntervals(
       }
     }
   } else {
+    // Daily filling for longer periods
     let start: Date;
     let end: Date;
 
     if (timePeriod === 'Custom' && startDate && endDate) {
-      start = startDate;
-      end = endDate;
+      start = startDate instanceof Date ? startDate : new Date(startDate);
+      end = endDate instanceof Date ? endDate : new Date(endDate);
     } else if (timePeriod === '7d') {
       end = new Date();
       start = new Date();
@@ -310,6 +483,25 @@ function fillMissingIntervals(
       }
       current.setDate(current.getDate() + 1);
     }
+  }
+
+  // Safety check: if we somehow ended up with no data but had input data,
+  // return the original data to prevent data loss
+  if (filledData.length === 0 && originalDataLength > 0) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(
+        'fillMissingIntervals: Returning original data to prevent data loss',
+        {
+          timePeriod,
+          isHourly,
+          isMinute,
+          dataLength: originalDataLength,
+          startDate,
+          endDate,
+        }
+      );
+    }
+    return data;
   }
 
   return filledData;

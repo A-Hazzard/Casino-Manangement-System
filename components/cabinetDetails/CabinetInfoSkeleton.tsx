@@ -6,8 +6,6 @@
  * - Matches CabinetInfoHeader layout structure
  * - Header and grid layout skeletons
  */
-import React from 'react';
-
 export const CabinetInfoSkeleton = () => (
   <div className="rounded-lg bg-white p-6 shadow-sm">
     <div className="skeleton-bg mb-4 h-8 w-48"></div>

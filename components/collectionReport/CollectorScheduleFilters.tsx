@@ -21,7 +21,6 @@
  * @param onResetFilters - Callback to reset all filters
  * @param loading - Whether data is loading
  */
-import React from 'react';
 import { CollectorScheduleFiltersProps } from '@/lib/types/componentProps';
 
 export default function CollectorScheduleFilters({

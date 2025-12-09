@@ -12,13 +12,11 @@
  * @module app/api/metrics/meters/route
  */
 
+import { getUserAccessibleLicenseesFromToken } from '@/app/api/lib/helpers/licenseeFilter';
 import {
   getMeterTrends,
   validateCustomDateRange,
 } from '@/app/api/lib/helpers/meterTrends';
-import {
-  getUserAccessibleLicenseesFromToken,
-} from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -36,7 +34,8 @@ function handleMongoDBError(error: unknown): NextResponse | null {
 
     if (
       errorMessage.includes('mongonetworktimeouterror') ||
-      (errorMessage.includes('connection') && errorMessage.includes('timed out'))
+      (errorMessage.includes('connection') &&
+        errorMessage.includes('timed out'))
     ) {
       return NextResponse.json(
         {
@@ -66,7 +65,10 @@ function handleMongoDBError(error: unknown): NextResponse | null {
       );
     }
 
-    if (errorMessage.includes('mongodb') || errorMessage.includes('connection')) {
+    if (
+      errorMessage.includes('mongodb') ||
+      errorMessage.includes('connection')
+    ) {
       return NextResponse.json(
         {
           error: 'Database connection failed',
@@ -111,6 +113,7 @@ export async function GET(req: NextRequest) {
       rawLicencee && rawLicencee !== 'all' ? String(rawLicencee) : '';
     const displayCurrency =
       (params.currency as CurrencyCode | undefined) || 'USD';
+    const granularity = params.granularity as 'hourly' | 'minute' | undefined;
 
     if (!timePeriod) {
       return NextResponse.json(
@@ -137,8 +140,13 @@ export async function GET(req: NextRequest) {
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
     let userLocationPermissions: string[] = [];
-    if (Array.isArray((userPayload as { assignedLocations?: string[] })?.assignedLocations)) {
-      userLocationPermissions = (userPayload as { assignedLocations: string[] }).assignedLocations;
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
     }
 
     // ============================================================================
@@ -176,6 +184,7 @@ export async function GET(req: NextRequest) {
         startDate,
         endDate,
         displayCurrency,
+        granularity,
       },
       accessibleLicensees,
       userRoles,

@@ -1,0 +1,768 @@
+[{
+  "_id": "6936f59ad028c999a6fb8e2d",
+  "isCompleted": false,
+  "metersIn": 21883406,
+  "metersOut": 18372877,
+  "prevIn": 21198606,
+  "prevOut": 17842277.8,
+  "softMetersIn": 21883406,
+  "softMetersOut": 18372877,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "GMID6",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 684800,
+    "metersOut": 530599.2,
+    "gross": 154200.8
+  },
+  "machineCustomName": "GM3480",
+  "machineId": "fdfbfc3f8f74affd56b0642c",
+  "machineName": "GMID6",
+  "game": "Roulette(Ventura)",
+  "ramClear": false,
+  "serialNumber": "GMID6",
+  "createdAt": {
+    "$date": "2025-12-08T15:58:18.441Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:43.313Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f578d028c999a6fb8e15",
+  "isCompleted": false,
+  "metersIn": 13230713,
+  "metersOut": 10424613,
+  "prevIn": 12563413,
+  "prevOut": 9676813,
+  "softMetersIn": 13230713,
+  "softMetersOut": 10424613,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "GMID5",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 667300,
+    "metersOut": 747800,
+    "gross": -80500
+  },
+  "machineCustomName": "GM3479",
+  "machineId": "780f62059ada11b3bedc4476",
+  "machineName": "GMID5",
+  "game": "Roulette(Ventura)",
+  "ramClear": false,
+  "serialNumber": "GMID5",
+  "createdAt": {
+    "$date": "2025-12-08T15:57:44.916Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:43.311Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f565d028c999a6fb8dfd",
+  "isCompleted": false,
+  "metersIn": 19307303,
+  "metersOut": 15760303,
+  "prevIn": 19307303,
+  "prevOut": 15760303,
+  "softMetersIn": 19307303,
+  "softMetersOut": 15760303,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "GMID4",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 0,
+    "metersOut": 0,
+    "gross": 0
+  },
+  "machineCustomName": "GM3478",
+  "machineId": "292daa1cdde65690f8afdddd",
+  "machineName": "GMID4",
+  "game": "Roulette(Ventura)",
+  "ramClear": false,
+  "serialNumber": "GMID4",
+  "createdAt": {
+    "$date": "2025-12-08T15:57:25.923Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:43.312Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f550d028c999a6fb8de5",
+  "isCompleted": false,
+  "metersIn": 28202503,
+  "metersOut": 21833703,
+  "prevIn": 27134603,
+  "prevOut": 20710203,
+  "softMetersIn": 28202503,
+  "softMetersOut": 21833703,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "GMID3",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 1067900,
+    "metersOut": 1123500,
+    "gross": -55600
+  },
+  "machineCustomName": "GM3477",
+  "machineId": "5141958603c697782d8e4834",
+  "machineName": "GMID3",
+  "game": "Roulette(Ventura)",
+  "ramClear": false,
+  "serialNumber": "GMID3",
+  "createdAt": {
+    "$date": "2025-12-08T15:57:04.757Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:43.239Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f53bd028c999a6fb8dcd",
+  "isCompleted": false,
+  "metersIn": 18926811,
+  "metersOut": 16024011,
+  "prevIn": 18074111,
+  "prevOut": 15086611,
+  "softMetersIn": 18926811,
+  "softMetersOut": 16024011,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "GMID2",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 852700,
+    "metersOut": 937400,
+    "gross": -84700
+  },
+  "machineCustomName": "GM3476",
+  "machineId": "831271ad54d7b063b3fdbb68",
+  "machineName": "GMID2",
+  "game": "Roulette(Ventura)",
+  "ramClear": false,
+  "serialNumber": "GMID2",
+  "createdAt": {
+    "$date": "2025-12-08T15:56:43.833Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:42.897Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f51ed028c999a6fb8db4",
+  "isCompleted": false,
+  "metersIn": 23496714,
+  "metersOut": 18327393,
+  "prevIn": 23163014,
+  "prevOut": 18132580,
+  "softMetersIn": 23496714,
+  "softMetersOut": 18327393,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "GMID1",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 333700,
+    "metersOut": 194813,
+    "gross": 138887
+  },
+  "machineCustomName": "GGRDY0051",
+  "machineId": "96e4ae83427ff559df800578",
+  "machineName": "GMID1",
+  "game": "Rhapsody Multigame",
+  "ramClear": false,
+  "serialNumber": "GMID1",
+  "createdAt": {
+    "$date": "2025-12-08T15:56:14.388Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:42.545Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f4e6d028c999a6fb8d9b",
+  "isCompleted": false,
+  "metersIn": 24682603,
+  "metersOut": 20510403,
+  "prevIn": 23927303,
+  "prevOut": 19943303,
+  "softMetersIn": 24682603,
+  "softMetersOut": 20510403,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "GMID1",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 755300,
+    "metersOut": 567100,
+    "gross": 188200
+  },
+  "machineCustomName": "GM3475",
+  "machineId": "ea8c4821d2dee6b3e5287e78",
+  "machineName": "GMID1",
+  "game": "Roulette(Ventura)",
+  "ramClear": false,
+  "serialNumber": "GMID1",
+  "createdAt": {
+    "$date": "2025-12-08T15:55:18.598Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:42.530Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f3e9d028c999a6fb8d83",
+  "isCompleted": false,
+  "metersIn": 12546462,
+  "metersOut": 9065834,
+  "prevIn": 12155362,
+  "prevOut": 8760597,
+  "softMetersIn": 12546462,
+  "softMetersOut": 9065834,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "GGRDY0042",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 391100,
+    "metersOut": 305237,
+    "gross": 85863
+  },
+  "machineCustomName": "GGRDY0042",
+  "machineId": "370dc7c3caab4ff68e41b3c7",
+  "machineName": "GGRDY0042",
+  "game": "Rhapsody Multigame",
+  "ramClear": false,
+  "serialNumber": "GGRDY0042",
+  "createdAt": {
+    "$date": "2025-12-08T15:51:05.469Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:42.508Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f3c2d028c999a6fb8d6a",
+  "isCompleted": false,
+  "metersIn": 17134386,
+  "metersOut": 12531763,
+  "prevIn": 16908087,
+  "prevOut": 12312631,
+  "softMetersIn": 17134386,
+  "softMetersOut": 12531763,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "GGRDY0035",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 226299,
+    "metersOut": 219132,
+    "gross": 7167
+  },
+  "machineCustomName": "GGRDY0035",
+  "machineId": "0d21f8c653f81bcbce53d7c3",
+  "machineName": "GGRDY0035",
+  "game": "Rhapsody Multigame",
+  "ramClear": false,
+  "serialNumber": "GGRDY0035",
+  "createdAt": {
+    "$date": "2025-12-08T15:50:26.117Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:42.461Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f3afd028c999a6fb8d52",
+  "isCompleted": false,
+  "metersIn": 15798086,
+  "metersOut": 12155918,
+  "prevIn": 15320986,
+  "prevOut": 11677054,
+  "softMetersIn": 15798086,
+  "softMetersOut": 12155918,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "GGRDY0031",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 477100,
+    "metersOut": 478864,
+    "gross": -1764
+  },
+  "machineCustomName": "GGRDY0031",
+  "machineId": "1154c73df5efa5743e2c6149",
+  "machineName": "GGRDY0031",
+  "game": "Rhapsody Multigame",
+  "ramClear": false,
+  "serialNumber": "GGRDY0031",
+  "createdAt": {
+    "$date": "2025-12-08T15:50:07.414Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:42.425Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f39ad028c999a6fb8d3a",
+  "isCompleted": false,
+  "metersIn": 19445903,
+  "metersOut": 15022697,
+  "prevIn": 18858903,
+  "prevOut": 14811841,
+  "softMetersIn": 19445903,
+  "softMetersOut": 15022697,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "GGRDY0040",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 587000,
+    "metersOut": 210856,
+    "gross": 376144
+  },
+  "machineCustomName": "GGRDY0040",
+  "machineId": "fb2080e60b2812a9a11e5e57",
+  "machineName": "GGRDY0040",
+  "game": "Rhapsody Multigame",
+  "ramClear": false,
+  "serialNumber": "GGRDY0040",
+  "createdAt": {
+    "$date": "2025-12-08T15:49:46.188Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:40.913Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f375d028c999a6fb8d22",
+  "isCompleted": false,
+  "metersIn": 47131567,
+  "metersOut": 39824819,
+  "prevIn": 45641267,
+  "prevOut": 38256057,
+  "softMetersIn": 47131567,
+  "softMetersOut": 39824819,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "0000187ED685",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 1490300,
+    "metersOut": 1568762,
+    "gross": -78462
+  },
+  "machineCustomName": "GGNOVO116",
+  "machineId": "bf41390c6cdf759c16bc0ee7",
+  "machineName": "0000187ED685",
+  "game": "Novamatic Multigame",
+  "ramClear": false,
+  "serialNumber": "0000187ED685",
+  "createdAt": {
+    "$date": "2025-12-08T15:49:09.284Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:40.911Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f35bd028c999a6fb8d0a",
+  "isCompleted": false,
+  "metersIn": 24980300,
+  "metersOut": 20413854,
+  "prevIn": 22791800,
+  "prevOut": 19037388,
+  "softMetersIn": 24980300,
+  "softMetersOut": 20413854,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "00001541EDD3",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 2188500,
+    "metersOut": 1376466,
+    "gross": 812034
+  },
+  "machineCustomName": "GGNOVO148",
+  "machineId": "f62f7b50ebb22eb862877a01",
+  "machineName": "00001541EDD3",
+  "game": "Novomatic Multigame",
+  "ramClear": false,
+  "serialNumber": "00001541EDD3",
+  "createdAt": {
+    "$date": "2025-12-08T15:48:43.458Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:40.909Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f33cd028c999a6fb8cf2",
+  "isCompleted": false,
+  "metersIn": 35024800,
+  "metersOut": 27640176,
+  "prevIn": 33132800,
+  "prevOut": 26188019,
+  "softMetersIn": 35024800,
+  "softMetersOut": 27640176,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "GGNOVO167",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 1892000,
+    "metersOut": 1452157,
+    "gross": 439843
+  },
+  "machineCustomName": "GGNOVO167",
+  "machineId": "e44c3b04f6214c280f76a201",
+  "machineName": "GGNOVO167",
+  "game": "Novomatic Multigame",
+  "ramClear": false,
+  "serialNumber": "GGNOVO167",
+  "createdAt": {
+    "$date": "2025-12-08T15:48:12.417Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:40.905Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f311d028c999a6fb8cd8",
+  "isCompleted": false,
+  "metersIn": 49496272,
+  "metersOut": 39771961,
+  "prevIn": 47176172,
+  "prevOut": 38651973,
+  "softMetersIn": 49496272,
+  "softMetersOut": 39771961,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "000014CDCC6D",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 2320100,
+    "metersOut": 1119988,
+    "gross": 1200112
+  },
+  "machineCustomName": "GGNOVO102",
+  "machineId": "f4b0324c41024bcfb5d1c789",
+  "machineName": "000014CDCC6D",
+  "game": "Novamatic Multigame",
+  "ramClear": false,
+  "serialNumber": "000014CDCC6D",
+  "createdAt": {
+    "$date": "2025-12-08T15:47:29.635Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:42.105Z"
+  },
+  "__v": 0
+},
+{
+  "_id": "6936f2f5d028c999a6fb8cbc",
+  "isCompleted": false,
+  "metersIn": 51051050,
+  "metersOut": 40899307,
+  "prevIn": 49051050,
+  "prevOut": 39484353,
+  "softMetersIn": 51051050,
+  "softMetersOut": 40899307,
+  "notes": "",
+  "timestamp": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "collectionTime": {
+    "$date": "2025-12-08T12:00:10.170Z"
+  },
+  "location": "Bet Cabana Stabroek",
+  "collector": "1e8854bdeb5c14c3acd58fad",
+  "locationReportId": "",
+  "sasMeters": {
+    "machine": "000015DF4925",
+    "drop": 0,
+    "totalCancelledCredits": 0,
+    "gross": 0,
+    "gamesPlayed": 0,
+    "jackpot": 0,
+    "sasStartTime": "2025-12-02T14:10:38.851Z",
+    "sasEndTime": "2025-12-08T12:00:10.170Z"
+  },
+  "movement": {
+    "metersIn": 2000000,
+    "metersOut": 1414954,
+    "gross": 585046
+  },
+  "machineCustomName": "GGNOVO168",
+  "machineId": "5d3367eb1ff992b5c02e8764",
+  "machineName": "000015DF4925",
+  "game": "Novomatic Multigame",
+  "ramClear": false,
+  "serialNumber": "000015DF4925",
+  "createdAt": {
+    "$date": "2025-12-08T15:47:01.648Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-08T20:22:40.900Z"
+  },
+  "__v": 0
+}]

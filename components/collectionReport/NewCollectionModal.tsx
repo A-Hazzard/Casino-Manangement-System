@@ -36,7 +36,7 @@ import {
 } from '@/components/ui/dialog';
 import { InfoConfirmationDialog } from '@/components/ui/InfoConfirmationDialog';
 import { Input } from '@/components/ui/input';
-import { PCDateTimePicker } from '@/components/ui/pc-date-time-picker';
+import { ModernCalendar } from '@/components/ui/ModernCalendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NewCollectionModalSkeleton } from '@/components/ui/skeletons/NewCollectionModalSkeleton';
 import { Textarea } from '@/components/ui/textarea';
@@ -2038,22 +2038,77 @@ export default function NewCollectionModal({
               ? String(entry.timestamp.getMinutes()).padStart(2, '0')
               : String(new Date(entry.timestamp).getMinutes()).padStart(2, '0'),
         })),
+        // Include collection IDs for faster lookup (avoids database queries)
+        collectionIds: collectedMachineEntries
+          .map(entry => entry._id)
+          .filter((id): id is string => !!id),
       };
 
       // Validate payload before sending
       const validation = validateCollectionReportPayload(payload);
       if (!validation.isValid) {
+        console.error('❌ Validation failed:', validation.errors);
         throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
       }
 
+      console.log(
+        '🚀 [NewCollectionModal] Calling createCollectionReport API...',
+        {
+          payloadSize: JSON.stringify(payload).length,
+          machinesCount: payload.machines?.length || 0,
+          locationReportId: payload.locationReportId,
+        }
+      );
+
       // Create the collection report FIRST
-      await createCollectionReport(payload);
+      const result = await createCollectionReport(payload);
+
+      console.log(
+        '✅ [NewCollectionModal] createCollectionReport API call completed',
+        {
+          result,
+          hasData: !!result,
+          success: result?.success,
+        }
+      );
+
+      // Check if the API call was successful
+      if (!result || !result.success) {
+        const errorMessage =
+          result?.error || 'Failed to create collection report';
+        console.error(
+          '❌ [NewCollectionModal] Report creation failed:',
+          errorMessage
+        );
+        toast.dismiss('create-reports-toast');
+        toast.error(errorMessage, {
+          position: 'top-left',
+          duration: 10000,
+        });
+        setIsProcessing(false);
+        return; // Exit early, don't close modal so user can retry
+      }
 
       // Step 2: ONLY AFTER report is successfully created, update collections with the report ID
       console.warn(
         '💾 Updating collections with reportId and isCompleted: true...'
       );
-      await updateCollectionsWithReportId(collectedMachineEntries, reportId);
+
+      try {
+        await updateCollectionsWithReportId(collectedMachineEntries, reportId);
+        console.log('✅ [NewCollectionModal] Collections updated successfully');
+      } catch (updateError) {
+        console.error(
+          '❌ [NewCollectionModal] Failed to update collections:',
+          updateError
+        );
+        // Don't fail the whole operation if collection update fails
+        // The report was already created successfully
+        toast.warning(
+          'Collection report created, but failed to update some collections. Please refresh the page.',
+          { position: 'top-left', duration: 8000 }
+        );
+      }
 
       toast.dismiss('create-reports-toast');
       toast.success(
@@ -2069,7 +2124,10 @@ export default function NewCollectionModal({
       }
     } catch (error: unknown) {
       toast.dismiss('create-reports-toast');
-      console.error('❌ Failed to create collection report:', error);
+      console.error(
+        '❌ [NewCollectionModal] Failed to create collection report:',
+        error
+      );
 
       // Handle specific API response errors
       const axiosError = error as AxiosError<{
@@ -2110,17 +2168,18 @@ export default function NewCollectionModal({
           );
         }
       } else {
-        // Handle network or other errors
-        toast.error(
-          `Failed to create collection report: ${
-            error instanceof Error ? error.message : 'Network error'
-          }`,
-          { position: 'top-left' }
-        );
+        // Handle network or other errors (including timeouts)
+        const errorMessage =
+          error instanceof Error ? error.message : 'Network error';
+        toast.error(`Failed to create collection report: ${errorMessage}`, {
+          position: 'top-left',
+          duration: 10000,
+        });
       }
+    } finally {
+      // Always reset processing state, even if there was an error
+      setIsProcessing(false);
     }
-
-    setIsProcessing(false);
   }, [
     collectedMachineEntries,
     currentCollectionTime,
@@ -2457,25 +2516,24 @@ export default function NewCollectionModal({
                     <label className="mb-2 block text-sm font-medium text-grayHighlight">
                       Collection Time:
                     </label>
-                    <PCDateTimePicker
-                      date={currentCollectionTime}
-                      setDate={date => {
-                        if (
-                          date &&
-                          date instanceof Date &&
-                          !isNaN(date.getTime())
-                        ) {
+                    <ModernCalendar
+                      date={{
+                        from: currentCollectionTime,
+                        to: currentCollectionTime,
+                      }}
+                      onSelect={range => {
+                        if (range?.from) {
                           console.warn('🕐 Collection time changed:', {
-                            newDate: date.toISOString(),
-                            newDateLocal: date.toLocaleString(),
-                            timestamp: date.getTime(),
+                            newDate: range.from.toISOString(),
+                            newDateLocal: range.from.toLocaleString(),
+                            timestamp: range.from.getTime(),
                             previousTime: currentCollectionTime.toISOString(),
                           });
-                          setCurrentCollectionTime(date);
+                          setCurrentCollectionTime(range.from);
                         }
                       }}
-                      disabled={isProcessing}
-                      placeholder="Select collection time"
+                      enableTimeInputs={true}
+                      mode="single"
                     />
                     <p className="mt-1 text-xs text-gray-500">
                       This time applies to the current machine being
@@ -2502,21 +2560,24 @@ export default function NewCollectionModal({
                       <label className="mb-2 block text-sm font-medium text-grayHighlight">
                         Previous SAS Start (optional):
                       </label>
-                      <PCDateTimePicker
-                        date={customSasStartTime || undefined}
-                        setDate={date => {
-                          if (
-                            date &&
-                            date instanceof Date &&
-                            !isNaN(date.getTime())
-                          ) {
-                            setCustomSasStartTime(date);
-                          } else if (!date) {
+                      <ModernCalendar
+                        date={
+                          customSasStartTime
+                            ? {
+                                from: customSasStartTime,
+                                to: customSasStartTime,
+                              }
+                            : undefined
+                        }
+                        onSelect={range => {
+                          if (range?.from) {
+                            setCustomSasStartTime(range.from);
+                          } else {
                             setCustomSasStartTime(null);
                           }
                         }}
-                        disabled={isProcessing}
-                        placeholder="Select previous SAS start (optional)"
+                        enableTimeInputs={true}
+                        mode="single"
                       />
                       <p className="mt-1 text-xs text-gray-500">
                         Leave empty to auto-use last collection time or 24h
@@ -3121,24 +3182,27 @@ export default function NewCollectionModal({
 
                 {/* Update All Dates - Show if there are 2 or more machines */}
                 {collectedMachineEntries.length >= 2 && (
-                  <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5">
+                  <div className="mt-2 w-full rounded-lg border border-blue-200 bg-blue-50 p-2.5">
                     <label className="mb-1 block text-xs font-medium text-gray-700">
                       Update All Dates
                     </label>
-                    <PCDateTimePicker
-                      date={updateAllDate}
-                      setDate={date => {
-                        if (
-                          date &&
-                          date instanceof Date &&
-                          !isNaN(date.getTime())
-                        ) {
-                          setUpdateAllDate(date);
+                    <div className="w-full min-w-0">
+                      <ModernCalendar
+                        date={
+                          updateAllDate
+                            ? { from: updateAllDate, to: updateAllDate }
+                            : undefined
                         }
-                      }}
-                      disabled={isProcessing}
-                      placeholder="Select date/time"
-                    />
+                        onSelect={range => {
+                          if (range?.from) {
+                            setUpdateAllDate(range.from);
+                          }
+                        }}
+                        enableTimeInputs={true}
+                        mode="single"
+                        className="w-full min-w-0"
+                      />
+                    </div>
                     <Button
                       onClick={async () => {
                         if (!updateAllDate) return;

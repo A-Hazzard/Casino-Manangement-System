@@ -20,7 +20,7 @@
  */
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { X, Edit, Save, X as Cancel } from 'lucide-react';

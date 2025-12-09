@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { Fragment, useState, useMemo } from 'react';
 import { CheckIcon, PlusIcon, MinusIcon } from '@radix-ui/react-icons';
 
 type MachineEvent = {
@@ -194,7 +194,7 @@ const SessionEventsTable: React.FC<SessionEventsTableProps> = ({ data }) => {
           </thead>
           <tbody>
             {paged.map((row, idx) => (
-              <React.Fragment key={row._id || idx}>
+              <Fragment key={row._id || idx}>
                 <tr className="text-center hover:bg-muted">
                   <td className="border border-border p-3">
                     <div className="flex items-center justify-center gap-2">
@@ -265,7 +265,7 @@ const SessionEventsTable: React.FC<SessionEventsTableProps> = ({ data }) => {
                     {formatDate(row.date)}
                   </td>
                 </tr>
-              </React.Fragment>
+              </Fragment>
             ))}
           </tbody>
         </table>

@@ -71,10 +71,11 @@ export async function GET(request: NextRequest) {
     const locationId = url.pathname.split('/')[3];
 
     // ============================================================================
-    // STEP 2: Check if basic location details requested (no query params)
+    // STEP 2: Check if basic location details requested (no query params or basicInfo/nameOnly)
     // ============================================================================
     const hasQueryParams = url.searchParams.toString().length > 0;
     const nameOnly = url.searchParams.get('nameOnly') === 'true';
+    const basicInfo = url.searchParams.get('basicInfo') === 'true';
 
     // Handle nameOnly requests - returns just name and licensee for display purposes
     // This bypasses access control since it only returns non-sensitive display data
@@ -98,17 +99,28 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // Handle licensee field - it's stored as string | null in the database
+      // Convert to array format for consistent API response
+      const licenseeId = location.rel?.licencee;
+      const licenseeIdArray = licenseeId
+        ? Array.isArray(licenseeId)
+          ? licenseeId
+          : [licenseeId]
+        : [];
+
       return NextResponse.json({
         success: true,
         location: {
           _id: location._id,
           name: location.name,
-          licenseeId: location.rel?.licencee as string[] | undefined || [],
+          licenseeId: licenseeIdArray,
         },
       });
     }
 
-    if (!hasQueryParams) {
+    // Handle basicInfo requests - returns full location details but requires access control
+    // This is used when basicInfo=true is provided as a query parameter
+    if (basicInfo || !hasQueryParams) {
       // Return basic location details for edit modal
       await connectDB();
 
@@ -200,11 +212,35 @@ export async function GET(request: NextRequest) {
 
     if (timePeriod === 'Custom' && customStartDate && customEndDate) {
       timePeriodForGamingDay = 'Custom';
-      // Parse dates - gaming day offset will be applied by getGamingDayRangeForPeriod
-      customStartDateForGamingDay = new Date(
-        customStartDate + 'T00:00:00.000Z'
-      );
-      customEndDateForGamingDay = new Date(customEndDate + 'T00:00:00.000Z');
+      // Parse dates - check if they already include time components
+      // If date includes 'T', it's already a full ISO string; otherwise it's date-only
+      const startDateStr = customStartDate.includes('T')
+        ? customStartDate
+        : customStartDate + 'T00:00:00.000Z';
+      const endDateStr = customEndDate.includes('T')
+        ? customEndDate
+        : customEndDate + 'T00:00:00.000Z';
+
+      customStartDateForGamingDay = new Date(startDateStr);
+      customEndDateForGamingDay = new Date(endDateStr);
+
+      // Validate dates
+      if (isNaN(customStartDateForGamingDay.getTime())) {
+        return NextResponse.json(
+          {
+            error: `Invalid date values: startDate=${customStartDate}, endDate=${customEndDate}`,
+          },
+          { status: 400 }
+        );
+      }
+      if (isNaN(customEndDateForGamingDay.getTime())) {
+        return NextResponse.json(
+          {
+            error: `Invalid date values: startDate=${customStartDate}, endDate=${customEndDate}`,
+          },
+          { status: 400 }
+        );
+      }
     } else {
       timePeriodForGamingDay = timePeriod;
     }

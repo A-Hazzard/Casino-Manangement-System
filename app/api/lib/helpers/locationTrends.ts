@@ -8,15 +8,19 @@
  * @module app/api/lib/helpers/locationTrends
  */
 
+import { Countries } from '@/app/api/lib/models/countries';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
+import {
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+} from '@/lib/helpers/rates';
 import { getDatesForTimePeriod } from '@/lib/utils/dates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
-import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
-import { convertFromUSD, convertToUSD, getCountryCurrency } from '@/lib/helpers/rates';
 import type { TimePeriod } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
-import { Countries } from '@/app/api/lib/models/countries';
-import type { PipelineStage } from 'mongoose';
 import type { Db } from 'mongodb';
+import type { PipelineStage } from 'mongoose';
 
 export type DailyTrendItem = {
   day: string;
@@ -48,22 +52,65 @@ export type LocationTrendData = {
 };
 
 /**
- * Determine if hourly aggregation should be used based on time period
+ * Determine aggregation granularity for custom time ranges
  */
-function shouldUseHourlyAggregation(
+function determineAggregationGranularity(
   timePeriod: TimePeriod,
   startDate?: Date,
-  endDate?: Date
-): boolean {
+  endDate?: Date,
+  startDateParam?: string | null,
+  endDateParam?: string | null,
+  manualGranularity?: 'hourly' | 'minute'
+): { useHourly: boolean; useMinute: boolean } {
+  // If granularity is manually specified, use it
+  if (manualGranularity) {
+    if (manualGranularity === 'minute') {
+      return { useHourly: false, useMinute: true };
+    } else if (manualGranularity === 'hourly') {
+      return { useHourly: true, useMinute: false };
+    }
+  }
+
   if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
-    return true;
+    // Default to minute-level for Today/Yesterday (can be overridden by manualGranularity)
+    return { useHourly: false, useMinute: true };
   }
+
   if (timePeriod === 'Custom' && startDate && endDate) {
+    // Check if date strings have time components (not date-only)
+    const hasTimeComponents =
+      startDateParam &&
+      endDateParam &&
+      (startDateParam.includes('T') || endDateParam.includes('T'));
+
+    if (hasTimeComponents) {
+      // Calculate time difference in hours and days
     const diffInMs = endDate.getTime() - startDate.getTime();
+      const diffInHours = diffInMs / (1000 * 60 * 60);
     const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
-    return diffInDays <= 1;
+
+      // For custom ranges with time inputs:
+      // - Use minute-level if range <= 10 hours (as per user requirement)
+      // - Use hourly if > 10 hours but <= 1 day
+      // - Use daily if > 1 day
+      if (diffInHours <= 10 && diffInDays <= 1) {
+        return { useHourly: false, useMinute: true };
+      } else if (diffInDays <= 1) {
+        return { useHourly: true, useMinute: false };
+      }
+      // For ranges > 1 day, return daily (default)
+    } else {
+      // Date-only custom range: use hourly if <= 1 day (for gaming day offset)
+      const diffInDays = Math.ceil(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (diffInDays <= 1) {
+        return { useHourly: true, useMinute: false };
+      }
+    }
   }
-  return false;
+
+  return { useHourly: false, useMinute: false };
 }
 
 /**
@@ -74,7 +121,8 @@ function buildLocationTrendsPipeline(
   queryStartDate: Date,
   queryEndDate: Date,
   licencee: string | null,
-  shouldUseHourly: boolean
+  shouldUseHourly: boolean,
+  shouldUseMinute?: boolean
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [
     {
@@ -114,7 +162,16 @@ function buildLocationTrendsPipeline(
     },
   };
 
-  if (shouldUseHourly) {
+  if (shouldUseMinute) {
+    // Minute-level: format as HH:MM
+    groupId.time = {
+      $dateToString: {
+        format: '%H:%M',
+        date: '$readAt',
+      },
+    };
+  } else if (shouldUseHourly) {
+    // Hourly: format as HH:00
     groupId.time = {
       $dateToString: {
         format: '%H:00',
@@ -178,7 +235,11 @@ function buildLocationTrendsPipeline(
  */
 async function getLocationCurrencies(
   db: Db,
-  locationsData: Array<{ _id: unknown; rel?: { licencee?: unknown }; country?: unknown }>
+  locationsData: Array<{
+    _id: unknown;
+    rel?: { licencee?: unknown };
+    country?: unknown;
+  }>
 ): Promise<Map<string, string>> {
   const licenseesData = await db
     .collection('licencees')
@@ -307,6 +368,59 @@ function formatHourlyTrends(
 }
 
 /**
+ * Convert daily trend items to location trends format (for minute-level data)
+ * This preserves the minute-level time data without filling missing hours
+ */
+function convertDailyTrendsToLocationTrends(
+  convertedData: DailyTrendItem[],
+  targetLocations: string[]
+): LocationTrendData[] {
+  // Group by day and time
+  const trendsMap = new Map<string, LocationTrendData>();
+
+  convertedData.forEach(item => {
+    const key = `${item.day}_${item.time || ''}`;
+    if (!trendsMap.has(key)) {
+      trendsMap.set(key, {
+        day: item.day,
+        time: item.time,
+      });
+    }
+
+    const trendItem = trendsMap.get(key)!;
+    trendItem[item.location] = {
+      handle: item.handle,
+      winLoss: item.winLoss,
+      jackpot: item.jackpot,
+      plays: item.plays,
+      drop: item.drop,
+      gross: item.gross,
+    };
+  });
+
+  // Initialize missing locations with zeros
+  trendsMap.forEach(trendItem => {
+    targetLocations.forEach(locationId => {
+      if (!trendItem[locationId]) {
+        trendItem[locationId] = {
+          handle: 0,
+          winLoss: 0,
+          jackpot: 0,
+          plays: 0,
+          drop: 0,
+          gross: 0,
+        };
+      }
+    });
+  });
+
+  return Array.from(trendsMap.values()).sort((a, b) => {
+    if (a.day !== b.day) return a.day.localeCompare(b.day);
+    return (a.time || '').localeCompare(b.time || '');
+  });
+}
+
+/**
  * Format trends data for daily aggregation
  */
 function formatDailyTrends(
@@ -407,7 +521,8 @@ export async function getLocationTrends(
   licencee: string | null,
   startDateParam: string | null,
   endDateParam: string | null,
-  displayCurrency: CurrencyCode
+  displayCurrency: CurrencyCode,
+  granularity?: 'hourly' | 'minute'
 ): Promise<{
   locationIds: string[];
   timePeriod: TimePeriod;
@@ -453,10 +568,9 @@ export async function getLocationTrends(
   // Fetch locations to get their gaming day offsets
   const locationsData = await db
     .collection('gaminglocations')
-    .find(
-      { _id: { $in: targetLocations } } as never,
-      { projection: { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 } }
-    )
+    .find({ _id: { $in: targetLocations } } as never, {
+      projection: { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 },
+    })
     .toArray();
 
   const locationsList = locationsData.map(loc => ({
@@ -475,10 +589,14 @@ export async function getLocationTrends(
   const queryStartDate = firstLocationRange?.rangeStart || startDate;
   const queryEndDate = firstLocationRange?.rangeEnd || endDate;
 
-  const shouldUseHourly = shouldUseHourlyAggregation(
+  // Determine aggregation granularity (hourly, minute, or daily)
+  const { useHourly, useMinute } = determineAggregationGranularity(
     timePeriod,
     startDate,
-    endDate
+    endDate,
+    startDateParam,
+    endDateParam,
+    granularity
   );
 
   // Build and execute pipeline
@@ -487,7 +605,8 @@ export async function getLocationTrends(
     queryStartDate,
     queryEndDate,
     licencee,
-    shouldUseHourly
+    useHourly,
+    useMinute
   );
 
   const dailyData = (await db
@@ -513,7 +632,10 @@ export async function getLocationTrends(
   }
 
   // Format trends data
-  const trends = shouldUseHourly
+  const trends = useMinute
+    ? // For minute-level, use data as-is (already has minute-level grouping from pipeline)
+      convertDailyTrendsToLocationTrends(convertedData, targetLocations)
+    : useHourly
     ? formatHourlyTrends(
         convertedData,
         targetLocations,
@@ -540,7 +662,6 @@ export async function getLocationTrends(
     locationNames,
     currency: displayCurrency,
     converted: shouldApplyCurrencyConversion(licencee),
-    isHourly: shouldUseHourly,
+    isHourly: useHourly,
   };
 }
-

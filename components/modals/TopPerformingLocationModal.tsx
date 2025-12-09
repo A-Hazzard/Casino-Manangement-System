@@ -31,7 +31,7 @@ import axios from 'axios';
 import gsap from 'gsap';
 import { ExternalLink, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type TopPerformingLocationModalProps = {
   open: boolean;
@@ -61,13 +61,29 @@ export default function TopPerformingLocationModal({
 }: TopPerformingLocationModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
-  const [locationData, setLocationData] = useState<LocationMetricsData | null>(null);
+  const [locationData, setLocationData] = useState<LocationMetricsData | null>(
+    null
+  );
   const [chartData, setChartData] = useState<dashboardData[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingChart, setLoadingChart] = useState(false);
+  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
+    'minute'
+  );
   const router = useRouter();
   const { displayCurrency } = useCurrency();
-  const { activePieChartFilter, customDateRange, selectedLicencee } = useDashBoardStore();
+  const { activePieChartFilter, customDateRange, selectedLicencee } =
+    useDashBoardStore();
+
+  // Show granularity selector for Today/Yesterday/Custom
+  const showGranularitySelector = useMemo(() => {
+    const timePeriod = (activePieChartFilter || 'Today') as TimePeriod;
+    return (
+      timePeriod === 'Today' ||
+      timePeriod === 'Yesterday' ||
+      timePeriod === 'Custom'
+    );
+  }, [activePieChartFilter]);
 
   // Fetch location data and chart data
   useEffect(() => {
@@ -80,19 +96,25 @@ export default function TopPerformingLocationModal({
       try {
         // Use activePieChartFilter (from top performing filter) instead of activeMetricsFilter
         const timePeriod = (activePieChartFilter || 'Today') as TimePeriod;
-        
+
         // Fetch location details and metrics
         let url = `/api/locations/${locationId}`;
         if (timePeriod) {
           url += `?timePeriod=${timePeriod}`;
         }
-        if (timePeriod === 'Custom' && customDateRange.startDate && customDateRange.endDate) {
-          const sd = customDateRange.startDate instanceof Date 
-            ? customDateRange.startDate 
-            : new Date(customDateRange.startDate);
-          const ed = customDateRange.endDate instanceof Date 
-            ? customDateRange.endDate 
-            : new Date(customDateRange.endDate);
+        if (
+          timePeriod === 'Custom' &&
+          customDateRange.startDate &&
+          customDateRange.endDate
+        ) {
+          const sd =
+            customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate);
+          const ed =
+            customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate);
           url += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
         }
         if (displayCurrency) {
@@ -102,20 +124,26 @@ export default function TopPerformingLocationModal({
         // Fetch location details for basic info
         const locationResponse = await axios.get(url);
         const locationResponseData = locationResponse.data?.data;
-        const locationInfo = Array.isArray(locationResponseData) 
-          ? locationResponseData[0] 
+        const locationInfo = Array.isArray(locationResponseData)
+          ? locationResponseData[0]
           : locationResponseData;
 
         // Fetch location-level totals from the reports/locations API (same as locations page)
         // This ensures we get the same calculation logic as the locations page
         let locationTotalsUrl = `/api/reports/locations?timePeriod=${timePeriod}&search=${locationId}&showAllLocations=true&limit=1`;
-        if (timePeriod === 'Custom' && customDateRange.startDate && customDateRange.endDate) {
-          const sd = customDateRange.startDate instanceof Date 
-            ? customDateRange.startDate 
-            : new Date(customDateRange.startDate);
-          const ed = customDateRange.endDate instanceof Date 
-            ? customDateRange.endDate 
-            : new Date(customDateRange.endDate);
+        if (
+          timePeriod === 'Custom' &&
+          customDateRange.startDate &&
+          customDateRange.endDate
+        ) {
+          const sd =
+            customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate);
+          const ed =
+            customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate);
           locationTotalsUrl += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
         }
         if (selectedLicencee && selectedLicencee !== 'all') {
@@ -127,12 +155,14 @@ export default function TopPerformingLocationModal({
 
         const locationTotalsResponse = await axios.get(locationTotalsUrl);
         const locationTotalsData = locationTotalsResponse.data?.data || [];
-        const locationTotals = Array.isArray(locationTotalsData) && locationTotalsData.length > 0 
-          ? locationTotalsData[0] 
-          : null;
+        const locationTotals =
+          Array.isArray(locationTotalsData) && locationTotalsData.length > 0
+            ? locationTotalsData[0]
+            : null;
 
         // Get location name for filtering chart data
-        const locationNameForFilter = locationInfo?.locationName || locationInfo?.name || locationName;
+        const locationNameForFilter =
+          locationInfo?.locationName || locationInfo?.name || locationName;
 
         // Fetch chart data for this location
         // Filter by location ID or name in the metrics
@@ -140,38 +170,51 @@ export default function TopPerformingLocationModal({
           timePeriod,
           customDateRange.startDate,
           customDateRange.endDate,
-          selectedLicencee && selectedLicencee !== 'all' ? selectedLicencee : undefined,
-          displayCurrency
+          selectedLicencee && selectedLicencee !== 'all'
+            ? selectedLicencee
+            : undefined,
+          displayCurrency,
+          undefined,
+          chartGranularity === 'minute' ? 'minute' : 'hourly'
         );
 
         // Filter chart data to only include this location
         // The location field in chart data can be either ID or name
-        const filteredChart = chart.filter(
-          item => {
-            const itemLocation = item.location;
-            return (
-              itemLocation === locationId ||
-              itemLocation === locationInfo?._id?.toString() ||
-              itemLocation === locationInfo?.locationId?.toString() ||
-              itemLocation === locationNameForFilter ||
-              itemLocation === locationInfo?.name
-            );
-          }
-        );
+        const filteredChart = chart.filter(item => {
+          const itemLocation = item.location;
+          return (
+            itemLocation === locationId ||
+            itemLocation === locationInfo?._id?.toString() ||
+            itemLocation === locationInfo?.locationId?.toString() ||
+            itemLocation === locationNameForFilter ||
+            itemLocation === locationInfo?.name
+          );
+        });
 
         // Use location totals from reports API if available, otherwise calculate from chart data
-        const moneyIn = locationTotals?.moneyIn ?? filteredChart.reduce((sum, item) => sum + (item.moneyIn || 0), 0);
-        const moneyOut = locationTotals?.moneyOut ?? filteredChart.reduce((sum, item) => sum + (item.moneyOut || 0), 0);
-        const gross = locationTotals?.gross ?? filteredChart.reduce((sum, item) => sum + (item.gross || 0), 0);
+        const moneyIn =
+          locationTotals?.moneyIn ??
+          filteredChart.reduce((sum, item) => sum + (item.moneyIn || 0), 0);
+        const moneyOut =
+          locationTotals?.moneyOut ??
+          filteredChart.reduce((sum, item) => sum + (item.moneyOut || 0), 0);
+        const gross =
+          locationTotals?.gross ??
+          filteredChart.reduce((sum, item) => sum + (item.gross || 0), 0);
 
         // Get location info from first cabinet if available, or use basic info
-        const cabinets = Array.isArray(locationResponseData) ? locationResponseData : [];
+        const cabinets = Array.isArray(locationResponseData)
+          ? locationResponseData
+          : [];
         const totalMachines = locationTotals?.totalMachines ?? cabinets.length;
-        const onlineMachines = locationTotals?.onlineMachines ?? cabinets.filter((cab: { online?: boolean }) => cab.online).length;
+        const onlineMachines =
+          locationTotals?.onlineMachines ??
+          cabinets.filter((cab: { online?: boolean }) => cab.online).length;
 
         setLocationData({
           _id: locationInfo?._id || locationInfo?.locationId || locationId,
-          name: locationInfo?.locationName || locationInfo?.name || locationName,
+          name:
+            locationInfo?.locationName || locationInfo?.name || locationName,
           address: locationInfo?.address,
           moneyIn,
           moneyOut,
@@ -200,6 +243,7 @@ export default function TopPerformingLocationModal({
     displayCurrency,
     selectedLicencee,
     locationName,
+    chartGranularity,
   ]);
 
   // Animate modal on open/close
@@ -258,18 +302,22 @@ export default function TopPerformingLocationModal({
     >
       <div
         ref={modalRef}
-        className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow-xl"
+        className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white shadow-xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white p-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Location Preview</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Location Preview
+            </h2>
             <p className="mt-1 text-sm text-gray-500">
               {locationData?.name || locationName}
             </p>
             {locationData?.address && (
-              <p className="mt-1 text-sm text-gray-500">Address: {locationData.address}</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Address: {locationData.address}
+              </p>
             )}
           </div>
           <button
@@ -297,13 +345,19 @@ export default function TopPerformingLocationModal({
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                 <p className="text-sm font-medium text-gray-600">Money In</p>
                 <p className="mt-1 text-2xl font-bold text-gray-900">
-                  {formatCurrencyWithCode(locationData.moneyIn, displayCurrency)}
+                  {formatCurrencyWithCode(
+                    locationData.moneyIn,
+                    displayCurrency
+                  )}
                 </p>
               </div>
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                 <p className="text-sm font-medium text-gray-600">Money Out</p>
                 <p className="mt-1 text-2xl font-bold text-gray-900">
-                  {formatCurrencyWithCode(locationData.moneyOut, displayCurrency)}
+                  {formatCurrencyWithCode(
+                    locationData.moneyOut,
+                    displayCurrency
+                  )}
                 </p>
               </div>
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -323,11 +377,39 @@ export default function TopPerformingLocationModal({
             {loadingChart ? (
               <DashboardChartSkeleton />
             ) : (
-              <Chart
-                loadingChartData={loadingChart}
-                chartData={chartData}
-                activeMetricsFilter={(activePieChartFilter || 'Today') as TimePeriod}
-              />
+              <>
+                {/* Granularity Selector - Only show for Today/Yesterday/Custom */}
+                {showGranularitySelector && (
+                  <div className="mb-3 flex items-center justify-end gap-2">
+                    <label
+                      htmlFor="chart-granularity-location-modal"
+                      className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      Granularity:
+                    </label>
+                    <select
+                      id="chart-granularity-location-modal"
+                      value={chartGranularity}
+                      onChange={e =>
+                        setChartGranularity(
+                          e.target.value as 'hourly' | 'minute'
+                        )
+                      }
+                      className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                    >
+                      <option value="minute">Minute</option>
+                      <option value="hourly">Hourly</option>
+                    </select>
+                  </div>
+                )}
+                <Chart
+                  loadingChartData={loadingChart}
+                  chartData={chartData}
+                  activeMetricsFilter={
+                    (activePieChartFilter || 'Today') as TimePeriod
+                  }
+                />
+              </>
             )}
           </div>
 
@@ -345,7 +427,9 @@ export default function TopPerformingLocationModal({
             <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-2">
               {locationData.totalMachines !== undefined && (
                 <div className="rounded-lg border border-gray-200 bg-white p-3">
-                  <p className="text-xs font-medium text-gray-600">Total Machines</p>
+                  <p className="text-xs font-medium text-gray-600">
+                    Total Machines
+                  </p>
                   <p className="mt-1 text-lg font-semibold text-gray-900">
                     {locationData.totalMachines}
                   </p>
@@ -353,7 +437,9 @@ export default function TopPerformingLocationModal({
               )}
               {locationData.onlineMachines !== undefined && (
                 <div className="rounded-lg border border-gray-200 bg-white p-3">
-                  <p className="text-xs font-medium text-gray-600">Online Machines</p>
+                  <p className="text-xs font-medium text-gray-600">
+                    Online Machines
+                  </p>
                   <p className="mt-1 text-lg font-semibold text-gray-900">
                     {locationData.onlineMachines}
                   </p>
@@ -367,7 +453,10 @@ export default function TopPerformingLocationModal({
             <Button variant="outline" onClick={onClose}>
               Close
             </Button>
-            <Button onClick={handleNavigate} className="flex items-center gap-2">
+            <Button
+              onClick={handleNavigate}
+              className="flex items-center gap-2"
+            >
               <ExternalLink className="h-4 w-4" />
               View Location
             </Button>
@@ -377,4 +466,3 @@ export default function TopPerformingLocationModal({
     </div>
   );
 }
-

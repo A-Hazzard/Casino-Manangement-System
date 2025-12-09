@@ -15,7 +15,6 @@
  * @param showTotals - Whether totals section is expanded
  * @param handleToggleTotals - Callback to toggle totals visibility
  */
-import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { CasinoMember as Member } from '@/shared/types/entities';
 import { formatCurrency } from '@/lib/utils/formatters';

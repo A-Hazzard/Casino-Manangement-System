@@ -10,7 +10,6 @@
  *
  * @param summary - Monthly report summary data
  */
-import React from 'react';
 import { toast } from 'sonner';
 import {
   Table,

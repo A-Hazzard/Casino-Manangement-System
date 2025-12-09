@@ -15,7 +15,6 @@
  * @param totalCount - Total machine count (optional)
  * @param showTotal - Whether to show total count
  */
-import React from 'react';
 import Image from 'next/image';
 import cabinetsIcon from '@/public/cabinetsIcon.svg';
 import { Skeleton } from '@/components/ui/skeleton';

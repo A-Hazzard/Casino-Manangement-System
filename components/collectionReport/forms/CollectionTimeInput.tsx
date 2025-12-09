@@ -1,7 +1,7 @@
 'use client';
 
+import { ModernCalendar } from '@/components/ui/ModernCalendar';
 import React from 'react';
-import { PCDateTimePicker } from '@/components/ui/pc-date-time-picker';
 
 type CollectionTimeInputProps = {
   date: Date;
@@ -27,15 +27,16 @@ export const CollectionTimeInput: React.FC<CollectionTimeInputProps> = ({
   return (
     <div className={className}>
       <label className="mb-1 block text-sm font-medium">Collection Time</label>
-      <PCDateTimePicker
-        date={date}
-        setDate={(newDate) => {
-          if (newDate && newDate instanceof Date && !isNaN(newDate.getTime())) {
-            onDateChange(newDate);
+      <ModernCalendar
+        date={date ? { from: date, to: date } : undefined}
+        onSelect={(range) => {
+          if (range?.from) {
+            onDateChange(range.from);
           }
         }}
+        enableTimeInputs={true}
+        mode="single"
         disabled={disabled}
-        placeholder="Select collection time"
       />
       {showHelpText && (
         <p className="mt-1 text-xs text-gray-500">{helpText}</p>

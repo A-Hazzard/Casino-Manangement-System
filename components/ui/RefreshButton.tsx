@@ -19,7 +19,6 @@
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { RefreshCw, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import React from 'react';
 import type { SyncButtonProps as BaseSyncButtonProps } from '@/lib/types/components';
 
 // ============================================================================

@@ -18,6 +18,7 @@ export default function Chart({
   loadingChartData,
   chartData,
   activeMetricsFilter,
+  totals,
 }: ChartProps) {
   // Chart data received for rendering
 
@@ -30,17 +31,28 @@ export default function Chart({
     console.warn('Chart data received:', chartData);
   }
 
+  // Always show skeleton when loading
   if (loadingChartData) {
     return <DashboardChartSkeleton />;
   }
 
   // Check if chartData is valid and has data
-  // Allow empty array only if we're not loading (to show "no data" message)
-  // But check more carefully - sometimes chartData might be undefined or null
   const hasValidData =
     chartData && Array.isArray(chartData) && chartData.length > 0;
 
+  // If we have no valid data, check if we're in initial state
+  // Show skeleton if totals is null (initial state) OR if we're loading
+  // This prevents showing "No Metrics Data" before the first fetch completes
   if (!hasValidData) {
+    // If totals is null/undefined, we're in initial state before any fetch completes
+    // OR if loadingChartData was just set to false but data hasn't propagated yet
+    // Show skeleton to indicate we're still loading
+    if (!totals) {
+      return <DashboardChartSkeleton />;
+    }
+
+    // We have totals but no chart data - this means we loaded but got no chart data
+    // Only show "no data" message if we've actually completed a fetch (have totals)
     return (
       <div className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md">
         <div className="mb-2 text-lg text-gray-500">No Metrics Data</div>
@@ -88,10 +100,28 @@ export default function Chart({
     if (activeMetricsFilter === 'Custom') {
       // Check if custom range spans only one day
       const uniqueDays = new Set(chartData.map(d => d.day).filter(Boolean));
-      return uniqueDays.size === 1;
+      if (uniqueDays.size === 1) {
+        // Return true for hourly format if we have time data (hourly or minute)
+        // The aggregation logic below will detect minute data and skip hourly aggregation
+        return true;
+      }
+      return false;
     }
 
     return false;
+  };
+
+  // Detect if chart data has minute-level detail (for custom time ranges, Today, or Yesterday)
+  const hasMinuteLevelData = () => {
+    // Check for minute-level data in any time period
+    return chartData.some(d => {
+      const time = d.time;
+      if (!time) return false;
+      const timeParts = time.split(':');
+      if (timeParts.length !== 2) return false;
+      const minutes = parseInt(timeParts[1], 10);
+      return !isNaN(minutes) && minutes !== 0; // Has non-zero minutes
+    });
   };
 
   const isHourlyChart = shouldUseHourlyFormat();
@@ -122,9 +152,12 @@ export default function Chart({
   });
 
   // For hourly charts, we need to aggregate the data by hour to avoid showing individual meter readings
+  // BUT: Don't aggregate if data already contains minute-level detail (for custom time ranges)
   let finalChartData = sortedChartData;
-  if (isHourlyChart) {
-    // Group by hour and sum the values
+  const isMinuteLevel = hasMinuteLevelData();
+
+  if (isHourlyChart && !isMinuteLevel) {
+    // Group by hour and sum the values (only for hourly data, not minute-level)
     const hourlyData: Record<string, dashboardData> = {};
 
     sortedChartData.forEach(item => {
@@ -171,6 +204,18 @@ export default function Chart({
     // Debug: Log the final aggregated data
     if (process.env.NODE_ENV === 'development') {
       console.warn('Hourly aggregation result:', finalChartData);
+    }
+  } else if (isMinuteLevel) {
+    // For minute-level data, use data as-is (already processed in helper)
+    // Just ensure proper sorting
+    finalChartData = sortedChartData;
+
+    // Debug: Log that we're preserving minute-level data
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(
+        'Preserving minute-level data (no hourly aggregation):',
+        finalChartData
+      );
     }
   }
 
@@ -253,8 +298,19 @@ export default function Chart({
         tickFormatter={(val, index) => {
           if (isHourlyChart) {
             const day = trimmedChartData[index]?.day;
-            const fullUTCDate = `${day}T${val}:00Z`;
-            return formatTime(fullUTCDate);
+            if (day && val) {
+              // API returns time in UTC format (HH:00 or HH:MM), combine with day to create UTC date
+              // Then convert to local time for display
+              // Handle both hourly (HH:00) and minute-level (HH:MM) formats
+              const timeParts = val.split(':');
+              const hours = timeParts[0] || '00';
+              const minutes = timeParts[1] || '00';
+              const utcDateString = `${day}T${hours}:${minutes}:00Z`;
+              const utcDate = new Date(utcDateString);
+              // formatTime will convert to local time automatically
+              return formatTime(utcDate);
+            }
+            return val;
           } else {
             return formatDisplayDate(val);
           }
@@ -290,9 +346,17 @@ export default function Chart({
         labelFormatter={(label, payload) => {
           if (isHourlyChart && payload && payload[0]) {
             const day = payload[0].payload?.day;
-            if (day) {
-              const fullUTCDate = `${day}T${label}:00Z`;
-              return formatTime(fullUTCDate);
+            if (day && label) {
+              // API returns time in UTC format (HH:00 or HH:MM), combine with day to create UTC date
+              // Then convert to local time for display
+              // Handle both hourly (HH:00) and minute-level (HH:MM) formats
+              const timeParts = String(label).split(':');
+              const hours = timeParts[0] || '00';
+              const minutes = timeParts[1] || '00';
+              const utcDateString = `${day}T${hours}:${minutes}:00Z`;
+              const utcDate = new Date(utcDateString);
+              // formatTime will convert to local time automatically
+              return formatTime(utcDate);
             }
           }
           return formatDisplayDate(label);

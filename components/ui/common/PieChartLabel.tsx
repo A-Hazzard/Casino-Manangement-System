@@ -10,7 +10,6 @@
  *
  * @param props - Customized label props from Recharts
  */
-import React from 'react';
 import { calculatePieChartLabelPosition } from '@/lib/utils/components';
 import { CustomizedLabelProps } from '@/lib/types/componentProps';
 

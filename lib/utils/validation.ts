@@ -48,9 +48,9 @@ export function containsEmailPattern(value: string): boolean {
  */
 export function isPlaceholderEmail(email: string): boolean {
   if (!email || typeof email !== 'string') return false;
-  
+
   const normalized = email.toLowerCase().trim();
-  
+
   // Common placeholder email patterns
   const placeholderPatterns = [
     /^example\d*@example\.(com|org|net|test)$/i,
@@ -65,7 +65,7 @@ export function isPlaceholderEmail(email: string): boolean {
     /^admin\d*@example\.(com|org|net)$/i,
     /^[a-z]+\d*@example\.(com|org|net|test)$/i, // Any word followed by numbers @example.com
   ];
-  
+
   return placeholderPatterns.some(pattern => pattern.test(normalized));
 }
 
@@ -228,18 +228,24 @@ export function validateNameField(value: string): boolean {
   return allowedPattern.test(value) && !phonePattern.test(value.trim());
 }
 
-export function validateGender(value: string | null | undefined): value is AllowedGender {
+export function validateGender(
+  value: string | null | undefined
+): value is AllowedGender {
   if (!value) return false;
   const normalized = value.trim().toLowerCase();
   return (ALLOWED_GENDERS as readonly string[]).includes(normalized);
 }
 
-export function validateOptionalGender(value: string | null | undefined): boolean {
+export function validateOptionalGender(
+  value: string | null | undefined
+): boolean {
   if (!value) return true;
   return validateGender(value);
 }
 
-export function validateAlphabeticField(value: string | null | undefined): boolean {
+export function validateAlphabeticField(
+  value: string | null | undefined
+): boolean {
   if (!value) return true;
   return validateNameField(value);
 }
@@ -249,7 +255,9 @@ export function validateAlphabeticField(value: string | null | undefined): boole
  * @param value - The street address to validate
  * @returns True if valid, false otherwise
  */
-export function validateStreetAddress(value: string | null | undefined): boolean {
+export function validateStreetAddress(
+  value: string | null | undefined
+): boolean {
   if (!value) return true;
   const trimmed = value.trim();
   if (!trimmed) return true;
@@ -286,7 +294,9 @@ export function validateCountry(value: string | null | undefined): boolean {
   return allowedPattern.test(trimmed);
 }
 
-export function isValidDateInput(value: string | Date | null | undefined): boolean {
+export function isValidDateInput(
+  value: string | Date | null | undefined
+): boolean {
   if (!value) return true;
   const date = value instanceof Date ? value : new Date(value);
   return !Number.isNaN(date.getTime());
@@ -348,7 +358,7 @@ export function validateCollectionReportPayload(
   errors: string[];
 } {
   const errors: string[] = [];
-  if (!payload.collectorName) errors.push('Collector name is required.');
+  if (!payload.collector) errors.push('Collector ID is required.');
   if (!payload.locationName) errors.push('Location name is required.');
   if (!payload.locationReportId) errors.push('Location report ID is required.');
   if (!payload.location) errors.push('Location ID is required.');

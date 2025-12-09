@@ -13,7 +13,6 @@
  * @param data - Array of collector schedule rows
  * @param loading - Whether data is loading
  */
-import React from 'react';
 import {
   Table,
   TableBody,

@@ -13,7 +13,6 @@
  * @param details - Array of monthly report detail rows
  * @param locations - Array of location objects with id and name for navigation
  */
-import React from 'react';
 import { useRouter } from 'next/navigation';
 import { ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';

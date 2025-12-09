@@ -5,6 +5,7 @@ import {
 } from '@/lib/utils/auth';
 import type { AuthResult } from '@/shared/types';
 import { UserAuthPayload } from '@/shared/types';
+import type { UserDocumentWithPassword } from '@/shared/types/users';
 import { sendEmail } from '../../lib/utils/email';
 import UserModel from '../models/user';
 import { comparePassword } from '../utils/validation';
@@ -181,8 +182,7 @@ export async function authenticateUser(
     const profileInvalid = hasInvalidProfileFields(invalidFields);
     if (profileInvalid) {
       // Return success but with a flag to prompt profile update
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const userObject = (user as any).toJSON();
+      const userObject = (user as UserDocumentWithPassword).toJSON();
 
       const sessionId = userObject._id.toString();
       // Don't include assignedLocations/assignedLicensees in token to prevent cookie size issues
@@ -259,8 +259,7 @@ export async function authenticateUser(
     }
 
     // Use toJSON() which properly serializes Mongoose Maps
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userObject = (user as any).toJSON();
+    const userObject = (user as UserDocumentWithPassword).toJSON();
 
     // Generate tokens
     const sessionId = userObject._id.toString(); // Use user ID as session ID
@@ -393,8 +392,7 @@ export async function refreshAccessToken(
     }
 
     // Generate new access token
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userObject = (user as any).toJSON();
+    const userObject = (user as UserDocumentWithPassword).toJSON();
 
     const sessionId = userObject._id.toString();
 

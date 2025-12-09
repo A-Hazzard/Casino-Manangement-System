@@ -1,6 +1,6 @@
 'use client';
 
-import { PCDateTimePicker } from '@/components/ui/pc-date-time-picker';
+import { ModernCalendar } from '@/components/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collections';
 import { ArrowLeft, Edit3, Trash2 } from 'lucide-react';
 import React from 'react';
@@ -339,19 +339,16 @@ export const MobileCollectedListPanel: React.FC<
                       <p className="mb-2 text-xs text-gray-600">
                         Select date/time to apply to all {collectedMachines.length} machines
                       </p>
-                      <PCDateTimePicker
-                        date={updateAllDate}
-                        setDate={date => {
-                          if (
-                            date &&
-                            date instanceof Date &&
-                            !isNaN(date.getTime())
-                          ) {
-                            onUpdateAllDate(date);
+                      <ModernCalendar
+                        date={updateAllDate ? { from: updateAllDate, to: updateAllDate } : undefined}
+                        onSelect={(range) => {
+                          if (range?.from) {
+                            onUpdateAllDate(range.from);
                           }
                         }}
                         disabled={isProcessing}
-                        placeholder="Select date/time"
+                        mode="single"
+                        enableTimeInputs={true}
                       />
                       <button
                         onClick={onApplyAllDates}

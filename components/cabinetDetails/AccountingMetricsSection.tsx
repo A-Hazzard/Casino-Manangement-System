@@ -16,7 +16,7 @@
  * @param onTimePeriodChange - Callback when time period changes
  * @param onCustomDateRangeChange - Callback when custom date range changes
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { formatCurrency } from '@/lib/utils';
 import {

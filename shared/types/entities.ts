@@ -56,6 +56,7 @@ export type GeoCoordinates = {
 };
 
 export type AggregatedLocation = {
+  _id?: string; // Optional location ID for internal use
   location: string;
   locationName: string;
   moneyIn: number;
@@ -80,6 +81,13 @@ export type AggregatedLocation = {
   enableMembership?: boolean; // Membership enabled flag
   membershipEnabled?: boolean; // Alias for enableMembership
   memberCount?: number; // Number of members at this location
+  machines?: Array<{
+    _id: string;
+    assetNumber?: string;
+    serialNumber?: string;
+    isSasMachine?: boolean;
+    lastActivity?: Date | null;
+  }>; // Optional machines array for location details
 };
 
 // Location metrics for reports and analytics
@@ -742,8 +750,8 @@ export type CollectionIssue = {
     | 'history_mismatch'
     | 'machine_time_mismatch';
   details: {
-    current: any;
-    expected: any;
+    current: Record<string, unknown> | null;
+    expected: Record<string, unknown> | null;
     explanation: string;
   };
 };

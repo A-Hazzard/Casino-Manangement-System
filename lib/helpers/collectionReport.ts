@@ -1,19 +1,19 @@
-import { CollectionReport } from "@/app/api/lib/models/collectionReport";
-import { Collections } from "@/app/api/lib/models/collections";
+import { CollectionReport } from '@/app/api/lib/models/collectionReport';
+import { Collections } from '@/app/api/lib/models/collections';
 import type {
-    CollectionReportData,
-    CollectionReportLocationWithMachines,
-    CreateCollectionReportPayload,
-} from "@/lib/types/api";
-import type { CollectionDocument } from "@/lib/types/collections";
+  CollectionReportData,
+  CollectionReportLocationWithMachines,
+  CreateCollectionReportPayload,
+} from '@/lib/types/api';
+import type { CollectionDocument } from '@/lib/types/collections';
 import type {
-    MonthlyReportDetailsRow,
-    MonthlyReportSummary,
-} from "@/lib/types/componentProps";
-import { CollectionReportRow } from "@/lib/types/componentProps";
-import { getLicenseeObjectId } from "@/lib/utils/licenseeMapping";
-import axios from "axios";
-import { PipelineStage } from "mongoose";
+  MonthlyReportDetailsRow,
+  MonthlyReportSummary,
+} from '@/lib/types/componentProps';
+import { CollectionReportRow } from '@/lib/types/componentProps';
+import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
+import axios from 'axios';
+import { PipelineStage } from 'mongoose';
 
 /**
  * Fetches all collection reports from the database, filtered by licencee if provided.
@@ -53,16 +53,16 @@ export async function getAllCollectionReports(
     const aggregationPipeline: PipelineStage[] = [
       {
         $lookup: {
-          from: "gaminglocations",
-          localField: "location",
-          foreignField: "_id",
-          as: "locationDetails",
+          from: 'gaminglocations',
+          localField: 'location',
+          foreignField: '_id',
+          as: 'locationDetails',
         },
       },
-      { $unwind: "$locationDetails" },
+      { $unwind: '$locationDetails' },
       {
         $match: {
-          "locationDetails.rel.licencee": licenceeId,
+          'locationDetails.rel.licencee': licenceeId,
           ...matchCriteria,
         },
       },
@@ -74,8 +74,8 @@ export async function getAllCollectionReports(
   // Map to CollectionReportRow and enrich with machine counts
   const enrichedReports = await Promise.all(
     rawReports.map(async (doc: Record<string, unknown>) => {
-      const locationReportId = (doc.locationReportId as string) || "";
-      const locationName = (doc.locationName as string) || "";
+      const locationReportId = (doc.locationReportId as string) || '';
+      const locationName = (doc.locationName as string) || '';
 
       // Fetch machine count from collections (collected machines only)
       let collectedMachines = 0;
@@ -100,54 +100,54 @@ export async function getAllCollectionReports(
         );
         // Fallback to the original machinesCollected field
         collectedMachines =
-          parseInt((doc.machinesCollected as string) || "0") || 0;
+          parseInt((doc.machinesCollected as string) || '0') || 0;
       }
 
       return {
-        _id: (doc._id as string) || "",
+        _id: (doc._id as string) || '',
         locationReportId,
-        collector: (doc.collector as string) || "",
-        collectorFullName: (doc.collectorName as string) || "", // Display only (deprecated field)
+        collector: (doc.collector as string) || '',
+        collectorFullName: (doc.collectorName as string) || '', // Display only (deprecated field)
         location: locationName,
         gross: (doc.totalGross as number) || 0,
         machines: collectedMachines.toString(),
         collected: (doc.amountCollected as number) || 0,
         uncollected:
-          typeof doc.amountUncollected === "number"
+          typeof doc.amountUncollected === 'number'
             ? (doc.amountUncollected as number).toString()
-            : (doc.amountUncollected as string) || "-",
+            : (doc.amountUncollected as string) || '-',
         locationRevenue: (doc.partnerProfit as number) || 0,
-        variation: (doc.variation as number) || "No SAS Data",
+        variation: (doc.variation as number) || 'No SAS Data',
         balance: (doc.currentBalance as number) || 0,
         time: (() => {
           const ts = doc.timestamp;
           if (ts) {
-            if (typeof ts === "string" || ts instanceof Date) {
+            if (typeof ts === 'string' || ts instanceof Date) {
               return new Date(ts).toLocaleString(undefined, {
-                year: "numeric",
-                month: "short",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
               });
             }
             if (
-              typeof ts === "object" &&
-              "$date" in ts &&
-              typeof ts.$date === "string"
+              typeof ts === 'object' &&
+              '$date' in ts &&
+              typeof ts.$date === 'string'
             ) {
               return new Date(ts.$date).toLocaleString(undefined, {
-                year: "numeric",
-                month: "short",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
               });
             }
           }
-          return "-";
+          return '-';
         })(),
       };
     })
@@ -176,25 +176,25 @@ export async function getCollectorsByLicencee(
 ): Promise<string[]> {
   if (!licenceeId) {
     // All collectors from all reports (use collector field = user ID)
-    return getDistinct<string>(CollectionReport, "collector");
+    return getDistinct<string>(CollectionReport, 'collector');
   }
 
   // Aggregate: join with gaminglocations and filter by rel.licencee, then get distinct collector
   const result = await CollectionReport.aggregate([
     {
       $lookup: {
-        from: "gaminglocations",
-        localField: "location",
-        foreignField: "_id",
-        as: "locationDetails",
+        from: 'gaminglocations',
+        localField: 'location',
+        foreignField: '_id',
+        as: 'locationDetails',
       },
     },
-    { $unwind: "$locationDetails" },
-    { $match: { "locationDetails.rel.licencee": licenceeId } },
-    { $group: { _id: "$collector" } },
-    { $project: { _id: 0, collector: "$_id" } },
+    { $unwind: '$locationDetails' },
+    { $match: { 'locationDetails.rel.licencee': licenceeId } },
+    { $group: { _id: '$collector' } },
+    { $project: { _id: 0, collector: '$_id' } },
   ]);
-  return result.map((row) => row.collector);
+  return result.map(row => row.collector);
 }
 
 /**
@@ -219,28 +219,25 @@ export async function getCollectorsPaginated(
 
   if (!licenceeId) {
     // Get all unique collector IDs without filtering
-    allCollectors = await getDistinct<string>(
-      CollectionReport,
-      "collector"
-    );
+    allCollectors = await getDistinct<string>(CollectionReport, 'collector');
   } else {
     // Filter by licencee using aggregation
     const result = await CollectionReport.aggregate([
       {
         $lookup: {
-          from: "gaminglocations",
-          localField: "location",
-          foreignField: "_id",
-          as: "locationDetails",
+          from: 'gaminglocations',
+          localField: 'location',
+          foreignField: '_id',
+          as: 'locationDetails',
         },
       },
-      { $unwind: "$locationDetails" },
-      { $match: { "locationDetails.rel.licencee": licenceeId } },
-      { $group: { _id: "$collector" } },
-      { $project: { _id: 0, collector: "$_id" } },
+      { $unwind: '$locationDetails' },
+      { $match: { 'locationDetails.rel.licencee': licenceeId } },
+      { $group: { _id: '$collector' } },
+      { $project: { _id: 0, collector: '$_id' } },
       { $sort: { collector: 1 } },
     ]);
-    allCollectors = result.map((row) => row.collector);
+    allCollectors = result.map(row => row.collector);
   }
 
   const total = allCollectors.length;
@@ -275,7 +272,12 @@ export async function getMonthlyCollectionReportSummary(
   };
   if (locationName) {
     // Case-insensitive matching using regex
-    match.locationName = { $regex: new RegExp(`^${locationName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') };
+    match.locationName = {
+      $regex: new RegExp(
+        `^${locationName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+        'i'
+      ),
+    };
   }
 
   let pipeline: PipelineStage[] = [];
@@ -285,21 +287,21 @@ export async function getMonthlyCollectionReportSummary(
     pipeline = [
       {
         $lookup: {
-          from: "gaminglocations",
-          localField: "location",
-          foreignField: "_id",
-          as: "locationDetails",
+          from: 'gaminglocations',
+          localField: 'location',
+          foreignField: '_id',
+          as: 'locationDetails',
         },
       },
-      { $unwind: "$locationDetails" },
-      { $match: { "locationDetails.rel.licencee": licencee, ...match } },
+      { $unwind: '$locationDetails' },
+      { $match: { 'locationDetails.rel.licencee': licencee, ...match } },
       {
         $group: {
           _id: null,
-          drop: { $sum: "$totalDrop" },
-          cancelledCredits: { $sum: "$totalCancelled" },
-          gross: { $sum: "$totalGross" },
-          sasGross: { $sum: "$totalSasGross" },
+          drop: { $sum: '$totalDrop' },
+          cancelledCredits: { $sum: '$totalCancelled' },
+          gross: { $sum: '$totalGross' },
+          sasGross: { $sum: '$totalSasGross' },
         },
       },
     ];
@@ -310,10 +312,10 @@ export async function getMonthlyCollectionReportSummary(
       {
         $group: {
           _id: null,
-          drop: { $sum: "$totalDrop" },
-          cancelledCredits: { $sum: "$totalCancelled" },
-          gross: { $sum: "$totalGross" },
-          sasGross: { $sum: "$totalSasGross" },
+          drop: { $sum: '$totalDrop' },
+          cancelledCredits: { $sum: '$totalCancelled' },
+          gross: { $sum: '$totalGross' },
+          sasGross: { $sum: '$totalSasGross' },
         },
       },
     ];
@@ -322,7 +324,7 @@ export async function getMonthlyCollectionReportSummary(
   const result = await CollectionReport.aggregate(pipeline);
   const agg = result[0] || {};
   const formatSmartDecimal = (value: number | undefined): string => {
-    if (value === undefined) return "-";
+    if (value === undefined) return '-';
     const hasDecimals = value % 1 !== 0;
     const decimalPart = value % 1;
     const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
@@ -364,7 +366,12 @@ export async function getMonthlyCollectionReportByLocation(
   };
   if (locationName) {
     // Case-insensitive matching using regex
-    match.locationName = { $regex: new RegExp(`^${locationName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') };
+    match.locationName = {
+      $regex: new RegExp(
+        `^${locationName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+        'i'
+      ),
+    };
   }
 
   let pipeline: PipelineStage[] = [];
@@ -374,21 +381,21 @@ export async function getMonthlyCollectionReportByLocation(
     pipeline = [
       {
         $lookup: {
-          from: "gaminglocations",
-          localField: "location",
-          foreignField: "_id",
-          as: "locationDetails",
+          from: 'gaminglocations',
+          localField: 'location',
+          foreignField: '_id',
+          as: 'locationDetails',
         },
       },
-      { $unwind: "$locationDetails" },
-      { $match: { "locationDetails.rel.licencee": licencee, ...match } },
+      { $unwind: '$locationDetails' },
+      { $match: { 'locationDetails.rel.licencee': licencee, ...match } },
       {
         $group: {
-          _id: "$locationName",
-          drop: { $sum: "$totalDrop" },
-          win: { $sum: "$totalCancelled" },
-          gross: { $sum: "$totalGross" },
-          sasGross: { $sum: "$totalSasGross" },
+          _id: '$locationName',
+          drop: { $sum: '$totalDrop' },
+          win: { $sum: '$totalCancelled' },
+          gross: { $sum: '$totalGross' },
+          sasGross: { $sum: '$totalSasGross' },
         },
       },
       { $sort: { _id: 1 } },
@@ -399,11 +406,11 @@ export async function getMonthlyCollectionReportByLocation(
       { $match: match },
       {
         $group: {
-          _id: "$locationName",
-          drop: { $sum: "$totalDrop" },
-          win: { $sum: "$totalCancelled" },
-          gross: { $sum: "$totalGross" },
-          sasGross: { $sum: "$totalSasGross" },
+          _id: '$locationName',
+          drop: { $sum: '$totalDrop' },
+          win: { $sum: '$totalCancelled' },
+          gross: { $sum: '$totalGross' },
+          sasGross: { $sum: '$totalSasGross' },
         },
       },
       { $sort: { _id: 1 } },
@@ -412,15 +419,15 @@ export async function getMonthlyCollectionReportByLocation(
 
   const result = await CollectionReport.aggregate(pipeline);
   const formatSmartDecimal = (value: number | undefined): string => {
-    if (value === undefined) return "-";
+    if (value === undefined) return '-';
     const hasDecimals = value % 1 !== 0;
     const decimalPart = value % 1;
     const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
     return value.toFixed(hasSignificantDecimals ? 2 : 0);
   };
 
-  return result.map((row) => ({
-    location: row._id || "-",
+  return result.map(row => ({
+    location: row._id || '-',
     drop: formatSmartDecimal(row.drop),
     win: formatSmartDecimal(row.win),
     gross: formatSmartDecimal(row.gross),
@@ -445,20 +452,20 @@ export async function fetchMonthlyReportSummaryAndDetails({
   details: MonthlyReportDetailsRow[];
 }> {
   const params: Record<string, string> = {
-    startDate: startDate.toISOString().split("T")[0],
-    endDate: endDate.toISOString().split("T")[0],
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0],
   };
-  if (locationName && locationName !== "all")
+  if (locationName && locationName !== 'all')
     params.locationName = locationName;
-  if (licencee && licencee !== "All Licensees" && licencee !== "")
+  if (licencee && licencee !== 'All Licensees' && licencee !== '')
     params.licencee = licencee;
-  const { data } = await axios.get("/api/collectionReport", { params, signal });
+  const { data } = await axios.get('/api/collectionReport', { params, signal });
   return {
     summary: data.summary || {
-      drop: "-",
-      cancelledCredits: "-",
-      gross: "-",
-      sasGross: "-",
+      drop: '-',
+      cancelledCredits: '-',
+      gross: '-',
+      sasGross: '-',
     },
     details: data.details || [],
   };
@@ -470,9 +477,9 @@ export async function fetchMonthlyReportSummaryAndDetails({
  */
 export async function getAllLocationNames(): Promise<string[]> {
   try {
-    return getDistinct<string>(CollectionReport, "locationName");
+    return getDistinct<string>(CollectionReport, 'locationName');
   } catch (error) {
-    console.error("Error fetching location names:", error);
+    console.error('Error fetching location names:', error);
     return [];
   }
 }
@@ -503,9 +510,7 @@ export async function fetchMonthlyReportLocations(
     // Handle different types of errors gracefully
     if (axios.isAxiosError(error)) {
       if (error.code === 'ECONNABORTED') {
-        console.warn(
-          '⏰ Location request timed out - returning empty array'
-        );
+        console.warn('⏰ Location request timed out - returning empty array');
       } else if (error.response?.status === 500) {
         console.warn(
           '🔧 Server error fetching locations - database may be unavailable'
@@ -513,10 +518,7 @@ export async function fetchMonthlyReportLocations(
       } else if (error.response?.status === 404) {
         console.warn('📭 Location endpoint not found');
       } else {
-        console.warn(
-          '⚠️ Network error fetching locations:',
-          error.message
-        );
+        console.warn('⚠️ Network error fetching locations:', error.message);
       }
     } else {
       console.warn('⚠️ Unexpected error fetching locations:', error);
@@ -543,11 +545,11 @@ export async function fetchAllLocationNames(): Promise<string[]> {
 export async function getLocationsWithMachines(licensee?: string) {
   try {
     const params = new URLSearchParams();
-    params.append("locationsWithMachines", "1");
-    if (licensee && licensee !== "all") {
+    params.append('locationsWithMachines', '1');
+    if (licensee && licensee !== 'all') {
       const licenseeObjectId = getLicenseeObjectId(licensee);
-      if (licenseeObjectId && licenseeObjectId !== "all") {
-        params.append("licencee", licenseeObjectId);
+      if (licenseeObjectId && licenseeObjectId !== 'all') {
+        params.append('licencee', licenseeObjectId);
       }
     }
 
@@ -558,25 +560,25 @@ export async function getLocationsWithMachines(licensee?: string) {
   } catch (error) {
     // Handle different types of errors gracefully
     if (axios.isAxiosError(error)) {
-      if (error.code === "ECONNABORTED") {
+      if (error.code === 'ECONNABORTED') {
         console.warn(
-          "⏰ Locations with machines request timed out - returning empty array"
+          '⏰ Locations with machines request timed out - returning empty array'
         );
       } else if (error.response?.status === 500) {
         console.warn(
-          "🔧 Server error fetching locations with machines - database may be unavailable"
+          '🔧 Server error fetching locations with machines - database may be unavailable'
         );
       } else if (error.response?.status === 404) {
-        console.warn("📭 Locations with machines endpoint not found");
+        console.warn('📭 Locations with machines endpoint not found');
       } else {
         console.warn(
-          "⚠️ Network error fetching locations with machines:",
+          '⚠️ Network error fetching locations with machines:',
           error.message
         );
       }
     } else {
       console.warn(
-        "⚠️ Unexpected error fetching locations with machines:",
+        '⚠️ Unexpected error fetching locations with machines:',
         error
       );
     }
@@ -588,38 +590,68 @@ export async function createCollectionReport(
   payload: CreateCollectionReportPayload
 ) {
   try {
-    const { data } = await axios.post("/api/collectionReport", payload, {});
+    console.log(
+      '🚀 [createCollectionReport] Starting API request to /api/collectionReport',
+      {
+        payloadKeys: Object.keys(payload),
+        machinesCount: payload.machines?.length || 0,
+        locationName: payload.locationName,
+        locationReportId: payload.locationReportId,
+      }
+    );
+
+    const { data } = await axios.post('/api/collectionReport', payload, {
+      timeout: 60000, // 60 second timeout
+    });
+
+    console.log('✅ [createCollectionReport] API request successful', {
+      responseKeys: Object.keys(data || {}),
+      success: data?.success,
+    });
+
     return data;
   } catch (error) {
+    console.error('❌ [createCollectionReport] API request failed', {
+      error,
+      isAxiosError: axios.isAxiosError(error),
+      status: axios.isAxiosError(error) ? error.response?.status : undefined,
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
     // Handle different types of errors gracefully
     if (axios.isAxiosError(error)) {
-      if (error.code === "ECONNABORTED") {
-        console.warn("⏰ Collection report creation timed out");
-        throw new Error("Request timed out. Please try again.");
+      if (error.code === 'ECONNABORTED') {
+        console.warn('⏰ Collection report creation timed out');
+        throw new Error('Request timed out. Please try again.');
       } else if (error.response?.status === 500) {
         console.warn(
-          "🔧 Server error creating collection report - database may be unavailable"
+          '🔧 Server error creating collection report - database may be unavailable'
         );
-        throw new Error("Server error. Please try again later.");
-      } else if (error.response?.status === 400 || error.response?.status === 409) {
+        throw new Error('Server error. Please try again later.');
+      } else if (
+        error.response?.status === 400 ||
+        error.response?.status === 409
+      ) {
         console.warn(
-          "⚠️ Validation/Conflict error creating collection report:",
+          '⚠️ Validation/Conflict error creating collection report:',
           error.response.data
         );
         // Preserve the original error with response data for proper handling
-        const enhancedError = new Error(error.response.data?.error || "Invalid data provided. Please check your inputs.") as Error & { response?: typeof error.response };
+        const enhancedError = new Error(
+          error.response.data?.error ||
+            'Invalid data provided. Please check your inputs.'
+        ) as Error & { response?: typeof error.response };
         enhancedError.response = error.response;
         throw enhancedError;
       } else {
         console.warn(
-          "⚠️ Network error creating collection report:",
+          '⚠️ Network error creating collection report:',
           error.message
         );
-        throw new Error("Network error. Please check your connection.");
+        throw new Error('Network error. Please check your connection.');
       }
     } else {
-      console.warn("⚠️ Unexpected error creating collection report:", error);
-      throw new Error("An unexpected error occurred. Please try again.");
+      console.warn('⚠️ Unexpected error creating collection report:', error);
+      throw new Error('An unexpected error occurred. Please try again.');
     }
   }
 }
@@ -637,33 +669,33 @@ export async function updateCollectionReport(
   } catch (error) {
     // Handle different types of errors gracefully
     if (axios.isAxiosError(error)) {
-      if (error.code === "ECONNABORTED") {
-        console.warn("⏰ Collection report update timed out");
-        throw new Error("Request timed out. Please try again.");
+      if (error.code === 'ECONNABORTED') {
+        console.warn('⏰ Collection report update timed out');
+        throw new Error('Request timed out. Please try again.');
       } else if (error.response?.status === 500) {
         console.warn(
-          "🔧 Server error updating collection report - database may be unavailable"
+          '🔧 Server error updating collection report - database may be unavailable'
         );
-        throw new Error("Server error. Please try again later.");
+        throw new Error('Server error. Please try again later.');
       } else if (error.response?.status === 400) {
         console.warn(
-          "⚠️ Validation error updating collection report:",
+          '⚠️ Validation error updating collection report:',
           error.response.data
         );
-        throw new Error("Invalid data provided. Please check your inputs.");
+        throw new Error('Invalid data provided. Please check your inputs.');
       } else if (error.response?.status === 404) {
-        console.warn("📭 Collection report not found for update");
-        throw new Error("Collection report not found.");
+        console.warn('📭 Collection report not found for update');
+        throw new Error('Collection report not found.');
       } else {
         console.warn(
-          "⚠️ Network error updating collection report:",
+          '⚠️ Network error updating collection report:',
           error.message
         );
-        throw new Error("Network error. Please check your connection.");
+        throw new Error('Network error. Please check your connection.');
       }
     } else {
-      console.warn("⚠️ Unexpected error updating collection report:", error);
-      throw new Error("An unexpected error occurred. Please try again.");
+      console.warn('⚠️ Unexpected error updating collection report:', error);
+      throw new Error('An unexpected error occurred. Please try again.');
     }
   }
 }
@@ -687,28 +719,36 @@ export async function fetchCollectionReportsByLicencee(
   retryCount = 0,
   signal?: AbortSignal,
   search?: string
-): Promise<{ data: CollectionReportRow[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+): Promise<{
+  data: CollectionReportRow[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}> {
   const maxRetries = 2;
 
   try {
     const params: Record<string, string> = {};
 
-    if (licencee && licencee.toLowerCase() !== "all") {
+    if (licencee && licencee.toLowerCase() !== 'all') {
       const licenseeObjectId = getLicenseeObjectId(licencee);
-      if (licenseeObjectId && licenseeObjectId !== "all") {
+      if (licenseeObjectId && licenseeObjectId !== 'all') {
         params.licencee = licenseeObjectId;
       }
     }
 
     // If timePeriod is provided and not Custom, use timePeriod
-    if (timePeriod && timePeriod !== "Custom") {
+    if (timePeriod && timePeriod !== 'Custom') {
       params.timePeriod = timePeriod;
     }
     // Otherwise, if dateRange is provided, use custom dates
     else if (dateRange?.from && dateRange?.to) {
       params.startDate = dateRange.from.toISOString();
       params.endDate = dateRange.to.toISOString();
-      // CRITICAL: Explicitly set timePeriod to 'Custom' so the API route knows 
+      // CRITICAL: Explicitly set timePeriod to 'Custom' so the API route knows
       // to return the collection reports list, not the monthly report summary.
       params.timePeriod = 'Custom';
     }
@@ -722,13 +762,16 @@ export async function fetchCollectionReportsByLicencee(
     params.page = String(page);
     params.limit = String(limit);
 
-    console.log('[fetchCollectionReportsByLicencee] Fetching with params:', params);
+    console.log(
+      '[fetchCollectionReportsByLicencee] Fetching with params:',
+      params
+    );
 
-    const { data } = await axios.get("/api/collectionReport", {
+    const { data } = await axios.get('/api/collectionReport', {
       params,
       signal,
     });
-    
+
     // Response format: { data: CollectionReportRow[], pagination: {...} }
     if (data && typeof data === 'object' && 'data' in data) {
       return {
@@ -764,9 +807,9 @@ export async function fetchCollectionReportsByLicencee(
   } catch (error) {
     // Handle different types of errors gracefully
     if (axios.isAxiosError(error)) {
-      if (error.code === "ECONNABORTED") {
+      if (error.code === 'ECONNABORTED') {
         console.warn(
-          "⏰ Collection reports request timed out - returning empty array"
+          '⏰ Collection reports request timed out - returning empty array'
         );
         // Retry on timeout if we haven't exceeded max retries
         if (retryCount < maxRetries) {
@@ -775,7 +818,7 @@ export async function fetchCollectionReportsByLicencee(
               retryCount + 1
             }/${maxRetries})`
           );
-          await new Promise((resolve) =>
+          await new Promise(resolve =>
             setTimeout(resolve, 2000 * (retryCount + 1))
           ); // Exponential backoff
           return fetchCollectionReportsByLicencee(
@@ -787,18 +830,18 @@ export async function fetchCollectionReportsByLicencee(
         }
       } else if (error.response?.status === 500) {
         console.warn(
-          "🔧 Server error fetching collection reports - database may be unavailable"
+          '🔧 Server error fetching collection reports - database may be unavailable'
         );
       } else if (error.response?.status === 404) {
-        console.warn("📭 Collection reports endpoint not found");
+        console.warn('📭 Collection reports endpoint not found');
       } else {
         console.warn(
-          "⚠️ Network error fetching collection reports:",
+          '⚠️ Network error fetching collection reports:',
           error.message
         );
       }
     } else {
-      console.warn("⚠️ Unexpected error fetching collection reports:", error);
+      console.warn('⚠️ Unexpected error fetching collection reports:', error);
     }
     return {
       data: [],
@@ -831,14 +874,19 @@ export async function fetchCollectionReportById(
       }
       // Check if it's a 403 Unauthorized error
       if (error.response?.status === 403) {
-        const unauthorizedError = new Error('Unauthorized: You do not have access to this collection report');
-        const errorWithStatus = unauthorizedError as Error & { status: number; isUnauthorized: boolean };
+        const unauthorizedError = new Error(
+          'Unauthorized: You do not have access to this collection report'
+        );
+        const errorWithStatus = unauthorizedError as Error & {
+          status: number;
+          isUnauthorized: boolean;
+        };
         errorWithStatus.status = 403;
         errorWithStatus.isUnauthorized = true;
         throw unauthorizedError;
       }
     }
-    console.error("Failed to fetch collection report by ID:", error);
+    console.error('Failed to fetch collection report by ID:', error);
     throw error; // Re-throw non-404 errors so the component can handle them
   }
 }
@@ -852,7 +900,7 @@ export async function fetchMachineCollectionMeters(
   machineId: string
 ): Promise<{ metersIn: number; metersOut: number } | null> {
   try {
-    const { data } = await axios.get("/api/machines", {
+    const { data } = await axios.get('/api/machines', {
       params: { id: machineId },
     });
 
@@ -864,7 +912,7 @@ export async function fetchMachineCollectionMeters(
     }
     return null;
   } catch (error) {
-    console.error("Failed to fetch machine collection meters:", error);
+    console.error('Failed to fetch machine collection meters:', error);
     return null;
   }
 }
@@ -907,7 +955,7 @@ export async function fetchPreviousCollectionTime(
 
     return undefined;
   } catch (error) {
-    console.error("Failed to fetch previous collection time:", error);
+    console.error('Failed to fetch previous collection time:', error);
     return undefined;
   }
 }
@@ -920,17 +968,17 @@ export async function fetchPreviousCollectionTime(
  */
 export async function syncMeterDataWithCollections(reportId: string) {
   try {
-    const response = await axios.post("/api/collection-report/sync-meters", {
+    const response = await axios.post('/api/collection-report/sync-meters', {
       reportId,
     });
 
     if (!response.data.success) {
-      throw new Error(response.data.error || "Failed to sync meter data");
+      throw new Error(response.data.error || 'Failed to sync meter data');
     }
 
     return response.data.data;
   } catch (error) {
-    console.error("Error syncing meter data:", error);
+    console.error('Error syncing meter data:', error);
     throw error;
   }
 }
@@ -945,22 +993,22 @@ export const normalizeApiResponse = (
 ): CollectionReportLocationWithMachines[] => {
   // Handle the expected format
   if (
-    typeof data === "object" &&
+    typeof data === 'object' &&
     data !== null &&
-    "collectionReports" in data &&
+    'collectionReports' in data &&
     Array.isArray(data.collectionReports)
   ) {
     return data.collectionReports as CollectionReportLocationWithMachines[];
   }
   // Handle the locations format (fallback) - not yet implemented but kept for future compatibility
   if (
-    typeof data === "object" &&
+    typeof data === 'object' &&
     data !== null &&
-    "locations" in data &&
+    'locations' in data &&
     Array.isArray(data.locations)
   ) {
     console.warn(
-      "API returned locations format instead of collectionReports. Consider updating the backend."
+      'API returned locations format instead of collectionReports. Consider updating the backend.'
     );
     return data.locations as CollectionReportLocationWithMachines[];
   }
@@ -968,7 +1016,7 @@ export const normalizeApiResponse = (
   if (Array.isArray(data)) {
     return data as CollectionReportLocationWithMachines[];
   }
-  console.error("Unexpected API response format:", data);
+  console.error('Unexpected API response format:', data);
   return [];
 };
 
@@ -994,25 +1042,25 @@ export async function calculateSasMetrics(
   try {
     // Validate dates before using them
     if (isNaN(sasStartTime.getTime()) || isNaN(sasEndTime.getTime())) {
-      console.warn(" Invalid dates provided to calculateSasMetrics:", {
+      console.warn(' Invalid dates provided to calculateSasMetrics:', {
         sasStartTime: sasStartTime,
         sasEndTime: sasEndTime,
         startTimeValid: !isNaN(sasStartTime.getTime()),
         endTimeValid: !isNaN(sasEndTime.getTime()),
       });
-      throw new Error("Invalid date values provided to calculateSasMetrics");
+      throw new Error('Invalid date values provided to calculateSasMetrics');
     }
 
-    console.warn("🔄 calculateSasMetrics called with:", {
+    console.warn('🔄 calculateSasMetrics called with:', {
       machineIdentifier,
       sasStartTime: sasStartTime.toISOString(),
       sasEndTime: sasEndTime.toISOString(),
     });
 
     // Query meters collection for the machine and time period
-    const response = await axios.get("/api/metrics/meters", {
+    const response = await axios.get('/api/metrics/meters', {
       params: {
-        timePeriod: "Custom",
+        timePeriod: 'Custom',
         machine: machineIdentifier,
         startDate: sasStartTime.toISOString(),
         endDate: sasEndTime.toISOString(),
@@ -1060,7 +1108,7 @@ export async function calculateSasMetrics(
       sasEndTime: sasEndTime.toISOString(),
     };
   } catch (error) {
-    console.error("Error calculating SAS metrics:", error);
+    console.error('Error calculating SAS metrics:', error);
     // Return zero values if calculation fails
     return {
       drop: 0,

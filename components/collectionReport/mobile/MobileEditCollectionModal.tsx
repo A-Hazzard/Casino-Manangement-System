@@ -1,15 +1,15 @@
 'use client';
 
 import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
-import { InfoConfirmationDialog } from '@/components/ui/InfoConfirmationDialog';
 import { LocationSelect } from '@/components/ui/custom-select';
 import {
-    Dialog,
-    DialogContent,
-    DialogPortal,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogPortal,
+  DialogTitle,
 } from '@/components/ui/dialog';
-import { PCDateTimePicker } from '@/components/ui/pc-date-time-picker';
+import { InfoConfirmationDialog } from '@/components/ui/InfoConfirmationDialog';
+import { ModernCalendar } from '@/components/ui/ModernCalendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MobileCollectionModalSkeleton } from '@/components/ui/skeletons/MobileCollectionModalSkeleton';
 import { validateMachineEntry } from '@/lib/helpers/collectionReportModal';
@@ -17,14 +17,13 @@ import { useDebounce, useDebouncedCallback } from '@/lib/hooks/useDebounce';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
-    CollectionReportLocationWithMachines,
-    CollectionReportMachineSummary,
+  CollectionReportLocationWithMachines,
+  CollectionReportMachineSummary,
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collections';
 import { formatDate } from '@/lib/utils/formatting';
 import { calculateMachineMovement } from '@/lib/utils/frontendMovementCalculation';
 import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
-import { getUserDisplayName } from '@/lib/utils/userDisplay';
 import axios, { type AxiosError } from 'axios';
 import { ArrowLeft, Edit3, ExternalLink, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -466,7 +465,11 @@ export default function MobileEditCollectionModal({
     }
 
     // Validation is now handled inline in the form components
-  }, [modalState.selectedMachineData, modalState.formData.metersIn, modalState.formData.metersOut]);
+  }, [
+    modalState.selectedMachineData,
+    modalState.formData.metersIn,
+    modalState.formData.metersOut,
+  ]);
 
   // Debounced validation on input changes (3 seconds)
   const debouncedValidateMeterInputs = useDebouncedCallback(
@@ -627,7 +630,7 @@ export default function MobileEditCollectionModal({
         machineCustomName: modalState.selectedMachineData.custom?.name || '',
         serialNumber: modalState.selectedMachineData.serialNumber || '',
         location: selectedLocationName,
-        collector: getUserDisplayName(user),
+        collector: user?._id || '',
         metersIn: Number(modalState.formData.metersIn),
         metersOut: Number(modalState.formData.metersOut),
         // CRITICAL: Don't send prevIn/prevOut values - let the API calculate them from machine history
@@ -765,25 +768,30 @@ export default function MobileEditCollectionModal({
   const deleteMachineFromList = useCallback(
     async (entryId: string) => {
       setModalState(prev => ({ ...prev, isProcessing: true }));
-      
+
       try {
         // Find the entry data before deletion for logging
         const entryToDeleteData = modalState.collectedMachines.find(
           e => e._id === entryId
         );
-        
+
         // Call the delete API to actually delete from database
         await axios.delete(`/api/collections?id=${entryId}`);
-        
-        console.warn('📱 Mobile Edit: Collection deleted from database:', entryId);
-        
+
+        console.warn(
+          '📱 Mobile Edit: Collection deleted from database:',
+          entryId
+        );
+
         // Update local state after successful deletion
         setModalState(prev => {
           const newCollectedMachines = prev.collectedMachines.filter(
             m => m._id !== entryId
           );
           const newLockedLocationId =
-            newCollectedMachines.length === 0 ? undefined : prev.lockedLocationId;
+            newCollectedMachines.length === 0
+              ? undefined
+              : prev.lockedLocationId;
 
           // Persist to Zustand store
           setStoreCollectedMachines(newCollectedMachines);
@@ -804,9 +812,9 @@ export default function MobileEditCollectionModal({
             isProcessing: false,
           };
         });
-        
+
         toast.success(
-          entryToDeleteData?.machineCustomName 
+          entryToDeleteData?.machineCustomName
             ? `Removed ${entryToDeleteData.machineCustomName} from collection`
             : 'Collection removed successfully'
         );
@@ -816,7 +824,11 @@ export default function MobileEditCollectionModal({
         toast.error('Failed to remove collection. Please try again.');
       }
     },
-    [setStoreCollectedMachines, setStoreLockedLocation, modalState.collectedMachines]
+    [
+      setStoreCollectedMachines,
+      setStoreLockedLocation,
+      modalState.collectedMachines,
+    ]
   );
 
   // Edit machine in collection list
@@ -930,10 +942,10 @@ export default function MobileEditCollectionModal({
     // This includes: machine selected OR any meter values entered OR notes entered
     if (
       !modalState.editingEntryId &&
-      (modalState.selectedMachineData || 
-       modalState.formData.metersIn || 
-       modalState.formData.metersOut || 
-       modalState.formData.notes?.trim())
+      (modalState.selectedMachineData ||
+        modalState.formData.metersIn ||
+        modalState.formData.metersOut ||
+        modalState.formData.notes?.trim())
     ) {
       const enteredMetersIn = modalState.formData.metersIn
         ? Number(modalState.formData.metersIn)
@@ -944,12 +956,23 @@ export default function MobileEditCollectionModal({
       const hasNotes = modalState.formData.notes?.trim().length > 0;
 
       // If ANY data has been entered (machine selected, meters entered, or notes added)
-      if (modalState.selectedMachineData || enteredMetersIn !== 0 || enteredMetersOut !== 0 || hasNotes) {
+      if (
+        modalState.selectedMachineData ||
+        enteredMetersIn !== 0 ||
+        enteredMetersOut !== 0 ||
+        hasNotes
+      ) {
         toast.error(
           `You have unsaved machine data. ` +
-            (modalState.selectedMachineData ? `Machine: ${modalState.selectedMachineData.name || modalState.selectedMachineData.serialNumber}. ` : '') +
-            (enteredMetersIn !== 0 || enteredMetersOut !== 0 ? `Meters: In=${enteredMetersIn}, Out=${enteredMetersOut}. ` : '') +
-            (hasNotes ? `Notes: "${modalState.formData.notes.substring(0, 30)}${modalState.formData.notes.length > 30 ? '...' : ''}". ` : '') +
+            (modalState.selectedMachineData
+              ? `Machine: ${modalState.selectedMachineData.name || modalState.selectedMachineData.serialNumber}. `
+              : '') +
+            (enteredMetersIn !== 0 || enteredMetersOut !== 0
+              ? `Meters: In=${enteredMetersIn}, Out=${enteredMetersOut}. `
+              : '') +
+            (hasNotes
+              ? `Notes: "${modalState.formData.notes.substring(0, 30)}${modalState.formData.notes.length > 30 ? '...' : ''}". `
+              : '') +
             `Please add the machine to the list or cancel before updating the report.`,
           {
             duration: 10000,
@@ -1104,7 +1127,7 @@ export default function MobileEditCollectionModal({
           modalState.financials.advance.trim() !== ''
             ? Number(modalState.financials.advance)
             : 0,
-        collectorName: getUserDisplayName(user),
+        collector: user?._id || '',
         locationName: selectedLocationName,
         locationReportId: reportId,
         location: selectedLocationId || '',
@@ -1674,16 +1697,28 @@ export default function MobileEditCollectionModal({
             return;
           }
           // Check if user has unsaved machine data before closing
-          if (!isOpen && !modalState.editingEntryId && 
-              (modalState.selectedMachineData || 
-               modalState.formData.metersIn || 
-               modalState.formData.metersOut || 
-               modalState.formData.notes?.trim())) {
-            const enteredMetersIn = modalState.formData.metersIn ? Number(modalState.formData.metersIn) : 0;
-            const enteredMetersOut = modalState.formData.metersOut ? Number(modalState.formData.metersOut) : 0;
+          if (
+            !isOpen &&
+            !modalState.editingEntryId &&
+            (modalState.selectedMachineData ||
+              modalState.formData.metersIn ||
+              modalState.formData.metersOut ||
+              modalState.formData.notes?.trim())
+          ) {
+            const enteredMetersIn = modalState.formData.metersIn
+              ? Number(modalState.formData.metersIn)
+              : 0;
+            const enteredMetersOut = modalState.formData.metersOut
+              ? Number(modalState.formData.metersOut)
+              : 0;
             const hasNotes = modalState.formData.notes?.trim().length > 0;
-            
-            if (modalState.selectedMachineData || enteredMetersIn !== 0 || enteredMetersOut !== 0 || hasNotes) {
+
+            if (
+              modalState.selectedMachineData ||
+              enteredMetersIn !== 0 ||
+              enteredMetersOut !== 0 ||
+              hasNotes
+            ) {
               toast.error(
                 `You have unsaved machine data. Please add the machine to the list or cancel before closing.`,
                 {
@@ -2375,25 +2410,29 @@ export default function MobileEditCollectionModal({
                       <label className="mb-1 block text-sm font-medium">
                         Collection Time
                       </label>
-                      <PCDateTimePicker
-                        date={modalState.formData.collectionTime}
-                        setDate={date => {
-                          if (
-                            date &&
-                            date instanceof Date &&
-                            !isNaN(date.getTime())
-                          ) {
+                      <ModernCalendar
+                        date={
+                          modalState.formData.collectionTime
+                            ? {
+                                from: modalState.formData.collectionTime,
+                                to: modalState.formData.collectionTime,
+                              }
+                            : undefined
+                        }
+                        onSelect={range => {
+                          if (range?.from) {
                             setModalState(prev => ({
                               ...prev,
                               formData: {
                                 ...prev.formData,
-                                collectionTime: date,
+                                collectionTime: range.from!,
                               },
                             }));
                           }
                         }}
                         disabled={modalState.isProcessing}
-                        placeholder="Select collection time"
+                        mode="single"
+                        enableTimeInputs={true}
                       />
                       <p className="mt-1 text-xs text-gray-500">
                         This time applies to all machines in the collection
@@ -3361,23 +3400,35 @@ export default function MobileEditCollectionModal({
                                 modalState.isProcessing
                               )
                                 return;
-                              
+
                               // Check if user is currently editing a machine entry
                               if (modalState.editingEntryId) {
                                 setShowUnsavedChangesWarning(true);
                                 return;
                               }
-                              
+
                               // Check if there's unsaved form data
-                              const enteredMetersIn = modalState.formData.metersIn ? Number(modalState.formData.metersIn) : 0;
-                              const enteredMetersOut = modalState.formData.metersOut ? Number(modalState.formData.metersOut) : 0;
-                              const hasNotes = modalState.formData.notes?.trim().length > 0;
-                              
-                              if (modalState.selectedMachineData || enteredMetersIn !== 0 || enteredMetersOut !== 0 || hasNotes) {
+                              const enteredMetersIn = modalState.formData
+                                .metersIn
+                                ? Number(modalState.formData.metersIn)
+                                : 0;
+                              const enteredMetersOut = modalState.formData
+                                .metersOut
+                                ? Number(modalState.formData.metersOut)
+                                : 0;
+                              const hasNotes =
+                                modalState.formData.notes?.trim().length > 0;
+
+                              if (
+                                modalState.selectedMachineData ||
+                                enteredMetersIn !== 0 ||
+                                enteredMetersOut !== 0 ||
+                                hasNotes
+                              ) {
                                 setShowUnsavedChangesWarning(true);
                                 return;
                               }
-                              
+
                               setShowCreateReportConfirmation(true);
                             }}
                             disabled={
@@ -3409,53 +3460,78 @@ export default function MobileEditCollectionModal({
                                 Select date/time to apply to all{' '}
                                 {modalState.collectedMachines.length} machines
                               </p>
-                              <PCDateTimePicker
-                                date={updateAllDate}
-                                setDate={date => {
+                              <ModernCalendar
+                                date={
+                                  updateAllDate
+                                    ? { from: updateAllDate, to: updateAllDate }
+                                    : undefined
+                                }
+                                onSelect={range => {
                                   if (
-                                    date &&
-                                    date instanceof Date &&
-                                    !isNaN(date.getTime())
+                                    range?.from &&
+                                    range.from instanceof Date &&
+                                    !isNaN(range.from.getTime())
                                   ) {
-                                    setUpdateAllDate(date);
+                                    setUpdateAllDate(range.from);
                                   }
                                 }}
                                 disabled={modalState.isProcessing}
-                                placeholder="Select date/time"
+                                mode="single"
+                                enableTimeInputs={true}
                               />
                               <button
                                 onClick={async () => {
                                   if (!updateAllDate) {
-                                    toast.error('Please select a date/time first');
+                                    toast.error(
+                                      'Please select a date/time first'
+                                    );
                                     return;
                                   }
 
-                                  setModalState(prev => ({ ...prev, isProcessing: true }));
+                                  setModalState(prev => ({
+                                    ...prev,
+                                    isProcessing: true,
+                                  }));
 
                                   try {
                                     toast.loading('Updating all machines...', {
                                       id: 'update-all-dates',
                                     });
 
-                                    console.warn('🔄 Updating machines:', modalState.collectedMachines.map(m => ({ id: m._id, has_id: !!m._id })));
+                                    console.warn(
+                                      '🔄 Updating machines:',
+                                      modalState.collectedMachines.map(m => ({
+                                        id: m._id,
+                                        has_id: !!m._id,
+                                      }))
+                                    );
 
                                     // Update all collections in database
                                     const results = await Promise.allSettled(
-                                      modalState.collectedMachines.map(async entry => {
-                                        if (!entry._id) {
-                                          console.warn('⚠️ Skipping entry without _id:', entry);
-                                          return;
-                                        }
-
-                                        console.warn(`📝 Updating collection ${entry._id} to ${updateAllDate.toISOString()}`);
-                                        return await axios.patch(
-                                          `/api/collections?id=${entry._id}`,
-                                          {
-                                            timestamp: updateAllDate.toISOString(),
-                                            collectionTime: updateAllDate.toISOString(),
+                                      modalState.collectedMachines.map(
+                                        async entry => {
+                                          if (!entry._id) {
+                                            console.warn(
+                                              '⚠️ Skipping entry without _id:',
+                                              entry
+                                            );
+                                            return;
                                           }
-                                        );
-                                      })
+
+                                          console.warn(
+                                            `📝 Updating collection ${entry._id} to ${updateAllDate.toISOString()}`
+                                          );
+                                          return await axios.patch(
+                                            `/api/collections?id=${entry._id}`,
+                                            {
+                                              timestamp:
+                                                updateAllDate.toISOString(),
+                                              collectionTime:
+                                                updateAllDate.toISOString(),
+                                            }
+                                          );
+                                        }
+                                      )
                                     );
 
                                     // Check for failures
@@ -3466,13 +3542,12 @@ export default function MobileEditCollectionModal({
                                     // Update frontend state
                                     setModalState(prev => ({
                                       ...prev,
-                                      collectedMachines: prev.collectedMachines.map(
-                                        entry => ({
+                                      collectedMachines:
+                                        prev.collectedMachines.map(entry => ({
                                           ...entry,
                                           timestamp: updateAllDate,
                                           collectionTime: updateAllDate,
-                                        })
-                                      ),
+                                        })),
                                       hasUnsavedEdits: true,
                                     }));
 
@@ -3489,16 +3564,26 @@ export default function MobileEditCollectionModal({
                                     }
                                   } catch (error) {
                                     toast.dismiss('update-all-dates');
-                                    console.error('Failed to update dates:', error);
+                                    console.error(
+                                      'Failed to update dates:',
+                                      error
+                                    );
                                     toast.error('Failed to update machines');
                                   } finally {
-                                    setModalState(prev => ({ ...prev, isProcessing: false }));
+                                    setModalState(prev => ({
+                                      ...prev,
+                                      isProcessing: false,
+                                    }));
                                   }
                                 }}
-                                disabled={!updateAllDate || modalState.isProcessing}
+                                disabled={
+                                  !updateAllDate || modalState.isProcessing
+                                }
                                 className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                               >
-                                {modalState.isProcessing ? 'Updating...' : 'Apply to All Machines'}
+                                {modalState.isProcessing
+                                  ? 'Updating...'
+                                  : 'Apply to All Machines'}
                               </button>
                             </div>
                           )}

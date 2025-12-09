@@ -9,7 +9,6 @@
  * - Pagination skeleton
  * - Responsive design
  */
-import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // ============================================================================
@@ -63,10 +62,7 @@ const SessionCardSkeleton = () => {
 
 export default function PlayerSessionTableSkeleton() {
   return (
-    <div
-      className="rounded-md border bg-white"
-      suppressHydrationWarning
-    >
+    <div className="rounded-md border bg-white" suppressHydrationWarning>
       {/* Card Grid Skeleton View - below xl */}
       <div className="block p-4 xl:hidden">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -118,11 +114,8 @@ export default function PlayerSessionTableSkeleton() {
       <div className="flex items-center justify-between border-t bg-muted/20 px-4 py-3">
         <Skeleton className="h-4 w-32" />
         <div className="flex items-center gap-2">
-          {Array.from({ length  : 4 }).map((_, index) => (
-            <Skeleton
-              key={index}
-              className="h-9 w-16"
-            />
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-9 w-16" />
           ))}
         </div>
       </div>

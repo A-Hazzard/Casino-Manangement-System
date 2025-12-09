@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ShieldX, ArrowLeft, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';

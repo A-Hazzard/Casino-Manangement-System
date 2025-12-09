@@ -14,7 +14,7 @@
  *
  * Large component (~624 lines) handling machine activity log display and filtering.
  */
-import React, { useState, useMemo } from 'react';
+import { Fragment, useState, useMemo } from 'react';
 import { CheckIcon, PlusIcon, MinusIcon } from '@radix-ui/react-icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -401,7 +401,7 @@ const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
             </TableHeader>
             <TableBody>
               {filteredAndPaginatedData.data.map((row, idx) => (
-                <React.Fragment key={row._id || idx}>
+                <Fragment key={row._id || idx}>
                   <TableRow className="text-center hover:bg-muted">
                     <TableCell>
                       <div className="flex items-center justify-center gap-2">
@@ -469,7 +469,7 @@ const ActivityLogTable: React.FC<ExtendedActivityLogTableProps> = ({
                     </TableCell>
                     <TableCell>{formatDate(row.date)}</TableCell>
                   </TableRow>
-                </React.Fragment>
+                </Fragment>
               ))}
             </TableBody>
           </Table>

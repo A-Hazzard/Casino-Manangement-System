@@ -4,8 +4,7 @@ import { TimePeriod } from '@/app/api/lib/types';
 import { Button } from '@/components/ui/button';
 import { CustomSelect } from '@/components/ui/custom-select';
 import DateRangeIndicator from '@/components/ui/DateRangeIndicator';
-import { type DateRange } from '@/components/ui/dateRangePicker';
-import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
+import { ModernCalendar } from '@/components/ui/ModernCalendar';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { DashboardDateFiltersProps } from '@/lib/types/componentProps';
 import { useEffect, useMemo, useState } from 'react';
@@ -26,45 +25,15 @@ export default function DashboardDateFilters({
     activeMetricsFilter,
     setActiveMetricsFilter,
     setCustomDateRange,
-    pendingCustomDateRange,
-    setPendingCustomDateRange,
   } = useDashBoardStore();
 
-  const [showCustomPicker, setShowCustomPicker] = useState(false);
   const [shouldTriggerCallback, setShouldTriggerCallback] = useState(false);
-  // Local state for the picker to allow partial ranges (start date only)
-  const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(
-    undefined
-  );
 
   useEffect(() => {
     if (hideAllTime && activeMetricsFilter === 'All Time') {
       setActiveMetricsFilter('30d');
     }
   }, [activeMetricsFilter, hideAllTime, setActiveMetricsFilter]);
-
-  // Initialize temp range when picker opens
-  useEffect(() => {
-    if (showCustomPicker) {
-      if (pendingCustomDateRange) {
-        setTempDateRange({
-          from: pendingCustomDateRange.startDate,
-          to: pendingCustomDateRange.endDate,
-        });
-      } else if (
-        activeMetricsFilter === 'Custom' &&
-        useDashBoardStore.getState().customDateRange
-      ) {
-        const current = useDashBoardStore.getState().customDateRange;
-        setTempDateRange({
-          from: current.startDate,
-          to: current.endDate,
-        });
-      } else {
-        setTempDateRange(undefined);
-      }
-    }
-  }, [showCustomPicker, pendingCustomDateRange, activeMetricsFilter]);
 
   const timeFilterButtons: { label: string; value: TimePeriod }[] = useMemo(
     () =>
@@ -87,8 +56,6 @@ export default function DashboardDateFilters({
     [hideAllTime]
   );
 
-  // NOTE: We no longer disable buttons during loading - AbortController handles request cancellation
-
   // Handle callback after state updates
   useEffect(() => {
     if (shouldTriggerCallback && onCustomRangeGo) {
@@ -97,49 +64,8 @@ export default function DashboardDateFilters({
     }
   }, [shouldTriggerCallback, onCustomRangeGo]);
 
-  const handleApplyCustomRange = () => {
-    if (tempDateRange?.from && tempDateRange?.to) {
-      // Use the exact dates with time information from the ModernDateRangePicker
-      setCustomDateRange({
-        startDate: tempDateRange.from,
-        endDate: tempDateRange.to,
-      });
-      // Also update pending in store to keep it in sync if needed, or just rely on customDateRange
-      setPendingCustomDateRange({
-        startDate: tempDateRange.from,
-        endDate: tempDateRange.to,
-      });
-
-      setActiveMetricsFilter('Custom');
-      setShowCustomPicker(false);
-
-      // Set flag to trigger callback after state updates
-      setShouldTriggerCallback(true);
-    }
-  };
-
-  const handleCancelCustomRange = () => {
-    setShowCustomPicker(false);
-    setTempDateRange(undefined);
-    setPendingCustomDateRange(undefined);
-  };
-
-  const handleSetLastMonth = () => {
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
-    setTempDateRange({ from: firstDay, to: lastDay });
-  };
-
   const handleFilterClick = (filter: TimePeriod) => {
-    if (filter === 'Custom') {
-      setShowCustomPicker(true);
-      // Don't immediately set activeMetricsFilter to Custom
-      // Only show the picker, keep the current filter active
-    } else {
-      setShowCustomPicker(false);
-      setActiveMetricsFilter(filter);
-    }
+    setActiveMetricsFilter(filter);
   };
 
   const handleSelectChange = (value: string) => {
@@ -160,15 +86,15 @@ export default function DashboardDateFilters({
       {/* Date Range Indicator */}
       {!hideIndicator && <DateRangeIndicator />}
 
-      {/* Filter Controls - This section aligns with Machine Status Widget */}
+      {/* Filter Controls */}
       <div className="flex w-full flex-wrap items-center gap-2">
         {/* Select dropdown - used below md: (mobile only) */}
         <div
           className={
             mode === 'auto'
-              ? 'w-full md:hidden'
+              ? 'w-full md:hidden flex flex-col gap-2'
               : mode === 'mobile'
-                ? 'w-full'
+                ? 'w-full flex flex-col gap-2'
                 : 'hidden'
           }
         >
@@ -185,6 +111,31 @@ export default function DashboardDateFilters({
             triggerClassName="bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors min-h-[44px] text-base"
             contentClassName="text-gray-700"
           />
+          
+          <ModernCalendar
+            date={
+                activeMetricsFilter === 'Custom' && useDashBoardStore.getState().customDateRange
+                ? {
+                    from: useDashBoardStore.getState().customDateRange?.startDate,
+                    to: useDashBoardStore.getState().customDateRange?.endDate
+                  }
+                : undefined
+            }
+            onSelect={(date) => {
+              if (date?.from && date?.to) {
+                   setCustomDateRange({
+                      startDate: date.from,
+                      endDate: date.to,
+                    });
+                    setActiveMetricsFilter('Custom');
+                     if (onCustomRangeGo) {
+                        setTimeout(() => onCustomRangeGo(), 0);
+                     }
+              }
+            }}
+            enableTimeInputs={enableTimeInputs}
+            className="w-full"
+          />
         </div>
 
         {/* Desktop buttons - shown on md: and above when mode is auto or desktop */}
@@ -196,7 +147,7 @@ export default function DashboardDateFilters({
                 : 'flex flex-wrap items-center gap-2'
             }
           >
-            {timeFilterButtons.map(filter => (
+            {timeFilterButtons.filter(b => b.value !== 'Custom').map(filter => (
               <Button
                 key={filter.value}
                 onClick={() => handleFilterClick(filter.value)}
@@ -210,19 +161,32 @@ export default function DashboardDateFilters({
                 {filter.label}
               </Button>
             ))}
-          </div>
-        )}
-
-        {/* Custom Date Picker (both mobile and desktop) */}
-        {showCustomPicker && (
-          <div className="mt-4 w-full">
-            <ModernDateRangePicker
-              value={tempDateRange}
-              onChange={setTempDateRange}
-              onGo={handleApplyCustomRange}
-              onCancel={handleCancelCustomRange}
-              onSetLastMonth={handleSetLastMonth}
+            
+            <ModernCalendar
+              date={
+                  activeMetricsFilter === 'Custom' && useDashBoardStore.getState().customDateRange
+                  ? {
+                      from: useDashBoardStore.getState().customDateRange?.startDate,
+                      to: useDashBoardStore.getState().customDateRange?.endDate
+                    }
+                  : undefined
+              }
+              onSelect={(date) => {
+                if (date?.from && date?.to) {
+                     setCustomDateRange({
+                        startDate: date.from,
+                        endDate: date.to,
+                      });
+                      setActiveMetricsFilter('Custom');
+                      // Trigger callback
+                       if (onCustomRangeGo) {
+                          // Short timeout to ensure state updates propagate
+                          setTimeout(() => onCustomRangeGo(), 0);
+                       }
+                }
+              }}
               enableTimeInputs={enableTimeInputs}
+              className="w-auto"
             />
           </div>
         )}

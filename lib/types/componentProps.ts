@@ -1,13 +1,13 @@
 import { buttonVariants } from '@/components/ui/button';
 import {
-    ActiveFilters,
-    ActiveTab,
-    dashboardData,
-    DashboardTotals,
-    dateRange,
-    locations,
-    TimeFrames,
-    TopPerformingData,
+  ActiveFilters,
+  ActiveTab,
+  dashboardData,
+  DashboardTotals,
+  dateRange,
+  locations,
+  TimeFrames,
+  TopPerformingData,
 } from '@/lib/types';
 import type { CollectorSchedule } from '@/lib/types/components';
 import { TimePeriod } from '@shared/types';
@@ -34,6 +34,7 @@ export type DashboardLayoutProps = {
   aggLoading?: boolean;
   loadingChartData: boolean;
   loadingTopPerforming?: boolean;
+  hasTopPerformingFetched?: boolean;
   refreshing: boolean;
   initialLoading?: boolean;
   setLoadingChartData: (_state: boolean) => void;
@@ -51,6 +52,9 @@ export type DashboardLayoutProps = {
   queryType?: 'user' | 'all';
   userId?: string | null;
   selectedLicencee: string;
+  chartGranularity?: 'hourly' | 'minute';
+  setChartGranularity?: (_state: 'hourly' | 'minute') => void;
+  showGranularitySelector?: boolean;
 };
 
 export type PcLayoutProps = DashboardLayoutProps;
@@ -59,6 +63,7 @@ export type ChartProps = {
   loadingChartData: boolean;
   chartData: dashboardData[];
   activeMetricsFilter: TimePeriod | '';
+  totals?: DashboardTotals | null;
 };
 
 export type MapPreviewProps = {
@@ -155,6 +160,14 @@ export type MobileLayoutProps = DashboardLayoutProps & {
   isChangingDateFilter: boolean;
 };
 
+// Tooltip data for collector hover
+export type CollectorTooltipData = {
+  firstName?: string;
+  lastName?: string;
+  id?: string;
+  email?: string;
+};
+
 // Represents a single row in the Collection Reports table
 export type CollectionReportRow = {
   _id: string;
@@ -162,6 +175,7 @@ export type CollectionReportRow = {
   collector: string;
   collectorFullName?: string; // Display name (username → firstName → email → collectorName)
   collectorFullNameTooltip?: string; // Full name for tooltip (firstName + lastName when available)
+  collectorTooltipData?: CollectorTooltipData; // Tooltip data with firstName, lastName, ID, email
   collectorUserNotFound?: boolean; // True if collector user no longer exists
   location: string;
   gross: number | string;
