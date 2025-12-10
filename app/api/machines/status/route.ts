@@ -67,57 +67,24 @@ export async function GET(req: NextRequest) {
     // STEP 3: Authenticate user and get accessible locations
     // ============================================================================
     // DEV MODE: Allow bypassing auth for testing
-    const isDevMode = process.env.NODE_ENV === 'development';
-    const testUserId = searchParams.get('testUserId');
 
     let userRoles: string[] = [];
     let userLocationPermissions: string[] = [];
     let userAccessibleLicensees: string[] | 'all' = [];
 
-    if (isDevMode && testUserId) {
-      // Dev mode: Get user directly from DB for testing
-      const UserModel = (await import('../../lib/models/user')).default;
-      const testUserResult = await UserModel.findOne({
-        _id: testUserId,
-      }).lean();
-      if (testUserResult && !Array.isArray(testUserResult)) {
-        const testUser = testUserResult as {
-          roles?: string[];
-          assignedLocations?: string[];
-          assignedLicensees?: string[];
-        };
-        userRoles = (testUser.roles || []) as string[];
-        userLocationPermissions = Array.isArray(testUser.assignedLocations)
-          ? testUser.assignedLocations.map((id: string) => String(id))
-          : [];
-        userAccessibleLicensees = Array.isArray(testUser.assignedLicensees)
-          ? testUser.assignedLicensees
-          : [];
-      } else {
-        return NextResponse.json(
-          { error: 'Test user not found' },
-          { status: 404 }
-        );
-      }
-    } else {
-      // Normal mode: Get user from JWT
-      const userPayload = await getUserFromServer();
-      if (!userPayload && !isDevMode) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-      userRoles = (userPayload?.roles as string[]) || [];
-      // Use only new field
-      if (
-        Array.isArray(
-          (userPayload as { assignedLocations?: string[] })?.assignedLocations
-        )
-      ) {
-        userLocationPermissions = (
-          userPayload as { assignedLocations: string[] }
-        ).assignedLocations;
-      }
-      userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    // Normal mode: Get user from JWT
+    const userPayload = await getUserFromServer();
+    userRoles = (userPayload?.roles as string[]) || [];
+    // Use only new field
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
     }
+    userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
 
     // ============================================================================
     // STEP 4: Determine location filter based on user role and selected licensee
@@ -146,6 +113,16 @@ export async function GET(req: NextRequest) {
           from: 'gaminglocations',
           localField: 'gamingLocation',
           foreignField: '_id',
+          pipeline: [
+            {
+              $match: {
+                $or: [
+                  { deletedAt: null },
+                  { deletedAt: { $lt: new Date('2025-01-01') } },
+                ],
+              },
+            },
+          ],
           as: 'locationDetails',
         },
       },
@@ -199,19 +176,35 @@ export async function GET(req: NextRequest) {
       filters.forEach(filter => {
         switch (filter.trim()) {
           case 'LocalServersOnly':
-            filterConditions.push({ 'locationDetails.isLocalServer': true });
+            filterConditions.push({
+              $and: [
+                { locationDetails: { $ne: null } },
+                { 'locationDetails.isLocalServer': true },
+              ],
+            });
             break;
           case 'SMIBLocationsOnly':
             filterConditions.push({
-              'locationDetails.noSMIBLocation': { $ne: true },
+              $and: [
+                { locationDetails: { $ne: null } },
+                { 'locationDetails.noSMIBLocation': { $ne: true } },
+              ],
             });
             break;
           case 'NoSMIBLocation':
-            filterConditions.push({ 'locationDetails.noSMIBLocation': true });
+            filterConditions.push({
+              $and: [
+                { locationDetails: { $ne: null } },
+                { 'locationDetails.noSMIBLocation': true },
+              ],
+            });
             break;
           case 'MembershipOnly':
             filterConditions.push({
-              'locationDetails.membershipEnabled': true,
+              $and: [
+                { locationDetails: { $ne: null } },
+                { 'locationDetails.membershipEnabled': true },
+              ],
             });
             break;
         }
@@ -230,7 +223,6 @@ export async function GET(req: NextRequest) {
       .aggregate([...aggregationPipeline, { $count: 'total' }])
       .toArray();
     const totalCount = totalCountResult[0]?.total || 0;
-
     // Get online machines count (lastActivity exists AND within last 3 minutes)
     // Machines without lastActivity are considered offline
     const onlineCountResult = await db

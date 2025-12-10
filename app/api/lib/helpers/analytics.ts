@@ -7,9 +7,9 @@
  * @module app/api/lib/helpers/analytics
  */
 
+import { Countries } from '@/app/api/lib/models/countries';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
-import { Countries } from '@/app/api/lib/models/countries';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
 import type { MachineAnalytics } from '@/lib/types/reports';
@@ -407,7 +407,7 @@ function buildMachineStatsMatchStage(
   allowedLocationIds: string[] | 'all'
 ): Record<string, unknown> {
   const matchStage: Record<string, unknown> = {
-    $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
+    $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
   };
 
   if (allowedLocationIds !== 'all') {
@@ -450,25 +450,25 @@ export async function getMachineStatsForAnalytics(
         isSasMachine: true,
       }),
       Machine.aggregate([
-          { $match: machineMatchStage },
-          {
-            $group: {
-              _id: null,
-              totalDrop: { $sum: { $ifNull: ['$sasMeters.drop', 0] } },
-              totalCancelledCredits: {
-                $sum: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
-              },
-              totalGross: {
-                $sum: {
-                  $subtract: [
-                    { $ifNull: ['$sasMeters.drop', 0] },
-                    { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
-                  ],
-                },
+        { $match: machineMatchStage },
+        {
+          $group: {
+            _id: null,
+            totalDrop: { $sum: { $ifNull: ['$sasMeters.drop', 0] } },
+            totalCancelledCredits: {
+              $sum: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
+            },
+            totalGross: {
+              $sum: {
+                $subtract: [
+                  { $ifNull: ['$sasMeters.drop', 0] },
+                  { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
+                ],
               },
             },
           },
-        ]),
+        },
+      ]),
     ]);
 
   const financials = financialTotals[0] || {
@@ -927,7 +927,7 @@ export async function getTopLocationsAnalytics(
         {
           $or: [
             { deletedAt: null },
-            { deletedAt: { $lt: new Date('2020-01-01') } },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
         },
         { projection: { _id: 1, name: 1 } }

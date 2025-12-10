@@ -19,12 +19,12 @@ import {
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { Countries } from '@/app/api/lib/models/countries';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { TimePeriod } from '@/shared/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
-import { Countries } from '@/app/api/lib/models/countries';
 import { NextRequest, NextResponse } from 'next/server';
 
 type LocationAggregationResult = {
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
         {
           $or: [
             { deletedAt: null },
-            { deletedAt: { $lt: new Date('2020-01-01') } },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
         },
       ],
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
                   },
                   $or: [
                     { deletedAt: null },
-                    { deletedAt: { $lt: new Date('2020-01-01') } },
+                    { deletedAt: { $lt: new Date('2025-01-01') } },
                   ],
                 },
               },
@@ -255,7 +255,7 @@ export async function GET(request: NextRequest) {
                 {
                   $or: [
                     { deletedAt: null },
-                    { deletedAt: { $lt: new Date('2020-01-01') } },
+                    { deletedAt: { $lt: new Date('2025-01-01') } },
                   ],
                 },
               ],
@@ -348,7 +348,7 @@ export async function GET(request: NextRequest) {
           {
             $or: [
               { deletedAt: null },
-              { deletedAt: { $lt: new Date('2020-01-01') } },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
             ],
           },
           { projection: { _id: 1, name: 1 } }

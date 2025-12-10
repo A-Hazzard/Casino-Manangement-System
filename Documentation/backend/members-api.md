@@ -127,8 +127,8 @@ MachineSession {
   duration?: number;              // Session duration in minutes
 
   // Game Statistics
-  gamesPlayed: number;            // Total games played
-  gamesWon: number;              // Games won
+  gamesPlayed: number;            // Total games played (from endMeters.movement.gamesPlayed)
+  gamesWon: number;              // Games won (deprecated - API uses endMeters.movement.gamesWon)
   points: number;                 // Points earned
   bet: number;                    // Total bet amount
   won: number;                    // Total won amount
@@ -146,10 +146,12 @@ MachineSession {
     totalWonCredits: number;      // Total won credits
     jackpot: number;              // Jackpot meter
     totalCancelledCredits: number; // Cancelled credits meter
-    movement: {                   // Movement calculations
+    movement: {                   // Movement calculations (from member's movement object)
       drop: number;               // Money inserted (drop)
       totalCancelledCredits: number; // Money paid out
       gross: number;              // Net amount
+      gamesPlayed: number;        // Games played during session
+      gamesWon: number;           // Games won during session (primary source for API)
     };
   };
 }
@@ -511,7 +513,7 @@ Retrieves session history for a specific member with grouping options.
         "handle": 500.0,
         "won": 75.0,
         "bet": 25.0,
-        "gamesWon": 5,
+        "gamesWon": 5, // Retrieved from session.endMeters.movement.gamesWon
         "jackpot": 0,
         "cancelledCredits": 0
       }
@@ -825,6 +827,7 @@ SessionHistoryEntry {
   **Query Parameters**: `page`, `limit`, `filter`, `export`, `startDate`, `endDate`
   **Response Fields**: Array of session objects with statistics
   **Used By**: Member session history, session grouping functionality
+  **Important**: `gamesWon` is retrieved from `session.endMeters?.movement?.gamesWon` (member's movement object), not from `session.gamesWon` (session's direct field)
 
 #### GET /api/members/[id]/sessions/[machineId]/events
 

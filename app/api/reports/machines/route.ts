@@ -15,16 +15,16 @@
  * @module app/api/reports/machines/route
  */
 
-import { TimePeriod } from '@/app/api/lib/types';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { Countries } from '@/app/api/lib/models/countries';
+import { Licencee } from '@/app/api/lib/models/licencee';
+import { Machine } from '@/app/api/lib/models/machines';
+import { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
-import { Licencee } from '@/app/api/lib/models/licencee';
-import { Countries } from '@/app/api/lib/models/countries';
-import { Machine } from '@/app/api/lib/models/machines';
 import { Db, Document } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -124,7 +124,8 @@ export async function GET(req: NextRequest) {
     }
 
     const userRoles = (userPayload?.roles as string[]) || [];
-    const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer');
+    const isAdminOrDev =
+      userRoles.includes('admin') || userRoles.includes('developer');
 
     // ============================================================================
     // STEP 5.5: Get user location permissions for filtering
@@ -175,7 +176,7 @@ export async function GET(req: NextRequest) {
     const machineMatchStage: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     };
 
@@ -218,7 +219,10 @@ export async function GET(req: NextRequest) {
     // Add location filter if specified (overrides user permissions if admin/dev)
     if (locationId && locationId !== 'all') {
       // Check if user has access to this specific location
-      if (allowedLocationIds !== 'all' && !allowedLocationIds.includes(locationId)) {
+      if (
+        allowedLocationIds !== 'all' &&
+        !allowedLocationIds.includes(locationId)
+      ) {
         return NextResponse.json(
           { error: 'Unauthorized: You do not have access to this location' },
           { status: 403 }
@@ -231,7 +235,7 @@ export async function GET(req: NextRequest) {
     const locationMatchStage: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     };
 
@@ -301,12 +305,13 @@ export async function GET(req: NextRequest) {
     }
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error(`[Reports Machines API] Error after ${duration}ms:`, errorMessage);
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Reports Machines API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
@@ -482,7 +487,7 @@ const getMachineStats = async (
     // Get licensee and country mappings for currency determination
     const { getCountryCurrency } = await import('@/lib/helpers/rates');
     const { convertToUSD } = await import('@/lib/helpers/rates');
-    
+
     const licensees = await Licencee.find({}).lean();
     const licenseeIdToName = new Map<string, string>();
     const licenseeIdToCurrency = new Map<string, string>();
@@ -504,86 +509,86 @@ const getMachineStats = async (
 
     // Re-fetch machines with location and currency info
     const machinesWithCurrency = await Machine.aggregate([
-        { $match: machineMatchStage },
-        {
-          $lookup: {
-            from: 'gaminglocations',
-            localField: 'gamingLocation',
-            foreignField: '_id',
-            as: 'locationDetails',
-          },
+      { $match: machineMatchStage },
+      {
+        $lookup: {
+          from: 'gaminglocations',
+          localField: 'gamingLocation',
+          foreignField: '_id',
+          as: 'locationDetails',
         },
-        {
-          $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
-        },
-        ...(locationMatchStage &&
-        typeof locationMatchStage === 'object' &&
-        'rel.licencee' in locationMatchStage
-          ? [
-              {
-                $match: {
-                  'locationDetails.rel.licencee':
-                    locationMatchStage['rel.licencee'],
-                },
+      },
+      {
+        $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
+      },
+      ...(locationMatchStage &&
+      typeof locationMatchStage === 'object' &&
+      'rel.licencee' in locationMatchStage
+        ? [
+            {
+              $match: {
+                'locationDetails.rel.licencee':
+                  locationMatchStage['rel.licencee'],
               },
-            ]
-          : []),
-        {
-          $lookup: {
-            from: 'meters',
-            let: { machineId: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$machine', '$$machineId'] },
-                      ...(startDate && endDate
-                        ? [
-                            { $gte: ['$readAt', startDate] },
-                            { $lte: ['$readAt', endDate] },
-                          ]
-                        : []),
-                    ],
-                  },
-                },
-              },
-              {
-                $group: {
-                  _id: null,
-                  drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-                  moneyOut: {
-                    $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-                  },
-                  coinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
-                  coinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
-                },
-              },
-            ],
-            as: 'meterData',
-          },
-        },
-        {
-          $unwind: {
-            path: '$meterData',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $project: {
-            drop: { $ifNull: ['$meterData.drop', 0] },
-            moneyOut: { $ifNull: ['$meterData.moneyOut', 0] },
-            gross: {
-              $subtract: [
-                { $ifNull: ['$meterData.drop', 0] },
-                { $ifNull: ['$meterData.moneyOut', 0] },
-              ],
             },
-            licenceeId: '$locationDetails.rel.licencee',
-            countryId: '$locationDetails.country',
-          },
+          ]
+        : []),
+      {
+        $lookup: {
+          from: 'meters',
+          let: { machineId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$machine', '$$machineId'] },
+                    ...(startDate && endDate
+                      ? [
+                          { $gte: ['$readAt', startDate] },
+                          { $lte: ['$readAt', endDate] },
+                        ]
+                      : []),
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+                moneyOut: {
+                  $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+                },
+                coinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
+                coinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
+              },
+            },
+          ],
+          as: 'meterData',
         },
-      ]);
+      },
+      {
+        $unwind: {
+          path: '$meterData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          drop: { $ifNull: ['$meterData.drop', 0] },
+          moneyOut: { $ifNull: ['$meterData.moneyOut', 0] },
+          gross: {
+            $subtract: [
+              { $ifNull: ['$meterData.drop', 0] },
+              { $ifNull: ['$meterData.moneyOut', 0] },
+            ],
+          },
+          licenceeId: '$locationDetails.rel.licencee',
+          countryId: '$locationDetails.country',
+        },
+      },
+    ]);
 
     // Convert each machine's values to USD, then sum, then convert to display currency
     let totalDropUSD = 0;
@@ -593,7 +598,7 @@ const getMachineStats = async (
     machinesWithCurrency.forEach(machine => {
       const machineLicenseeId = machine.licenceeId?.toString();
       const countryId = machine.countryId?.toString();
-      
+
       // Determine native currency
       let nativeCurrency = 'USD';
       if (machineLicenseeId && licenseeIdToCurrency.has(machineLicenseeId)) {
@@ -900,7 +905,7 @@ const getAllMachines = async (
     const machineMatchStage: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     };
 
@@ -1149,7 +1154,7 @@ const getOfflineMachines = async (
     const machineMatchStage: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
       lastActivity: { $exists: true, $lt: threeMinutesAgo },
     };

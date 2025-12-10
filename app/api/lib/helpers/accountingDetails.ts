@@ -1,12 +1,16 @@
-import { AcceptedBill } from '../models/acceptedBills';
-import { MachineEvent } from '../models/machineEvents';
-import { Machine } from '../models/machines';
 import type {
   AcceptedBill as AcceptedBillType,
   MachineEvent as MachineEventType,
 } from '@/lib/types/api';
 import { CollectionReportData } from '@/lib/types/api';
+import type { CollectionMetersHistoryEntry } from '@/shared/types';
+import type { TimePeriod } from '@/shared/types/common';
+import { AcceptedBill } from '../models/acceptedBills';
 import { CollectionReport } from '../models/collectionReport';
+import { Collections } from '../models/collections';
+import { MachineEvent } from '../models/machineEvents';
+import { Machine } from '../models/machines';
+import { getDatesForTimePeriod } from '../utils/dates';
 
 /**
  * Formats a number with smart decimal handling
@@ -18,10 +22,6 @@ const formatSmartDecimal = (value: number): string => {
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
   return value.toFixed(hasSignificantDecimals ? 2 : 0);
 };
-import { Collections } from '../models/collections';
-import type { CollectionMetersHistoryEntry } from '@/shared/types';
-import { getDatesForTimePeriod } from '../utils/dates';
-import type { TimePeriod } from '@/shared/types/common';
 
 /**
  * Fetches accepted bills for a given machine ID.
@@ -228,8 +228,19 @@ export async function getCollectionReportById(
                     if: {
                       $and: [
                         { $ne: ['$$machine.serialNumber', null] },
-                        { $ne: [{ $trim: { input: { $ifNull: ['$$machine.serialNumber', ''] } } }, ''] }
-                      ]
+                        {
+                          $ne: [
+                            {
+                              $trim: {
+                                input: {
+                                  $ifNull: ['$$machine.serialNumber', ''],
+                                },
+                              },
+                            },
+                            '',
+                          ],
+                        },
+                      ],
                     },
                     then: '$$machine.serialNumber',
                     else: {
@@ -238,8 +249,19 @@ export async function getCollectionReportById(
                         if: {
                           $and: [
                             { $ne: ['$$machine.custom.name', null] },
-                            { $ne: [{ $trim: { input: { $ifNull: ['$$machine.custom.name', ''] } } }, ''] }
-                          ]
+                            {
+                              $ne: [
+                                {
+                                  $trim: {
+                                    input: {
+                                      $ifNull: ['$$machine.custom.name', ''],
+                                    },
+                                  },
+                                },
+                                '',
+                              ],
+                            },
+                          ],
                         },
                         then: '$$machine.custom.name',
                         else: {
@@ -320,7 +342,7 @@ export async function getCollectionReportById(
         gamingLocation: report.location,
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
       });
       totalMachinesForLocation = totalMachinesCount;
@@ -375,10 +397,12 @@ export async function getCollectionReportById(
 
   // 🚀 OPTIMIZATION: Batch fetch ALL meter data in ONE query instead of N queries
   const { Meters } = await import('@/app/api/lib/models/meters');
-  
+
   // Collect all machine IDs and their SAS time ranges
   const meterQueries = collections
-    .filter(c => c.sasMeters?.sasStartTime && c.sasMeters?.sasEndTime && c.machineId)
+    .filter(
+      c => c.sasMeters?.sasStartTime && c.sasMeters?.sasEndTime && c.machineId
+    )
     .map(c => ({
       machineId: c.machineId,
       startTime: new Date(c.sasMeters!.sasStartTime!),
@@ -386,28 +410,34 @@ export async function getCollectionReportById(
     }));
 
   // Build a single aggregation to get all meter data grouped by machine
-  const allMeterData = meterQueries.length > 0 ? await Meters.aggregate([
-    {
-      $match: {
-        $or: meterQueries.map(q => ({
-          machine: q.machineId,
-          readAt: { $gte: q.startTime, $lte: q.endTime },
-        })),
-      },
-    },
-    {
-      $group: {
-        _id: '$machine',
-        totalDrop: { $sum: '$movement.drop' },
-        totalCancelled: { $sum: '$movement.totalCancelledCredits' },
-        meterCount: { $sum: 1 },
-      },
-    },
-  ]) : [];
+  const allMeterData =
+    meterQueries.length > 0
+      ? await Meters.aggregate([
+          {
+            $match: {
+              $or: meterQueries.map(q => ({
+                machine: q.machineId,
+                readAt: { $gte: q.startTime, $lte: q.endTime },
+              })),
+            },
+          },
+          {
+            $group: {
+              _id: '$machine',
+              totalDrop: { $sum: '$movement.drop' },
+              totalCancelled: { $sum: '$movement.totalCancelledCredits' },
+              meterCount: { $sum: 1 },
+            },
+          },
+        ])
+      : [];
 
   // Create lookup map for O(1) access
   const meterDataMap = new Map(
-    allMeterData.map(m => [m._id, { drop: m.totalDrop, cancelled: m.totalCancelled, count: m.meterCount }])
+    allMeterData.map(m => [
+      m._id,
+      { drop: m.totalDrop, cancelled: m.totalCancelled, count: m.meterCount },
+    ])
   );
 
   return {
@@ -417,66 +447,67 @@ export async function getCollectionReportById(
       ? new Date(report.timestamp).toISOString()
       : '-',
     machineMetrics: collections.map((collection, idx: number) => {
-        // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
-        // Use a helper function to check for valid non-empty strings
-        const isValidString = (
-          str: string | undefined | null
-        ): string | null => {
-          return str && typeof str === 'string' && str.trim() !== ''
-            ? str.trim()
-            : null;
-        };
+      // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
+      // Use a helper function to check for valid non-empty strings
+      const isValidString = (str: string | undefined | null): string | null => {
+        return str && typeof str === 'string' && str.trim() !== ''
+          ? str.trim()
+          : null;
+      };
 
-        const machineDisplayName =
-          isValidString(collection.serialNumber) ||
-          isValidString(collection.machineName) ||
-          isValidString(collection.machineCustomName) ||
-          isValidString(collection.machineId) ||
-          isValidString(collection.sasMeters?.machine) ||
-          `Machine ${idx + 1}`;
+      const machineDisplayName =
+        isValidString(collection.serialNumber) ||
+        isValidString(collection.machineName) ||
+        isValidString(collection.machineCustomName) ||
+        isValidString(collection.machineId) ||
+        isValidString(collection.sasMeters?.machine) ||
+        `Machine ${idx + 1}`;
 
-        // Calculate drop/cancelled from the difference between current and previous meters
-        const drop = (collection.metersIn || 0) - (collection.prevIn || 0);
-        const cancelled =
-          (collection.metersOut || 0) - (collection.prevOut || 0);
-        const meterGross = collection.movement?.gross || 0;
+      // Calculate drop/cancelled from the difference between current and previous meters
+      const drop = (collection.metersIn || 0) - (collection.prevIn || 0);
+      const cancelled = (collection.metersOut || 0) - (collection.prevOut || 0);
+      const meterGross = collection.movement?.gross || 0;
 
-        // 🚀 OPTIMIZED: Use pre-fetched meter data from batch query (no individual queries!)
-        let sasGross = 0;
-        if (collection.machineId && collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime) {
-          const meterData = meterDataMap.get(collection.machineId);
-          if (meterData) {
-            sasGross = meterData.drop - meterData.cancelled;
-          }
+      // 🚀 OPTIMIZED: Use pre-fetched meter data from batch query (no individual queries!)
+      let sasGross = 0;
+      if (
+        collection.machineId &&
+        collection.sasMeters?.sasStartTime &&
+        collection.sasMeters?.sasEndTime
+      ) {
+        const meterData = meterDataMap.get(collection.machineId);
+        if (meterData) {
+          sasGross = meterData.drop - meterData.cancelled;
         }
-        // Check if SAS data exists - if not, show "No SAS Data"
-        // Note: sasMeters.gross can be 0 (valid value), so we only check for undefined/null
-        const variation =
-          !collection.sasMeters ||
-          collection.sasMeters.gross === undefined ||
-          collection.sasMeters.gross === null
-            ? 'No SAS Data'
-            : meterGross - sasGross;
+      }
+      // Check if SAS data exists - if not, show "No SAS Data"
+      // Note: sasMeters.gross can be 0 (valid value), so we only check for undefined/null
+      const variation =
+        !collection.sasMeters ||
+        collection.sasMeters.gross === undefined ||
+        collection.sasMeters.gross === null
+          ? 'No SAS Data'
+          : meterGross - sasGross;
 
-        return {
-          id: String(idx + 1),
-          machineId: machineDisplayName,
-          actualMachineId: collection.machineId, // The actual machine ID for navigation
-          dropCancelled: `${formatSmartDecimal(drop)} / ${formatSmartDecimal(
-            cancelled
-          )}`,
-          metersGross: meterGross,
-          sasGross: formatSmartDecimal(sasGross),
-          variation:
-            typeof variation === 'string'
-              ? variation
-              : formatSmartDecimal(variation),
-          sasStartTime: collection.sasMeters?.sasStartTime || null,
-          sasEndTime: collection.sasMeters?.sasEndTime || null,
-          hasIssue: false,
-          ramClear: collection.ramClear || false,
-        };
-      }),
+      return {
+        id: String(idx + 1),
+        machineId: machineDisplayName,
+        actualMachineId: collection.machineId, // The actual machine ID for navigation
+        dropCancelled: `${formatSmartDecimal(drop)} / ${formatSmartDecimal(
+          cancelled
+        )}`,
+        metersGross: meterGross,
+        sasGross: formatSmartDecimal(sasGross),
+        variation:
+          typeof variation === 'string'
+            ? variation
+            : formatSmartDecimal(variation),
+        sasStartTime: collection.sasMeters?.sasStartTime || null,
+        sasEndTime: collection.sasMeters?.sasEndTime || null,
+        hasIssue: false,
+        ramClear: collection.ramClear || false,
+      };
+    }),
     locationMetrics,
     sasMetrics,
   };

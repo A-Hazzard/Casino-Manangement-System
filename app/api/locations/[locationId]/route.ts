@@ -306,7 +306,7 @@ export async function GET(request: NextRequest) {
               // Include machines that are not deleted OR have sentinel deletedAt date
               $or: [
                 { deletedAt: null },
-                { deletedAt: { $lt: new Date('2020-01-01') } },
+                { deletedAt: { $lt: new Date('2025-01-01') } },
               ],
             },
           ],

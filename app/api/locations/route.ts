@@ -63,14 +63,16 @@ export async function GET(request: Request) {
     const licencee =
       searchParams.get('licensee') || searchParams.get('licencee');
     const minimal = searchParams.get('minimal') === '1';
-    
+
     // Check if user is a collector (collectors should not access locations list)
     // Note: Allow minimal=true requests for dropdown usage in other pages
     if (!minimal) {
       const user = await getUserFromServer();
       if (user) {
-        const userRoles = (user.roles as string[])?.map(r => r.toLowerCase()) || [];
-        const isCollectorOnly = userRoles.includes('collector') && 
+        const userRoles =
+          (user.roles as string[])?.map(r => r.toLowerCase()) || [];
+        const isCollectorOnly =
+          userRoles.includes('collector') &&
           !userRoles.includes('developer') &&
           !userRoles.includes('admin') &&
           !userRoles.includes('manager') &&
@@ -79,7 +81,10 @@ export async function GET(request: Request) {
 
         if (isCollectorOnly) {
           return NextResponse.json(
-            { success: false, error: 'Collectors do not have access to locations page' },
+            {
+              success: false,
+              error: 'Collectors do not have access to locations page',
+            },
             { status: 403 }
           );
         }
@@ -114,7 +119,7 @@ export async function GET(request: Request) {
     const deletionFilter = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     };
 
@@ -318,7 +323,7 @@ export async function POST(request: Request) {
         city: address?.city || '',
       },
       rel: {
-        licencee: rel?.licencee as string[] | undefined || [],
+        licencee: (rel?.licencee as string[] | undefined) || [],
       },
       profitShare: profitShare || 50,
       gameDayOffset: gameDayOffset ?? 8,
@@ -501,7 +506,7 @@ export async function PUT(request: Request) {
       _id: locationName,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     });
 
@@ -731,7 +736,8 @@ export async function PUT(request: Request) {
           action: 'UPDATE',
           details: `Updated location "${location.name}" (${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''})`,
           ipAddress: getClientIP(request as NextRequest) || undefined,
-          userAgent: (request as NextRequest).headers.get('user-agent') || undefined,
+          userAgent:
+            (request as NextRequest).headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,

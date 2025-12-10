@@ -10,6 +10,7 @@
  * @module app/api/members/[id]/route
  */
 
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
 import { NextRequest, NextResponse } from 'next/server';
@@ -143,9 +144,30 @@ export async function PUT(
     }
 
     // ============================================================================
-    // STEP 3: Connect to database
+    // STEP 3: Connect to database and authenticate user
     // ============================================================================
     await connectDB();
+    const userPayload = await getUserFromServer();
+
+    if (!userPayload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check if user is admin or developer
+    const userRoles = (userPayload.roles as string[]) || [];
+    const isAdminOrDeveloper = userRoles.some(
+      role => role === 'admin' || role === 'developer'
+    );
+
+    if (!isAdminOrDeveloper) {
+      return NextResponse.json(
+        {
+          error:
+            'Forbidden: Only administrators and developers can edit members',
+        },
+        { status: 403 }
+      );
+    }
 
     // ============================================================================
     // STEP 4: Find member by ID

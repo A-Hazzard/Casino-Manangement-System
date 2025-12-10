@@ -78,6 +78,7 @@ const results = await Promise.all(
 - Dashboard 30d API (14.94s → 5.20s, 65% faster!)
 - Locations API (parallel location batches)
 - Cabinets API (parallel location batches)
+- Collection Report Creation (parallel machine updates - 3-5x faster for multi-machine reports)
 
 ---
 

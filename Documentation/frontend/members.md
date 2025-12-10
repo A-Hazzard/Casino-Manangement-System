@@ -317,6 +317,9 @@ The members page is like a **player management system** for your casino. Here's 
 
 - **Collection**: Aggregates data from `machinesessions` collection
 - **Fields Used**: `handle`, `cancelledCredits`, `jackpot`, `won`, `bet`, `points`, `gamesPlayed`, `gamesWon`
+- **Data Source**:
+  - `gamesPlayed`: `session.endMeters?.movement?.gamesPlayed`
+  - `gamesWon`: `session.endMeters?.movement?.gamesWon` (from member's movement object, not session's direct field)
 - **Simple Explanation**: Shows how much money the member spent, won, and how many games they played during each session
 
 **🔗 Session to Machine Events**

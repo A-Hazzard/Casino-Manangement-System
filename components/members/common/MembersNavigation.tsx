@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { MembersTab, MembersView } from '@/shared/types/entities';
-import { BarChart3, PlusCircle, RefreshCw, Users } from 'lucide-react';
+import { BarChart3, RefreshCw, Users } from 'lucide-react';
 
 type MembersNavigationProps = {
   availableTabs: MembersTab[];
@@ -12,6 +12,7 @@ type MembersNavigationProps = {
   onRefresh?: () => void;
   onNewMember?: () => void;
   refreshing?: boolean;
+  locationName?: string;
 };
 
 /**
@@ -24,8 +25,9 @@ export default function MembersNavigation({
   onTabChange,
   selectedLicencee,
   onRefresh,
-  onNewMember,
+  onNewMember: _onNewMember,
   refreshing = false,
+  locationName,
 }: MembersNavigationProps) {
   const getIcon = (iconName: string) => {
     switch (iconName) {
@@ -55,9 +57,11 @@ export default function MembersNavigation({
             <div className="flex items-center gap-2">
               {activeTabConfig && getIcon(activeTabConfig.icon)}
               <h1 className="text-lg font-bold text-gray-900 sm:text-2xl">
-                {activeTabConfig?.label || 'Members'}
+                {locationName
+                  ? `${activeTabConfig?.label || 'Members'} For ${locationName}`
+                  : activeTabConfig?.label || 'Members'}
               </h1>
-              {selectedLicencee && (
+              {selectedLicencee && !locationName && (
                 <span className="max-w-[140px] truncate text-xs text-gray-500 sm:max-w-xs">
                   ({selectedLicencee})
                 </span>
@@ -80,7 +84,9 @@ export default function MembersNavigation({
                     >
                       {getIcon(tab.icon)}
                       <span className="hidden sm:inline">{tab.label}</span>
-                      <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
+                      <span className="sm:hidden">
+                        {tab.label.split(' ')[0]}
+                      </span>
                     </TabsTrigger>
                   ))}
                 </TabsList>
@@ -92,7 +98,7 @@ export default function MembersNavigation({
           <div className="flex items-center gap-2">
             {onRefresh && (
               <Button
-                onClick={(e) => {
+                onClick={e => {
                   e.preventDefault();
                   if (typeof onRefresh === 'function') {
                     onRefresh();
@@ -104,13 +110,15 @@ export default function MembersNavigation({
                 className="flex items-center gap-2"
                 title="Refresh data"
               >
-                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+                />
                 <span className="hidden sm:inline">Refresh</span>
               </Button>
             )}
-            {onNewMember && (
+            {/* {onNewMember && (
               <Button
-                onClick={(e) => {
+                onClick={e => {
                   e.preventDefault();
                   if (typeof onNewMember === 'function') {
                     onNewMember();
@@ -124,7 +132,7 @@ export default function MembersNavigation({
                 <span className="hidden sm:inline">Create New Member</span>
                 <span className="sm:hidden">New</span>
               </Button>
-            )}
+            )} */}
           </div>
         </div>
       </div>

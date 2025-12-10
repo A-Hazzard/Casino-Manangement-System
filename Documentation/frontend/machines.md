@@ -152,7 +152,7 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
   - `components/ui/movements/NewMovementRequestModal.tsx` - New movement form
 - **Utility Components:**
   - `components/ui/RefreshButton.tsx` - Data refresh functionality
-  - `components/dashboard/DashboardDateFilters.tsx` - Date filtering
+  - `components/dashboard/DashboardDateFilters.tsx` - Date filtering with ModernCalendar component (mobile: calendar only shows when "Custom" is selected)
   - `components/ui/FinancialMetricsCards.tsx` - Financial totals display
   - `components/ui/MachineStatusWidget.tsx` - Machine status indicators
   - `components/ui/NoLicenseeAssigned.tsx` - Message for users without licensees

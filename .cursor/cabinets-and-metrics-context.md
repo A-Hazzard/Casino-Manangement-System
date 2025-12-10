@@ -216,7 +216,7 @@ Array<{
 ```typescript
 const machines = await Machine.find({
   gamingLocation: { $in: locationIds },
-  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
+  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
 }).lean();
 ```
 
@@ -242,7 +242,7 @@ const pipeline: PipelineStage[] = [
       coinIn: { $last: '$coinIn' },
       coinOut: { $last: '$coinOut' },
       gamesPlayed: { $last: '$gamesPlayed' },
-      gamesWon: { $last: '$gamesWon' },
+      gamesWon: { $last: '$endMeters.movement.gamesWon' }, // From member's movement object
     },
   },
 ];
@@ -467,7 +467,7 @@ const isOnline = machine.lastActivity
 ```typescript
 // Always filter out soft-deleted records
 {
-  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }];
+  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }];
 }
 ```
 
@@ -485,7 +485,3 @@ const machine = await Machine.findById(machineId);
 
 **Last Updated:** December 2024  
 **Maintained By:** AI Assistant Context System
-
-
-
-

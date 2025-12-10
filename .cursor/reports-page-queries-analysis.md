@@ -34,7 +34,7 @@ This document catalogs all queries on the Reports page, organized by tab and sec
   - `timePeriod` (Today, Yesterday, 7d, 30d, Custom, All Time)
   - `licencee` (optional)
   - `currency` (optional)
-  - `machineTypeFilter` (optional)
+  - `machineTypeFilter` (optional) - Comma-separated list: "LocalServersOnly", "SMIBLocationsOnly", "NoSMIBLocation", "MembershipOnly" (uses OR logic - locations matching ANY selected filter are returned)
   - `sasEvaluationOnly` (boolean)
   - `page`, `limit` (pagination)
   - `startDate`, `endDate` (for Custom period)

@@ -11,7 +11,8 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
-    "check": "pnpm run type-check && pnpm run lint"
+    "check": "pnpm run type-check && pnpm run lint",
+    "fix-no-smib": "node scripts/fix-no-smib-locations.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

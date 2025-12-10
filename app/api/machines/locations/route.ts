@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     // For membership-only flows, use a stricter cutoff (2025) as requested
     const deletionCutoff = membershipOnly
       ? new Date('2025-01-01')
-      : new Date('2020-01-01');
+      : new Date('2025-01-01');
 
     matchStage.$or = [
       { deletedAt: null },

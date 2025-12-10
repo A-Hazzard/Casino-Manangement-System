@@ -43,7 +43,8 @@ export async function GET(req: NextRequest) {
     }
 
     const userRoles = (userPayload?.roles as string[]) || [];
-    const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer');
+    const isAdminOrDev =
+      userRoles.includes('admin') || userRoles.includes('developer');
 
     // ============================================================================
     // STEP 2: Get user location permissions
@@ -71,7 +72,8 @@ export async function GET(req: NextRequest) {
 
     // Get user's accessible locations
     const { searchParams } = new URL(req.url);
-    const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+    const licensee =
+      searchParams.get('licensee') || searchParams.get('licencee');
     const allowedLocationIds = await getUserLocationFilter(
       isAdminOrDev ? 'all' : userAccessibleLicensees,
       licensee && licensee !== 'all' ? licensee : undefined,
@@ -110,7 +112,7 @@ export async function GET(req: NextRequest) {
           'rel.licencee': licensee,
           $or: [
             { deletedAt: null },
-            { deletedAt: { $lt: new Date('2020-01-01') } },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
         },
         { _id: 1, name: 1 }
@@ -165,7 +167,9 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =
-      error instanceof Error ? error.message : 'Failed to fetch movement requests';
+      error instanceof Error
+        ? error.message
+        : 'Failed to fetch movement requests';
     console.error(
       `[Movement Requests GET API] Error after ${duration}ms:`,
       errorMessage
@@ -225,7 +229,9 @@ export async function POST(req: NextRequest) {
           action: 'CREATE',
           details: `Created movement request for cabinet ${data.cabinetIn} from ${data.locationFrom} to ${data.locationTo}`,
           userId: currentUser._id as string,
-          username: (currentUser.emailAddress || currentUser.username || 'unknown') as string,
+          username: (currentUser.emailAddress ||
+            currentUser.username ||
+            'unknown') as string,
           ipAddress: getClientIP(req) || undefined,
           userAgent: req.headers.get('user-agent') || undefined,
           metadata: {
@@ -254,7 +260,9 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =
-      error instanceof Error ? error.message : 'Failed to create movement request';
+      error instanceof Error
+        ? error.message
+        : 'Failed to create movement request';
     console.error(
       `[Movement Requests POST API] Error after ${duration}ms:`,
       errorMessage

@@ -1,6 +1,6 @@
-import { Db, Document } from 'mongodb';
-import { AggregatedLocation, LocationDateRange } from '@/lib/types/location';
 import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
+import { AggregatedLocation, LocationDateRange } from '@/lib/types/location';
+import { Db, Document } from 'mongodb';
 
 /**
  * Aggregates and returns location metrics, including machine counts and online status, with optional filters.
@@ -36,7 +36,7 @@ export const getLocationsWithMetrics = async (
         {
           $or: [
             { deletedAt: null },
-            { deletedAt: { $lt: new Date('2020-01-01') } },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
           'rel.licencee': licencee,
         },
@@ -56,7 +56,7 @@ export const getLocationsWithMetrics = async (
       $match: {
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
         ...(licenseeLocationIds && licenseeLocationIds.length > 0
           ? { _id: { $in: licenseeLocationIds } }
@@ -104,7 +104,7 @@ export const getLocationsWithMetrics = async (
               gamingLocation: location._id,
               $or: [
                 { deletedAt: null },
-                { deletedAt: { $lt: new Date('2020-01-01') } },
+                { deletedAt: { $lt: new Date('2025-01-01') } },
               ],
             },
             { projection: { _id: 1 } }
@@ -157,7 +157,7 @@ export const getLocationsWithMetrics = async (
                 gamingLocation: location._id,
                 $or: [
                   { deletedAt: null },
-                  { deletedAt: { $lt: new Date('2020-01-01') } },
+                  { deletedAt: { $lt: new Date('2025-01-01') } },
                 ],
               },
             },
@@ -284,7 +284,7 @@ export const getLocationsWithMetrics = async (
                     $expr: { $eq: ['$gamingLocation', '$$locationId'] },
                     $or: [
                       { deletedAt: null },
-                      { deletedAt: { $lt: new Date('2020-01-01') } },
+                      { deletedAt: { $lt: new Date('2025-01-01') } },
                     ],
                   },
                 },

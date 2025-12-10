@@ -180,7 +180,10 @@ The Dashboard page serves as the central command center for the Evolution One Ca
 - **Mobile Layout:** `components/layout/MobileLayout.tsx` - Mobile-responsive layout
 - **Header:** `components/layout/Header.tsx` - Top navigation with licensee selector
 - **Sidebar:** `components/layout/Sidebar.tsx` - Persistent navigation sidebar
-- **Date Filters:** `components/dashboard/DashboardDateFilters.tsx` - Time period selection
+- **Date Filters:** `components/dashboard/DashboardDateFilters.tsx` - Time period selection with ModernCalendar component
+  - **Mobile Behavior**: Calendar only shows when "Custom" is selected
+  - **Desktop Behavior**: Calendar always available as a button
+  - **Component**: Uses `ModernCalendar` from `components/ui/ModernCalendar.tsx`
 - **Charts:** `components/ui/dashboard/Chart.tsx` - Recharts-based data visualization
 - **Machine Status:** `components/ui/MachineStatusWidget.tsx` - Online/offline machine indicators
 - **Map Preview:** `components/ui/MapPreview.tsx` - Location visualization

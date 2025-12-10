@@ -246,7 +246,7 @@ export async function getLicenseeLocationFilter(
       'rel.licencee': { $in: userAccessibleLicensees },
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     },
     { _id: 1 }
@@ -349,7 +349,7 @@ export async function getUserLocationFilter(
         'rel.licencee': licenseeId,
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
       },
       { _id: 1 }

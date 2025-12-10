@@ -7,10 +7,10 @@
  * @module app/api/lib/helpers/trends
  */
 
-import { getDatesForTimePeriod } from '../utils/dates';
-import type { TimePeriod } from '../types';
 import type { Db } from 'mongodb';
 import type { PipelineStage } from 'mongoose';
+import type { TimePeriod } from '../types';
+import { getDatesForTimePeriod } from '../utils/dates';
 
 /**
  * Win/loss trend data item
@@ -359,7 +359,7 @@ function buildHourlyRevenuePipeline(
         readAt: { $gte: start, $lte: end },
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
       },
     },
@@ -695,4 +695,3 @@ export async function getJackpotTrends(
     .aggregate(pipeline)
     .toArray()) as JackpotTrendItem[];
 }
-

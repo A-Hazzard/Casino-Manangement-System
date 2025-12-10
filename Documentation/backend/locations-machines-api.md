@@ -326,6 +326,14 @@ if (!onlineStatus && assetStatus === "active") return "offline"
 if (assetStatus === "maintenance") return "maintenance"
 if (assetStatus === "inactive") return "inactive"
 if (deletedAt) return "deleted"
+
+// NON-SMIB Location Offline Override
+// NON-SMIB locations (locations without SMIB machines) are marked as offline
+// if no collection report exists in the past 3 months
+if (location.sasMachines === 0 && !hasCollectionReportInPast3Months) {
+  location.onlineMachines = 0; // Force offline status
+  location.hasNoRecentCollectionReport = true; // Flag for frontend warning icon
+}
 ```
 
 3. **Status Update Process**:
@@ -1460,6 +1468,14 @@ Location Gross Revenue = Location Total Drop - Location Total Cancelled Credits
 Location Online Machines = COUNT(machines WHERE gamingLocation = locationId AND lastActivity >= currentTime - 3min)
 Location Total Machines = COUNT(machines WHERE gamingLocation = locationId AND deletedAt IS NULL)
 Location Offline Machines = Location Total Machines - Location Online Machines
+
+// NON-SMIB Location Offline Override
+// For NON-SMIB locations (sasMachines === 0), check collection reports
+IF (location.sasMachines === 0 AND NOT EXISTS collectionReport WHERE
+    location = locationId AND timestamp >= (currentTime - 3 months) AND isEditing != true) {
+  Location Online Machines = 0  // Force offline
+  Location.hasNoRecentCollectionReport = true  // Flag for frontend warning
+}
 ```
 
 #### **Machine Performance within Location**

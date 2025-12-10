@@ -144,7 +144,7 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         }
 
         // Check if user is soft-deleted (deletedAt is set and not in the past)
-        if (dbUser.deletedAt && dbUser.deletedAt > new Date('2020-01-01')) {
+        if (dbUser.deletedAt && dbUser.deletedAt > new Date('2025-01-01')) {
           console.warn(
             `[SESSION INVALIDATION] User ${jwtPayload._id} has been deleted (soft delete)`
           );
@@ -309,7 +309,7 @@ export async function getAllUsers() {
       $or: [
         { deletedAt: null },
         { deletedAt: { $exists: false } },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     },
     '-password'

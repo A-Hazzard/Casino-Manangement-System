@@ -198,6 +198,7 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 - **Smart Detection**: Automatically detects SAS time issues (inverted times, same-day starts)
 - **Fix SAS Times**: Button to automatically correct SAS time issues and recalculate metrics
 - **Confirmation Dialogs**: User confirmation for report creation and editing operations
+- **Parallel Machine Updates**: Machine collection data updates execute in parallel using `Promise.all()` for 3-5x faster report creation (uses `collectionIds` array for faster collection document lookup)
 
 ### SAS Time Validation System
 

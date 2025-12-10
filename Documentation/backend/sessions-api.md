@@ -43,8 +43,8 @@ MachineSession {
   duration?: number;              // Session duration in minutes
 
   // Game Statistics
-  gamesPlayed: number;            // Total games played during session
-  gamesWon: number;              // Number of games won
+  gamesPlayed: number;            // Total games played during session (from endMeters.movement.gamesPlayed for member sessions)
+  gamesWon: number;              // Number of games won (deprecated - API uses endMeters.movement.gamesWon for member sessions)
   points: number;                 // Points earned during session
   bet: number;                    // Total amount wagered
   won: number;                    // Total amount won
@@ -66,8 +66,10 @@ MachineSession {
     totalWonCredits: number;      // Total won credits meter
     jackpot: number;              // Jackpot meter reading
     totalCancelledCredits: number; // Cancelled credits meter
-    movement: {
+    movement: {                   // Movement calculations (from member's movement object)
       dollarTotalUnknown: number; // Additional movement tracking
+      gamesPlayed: number;        // Games played during session
+      gamesWon: number;           // Games won during session (primary source for API)
     };
   };
 

@@ -16,9 +16,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useMemberActionsStore } from '@/lib/store/memberActionsStore';
+import { useUserStore } from '@/lib/store/userStore';
 import type { CasinoMember as Member } from '@/shared/types/entities';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
-import { ArrowUpDown, Calendar, MapPin, Users } from 'lucide-react';
+import { ArrowUpDown, Calendar, Users } from 'lucide-react';
 type MemberSortOption =
   | 'name'
   | 'playerId'
@@ -69,6 +70,13 @@ export default function MembersListTab({
 
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useUserStore();
+
+  // Check if user can edit members (only admin and developer)
+  const canEditMembers = useMemo(() => {
+    if (!user || !user.roles) return false;
+    return user.roles.some(role => role === 'admin' || role === 'developer');
+  }, [user]);
 
   // State management
   const [allMembers, setAllMembers] = useState<Member[]>([]);
@@ -173,8 +181,19 @@ export default function MembersListTab({
   // Fetch summary stats
   const fetchSummaryStats = useCallback(async () => {
     try {
+      const params = new URLSearchParams({
+        page: '1',
+        limit: '1',
+        dateFilter: 'all',
+      });
+
+      // Add location filter if forcedLocationId is provided
+      if (forcedLocationId) {
+        params.append('location', forcedLocationId);
+      }
+
       const response = await axios.get(
-        '/api/members/summary?page=1&limit=1&dateFilter=all'
+        `/api/members/summary?${params.toString()}`
       );
       const data = response.data;
       if (data.data?.summary) {
@@ -183,7 +202,7 @@ export default function MembersListTab({
     } catch (error) {
       console.error('Error fetching summary stats:', error);
     }
-  }, []);
+  }, [forcedLocationId]);
 
   // Fetch locations on mount
   useEffect(() => {
@@ -422,18 +441,23 @@ export default function MembersListTab({
 
   const handleRefresh = useCallback(async () => {
     setRefreshingContext(true);
+    setLoading(true);
     setAllMembers([]);
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
-    await fetchMembers(
-      1,
-      debouncedSearchTerm,
-      sortOption,
-      sortOrder,
-      forcedLocationId || locationFilter
-    );
-    await fetchSummaryStats();
-    setRefreshingContext(false);
+    try {
+      await fetchMembers(
+        1,
+        debouncedSearchTerm,
+        sortOption,
+        sortOrder,
+        forcedLocationId || locationFilter
+      );
+      await fetchSummaryStats();
+    } finally {
+      setLoading(false);
+      setRefreshingContext(false);
+    }
   }, [
     debouncedSearchTerm,
     sortOption,
@@ -509,13 +533,13 @@ export default function MembersListTab({
   const renderSummaryCards = () => {
     if (!summaryStats) return null;
 
+    const isLocalhost =
+      typeof window !== 'undefined' && window.location.hostname === 'localhost';
+
     return (
       <div
         className={`mb-6 grid grid-cols-1 gap-4 ${
-          typeof window !== 'undefined' &&
-          window.location.hostname === 'localhost'
-            ? 'md:grid-cols-3'
-            : 'md:grid-cols-2'
+          isLocalhost ? 'md:grid-cols-2' : 'md:grid-cols-1'
         }`}
       >
         <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -532,38 +556,23 @@ export default function MembersListTab({
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center">
-            <div className="rounded-lg bg-green-100 p-2">
-              <MapPin className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Locations</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {summaryStats.totalLocations}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {typeof window !== 'undefined' &&
-          window.location.hostname === 'localhost' && (
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <div className="flex items-center">
-                <div className="rounded-lg bg-orange-100 p-2">
-                  <Calendar className="h-6 w-6 text-orange-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">
-                    Active Members
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {summaryStats.activeMembers}
-                  </p>
-                </div>
+        {isLocalhost && (
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <div className="flex items-center">
+              <div className="rounded-lg bg-orange-100 p-2">
+                <Calendar className="h-6 w-6 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Active Members
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {summaryStats.activeMembers}
+                </p>
               </div>
             </div>
-          )}
+          </div>
+        )}
       </div>
     );
   };
@@ -673,6 +682,8 @@ export default function MembersListTab({
                 onLocationClick={handleLocationClick}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                hideLocation={!!forcedLocationId}
+                canEdit={canEditMembers}
               />
             ))
           )}
@@ -695,6 +706,8 @@ export default function MembersListTab({
               onMemberClick={handleMemberClick}
               onLocationClick={handleLocationClick}
               onAction={handleTableAction}
+              hideLocationColumn={!!forcedLocationId}
+              canEdit={canEditMembers}
             />
           )}
         </div>

@@ -7,8 +7,10 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Home,
   Monitor,
   RefreshCw,
+  Server,
   TrendingUp,
   Trophy,
 } from 'lucide-react';
@@ -2027,7 +2029,38 @@ export default function LocationsTab() {
                                 className="hover:bg-gray-50"
                               >
                                 <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                                  {loc.locationName || loc.name || 'Unknown'}
+                                  <div className="flex items-center gap-1.5">
+                                    <span>
+                                      {loc.locationName ||
+                                        loc.name ||
+                                        'Unknown'}
+                                    </span>
+                                    {/* SMIB Icon - Show if location has SMIB machines */}
+                                    {Boolean(
+                                      (loc as { hasSmib?: boolean }).hasSmib ||
+                                        !(loc as { noSMIBLocation?: boolean })
+                                          .noSMIBLocation
+                                    ) && (
+                                      <div className="group relative inline-flex flex-shrink-0">
+                                        <Server className="h-4 w-4 text-blue-600" />
+                                        <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                          SMIB Location
+                                        </div>
+                                      </div>
+                                    )}
+                                    {/* Local Server Icon */}
+                                    {Boolean(
+                                      (loc as { isLocalServer?: boolean })
+                                        .isLocalServer
+                                    ) && (
+                                      <div className="group relative inline-flex flex-shrink-0">
+                                        <Home className="h-4 w-4 text-purple-600" />
+                                        <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                          Local Server
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-gray-500">
                                   {loc.totalMachines || 0}

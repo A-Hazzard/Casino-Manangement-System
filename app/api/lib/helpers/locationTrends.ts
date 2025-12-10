@@ -85,8 +85,8 @@ function determineAggregationGranularity(
 
     if (hasTimeComponents) {
       // Calculate time difference in days
-    const diffInMs = endDate.getTime() - startDate.getTime();
-    const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+      const diffInMs = endDate.getTime() - startDate.getTime();
+      const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
 
       // For custom ranges with time inputs:
       // - Default to hourly for all ranges <= 1 day
@@ -243,7 +243,7 @@ async function getLocationCurrencies(
       {
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
       },
       { projection: { _id: 1, name: 1 } }
@@ -255,13 +255,13 @@ async function getLocationCurrencies(
     licenseeIdToName.set(lic._id.toString(), lic.name);
   });
 
-    const countriesData = await Countries.find({}).lean();
-    const countryIdToName = new Map<string, string>();
-    countriesData.forEach(country => {
-      if (country._id && country.name) {
-        countryIdToName.set(String(country._id), country.name);
-      }
-    });
+  const countriesData = await Countries.find({}).lean();
+  const countryIdToName = new Map<string, string>();
+  countriesData.forEach(country => {
+    if (country._id && country.name) {
+      countryIdToName.set(String(country._id), country.name);
+    }
+  });
 
   const locationCurrencies = new Map<string, string>();
   locationsData.forEach(loc => {
@@ -632,17 +632,17 @@ export async function getLocationTrends(
     ? // For minute-level, use data as-is (already has minute-level grouping from pipeline)
       convertDailyTrendsToLocationTrends(convertedData, targetLocations)
     : useHourly
-    ? formatHourlyTrends(
-        convertedData,
-        targetLocations,
-        convertedData[0]?.day || new Date().toISOString().split('T')[0]
-      )
-    : formatDailyTrends(
-        convertedData,
-        targetLocations,
-        queryStartDate,
-        queryEndDate
-      );
+      ? formatHourlyTrends(
+          convertedData,
+          targetLocations,
+          convertedData[0]?.day || new Date().toISOString().split('T')[0]
+        )
+      : formatDailyTrends(
+          convertedData,
+          targetLocations,
+          queryStartDate,
+          queryEndDate
+        );
 
   // Calculate totals
   const totals = calculateLocationTotals(convertedData, targetLocations);

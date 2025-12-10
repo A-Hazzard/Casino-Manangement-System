@@ -14,20 +14,19 @@
  */
 
 import { AcceptedBill } from '@/app/api/lib/models/acceptedBills';
+import { CollectionReport } from '@/app/api/lib/models/collectionReport';
+import { Collections } from '@/app/api/lib/models/collections';
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
 import type {
   AcceptedBill as AcceptedBillType,
   MachineEvent as MachineEventType,
 } from '@/lib/types/api';
-import type { GamingMachine as _MachineType } from '@/shared/types/entities';
 import { CollectionReportData } from '@/lib/types/api';
-import { CollectionReport } from '@/app/api/lib/models/collectionReport';
-import { Meters } from '@/app/api/lib/models/meters';
-import { Collections } from '@/app/api/lib/models/collections';
+import type { TimePeriod } from '@/shared/types/common';
 import type { GamingMachine } from '@/shared/types/entities';
 import { getDatesForTimePeriod } from '../utils/dates';
-import type { TimePeriod } from '@/shared/types/common';
 
 type CollectionMetersHistoryEntry = NonNullable<
   GamingMachine['collectionMetersHistory']
@@ -330,8 +329,19 @@ export async function getCollectionReportById(
                     if: {
                       $and: [
                         { $ne: ['$$machine.serialNumber', null] },
-                        { $ne: [{ $trim: { input: { $ifNull: ['$$machine.serialNumber', ''] } } }, ''] }
-                      ]
+                        {
+                          $ne: [
+                            {
+                              $trim: {
+                                input: {
+                                  $ifNull: ['$$machine.serialNumber', ''],
+                                },
+                              },
+                            },
+                            '',
+                          ],
+                        },
+                      ],
                     },
                     then: '$$machine.serialNumber',
                     else: {
@@ -340,8 +350,19 @@ export async function getCollectionReportById(
                         if: {
                           $and: [
                             { $ne: ['$$machine.custom.name', null] },
-                            { $ne: [{ $trim: { input: { $ifNull: ['$$machine.custom.name', ''] } } }, ''] }
-                          ]
+                            {
+                              $ne: [
+                                {
+                                  $trim: {
+                                    input: {
+                                      $ifNull: ['$$machine.custom.name', ''],
+                                    },
+                                  },
+                                },
+                                '',
+                              ],
+                            },
+                          ],
                         },
                         then: '$$machine.custom.name',
                         else: {
@@ -422,7 +443,7 @@ export async function getCollectionReportById(
         gamingLocation: report.location,
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
       });
       totalMachinesForLocation = totalMachinesCount;

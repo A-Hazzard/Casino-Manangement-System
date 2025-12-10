@@ -10,8 +10,8 @@
  * @module app/api/gaming-locations/route
  */
 
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     const query: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     };
 
@@ -57,7 +57,10 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // If multiple licensees are provided (comma-separated), filter by all of them
     if (licensees) {
-      const licenseeArray = licensees.split(',').map(l => l.trim()).filter(l => l);
+      const licenseeArray = licensees
+        .split(',')
+        .map(l => l.trim())
+        .filter(l => l);
       if (licenseeArray.length > 0) {
         query['rel.licencee'] = { $in: licenseeArray };
       }
@@ -112,8 +115,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(formattedLocations);
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch gaming locations';
-    console.error(`[Gaming Locations API] Error after ${duration}ms:`, errorMessage);
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to fetch gaming locations';
+    console.error(
+      `[Gaming Locations API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       {
         success: false,

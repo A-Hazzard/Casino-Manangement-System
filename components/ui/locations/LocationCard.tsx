@@ -9,7 +9,14 @@ import {
   getMoneyInColorClass,
   getMoneyOutColorClass,
 } from '@/lib/utils/financialColors';
-import { BadgeCheck, Eye, FileWarning, Pencil } from 'lucide-react';
+import {
+  BadgeCheck,
+  Eye,
+  FileWarning,
+  Home,
+  Pencil,
+  Server,
+} from 'lucide-react';
 import { useRef } from 'react';
 import { toast } from 'sonner';
 
@@ -58,6 +65,31 @@ export default function LocationCard({
           <span className="break-words">
             {(location as Record<string, unknown>).locationName as string}
           </span>
+          {/* SMIB Icon - Show if location has SMIB machines */}
+          {Boolean(
+            (location as { hasSmib?: boolean }).hasSmib ||
+              !(location as { noSMIBLocation?: boolean }).noSMIBLocation
+          ) && (
+            <div className="relative mt-0.5 inline-flex flex-shrink-0">
+              <div className="group inline-flex items-center">
+                <Server className="h-4 w-4 text-blue-600" />
+                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                  SMIB Location
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Local Server Icon */}
+          {Boolean((location as { isLocalServer?: boolean }).isLocalServer) && (
+            <div className="relative mt-0.5 inline-flex flex-shrink-0">
+              <div className="group inline-flex items-center">
+                <Home className="h-4 w-4 text-purple-600" />
+                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                  Local Server
+                </div>
+              </div>
+            </div>
+          )}
           {Boolean(
             (location as { membershipEnabled?: boolean }).membershipEnabled
           ) && (

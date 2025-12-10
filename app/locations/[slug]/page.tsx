@@ -47,10 +47,23 @@ import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import gsap from 'gsap';
 import { PlusCircle, RefreshCw, Search, Server, Users } from 'lucide-react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
-import { MembersHandlersProvider } from '@/components/members/context/MembersHandlersContext';
+import MembersNavigation from '@/components/members/common/MembersNavigation';
+import {
+  MembersHandlersProvider,
+  useMembersHandlers,
+} from '@/components/members/context/MembersHandlersContext';
 import MembersListTab from '@/components/members/tabs/MembersListTab';
+import MembersSummaryTab from '@/components/members/tabs/MembersSummaryTab';
+import {
+  MembersListTabSkeleton,
+  MembersSummaryTabSkeleton,
+} from '@/components/ui/skeletons/MembersSkeletons';
+import { MEMBERS_TABS_CONFIG } from '@/lib/constants/members';
+import { useMembersNavigation } from '@/lib/hooks/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Suspense } from 'react';
 
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import Chart from '@/components/ui/dashboard/Chart';
@@ -86,6 +99,78 @@ type CabinetSortOption =
   | 'smbId'
   | 'serialNumber'
   | 'lastOnline';
+
+/**
+ * Location Members Content Component
+ * Wrapper component for members tabs in location details page
+ */
+function LocationMembersContent({
+  locationId,
+  locationName,
+  selectedLicencee,
+  activeTab,
+  handleTabClick,
+  onRefreshReady,
+}: {
+  locationId: string;
+  locationName: string;
+  selectedLicencee: string | null;
+  activeTab: string;
+  handleTabClick: (tabId: string) => void;
+  onRefreshReady?: (refreshHandler: (() => void) | undefined) => void;
+}) {
+  const { onRefresh, onNewMember, refreshing } = useMembersHandlers();
+
+  // Expose refresh handler to parent component
+  useEffect(() => {
+    if (onRefreshReady) {
+      onRefreshReady(onRefresh);
+    }
+  }, [onRefresh, onRefreshReady]);
+
+  return (
+    <div className="w-full">
+      {/* Members Navigation */}
+      <MembersNavigation
+        availableTabs={MEMBERS_TABS_CONFIG}
+        activeTab={activeTab as 'members' | 'summary-report'}
+        onTabChange={handleTabClick}
+        selectedLicencee={selectedLicencee || undefined}
+        onRefresh={onRefresh}
+        onNewMember={onNewMember}
+        refreshing={refreshing}
+        locationName={locationName}
+      />
+
+      {/* Tab Content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Suspense
+            fallback={
+              activeTab === 'members' ? (
+                <MembersListTabSkeleton />
+              ) : (
+                <MembersSummaryTabSkeleton />
+              )
+            }
+          >
+            {activeTab === 'members' ? (
+              <MembersListTab forcedLocationId={locationId} />
+            ) : (
+              <MembersSummaryTab forcedLocationId={locationId} />
+            )}
+          </Suspense>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
 
 /**
  * Location Machines Page Component
@@ -153,6 +238,8 @@ export default function LocationPage() {
   const [cabinetsLoading, setCabinetsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [locationName, setLocationName] = useState('');
+  const [locationMembershipEnabled, setLocationMembershipEnabled] =
+    useState<boolean>(false);
   const [selectedStatus, setSelectedStatus] = useState<
     'All' | 'Online' | 'Offline'
   >('All');
@@ -182,15 +269,22 @@ export default function LocationPage() {
   const prevCabinetsFetchKey = useRef<string>('');
   const prevChartFetchKey = useRef<string>('');
 
-  // View Toggle State
-  const [activeView, setActiveView] = useState<'machines' | 'members'>(
-    'machines'
-  );
+  // View Toggle State - check URL params for view
+  const searchParams = useSearchParams();
+  const [activeView, setActiveView] = useState<'machines' | 'members'>(() => {
+    const viewParam = searchParams.get('view');
+    return viewParam === 'members' ? 'members' : 'machines';
+  });
+
+  // Members Tab Navigation
+  const { activeTab, handleTabClick } =
+    useMembersNavigation(MEMBERS_TABS_CONFIG);
 
   // ============================================================================
   // Refs
   // ============================================================================
   const tableRef = useRef<HTMLDivElement>(null);
+  const membersRefreshHandlerRef = useRef<(() => void) | undefined>(undefined);
 
   // ============================================================================
   // Constants
@@ -213,6 +307,23 @@ export default function LocationPage() {
     useLocationMachineStats(locationId);
   const { membershipStats, membershipStatsLoading, refreshMembershipStats } =
     useLocationMembershipStats(locationId);
+
+  // Refresh machine stats when date filters change
+  useEffect(() => {
+    if (
+      activeView === 'machines' &&
+      activeMetricsFilter &&
+      dateFilterInitialized
+    ) {
+      refreshMachineStats();
+    }
+  }, [
+    activeMetricsFilter,
+    customDateRange,
+    activeView,
+    dateFilterInitialized,
+    refreshMachineStats,
+  ]);
 
   // Extract game types from cabinets
   const gameTypes = useMemo(() => {
@@ -242,6 +353,28 @@ export default function LocationPage() {
   useEffect(() => {
     setActiveView('machines');
   }, [locationId]);
+
+  // Prevent access to members tab if location doesn't have membership enabled
+  useEffect(() => {
+    if (activeView === 'members' && !locationMembershipEnabled) {
+      setActiveView('machines');
+      // Update URL to remove view=members if manually accessed
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.delete('view');
+      window.history.replaceState({}, '', currentUrl.toString());
+    }
+  }, [activeView, locationMembershipEnabled]);
+
+  // Sync URL with activeView
+  useEffect(() => {
+    const currentUrl = new URL(window.location.href);
+    if (activeView === 'members' && locationMembershipEnabled) {
+      currentUrl.searchParams.set('view', 'members');
+    } else {
+      currentUrl.searchParams.delete('view');
+    }
+    window.history.replaceState({}, '', currentUrl.toString());
+  }, [activeView, locationMembershipEnabled]);
 
   // Detect when date filter is properly initialized
   useEffect(() => {
@@ -414,7 +547,12 @@ export default function LocationPage() {
   // Consolidated data fetch - single useEffect to prevent duplicate requests
   useEffect(() => {
     // Create a unique key for this fetch to detect actual filter changes
-    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${JSON.stringify(customDateRange)}-${debouncedSearchTerm}-${displayCurrency}`;
+    // Only include customDateRange in the key if the filter is actually "Custom"
+    const dateRangeKey =
+      activeMetricsFilter === 'Custom' && customDateRange
+        ? JSON.stringify(customDateRange)
+        : 'none';
+    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}`;
 
     const fetchData = async () => {
       // Only proceed if filters are initialized
@@ -432,6 +570,7 @@ export default function LocationPage() {
       }
 
       // Prevent duplicate requests - only fetch if fetch key changed
+      // This prevents unnecessary refetches when the same filter combination is already loaded
       if (prevCabinetsFetchKey.current === fetchKey) {
         return;
       }
@@ -441,7 +580,8 @@ export default function LocationPage() {
         return;
       }
 
-      // Mark this fetch key as the current one
+      // Mark this fetch key as the current one (before starting request)
+      // This prevents duplicate requests for the same filter combination
       prevCabinetsFetchKey.current = fetchKey;
 
       cabinetsRequestInProgress.current = true;
@@ -464,6 +604,11 @@ export default function LocationPage() {
           if (locationData) {
             setLocationName(locationData.name || 'Location');
             setSelectedLocationId(locationId);
+            // Store membershipEnabled status (check both membershipEnabled and enableMembership)
+            setLocationMembershipEnabled(
+              locationData.membershipEnabled === true ||
+                locationData.enableMembership === true
+            );
           }
         } catch (locationError) {
           // Check if it's a 403 Unauthorized error
@@ -507,6 +652,27 @@ export default function LocationPage() {
         const currentLocation = formattedLocations.find(
           loc => loc.id === locationId
         );
+
+        // Also check membershipEnabled from formattedLocations if not already set
+        if (currentLocation && !locationMembershipEnabled) {
+          // Check if location has membership enabled (may be in different field names)
+          const hasMembership =
+            (
+              currentLocation as {
+                membershipEnabled?: boolean;
+                enableMembership?: boolean;
+              }
+            ).membershipEnabled === true ||
+            (
+              currentLocation as {
+                membershipEnabled?: boolean;
+                enableMembership?: boolean;
+              }
+            ).enableMembership === true;
+          if (hasMembership) {
+            setLocationMembershipEnabled(true);
+          }
+        }
 
         // Also check with toString() in case of ObjectId issues
         const currentLocationAlt = formattedLocations.find(
@@ -633,6 +799,7 @@ export default function LocationPage() {
       } finally {
         setLoading(false);
         setCabinetsLoading(false);
+        cabinetsRequestInProgress.current = false;
       }
     };
 
@@ -649,6 +816,7 @@ export default function LocationPage() {
     displayCurrency,
     makeCabinetsRequest,
     filtersInitialized, // Wait for filters to be ready
+    locationMembershipEnabled,
   ]);
 
   // Effect to re-run filtering and sorting when dependencies change
@@ -1087,7 +1255,7 @@ export default function LocationPage() {
                   if (!isMultiDay) {
                     // Single day: only include items from the same day
                     if (itemDay !== rangeStartDay) {
-                    return false;
+                      return false;
                     }
                   } else {
                     // Multi-day: include items from any day within the range
@@ -1330,6 +1498,17 @@ export default function LocationPage() {
 
   // Add a refresh function
   const handleRefresh = useCallback(async () => {
+    // If members view is active, trigger members refresh handler
+    if (activeView === 'members' && membersRefreshHandlerRef.current) {
+      membersRefreshHandlerRef.current();
+      return;
+    }
+
+    // Only refresh machines/charts if on machines view
+    if (activeView !== 'machines') {
+      return;
+    }
+
     setRefreshing(true);
     setLoading(true);
     setCabinetsLoading(true);
@@ -1482,6 +1661,7 @@ export default function LocationPage() {
     displayCurrency,
     makeCabinetsRequest,
     makeChartRequest,
+    activeView,
   ]);
 
   // Handle location change without navigation - just update the selected location
@@ -1569,30 +1749,36 @@ export default function LocationPage() {
                   className="h-4 w-4 flex-shrink-0"
                 />
               </h1>
-              {/* Refresh icon */}
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Refresh"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
-                />
-              </button>
-              {/* Create icon - Hidden for collectors */}
-              {loading || cabinetsLoading ? (
-                <div className="h-4 w-4 flex-shrink-0" />
-              ) : canManageMachines ? (
+              {/* Refresh icon - Hidden on members tab */}
+              {activeView !== 'members' && (
                 <button
-                  onClick={() => openCabinetModal(locationId)}
+                  onClick={handleRefresh}
                   disabled={refreshing}
-                  className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Create Machine"
+                  className="flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Refresh"
                 >
-                  <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
+                  <RefreshCw
+                    className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+                  />
                 </button>
-              ) : null}
+              )}
+              {/* Create icon - Hidden for collectors and on members tab */}
+              {activeView === 'machines' && (
+                <>
+                  {loading || cabinetsLoading ? (
+                    <div className="h-4 w-4 flex-shrink-0" />
+                  ) : canManageMachines ? (
+                    <button
+                      onClick={() => openCabinetModal(locationId)}
+                      disabled={refreshing}
+                      className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label="Create Machine"
+                    >
+                      <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
+                    </button>
+                  ) : null}
+                </>
+              )}
             </div>
           </div>
 
@@ -1617,45 +1803,49 @@ export default function LocationPage() {
                   className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
                 />
               </h1>
-              {/* Mobile: Refresh icon */}
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="flex-shrink-0 p-2 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 md:hidden"
-                aria-label="Refresh"
-              >
-                <RefreshCw
-                  className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`}
-                />
-              </button>
-            </div>
-            {/* Desktop: Refresh icon and Create button on far right */}
-            <div className="ml-4 hidden flex-shrink-0 items-center gap-2 md:flex">
-              {/* Refresh icon */}
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="flex-shrink-0 p-2 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Refresh"
-              >
-                <RefreshCw
-                  className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`}
-                />
-              </button>
-              {loading || cabinetsLoading ? (
-                <ActionButtonSkeleton width="w-36" showIcon={false} />
-              ) : canManageMachines ? (
-                <Button
-                  variant="default"
-                  className="bg-button text-white"
+              {/* Mobile: Refresh icon - Hidden on members tab */}
+              {activeView !== 'members' && (
+                <button
+                  onClick={handleRefresh}
                   disabled={refreshing}
-                  onClick={() => openCabinetModal(locationId)}
+                  className="flex-shrink-0 p-2 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 md:hidden"
+                  aria-label="Refresh"
                 >
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Create Machine
-                </Button>
-              ) : null}
+                  <RefreshCw
+                    className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`}
+                  />
+                </button>
+              )}
             </div>
+            {/* Desktop: Refresh icon and Create button on far right - Only show on machines tab */}
+            {activeView === 'machines' && (
+              <div className="ml-4 hidden flex-shrink-0 items-center gap-2 md:flex">
+                {/* Refresh icon */}
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="flex-shrink-0 p-2 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Refresh"
+                >
+                  <RefreshCw
+                    className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`}
+                  />
+                </button>
+                {loading || cabinetsLoading ? (
+                  <ActionButtonSkeleton width="w-36" showIcon={false} />
+                ) : canManageMachines ? (
+                  <Button
+                    variant="default"
+                    className="bg-button text-white"
+                    disabled={refreshing}
+                    onClick={() => openCabinetModal(locationId)}
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create Machine
+                  </Button>
+                ) : null}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1672,22 +1862,33 @@ export default function LocationPage() {
             <Server className="h-4 w-4" />
             Machines
           </button>
-          <button
-            onClick={() => setActiveView('members')}
-            className={`flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
-              activeView === 'members'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Users className="h-4 w-4" />
-            Members
-          </button>
+          {locationMembershipEnabled && (
+            <button
+              onClick={() => setActiveView('members')}
+              className={`flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
+                activeView === 'members'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              Members
+            </button>
+          )}
         </div>
 
         {activeView === 'members' ? (
           <MembersHandlersProvider>
-            <MembersListTab forcedLocationId={locationId} />
+            <LocationMembersContent
+              locationId={locationId}
+              locationName={locationName}
+              selectedLicencee={selectedLicencee}
+              activeTab={activeTab}
+              handleTabClick={handleTabClick}
+              onRefreshReady={handler => {
+                membersRefreshHandlerRef.current = handler;
+              }}
+            />
           </MembersHandlersProvider>
         ) : (
           <>
@@ -1739,7 +1940,7 @@ export default function LocationPage() {
                 <div className="min-w-0 flex-1">
                   <DashboardDateFilters
                     onCustomRangeGo={handleRefresh}
-                    hideAllTime={false}
+                    hideAllTime={true}
                     enableTimeInputs={true}
                   />
                 </div>
@@ -1761,7 +1962,7 @@ export default function LocationPage() {
                 <div className="w-full">
                   <DashboardDateFilters
                     onCustomRangeGo={handleRefresh}
-                    hideAllTime={false}
+                    hideAllTime={true}
                     enableTimeInputs={true}
                   />
                 </div>

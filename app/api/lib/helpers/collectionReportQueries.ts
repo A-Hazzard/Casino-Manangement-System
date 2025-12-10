@@ -35,13 +35,19 @@ export async function fetchLocationsWithMachines(
   const userRoles = (user.roles as string[]) || [];
   // Use only new field
   let userAccessibleLicensees: string[] = [];
-  if (Array.isArray((user as { assignedLicensees?: string[] })?.assignedLicensees)) {
-    userAccessibleLicensees = (user as { assignedLicensees: string[] }).assignedLicensees;
+  if (
+    Array.isArray((user as { assignedLicensees?: string[] })?.assignedLicensees)
+  ) {
+    userAccessibleLicensees = (user as { assignedLicensees: string[] })
+      .assignedLicensees;
   }
   // Use only new field
   let userLocationPermissions: string[] = [];
-  if (Array.isArray((user as { assignedLocations?: string[] })?.assignedLocations)) {
-    userLocationPermissions = (user as { assignedLocations: string[] }).assignedLocations;
+  if (
+    Array.isArray((user as { assignedLocations?: string[] })?.assignedLocations)
+  ) {
+    userLocationPermissions = (user as { assignedLocations: string[] })
+      .assignedLocations;
   }
   const isAdmin =
     userRoles.includes('admin') || userRoles.includes('developer');
@@ -60,10 +66,7 @@ export async function fetchLocationsWithMachines(
   }
 
   const matchCriteria: Record<string, unknown> = {
-    $or: [
-      { deletedAt: null },
-      { deletedAt: { $lt: new Date('2020-01-01') } },
-    ],
+    $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
   };
 
   // Apply location filter based on user permissions
@@ -130,10 +133,7 @@ export async function fetchLocationsWithMachines(
                 $ifNull: [
                   '$$machine.custom.name',
                   {
-                    $ifNull: [
-                      '$$machine.serialNumber',
-                      'Unnamed Machine',
-                    ],
+                    $ifNull: ['$$machine.serialNumber', 'Unnamed Machine'],
                   },
                 ],
               },
@@ -294,7 +294,7 @@ export async function determineAllowedLocationIds(
           'rel.licencee': { $in: userLicensees },
           $or: [
             { deletedAt: null },
-            { deletedAt: { $lt: new Date('2020-01-01') } },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
         },
         { projection: { _id: 1 } }
@@ -338,4 +338,3 @@ export async function getLocationNamesFromIds(
 
   return locations.map(loc => String(loc.name));
 }
-

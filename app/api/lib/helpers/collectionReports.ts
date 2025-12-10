@@ -72,7 +72,7 @@ export async function buildCollectionReportsLocationFilter(
           'rel.licencee': { $in: licensees },
           $or: [
             { deletedAt: null },
-            { deletedAt: { $lt: new Date('2020-01-01') } },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
         },
         { projection: { _id: 1 } }
@@ -116,7 +116,7 @@ export function buildCollectionReportsQuery(
   // Handle search parameter - search across multiple fields
   if (params.search && params.search.trim()) {
     const searchTerm = params.search.trim();
-    
+
     // Build search query to check multiple fields in order:
     // 1. collector (user ID - primary field)
     // 2. locationReportId (report ID)

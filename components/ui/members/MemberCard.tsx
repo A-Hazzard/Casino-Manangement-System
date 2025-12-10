@@ -11,12 +11,16 @@ export default function MemberCard({
   onLocationClick,
   onEdit,
   onDelete,
+  hideLocation = false,
+  canEdit = false,
 }: {
   member: Member;
   onMemberClick: (id: string) => void;
   onLocationClick: (locationId: string) => void;
   onEdit: (member: Member) => void;
   onDelete: (member: Member) => void;
+  hideLocation?: boolean;
+  canEdit?: boolean;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -29,8 +33,18 @@ export default function MemberCard({
     try {
       const date = new Date(dateString);
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       const month = months[date.getMonth()];
       const day = date.getDate();
@@ -40,10 +54,14 @@ export default function MemberCard({
       const getOrdinalSuffix = (day: number) => {
         if (day > 3 && day < 21) return 'th';
         switch (day % 10) {
-          case 1: return 'st';
-          case 2: return 'nd';
-          case 3: return 'rd';
-          default: return 'th';
+          case 1:
+            return 'st';
+          case 2:
+            return 'nd';
+          case 3:
+            return 'rd';
+          default:
+            return 'th';
         }
       };
 
@@ -65,17 +83,21 @@ export default function MemberCard({
               ? `${member.profile.firstName} ${member.profile.lastName}`
               : member.memberId || member._id || 'Unknown Member'}
           </h3>
-          <button
-            onClick={() => onLocationClick(member.gamingLocation || '')}
-            className="inline-flex max-w-full items-center gap-1.5 truncate text-left text-xs text-blue-600 underline decoration-dotted hover:text-blue-800"
-            title={member.locationName}
-            disabled={!member.gamingLocation}
-          >
-            <span className="truncate">{member.locationName || 'No Location'}</span>
-            {member.gamingLocation && (
-              <ExternalLink className="h-3 w-3 flex-shrink-0" />
-            )}
-          </button>
+          {!hideLocation && (
+            <button
+              onClick={() => onLocationClick(member.gamingLocation || '')}
+              className="inline-flex max-w-full items-center gap-1.5 truncate text-left text-xs text-blue-600 underline decoration-dotted hover:text-blue-800"
+              title={member.locationName}
+              disabled={!member.gamingLocation}
+            >
+              <span className="truncate">
+                {member.locationName || 'No Location'}
+              </span>
+              {member.gamingLocation && (
+                <ExternalLink className="h-3 w-3 flex-shrink-0" />
+              )}
+            </button>
+          )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
@@ -109,40 +131,49 @@ export default function MemberCard({
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-xs text-muted-foreground">Win/Loss</span>
-          <span className={`truncate text-xs font-medium ${(member.winLoss || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(member.winLoss || 0)}
+          <span
+            className={`truncate text-xs font-medium ${(member.winLoss || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
+          >
+            {new Intl.NumberFormat('en-US', {
+              style: 'currency',
+              currency: 'USD',
+            }).format(member.winLoss || 0)}
           </span>
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-3 gap-2 border-t border-border pt-3">
+      <div
+        className={`grid ${canEdit ? 'grid-cols-3' : 'grid-cols-2'} gap-2 border-t border-border pt-3`}
+      >
         <Button
           onClick={() => handleCardClick()}
           variant="outline"
           size="sm"
-          className="flex items-center justify-center gap-1.5 text-xs h-9"
+          className="flex h-9 items-center justify-center gap-1.5 text-xs"
         >
           <Eye className="h-3.5 w-3.5" />
-          <span className="hidden xs:inline">View</span>
+          <span className="xs:inline hidden">View</span>
         </Button>
-        <Button
-          onClick={() => onEdit(member)}
-          variant="outline"
-          size="sm"
-          className="flex items-center justify-center gap-1.5 text-xs h-9 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          <span className="hidden xs:inline">Edit</span>
-        </Button>
+        {canEdit && (
+          <Button
+            onClick={() => onEdit(member)}
+            variant="outline"
+            size="sm"
+            className="flex h-9 items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span className="xs:inline hidden">Edit</span>
+          </Button>
+        )}
         <Button
           onClick={() => onDelete(member)}
           variant="outline"
           size="sm"
-          className="flex items-center justify-center gap-1.5 text-xs h-9 text-red-600 hover:bg-red-50 hover:text-red-700"
+          className="flex h-9 items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
         >
           <Trash2 className="h-3.5 w-3.5" />
-          <span className="hidden xs:inline">Delete</span>
+          <span className="xs:inline hidden">Delete</span>
         </Button>
       </div>
     </div>

@@ -221,7 +221,7 @@ export async function GET(req: NextRequest) {
     const locationMatchStage: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     };
 
@@ -299,7 +299,7 @@ export async function GET(req: NextRequest) {
           {
             $or: [
               { deletedAt: null },
-              { deletedAt: { $lt: new Date('2020-01-01') } },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
             ],
           },
           { $or: filterConditions },
@@ -341,7 +341,7 @@ export async function GET(req: NextRequest) {
           {
             $or: [
               { deletedAt: null },
-              { deletedAt: { $lt: new Date('2020-01-01') } },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
             ],
           },
           searchCondition,
@@ -425,7 +425,7 @@ export async function GET(req: NextRequest) {
         gamingLocation: { $in: allLocationIds },
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
       }).lean();
 
@@ -550,6 +550,21 @@ export async function GET(req: NextRequest) {
         ).length;
         const nonSasMachines = totalMachines - sasMachines;
 
+        // Check if location has SMIB machines by checking for relayId or smibBoard
+        const hasSmibMachines = machines.some(
+          (m: GamingMachine) =>
+            (m.relayId && m.relayId.trim() !== '') ||
+            (m.smibBoard && m.smibBoard.trim() !== '')
+        );
+
+        // Use dynamic check if machines are available, otherwise fall back to database flag
+        const hasSmib =
+          machines.length > 0 ? hasSmibMachines : location.hasSmib || false;
+        const noSMIBLocation =
+          machines.length > 0
+            ? !hasSmibMachines
+            : location.noSMIBLocation || false;
+
         // Skip locations with no data if showAllLocations is false
         if (
           !showAllLocations &&
@@ -578,8 +593,8 @@ export async function GET(req: NextRequest) {
           nonSasMachines: nonSasMachines,
           hasSasMachines: sasMachines > 0,
           hasNonSasMachines: nonSasMachines > 0,
-          noSMIBLocation: location.noSMIBLocation || false,
-          hasSmib: location.hasSmib || false,
+          noSMIBLocation: noSMIBLocation,
+          hasSmib: hasSmib,
           gamesPlayed: 0, // Default value - can be calculated if needed
           rel: location.rel,
           country: location.country,
@@ -618,7 +633,7 @@ export async function GET(req: NextRequest) {
                   gamingLocation: locationId,
                   $or: [
                     { deletedAt: null },
-                    { deletedAt: { $lt: new Date('2020-01-01') } },
+                    { deletedAt: { $lt: new Date('2025-01-01') } },
                   ],
                 },
                 {
@@ -627,6 +642,8 @@ export async function GET(req: NextRequest) {
                   serialNumber: 1,
                   isSasMachine: 1,
                   lastActivity: 1,
+                  relayId: 1,
+                  smibBoard: 1,
                 }
               ).lean();
 
@@ -685,6 +702,32 @@ export async function GET(req: NextRequest) {
               ).length;
               const nonSasMachines = totalMachines - sasMachines;
 
+              // Check if location has SMIB machines by checking for relayId or smibBoard
+              const hasSmibMachines = machines.some(m => {
+                const machine = m as {
+                  relayId?: string | unknown;
+                  smibBoard?: string | unknown;
+                };
+                const relayId = machine.relayId
+                  ? String(machine.relayId).trim()
+                  : '';
+                const smibBoard = machine.smibBoard
+                  ? String(machine.smibBoard).trim()
+                  : '';
+                return relayId !== '' || smibBoard !== '';
+              });
+
+              // Use dynamic check if machines are available, otherwise fall back to database flag
+              const hasSmib =
+                machines.length > 0
+                  ? hasSmibMachines
+                  : (location as { hasSmib?: boolean }).hasSmib || false;
+              const noSMIBLocation =
+                machines.length > 0
+                  ? !hasSmibMachines
+                  : (location as { noSMIBLocation?: boolean }).noSMIBLocation ||
+                    false;
+
               // Apply showAllLocations filter
               // If showAllLocations is false, skip locations with no data
               if (
@@ -719,10 +762,8 @@ export async function GET(req: NextRequest) {
                 coinIn: 0, // Default value - can be calculated if needed
                 coinOut: 0, // Default value - can be calculated if needed
                 jackpot: 0, // Default value - can be calculated if needed
-                noSMIBLocation:
-                  (location as { noSMIBLocation?: boolean }).noSMIBLocation ||
-                  false,
-                hasSmib: (location as { hasSmib?: boolean }).hasSmib || false,
+                noSMIBLocation: noSMIBLocation,
+                hasSmib: hasSmib,
                 gamesPlayed: 0, // Default value - can be calculated if needed
                 rel: (location as { rel?: { licencee?: string } }).rel, // Include rel for licensee information
                 country: (location as { country?: string }).country, // Include country for currency mapping
@@ -776,7 +817,7 @@ export async function GET(req: NextRequest) {
         {
           $match: {
             gamingLocation: { $in: membershipEnabledLocations },
-            deletedAt: { $lt: new Date('2020-01-01') }, // Exclude deleted members
+            deletedAt: { $lt: new Date('2025-01-01') }, // Exclude deleted members
           },
         },
         {
@@ -857,7 +898,7 @@ export async function GET(req: NextRequest) {
           const licenseesData = await Licencee.find({
             $or: [
               { deletedAt: null },
-              { deletedAt: { $lt: new Date('2020-01-01') } },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
             ],
           })
             .select('_id name')

@@ -31,7 +31,8 @@ export async function GET(req: NextRequest) {
     // STEP 1: Parse request parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
-    const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+    const licensee =
+      searchParams.get('licensee') || searchParams.get('licencee');
     const locationId = searchParams.get('locationId');
 
     // ============================================================================
@@ -48,15 +49,20 @@ export async function GET(req: NextRequest) {
     const user = await getUserFromServer();
 
     // Get user's accessible licensees
-    const userAccessibleLicensees =
-      await getUserAccessibleLicenseesFromToken();
+    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
 
     // Get user's location permissions and roles
-    const userLocationPermissions = (
-      (user?.resourcePermissions as Record<string, {
-        resources?: Array<{ _id: string }>;
-      }> | undefined)?.['gaming-locations']?.resources?.map((r: { _id: string }) => r._id) || []
-    ) as string[];
+    const userLocationPermissions = ((
+      user?.resourcePermissions as
+        | Record<
+            string,
+            {
+              resources?: Array<{ _id: string }>;
+            }
+          >
+        | undefined
+    )?.['gaming-locations']?.resources?.map((r: { _id: string }) => r._id) ||
+      []) as string[];
     const userRoles = (user?.roles || []) as string[];
 
     // ============================================================================
@@ -75,7 +81,7 @@ export async function GET(req: NextRequest) {
     const query: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
       enableMembership: true,
     };
@@ -113,4 +119,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

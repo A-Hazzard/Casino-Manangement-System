@@ -1,9 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
-import Image from 'next/image';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -12,7 +10,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import deleteIcon from '@/public/deleteIcon.svg';
+import editIcon from '@/public/editIcon.svg';
+import leftHamburgerMenu from '@/public/leftHamburgerMenu.svg';
 import type { CasinoMember as Member } from '@/shared/types/entities';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DoubleArrowLeftIcon,
+  DoubleArrowRightIcon,
+} from '@radix-ui/react-icons';
+import { ExternalLink } from 'lucide-react';
+import Image from 'next/image';
+import React, { useRef } from 'react';
 // TODO: Move MemberSortOption to shared types
 type MemberSortOption =
   | 'name'
@@ -27,17 +37,6 @@ type MemberSortOption =
   | 'locationName'
   | 'winLoss'
   | 'lastLogin';
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
-} from '@radix-ui/react-icons';
-import { ExternalLink } from 'lucide-react';
-import React from 'react';
-import editIcon from '@/public/editIcon.svg';
-import deleteIcon from '@/public/deleteIcon.svg';
-import leftHamburgerMenu from '@/public/leftHamburgerMenu.svg';
 
 type MemberTableProps = {
   members: Member[];
@@ -47,6 +46,8 @@ type MemberTableProps = {
   onMemberClick: (id: string) => void;
   onLocationClick?: (locationId?: string) => void;
   onAction: (action: 'edit' | 'delete', member: Member) => void;
+  hideLocationColumn?: boolean;
+  canEdit?: boolean;
 };
 
 const MemberTable: React.FC<MemberTableProps> = ({
@@ -57,6 +58,8 @@ const MemberTable: React.FC<MemberTableProps> = ({
   onMemberClick,
   onLocationClick,
   onAction,
+  hideLocationColumn = false,
+  canEdit = false,
 }) => {
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -69,8 +72,18 @@ const MemberTable: React.FC<MemberTableProps> = ({
     try {
       const date = new Date(dateString);
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       const month = months[date.getMonth()];
       const day = date.getDate();
@@ -80,10 +93,14 @@ const MemberTable: React.FC<MemberTableProps> = ({
       const getOrdinalSuffix = (day: number) => {
         if (day > 3 && day < 21) return 'th';
         switch (day % 10) {
-          case 1: return 'st';
-          case 2: return 'nd';
-          case 3: return 'rd';
-          default: return 'th';
+          case 1:
+            return 'st';
+          case 2:
+            return 'nd';
+          case 3:
+            return 'rd';
+          default:
+            return 'th';
         }
       };
 
@@ -107,20 +124,22 @@ const MemberTable: React.FC<MemberTableProps> = ({
         <Table ref={tableRef} className="w-full table-fixed">
           <TableHeader>
             <TableRow className="bg-button hover:bg-button">
+              {!hideLocationColumn && (
+                <TableHead
+                  isFirstColumn={true}
+                  className="relative cursor-pointer font-semibold text-white"
+                  onClick={() => onSort('locationName')}
+                >
+                  <span>LOCATION</span>
+                  {sortOption === 'locationName' && (
+                    <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                      {sortOrder === 'desc' ? '▼' : '▲'}
+                    </span>
+                  )}
+                </TableHead>
+              )}
               <TableHead
-                isFirstColumn={true}
-                className="relative cursor-pointer font-semibold text-white"
-                onClick={() => onSort('locationName')}
-              >
-                <span>LOCATION</span>
-                {sortOption === 'locationName' && (
-                  <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
-                    {sortOrder === 'desc' ? '▼' : '▲'}
-                  </span>
-                )}
-              </TableHead>
-              <TableHead
-                isFirstColumn={true}
+                isFirstColumn={!hideLocationColumn}
                 centered
                 className="relative cursor-pointer font-semibold text-white"
                 onClick={() => onSort('name')}
@@ -172,23 +191,25 @@ const MemberTable: React.FC<MemberTableProps> = ({
                   }
                 }}
               >
-                <TableCell isFirstColumn={true}>
-                  <button
-                    type="button"
-                    onClick={e => {
-                      e.stopPropagation();
-                      onLocationClick?.(member.gamingLocation);
-                    }}
-                    className="inline-flex max-w-[200px] items-center gap-1.5 truncate text-left text-sm font-medium text-blue-600 underline decoration-dotted hover:text-blue-800"
-                    title={member.locationName}
-                    disabled={!member.gamingLocation}
-                  >
-                    {member.locationName || 'Unknown Location'}
-                    {member.gamingLocation && (
-                      <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                    )}
-                  </button>
-                </TableCell>
+                {!hideLocationColumn && (
+                  <TableCell isFirstColumn={true}>
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation();
+                        onLocationClick?.(member.gamingLocation);
+                      }}
+                      className="inline-flex max-w-[200px] items-center gap-1.5 truncate text-left text-sm font-medium text-blue-600 underline decoration-dotted hover:text-blue-800"
+                      title={member.locationName}
+                      disabled={!member.gamingLocation}
+                    >
+                      {member.locationName || 'Unknown Location'}
+                      {member.gamingLocation && (
+                        <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                      )}
+                    </button>
+                  </TableCell>
+                )}
                 <TableCell centered>
                   <div>{`${member.profile.firstName} ${member.profile.lastName}`}</div>
                   <div className="mt-1 inline-flex text-[10px] leading-tight text-primary-foreground">
@@ -247,23 +268,25 @@ const MemberTable: React.FC<MemberTableProps> = ({
                         className="opacity-70 hover:opacity-100"
                       />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={e => {
-                        e.stopPropagation();
-                        onAction('edit', member);
-                      }}
-                    >
-                      <Image
-                        src={editIcon}
-                        alt="Edit"
-                        width={16}
-                        height={16}
-                        className="opacity-70 hover:opacity-100"
-                      />
-                    </Button>
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={e => {
+                          e.stopPropagation();
+                          onAction('edit', member);
+                        }}
+                      >
+                        <Image
+                          src={editIcon}
+                          alt="Edit"
+                          width={16}
+                          height={16}
+                          className="opacity-70 hover:opacity-100"
+                        />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"

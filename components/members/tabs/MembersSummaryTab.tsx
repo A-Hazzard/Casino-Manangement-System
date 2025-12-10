@@ -35,7 +35,6 @@ import {
   Eye,
   FileSpreadsheet,
   FileText,
-  MapPin,
   RefreshCw,
   Search,
   Users,
@@ -49,7 +48,13 @@ const pageVariants = {
   animate: { opacity: 1, y: 0 },
 };
 
-export default function MembersSummaryTab() {
+interface MembersSummaryTabProps {
+  forcedLocationId?: string;
+}
+
+export default function MembersSummaryTab({
+  forcedLocationId,
+}: MembersSummaryTabProps) {
   const router = useRouter();
   const [members, setMembers] = useState<MemberSummary[]>([]);
   const [summaryStats, setSummaryStats] = useState<SummaryStats | null>(null);
@@ -117,9 +122,10 @@ export default function MembersSummaryTab() {
         params.append('search', debouncedSearchTerm);
       }
 
-      // Add location filter
-      if (locationFilter && locationFilter !== 'all') {
-        params.append('location', locationFilter);
+      // Add location filter - use forcedLocationId if provided, otherwise use locationFilter
+      const effectiveLocationFilter = forcedLocationId || locationFilter;
+      if (effectiveLocationFilter && effectiveLocationFilter !== 'all') {
+        params.append('location', effectiveLocationFilter);
       }
 
       // Add date filtering
@@ -200,6 +206,7 @@ export default function MembersSummaryTab() {
     locationFilter,
     currentPage,
     usingBackendSearch,
+    forcedLocationId,
   ]);
 
   useEffect(() => {
@@ -208,9 +215,14 @@ export default function MembersSummaryTab() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshingContext(true);
+    setLoading(true);
     setCurrentPage(1);
-    await fetchMembersSummary();
-    setRefreshingContext(false);
+    try {
+      await fetchMembersSummary();
+    } finally {
+      setLoading(false);
+      setRefreshingContext(false);
+    }
   }, [fetchMembersSummary, setRefreshingContext]);
 
   // Register refresh handler with context
@@ -235,6 +247,7 @@ export default function MembersSummaryTab() {
     locationFilter,
     activeMetricsFilter,
     customDateRange,
+    forcedLocationId,
   ]);
 
   // Frontend search - search through loaded members first
@@ -637,15 +650,18 @@ export default function MembersSummaryTab() {
 
   // Filter by location if needed (frontend filtering)
   const filteredMembers = useMemo(() => {
-    if (locationFilter === 'all') {
+    const effectiveLocationFilter = forcedLocationId || locationFilter;
+    if (effectiveLocationFilter === 'all' || !effectiveLocationFilter) {
       return members;
     }
     return members.filter(member => {
       return (
-        member.locationName === locationFilter || member._id === locationFilter
+        member.locationName === effectiveLocationFilter ||
+        member._id === effectiveLocationFilter ||
+        member.gamingLocation === effectiveLocationFilter
       );
     });
-  }, [members, locationFilter]);
+  }, [members, locationFilter, forcedLocationId]);
 
   const sortedMembers = useMemo(() => {
     return [...filteredMembers].sort((a, b) => {
@@ -857,13 +873,13 @@ export default function MembersSummaryTab() {
   const renderSummaryCards = () => {
     if (!summaryStats) return null;
 
+    const isLocalhost =
+      typeof window !== 'undefined' && window.location.hostname === 'localhost';
+
     return (
       <div
         className={`mb-6 grid grid-cols-1 gap-4 ${
-          typeof window !== 'undefined' &&
-          window.location.hostname === 'localhost'
-            ? 'md:grid-cols-3'
-            : 'md:grid-cols-2'
+          isLocalhost ? 'md:grid-cols-2' : 'md:grid-cols-1'
         }`}
       >
         <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -880,38 +896,23 @@ export default function MembersSummaryTab() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="flex items-center">
-            <div className="rounded-lg bg-green-100 p-2">
-              <MapPin className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Locations</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {summaryStats.totalLocations}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {typeof window !== 'undefined' &&
-          window.location.hostname === 'localhost' && (
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <div className="flex items-center">
-                <div className="rounded-lg bg-orange-100 p-2">
-                  <Calendar className="h-6 w-6 text-orange-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">
-                    Active Members
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {summaryStats.activeMembers}
-                  </p>
-                </div>
+        {isLocalhost && (
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <div className="flex items-center">
+              <div className="rounded-lg bg-orange-100 p-2">
+                <Calendar className="h-6 w-6 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Active Members
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {summaryStats.activeMembers}
+                </p>
               </div>
             </div>
-          )}
+          </div>
+        )}
       </div>
     );
   };
@@ -994,17 +995,19 @@ export default function MembersSummaryTab() {
                     </span>
                   )}
                 </th>
-                <th
-                  className="cursor-pointer border border-border p-3 text-sm hover:bg-buttonActive"
-                  onClick={() => handleSort('locationName')}
-                >
-                  Location
-                  {sortBy === 'locationName' && (
-                    <span className="ml-1">
-                      {sortOrder === 'asc' ? '↑' : '↓'}
-                    </span>
-                  )}
-                </th>
+                {!forcedLocationId && (
+                  <th
+                    className="cursor-pointer border border-border p-3 text-sm hover:bg-buttonActive"
+                    onClick={() => handleSort('locationName')}
+                  >
+                    Location
+                    {sortBy === 'locationName' && (
+                      <span className="ml-1">
+                        {sortOrder === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </th>
+                )}
                 <th
                   className="cursor-pointer border border-border p-3 text-sm hover:bg-buttonActive"
                   onClick={() => handleSort('winLoss')}
@@ -1023,7 +1026,7 @@ export default function MembersSummaryTab() {
               {sortedMembers.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={forcedLocationId ? 7 : 8}
                     className="border border-border p-8 text-center text-gray-500"
                   >
                     No members found
@@ -1051,24 +1054,28 @@ export default function MembersSummaryTab() {
                     <td className="border border-border p-3">
                       {formatDate(member.createdAt)}
                     </td>
-                    <td className="border border-border p-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (member.gamingLocation) {
-                            router.push(`/locations/${member.gamingLocation}`);
-                          }
-                        }}
-                        className="inline-flex max-w-[200px] items-center gap-1.5 truncate text-left text-sm font-medium text-blue-600 underline decoration-dotted hover:text-blue-800"
-                        title={member.locationName}
-                        disabled={!member.gamingLocation}
-                      >
-                        {member.locationName || 'Unknown Location'}
-                        {member.gamingLocation && (
-                          <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                        )}
-                      </button>
-                    </td>
+                    {!forcedLocationId && (
+                      <td className="border border-border p-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (member.gamingLocation) {
+                              router.push(
+                                `/locations/${member.gamingLocation}`
+                              );
+                            }
+                          }}
+                          className="inline-flex max-w-[200px] items-center gap-1.5 truncate text-left text-sm font-medium text-blue-600 underline decoration-dotted hover:text-blue-800"
+                          title={member.locationName}
+                          disabled={!member.gamingLocation}
+                        >
+                          {member.locationName || 'Unknown Location'}
+                          {member.gamingLocation && (
+                            <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                          )}
+                        </button>
+                      </td>
+                    )}
                     <td className="border border-border p-3">
                       <div
                         className={`font-medium ${
@@ -1149,24 +1156,26 @@ export default function MembersSummaryTab() {
                     <h3 className="truncate text-base font-semibold text-gray-900">
                       {member.fullName}
                     </h3>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (member.gamingLocation) {
-                          router.push(`/locations/${member.gamingLocation}`);
-                        }
-                      }}
-                      className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate text-xs font-medium text-blue-600 hover:underline"
-                      title={member.locationName}
-                      disabled={!member.gamingLocation}
-                    >
-                      <span className="truncate">
-                        {member.locationName || 'Unknown Location'}
-                      </span>
-                      {member.gamingLocation && (
-                        <ExternalLink className="h-3 w-3 flex-shrink-0 text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
-                      )}
-                    </button>
+                    {!forcedLocationId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (member.gamingLocation) {
+                            router.push(`/locations/${member.gamingLocation}`);
+                          }
+                        }}
+                        className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate text-xs font-medium text-blue-600 hover:underline"
+                        title={member.locationName}
+                        disabled={!member.gamingLocation}
+                      >
+                        <span className="truncate">
+                          {member.locationName || 'Unknown Location'}
+                        </span>
+                        {member.gamingLocation && (
+                          <ExternalLink className="h-3 w-3 flex-shrink-0 text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
+                        )}
+                      </button>
+                    )}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     <span
@@ -1257,21 +1266,23 @@ export default function MembersSummaryTab() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="w-full sm:w-auto">
-              <LocationSingleSelect
-                locations={locations.map(loc => ({
-                  id: loc._id,
-                  name: loc.name || loc.locationName || '',
-                }))}
-                selectedLocation={locationFilter}
-                onSelectionChange={handleLocationFilter}
-                includeAllOption={true}
-                allOptionLabel="All Locations"
-                showSasBadge={false}
-                showFilterIcon={true}
-                className="w-full sm:w-48"
-              />
-            </div>
+            {!forcedLocationId && (
+              <div className="w-full sm:w-auto">
+                <LocationSingleSelect
+                  locations={locations.map(loc => ({
+                    id: loc._id,
+                    name: loc.name || loc.locationName || '',
+                  }))}
+                  selectedLocation={locationFilter}
+                  onSelectionChange={handleLocationFilter}
+                  includeAllOption={true}
+                  allOptionLabel="All Locations"
+                  showSasBadge={false}
+                  showFilterIcon={true}
+                  className="w-full sm:w-48"
+                />
+              </div>
+            )}
             <div className="flex flex-1 gap-2 sm:flex-none">
               <Button
                 onClick={() => {

@@ -264,7 +264,7 @@ export async function fetchLocationData(
         _id: { $in: locationIds as never[] },
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
       } as never,
       {
@@ -344,7 +344,7 @@ export async function fetchMachinesData(
 ): Promise<MachineData[]> {
   // Build query filter for machines
   const machineMatchStage: Record<string, unknown> = {
-    $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
+    $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
   };
 
   // Add location filter if specific locations are selected

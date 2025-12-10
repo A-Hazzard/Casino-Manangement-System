@@ -1,15 +1,14 @@
 'use client';
 
-import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
+  getGrossColorClass,
   getMoneyInColorClass,
   getMoneyOutColorClass,
-  getGrossColorClass,
 } from '@/lib/utils/financialColors';
-import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { AggregatedLocation } from '@/shared/types/entities';
 import {
   ChevronLeftIcon,
@@ -17,7 +16,8 @@ import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from '@radix-ui/react-icons';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChevronDown, ChevronUp, Home, Search, Server } from 'lucide-react';
+import { useState } from 'react';
 
 export type EnhancedLocationTableProps = {
   locations: AggregatedLocation[];
@@ -165,11 +165,36 @@ export default function EnhancedLocationTable({
         onClick={() => onLocationClick?.(location.location)}
       >
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center justify-between text-lg">
-            <span className="truncate">{location.locationName}</span>
+          <CardTitle className="flex items-center justify-between gap-2 text-lg">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <span className="truncate">{location.locationName}</span>
+              {/* SMIB Icon - Show if location has SMIB machines */}
+              {Boolean(
+                (location as { hasSmib?: boolean }).hasSmib ||
+                  !(location as { noSMIBLocation?: boolean }).noSMIBLocation
+              ) && (
+                <div className="group relative inline-flex flex-shrink-0">
+                  <Server className="h-4 w-4 text-blue-600" />
+                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                    SMIB Location
+                  </div>
+                </div>
+              )}
+              {/* Local Server Icon */}
+              {Boolean(
+                (location as { isLocalServer?: boolean }).isLocalServer
+              ) && (
+                <div className="group relative inline-flex flex-shrink-0">
+                  <Home className="h-4 w-4 text-purple-600" />
+                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                    Local Server
+                  </div>
+                </div>
+              )}
+            </div>
             <Badge
               variant={location.hasSasMachines ? 'default' : 'secondary'}
-              className="ml-2"
+              className="ml-2 flex-shrink-0"
             >
               {location.hasSasMachines ? 'SAS' : 'Non-SAS'}
             </Badge>
@@ -192,19 +217,25 @@ export default function EnhancedLocationTable({
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-500">Drop (Money In):</span>
-              <span className={`font-medium ${getMoneyInColorClass(location.moneyIn)}`}>
+              <span
+                className={`font-medium ${getMoneyInColorClass(location.moneyIn)}`}
+              >
                 {formatCurrency(location.moneyIn)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Cancelled Credits:</span>
-              <span className={`font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}>
+              <span
+                className={`font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
+              >
                 {formatCurrency(location.moneyOut)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Gross Revenue:</span>
-              <span className={`font-medium ${getGrossColorClass(location.gross)}`}>
+              <span
+                className={`font-medium ${getGrossColorClass(location.gross)}`}
+              >
                 {formatCurrency(location.gross)}
               </span>
             </div>
@@ -443,8 +474,33 @@ export default function EnhancedLocationTable({
                         onClick={() => onLocationClick?.(location.location)}
                       >
                         <td className="whitespace-nowrap px-4 py-3">
-                          <div className="text-sm font-medium text-gray-900">
-                            {location.locationName}
+                          <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                            <span>{location.locationName}</span>
+                            {/* SMIB Icon - Show if location has SMIB machines */}
+                            {Boolean(
+                              (location as { hasSmib?: boolean }).hasSmib ||
+                                !(location as { noSMIBLocation?: boolean })
+                                  .noSMIBLocation
+                            ) && (
+                              <div className="group relative inline-flex flex-shrink-0">
+                                <Server className="h-4 w-4 text-blue-600" />
+                                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                  SMIB Location
+                                </div>
+                              </div>
+                            )}
+                            {/* Local Server Icon */}
+                            {Boolean(
+                              (location as { isLocalServer?: boolean })
+                                .isLocalServer
+                            ) && (
+                              <div className="group relative inline-flex flex-shrink-0">
+                                <Home className="h-4 w-4 text-purple-600" />
+                                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                  Local Server
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">
@@ -459,13 +515,19 @@ export default function EnhancedLocationTable({
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
                           {location.totalMachines}
                         </td>
-                        <td className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getMoneyInColorClass(location.moneyIn)}`}>
+                        <td
+                          className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getMoneyInColorClass(location.moneyIn)}`}
+                        >
                           {formatCurrency(location.moneyIn)}
                         </td>
-                        <td className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}>
+                        <td
+                          className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
+                        >
                           {formatCurrency(location.moneyOut)}
                         </td>
-                        <td className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getGrossColorClass(location.gross)}`}>
+                        <td
+                          className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getGrossColorClass(location.gross)}`}
+                        >
                           {formatCurrency(location.gross)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">

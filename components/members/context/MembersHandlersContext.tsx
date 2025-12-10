@@ -1,6 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useRef, useMemo } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from 'react';
 
 type MembersHandlersContextType = {
   onRefresh?: () => void;
@@ -11,37 +17,42 @@ type MembersHandlersContextType = {
   setRefreshing: (value: boolean) => void;
 };
 
-const MembersHandlersContext = createContext<MembersHandlersContextType | undefined>(undefined);
+const MembersHandlersContext = createContext<
+  MembersHandlersContextType | undefined
+>(undefined);
 
-export function MembersHandlersProvider({ children }: { children: React.ReactNode }) {
-  const refreshHandlerRef = useRef<(() => void) | undefined>(undefined);
-  const newMemberHandlerRef = useRef<(() => void) | undefined>(undefined);
-  const [, setRefreshTrigger] = useState(0);
+export function MembersHandlersProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [refreshHandler, setRefreshHandler] = useState<
+    (() => void) | undefined
+  >(undefined);
+  const [newMemberHandler, setNewMemberHandler] = useState<
+    (() => void) | undefined
+  >(undefined);
   const [refreshing, setRefreshing] = useState(false);
 
   const setOnRefresh = useCallback((handler: (() => void) | undefined) => {
-    refreshHandlerRef.current = handler;
-    // Trigger a re-render to update context consumers
-    setRefreshTrigger(prev => prev + 1);
+    setRefreshHandler(() => handler);
   }, []);
 
   const setOnNewMember = useCallback((handler: (() => void) | undefined) => {
-    newMemberHandlerRef.current = handler;
-    // Trigger a re-render to update context consumers
-    setRefreshTrigger(prev => prev + 1);
+    setNewMemberHandler(() => handler);
   }, []);
 
   // Memoize context value to prevent unnecessary re-renders
   const contextValue = useMemo(
     () => ({
-      onRefresh: refreshHandlerRef.current,
-      onNewMember: newMemberHandlerRef.current,
+      onRefresh: refreshHandler,
+      onNewMember: newMemberHandler,
       refreshing,
       setOnRefresh,
       setOnNewMember,
       setRefreshing,
     }),
-    [refreshing, setOnRefresh, setOnNewMember]
+    [refreshing, refreshHandler, newMemberHandler, setOnRefresh, setOnNewMember]
   );
 
   return (
@@ -54,8 +65,9 @@ export function MembersHandlersProvider({ children }: { children: React.ReactNod
 export function useMembersHandlers() {
   const context = useContext(MembersHandlersContext);
   if (context === undefined) {
-    throw new Error('useMembersHandlers must be used within a MembersHandlersProvider');
+    throw new Error(
+      'useMembersHandlers must be used within a MembersHandlersProvider'
+    );
   }
   return context;
 }
-

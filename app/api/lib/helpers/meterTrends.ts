@@ -882,7 +882,7 @@ export async function getMeterTrends(
   }
 
   const locationQuery: Record<string, unknown> = {
-    $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
+    $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
   };
 
   if (licencee) {
@@ -965,7 +965,7 @@ export async function getMeterTrends(
       gamingLocation: { $in: locationIds },
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     },
     { _id: 1, gamingLocation: 1 }

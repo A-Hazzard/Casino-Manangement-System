@@ -111,7 +111,7 @@ Meter {
     coinIn: number;               // Handle - betting activity
     jackpot: number;              // Jackpot payouts
     gamesPlayed: number;          // Game activity
-    gamesWon: number;             // Games won count
+    gamesWon: number;             // Games won count (for member sessions, retrieved from endMeters.movement.gamesWon)
     currentCredits: number;       // Current credits in machine
     totalWonCredits: number;      // Total credits won
     totalHandPaidCancelledCredits: number; // Hand-paid credits

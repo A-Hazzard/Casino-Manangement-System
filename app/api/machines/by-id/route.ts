@@ -10,8 +10,8 @@
  * @module app/api/machines/by-id/route
  */
 
-import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { Machine } from '@/app/api/lib/models/machines';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       _id: id,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     }).select(
       '_id serialNumber game gamingLocation assetStatus cabinetType createdAt updatedAt smibConfig relayId smibBoard'
@@ -80,7 +80,10 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch machine';
-    console.error(`[Machines By-ID API] Error after ${duration}ms:`, errorMessage);
+    console.error(
+      `[Machines By-ID API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }

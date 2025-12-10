@@ -13,16 +13,16 @@
  * - Handles password hashing and user permissions.
  */
 
+import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest } from 'next/server';
 import UserModel from '../../app/api/lib/models/user';
-import { hashPassword } from '../utils/password';
-import { logActivity } from './activityLogger';
-import { getClientIP } from '@/lib/utils/ipAddress';
 import type {
+  OriginalUserType,
   UserDocument,
   UserDocumentWithPassword,
-  OriginalUserType,
 } from '../types/users';
+import { hashPassword } from '../utils/password';
+import { logActivity } from './activityLogger';
 
 // ============================================================================
 // User Lookup Functions
@@ -86,7 +86,7 @@ export async function getAllUsers() {
     {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     },
     '-password'
@@ -178,7 +178,7 @@ export async function updateUser(
   // Separate MongoDB operators from regular fields
   const mongoOperators: Record<string, unknown> = {};
   const regularFields: Record<string, unknown> = {};
-  
+
   Object.keys(updateFields).forEach(key => {
     if (key.startsWith('$')) {
       // MongoDB operator (like $inc, $push, etc.)
@@ -188,22 +188,25 @@ export async function updateUser(
       regularFields[key] = updateFields[key];
     }
   });
-  
+
   // Calculate changes for activity log (only from regular fields, not operators)
   const changes = calculateUserChanges(user.toObject(), regularFields);
-  
+
   // Build the update operation
   const updateOperation: Record<string, unknown> = {};
   if (Object.keys(regularFields).length > 0) {
     updateOperation.$set = regularFields;
   }
-  
+
   // Add other MongoDB operators (like $inc for sessionVersion)
   Object.keys(mongoOperators).forEach(key => {
     updateOperation[key] = mongoOperators[key];
   });
-  
-  console.log('[updateUser] Update operation:', JSON.stringify(updateOperation, null, 2));
+
+  console.log(
+    '[updateUser] Update operation:',
+    JSON.stringify(updateOperation, null, 2)
+  );
 
   // Update user
   // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)

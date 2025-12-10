@@ -218,7 +218,7 @@ The sessions page is like a **gaming activity monitor** for your casino. Here's 
 **📊 Session Performance Tracking**
 
 - **Collection**: Aggregates data from `machinesessions` collection
-- **Fields Used**: `handle`, `cancelledCredits`, `jackpot`, `won`, `bet`, `points`, `gamesPlayed`, `gamesWon`
+- **Fields Used**: `handle`, `cancelledCredits`, `jackpot`, `won`, `bet`, `points`, `gamesPlayed`, `gamesWon` (for member sessions, `gamesWon` is retrieved from `session.endMeters?.movement?.gamesWon`)
 - **Simple Explanation**: Shows how much money was played, won, and lost during each gaming session
 
 #### **Machine Events Section**

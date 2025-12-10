@@ -15,7 +15,7 @@ import {
   getMoneyInColorClass,
   getMoneyOutColorClass,
 } from '@/lib/utils/financialColors';
-import { BadgeCheck, Eye, FileWarning } from 'lucide-react';
+import { BadgeCheck, Eye, FileWarning, Home, Server } from 'lucide-react';
 import Image from 'next/image';
 import { useRef } from 'react';
 
@@ -117,6 +117,31 @@ const LocationTable: React.FC<LocationTableProps> = ({
                       >
                         {(location.locationName as string) ||
                           'Unknown Location'}
+                        {/* SMIB Icon - Show if location has SMIB machines */}
+                        {Boolean(
+                          (location as { hasSmib?: boolean }).hasSmib ||
+                            !(location as { noSMIBLocation?: boolean })
+                              .noSMIBLocation
+                        ) && (
+                          <div className="group relative inline-flex flex-shrink-0">
+                            <Server className="h-4 w-4 text-blue-600" />
+                            <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                              SMIB Location
+                            </div>
+                          </div>
+                        )}
+                        {/* Local Server Icon */}
+                        {Boolean(
+                          (location as { isLocalServer?: boolean })
+                            .isLocalServer
+                        ) && (
+                          <div className="group relative inline-flex flex-shrink-0">
+                            <Home className="h-4 w-4 text-purple-600" />
+                            <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                              Local Server
+                            </div>
+                          </div>
+                        )}
                         {Boolean(
                           (location as { membershipEnabled?: boolean })
                             .membershipEnabled

@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     const locationMatch: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     };
 
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
                   $expr: { $eq: ['$gamingLocation', '$$id'] },
                   $or: [
                     { deletedAt: null },
-                    { deletedAt: { $lt: new Date('2020-01-01') } },
+                    { deletedAt: { $lt: new Date('2025-01-01') } },
                   ],
                 },
               },
@@ -231,8 +231,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error(`[Locations Search API] Error after ${duration}ms:`, errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Locations Search API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }

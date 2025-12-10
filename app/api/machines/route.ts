@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
         gamingLocation: locationId,
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
       }).sort({ serialNumber: 1 });
 
@@ -207,7 +207,7 @@ export async function GET(request: NextRequest) {
       _id: id,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     });
 

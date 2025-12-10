@@ -236,10 +236,12 @@ export default function Chart({
     let firstNonZeroIndex = 0;
     for (let i = 0; i < finalChartData.length; i++) {
       const item = finalChartData[i];
+      const jackpot = (item as { jackpot?: number }).jackpot || 0;
       const hasData =
         (item.moneyIn || 0) > 0 ||
         (item.moneyOut || 0) > 0 ||
-        (item.gross || 0) > 0;
+        (item.gross || 0) > 0 ||
+        jackpot > 0;
       if (hasData) {
         firstNonZeroIndex = i;
         break;
@@ -250,10 +252,12 @@ export default function Chart({
     let lastNonZeroIndex = finalChartData.length - 1;
     for (let i = finalChartData.length - 1; i >= 0; i--) {
       const item = finalChartData[i];
+      const jackpot = (item as { jackpot?: number }).jackpot || 0;
       const hasData =
         (item.moneyIn || 0) > 0 ||
         (item.moneyOut || 0) > 0 ||
-        (item.gross || 0) > 0;
+        (item.gross || 0) > 0 ||
+        jackpot > 0;
       if (hasData) {
         lastNonZeroIndex = i;
         break;
@@ -267,12 +271,81 @@ export default function Chart({
     );
   }
 
+  // Filter out intermediate blank periods (where all metrics are zero or unchanged)
+  // This creates a continuous line that skips over inactive time periods
+  let gapFilteredChartData = trimmedChartData;
+  if (trimmedChartData.length > 2) {
+    gapFilteredChartData = [];
+
+    for (let i = 0; i < trimmedChartData.length; i++) {
+      const current = trimmedChartData[i];
+      const previous = i > 0 ? trimmedChartData[i - 1] : null;
+      const next =
+        i < trimmedChartData.length - 1 ? trimmedChartData[i + 1] : null;
+
+      // Safely access jackpot property (may not be in type but exists at runtime)
+      const currentJackpot = (current as { jackpot?: number }).jackpot || 0;
+      const previousJackpot = previous
+        ? (previous as { jackpot?: number }).jackpot || 0
+        : 0;
+      const nextJackpot = next
+        ? (next as { jackpot?: number }).jackpot || 0
+        : 0;
+
+      // Check if current point has any activity
+      const hasActivity =
+        (current.moneyIn || 0) !== 0 ||
+        (current.moneyOut || 0) !== 0 ||
+        (current.gross || 0) !== 0 ||
+        currentJackpot !== 0;
+
+      // Check if previous point has activity
+      const previousHasActivity = previous
+        ? (previous.moneyIn || 0) !== 0 ||
+          (previous.moneyOut || 0) !== 0 ||
+          (previous.gross || 0) !== 0 ||
+          previousJackpot !== 0
+        : false;
+
+      // Check if next point has activity
+      const nextHasActivity = next
+        ? (next.moneyIn || 0) !== 0 ||
+          (next.moneyOut || 0) !== 0 ||
+          (next.gross || 0) !== 0 ||
+          nextJackpot !== 0
+        : false;
+
+      // Check if current point values differ from previous (indicates a change)
+      const valuesChanged = previous
+        ? (current.moneyIn || 0) !== (previous.moneyIn || 0) ||
+          (current.moneyOut || 0) !== (previous.moneyOut || 0) ||
+          (current.gross || 0) !== (previous.gross || 0) ||
+          currentJackpot !== previousJackpot
+        : true;
+
+      // Keep the point if:
+      // 1. It's the first or last point (always keep boundaries), OR
+      // 2. It has activity, OR
+      // 3. It's a transition point (activity state changes), OR
+      // 4. Values changed (even if both are zero, indicates a transition)
+      const isFirstOrLast = i === 0 || i === trimmedChartData.length - 1;
+      const isTransition =
+        previousHasActivity !== hasActivity || nextHasActivity !== hasActivity;
+
+      if (isFirstOrLast || hasActivity || isTransition || valuesChanged) {
+        gapFilteredChartData.push(current);
+      }
+    }
+  }
+
   // Calculate Y-axis domain from actual data to avoid showing negative values when data doesn't go negative
   const allValues: number[] = [];
-  trimmedChartData.forEach(item => {
+  gapFilteredChartData.forEach(item => {
     allValues.push(item.moneyIn || 0);
     allValues.push(item.moneyOut || 0);
     allValues.push(item.gross || 0);
+    const jackpot = (item as { jackpot?: number }).jackpot || 0;
+    allValues.push(jackpot);
   });
 
   let yAxisDomain: [number, number] | undefined = undefined;
@@ -291,13 +364,13 @@ export default function Chart({
 
   // Shared chart component JSX
   const chartJSX = (
-    <AreaChart data={trimmedChartData}>
+    <AreaChart data={gapFilteredChartData}>
       <CartesianGrid strokeDasharray="3 3" />
       <XAxis
         dataKey={isHourlyChart ? 'time' : 'day'}
         tickFormatter={(val, index) => {
           if (isHourlyChart) {
-            const day = trimmedChartData[index]?.day;
+            const day = gapFilteredChartData[index]?.day;
             if (day && val) {
               // API returns time in UTC format (HH:00 or HH:MM), combine with day to create UTC date
               // Then convert to local time for display

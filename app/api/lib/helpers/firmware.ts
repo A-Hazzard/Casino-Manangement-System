@@ -83,7 +83,7 @@ export async function findFirmwareByVersion(
 ): Promise<FirmwareFileData | null> {
   const firmwareDoc = await Firmware.findOne({
     version: version,
-    $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
+    $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
   }).lean();
 
   if (!firmwareDoc) {

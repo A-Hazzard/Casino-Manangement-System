@@ -12,10 +12,12 @@
 **API:** `GET /api/dashboard/totals`
 
 **Optimization:**
+
 - Process ALL licensees in PARALLEL instead of sequentially
 - Uses `Promise.all()` for concurrent queries
 
 **Performance:**
+
 - Before: 14.94s for 30d (sequential processing)
 - After: 5.20s for 30d (65% faster!)
 
@@ -26,11 +28,13 @@
 **API:** `GET /api/reports/locations`
 
 **Optimizations:**
+
 1. Adaptive batch sizing (50 for 7d/30d, 20 for Today/Yesterday)
 2. Optimized field projection (only essential fields before grouping)
 3. Parallel batch processing for location data
 
 **Performance:**
+
 - Before: TIMEOUT for 7d/30d (>60s)
 - After: 3.61s for 7d, 9.23s for 30d (FIXED!)
 
@@ -41,11 +45,13 @@
 **API:** `GET /api/machines/aggregation`
 
 **Optimization:**
+
 - Single aggregation for ALL machines (7d/30d periods)
 - Index hints to force optimal index usage
 - Projection before grouping to reduce memory
 
 **Performance:**
+
 - Before: TIMEOUT for all periods (>60s)
 - After: 6-7s for Today/Yesterday/7d (FIXED!)
 
@@ -106,6 +112,7 @@ The Location Aggregation API calculates financial metrics by aggregating meter d
      - `readAt` timestamp within the location's gaming day range
 
 2. **Meter Aggregation** (in `app/api/lib/helpers/locationAggregation.ts`):
+
    ```javascript
    // Aggregate meters for all machines at location
    const metersAggregation = await db.collection('meters').aggregate([
@@ -128,9 +135,9 @@ The Location Aggregation API calculates financial metrics by aggregating meter d
        },
      },
    ]);
-   
+
    // Calculate gross
-   gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut
+   gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut;
    ```
 
 3. **Response**: Returns location objects with:
@@ -139,6 +146,7 @@ The Location Aggregation API calculates financial metrics by aggregating meter d
    - `gross`: `moneyIn - moneyOut`
 
 **Key Points:**
+
 - Uses **sum of deltas** method: Sums all `movement.drop` and `movement.totalCancelledCredits` values from meter readings
 - Respects **gaming day offset** per location when calculating date ranges
 - Filters by **user permissions** and **licensee** before aggregating
@@ -150,7 +158,7 @@ The Location Aggregation API calculates financial metrics by aggregating meter d
 - `startDate` - Custom start date (ISO format)
 - `endDate` - Custom end date (ISO format)
 - `licencee` - Filter by licensee
-- `machineTypeFilter` - "LocalServersOnly", "SMIBLocationsOnly", "NoSMIBLocation"
+- `machineTypeFilter` - Comma-separated list: "LocalServersOnly", "SMIBLocationsOnly", "NoSMIBLocation", "MembershipOnly" (uses OR logic - locations matching ANY selected filter are returned)
 - `showAllLocations` - Include locations without metrics
 - `basicList` - If false, returns all locations with financial data
 - `page` - Pagination page number
@@ -235,7 +243,7 @@ type LocationAggregationParams = {
   startDate?: string; // ISO date string for custom range
   endDate?: string; // ISO date string for custom range
   licencee?: string; // Filter by licensee
-  machineTypeFilter?: LocationFilter; // "LocalServersOnly", "SMIBLocationsOnly", "NoSMIBLocation"
+  machineTypeFilter?: string; // Comma-separated: "LocalServersOnly", "SMIBLocationsOnly", "NoSMIBLocation", "MembershipOnly" (OR logic - matches ANY filter)
   showAllLocations?: boolean; // Include locations without metrics
   basicList?: boolean; // If false, returns all locations with financial data
   page?: number; // Pagination page number
@@ -500,14 +508,15 @@ switch (timePeriod) {
 
 The Machines Aggregation API calculates financial metrics per machine by aggregating meter data. The process:
 
-1. **Location Processing**: 
+1. **Location Processing**:
    - Fetches all accessible locations (respects user permissions and licensee filter)
    - Calculates gaming day range for each location based on location's `gameDayOffset`
    - Gets all machines for accessible locations from `machines` collection
 
 2. **Optimized Aggregation Strategies** (in `app/api/machines/aggregation/route.ts`):
-   
+
    **For 7d/30d periods** (Single Aggregation - Faster):
+
    ```javascript
    // Groups machines by location, then aggregates meters per location
    // Single aggregation query for all machines
@@ -535,8 +544,9 @@ The Machines Aggregation API calculates financial metrics per machine by aggrega
      },
    }
    ```
-   
+
    **For Today/Yesterday** (Batch Processing - Optimized):
+
    ```javascript
    // Processes locations in parallel batches of 20
    // Aggregates meters per location batch
@@ -559,6 +569,7 @@ The Machines Aggregation API calculates financial metrics per machine by aggrega
    ```
 
 3. **Per-Machine Calculation**:
+
    ```javascript
    const moneyIn = metrics.moneyIn || 0;
    const moneyOut = metrics.moneyOut || 0;
@@ -571,6 +582,7 @@ The Machines Aggregation API calculates financial metrics per machine by aggrega
    - `gross`: `moneyIn - moneyOut`
 
 **Key Points:**
+
 - Uses **sum of deltas** method: Sums all `movement.drop` and `movement.totalCancelledCredits` values per machine
 - Respects **gaming day offset** per location when calculating date ranges
 - **Performance optimized**: Single aggregation for 7d/30d, batch processing for Today/Yesterday

@@ -94,13 +94,17 @@ Each report listed below should support the ability to:
 ### 4.1. Implemented Features (✅)
 
 • **Multi-Tab Report Interface**: Dashboard, Locations, Machines, and Meters tabs
-• **Date Filtering System**: Predefined periods (Today, Yesterday, Last 7 days, 30 days) and custom date range picker
-• **Licensee Filtering**: Filter all reports by specific licensee or view all licensees
-• **Export Functionality**: CSV and Excel export with real-time data fetching from API
-• **Responsive Design**: Desktop and mobile optimized layouts
-• **Real-time Data**: Live data updates and manual refresh capabilities
-• **Permission-based Access**: Role-based access control for different report types
-• **Interactive Navigation**: Tab-based navigation with URL state management
+• **Date Filtering System**: Predefined periods (Today, Yesterday, Last 7 days, 30 days) and custom date range picker using ModernCalendar component
+
+- **Mobile**: Calendar only displays when "Custom" is selected
+- **Desktop**: Calendar always available as a button
+- **Component**: `components/reports/common/ReportsDateFilters.tsx` uses `ModernCalendar` from `components/ui/ModernCalendar.tsx`
+  • **Licensee Filtering**: Filter all reports by specific licensee or view all licensees
+  • **Export Functionality**: CSV and Excel export with real-time data fetching from API
+  • **Responsive Design**: Desktop and mobile optimized layouts
+  • **Real-time Data**: Live data updates and manual refresh capabilities
+  • **Permission-based Access**: Role-based access control for different report types
+  • **Interactive Navigation**: Tab-based navigation with URL state management
 
 ### 4.2. Report Types Currently Available
 

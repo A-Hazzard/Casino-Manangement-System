@@ -11,6 +11,7 @@
 **Feature:** Added inline machine status badges next to location names in both desktop table and mobile card views.
 
 **Implementation:**
+
 - **LocationTable**: Displays color-coded status badge showing "X/Y Online" format next to each location name
 - **LocationCard**: Displays the same status badge in mobile card view
 - **Color Coding**:
@@ -20,6 +21,7 @@
   - Gray: No machines (e.g., "0/0 Online")
 
 **Benefits:**
+
 - Quick visual identification of location machine status at a glance
 - Consistent status display across desktop and mobile views
 - Enhanced user experience with color-coded indicators
@@ -33,6 +35,7 @@
 **The Fix:** Gaming day calculation now checks current hour before determining date range.
 
 **Result:**
+
 - ✅ Shows correct data 24/7 (was $0 before 8 AM)
 - ✅ All 341 locations display data
 - ✅ Top location: D'Fastlime ($33,395)
@@ -42,15 +45,18 @@
 **API:** `GET /api/reports/locations`
 
 **Problem:**
+
 - 7d/30d filters completely broken (TIMEOUT >60s)
 - No data could be retrieved for these periods
 
 **Solution:**
+
 1. Adaptive batch sizing (50 for 7d/30d, 20 for Today/Yesterday)
 2. Optimized field projection (only essential fields before grouping)
 3. Parallel batch processing for location data
 
 **Performance:**
+
 - 7 Days: TIMEOUT → 3.61s (FIXED!)
 - 30 Days: TIMEOUT → 9.23s (UNDER 10s GOAL!)
 - Today: 6.23s → 5.43s (13% faster)
@@ -112,6 +118,7 @@ The Locations page provides comprehensive casino location management, including 
     - **Yellow**: Some machines online (e.g., "30/40 Online")
     - **Red**: All machines offline (e.g., "0/40 Online")
     - **Gray**: No machines (e.g., "0/0 Online")
+  - **Collection Report Warning Icon**: When "No SMIB" filter is selected, locations without a collection report in the past 3 months display a red warning icon (FileWarning) next to the location name with tooltip "No collection report in past 3 months"
   - Location comparison and ranking.
 - **Cabinet Integration:**
   - View cabinets for each location.
@@ -146,8 +153,8 @@ The Locations page provides comprehensive casino location management, including 
   - `components/layout/Header.tsx` - Top navigation header
   - `components/layout/Sidebar.tsx` - Persistent navigation sidebar
 - **Location Management Components:**
-  - `components/ui/locations/LocationTable.tsx` - Desktop location table view with inline machine status badges
-  - `components/ui/locations/LocationCard.tsx` - Mobile location card view with inline machine status badges
+  - `components/ui/locations/LocationTable.tsx` - Desktop location table view with inline machine status badges and collection report warning icons
+  - `components/ui/locations/LocationCard.tsx` - Mobile location card view with inline machine status badges and collection report warning icons
   - `components/ui/locations/LocationSkeleton.tsx` - Loading skeleton
   - `components/ui/locations/NewLocationModal.tsx` - Add location form
   - `components/ui/locations/EditLocationModal.tsx` - Edit location form
@@ -491,16 +498,14 @@ The Locations page uses the **Location Aggregation API** (`/api/locationAggregat
 
 - **Data Source**: `meters` collection, `movement.drop` field
 - **Backend Implementation** (in `app/api/lib/helpers/locationAggregation.ts`):
+
   ```javascript
   // Step 1: Get all machines for location
   const machinesForLocation = await db.collection('machines').find({
     gamingLocation: locationIdStr,
-    $or: [
-      { deletedAt: null },
-      { deletedAt: { $lt: new Date('2020-01-01') } },
-    ],
+    $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
   });
-  
+
   // Step 2: Aggregate meters for all machines at location
   const metersAggregation = await db.collection('meters').aggregate([
     {
@@ -519,13 +524,14 @@ The Locations page uses the **Location Aggregation API** (`/api/locationAggregat
       },
     },
   ]);
-  
+
   // Step 3: Extract result
-  moneyIn: meterMetrics.totalDrop
+  moneyIn: meterMetrics.totalDrop;
   ```
+
 - **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
 - **Business Context**: Total physical cash inserted across all machines at location
-- **Aggregation**: 
+- **Aggregation**:
   - Queries all meters where `machine` field matches any machine ID at the location
   - Filters meters by `readAt` timestamp within location's gaming day range
   - Sums all `movement.drop` values from matching meters
@@ -547,7 +553,7 @@ The Locations page uses the **Location Aggregation API** (`/api/locationAggregat
   ```
 - **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
 - **Business Context**: Total credits paid out to players at location (vouchers + hand-paid)
-- **Aggregation**: 
+- **Aggregation**:
   - Same meter query as Money In (same machines, same date range)
   - Sums all `movement.totalCancelledCredits` values from matching meters
 
@@ -555,11 +561,11 @@ The Locations page uses the **Location Aggregation API** (`/api/locationAggregat
 
 - **Backend Implementation**:
   ```javascript
-  gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut
+  gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut;
   ```
 - **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
-- **Mathematical Formula**: 
-  - `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)` 
+- **Mathematical Formula**:
+  - `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)`
   - Where the sum is across all meters for all machines at the location within the gaming day range
 - **Calculation**: Performed in backend after aggregating meters, then returned to frontend
 

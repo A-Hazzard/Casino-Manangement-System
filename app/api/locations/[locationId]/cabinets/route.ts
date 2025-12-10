@@ -11,17 +11,14 @@
  * @module app/api/locations/[locationId]/cabinets/route
  */
 
-import { Machine } from '@/app/api/lib/models/machines';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import type { GamingMachine } from '@/shared/types/entities';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Machine } from '@/app/api/lib/models/machines';
 import { generateMongoId } from '@/lib/utils/id';
+import type { GamingMachine } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
 
-type NewMachineData = Omit<
-  GamingMachine,
-  '_id' | 'createdAt' | 'updatedAt'
-> & {
+type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
   collectionSettings?: {
     lastCollectionTime?: string;
     lastMetersIn?: string;
@@ -71,7 +68,7 @@ export async function POST(request: NextRequest) {
       _id: locationId,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     });
     if (!location) {

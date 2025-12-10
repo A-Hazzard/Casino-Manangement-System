@@ -69,7 +69,7 @@ export async function GET(
       _id: locationId,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     });
     if (!location) {
@@ -87,7 +87,7 @@ export async function GET(
       gamingLocation: locationId,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     });
 
@@ -162,7 +162,7 @@ export async function PUT(
       _id: locationId,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     });
     if (!location) {
@@ -310,7 +310,6 @@ export async function PUT(
           { machineId: cabinetId },
           { $set: { serialNumber: data.assetNumber } }
         );
-
       } catch (collectionsError) {
         console.error(
           'Failed to update serial number in Collections:',
@@ -331,7 +330,6 @@ export async function PUT(
           { machineId: cabinetId },
           { $set: { machineName: data.installedGame } }
         );
-
       } catch (collectionsError) {
         console.error(
           'Failed to update machine name in Collections:',
@@ -402,7 +400,7 @@ export async function PATCH(
       _id: locationId,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     });
     if (!location) {
@@ -519,7 +517,7 @@ export async function DELETE(
       _id: locationId,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     });
     if (!location) {

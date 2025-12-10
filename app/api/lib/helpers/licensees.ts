@@ -1,11 +1,11 @@
-import { NextRequest } from 'next/server';
-import { Licencee } from '../models/licencee';
-import { Countries } from '../models/countries';
-import { logActivity, calculateChanges } from './activityLogger';
-import { getUserFromServer } from './users';
-import { getClientIP } from '@/lib/utils/ipAddress';
-import { generateUniqueLicenseKey } from '../utils/licenseKey';
 import { generateMongoId } from '@/lib/utils/id';
+import { getClientIP } from '@/lib/utils/ipAddress';
+import { NextRequest } from 'next/server';
+import { Countries } from '../models/countries';
+import { Licencee } from '../models/licencee';
+import { generateUniqueLicenseKey } from '../utils/licenseKey';
+import { calculateChanges, logActivity } from './activityLogger';
+import { getUserFromServer } from './users';
 
 /**
  * Formats licensees data for frontend consumption, ensuring isPaid status is always defined
@@ -52,7 +52,9 @@ export async function formatLicenseesForResponse(
     const country =
       typeof rawCountry === 'string'
         ? rawCountry
-        : rawCountry && typeof (rawCountry as { toString: () => string }).toString === 'function'
+        : rawCountry &&
+            typeof (rawCountry as { toString: () => string }).toString ===
+              'function'
           ? (rawCountry as { toString: () => string }).toString()
           : '';
     const countryName = countryNameMap.get(country) || country || undefined;
@@ -75,7 +77,7 @@ export async function getAllLicensees() {
     {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     },
     {

@@ -52,7 +52,7 @@ export const getLocationsWithMetrics = async (
         {
           $or: [
             { deletedAt: null },
-            { deletedAt: { $lt: new Date('2020-01-01') } },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
           'rel.licencee': licencee,
         },
@@ -80,7 +80,7 @@ export const getLocationsWithMetrics = async (
       $match: {
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
         ...locationIdFilter,
       },
@@ -185,7 +185,7 @@ export const getLocationsWithMetrics = async (
             gamingLocation: { $in: allLocationIds },
             $or: [
               { deletedAt: null },
-              { deletedAt: { $lt: new Date('2020-01-01') } },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
             ],
           },
           {
@@ -198,7 +198,6 @@ export const getLocationsWithMetrics = async (
           }
         )
         .toArray();
-
       // Create machine-to-location map and location-to-machines map
       const machineToLocation = new Map<string, string>();
       const locationToMachines = new Map<string, typeof allMachinesData>();
@@ -389,7 +388,7 @@ export const getLocationsWithMetrics = async (
           {
             $match: {
               gamingLocation: { $in: membershipEnabledLocations },
-              deletedAt: { $lt: new Date('2020-01-01') }, // Exclude deleted members
+              deletedAt: { $lt: new Date('2025-01-01') }, // Exclude deleted members
             },
           },
           {
@@ -446,7 +445,7 @@ export const getLocationsWithMetrics = async (
                   gamingLocation: locationIdStr, // Use string, not ObjectId
                   $or: [
                     { deletedAt: null },
-                    { deletedAt: { $lt: new Date('2020-01-01') } },
+                    { deletedAt: { $lt: new Date('2025-01-01') } },
                   ],
                 },
                 { projection: { _id: 1 } }
@@ -500,7 +499,7 @@ export const getLocationsWithMetrics = async (
                     gamingLocation: locationIdStr, // Use string, not ObjectId
                     $or: [
                       { deletedAt: null },
-                      { deletedAt: { $lt: new Date('2020-01-01') } },
+                      { deletedAt: { $lt: new Date('2025-01-01') } },
                     ],
                   },
                 },
@@ -589,7 +588,7 @@ export const getLocationsWithMetrics = async (
           {
             $match: {
               gamingLocation: { $in: membershipEnabledLocations },
-              deletedAt: { $lt: new Date('2020-01-01') }, // Exclude deleted members
+              deletedAt: { $lt: new Date('2025-01-01') }, // Exclude deleted members
             },
           },
           {
@@ -729,7 +728,7 @@ export const getLocationsWithMetrics = async (
                     $expr: { $eq: ['$gamingLocation', '$$locationId'] },
                     $or: [
                       { deletedAt: null },
-                      { deletedAt: { $lt: new Date('2020-01-01') } },
+                      { deletedAt: { $lt: new Date('2025-01-01') } },
                     ],
                   },
                 },

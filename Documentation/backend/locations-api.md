@@ -564,9 +564,14 @@ The Locations API provides comprehensive endpoints for managing gaming locations
 ##### **GET `/api/locationAggregation`**
 
 - **Purpose**: Fetch location metrics and statistics
-- **Features**: Licensee filtering, machine counting, performance metrics
+- **Features**: Licensee filtering, machine counting, performance metrics, NON-SMIB offline detection
 - **Helper Function**: Uses `getLocationsWithMetrics` from `app/api/lib/helpers/locationAggregation.ts`
 - **Data Consistency**: Properly filters deleted locations in all aggregation stages
+- **NON-SMIB Offline Logic**:
+  - NON-SMIB locations (locations without SMIB machines) are automatically marked as offline if no collection report exists in the past 3 months
+  - Sets `onlineMachines = 0` for locations without recent collection reports
+  - Adds `hasNoRecentCollectionReport: true` flag to location data for frontend warning icon display
+  - Collection reports with `isEditing: true` are excluded from the check
 
 ### 📊 **Data Models**
 

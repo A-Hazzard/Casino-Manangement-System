@@ -155,8 +155,8 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const totalCount = await Member.countDocuments(matchConditions);
 
-    // Get total members count (excluding date filter AND licensee/location filters) for summary stats
-    // totalMembers should count ALL members in the system, not filtered by licensee/location
+    // Get total members count (excluding date filter but including location filter if provided) for summary stats
+    // totalMembers should count members filtered by location if location filter is provided
     const totalMembersConditions: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
@@ -165,7 +165,12 @@ export async function GET(request: NextRequest) {
       ],
     };
 
-    // Only include search filter if there's a search term (exclude licensee/location filters)
+    // Include location filter if specified (for location-specific pages)
+    if (locationFilter && locationFilter !== 'all') {
+      totalMembersConditions.gamingLocation = locationFilter;
+    }
+
+    // Only include search filter if there's a search term
     if (searchTerm) {
       // Build search $or
       const searchOr = [
@@ -182,10 +187,6 @@ export async function GET(request: NextRequest) {
       ];
       delete totalMembersConditions.$or;
     }
-
-    // Explicitly ensure gamingLocation is NOT included (totalMembers should count ALL members)
-    // This is a safety check - we're building from scratch so it shouldn't be there, but just in case
-    delete totalMembersConditions.gamingLocation;
 
     const totalMembersCount = await Member.countDocuments(
       totalMembersConditions
@@ -345,12 +346,11 @@ export async function GET(request: NextRequest) {
     // STEP 8: Calculate summary statistics
     // ============================================================================
     // Calculate active members (members who logged in within the last 30 days)
-    // Active members should exclude date filter but include other filters (licensee, location, search)
+    // Active members should exclude date filter but include location filter if provided
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Build conditions for active members (exclude date filter AND licensee/location filters)
-    // activeMembers should count ALL active members in the system, not filtered by licensee/location
+    // Build conditions for active members (exclude date filter but include location filter if provided)
     // Start with totalMembersConditions and add lastLogin filter
     const activeMembersConditions: Record<string, unknown> = JSON.parse(
       JSON.stringify(totalMembersConditions)

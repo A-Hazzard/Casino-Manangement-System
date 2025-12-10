@@ -1063,7 +1063,7 @@ useEffect(() => {
 
 ---
 
-### Issue #12: Mobile Date Picker Overflowing Horizontally
+### Issue #12: Mobile Date Picker Overflowing Horizontally ✅ RESOLVED
 
 **Problem:**
 
@@ -1079,8 +1079,17 @@ useEffect(() => {
 
 **Solution:**
 
+**Current Implementation (December 2025):**
+
+- Replaced with `ModernCalendar` component (`components/ui/ModernCalendar.tsx`)
+- Mobile: Calendar only displays when "Custom" is selected
+- Desktop: Calendar always available as a button
+- Proper responsive behavior with cancel/apply buttons at top or bottom on mobile
+
+**Previous Solution (Deprecated):**
+
 ```typescript
-// ✅ CORRECT Mobile configuration
+// ✅ CORRECT Mobile configuration (OLD - now using ModernCalendar)
 <DateTimePicker
   views={['year', 'month', 'day', 'hours', 'minutes']}
   openTo="day"

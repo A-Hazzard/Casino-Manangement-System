@@ -525,7 +525,7 @@ await UserModel.findByIdAndUpdate(userId, ...); // NEVER use this!
 // Get all locations for a licensee
 const locations = await GamingLocations.find({
   'rel.licencee': licenseeId,
-  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
+  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
 });
 ```
 
@@ -535,7 +535,7 @@ const locations = await GamingLocations.find({
 // Get machines at specific locations
 const machines = await Machine.find({
   gamingLocation: { $in: locationIds },
-  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
+  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
 });
 ```
 

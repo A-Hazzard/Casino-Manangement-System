@@ -1,6 +1,13 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,10 +29,12 @@ import {
   validateStreetAddress,
   validateUsername,
 } from '@/lib/utils/validation';
+import defaultAvatar from '@/public/defaultAvatar.svg';
 import { CasinoMember as Member } from '@/shared/types/entities';
 import axios from 'axios';
 import { gsap } from 'gsap';
-import { Save, X } from 'lucide-react';
+import { Save, X, XCircle } from 'lucide-react';
+import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -208,6 +217,10 @@ export default function EditMemberModal({
 
   useEffect(() => {
     if (isEditModalOpen) {
+      // Prevent body scrolling when modal is open
+      const originalStyle = window.getComputedStyle(document.body).overflow;
+      document.body.style.overflow = 'hidden';
+
       gsap.fromTo(
         modalRef.current,
         { opacity: 0, y: -20 },
@@ -230,6 +243,15 @@ export default function EditMemberModal({
       setTouched({});
       setSubmitAttempted(false);
       setErrors({});
+
+      // Cleanup: restore body scrolling when modal closes
+      return () => {
+        document.body.style.overflow = originalStyle;
+      };
+    } else {
+      // Restore scrolling when modal is closed
+      document.body.style.overflow = '';
+      return undefined;
     }
   }, [isEditModalOpen]);
 
@@ -639,253 +661,391 @@ export default function EditMemberModal({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - covers entire screen including sidebar */}
       <div
         ref={backdropRef}
-        className="fixed inset-0 z-40 bg-black bg-opacity-50"
+        className="fixed inset-0 z-[100] bg-black/50"
         onClick={handleClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="pointer-events-none fixed inset-0 z-[110] flex items-end justify-center lg:items-center">
         <div
           ref={modalRef}
-          className="flex w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-xl md:max-h-[90vh]"
+          className="pointer-events-auto relative flex h-full w-full max-w-full flex-col overflow-y-auto bg-gray-50 animate-in md:max-w-2xl lg:max-h-[95vh] lg:max-w-4xl lg:rounded-xl"
+          style={{ opacity: 1 }}
         >
-          {/* Header */}
-          <div className="bg-button px-4 py-3 text-white sm:px-6 sm:py-4">
+          {/* Modern Header - Sticky */}
+          <div className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-5">
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold sm:text-xl">Edit Member</h2>
-                <p className="hidden text-xs text-white text-opacity-90 sm:block sm:text-sm">
-                  Update member information below.
+              <div className="flex-1">
+                <h2 className="text-2xl font-semibold tracking-tight text-gray-900">
+                  Edit Member
+                </h2>
+                <p className="mt-1 text-sm text-gray-600">
+                  Update member information below
                 </p>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleClose}
-                className="h-8 w-8 text-white hover:bg-white hover:bg-opacity-20 sm:h-10 sm:w-10"
+                className="h-9 w-9 rounded-full hover:bg-gray-100"
               >
-                <X className="h-4 w-4 sm:h-5 sm:w-5" />
+                <X className="h-5 w-5" />
               </Button>
             </div>
           </div>
 
-          {/* Form Content */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <div className="grid gap-4 py-2 sm:py-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    placeholder="First Name"
-                    className={`${
-                      errors.firstName ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  {errors.firstName && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.firstName}
-                    </p>
-                  )}
+          {/* Content Area with Cards */}
+          <div className="flex-1 space-y-6 p-6">
+            {/* Profile Overview Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Information</CardTitle>
+                <CardDescription>
+                  Basic account information and contact details
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+                  {/* Left: Profile Picture */}
+                  <div className="flex flex-col items-center lg:items-start">
+                    <div className="relative">
+                      <Image
+                        src={defaultAvatar}
+                        alt="Member Avatar"
+                        width={140}
+                        height={140}
+                        className="rounded-full border-4 border-gray-100 bg-gray-50 shadow-sm"
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-col items-center gap-1 lg:items-start">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {selectedMember?.profile?.firstName &&
+                        selectedMember?.profile?.lastName
+                          ? `${selectedMember.profile.firstName} ${selectedMember.profile.lastName}`
+                          : selectedMember?.username || 'Member'}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {formData.email || 'No email'}
+                      </p>
+                      {formData.username && (
+                        <p className="text-xs text-gray-500">
+                          @{formData.username}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Account Details */}
+                  <div className="flex-1 space-y-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      {/* Username Field */}
+                      <div>
+                        <Label htmlFor="username" className="text-gray-700">
+                          Username *
+                        </Label>
+                        <div className="relative mt-2">
+                          <Input
+                            id="username"
+                            name="username"
+                            value={formData.username}
+                            onChange={handleInputChange}
+                            placeholder="Enter username"
+                            className={`${
+                              errors.username
+                                ? 'border-red-500'
+                                : 'border-gray-300'
+                            }`}
+                            disabled={checkingUniqueness.username}
+                          />
+                          {checkingUniqueness.username && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div>
+                            </div>
+                          )}
+                        </div>
+                        {errors.username && (
+                          <p className="mt-1.5 text-sm text-red-600">
+                            {errors.username}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Email Field */}
+                      <div>
+                        <Label htmlFor="email" className="text-gray-700">
+                          Email Address
+                        </Label>
+                        <div className="relative mt-2">
+                          <Input
+                            id="email"
+                            name="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            placeholder="Enter email address"
+                            className={`${
+                              errors.email
+                                ? 'border-red-500'
+                                : 'border-gray-300'
+                            }`}
+                            disabled={checkingUniqueness.email}
+                          />
+                          {checkingUniqueness.email && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div>
+                            </div>
+                          )}
+                        </div>
+                        {errors.email && (
+                          <p className="mt-1.5 text-sm text-red-600">
+                            {errors.email}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* First Name */}
+                      <div>
+                        <Label htmlFor="firstName" className="text-gray-700">
+                          First Name
+                        </Label>
+                        <Input
+                          id="firstName"
+                          name="firstName"
+                          value={formData.firstName}
+                          onChange={handleInputChange}
+                          placeholder="Enter first name"
+                          className={`mt-2 ${
+                            errors.firstName
+                              ? 'border-red-500'
+                              : 'border-gray-300'
+                          }`}
+                        />
+                        {errors.firstName && (
+                          <p className="mt-1.5 text-sm text-red-600">
+                            {errors.firstName}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Last Name */}
+                      <div>
+                        <Label htmlFor="lastName" className="text-gray-700">
+                          Last Name
+                        </Label>
+                        <Input
+                          id="lastName"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={handleInputChange}
+                          placeholder="Enter last name"
+                          className={`mt-2 ${
+                            errors.lastName
+                              ? 'border-red-500'
+                              : 'border-gray-300'
+                          }`}
+                        />
+                        {errors.lastName && (
+                          <p className="mt-1.5 text-sm text-red-600">
+                            {errors.lastName}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Phone Number */}
+                      <div>
+                        <Label htmlFor="phoneNumber" className="text-gray-700">
+                          Phone Number
+                        </Label>
+                        <Input
+                          id="phoneNumber"
+                          name="phoneNumber"
+                          type="tel"
+                          value={formData.phoneNumber}
+                          onChange={handleInputChange}
+                          placeholder="Enter phone number"
+                          className={`mt-2 ${
+                            errors.phoneNumber
+                              ? 'border-red-500'
+                              : 'border-gray-300'
+                          }`}
+                        />
+                        {errors.phoneNumber && (
+                          <p className="mt-1.5 text-sm text-red-600">
+                            {errors.phoneNumber}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Occupation */}
+                      <div>
+                        <Label htmlFor="occupation" className="text-gray-700">
+                          Occupation
+                        </Label>
+                        <Input
+                          id="occupation"
+                          name="occupation"
+                          value={formData.occupation}
+                          onChange={handleInputChange}
+                          placeholder="Enter occupation"
+                          className={`mt-2 ${
+                            errors.occupation
+                              ? 'border-red-500'
+                              : 'border-gray-300'
+                          }`}
+                        />
+                        {errors.occupation && (
+                          <p className="mt-1.5 text-sm text-red-600">
+                            {errors.occupation}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    placeholder="Last Name"
-                    className={`${
-                      errors.lastName ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  {errors.lastName && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.lastName}
-                    </p>
-                  )}
+              </CardContent>
+            </Card>
+
+            {/* Address Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Address</CardTitle>
+                <CardDescription>
+                  Physical address and location information
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="address" className="text-gray-700">
+                      Street Address
+                    </Label>
+                    <Input
+                      id="address"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      placeholder="Enter street address"
+                      className={`mt-2 ${
+                        errors.address ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.address && (
+                      <p className="mt-1.5 text-sm text-red-600">
+                        {errors.address}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="space-y-2">
-                <Label htmlFor="username">Username *</Label>
-                <Input
-                  id="username"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  placeholder="Enter username"
-                  className={`${
-                    errors.username ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  disabled={checkingUniqueness.username}
-                />
-                {errors.username && (
-                  <p className="mt-1 text-sm text-red-500">{errors.username}</p>
-                )}
-              </div>
+            {/* Account Details Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Details</CardTitle>
+                <CardDescription>
+                  Member account balance, points, and location assignment
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="points" className="text-gray-700">
+                      Points
+                    </Label>
+                    <Input
+                      id="points"
+                      name="points"
+                      type="number"
+                      value={formData.points}
+                      onChange={handleInputChange}
+                      placeholder="Points"
+                      className="mt-2"
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="Email"
-                  className={`${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  disabled={checkingUniqueness.email}
-                />
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-500">{errors.email}</p>
-                )}
-              </div>
+                  <div>
+                    <Label htmlFor="uaccount" className="text-gray-700">
+                      Account Balance
+                    </Label>
+                    <Input
+                      id="uaccount"
+                      name="uaccount"
+                      type="number"
+                      value={formData.uaccount}
+                      onChange={handleInputChange}
+                      placeholder="Account Balance"
+                      className="mt-2"
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Phone Number</Label>
-                <Input
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  value={formData.phoneNumber}
-                  onChange={handleInputChange}
-                  placeholder="Phone Number"
-                  className={`${
-                    errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {errors.phoneNumber && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {errors.phoneNumber}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="occupation">Occupation</Label>
-                <Input
-                  id="occupation"
-                  name="occupation"
-                  value={formData.occupation}
-                  onChange={handleInputChange}
-                  placeholder="Occupation"
-                  className={`${
-                    errors.occupation ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {errors.occupation && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {errors.occupation}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  placeholder="Address"
-                  className={`${
-                    errors.address ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {errors.address && (
-                  <p className="mt-1 text-sm text-red-500">{errors.address}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="points">Points</Label>
-                  <Input
-                    id="points"
-                    name="points"
-                    type="number"
-                    value={formData.points}
-                    onChange={handleInputChange}
-                    placeholder="Points"
-                  />
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="gamingLocation" className="text-gray-700">
+                      Location
+                    </Label>
+                    <div className="mt-2">
+                      <LocationSingleSelect
+                        locations={locations}
+                        selectedLocation={formData.gamingLocation}
+                        onSelectionChange={locationId => {
+                          const validLocationId =
+                            locationId === 'all' || !locationId
+                              ? formData.gamingLocation
+                              : locationId;
+                          setFormData(prev => ({
+                            ...prev,
+                            gamingLocation: validLocationId,
+                          }));
+                          setTouched(prev => ({
+                            ...prev,
+                            gamingLocation: true,
+                          }));
+                        }}
+                        placeholder="Select location..."
+                        includeAllOption={false}
+                        showSasBadge={false}
+                        className="w-full"
+                        searchPlaceholder="Search locations..."
+                        emptyMessage="No locations found"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="uaccount">Account Balance</Label>
-                  <Input
-                    id="uaccount"
-                    name="uaccount"
-                    type="number"
-                    value={formData.uaccount}
-                    onChange={handleInputChange}
-                    placeholder="Account Balance"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="gamingLocation">Location</Label>
-                <LocationSingleSelect
-                  locations={locations}
-                  selectedLocation={formData.gamingLocation}
-                  onSelectionChange={locationId => {
-                    // Ensure we always set a valid location ID
-                    // Since includeAllOption is false, locationId should never be 'all'
-                    // If somehow 'all' is passed, we'll keep the existing location
-                    const validLocationId =
-                      locationId === 'all' || !locationId
-                        ? formData.gamingLocation
-                        : locationId;
-                    setFormData(prev => ({
-                      ...prev,
-                      gamingLocation: validLocationId,
-                    }));
-                    setTouched(prev => ({ ...prev, gamingLocation: true }));
-                  }}
-                  placeholder="Select location..."
-                  includeAllOption={false}
-                  showSasBadge={false}
-                  className="w-full"
-                  searchPlaceholder="Search locations..."
-                  emptyMessage="No locations found"
-                />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Footer */}
-          <div className="mt-auto border-t bg-gray-50 px-4 py-3 sm:px-6 sm:py-4">
-            <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row sm:gap-3">
+          {/* Footer - Sticky */}
+          <div className="sticky bottom-0 border-t border-gray-200 bg-white px-6 py-4 shadow-lg">
+            <div className="flex justify-end gap-3">
               <Button
+                type="button"
                 variant="outline"
                 onClick={handleClose}
-                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 sm:w-auto"
+                className="min-w-[100px] gap-2"
               >
+                <XCircle className="h-4 w-4" />
                 Cancel
               </Button>
               <Button
+                type="button"
                 onClick={handleSubmit}
                 disabled={loading || Object.keys(errors).length > 0}
-                className="w-full bg-button text-white hover:bg-buttonActive disabled:opacity-50 sm:w-auto"
+                className="min-w-[140px] gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               >
                 {loading ? (
-                  <div className="flex items-center gap-2">
+                  <>
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                     Updating...
-                  </div>
+                  </>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <>
                     <Save className="h-4 w-4" />
-                    Update Member
-                  </div>
+                    Save Changes
+                  </>
                 )}
               </Button>
             </div>
