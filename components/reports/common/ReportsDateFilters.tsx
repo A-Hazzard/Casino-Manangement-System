@@ -2,11 +2,9 @@
 
 import { TimePeriod } from '@/app/api/lib/types';
 import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/ui/date-picker';
-import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
+import { ModernCalendar } from '@/components/ui/ModernCalendar';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
-import { useState } from 'react';
 
 /**
  * Reports Date Filters Component
@@ -18,16 +16,10 @@ export default function ReportsDateFilters() {
     activeMetricsFilter,
     setActiveMetricsFilter,
     setCustomDateRange,
-    pendingCustomDateRange,
-    setPendingCustomDateRange,
+    customDateRange,
   } = useDashBoardStore();
 
   const { setDateRange, activeView } = useReportsStore();
-
-  const [showCustomPicker, setShowCustomPicker] = useState(false);
-  const [selectedSingleDate, setSelectedSingleDate] = useState<
-    Date | undefined
-  >(undefined);
 
   // Conditional filter buttons based on active tab
   const getTimeFilterButtons = () => {
@@ -57,96 +49,77 @@ export default function ReportsDateFilters() {
   const timeFilterButtons = getTimeFilterButtons();
 
   /**
-   * Apply custom date range to both stores
+   * Handle custom date selection from ModernCalendar
    */
-  const handleApplyCustomRange = () => {
-    if (pendingCustomDateRange?.startDate && pendingCustomDateRange?.endDate) {
-      // Update both stores
-      setCustomDateRange({
-        startDate: pendingCustomDateRange.startDate,
-        endDate: pendingCustomDateRange.endDate,
-      });
-      setDateRange(
-        pendingCustomDateRange.startDate,
-        pendingCustomDateRange.endDate
-      );
-      setActiveMetricsFilter('Custom');
-      setShowCustomPicker(false);
-    }
-  };
+  const handleCustomDateSelect = (
+    date: { from?: Date; to?: Date } | undefined
+  ) => {
+    if (!date?.from) return;
 
-  /**
-   * Apply single date selection for meters tab
-   */
-  const handleApplySingleDate = () => {
-    if (selectedSingleDate) {
-      // For single date, set both start and end to the same date
-      const startDate = new Date(selectedSingleDate);
+    // For meters tab (single mode), use the same date for start and end
+    if (activeView === 'meters') {
+      const startDate = new Date(date.from);
       startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(selectedSingleDate);
+      const endDate = new Date(date.from);
       endDate.setHours(23, 59, 59, 999);
 
-      // Update both stores
       setCustomDateRange({
         startDate: startDate,
         endDate: endDate,
       });
       setDateRange(startDate, endDate);
       setActiveMetricsFilter('Custom');
-      setShowCustomPicker(false);
+    } else if (date.from && date.to) {
+      // For range mode (other tabs), use the provided range
+      setCustomDateRange({
+        startDate: date.from,
+        endDate: date.to,
+      });
+      setDateRange(date.from, date.to);
+      setActiveMetricsFilter('Custom');
     }
-  };
-
-  /**
-   * Set last month date range as a quick option
-   */
-  const handleSetLastMonth = () => {
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
-    setPendingCustomDateRange({ startDate: firstDay, endDate: lastDay });
   };
 
   /**
    * Handle filter button clicks for predefined periods
    */
   const handleFilterClick = (filter: TimePeriod) => {
-    if (filter === 'Custom') {
-      setShowCustomPicker(true);
-    } else {
-      setShowCustomPicker(false);
+    // Update reports store based on filter
+    const now = new Date();
+    let startDate: Date, endDate: Date;
 
-      // Update reports store based on filter
-      const now = new Date();
-      let startDate: Date, endDate: Date;
+    switch (filter) {
+      case 'Today':
+        startDate = new Date(now.setHours(0, 0, 0, 0));
+        endDate = new Date(now.setHours(23, 59, 59, 999));
+        break;
+      case 'Yesterday':
+        startDate = new Date(now.setDate(now.getDate() - 1));
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(startDate);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      case '7d':
+      case 'last7days':
+        startDate = new Date(now.setDate(now.getDate() - 7));
+        endDate = new Date();
+        break;
+      case '30d':
+      case 'last30days':
+        startDate = new Date(now.setDate(now.getDate() - 30));
+        endDate = new Date();
+        break;
+      case 'All Time':
+        // For "All Time", set a very wide range
+        startDate = new Date(0); // Epoch start
+        endDate = new Date();
+        break;
+      default:
+        startDate = new Date(now.setHours(0, 0, 0, 0));
+        endDate = new Date(now.setHours(23, 59, 59, 999));
+    }
 
-      switch (filter) {
-        case 'Today':
-          startDate = new Date(now.setHours(0, 0, 0, 0));
-          endDate = new Date(now.setHours(23, 59, 59, 999));
-          break;
-        case 'Yesterday':
-          startDate = new Date(now.setDate(now.getDate() - 1));
-          startDate.setHours(0, 0, 0, 0);
-          endDate = new Date(startDate);
-          endDate.setHours(23, 59, 59, 999);
-          break;
-        case '7d':
-        case 'last7days':
-          startDate = new Date(now.setDate(now.getDate() - 7));
-          endDate = new Date();
-          break;
-        case '30d':
-        case 'last30days':
-          startDate = new Date(now.setDate(now.getDate() - 30));
-          endDate = new Date();
-          break;
-
-        default:
-          startDate = new Date(now.setHours(0, 0, 0, 0));
-          endDate = new Date(now.setHours(23, 59, 59, 999));
-      }
-
+    if (filter !== 'Custom') {
       setDateRange(startDate, endDate);
     }
     setActiveMetricsFilter(filter);
@@ -167,84 +140,60 @@ export default function ReportsDateFilters() {
             </option>
           ))}
         </select>
+
+        {/* ModernCalendar for mobile - shown when Custom is selected */}
+        {activeMetricsFilter === 'Custom' && (
+          <div className="mt-2 w-full">
+            <ModernCalendar
+              date={
+                customDateRange
+                  ? {
+                      from: customDateRange.startDate,
+                      to: customDateRange.endDate,
+                    }
+                  : undefined
+              }
+              onSelect={handleCustomDateSelect}
+              mode={activeView === 'meters' ? 'single' : 'range'}
+              className="w-full"
+            />
+          </div>
+        )}
       </div>
 
       {/* md and above: Filter buttons */}
       <div className="hidden flex-wrap items-center gap-2 md:flex">
-        {timeFilterButtons.map(filter => (
-          <Button
-            key={filter.value}
-            className={`rounded-md px-3 py-1 text-sm transition-colors ${
-              activeMetricsFilter === filter.value
-                ? 'bg-buttonActive text-white'
-                : 'bg-button text-white hover:bg-button/90'
-            }`}
-            onClick={() => handleFilterClick(filter.value)}
-          >
-            {filter.label}
-          </Button>
-        ))}
-      </div>
+        {timeFilterButtons
+          .filter(filter => filter.value !== 'Custom')
+          .map(filter => (
+            <Button
+              key={filter.value}
+              className={`rounded-md px-3 py-1 text-sm transition-colors ${
+                activeMetricsFilter === filter.value
+                  ? 'bg-buttonActive text-white'
+                  : 'bg-button text-white hover:bg-button/90'
+              }`}
+              onClick={() => handleFilterClick(filter.value)}
+            >
+              {filter.label}
+            </Button>
+          ))}
 
-      {/* Custom Date Picker (both mobile and desktop) */}
-      {showCustomPicker && (
-        <div className="mt-4 w-full">
-          {activeView === 'meters' ? (
-            // Single date picker for meters tab
-            <div className="flex flex-wrap items-center justify-center gap-2 rounded-b-lg bg-gray-50 px-4 py-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-700">Select Date:</span>
-                <DatePicker
-                  date={selectedSingleDate}
-                  setDate={setSelectedSingleDate}
-                />
-              </div>
-              <Button
-                className="rounded-lg bg-lighterBlueHighlight px-3 py-1.5 text-xs font-semibold text-white"
-                onClick={handleApplySingleDate}
-                disabled={!selectedSingleDate}
-              >
-                Go
-              </Button>
-              <Button
-                variant="outline"
-                className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-                onClick={() => {
-                  setShowCustomPicker(false);
-                  setSelectedSingleDate(undefined);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            // Date range picker for other tabs
-            <ModernDateRangePicker
-              value={
-                pendingCustomDateRange
-                  ? {
-                      from: pendingCustomDateRange.startDate,
-                      to: pendingCustomDateRange.endDate,
-                    }
-                  : undefined
-              }
-              onChange={range =>
-                setPendingCustomDateRange(
-                  range && range.from && range.to
-                    ? { startDate: range.from, endDate: range.to }
-                    : undefined
-                )
-              }
-              onGo={handleApplyCustomRange}
-              onCancel={() => {
-                setShowCustomPicker(false);
-                setPendingCustomDateRange(undefined);
-              }}
-              onSetLastMonth={handleSetLastMonth}
-            />
-          )}
-        </div>
-      )}
+        {/* ModernCalendar for desktop - shown as a button that opens the calendar */}
+        <ModernCalendar
+          date={
+            activeMetricsFilter === 'Custom' && customDateRange
+              ? {
+                  from: customDateRange.startDate,
+                  to: customDateRange.endDate,
+                }
+              : undefined
+          }
+          onSelect={handleCustomDateSelect}
+          mode={activeView === 'meters' ? 'single' : 'range'}
+          className="w-auto"
+        />
+      </div>
     </div>
   );
 }

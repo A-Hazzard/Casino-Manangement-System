@@ -18,10 +18,10 @@ import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import {
-  convertFromUSD,
-  convertToUSD,
-  getCountryCurrency,
-  getLicenseeCurrency,
+    convertFromUSD,
+    convertToUSD,
+    getCountryCurrency,
+    getLicenseeCurrency,
 } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -208,7 +208,7 @@ export async function GET(
     // Determine aggregation granularity based on time range and manual granularity
     let useHourly = false;
     let useMinute = false;
-
+    
     // If granularity is manually specified, use it
     if (granularity) {
       if (granularity === 'minute') {
@@ -223,7 +223,7 @@ export async function GET(
       const shouldUseHourly =
         timePeriod === 'Today' || timePeriod === 'Yesterday';
 
-      if (timePeriod === 'Custom' && startDate && endDate) {
+    if (timePeriod === 'Custom' && startDate && endDate) {
         // Check if date strings have time components (not date-only)
         const hasTimeComponents =
           startDateParam &&
@@ -231,9 +231,9 @@ export async function GET(
           (startDateParam.includes('T') || endDateParam.includes('T'));
 
         if (hasTimeComponents) {
-          const diffInMs = endDate.getTime() - startDate.getTime();
-          const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
-
+      const diffInMs = endDate.getTime() - startDate.getTime();
+      const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+      
           // For custom ranges with time inputs:
           // - Default to hourly for all ranges <= 1 day
           // - Use daily if > 1 day
@@ -246,12 +246,12 @@ export async function GET(
           const diffInMs = endDate.getTime() - startDate.getTime();
           const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
           if (diffInDays <= 1) {
-            useHourly = true;
+        useHourly = true;
           }
-        }
-      } else {
+      }
+    } else {
         // For Today/Yesterday, default to hourly (unless granularity is specified)
-        useHourly = shouldUseHourly;
+      useHourly = shouldUseHourly;
       }
     }
 
@@ -284,14 +284,14 @@ export async function GET(
               },
             }
           : useHourly
-            ? {
-                $dateToString: {
-                  date: '$readAt',
-                  format: '%H:00',
-                  timezone: 'UTC',
-                },
-              }
-            : '00:00',
+          ? {
+              $dateToString: {
+                date: '$readAt',
+                format: '%H:00',
+                timezone: 'UTC',
+              },
+            }
+          : '00:00',
       },
     });
 

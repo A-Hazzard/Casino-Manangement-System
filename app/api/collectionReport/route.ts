@@ -218,7 +218,7 @@ export async function GET(req: NextRequest) {
         const collectorFullName = (
           report.collectorFullName || ''
         ).toLowerCase(); // DEPRECATED: Display only
-
+        
         return (
           collector.includes(search) ||
           locationReportId.includes(search) ||

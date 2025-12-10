@@ -15,7 +15,7 @@ import {
   getMoneyInColorClass,
   getMoneyOutColorClass,
 } from '@/lib/utils/financialColors';
-import { BadgeCheck, Eye } from 'lucide-react';
+import { BadgeCheck, Eye, FileWarning } from 'lucide-react';
 import Image from 'next/image';
 import { useRef } from 'react';
 
@@ -32,6 +32,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
   onAction,
   formatCurrency,
   canManageLocations = true, // Default to true for backward compatibility
+  selectedFilters = [], // Add selectedFilters prop
 }) => {
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -127,6 +128,21 @@ const LocationTable: React.FC<LocationTableProps> = ({
                             </div>
                           </div>
                         )}
+                        {selectedFilters.some(f => f === 'NoSMIBLocation') &&
+                          Boolean(
+                            (
+                              location as {
+                                hasNoRecentCollectionReport?: boolean;
+                              }
+                            ).hasNoRecentCollectionReport
+                          ) && (
+                            <div className="group relative inline-flex flex-shrink-0">
+                              <FileWarning className="h-4 w-4 text-red-600" />
+                              <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                No collection report in past 3 months
+                              </div>
+                            </div>
+                          )}
                       </button>
 
                       {/* Row 2: Status badges - machine online/offline and member count */}

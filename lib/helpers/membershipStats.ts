@@ -13,11 +13,15 @@ export type MembershipStats = {
  * Fetches member count from the API
  * @param licensee - Licensee ID to filter by
  * @param locationId - Optional location ID for specific location stats
+ * @param machineTypeFilter - Optional filter string (comma-separated) for SMIB/No SMIB/Local Server/Membership
+ * @param signal - Optional AbortSignal to cancel the request
  * @returns Promise<MembershipStats>
  */
 export async function fetchMembershipStats(
   licensee?: string,
-  locationId?: string
+  locationId?: string,
+  machineTypeFilter?: string | null,
+  signal?: AbortSignal
 ): Promise<MembershipStats> {
   try {
     const params = new URLSearchParams();
@@ -30,7 +34,16 @@ export async function fetchMembershipStats(
       params.append('locationId', locationId);
     }
 
-    const response = await axios.get(`/api/members/count?${params.toString()}`);
+    if (machineTypeFilter) {
+      params.append('machineTypeFilter', machineTypeFilter);
+    }
+
+    const response = await axios.get(
+      `/api/members/count?${params.toString()}`,
+      {
+        signal,
+      }
+    );
 
     return {
       membershipCount: response.data.memberCount || 0,

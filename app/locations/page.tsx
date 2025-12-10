@@ -239,10 +239,52 @@ function LocationsPageContent() {
   // ============================================================================
   // Custom Hooks - Additional Functionality
   // ============================================================================
+  // Convert selectedFilters array to comma-separated string for API
+  const machineTypeFilterString = useMemo(() => {
+    return selectedFilters.length > 0 ? selectedFilters.join(',') : null;
+  }, [selectedFilters]);
+
+  // ============================================================================
+  // Filter Change Handler with AbortController
+  // ============================================================================
+  /**
+   * Handles filter checkbox changes and aborts any in-flight requests
+   * This ensures that when a user rapidly changes filters, previous requests are cancelled
+   */
+  const handleFilterChange = useCallback(
+    (
+      filter: LocationFilter,
+      checked: boolean | 'indeterminate',
+      updateFn: (prev: LocationFilter[]) => LocationFilter[]
+    ) => {
+      // Only handle boolean values (ignore 'indeterminate')
+      if (typeof checked !== 'boolean') {
+        return;
+      }
+
+      // Calculate the new filter state
+      const newFilters = updateFn(selectedFilters);
+      const newFilterString = newFilters.length > 0 ? newFilters.join(',') : '';
+
+      // Immediately update the metrics request filter ref to invalidate any in-flight requests
+      // This ensures that if an old request completes, it will fail validation
+      currentMetricsRequestFiltersRef.current = newFilterString;
+
+      // Abort any in-flight requests by triggering new requests with same keys
+      // The useAbortableRequest hook will automatically abort previous requests
+      // when new ones are made with the same key ('locations' and 'metrics')
+
+      // Update the filter state - this will trigger useEffect hooks that will
+      // automatically abort previous requests and start new ones
+      setSelectedFilters(newFilters);
+    },
+    [selectedFilters]
+  );
+
   const { machineStats, machineStatsLoading, refreshMachineStats } =
-    useLocationMachineStats();
+    useLocationMachineStats(undefined, machineTypeFilterString);
   const { membershipStats, membershipStatsLoading, refreshMembershipStats } =
-    useLocationMembershipStats();
+    useLocationMembershipStats(undefined, machineTypeFilterString);
 
   const {
     isNewLocationModalOpen,
@@ -566,6 +608,8 @@ function LocationsPageContent() {
   // Track metrics fetch to prevent duplicate calls
   const lastMetricsFetchRef = useRef<string>('');
   const metricsFetchInProgressRef = useRef(false);
+  // Track the current filter state for each metrics request to prevent stale updates
+  const currentMetricsRequestFiltersRef = useRef<string>('');
 
   // Separate useEffect to fetch metrics totals independently (like dashboard does)
   // This ensures metrics cards always show totals from all locations, separate from table pagination
@@ -575,6 +619,7 @@ function LocationsPageContent() {
       filtersInitialized,
       dateFilterInitialized,
       selectedLicencee,
+      machineTypeFilterString,
     });
 
     const fetchMetrics = async () => {
@@ -607,21 +652,18 @@ function LocationsPageContent() {
         return;
       }
 
+      // Get current filter state at the start of the request
+      const currentFilters = machineTypeFilterString || '';
+
       // Create unique key for this fetch
       // Use empty string for undefined/null values to ensure consistent keys
-      const metricsFetchKey = `${effectiveFilter}-${selectedLicencee || ''}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${displayCurrency || ''}`;
+      const metricsFetchKey = `${effectiveFilter}-${selectedLicencee || ''}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${displayCurrency || ''}-${currentFilters}`;
 
-      // Skip if this exact fetch is currently in progress
-      if (metricsFetchInProgressRef.current) {
-        console.log(
-          '🔍 [LocationsPage] Metrics fetch already in progress, skipping:',
-          metricsFetchKey
-        );
-        return;
-      }
-
-      // Skip if this exact fetch was already completed
-      if (lastMetricsFetchRef.current === metricsFetchKey) {
+      // Skip if this exact fetch was already completed (but allow if filters changed)
+      if (
+        lastMetricsFetchRef.current === metricsFetchKey &&
+        !metricsFetchInProgressRef.current
+      ) {
         console.log(
           '🔍 [LocationsPage] Metrics fetch already completed for:',
           metricsFetchKey
@@ -629,14 +671,35 @@ function LocationsPageContent() {
         return;
       }
 
+      // If a different request is in progress, abort it by starting a new one
+      // The useAbortableRequest hook will automatically abort the previous request
+      // when a new one is made with the same key ('metrics')
+      if (
+        metricsFetchInProgressRef.current &&
+        lastMetricsFetchRef.current !== metricsFetchKey
+      ) {
+        console.log(
+          '🔍 [LocationsPage] Aborting previous metrics fetch and starting new one:',
+          {
+            previousKey: lastMetricsFetchRef.current,
+            newKey: metricsFetchKey,
+          }
+        );
+        // Reset the in-progress flag so the new request can start
+        // The abort will be handled by useAbortableRequest
+        metricsFetchInProgressRef.current = false;
+      }
+
       // Mark as in progress and update key BEFORE triggering to prevent race conditions
       metricsFetchInProgressRef.current = true;
       lastMetricsFetchRef.current = metricsFetchKey;
+      currentMetricsRequestFiltersRef.current = currentFilters;
 
       console.log('🔍 [LocationsPage] Starting metrics totals fetch:', {
         activeMetricsFilter: effectiveFilter,
         selectedLicencee,
         displayCurrency,
+        machineTypeFilter: machineTypeFilterString,
         customDateRange: customDateRange
           ? {
               startDate: customDateRange.startDate?.toISOString(),
@@ -648,6 +711,27 @@ function LocationsPageContent() {
       setMetricsTotalsLoading(true);
 
       try {
+        // Capture filter state at request start for validation
+        const filtersAtRequestStart = currentFilters;
+
+        // Create validation function that checks if filters changed
+        // This function will be called from fetchDashboardTotals before updating state
+        const validateFilters = () => {
+          const filtersNow = currentMetricsRequestFiltersRef.current;
+          const isValid = filtersAtRequestStart === filtersNow;
+          if (!isValid) {
+            console.log(
+              '🔍 [LocationsPage] Filter validation failed - filters changed',
+              {
+                filtersAtRequestStart,
+                filtersNow,
+                requestKey: metricsFetchKey,
+              }
+            );
+          }
+          return isValid;
+        };
+
         const metricsResult = await makeMetricsRequest(async signal => {
           await fetchDashboardTotals(
             effectiveFilter,
@@ -657,6 +741,8 @@ function LocationsPageContent() {
             },
             selectedLicencee,
             totals => {
+              // Note: Validation is already done in fetchDashboardTotals via validateFilters
+              // This callback will only be called if validation passes
               console.log(
                 '🔍 [LocationsPage] fetchDashboardTotals callback received:',
                 {
@@ -664,6 +750,7 @@ function LocationsPageContent() {
                   moneyIn: totals?.moneyIn,
                   moneyOut: totals?.moneyOut,
                   gross: totals?.gross,
+                  filters: filtersAtRequestStart,
                 }
               );
               setMetricsTotals(totals);
@@ -673,16 +760,33 @@ function LocationsPageContent() {
               );
             },
             displayCurrency,
-            signal
+            signal,
+            currentFilters,
+            validateFilters
           );
         }, 'metrics'); // Use unique key to prevent cancellation from other requests
 
         // makeMetricsRequest returns null if aborted, undefined if successful
         // Only clear loading state if request completed (not aborted)
         if (metricsResult !== null) {
-          setMetricsTotalsLoading(false);
-          metricsFetchInProgressRef.current = false;
-          console.log('🔍 [LocationsPage] Metrics totals fetch completed');
+          // Double-check filters haven't changed before clearing loading state
+          const filtersNow = currentMetricsRequestFiltersRef.current;
+
+          if (filtersAtRequestStart === filtersNow) {
+            setMetricsTotalsLoading(false);
+            metricsFetchInProgressRef.current = false;
+            console.log('🔍 [LocationsPage] Metrics totals fetch completed');
+          } else {
+            console.log(
+              '🔍 [LocationsPage] Filters changed after metrics request - keeping loading state',
+              {
+                filtersAtRequestStart,
+                filtersNow,
+              }
+            );
+            // Don't clear loading - new request should be in progress
+            metricsFetchInProgressRef.current = false;
+          }
         } else {
           console.log(
             '🔍 [LocationsPage] Metrics fetch aborted - keeping loading state'
@@ -708,6 +812,7 @@ function LocationsPageContent() {
     makeMetricsRequest,
     filtersInitialized,
     dateFilterInitialized,
+    machineTypeFilterString,
   ]);
 
   // Fetch new batch when crossing batch boundary
@@ -985,13 +1090,17 @@ function LocationsPageContent() {
                 id="mobileSmibFilter"
                 checked={selectedFilters.includes('SMIBLocationsOnly')}
                 onCheckedChange={checked => {
-                  if (checked) {
-                    setSelectedFilters(prev => [...prev, 'SMIBLocationsOnly']);
-                  } else {
-                    setSelectedFilters(prev =>
-                      prev.filter(f => f !== 'SMIBLocationsOnly')
-                    );
-                  }
+                  handleFilterChange(
+                    'SMIBLocationsOnly',
+                    checked as boolean,
+                    prev => {
+                      if (checked) {
+                        return [...prev, 'SMIBLocationsOnly'];
+                      } else {
+                        return prev.filter(f => f !== 'SMIBLocationsOnly');
+                      }
+                    }
+                  );
                 }}
                 className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
               />
@@ -1008,12 +1117,14 @@ function LocationsPageContent() {
                 id="mobileNoSmibFilter"
                 checked={selectedFilters.includes('NoSMIBLocation')}
                 onCheckedChange={checked => {
-                  if (checked) {
-                    setSelectedFilters(prev => [...prev, 'NoSMIBLocation']);
-                  } else {
-                    setSelectedFilters(prev =>
-                      prev.filter(f => f !== 'NoSMIBLocation')
-                    );
+                  if (typeof checked === 'boolean') {
+                    handleFilterChange('NoSMIBLocation', checked, prev => {
+                      if (checked) {
+                        return [...prev, 'NoSMIBLocation'];
+                      } else {
+                        return prev.filter(f => f !== 'NoSMIBLocation');
+                      }
+                    });
                   }
                 }}
                 className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
@@ -1031,12 +1142,14 @@ function LocationsPageContent() {
                 id="mobileLocalServerFilter"
                 checked={selectedFilters.includes('LocalServersOnly')}
                 onCheckedChange={checked => {
-                  if (checked) {
-                    setSelectedFilters(prev => [...prev, 'LocalServersOnly']);
-                  } else {
-                    setSelectedFilters(prev =>
-                      prev.filter(f => f !== 'LocalServersOnly')
-                    );
+                  if (typeof checked === 'boolean') {
+                    handleFilterChange('LocalServersOnly', checked, prev => {
+                      if (checked) {
+                        return [...prev, 'LocalServersOnly'];
+                      } else {
+                        return prev.filter(f => f !== 'LocalServersOnly');
+                      }
+                    });
                   }
                 }}
                 className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
@@ -1054,12 +1167,14 @@ function LocationsPageContent() {
                 id="mobileMembershipFilter"
                 checked={selectedFilters.includes('MembershipOnly')}
                 onCheckedChange={checked => {
-                  if (checked) {
-                    setSelectedFilters(prev => [...prev, 'MembershipOnly']);
-                  } else {
-                    setSelectedFilters(prev =>
-                      prev.filter(f => f !== 'MembershipOnly')
-                    );
+                  if (typeof checked === 'boolean') {
+                    handleFilterChange('MembershipOnly', checked, prev => {
+                      if (checked) {
+                        return [...prev, 'MembershipOnly'];
+                      } else {
+                        return prev.filter(f => f !== 'MembershipOnly');
+                      }
+                    });
                   }
                 }}
                 className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
@@ -1094,12 +1209,14 @@ function LocationsPageContent() {
                 id="smibFilter"
                 checked={selectedFilters.includes('SMIBLocationsOnly')}
                 onCheckedChange={checked => {
-                  if (checked) {
-                    setSelectedFilters(prev => [...prev, 'SMIBLocationsOnly']);
-                  } else {
-                    setSelectedFilters(prev =>
-                      prev.filter(f => f !== 'SMIBLocationsOnly')
-                    );
+                  if (typeof checked === 'boolean') {
+                    handleFilterChange('SMIBLocationsOnly', checked, prev => {
+                      if (checked) {
+                        return [...prev, 'SMIBLocationsOnly'];
+                      } else {
+                        return prev.filter(f => f !== 'SMIBLocationsOnly');
+                      }
+                    });
                   }
                 }}
                 className="border-white text-white focus:ring-white"
@@ -1117,12 +1234,14 @@ function LocationsPageContent() {
                 id="noSmibFilter"
                 checked={selectedFilters.includes('NoSMIBLocation')}
                 onCheckedChange={checked => {
-                  if (checked) {
-                    setSelectedFilters(prev => [...prev, 'NoSMIBLocation']);
-                  } else {
-                    setSelectedFilters(prev =>
-                      prev.filter(f => f !== 'NoSMIBLocation')
-                    );
+                  if (typeof checked === 'boolean') {
+                    handleFilterChange('NoSMIBLocation', checked, prev => {
+                      if (checked) {
+                        return [...prev, 'NoSMIBLocation'];
+                      } else {
+                        return prev.filter(f => f !== 'NoSMIBLocation');
+                      }
+                    });
                   }
                 }}
                 className="border-white text-white focus:ring-white"
@@ -1140,12 +1259,14 @@ function LocationsPageContent() {
                 id="localServerFilter"
                 checked={selectedFilters.includes('LocalServersOnly')}
                 onCheckedChange={checked => {
-                  if (checked) {
-                    setSelectedFilters(prev => [...prev, 'LocalServersOnly']);
-                  } else {
-                    setSelectedFilters(prev =>
-                      prev.filter(f => f !== 'LocalServersOnly')
-                    );
+                  if (typeof checked === 'boolean') {
+                    handleFilterChange('LocalServersOnly', checked, prev => {
+                      if (checked) {
+                        return [...prev, 'LocalServersOnly'];
+                      } else {
+                        return prev.filter(f => f !== 'LocalServersOnly');
+                      }
+                    });
                   }
                 }}
                 className="border-white text-white focus:ring-white"
@@ -1163,12 +1284,14 @@ function LocationsPageContent() {
                 id="membershipFilter"
                 checked={selectedFilters.includes('MembershipOnly')}
                 onCheckedChange={checked => {
-                  if (checked) {
-                    setSelectedFilters(prev => [...prev, 'MembershipOnly']);
-                  } else {
-                    setSelectedFilters(prev =>
-                      prev.filter(f => f !== 'MembershipOnly')
-                    );
+                  if (typeof checked === 'boolean') {
+                    handleFilterChange('MembershipOnly', checked, prev => {
+                      if (checked) {
+                        return [...prev, 'MembershipOnly'];
+                      } else {
+                        return prev.filter(f => f !== 'MembershipOnly');
+                      }
+                    });
                   }
                 }}
                 className="border-white text-white focus:ring-white"
@@ -1253,6 +1376,7 @@ function LocationsPageContent() {
                           onLocationClick={handleLocationClick}
                           onEdit={() => openEditModal(location)}
                           canManageLocations={canManageLocations}
+                          selectedFilters={selectedFilters}
                         />
                       ))
                     ) : (
@@ -1276,6 +1400,7 @@ function LocationsPageContent() {
                   onAction={handleTableAction}
                   formatCurrency={formatCurrency}
                   canManageLocations={canManageLocations}
+                  selectedFilters={selectedFilters}
                 />
               </div>
             </>

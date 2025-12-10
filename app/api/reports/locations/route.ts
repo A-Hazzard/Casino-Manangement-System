@@ -216,7 +216,7 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 6: Build location match filter
+    // STEP 6: Build location match filter (with backend filtering for SMIB/Local Server/Membership)
     // ============================================================================
     const locationMatchStage: Record<string, unknown> = {
       $or: [
@@ -267,16 +267,98 @@ export async function GET(req: NextRequest) {
       locationMatchStage['rel.licencee'] = licenseeId;
     }
 
+    // Apply machine type filters (SMIB, No SMIB, Local Server, Membership) at database level
+    // Use OR logic - location must match ANY of the selected filters
+    if (filters.length > 0) {
+      const filterConditions: Record<string, unknown>[] = [];
+
+      filters.forEach(filter => {
+        switch (filter.trim()) {
+          case 'LocalServersOnly':
+            filterConditions.push({ isLocalServer: true });
+            break;
+          case 'SMIBLocationsOnly':
+            // Locations with SMIB machines - filter by noSMIBLocation flag
+            // Note: Final check based on sasMachines count will be done after aggregation
+            filterConditions.push({ noSMIBLocation: { $ne: true } });
+            break;
+          case 'NoSMIBLocation':
+            filterConditions.push({ noSMIBLocation: true });
+            break;
+          case 'MembershipOnly':
+            filterConditions.push({ membershipEnabled: true });
+            break;
+        }
+      });
+
+      // Apply OR logic - location must match ANY of the selected filters
+      // This allows users to see locations that match any combination of filters
+      if (filterConditions.length > 0) {
+        // Build $and array to combine deletedAt check with filter conditions
+        const andConditions: Array<Record<string, unknown>> = [
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2020-01-01') } },
+            ],
+          },
+          { $or: filterConditions },
+        ];
+
+        // Add existing conditions (like _id, rel.licencee) to $and
+        Object.keys(locationMatchStage).forEach(key => {
+          if (key !== '$or' && key !== '$and') {
+            const condition: Record<string, unknown> = {};
+            condition[key] = locationMatchStage[key];
+            andConditions.push(condition);
+          }
+        });
+
+        // Replace locationMatchStage with $and structure
+        locationMatchStage['$and'] = andConditions;
+        delete locationMatchStage['$or'];
+      }
+    }
+
     // Add search filter for location name or _id
     if (searchTerm) {
-      locationMatchStage['$and'] = [
-        {
-          $or: [
-            { name: { $regex: searchTerm, $options: 'i' } },
-            { _id: searchTerm }, // Exact match for _id
-          ],
-        },
-      ];
+      const searchCondition = {
+        $or: [
+          { name: { $regex: searchTerm, $options: 'i' } },
+          { _id: searchTerm }, // Exact match for _id
+        ],
+      };
+
+      // If $and already exists (from filters), add search condition to it
+      // Otherwise, create new $and array
+      if (locationMatchStage['$and']) {
+        (locationMatchStage['$and'] as Array<Record<string, unknown>>).push(
+          searchCondition
+        );
+      } else {
+        // Build $and array with deletedAt check and search condition
+        const andConditions: Array<Record<string, unknown>> = [
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2020-01-01') } },
+            ],
+          },
+          searchCondition,
+        ];
+
+        // Add existing conditions (like _id, rel.licencee) to $and
+        Object.keys(locationMatchStage).forEach(key => {
+          if (key !== '$or' && key !== '$and') {
+            const condition: Record<string, unknown> = {};
+            condition[key] = locationMatchStage[key];
+            andConditions.push(condition);
+          }
+        });
+
+        locationMatchStage['$and'] = andConditions;
+        delete locationMatchStage['$or'];
+      }
     }
 
     // ============================================================================
@@ -722,27 +804,19 @@ export async function GET(req: NextRequest) {
     perfTimers.memberCounts = Date.now() - memberCountStart;
 
     // ============================================================================
-    // STEP 10: Apply filters (MembershipOnly, SMIBLocationsOnly, etc.)
+    // STEP 10: Apply additional SMIB filter check (based on sasMachines count)
     // ============================================================================
+    // Note: Most filters are already applied at database level in STEP 6
+    // However, SMIBLocationsOnly requires checking sasMachines count which is calculated during aggregation
+    // So we apply that filter here if needed
     const filterStart = Date.now();
     let filteredResults = locationResults;
 
-    if (filters.length > 0) {
+    // Only apply SMIBLocationsOnly filter here (others are already applied at DB level)
+    const smibOnlyFilter = filters.includes('SMIBLocationsOnly');
+    if (smibOnlyFilter) {
       filteredResults = locationResults.filter(loc => {
-        return filters.every(filter => {
-          switch (filter) {
-            case 'SMIBLocationsOnly':
-              return ((loc as { sasMachines?: number }).sasMachines || 0) > 0;
-            case 'NoSMIBLocation':
-              return ((loc as { sasMachines?: number }).sasMachines || 0) === 0;
-            case 'LocalServersOnly':
-              return loc.isLocalServer === true;
-            case 'MembershipOnly':
-              return loc.membershipEnabled === true;
-            default:
-              return true;
-          }
-        });
+        return ((loc as { sasMachines?: number }).sasMachines || 0) > 0;
       });
     }
     perfTimers.filters = Date.now() - filterStart;

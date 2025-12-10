@@ -84,7 +84,9 @@ export const fetchDashboardTotals = async (
   selectedLicencee: string | undefined,
   setTotals: (totals: DashboardTotals | null) => void,
   displayCurrency?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  machineTypeFilter?: string | null,
+  validateFilters?: () => boolean
 ) => {
   try {
     let url = `/api/locationAggregation?timePeriod=${activeMetricsFilter}`;
@@ -108,6 +110,14 @@ export const fetchDashboardTotals = async (
       url += `&currency=${displayCurrency}`;
     }
 
+    if (machineTypeFilter) {
+      url += `&machineTypeFilter=${encodeURIComponent(machineTypeFilter)}`;
+    }
+
+    // Explicitly request a very high limit to ensure we get ALL filtered locations
+    // This is critical for accurate totals calculation - we need all locations, not just first page
+    url += `&limit=1000000&page=1`;
+
     // Add cache-busting parameter to ensure fresh data (especially for location admins)
     // This prevents stale cache from showing incorrect totals
     url += `&clearCache=true`;
@@ -119,6 +129,9 @@ export const fetchDashboardTotals = async (
     console.log('🔍 [fetchDashboardTotals] API Response:', {
       hasData: !!locationData.data,
       dataLength: locationData.data?.length || 0,
+      totalCount: locationData.totalCount || 0,
+      page: locationData.page || 1,
+      limit: locationData.limit || 0,
       responseKeys: Object.keys(locationData),
       firstFewLocations: (locationData.data || [])
         .slice(0, 3)
@@ -134,8 +147,24 @@ export const fetchDashboardTotals = async (
             moneyIn: loc.moneyIn,
           })
         ),
-      fullResponse: locationData, // Log full response for debugging
     });
+
+    // Verify we got all locations - if dataLength < totalCount, we're missing data
+    if (
+      locationData.totalCount &&
+      locationData.data?.length < locationData.totalCount
+    ) {
+      console.warn(
+        '⚠️ [fetchDashboardTotals] WARNING: Not all locations received!',
+        {
+          received: locationData.data?.length || 0,
+          total: locationData.totalCount,
+          missing: locationData.totalCount - (locationData.data?.length || 0),
+          page: locationData.page,
+          limit: locationData.limit,
+        }
+      );
+    }
 
     // Check if response has error
     if (locationData.error) {
@@ -174,15 +203,51 @@ export const fetchDashboardTotals = async (
       { moneyIn: 0, moneyOut: 0, gross: 0 }
     );
 
+    // Log sample of actual location data to verify values
+    const sampleLocations = (locationData.data || [])
+      .slice(0, 5)
+      .map(
+        (loc: {
+          name?: string;
+          moneyIn?: number;
+          moneyOut?: number;
+          gross?: number;
+        }) => ({
+          name: loc.name,
+          moneyIn: loc.moneyIn,
+          moneyOut: loc.moneyOut,
+          gross: loc.gross,
+        })
+      );
+
     console.log('🔍 [fetchDashboardTotals] Calculated Totals:', {
       moneyIn: totals.moneyIn,
       moneyOut: totals.moneyOut,
       gross: totals.gross,
       locationCount: locationData.data.length,
+      totalCount: locationData.totalCount,
       locationsWithData: locationData.data.filter(
         (loc: { moneyIn?: number }) => (loc.moneyIn || 0) > 0
       ).length,
+      sampleLocations,
+      sumOfSampleMoneyIn: sampleLocations.reduce(
+        (sum: number, loc: { moneyIn?: number }) => sum + (loc.moneyIn || 0),
+        0
+      ),
     });
+
+    // Validate filters haven't changed before updating totals
+    // This prevents stale data from updating state when filters change rapidly
+    if (validateFilters && !validateFilters()) {
+      console.log(
+        '🔍 [fetchDashboardTotals] Filters changed during request - ignoring stale totals',
+        {
+          totals,
+          machineTypeFilter,
+        }
+      );
+      return;
+    }
 
     // Convert to DashboardTotals format
     setTotals(totals);

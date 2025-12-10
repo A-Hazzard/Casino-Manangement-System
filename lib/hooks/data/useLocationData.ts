@@ -135,12 +135,19 @@ export function useLocationData({
   const lastFetchKeyRef = useRef<string>('');
   const isInitialMountRef = useRef(true);
   const hasCompletedFirstFetchRef = useRef(false);
+  // Track the current filter state for each request to prevent stale updates
+  const currentRequestFiltersRef = useRef<string>('');
 
   // Optimized data fetching with better error handling
   const fetchData = useCallback(
     async (page?: number, limit?: number) => {
-      // Create unique key for this fetch
-      const fetchKey = `${debouncedSearchTerm}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeForFetch?.from?.getTime()}-${dateRangeForFetch?.to?.getTime()}-${displayCurrency}-${page}-${limit}`;
+      // Get current filter state at the start of the request
+      const currentFilters = selectedFiltersRef.current.length
+        ? selectedFiltersRef.current.join(',')
+        : '';
+
+      // Create unique key for this fetch - include filters in the key
+      const fetchKey = `${debouncedSearchTerm}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeForFetch?.from?.getTime()}-${dateRangeForFetch?.to?.getTime()}-${displayCurrency}-${page}-${limit}-${currentFilters}`;
 
       // Skip if this exact fetch is already in progress
       if (fetchInProgressRef.current && lastFetchKeyRef.current === fetchKey) {
@@ -151,6 +158,7 @@ export function useLocationData({
       // Mark as in progress and update key BEFORE making request
       fetchInProgressRef.current = true;
       lastFetchKeyRef.current = fetchKey;
+      currentRequestFiltersRef.current = currentFilters;
 
       console.log('[useLocationData] Starting fetch:', {
         isInitialMount: isInitialMountRef.current,
@@ -207,7 +215,27 @@ export function useLocationData({
       }, 'locations'); // Use unique key to prevent cancellation from other requests
 
       // Only update state if request wasn't aborted (result is not null)
+      // AND if the filters haven't changed since this request started
       if (result) {
+        // Check if filters changed during the request - if so, ignore this response
+        const filtersAtRequestStart = currentRequestFiltersRef.current;
+        const filtersNow = selectedFiltersRef.current.length
+          ? selectedFiltersRef.current.join(',')
+          : '';
+
+        if (filtersAtRequestStart !== filtersNow) {
+          console.log(
+            '[useLocationData] Filters changed during request - ignoring stale response',
+            {
+              filtersAtRequestStart,
+              filtersNow,
+            }
+          );
+          // Don't update state - a new request should be in progress
+          fetchInProgressRef.current = false;
+          return;
+        }
+
         setLocationData(result.data);
         if (result.pagination) {
           const total =

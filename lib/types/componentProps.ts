@@ -1,13 +1,13 @@
 import { buttonVariants } from '@/components/ui/button';
 import {
-  ActiveFilters,
-  ActiveTab,
-  dashboardData,
-  DashboardTotals,
-  dateRange,
-  locations,
-  TimeFrames,
-  TopPerformingData,
+    ActiveFilters,
+    ActiveTab,
+    dashboardData,
+    DashboardTotals,
+    dateRange,
+    locations,
+    TimeFrames,
+    TopPerformingData,
 } from '@/lib/types';
 import type { CollectorSchedule } from '@/lib/types/components';
 import { TimePeriod } from '@shared/types';

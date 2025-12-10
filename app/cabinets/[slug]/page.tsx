@@ -285,7 +285,7 @@ function CabinetDetailPageContent() {
 
   // Fetch chart data for this specific machine
   useEffect(() => {
-    if (!cabinet?._id || !activeMetricsFilter) return;
+      if (!cabinet?._id || !activeMetricsFilter) return;
 
     makeChartRequest(async signal => {
       setLoadingChart(true);

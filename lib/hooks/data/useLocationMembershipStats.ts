@@ -10,6 +10,7 @@ import {
   fetchMembershipStats,
   type MembershipStats,
 } from '@/lib/helpers/membershipStats';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -21,13 +22,15 @@ export type UseLocationMembershipStatsReturn = {
 };
 
 export function useLocationMembershipStats(
-  locationId?: string
+  locationId?: string,
+  machineTypeFilter?: string | null
 ): UseLocationMembershipStatsReturn {
   const [membershipStats, setMembershipStats] =
     useState<MembershipStats | null>(null);
   const [membershipStatsLoading, setMembershipStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
+  const makeRequest = useAbortableRequest();
 
   // Fetch membership stats
   const fetchMembershipStatsData = useCallback(async () => {
@@ -37,7 +40,11 @@ export function useLocationMembershipStats(
     try {
       // Use selected licensee or 'all' if not selected
       const licensee = selectedLicencee || 'all';
-      const stats = await fetchMembershipStats(licensee, locationId);
+      const stats = await fetchMembershipStats(
+        licensee,
+        locationId,
+        machineTypeFilter
+      );
       setMembershipStats(stats);
     } catch (err) {
       const errorMessage =
@@ -49,45 +56,42 @@ export function useLocationMembershipStats(
     } finally {
       setMembershipStatsLoading(false);
     }
-  }, [selectedLicencee, locationId]);
+  }, [selectedLicencee, locationId, machineTypeFilter]);
 
   // Refresh membership stats
   const refreshMembershipStats = useCallback(async () => {
     await fetchMembershipStatsData();
   }, [fetchMembershipStatsData]);
 
-  // Load membership stats on mount and when selectedLicencee or locationId changes
+  // Load membership stats on mount and when selectedLicencee, locationId, or machineTypeFilter changes
   useEffect(() => {
-    let aborted = false;
-
     const loadMembershipStats = async () => {
       setMembershipStatsLoading(true);
       setError(null);
 
-      try {
+      const result = await makeRequest(async signal => {
         const licensee = selectedLicencee || 'all';
-        const stats = await fetchMembershipStats(licensee, locationId);
-        if (!aborted) {
-          setMembershipStats(stats);
-        }
-      } catch (err) {
-        if (!aborted) {
-          setError(err instanceof Error ? err.message : 'Failed to fetch');
-          setMembershipStats({ membershipCount: 0 });
-        }
-      } finally {
-        if (!aborted) {
-          setMembershipStatsLoading(false);
-        }
+        const stats = await fetchMembershipStats(
+          licensee,
+          locationId,
+          machineTypeFilter,
+          signal
+        );
+        return stats;
+      }, 'membership-stats');
+
+      // Only update state if request wasn't aborted
+      if (result !== null) {
+        setMembershipStats(result);
+        setMembershipStatsLoading(false);
+      } else {
+        // If aborted, keep loading state active so skeleton continues to show
+        // The next request will complete and update the loading state
       }
     };
 
     loadMembershipStats();
-
-    return () => {
-      aborted = true;
-    };
-  }, [selectedLicencee, locationId]);
+  }, [selectedLicencee, locationId, machineTypeFilter, makeRequest]);
 
   return {
     membershipStats,

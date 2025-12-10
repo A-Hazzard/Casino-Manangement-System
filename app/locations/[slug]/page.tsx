@@ -1087,7 +1087,7 @@ export default function LocationPage() {
                   if (!isMultiDay) {
                     // Single day: only include items from the same day
                     if (itemDay !== rangeStartDay) {
-                      return false;
+                    return false;
                     }
                   } else {
                     // Multi-day: include items from any day within the range

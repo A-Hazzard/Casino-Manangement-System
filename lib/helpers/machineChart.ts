@@ -223,22 +223,22 @@ export async function getMachineChartData(
     } else {
       // Auto-detect granularity based on API response and time period
       // Default to hourly for Today, Yesterday, and Custom ranges <= 1 day
-      const shouldUseHourly =
-        timePeriod === 'Today' || timePeriod === 'Yesterday';
+    const shouldUseHourly =
+      timePeriod === 'Today' || timePeriod === 'Yesterday';
 
       // For custom ranges: default to hourly if <= 1 day (unless API returns minute data and user wants to preserve it)
       const isCustomRangeOneDayOrLess =
-        timePeriod === 'Custom' &&
-        startDate &&
-        endDate &&
-        (() => {
+      timePeriod === 'Custom' &&
+      startDate &&
+      endDate &&
+      (() => {
           const sd =
             startDate instanceof Date ? startDate : new Date(startDate);
-          const ed = endDate instanceof Date ? endDate : new Date(endDate);
-          const diffInMs = ed.getTime() - sd.getTime();
-          const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
-          return diffInDays <= 1;
-        })();
+        const ed = endDate instanceof Date ? endDate : new Date(endDate);
+        const diffInMs = ed.getTime() - sd.getTime();
+        const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+        return diffInDays <= 1;
+      })();
 
       // Default to hourly for Today, Yesterday, and Custom ranges <= 1 day
       // Only use minute if API explicitly returns minute-level data (user can manually select minute granularity)
@@ -260,8 +260,8 @@ export async function getMachineChartData(
       if (item.time) {
         if (useHourly) {
           // For hourly: strip minutes (convert "14:15" to "14:00")
-          const [hh] = item.time.split(':');
-          time = `${hh.padStart(2, '0')}:00`;
+        const [hh] = item.time.split(':');
+        time = `${hh.padStart(2, '0')}:00`;
         } else if (useMinute) {
           // For minute-level: preserve original time from API (e.g., "14:15")
           time = item.time;

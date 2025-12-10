@@ -17,8 +17,8 @@ import {
   getCurrencyFromQuery,
   shouldApplyCurrencyConversion,
 } from '@/app/api/lib/helpers/currencyHelper';
-import { MachineSession } from '@/app/api/lib/models/machineSessions';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { MachineSession } from '@/app/api/lib/models/machineSessions';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -162,7 +162,7 @@ export async function GET(
           wonLess,
           points: session.points || 0,
           gamesPlayed: session.endMeters?.movement?.gamesPlayed || 0,
-          gamesWon: session.gamesWon || 0,
+          gamesWon: session.endMeters?.movement?.gamesWon || 0,
           coinIn,
           coinOut,
           duration,
@@ -301,7 +301,7 @@ export async function GET(
           group.wonLess += wonLess;
           group.points += session.points || 0;
           group.gamesPlayed += session.endMeters?.movement?.gamesPlayed || 0;
-          group.gamesWon += session.gamesWon || 0;
+          group.gamesWon += session.endMeters?.movement?.gamesWon || 0;
           group.coinIn += coinIn;
           group.coinOut += coinOut;
           group.sessionCount += 1;

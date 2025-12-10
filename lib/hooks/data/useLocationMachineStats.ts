@@ -2,25 +2,28 @@
  * Custom hook for managing location machine statistics
  * Handles machine stats fetching and state management for locations page
  * Uses the new dedicated machine status API that respects user permissions
- * 
+ *
  * @param locationId - Optional specific location ID to get stats for that location only
  */
 
-import { useState, useEffect, useCallback } from 'react';
 import { fetchMachineStats } from '@/lib/helpers/machineStats';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type {
   MachineStats,
   UseLocationMachineStatsReturn,
 } from '@/lib/types/locationMachineStats';
+import { useCallback, useEffect, useState } from 'react';
 
 export function useLocationMachineStats(
-  locationId?: string
+  locationId?: string,
+  machineTypeFilter?: string | null
 ): UseLocationMachineStatsReturn {
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null);
   const [machineStatsLoading, setMachineStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
+  const makeRequest = useAbortableRequest();
 
   // Fetch machine stats
   const fetchMachineStatsData = useCallback(async () => {
@@ -30,7 +33,11 @@ export function useLocationMachineStats(
     try {
       // Use selected licensee or 'all' if not selected
       const licensee = selectedLicencee || 'all';
-      const stats = await fetchMachineStats(licensee, locationId);
+      const stats = await fetchMachineStats(
+        licensee,
+        locationId,
+        machineTypeFilter
+      );
       setMachineStats(stats);
     } catch (err) {
       const errorMessage =
@@ -44,43 +51,42 @@ export function useLocationMachineStats(
     } finally {
       setMachineStatsLoading(false);
     }
-  }, [selectedLicencee, locationId]);
+  }, [selectedLicencee, locationId, machineTypeFilter]);
 
   // Refresh machine stats
   const refreshMachineStats = useCallback(async () => {
     await fetchMachineStatsData();
   }, [fetchMachineStatsData]);
 
-  // Load machine stats on mount and when selectedLicencee or locationId changes
+  // Load machine stats on mount and when selectedLicencee, locationId, or machineTypeFilter changes
   useEffect(() => {
-    let aborted = false;
-
     const loadMachineStats = async () => {
       setMachineStatsLoading(true);
-      try {
+      setError(null);
+
+      const result = await makeRequest(async signal => {
         const licensee = selectedLicencee || 'all';
-        const stats = await fetchMachineStats(licensee, locationId);
-        if (!aborted) {
-          setMachineStats(stats);
-        }
-      } catch {
-        if (!aborted) {
-          setMachineStats({
-            totalMachines: 0,
-            onlineMachines: 0,
-            offlineMachines: 0,
-          });
-        }
-      } finally {
-        if (!aborted) setMachineStatsLoading(false);
+        const stats = await fetchMachineStats(
+          licensee,
+          locationId,
+          machineTypeFilter,
+          signal
+        );
+        return stats;
+      }, 'machine-stats');
+
+      // Only update state if request wasn't aborted
+      if (result !== null) {
+        setMachineStats(result);
+        setMachineStatsLoading(false);
+      } else {
+        // If aborted, keep loading state active so skeleton continues to show
+        // The next request will complete and update the loading state
       }
     };
 
     loadMachineStats();
-    return () => {
-      aborted = true;
-    };
-  }, [selectedLicencee, locationId]);
+  }, [selectedLicencee, locationId, machineTypeFilter, makeRequest]);
 
   return {
     machineStats,

@@ -28,7 +28,8 @@ export const getLocationsWithMetrics = async (
   timePeriod?: string,
   customStartDate?: Date,
   customEndDate?: Date,
-  allowedLocationIds?: string[] | 'all'
+  allowedLocationIds?: string[] | 'all',
+  machineTypeFilter?: string | null
 ): Promise<{ rows: AggregatedLocation[]; totalCount: number }> => {
   const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
 
@@ -92,6 +93,35 @@ export const getLocationsWithMetrics = async (
 
     // Direct _id matching since all IDs are stored as strings
     basePipeline.push({ $match: { _id: { $in: selectedLocationIdStrings } } });
+  }
+
+  // Apply machine type filters (SMIB, No SMIB, Local Server, Membership) at database level
+  if (machineTypeFilter) {
+    const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
+    const filterConditions: Record<string, unknown>[] = [];
+
+    filters.forEach(filter => {
+      switch (filter.trim()) {
+        case 'LocalServersOnly':
+          filterConditions.push({ isLocalServer: true });
+          break;
+        case 'SMIBLocationsOnly':
+          filterConditions.push({ noSMIBLocation: { $ne: true } });
+          break;
+        case 'NoSMIBLocation':
+          filterConditions.push({ noSMIBLocation: true });
+          break;
+        case 'MembershipOnly':
+          filterConditions.push({ membershipEnabled: true });
+          break;
+      }
+    });
+
+    // Apply OR logic - location must match ANY of the selected filters
+    // This allows users to see locations that match any combination of filters
+    if (filterConditions.length > 0) {
+      basePipeline.push({ $match: { $or: filterConditions } });
+    }
   }
 
   // Add financial aggregation only if not basic list
@@ -343,17 +373,17 @@ export const getLocationsWithMetrics = async (
           } as unknown as AggregatedLocation);
         }
       }
-      
+
       // ============================================================================
       // Add member counts for locations with membership enabled
       // ============================================================================
       const membershipEnabledLocations = locationsWithMetrics
         .filter(loc => loc.membershipEnabled)
         .map(loc => loc.location);
-      
+
       if (membershipEnabledLocations.length > 0) {
         const { Member } = await import('@/app/api/lib/models/members');
-        
+
         // Count members for each membership-enabled location
         const memberCounts = await Member.aggregate([
           {
@@ -369,13 +399,13 @@ export const getLocationsWithMetrics = async (
             },
           },
         ]);
-        
+
         // Create a map of location ID to member count
         const memberCountMap = new Map<string, number>();
         memberCounts.forEach((item: { _id: string; count: number }) => {
           memberCountMap.set(item._id, item.count);
         });
-        
+
         // Add member counts to locations
         locationsWithMetrics.forEach(loc => {
           if (loc.membershipEnabled) {
@@ -543,17 +573,17 @@ export const getLocationsWithMetrics = async (
 
         locationsWithMetrics.push(...batchResults);
       }
-      
+
       // ============================================================================
       // Add member counts for locations with membership enabled (batch processing)
       // ============================================================================
       const membershipEnabledLocations = locationsWithMetrics
         .filter(loc => loc.membershipEnabled)
         .map(loc => loc.location);
-      
+
       if (membershipEnabledLocations.length > 0) {
         const { Member } = await import('@/app/api/lib/models/members');
-        
+
         // Count members for each membership-enabled location
         const memberCounts = await Member.aggregate([
           {
@@ -569,13 +599,13 @@ export const getLocationsWithMetrics = async (
             },
           },
         ]);
-        
+
         // Create a map of location ID to member count
         const memberCountMap = new Map<string, number>();
         memberCounts.forEach((item: { _id: string; count: number }) => {
           memberCountMap.set(item._id, item.count);
         });
-        
+
         // Add member counts to locations
         locationsWithMetrics.forEach(loc => {
           if (loc.membershipEnabled) {
@@ -583,6 +613,55 @@ export const getLocationsWithMetrics = async (
           }
         });
       }
+    }
+
+    // ============================================================================
+    // Mark NON-SMIB locations as offline if no collection report in past 3 months
+    // ============================================================================
+    const nonSmibLocations = locationsWithMetrics.filter(
+      loc => loc.sasMachines === 0 || loc.noSMIBLocation
+    );
+
+    if (nonSmibLocations.length > 0) {
+      const { CollectionReport } = await import(
+        '@/app/api/lib/models/collectionReport'
+      );
+
+      // Calculate date 3 months ago
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+      // Get collection reports for NON-SMIB locations in the past 3 months
+      const nonSmibLocationIds = nonSmibLocations.map(loc => loc.location);
+      const recentCollectionReports = await CollectionReport.find({
+        location: { $in: nonSmibLocationIds },
+        timestamp: { $gte: threeMonthsAgo },
+        isEditing: { $ne: true }, // Exclude reports being edited
+      })
+        .select('location timestamp')
+        .lean();
+
+      // Create a set of location IDs that have recent collection reports
+      const locationsWithRecentReports = new Set<string>();
+      recentCollectionReports.forEach((report: { location: string }) => {
+        locationsWithRecentReports.add(report.location);
+      });
+
+      // Mark locations without recent collection reports as offline
+      // Also add flag to indicate missing collection report
+      locationsWithMetrics.forEach(loc => {
+        if (
+          (loc.sasMachines === 0 || loc.noSMIBLocation) &&
+          !locationsWithRecentReports.has(loc.location)
+        ) {
+          // No collection report in past 3 months - mark as offline
+          loc.onlineMachines = 0;
+          // Add flag for frontend to show warning icon
+          (
+            loc as { hasNoRecentCollectionReport?: boolean }
+          ).hasNoRecentCollectionReport = true;
+        }
+      });
     }
 
     // Filter by SAS evaluation if requested
@@ -766,6 +845,55 @@ export const getLocationsWithMetrics = async (
         gamesPlayed,
       } as unknown as AggregatedLocation;
     });
+
+    // ============================================================================
+    // Mark NON-SMIB locations as offline if no collection report in past 3 months
+    // ============================================================================
+    const nonSmibLocations = enhancedMetrics.filter(
+      loc => loc.sasMachines === 0 || loc.noSMIBLocation
+    );
+
+    if (nonSmibLocations.length > 0) {
+      const { CollectionReport } = await import(
+        '@/app/api/lib/models/collectionReport'
+      );
+
+      // Calculate date 3 months ago
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+      // Get collection reports for NON-SMIB locations in the past 3 months
+      const nonSmibLocationIds = nonSmibLocations.map(loc => loc.location);
+      const recentCollectionReports = await CollectionReport.find({
+        location: { $in: nonSmibLocationIds },
+        timestamp: { $gte: threeMonthsAgo },
+        isEditing: { $ne: true }, // Exclude reports being edited
+      })
+        .select('location timestamp')
+        .lean();
+
+      // Create a set of location IDs that have recent collection reports
+      const locationsWithRecentReports = new Set<string>();
+      recentCollectionReports.forEach((report: { location: string }) => {
+        locationsWithRecentReports.add(report.location);
+      });
+
+      // Mark locations without recent collection reports as offline
+      // Also add flag to indicate missing collection report
+      enhancedMetrics.forEach(loc => {
+        if (
+          (loc.sasMachines === 0 || loc.noSMIBLocation) &&
+          !locationsWithRecentReports.has(loc.location)
+        ) {
+          // No collection report in past 3 months - mark as offline
+          loc.onlineMachines = 0;
+          // Add flag for frontend to show warning icon
+          (
+            loc as { hasNoRecentCollectionReport?: boolean }
+          ).hasNoRecentCollectionReport = true;
+        }
+      });
+    }
 
     const allResults = enhancedMetrics;
 

@@ -18,6 +18,7 @@ import {
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import type { Document } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -44,6 +45,7 @@ export async function GET(req: NextRequest) {
     const effectiveLicensee =
       licensee && licensee.toLowerCase() !== 'all' ? licensee : undefined;
     const locationId = searchParams.get('locationId');
+    const machineTypeFilter = searchParams.get('machineTypeFilter');
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -67,15 +69,17 @@ export async function GET(req: NextRequest) {
     // DEV MODE: Allow bypassing auth for testing
     const isDevMode = process.env.NODE_ENV === 'development';
     const testUserId = searchParams.get('testUserId');
-    
+
     let userRoles: string[] = [];
     let userLocationPermissions: string[] = [];
     let userAccessibleLicensees: string[] | 'all' = [];
-    
+
     if (isDevMode && testUserId) {
       // Dev mode: Get user directly from DB for testing
       const UserModel = (await import('../../lib/models/user')).default;
-      const testUserResult = await UserModel.findOne({ _id: testUserId }).lean();
+      const testUserResult = await UserModel.findOne({
+        _id: testUserId,
+      }).lean();
       if (testUserResult && !Array.isArray(testUserResult)) {
         const testUser = testUserResult as {
           roles?: string[];
@@ -90,7 +94,10 @@ export async function GET(req: NextRequest) {
           ? testUser.assignedLicensees
           : [];
       } else {
-        return NextResponse.json({ error: 'Test user not found' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Test user not found' },
+          { status: 404 }
+        );
       }
     } else {
       // Normal mode: Get user from JWT
@@ -105,8 +112,9 @@ export async function GET(req: NextRequest) {
           (userPayload as { assignedLocations?: string[] })?.assignedLocations
         )
       ) {
-        userLocationPermissions = (userPayload as { assignedLocations: string[] })
-          .assignedLocations;
+        userLocationPermissions = (
+          userPayload as { assignedLocations: string[] }
+        ).assignedLocations;
       }
       userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
     }
@@ -122,18 +130,31 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 5: Query machines and calculate online/offline status
+    // STEP 5: Query machines and calculate online/offline status with filters
     // ============================================================================
     const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
-    // Build match stage for machines (include ALL machines, not just those with lastActivity)
-    const machineMatchStage: Record<string, unknown> = {
-      deletedAt: { $in: [null, new Date(-1)] },
-      // NOTE: We don't filter by lastActivity here - we want to count ALL machines
-      // Machines without lastActivity will be counted as offline
-    };
+    // Build aggregation pipeline to join machines with locations for filtering
+    const aggregationPipeline: Document[] = [
+      {
+        $match: {
+          deletedAt: { $in: [null, new Date(-1)] },
+        },
+      },
+      {
+        $lookup: {
+          from: 'gaminglocations',
+          localField: 'gamingLocation',
+          foreignField: '_id',
+          as: 'locationDetails',
+        },
+      },
+      {
+        $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
+      },
+    ];
 
-    // If specific locationId is provided, use it (after validating access)
+    // Apply location access filter
     if (locationId) {
       // Validate that user has access to this location
       if (allowedLocationIds !== 'all') {
@@ -149,7 +170,9 @@ export async function GET(req: NextRequest) {
           });
         }
       }
-      machineMatchStage.gamingLocation = locationId;
+      aggregationPipeline.push({
+        $match: { gamingLocation: locationId },
+      });
     } else if (allowedLocationIds !== 'all') {
       // No specific location, filter by user's accessible locations
       if (
@@ -163,27 +186,69 @@ export async function GET(req: NextRequest) {
           offlineMachines: 0,
         });
       }
-      machineMatchStage.gamingLocation = { $in: allowedLocationIds };
+      aggregationPipeline.push({
+        $match: { gamingLocation: { $in: allowedLocationIds } },
+      });
+    }
+
+    // Apply machine type filters (SMIB, No SMIB, Local Server, Membership)
+    if (machineTypeFilter) {
+      const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
+      const filterConditions: Record<string, unknown>[] = [];
+
+      filters.forEach(filter => {
+        switch (filter.trim()) {
+          case 'LocalServersOnly':
+            filterConditions.push({ 'locationDetails.isLocalServer': true });
+            break;
+          case 'SMIBLocationsOnly':
+            filterConditions.push({
+              'locationDetails.noSMIBLocation': { $ne: true },
+            });
+            break;
+          case 'NoSMIBLocation':
+            filterConditions.push({ 'locationDetails.noSMIBLocation': true });
+            break;
+          case 'MembershipOnly':
+            filterConditions.push({
+              'locationDetails.membershipEnabled': true,
+            });
+            break;
+        }
+      });
+
+      // Apply OR logic - location must match ANY of the selected filters
+      // This allows users to see locations that match any combination of filters
+      if (filterConditions.length > 0) {
+        aggregationPipeline.push({ $match: { $or: filterConditions } });
+      }
     }
 
     // Get total machines count (ALL machines, including those without lastActivity)
-    const totalCount = await db
+    const totalCountResult = await db
       .collection('machines')
-      .countDocuments(machineMatchStage);
+      .aggregate([...aggregationPipeline, { $count: 'total' }])
+      .toArray();
+    const totalCount = totalCountResult[0]?.total || 0;
 
     // Get online machines count (lastActivity exists AND within last 3 minutes)
     // Machines without lastActivity are considered offline
-    const onlineMatchStage = {
-      ...machineMatchStage,
-      lastActivity: {
-        $exists: true,
-        $gte: threeMinutesAgo,
-      },
-    };
-
-    const onlineCount = await db
+    const onlineCountResult = await db
       .collection('machines')
-      .countDocuments(onlineMatchStage);
+      .aggregate([
+        ...aggregationPipeline,
+        {
+          $match: {
+            lastActivity: {
+              $exists: true,
+              $gte: threeMinutesAgo,
+            },
+          },
+        },
+        { $count: 'total' },
+      ])
+      .toArray();
+    const onlineCount = onlineCountResult[0]?.total || 0;
 
     // Offline = total - online (includes machines without lastActivity)
     const offlineCount = totalCount - onlineCount;

@@ -20,10 +20,7 @@ import {
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getLocationsWithMetrics } from '@/app/api/lib/helpers/locationAggregation';
-import {
-  applyMachineTypeFilter,
-  convertLocationCurrency,
-} from '@/app/api/lib/helpers/locationCurrencyConversion';
+import { convertLocationCurrency } from '@/app/api/lib/helpers/locationCurrencyConversion';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
@@ -111,7 +108,7 @@ export async function GET(req: NextRequest) {
       customEndDate = customEnd.includes('T')
         ? new Date(customEnd)
         : new Date(customEnd + 'T00:00:00.000Z');
-      
+
       // Validate dates are valid
       if (isNaN(customStartDate.getTime()) || isNaN(customEndDate.getTime())) {
         const duration = Date.now() - startTime;
@@ -123,7 +120,7 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         );
       }
-      
+
       startDate = customStartDate;
       endDate = customEndDate;
     } else {
@@ -303,7 +300,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 7: Fetch aggregated location metrics
+    // STEP 7: Fetch aggregated location metrics (with backend filtering)
     // ============================================================================
     const { rows, totalCount } = await getLocationsWithMetrics(
       db,
@@ -317,13 +314,12 @@ export async function GET(req: NextRequest) {
       timePeriod,
       customStartDate,
       customEndDate,
-      allowedLocationIds
+      allowedLocationIds,
+      machineTypeFilter
     );
 
-    // ============================================================================
-    // STEP 7: Apply machine type filters
-    // ============================================================================
-    const filteredRows = applyMachineTypeFilter(rows, machineTypeFilter);
+    // Filtering is now done at database level in getLocationsWithMetrics
+    const filteredRows = rows;
 
     // ============================================================================
     // STEP 9: Sort locations by money in
@@ -353,6 +349,33 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 11: Cache and return results
     // ============================================================================
+    // Debug logging for filtered results
+    if (machineTypeFilter) {
+      console.log('[Location Aggregation API] Filtered results:', {
+        machineTypeFilter,
+        totalCount,
+        dataLength: convertedRows.length,
+        sampleLocations: convertedRows.slice(0, 3).map(loc => ({
+          name: loc.name,
+          moneyIn: loc.moneyIn,
+          noSMIBLocation: loc.noSMIBLocation,
+          isLocalServer: loc.isLocalServer,
+        })),
+        totalMoneyIn: convertedRows.reduce(
+          (sum, loc) => sum + (loc.moneyIn || 0),
+          0
+        ),
+        totalMoneyOut: convertedRows.reduce(
+          (sum, loc) => sum + (loc.moneyOut || 0),
+          0
+        ),
+        totalGross: convertedRows.reduce(
+          (sum, loc) => sum + (loc.gross || 0),
+          0
+        ),
+      });
+    }
+
     const result = {
       data: convertedRows,
       totalCount: totalCount,

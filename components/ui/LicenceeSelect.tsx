@@ -57,17 +57,19 @@ export default function LicenceeSelect({
       setLoading(true);
       try {
         const result = await fetchLicensees();
-        
+
         // Extract licensees array from the result
-        const allLicensees = Array.isArray(result.licensees) ? result.licensees : [];
-        
+        const allLicensees = Array.isArray(result.licensees)
+          ? result.licensees
+          : [];
+
         // Filter licensees if userLicenseeIds is provided (non-admin users)
         const filteredLicensees = normalizedUserLicenseeIds
           ? allLicensees.filter(lic =>
               normalizedUserLicenseeIds.includes(String(lic._id))
             )
           : allLicensees;
-        
+
         setLicensees(filteredLicensees);
       } catch (error) {
         console.error('Failed to load licensees for select:', error);
@@ -96,14 +98,14 @@ export default function LicenceeSelect({
     >
       {/* "All" option - always shown */}
       <option value="">All Licensees</option>
-      
+
       {/* User's licensees or all licensees for admin */}
-      {licensees.map((licensee) => (
+      {licensees.map(licensee => (
         <option key={licensee._id} value={String(licensee._id)}>
           {licensee.name}
         </option>
       ))}
-      
+
       {loading && <option disabled>Loading...</option>}
     </select>
   );

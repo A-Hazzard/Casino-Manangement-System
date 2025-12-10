@@ -21,11 +21,8 @@ export default function DashboardDateFilters({
   hideIndicator?: boolean;
   showIndicatorOnly?: boolean;
 }) {
-  const {
-    activeMetricsFilter,
-    setActiveMetricsFilter,
-    setCustomDateRange,
-  } = useDashBoardStore();
+  const { activeMetricsFilter, setActiveMetricsFilter, setCustomDateRange } =
+    useDashBoardStore();
 
   const [shouldTriggerCallback, setShouldTriggerCallback] = useState(false);
 
@@ -92,9 +89,9 @@ export default function DashboardDateFilters({
         <div
           className={
             mode === 'auto'
-              ? 'w-full md:hidden flex flex-col gap-2'
+              ? 'flex w-full flex-col gap-2 md:hidden'
               : mode === 'mobile'
-                ? 'w-full flex flex-col gap-2'
+                ? 'flex w-full flex-col gap-2'
                 : 'hidden'
           }
         >
@@ -111,31 +108,35 @@ export default function DashboardDateFilters({
             triggerClassName="bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors min-h-[44px] text-base"
             contentClassName="text-gray-700"
           />
-          
-          <ModernCalendar
-            date={
-                activeMetricsFilter === 'Custom' && useDashBoardStore.getState().customDateRange
-                ? {
-                    from: useDashBoardStore.getState().customDateRange?.startDate,
-                    to: useDashBoardStore.getState().customDateRange?.endDate
-                  }
-                : undefined
-            }
-            onSelect={(date) => {
-              if (date?.from && date?.to) {
-                   setCustomDateRange({
-                      startDate: date.from,
-                      endDate: date.to,
-                    });
-                    setActiveMetricsFilter('Custom');
-                     if (onCustomRangeGo) {
-                        setTimeout(() => onCustomRangeGo(), 0);
-                     }
+
+          {/* ModernCalendar for mobile - shown only when Custom is selected */}
+          {activeMetricsFilter === 'Custom' && (
+            <ModernCalendar
+              date={
+                useDashBoardStore.getState().customDateRange
+                  ? {
+                      from: useDashBoardStore.getState().customDateRange
+                        ?.startDate,
+                      to: useDashBoardStore.getState().customDateRange?.endDate,
+                    }
+                  : undefined
               }
-            }}
-            enableTimeInputs={enableTimeInputs}
-            className="w-full"
-          />
+              onSelect={date => {
+                if (date?.from && date?.to) {
+                  setCustomDateRange({
+                    startDate: date.from,
+                    endDate: date.to,
+                  });
+                  setActiveMetricsFilter('Custom');
+                  if (onCustomRangeGo) {
+                    setTimeout(() => onCustomRangeGo(), 0);
+                  }
+                }
+              }}
+              enableTimeInputs={enableTimeInputs}
+              className="w-full"
+            />
+          )}
         </div>
 
         {/* Desktop buttons - shown on md: and above when mode is auto or desktop */}
@@ -147,42 +148,46 @@ export default function DashboardDateFilters({
                 : 'flex flex-wrap items-center gap-2'
             }
           >
-            {timeFilterButtons.filter(b => b.value !== 'Custom').map(filter => (
-              <Button
-                key={filter.value}
-                onClick={() => handleFilterClick(filter.value)}
-                className={`rounded-md px-3 py-1 text-sm transition-colors ${
-                  activeMetricsFilter === filter.value
-                    ? 'bg-buttonActive text-white'
-                    : 'bg-button text-white hover:bg-button/90'
-                }`}
-                disabled={disabled}
-              >
-                {filter.label}
-              </Button>
-            ))}
-            
+            {timeFilterButtons
+              .filter(b => b.value !== 'Custom')
+              .map(filter => (
+                <Button
+                  key={filter.value}
+                  onClick={() => handleFilterClick(filter.value)}
+                  className={`rounded-md px-3 py-1 text-sm transition-colors ${
+                    activeMetricsFilter === filter.value
+                      ? 'bg-buttonActive text-white'
+                      : 'bg-button text-white hover:bg-button/90'
+                  }`}
+                  disabled={disabled}
+                >
+                  {filter.label}
+                </Button>
+              ))}
+
             <ModernCalendar
               date={
-                  activeMetricsFilter === 'Custom' && useDashBoardStore.getState().customDateRange
+                activeMetricsFilter === 'Custom' &&
+                useDashBoardStore.getState().customDateRange
                   ? {
-                      from: useDashBoardStore.getState().customDateRange?.startDate,
-                      to: useDashBoardStore.getState().customDateRange?.endDate
+                      from: useDashBoardStore.getState().customDateRange
+                        ?.startDate,
+                      to: useDashBoardStore.getState().customDateRange?.endDate,
                     }
                   : undefined
               }
-              onSelect={(date) => {
+              onSelect={date => {
                 if (date?.from && date?.to) {
-                     setCustomDateRange({
-                        startDate: date.from,
-                        endDate: date.to,
-                      });
-                      setActiveMetricsFilter('Custom');
-                      // Trigger callback
-                       if (onCustomRangeGo) {
-                          // Short timeout to ensure state updates propagate
-                          setTimeout(() => onCustomRangeGo(), 0);
-                       }
+                  setCustomDateRange({
+                    startDate: date.from,
+                    endDate: date.to,
+                  });
+                  setActiveMetricsFilter('Custom');
+                  // Trigger callback
+                  if (onCustomRangeGo) {
+                    // Short timeout to ensure state updates propagate
+                    setTimeout(() => onCustomRangeGo(), 0);
+                  }
                 }
               }}
               enableTimeInputs={enableTimeInputs}

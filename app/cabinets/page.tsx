@@ -252,24 +252,24 @@ function CabinetsPageContent() {
             setChartData([]);
             return;
           }
-          // Convert dashboardData[] to chart format
-          const chartDataFormatted = metricsData.map(item => ({
-            day: item.day || '',
-            time: item.time || '',
-            drop: item.moneyIn || 0,
-            gross: item.gross || 0,
-          }));
-          setLocalChartData(chartDataFormatted);
-          setChartData(
-            chartDataFormatted.map(item => ({
-              xValue: item.time || item.day,
-              day: item.day,
-              time: item.time,
-              moneyIn: item.drop,
-              moneyOut: 0,
-              gross: item.gross,
-            }))
-          );
+            // Convert dashboardData[] to chart format
+            const chartDataFormatted = metricsData.map(item => ({
+              day: item.day || '',
+              time: item.time || '',
+              drop: item.moneyIn || 0,
+              gross: item.gross || 0,
+            }));
+            setLocalChartData(chartDataFormatted);
+            setChartData(
+              chartDataFormatted.map(item => ({
+                xValue: item.time || item.day,
+                day: item.day,
+                time: item.time,
+                moneyIn: item.drop,
+                moneyOut: 0,
+                gross: item.gross,
+              }))
+            );
         }, 'chart');
       } catch (error) {
         if (reqId !== chartRequestIdRef.current) return;
@@ -352,24 +352,24 @@ function CabinetsPageContent() {
                 setChartData([]);
                 return;
               }
-              // Convert dashboardData[] to chart format
-              const chartDataFormatted = metricsData.map(item => ({
-                day: item.day || '',
-                time: item.time || '',
-                drop: item.moneyIn || 0,
-                gross: item.gross || 0,
-              }));
-              setLocalChartData(chartDataFormatted);
-              setChartData(
-                chartDataFormatted.map(item => ({
-                  xValue: item.time || item.day,
-                  day: item.day,
-                  time: item.time,
-                  moneyIn: item.drop,
-                  moneyOut: 0,
-                  gross: item.gross,
-                }))
-              );
+                // Convert dashboardData[] to chart format
+                const chartDataFormatted = metricsData.map(item => ({
+                  day: item.day || '',
+                  time: item.time || '',
+                  drop: item.moneyIn || 0,
+                  gross: item.gross || 0,
+                }));
+                setLocalChartData(chartDataFormatted);
+                setChartData(
+                  chartDataFormatted.map(item => ({
+                    xValue: item.time || item.day,
+                    day: item.day,
+                    time: item.time,
+                    moneyIn: item.drop,
+                    moneyOut: 0,
+                    gross: item.gross,
+                  }))
+                );
             }, 'chart');
           } catch (error) {
             console.error('Error refreshing chart data:', error);

@@ -36,11 +36,15 @@ export type MachineStats = {
  *
  * @param licensee - The licensee filter (defaults to "all")
  * @param locationId - Optional specific location ID to get stats for that location only
+ * @param machineTypeFilter - Optional filter string (comma-separated) for SMIB/No SMIB/Local Server/Membership
+ * @param signal - Optional AbortSignal to cancel the request
  * @returns Promise resolving to machine stats
  */
 export async function fetchMachineStats(
   licensee: string = 'all',
-  locationId?: string
+  locationId?: string,
+  machineTypeFilter?: string | null,
+  signal?: AbortSignal
 ): Promise<MachineStats> {
   try {
     const params = new URLSearchParams();
@@ -50,10 +54,13 @@ export async function fetchMachineStats(
     if (locationId) {
       params.append('locationId', locationId);
     }
+    if (machineTypeFilter) {
+      params.append('machineTypeFilter', machineTypeFilter);
+    }
 
-    const res = await axios.get(
-      `/api/machines/status?${params.toString()}`
-    );
+    const res = await axios.get(`/api/machines/status?${params.toString()}`, {
+      signal,
+    });
     const data = res.data;
 
     return {

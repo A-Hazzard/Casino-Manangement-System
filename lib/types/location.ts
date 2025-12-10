@@ -1,13 +1,13 @@
 import type {
-  Location as SharedLocation,
   Address,
-  RelationshipInfo,
-  GeoCoordinates,
   AggregatedLocation,
+  GeoCoordinates,
+  RelationshipInfo,
+  Location as SharedLocation,
 } from '@shared/types';
 
 // Re-export shared location types
-export type { Address, RelationshipInfo, GeoCoordinates, AggregatedLocation };
+export type { Address, AggregatedLocation, GeoCoordinates, RelationshipInfo };
 
 // Use shared Location type
 export type Location = SharedLocation;
@@ -256,4 +256,5 @@ export type LocationTableProps = {
   onLocationClick: (id: string) => void;
   onAction: (action: 'edit' | 'delete', location: AggregatedLocation) => void;
   formatCurrency: (amount: number) => string;
+  selectedFilters?: LocationFilter[]; // Add selectedFilters prop
 };

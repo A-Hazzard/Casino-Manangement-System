@@ -81,6 +81,7 @@ export type AggregatedLocation = {
   enableMembership?: boolean; // Membership enabled flag
   membershipEnabled?: boolean; // Alias for enableMembership
   memberCount?: number; // Number of members at this location
+  hasNoRecentCollectionReport?: boolean; // Flag indicating no collection report in past 3 months (for NON-SMIB locations)
   machines?: Array<{
     _id: string;
     assetNumber?: string;

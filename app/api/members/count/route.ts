@@ -12,7 +12,6 @@ import {
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { Member } from '@/app/api/lib/models/members';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -34,6 +33,7 @@ export async function GET(req: NextRequest) {
     const licensee =
       searchParams.get('licensee') || searchParams.get('licencee');
     const locationId = searchParams.get('locationId');
+    const machineTypeFilter = searchParams.get('machineTypeFilter');
 
     // ============================================================================
     // STEP 2: Connect to database and authenticate user
@@ -76,31 +76,88 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 4: Build query for members count
+    // STEP 4: Build aggregation pipeline for members count with location filters
     // ============================================================================
-    const query: Record<string, unknown> = {
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $exists: false } },
-        { deletedAt: { $lt: new Date('2025-01-01') } }, // Include items deleted before 2025
-      ],
-    };
+    // Use aggregation to join members with locations for filtering
+    const aggregationPipeline: Array<Record<string, unknown>> = [
+      {
+        $match: {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $exists: false } },
+            { deletedAt: { $lt: new Date('2025-01-01') } }, // Include items deleted before 2025
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: 'gaminglocations',
+          localField: 'gamingLocation',
+          foreignField: '_id',
+          as: 'locationDetails',
+        },
+      },
+      {
+        $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
+      },
+    ];
 
-    // If specific location is requested
+    // Apply location access filter
     if (locationId) {
-      query.gamingLocation = locationId;
+      aggregationPipeline.push({
+        $match: { gamingLocation: locationId },
+      });
     } else if (allowedLocationIds !== 'all') {
       // Apply location permissions
       if (allowedLocationIds.length === 0) {
         return NextResponse.json({ memberCount: 0 });
       }
-      query.gamingLocation = { $in: allowedLocationIds };
+      aggregationPipeline.push({
+        $match: { gamingLocation: { $in: allowedLocationIds } },
+      });
+    }
+
+    // Apply machine type filters (SMIB, No SMIB, Local Server, Membership)
+    if (machineTypeFilter) {
+      const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
+      const filterConditions: Record<string, unknown>[] = [];
+
+      filters.forEach(filter => {
+        switch (filter.trim()) {
+          case 'LocalServersOnly':
+            filterConditions.push({ 'locationDetails.isLocalServer': true });
+            break;
+          case 'SMIBLocationsOnly':
+            filterConditions.push({
+              'locationDetails.noSMIBLocation': { $ne: true },
+            });
+            break;
+          case 'NoSMIBLocation':
+            filterConditions.push({ 'locationDetails.noSMIBLocation': true });
+            break;
+          case 'MembershipOnly':
+            filterConditions.push({
+              'locationDetails.membershipEnabled': true,
+            });
+            break;
+        }
+      });
+
+      // Apply OR logic - location must match ANY of the selected filters
+      // This allows users to see locations that match any combination of filters
+      if (filterConditions.length > 0) {
+        aggregationPipeline.push({ $match: { $or: filterConditions } });
+      }
     }
 
     // ============================================================================
-    // STEP 5: Count members
+    // STEP 5: Count members using aggregation
     // ============================================================================
-    const memberCount = await Member.countDocuments(query);
+    const countResult = await db
+      .collection('members')
+      .aggregate([...aggregationPipeline, { $count: 'total' }])
+      .toArray();
+    const memberCount = countResult[0]?.total || 0;
 
     return NextResponse.json({ memberCount });
   } catch (err) {
