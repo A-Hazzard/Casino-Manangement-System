@@ -3,7 +3,10 @@
  * Handles the evaluation tab with machine performance analysis
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
+import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
 import {
   Card,
   CardContent,
@@ -11,16 +14,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  BarChart3,
-  Download,
-  RefreshCw,
-  ChevronUp,
-  ChevronDown,
-} from 'lucide-react';
+import { MachineEvaluationSummary } from '@/components/ui/MachineEvaluationSummary';
 import {
   Select,
   SelectContent,
@@ -28,17 +24,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
-import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
-import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
-import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import { MachinesEvaluationSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
-import { MachineEvaluationSummary } from '@/components/ui/MachineEvaluationSummary';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import {
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  RefreshCw,
+} from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 // Removed duplicate import - using MachineData from lib/types/machinesEvaluationTab instead
-import { Pencil2Icon } from '@radix-ui/react-icons';
-import { Trash2 } from 'lucide-react';
 import StatusIcon from '@/components/ui/common/StatusIcon';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
+import { Pencil2Icon } from '@radix-ui/react-icons';
+import { Trash2 } from 'lucide-react';
 
 // Sortable table header component for evaluation data
 const SortableEvaluationHeader = ({
@@ -78,8 +78,8 @@ const SortableEvaluationHeader = ({
 };
 
 import type {
-  MachinesEvaluationTabProps,
   MachineData,
+  MachinesEvaluationTabProps,
 } from '@/lib/types/machinesEvaluationTab';
 
 export const MachinesEvaluationTab = ({
@@ -513,7 +513,13 @@ export const MachinesEvaluationTab = ({
                         {machine.machineId || 'N/A'}
                       </td>
                       <td className="p-3 text-center">
-                        {machine.gameTitle || 'N/A'}
+                        {machine.gameTitle ? (
+                          machine.gameTitle
+                        ) : (
+                          <span className="text-red-600">
+                            (game name not provided)
+                          </span>
+                        )}
                       </td>
                       <td className="p-3 text-center">
                         {machine.locationName || 'N/A'}

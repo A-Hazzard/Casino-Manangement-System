@@ -268,7 +268,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Apply machine type filters (SMIB, No SMIB, Local Server, Membership) at database level
-    // Use OR logic - location must match ANY of the selected filters
+    // Note: Database-level filter uses OR logic for initial filtering (performance optimization)
+    // Final accurate filtering is done post-aggregation based on calculated fields
     if (filters.length > 0) {
       const filterConditions: Record<string, unknown>[] = [];
 
@@ -286,13 +287,17 @@ export async function GET(req: NextRequest) {
             filterConditions.push({ noSMIBLocation: true });
             break;
           case 'MembershipOnly':
-            filterConditions.push({ membershipEnabled: true });
+            // Check both membershipEnabled and enableMembership fields for compatibility
+            filterConditions.push({
+              $or: [{ membershipEnabled: true }, { enableMembership: true }],
+            });
             break;
         }
       });
 
-      // Apply OR logic - location must match ANY of the selected filters
-      // This allows users to see locations that match any combination of filters
+      // Apply filter logic - location must match the selected filters
+      // Use AND logic when multiple filters are selected (location must match ALL selected filters)
+      // Use direct condition when only one filter is selected
       if (filterConditions.length > 0) {
         // Build $and array to combine deletedAt check with filter conditions
         const andConditions: Array<Record<string, unknown>> = [
@@ -302,8 +307,16 @@ export async function GET(req: NextRequest) {
               { deletedAt: { $lt: new Date('2025-01-01') } },
             ],
           },
-          { $or: filterConditions },
         ];
+
+        // If only one filter is selected, use it directly; otherwise use AND logic
+        if (filterConditions.length === 1) {
+          // Single filter - apply directly
+          andConditions.push(filterConditions[0]);
+        } else {
+          // Multiple filters - location must match ALL selected filters (AND logic)
+          andConditions.push({ $and: filterConditions });
+        }
 
         // Add existing conditions (like _id, rel.licencee) to $and
         Object.keys(locationMatchStage).forEach(key => {
@@ -373,6 +386,8 @@ export async function GET(req: NextRequest) {
       rel: 1,
       country: 1,
       membershipEnabled: 1,
+      enableMembership: 1, // Include for compatibility with legacy data
+      noSMIBLocation: 1, // Include for SMIB filtering
     }).lean();
     perfTimers.fetchLocations = Date.now() - locationsStart;
 
@@ -580,7 +595,10 @@ export async function GET(req: NextRequest) {
           location: locationId,
           locationName: location.name,
           isLocalServer: location.isLocalServer || false,
-          membershipEnabled: Boolean(location.membershipEnabled),
+          membershipEnabled: Boolean(
+            location.membershipEnabled ||
+              (location as { enableMembership?: boolean }).enableMembership
+          ),
           moneyIn: locationMetrics.moneyIn,
           moneyOut: locationMetrics.moneyOut,
           gross: gross,
@@ -747,8 +765,14 @@ export async function GET(req: NextRequest) {
                   (location as { isLocalServer?: boolean }).isLocalServer ||
                   false,
                 membershipEnabled: Boolean(
-                  (location as { membershipEnabled?: boolean })
-                    .membershipEnabled
+                  (
+                    location as {
+                      membershipEnabled?: boolean;
+                      enableMembership?: boolean;
+                    }
+                  ).membershipEnabled ||
+                    (location as { enableMembership?: boolean })
+                      .enableMembership
                 ),
                 moneyIn: locationMetrics.moneyIn,
                 moneyOut: locationMetrics.moneyOut,
@@ -806,7 +830,11 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const memberCountStart = Date.now();
     const membershipEnabledLocations = locationResults
-      .filter(loc => loc.membershipEnabled)
+      .filter(
+        loc =>
+          loc.membershipEnabled ||
+          (loc as { enableMembership?: boolean }).enableMembership
+      )
       .map(loc => loc._id);
 
     if (membershipEnabledLocations.length > 0) {
@@ -848,16 +876,87 @@ export async function GET(req: NextRequest) {
     // STEP 10: Apply additional SMIB filter check (based on sasMachines count)
     // ============================================================================
     // Note: Most filters are already applied at database level in STEP 6
-    // However, SMIBLocationsOnly requires checking sasMachines count which is calculated during aggregation
-    // So we apply that filter here if needed
+    // Apply post-aggregation filters that depend on calculated fields
+    // This ensures filters are accurate based on actual machine data, not just database flags
+    // Database-level filters are applied first for performance, but we verify here for accuracy
     const filterStart = Date.now();
     let filteredResults = locationResults;
 
-    // Only apply SMIBLocationsOnly filter here (others are already applied at DB level)
+    // Apply post-aggregation filters that depend on calculated fields
+    // This ensures filters are accurate based on actual machine data, not just database flags
     const smibOnlyFilter = filters.includes('SMIBLocationsOnly');
-    if (smibOnlyFilter) {
+    const noSmibFilter = filters.includes('NoSMIBLocation');
+    const localServerFilter = filters.includes('LocalServersOnly');
+    const membershipFilter = filters.includes('MembershipOnly');
+
+    if (
+      smibOnlyFilter ||
+      noSmibFilter ||
+      localServerFilter ||
+      membershipFilter
+    ) {
       filteredResults = locationResults.filter(loc => {
-        return ((loc as { sasMachines?: number }).sasMachines || 0) > 0;
+        // Apply all selected filters with AND logic (location must match ALL selected filters)
+        // This ensures that if SMIB is selected, Local Servers are excluded (unless Local Server is also selected)
+
+        // SMIBLocationsOnly: Must have SMIB machines (check hasSmib flag only)
+        // This is the authoritative check - must verify based on actual machine data
+        // Note: sasMachines > 0 does NOT mean SMIB - SMIB requires relayId or smibBoard
+        if (smibOnlyFilter) {
+          const totalMachines =
+            (loc as { totalMachines?: number }).totalMachines || 0;
+          // Only check hasSmib - do NOT check sasMachines as that's different from SMIB
+          const hasSmib = (loc as { hasSmib?: boolean }).hasSmib === true;
+
+          // If location has no machines, exclude it (can't have SMIB without machines)
+          if (totalMachines === 0) return false;
+
+          // If location has machines but no SMIB machines, exclude it
+          // hasSmib must be explicitly true (based on relayId or smibBoard check)
+          if (!hasSmib) return false;
+
+          // If SMIB is selected, exclude Local Servers (unless Local Server is also selected)
+          if (!localServerFilter) {
+            const isLocalServer =
+              (loc as { isLocalServer?: boolean }).isLocalServer === true;
+            if (isLocalServer) return false; // Exclude Local Servers when only SMIB is selected
+          }
+        }
+
+        // NoSMIBLocation: Must NOT have SMIB machines
+        if (noSmibFilter) {
+          const hasSmib =
+            (loc as { hasSmib?: boolean }).hasSmib === true ||
+            ((loc as { sasMachines?: number }).sasMachines || 0) > 0;
+          // Location must NOT have SMIB machines (check both hasSmib and noSMIBLocation flag)
+          if (hasSmib) return false;
+          // Also verify noSMIBLocation flag is true if available
+          const noSMIB = (loc as { noSMIBLocation?: boolean }).noSMIBLocation;
+          if (noSMIB === false) return false; // Explicitly false means it has SMIB
+        }
+
+        // LocalServersOnly: Must be a local server
+        if (localServerFilter) {
+          const isLocalServer =
+            (loc as { isLocalServer?: boolean }).isLocalServer === true;
+          if (!isLocalServer) return false;
+          // If Local Server is selected, exclude SMIB locations (unless SMIB is also selected)
+          if (!smibOnlyFilter) {
+            const hasSmib =
+              (loc as { hasSmib?: boolean }).hasSmib === true ||
+              ((loc as { sasMachines?: number }).sasMachines || 0) > 0;
+            if (hasSmib) return false; // Exclude SMIB locations when only Local Server is selected
+          }
+        }
+
+        // MembershipOnly: Must have membership enabled
+        if (membershipFilter) {
+          const membershipEnabled =
+            (loc as { membershipEnabled?: boolean }).membershipEnabled === true;
+          if (!membershipEnabled) return false;
+        }
+
+        return true;
       });
     }
     perfTimers.filters = Date.now() - filterStart;

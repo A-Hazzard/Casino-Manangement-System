@@ -3,19 +3,19 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -23,14 +23,14 @@ import { useReportsStore } from '@/lib/store/reportsStore';
 import { useDebounce } from '@/lib/utils/hooks';
 import axios from 'axios';
 import {
-    BarChart3,
-    ChevronDown,
-    ChevronUp,
-    Download,
-    FileSpreadsheet,
-    FileText,
-    Monitor,
-    RefreshCw,
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Monitor,
+  RefreshCw,
 } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -38,16 +38,16 @@ import { toast } from 'sonner';
 
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-    handleExportMeters as handleExportMetersHelper,
-    handleMachineSort as handleMachineSortHelper,
-    sortEvaluationData as sortEvaluationDataHelper,
+  handleExportMeters as handleExportMetersHelper,
+  handleMachineSort as handleMachineSortHelper,
+  sortEvaluationData as sortEvaluationDataHelper,
 } from '@/lib/helpers/reportsPage';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
@@ -60,28 +60,29 @@ import { MachineEvaluationSummary } from '@/components/ui/MachineEvaluationSumma
 import { ManufacturerPerformanceChart } from '@/components/ui/ManufacturerPerformanceChart';
 import PaginationControls from '@/components/ui/PaginationControls';
 import {
-    ChartNoData,
-    ChartSkeleton,
-    MachinesEvaluationSkeleton,
-    MachinesOfflineSkeleton,
-    MachinesOverviewSkeleton,
+  ChartNoData,
+  ChartSkeleton,
+  MachinesEvaluationSkeleton,
+  MachinesOfflineSkeleton,
+  MachinesOverviewSkeleton,
 } from '@/components/ui/skeletons/ReportsSkeletons';
 import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import type { MachineEvaluationData } from '@/lib/types';
 import type {
-    MachineData,
-    MachinesApiResponse,
-    MachineStats,
-    MachineStatsApiResponse,
+  MachineData,
+  MachinesApiResponse,
+  MachineStats,
+  MachineStatsApiResponse,
 } from '@/shared/types/machines';
 import { Pencil2Icon } from '@radix-ui/react-icons';
-import { Trash2 } from 'lucide-react';
+import { ExternalLink, Trash2 } from 'lucide-react';
 
 import StatusIcon from '@/components/ui/common/StatusIcon';
+import { useUserStore } from '@/lib/store/userStore';
 import {
-    getGrossColorClass,
-    getMoneyInColorClass,
-    getMoneyOutColorClass,
+  getGrossColorClass,
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
 } from '@/lib/utils/financialColors';
 
 // Sortable table header component
@@ -127,6 +128,18 @@ export default function MachinesTab() {
   const searchParams = useSearchParams();
   const { formatAmount, shouldShowCurrency, displayCurrency } =
     useCurrencyFormat();
+  const { user } = useUserStore();
+
+  // Check if user can edit/delete machines (admin, technician, developer)
+  const canEditMachines = useMemo(() => {
+    if (!user?.roles) return false;
+    const roles = Array.isArray(user.roles) ? user.roles : [user.roles];
+    return (
+      roles.includes('admin') ||
+      roles.includes('technician') ||
+      roles.includes('developer')
+    );
+  }, [user?.roles]);
 
   // AbortController for different query types
   const makeStatsRequest = useAbortableRequest();
@@ -312,47 +325,81 @@ export default function MachinesTab() {
 
   // Fetch machine statistics (loads first)
   const fetchMachineStats = useCallback(async () => {
+    setStatsLoading(true);
+    const params: Record<string, string> = {
+      type: 'stats',
+      timePeriod: activeMetricsFilter || 'Today',
+    };
+
+    if (selectedLicencee && selectedLicencee !== 'all') {
+      params.licencee = selectedLicencee;
+    }
+
+    if (selectedDateRange?.start && selectedDateRange?.end) {
+      params.startDate = selectedDateRange.start.toISOString();
+      params.endDate = selectedDateRange.end.toISOString();
+    }
+
+    if (onlineStatusFilter !== 'all') {
+      params.onlineStatus = onlineStatusFilter;
+    }
+
+    // Add currency parameter
+    if (displayCurrency) {
+      params.currency = displayCurrency;
+    }
+
     try {
-      setStatsLoading(true);
-      const params: Record<string, string> = {
-        type: 'stats',
-        timePeriod: activeMetricsFilter || 'Today',
-      };
+      const result = await makeStatsRequest(async signal => {
+        const response = await axios.get<MachineStatsApiResponse>(
+          '/api/reports/machines',
+          { params, signal }
+        );
+        return response.data;
+      });
 
-      if (selectedLicencee && selectedLicencee !== 'all') {
-        params.licencee = selectedLicencee;
+      // Only set stats and clear loading if request completed successfully (not canceled)
+      // useAbortableRequest returns null for canceled requests
+      if (result !== null) {
+        setMachineStats(result);
+        setStatsLoading(false);
       }
-
-      if (selectedDateRange?.start && selectedDateRange?.end) {
-        params.startDate = selectedDateRange.start.toISOString();
-        params.endDate = selectedDateRange.end.toISOString();
-      }
-
-      if (onlineStatusFilter !== 'all') {
-        params.onlineStatus = onlineStatusFilter;
-      }
-
-      // Add currency parameter
-      if (displayCurrency) {
-        params.currency = displayCurrency;
-      }
-
-      await makeStatsRequest(
-        async signal => {
-          const response = await axios.get<MachineStatsApiResponse>(
-            '/api/reports/machines',
-            { params, signal }
-          );
-          setMachineStats(response.data);
-        }
-      );
+      // If result is null (canceled), keep showing skeleton until next request completes
+      // Don't clear loading state so skeleton continues showing
     } catch (error) {
+      // Check if request was canceled - silently ignore canceled requests
+      if (axios.isCancel(error)) {
+        // Keep loading state true so skeleton continues showing
+        return;
+      }
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Keep loading state true so skeleton continues showing
+        return;
+      }
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED')
+      ) {
+        // Keep loading state true so skeleton continues showing
+        return;
+      }
+      if (
+        error instanceof Error &&
+        (error.message === 'canceled' ||
+          error.message === 'The user aborted a request.')
+      ) {
+        // Keep loading state true so skeleton continues showing
+        return;
+      }
+
+      // Only log and show errors for actual failures
       console.error('Failed to fetch machine stats:', error);
       setError('Failed to load machine statistics');
       toast.error('Failed to load machine statistics', {
         duration: 3000,
       });
-    } finally {
       setStatsLoading(false);
     }
   }, [
@@ -372,8 +419,8 @@ export default function MachinesTab() {
       setLoading(true);
       setError(null);
 
-      await makeOverviewRequest(
-        async signal => {
+      try {
+        await makeOverviewRequest(async signal => {
           const params: Record<string, string> = {
             type: 'overview',
             page: page.toString(),
@@ -406,33 +453,57 @@ export default function MachinesTab() {
             params.currency = displayCurrency;
           }
 
-          try {
-            const response = await axios.get<MachinesApiResponse>(
-              '/api/reports/machines',
-              { params, signal }
+          const response = await axios.get<MachinesApiResponse>(
+            '/api/reports/machines',
+            { params, signal }
+          );
+          const { data: machinesData } = response.data;
+          const newMachines = machinesData || [];
+
+          setAllOverviewMachines(prev => {
+            const existingIds = new Set(prev.map(m => m.machineId));
+            const uniqueNewMachines = newMachines.filter(
+              (m: MachineData) => !existingIds.has(m.machineId)
             );
-            const { data: machinesData } = response.data;
-            const newMachines = machinesData || [];
-
-            setAllOverviewMachines(prev => {
-              const existingIds = new Set(prev.map(m => m.machineId));
-              const uniqueNewMachines = newMachines.filter(
-                (m: MachineData) => !existingIds.has(m.machineId)
-              );
-              return [...prev, ...uniqueNewMachines];
-            });
-          } catch (error) {
-            console.error('Failed to fetch overview machines:', error);
-            setError('Failed to load overview machines');
-            toast.error('Failed to load overview machines', {
-              duration: 3000,
-            });
-          }
+            return [...prev, ...uniqueNewMachines];
+          });
+        });
+      } catch (error) {
+        // Check if request was canceled - silently ignore canceled requests
+        // useAbortableRequest should handle cancellations, but catch here as safety
+        if (axios.isCancel(error)) {
+          return; // Request was cancelled, don't show error
         }
-      );
+        if (error instanceof Error && error.name === 'AbortError') {
+          return; // Request was aborted, don't show error
+        }
+        if (
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED')
+        ) {
+          return; // Request was canceled, don't show error
+        }
+        if (
+          error instanceof Error &&
+          (error.message === 'canceled' ||
+            error.message === 'The user aborted a request.')
+        ) {
+          return; // Request was canceled, don't show error
+        }
 
-      setOverviewLoading(false);
-      setLoading(false);
+        // Only log and show errors for actual failures
+        console.error('Failed to fetch overview machines:', error);
+        setError('Failed to load overview machines');
+        toast.error('Failed to load overview machines', {
+          duration: 3000,
+        });
+      } finally {
+        // Always clear loading states, even if request was canceled
+        setOverviewLoading(false);
+        setLoading(false);
+      }
     },
     [
       selectedLicencee,
@@ -452,54 +523,62 @@ export default function MachinesTab() {
   const fetchAllMachines = useCallback(async () => {
     setLoading(true);
 
-    await makeEvaluationRequest(
-      async signal => {
-        const params: Record<string, string> = {
-          type: 'all',
-          timePeriod: activeMetricsFilter || 'Today',
-        };
+    await makeEvaluationRequest(async signal => {
+      const params: Record<string, string> = {
+        type: 'all',
+        timePeriod: activeMetricsFilter || 'Today',
+      };
 
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.licencee = selectedLicencee;
-        }
-
-        if (
-          activeTab === 'evaluation' &&
-          evaluationSelectedLocation &&
-          evaluationSelectedLocation !== 'all' &&
-          evaluationSelectedLocation !== ''
-        ) {
-          params.locationId = evaluationSelectedLocation;
-        }
-
-        if (selectedDateRange?.start && selectedDateRange?.end) {
-          params.startDate = selectedDateRange.start.toISOString();
-          params.endDate = selectedDateRange.end.toISOString();
-        }
-
-        if (onlineStatusFilter !== 'all') {
-          params.onlineStatus = onlineStatusFilter;
-        }
-
-        if (displayCurrency) {
-          params.currency = displayCurrency;
-        }
-
-        try {
-          const response = await axios.get<MachinesApiResponse>(
-            '/api/reports/machines',
-            { params, signal }
-          );
-          const { data: allMachinesData } = response.data;
-          setAllMachines(allMachinesData);
-        } catch (error) {
-          console.error('Failed to fetch all machines:', error);
-          toast.error('Failed to load performance analysis data', {
-            duration: 3000,
-          });
-        }
+      if (selectedLicencee && selectedLicencee !== 'all') {
+        params.licencee = selectedLicencee;
       }
-    );
+
+      if (
+        activeTab === 'evaluation' &&
+        evaluationSelectedLocation &&
+        evaluationSelectedLocation !== 'all' &&
+        evaluationSelectedLocation !== ''
+      ) {
+        params.locationId = evaluationSelectedLocation;
+      }
+
+      if (selectedDateRange?.start && selectedDateRange?.end) {
+        params.startDate = selectedDateRange.start.toISOString();
+        params.endDate = selectedDateRange.end.toISOString();
+      }
+
+      if (onlineStatusFilter !== 'all') {
+        params.onlineStatus = onlineStatusFilter;
+      }
+
+      if (displayCurrency) {
+        params.currency = displayCurrency;
+      }
+
+      try {
+        const response = await axios.get<MachinesApiResponse>(
+          '/api/reports/machines',
+          { params, signal }
+        );
+        const { data: allMachinesData } = response.data;
+        setAllMachines(allMachinesData);
+      } catch (error) {
+        // Silently ignore cancellation errors
+        if (
+          axios.isCancel(error) ||
+          (error instanceof Error &&
+            (error.name === 'AbortError' ||
+              error.message === 'canceled' ||
+              (error as { code?: string }).code === 'ERR_CANCELED'))
+        ) {
+          return;
+        }
+        console.error('Failed to fetch all machines:', error);
+        toast.error('Failed to load performance analysis data', {
+          duration: 3000,
+        });
+      }
+    });
 
     setLoading(false);
   }, [
@@ -521,58 +600,71 @@ export default function MachinesTab() {
       setOfflineLoading(true);
       setLoading(true);
 
-      await makeOfflineRequest(
-        async signal => {
-          const params: Record<string, string> = {
-            type: 'offline',
-            timePeriod: activeMetricsFilter || 'Today',
-            page: batch.toString(),
-            limit: offlineItemsPerBatch.toString(),
-          };
+      const result = await makeOfflineRequest(async signal => {
+        const params: Record<string, string> = {
+          type: 'offline',
+          timePeriod: activeMetricsFilter || 'Today',
+          page: batch.toString(),
+          limit: offlineItemsPerBatch.toString(),
+        };
 
-          if (selectedLicencee && selectedLicencee !== 'all') {
-            params.licencee = selectedLicencee;
-          }
-
-          if (offlineSelectedLocation && offlineSelectedLocation !== 'all') {
-            params.locationId = offlineSelectedLocation;
-          }
-
-          if (selectedDateRange?.start && selectedDateRange?.end) {
-            params.startDate = selectedDateRange.start.toISOString();
-            params.endDate = selectedDateRange.end.toISOString();
-          }
-
-          console.warn(
-            `🔍 Fetching offline machines with params: ${JSON.stringify(params)}`
-          );
-
-          try {
-            const response = await axios.get<MachinesApiResponse>(
-              '/api/reports/machines',
-              { params, signal }
-            );
-            const { data: offlineMachinesData } = response.data;
-            const newOfflineMachines = offlineMachinesData || [];
-
-            setAllOfflineMachines(prev => {
-              const existingIds = new Set(prev.map(m => m.machineId));
-              const uniqueNewMachines = newOfflineMachines.filter(
-                (m: MachineData) => !existingIds.has(m.machineId)
-              );
-              return [...prev, ...uniqueNewMachines];
-            });
-          } catch (error) {
-            console.error('Failed to fetch offline machines:', error);
-            toast.error('Failed to load offline machines data', {
-              duration: 3000,
-            });
-          }
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.licencee = selectedLicencee;
         }
-      );
 
-      setOfflineLoading(false);
-      setLoading(false);
+        if (offlineSelectedLocation && offlineSelectedLocation !== 'all') {
+          params.locationId = offlineSelectedLocation;
+        }
+
+        if (selectedDateRange?.start && selectedDateRange?.end) {
+          params.startDate = selectedDateRange.start.toISOString();
+          params.endDate = selectedDateRange.end.toISOString();
+        }
+
+        console.warn(
+          `🔍 Fetching offline machines with params: ${JSON.stringify(params)}`
+        );
+
+        try {
+          const response = await axios.get<MachinesApiResponse>(
+            '/api/reports/machines',
+            { params, signal }
+          );
+          const { data: offlineMachinesData } = response.data;
+          const newOfflineMachines = offlineMachinesData || [];
+
+          setAllOfflineMachines(prev => {
+            const existingIds = new Set(prev.map(m => m.machineId));
+            const uniqueNewMachines = newOfflineMachines.filter(
+              (m: MachineData) => !existingIds.has(m.machineId)
+            );
+            return [...prev, ...uniqueNewMachines];
+          });
+        } catch (error) {
+          // Silently ignore cancellation errors
+          if (
+            axios.isCancel(error) ||
+            (error instanceof Error &&
+              (error.name === 'AbortError' ||
+                error.message === 'canceled' ||
+                (error as { code?: string }).code === 'ERR_CANCELED'))
+          ) {
+            return;
+          }
+          console.error('Failed to fetch offline machines:', error);
+          toast.error('Failed to load offline machines data', {
+            duration: 3000,
+          });
+        }
+      });
+
+      // Only clear loading state if request completed successfully (not canceled)
+      if (result !== null) {
+        setOfflineLoading(false);
+        setLoading(false);
+      }
+      // If result is null (canceled), keep showing skeleton until next request completes
+      // Don't clear loading state so skeleton continues showing
     },
     [
       selectedLicencee,
@@ -606,10 +698,22 @@ export default function MachinesTab() {
   // Use debouncedSearchTerm to avoid API calls on every keystroke
   useEffect(() => {
     if (activeTab === 'overview') {
+      // Clear data and set loading state FIRST to ensure skeleton shows
       setAllOverviewMachines([]);
       setOverviewLoadedBatches(new Set([1]));
       setOverviewCurrentPage(0);
-      fetchOverviewMachines(1, debouncedSearchTerm);
+      // Ensure loading state is set synchronously before any async operations
+      setOverviewLoading(true);
+      setLoading(true);
+      // Use requestAnimationFrame to ensure state updates are rendered before fetch
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          fetchOverviewMachines(1, debouncedSearchTerm);
+        });
+      });
+    } else {
+      // Clear loading state when switching away from overview tab
+      setOverviewLoading(false);
     }
   }, [
     activeTab,
@@ -662,10 +766,19 @@ export default function MachinesTab() {
   // Load initial batch for offline on mount and when filters change
   useEffect(() => {
     if (activeTab === 'offline') {
+      // Clear data and set loading state FIRST to ensure skeleton shows
       setAllOfflineMachines([]);
       setOfflineLoadedBatches(new Set([1]));
       setOfflineCurrentPage(0);
-      fetchOfflineMachines(1);
+      setOfflineLoading(true);
+      setLoading(true);
+      // Use setTimeout to ensure state updates are applied before fetch
+      setTimeout(() => {
+        fetchOfflineMachines(1);
+      }, 0);
+    } else {
+      // Clear loading state when switching away from offline tab
+      setOfflineLoading(false);
     }
   }, [
     activeTab,
@@ -786,7 +899,7 @@ export default function MachinesTab() {
     offlinePagesPerBatch,
   ]);
 
-  // Calculate total pages for offline based on all loaded batches (not filtered)
+  // Calculate total pages for offline based on all loaded batches (like overview tab)
   // This ensures we only show pages for data we've actually loaded
   const offlineTotalPages = useMemo(() => {
     const totalItems = allOfflineMachines.length;
@@ -996,7 +1109,7 @@ export default function MachinesTab() {
     // Group by game name using ALL location machines (not filtered by search)
     const groupByGameName = locationMachines.reduce(
       (acc, machine) => {
-        const gameName = machine.gameTitle || 'Other';
+        const gameName = machine.gameTitle || '(game name not provided)';
         if (!acc[gameName]) {
           acc[gameName] = [];
         }
@@ -1179,12 +1292,22 @@ export default function MachinesTab() {
     summaryCalculations,
   ]);
 
+  // Ensure overview loading state is set on initial mount if on overview tab
+  useEffect(() => {
+    if (activeTab === 'overview' && allOverviewMachines.length === 0) {
+      setOverviewLoading(true);
+    }
+  }, []); // Run only on mount
+
   // Load data on component mount and when dependencies change
+  // Note: Overview tab data is handled by the filter change useEffect (line 699)
+  // to ensure skeleton shows properly on initial load
   useEffect(() => {
     const loadDataStreaming = async () => {
       // Set loading states for all tabs
       setStatsLoading(true);
-      setOverviewLoading(true);
+      // Don't set overviewLoading here - let the filter change useEffect handle it
+      // This ensures skeleton shows on initial load when activeTab is 'overview'
       setOfflineLoading(true);
       setEvaluationLoading(true);
       setLoading(true); // Set reports store loading state
@@ -1194,9 +1317,8 @@ export default function MachinesTab() {
         await fetchMachineStats();
         setStatsLoading(false);
 
-        // 2. Load overview data (paginated, fast) - show immediately when ready
-        await fetchOverviewMachines(1);
-        setOverviewLoading(false);
+        // 2. Overview data is handled by filter change useEffect (line 699)
+        // Don't fetch here to avoid race conditions and ensure skeleton shows
 
         // 3. Load locations data - show immediately when ready
         await fetchLocationsData();
@@ -1209,7 +1331,6 @@ export default function MachinesTab() {
       } catch (error) {
         // Clear all loading states on error
         setStatsLoading(false);
-        setOverviewLoading(false);
         setOfflineLoading(false);
         setEvaluationLoading(false);
         setLoading(false); // Clear reports store loading state
@@ -1223,7 +1344,6 @@ export default function MachinesTab() {
     selectedDateRange?.start,
     selectedDateRange?.end,
     fetchMachineStats,
-    fetchOverviewMachines,
     fetchLocationsData,
     fetchAllMachines,
     setLoading,
@@ -1669,7 +1789,20 @@ export default function MachinesTab() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => fetchOverviewMachines(1, searchTerm)}
+                onClick={async () => {
+                  // Refresh both stats (metric cards) and overview machines
+                  setStatsLoading(true);
+                  setOverviewLoading(true);
+                  try {
+                    await Promise.all([
+                      fetchMachineStats(),
+                      fetchOverviewMachines(1, searchTerm),
+                    ]);
+                  } finally {
+                    setStatsLoading(false);
+                    setOverviewLoading(false);
+                  }
+                }}
                 className="border-2 border-gray-300 hover:border-gray-400"
               >
                 <RefreshCw className="mr-2 h-4 w-4" /> Refresh
@@ -1715,7 +1848,8 @@ export default function MachinesTab() {
               </div>
             </CardHeader>
             <CardContent>
-              {overviewLoading ? (
+              {overviewLoading ||
+              (allOverviewMachines.length === 0 && activeTab === 'overview') ? (
                 <MachinesOverviewSkeleton />
               ) : (
                 <>
@@ -1750,9 +1884,6 @@ export default function MachinesTab() {
                                 Games
                               </th>
                               <th className="p-3 text-center font-medium">
-                                Status
-                              </th>
-                              <th className="p-3 text-center font-medium">
                                 Actions
                               </th>
                             </tr>
@@ -1766,63 +1897,128 @@ export default function MachinesTab() {
                                 >
                                   {/* Select column data removed */}
                                   <td className="p-3">
-                                    <div>
-                                      <div className="font-medium">
-                                        {machine.machineName || 'Unknown'}
+                                    <div className="flex items-center gap-2">
+                                      {/* Status Icon with pulse animation */}
+                                      <div
+                                        className={`flex-shrink-0 ${
+                                          machine.isOnline
+                                            ? 'animate-pulse'
+                                            : ''
+                                        }`}
+                                      >
+                                        <StatusIcon
+                                          isOnline={machine.isOnline}
+                                        />
                                       </div>
-                                      <div className="text-sm text-muted-foreground">
-                                        {machine.manufacturer || 'Unknown'} •{' '}
-                                        {(typeof (
-                                          machine as Record<string, unknown>
-                                        ).serialNumber === 'string' &&
-                                          (
-                                            (machine as Record<string, unknown>)
-                                              .serialNumber as string
-                                          ).trim()) ||
-                                          (typeof (
-                                            machine as Record<string, unknown>
-                                          ).origSerialNumber === 'string' &&
-                                            (
-                                              (
-                                                machine as Record<
-                                                  string,
-                                                  unknown
-                                                >
-                                              ).origSerialNumber as string
-                                            ).trim()) ||
-                                          (typeof (
-                                            machine as Record<string, unknown>
-                                          ).custom === 'object' &&
-                                            typeof (
-                                              (
-                                                machine as Record<
-                                                  string,
-                                                  unknown
-                                                >
-                                              ).custom as Record<
-                                                string,
-                                                unknown
-                                              >
-                                            )?.name === 'string' &&
-                                            (
-                                              (
+                                      <div className="min-w-0 flex-1">
+                                        {/* Machine Name - Format: serialNumber (custom.name, game) */}
+                                        <button
+                                          onClick={() => {
+                                            router.push(
+                                              `/cabinets/${machine.machineId}`
+                                            );
+                                          }}
+                                          className="group flex items-center gap-1.5 text-left font-medium text-gray-900 transition-opacity hover:opacity-80"
+                                        >
+                                          <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                            {(() => {
+                                              // Get serialNumber (prefer serialNumber, fallback to origSerialNumber)
+                                              const serialNumberRaw =
                                                 (
-                                                  machine as Record<
-                                                    string,
-                                                    unknown
-                                                  >
-                                                ).custom as Record<
-                                                  string,
-                                                  unknown
-                                                >
-                                              ).name as string
-                                            ).trim()) ||
-                                          machine.machineId}
+                                                  machine.serialNumber?.trim() ||
+                                                  ((
+                                                    machine as Record<
+                                                      string,
+                                                      unknown
+                                                    >
+                                                  ).origSerialNumber as
+                                                    | string
+                                                    | undefined)
+                                                )?.trim() || '';
+
+                                              // Get custom.name
+                                              const customName =
+                                                machine.customName?.trim() ||
+                                                '';
+
+                                              // Main identifier: serialNumber if exists and not blank, otherwise custom.name, otherwise machineId
+                                              const mainIdentifier =
+                                                serialNumberRaw ||
+                                                customName ||
+                                                machine.machineId;
+
+                                              // Get game (gameTitle)
+                                              const game =
+                                                machine.gameTitle?.trim() || '';
+
+                                              // Format: serialNumber || custom.name (custom.name if different, game)
+                                              const parts: string[] = [];
+
+                                              // Only add customName if it's provided AND different from main identifier
+                                              if (
+                                                customName &&
+                                                customName !== mainIdentifier
+                                              ) {
+                                                parts.push(customName);
+                                              }
+
+                                              // Always include game - show "(game name not provided)" in red if blank
+                                              if (!game) {
+                                                parts.push(
+                                                  '(game name not provided)'
+                                                );
+                                              } else {
+                                                parts.push(game);
+                                              }
+
+                                              return (
+                                                <span>
+                                                  {mainIdentifier} (
+                                                  {parts.map((part, idx) => {
+                                                    const isGameNotProvided =
+                                                      part ===
+                                                      '(game name not provided)';
+                                                    return (
+                                                      <span key={idx}>
+                                                        {isGameNotProvided ? (
+                                                          <span className="text-red-600">
+                                                            {part}
+                                                          </span>
+                                                        ) : (
+                                                          part
+                                                        )}
+                                                        {idx <
+                                                          parts.length - 1 &&
+                                                          ', '}
+                                                      </span>
+                                                    );
+                                                  })}
+                                                  )
+                                                </span>
+                                              );
+                                            })()}
+                                          </span>
+                                          <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600" />
+                                        </button>
                                       </div>
                                     </div>
                                   </td>
                                   <td className="p-3 text-sm">
-                                    {machine.locationName || 'Unknown'}
+                                    <button
+                                      onClick={() => {
+                                        if (machine.locationId) {
+                                          router.push(
+                                            `/locations/${machine.locationId}`
+                                          );
+                                        }
+                                      }}
+                                      className="group flex items-center gap-1.5 text-blue-600 transition-opacity hover:opacity-80"
+                                    >
+                                      <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                        {machine.locationName || 'Unknown'}
+                                      </span>
+                                      <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600" />
+                                    </button>
                                   </td>
                                   <td className="p-3">
                                     <Badge variant="outline">
@@ -1852,38 +2048,37 @@ export default function MachinesTab() {
                                     ).toLocaleString()}
                                   </td>
                                   <td className="p-3">
-                                    <StatusIcon isOnline={machine.isOnline} />
-                                  </td>
-                                  <td className="p-3">
-                                    <div className="flex items-center gap-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                          handleMachineEdit(machine)
-                                        }
-                                        className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-800"
-                                      >
-                                        <Pencil2Icon className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                          handleMachineDelete(machine)
-                                        }
-                                        className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-800"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
+                                    {canEditMachines && (
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleMachineEdit(machine)
+                                          }
+                                          className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-800"
+                                        >
+                                          <Pencil2Icon className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleMachineDelete(machine)
+                                          }
+                                          className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-800"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    )}
                                   </td>
                                 </tr>
                               ))
                             ) : (
                               <tr>
                                 <td
-                                  colSpan={10}
+                                  colSpan={9}
                                   className="py-8 text-center text-gray-500"
                                 >
                                   {`No machines found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}
@@ -1898,67 +2093,132 @@ export default function MachinesTab() {
 
                   {/* Mobile Card View */}
                   <div className="space-y-4 md:hidden">
-                    {processedOverviewMachines.length > 0 ? (
+                    {!overviewLoading &&
+                    processedOverviewMachines.length > 0 ? (
                       processedOverviewMachines.map(machine => (
                         <Card key={machine.machineId} className="p-4">
-                          <div className="mb-3 flex min-w-0 items-start justify-between">
+                          <div className="mb-3 flex min-w-0 items-start justify-between gap-2">
                             <div className="flex min-w-0 flex-1 items-center gap-2">
-                              <div className="min-w-0 flex-1">
-                                <h4 className="truncate text-sm font-medium">
-                                  {machine.machineName || 'Unknown'}
-                                </h4>
-                                <p className="truncate text-xs text-muted-foreground">
-                                  {machine.manufacturer || 'Unknown'} •{' '}
-                                  {(typeof (machine as Record<string, unknown>)
-                                    .serialNumber === 'string' &&
-                                    (
-                                      (machine as Record<string, unknown>)
-                                        .serialNumber as string
-                                    ).trim()) ||
-                                    (typeof (machine as Record<string, unknown>)
-                                      .origSerialNumber === 'string' &&
-                                      (
-                                        (machine as Record<string, unknown>)
-                                          .origSerialNumber as string
-                                      ).trim()) ||
-                                    (typeof (machine as Record<string, unknown>)
-                                      .custom === 'object' &&
-                                      typeof (
-                                        (machine as Record<string, unknown>)
-                                          .custom as Record<string, unknown>
-                                      )?.name === 'string' &&
-                                      (
-                                        (
-                                          (machine as Record<string, unknown>)
-                                            .custom as Record<string, unknown>
-                                        ).name as string
-                                      ).trim()) ||
-                                    machine.machineId}
-                                </p>
+                              {/* Status Icon with pulse animation */}
+                              <div
+                                className={`flex-shrink-0 ${
+                                  machine.isOnline ? 'animate-pulse' : ''
+                                }`}
+                              >
+                                <StatusIcon
+                                  isOnline={machine.isOnline}
+                                  size="sm"
+                                />
+                              </div>
+                              <div className="min-w-0 flex-1 overflow-hidden">
+                                {/* Machine Name - Format: serialNumber (custom.name, game) */}
+                                <button
+                                  onClick={() => {
+                                    router.push(
+                                      `/cabinets/${machine.machineId}`
+                                    );
+                                  }}
+                                  className="group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left"
+                                >
+                                  <h4 className="min-w-0 flex-1 truncate text-sm font-medium text-blue-600 underline decoration-blue-600 decoration-2 underline-offset-2">
+                                    <span className="block truncate">
+                                      {(() => {
+                                        // Get serialNumber (prefer serialNumber, fallback to origSerialNumber)
+                                        const serialNumberRaw =
+                                          (
+                                            machine.serialNumber?.trim() ||
+                                            ((
+                                              machine as Record<string, unknown>
+                                            ).origSerialNumber as
+                                              | string
+                                              | undefined)
+                                          )?.trim() || '';
+
+                                        // Get custom.name
+                                        const customName =
+                                          machine.customName?.trim() || '';
+
+                                        // Main identifier: serialNumber if exists and not blank, otherwise custom.name, otherwise machineId
+                                        const mainIdentifier =
+                                          serialNumberRaw ||
+                                          customName ||
+                                          machine.machineId;
+
+                                        // Get game (gameTitle)
+                                        const game =
+                                          machine.gameTitle?.trim() || '';
+
+                                        // Format: serialNumber || custom.name (custom.name if different, game)
+                                        const parts: string[] = [];
+
+                                        // Only add customName if it's provided AND different from main identifier
+                                        if (
+                                          customName &&
+                                          customName !== mainIdentifier
+                                        ) {
+                                          parts.push(customName);
+                                        }
+
+                                        // Always include game - show "(game name not provided)" in red if blank
+                                        if (!game) {
+                                          parts.push(
+                                            '(game name not provided)'
+                                          );
+                                        } else {
+                                          parts.push(game);
+                                        }
+
+                                        return (
+                                          <>
+                                            {mainIdentifier} (
+                                            {parts.map((part, idx) => {
+                                              const isGameNotProvided =
+                                                part ===
+                                                '(game name not provided)';
+                                              return (
+                                                <span key={idx}>
+                                                  {isGameNotProvided ? (
+                                                    <span className="text-red-600">
+                                                      {part}
+                                                    </span>
+                                                  ) : (
+                                                    part
+                                                  )}
+                                                  {idx < parts.length - 1 &&
+                                                    ', '}
+                                                </span>
+                                              );
+                                            })}
+                                            )
+                                          </>
+                                        );
+                                      })()}
+                                    </span>
+                                  </h4>
+                                  <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600" />
+                                </button>
                               </div>
                             </div>
-                            <div className="ml-2 flex flex-shrink-0 items-center gap-1">
-                              <StatusIcon
-                                isOnline={machine.isOnline}
-                                size="sm"
-                              />
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleMachineEdit(machine)}
-                                className="h-8 w-8 flex-shrink-0 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-800"
-                              >
-                                <Pencil2Icon className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleMachineDelete(machine)}
-                                className="h-8 w-8 flex-shrink-0 p-0 text-red-600 hover:bg-red-50 hover:text-red-800"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            {canEditMachines && (
+                              <div className="flex flex-shrink-0 items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleMachineEdit(machine)}
+                                  className="h-8 w-8 flex-shrink-0 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-800"
+                                >
+                                  <Pencil2Icon className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleMachineDelete(machine)}
+                                  className="h-8 w-8 flex-shrink-0 p-0 text-red-600 hover:bg-red-50 hover:text-red-800"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                           {/* Tiny screen layout (< 425px) - Single column */}
                           <div className="block space-y-2 text-xs sm:hidden">
@@ -1966,9 +2226,21 @@ export default function MachinesTab() {
                               <span className="text-muted-foreground">
                                 Location:
                               </span>
-                              <span className="font-medium">
-                                {machine.locationName || 'Unknown'}
-                              </span>
+                              <button
+                                onClick={() => {
+                                  if (machine.locationId) {
+                                    router.push(
+                                      `/locations/${machine.locationId}`
+                                    );
+                                  }
+                                }}
+                                className="group flex items-center gap-1 font-medium text-blue-600 transition-opacity hover:opacity-80"
+                              >
+                                <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                  {machine.locationName || 'Unknown'}
+                                </span>
+                                <ExternalLink className="h-3 w-3 text-blue-600" />
+                              </button>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">
@@ -2025,7 +2297,21 @@ export default function MachinesTab() {
                               <span className="text-muted-foreground">
                                 Location:
                               </span>
-                              <p>{machine.locationName || 'Unknown'}</p>
+                              <button
+                                onClick={() => {
+                                  if (machine.locationId) {
+                                    router.push(
+                                      `/locations/${machine.locationId}`
+                                    );
+                                  }
+                                }}
+                                className="group flex items-center gap-1 font-medium text-blue-600 transition-opacity hover:opacity-80"
+                              >
+                                <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                  {machine.locationName || 'Unknown'}
+                                </span>
+                                <ExternalLink className="h-3 w-3 text-blue-600" />
+                              </button>
                             </div>
                             <div>
                               <span className="text-muted-foreground">
@@ -2367,7 +2653,13 @@ export default function MachinesTab() {
                                   machine.machineId}
                               </td>
                               <td className="p-3 text-sm">
-                                {machine.gameTitle}
+                                {machine.gameTitle ? (
+                                  machine.gameTitle
+                                ) : (
+                                  <span className="text-red-600">
+                                    (game name not provided)
+                                  </span>
+                                )}
                               </td>
                               <td className="p-3 text-sm">
                                 {machine.manufacturer}
@@ -2423,7 +2715,14 @@ export default function MachinesTab() {
                               {machine.machineName || machine.machineId}
                             </h4>
                             <p className="text-xs text-muted-foreground">
-                              {machine.locationName} • {machine.gameTitle}
+                              {machine.locationName} •{' '}
+                              {machine.gameTitle ? (
+                                machine.gameTitle
+                              ) : (
+                                <span className="text-red-600">
+                                  (game name not provided)
+                                </span>
+                              )}
                             </p>
                           </div>
 
@@ -2600,7 +2899,7 @@ export default function MachinesTab() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {offlineLoading ? (
+              {offlineLoading || allOfflineMachines.length === 0 ? (
                 <MachinesOfflineSkeleton />
               ) : (
                 <>
@@ -2702,17 +3001,118 @@ export default function MachinesTab() {
                               className="border-b hover:bg-muted/30"
                             >
                               <td className="p-3">
-                                <div>
-                                  <div className="font-medium">
-                                    {machine.machineName}
+                                <div className="flex items-center gap-2">
+                                  {/* Status Icon - offline machines don't pulse */}
+                                  <div className="flex-shrink-0">
+                                    <StatusIcon isOnline={false} />
                                   </div>
-                                  <div className="text-sm text-muted-foreground">
-                                    {machine.machineId}
+                                  <div className="min-w-0 flex-1">
+                                    {/* Machine Name - Format: serialNumber (custom.name, game) */}
+                                    <button
+                                      onClick={() => {
+                                        router.push(
+                                          `/cabinets/${machine.machineId}`
+                                        );
+                                      }}
+                                      className="group flex items-center gap-1.5 text-left font-medium text-gray-900 transition-opacity hover:opacity-80"
+                                    >
+                                      <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                        {(() => {
+                                          // Get serialNumber (prefer serialNumber, fallback to origSerialNumber)
+                                          const serialNumberRaw =
+                                            (
+                                              machine.serialNumber?.trim() ||
+                                              ((
+                                                machine as Record<
+                                                  string,
+                                                  unknown
+                                                >
+                                              ).origSerialNumber as
+                                                | string
+                                                | undefined)
+                                            )?.trim() || '';
+
+                                          // Get custom.name
+                                          const customName =
+                                            machine.customName?.trim() || '';
+
+                                          // Main identifier: serialNumber if exists and not blank, otherwise custom.name, otherwise machineId
+                                          const mainIdentifier =
+                                            serialNumberRaw ||
+                                            customName ||
+                                            machine.machineId;
+
+                                          // Get game (gameTitle)
+                                          const game =
+                                            machine.gameTitle?.trim() || '';
+
+                                          // Format: serialNumber || custom.name (custom.name if different, game)
+                                          const parts: string[] = [];
+
+                                          // Only add customName if it's provided AND different from main identifier
+                                          if (
+                                            customName &&
+                                            customName !== mainIdentifier
+                                          ) {
+                                            parts.push(customName);
+                                          }
+
+                                          // Always include game - show "(game name not provided)" in red if blank
+                                          if (!game) {
+                                            parts.push(
+                                              '(game name not provided)'
+                                            );
+                                          } else {
+                                            parts.push(game);
+                                          }
+
+                                          return (
+                                            <span>
+                                              {mainIdentifier} (
+                                              {parts.map((part, idx) => {
+                                                const isGameNotProvided =
+                                                  part ===
+                                                  '(game name not provided)';
+                                                return (
+                                                  <span key={idx}>
+                                                    {isGameNotProvided ? (
+                                                      <span className="text-red-600">
+                                                        {part}
+                                                      </span>
+                                                    ) : (
+                                                      part
+                                                    )}
+                                                    {idx < parts.length - 1 &&
+                                                      ', '}
+                                                  </span>
+                                                );
+                                              })}
+                                              )
+                                            </span>
+                                          );
+                                        })()}
+                                      </span>
+                                      <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600" />
+                                    </button>
                                   </div>
                                 </div>
                               </td>
                               <td className="p-3 text-sm">
-                                {machine.locationName}
+                                <button
+                                  onClick={() => {
+                                    if (machine.locationId) {
+                                      router.push(
+                                        `/locations/${machine.locationId}`
+                                      );
+                                    }
+                                  }}
+                                  className="group flex items-center gap-1.5 text-blue-600 transition-opacity hover:opacity-80"
+                                >
+                                  <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                    {machine.locationName || 'Unknown'}
+                                  </span>
+                                  <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600" />
+                                </button>
                               </td>
                               <td className="p-3 text-sm">
                                 {new Date(
@@ -2754,16 +3154,102 @@ export default function MachinesTab() {
                     {offlineMachinesWithDuration.map(machine => (
                       <Card key={machine.machineId} className="p-4">
                         <div className="mb-3">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="text-sm font-medium">
-                                {machine.machineName}
-                              </h4>
-                              <p className="text-xs text-muted-foreground">
-                                {machine.machineId}
-                              </p>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                              {/* Status Icon - offline machines don't pulse */}
+                              <div className="flex-shrink-0">
+                                <StatusIcon isOnline={false} size="sm" />
+                              </div>
+                              <div className="min-w-0 flex-1 overflow-hidden">
+                                {/* Machine Name - Format: serialNumber (custom.name, game) */}
+                                <button
+                                  onClick={() => {
+                                    router.push(
+                                      `/cabinets/${machine.machineId}`
+                                    );
+                                  }}
+                                  className="group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left"
+                                >
+                                  <h4 className="min-w-0 flex-1 truncate text-sm font-medium text-blue-600 underline decoration-blue-600 decoration-2 underline-offset-2">
+                                    <span className="block truncate">
+                                      {(() => {
+                                        // Get serialNumber (prefer serialNumber, fallback to origSerialNumber)
+                                        const serialNumberRaw =
+                                          (
+                                            machine.serialNumber?.trim() ||
+                                            ((
+                                              machine as Record<string, unknown>
+                                            ).origSerialNumber as
+                                              | string
+                                              | undefined)
+                                          )?.trim() || '';
+
+                                        // Get custom.name
+                                        const customName =
+                                          machine.customName?.trim() || '';
+
+                                        // Main identifier: serialNumber if exists and not blank, otherwise custom.name, otherwise machineId
+                                        const mainIdentifier =
+                                          serialNumberRaw ||
+                                          customName ||
+                                          machine.machineId;
+
+                                        // Get game (gameTitle)
+                                        const game =
+                                          machine.gameTitle?.trim() || '';
+
+                                        // Format: serialNumber || custom.name (custom.name if different, game)
+                                        const parts: string[] = [];
+
+                                        // Only add customName if it's provided AND different from main identifier
+                                        if (
+                                          customName &&
+                                          customName !== mainIdentifier
+                                        ) {
+                                          parts.push(customName);
+                                        }
+
+                                        // Always include game - show "(game name not provided)" in red if blank
+                                        if (!game) {
+                                          parts.push(
+                                            '(game name not provided)'
+                                          );
+                                        } else {
+                                          parts.push(game);
+                                        }
+
+                                        return (
+                                          <>
+                                            {mainIdentifier} (
+                                            {parts.map((part, idx) => {
+                                              const isGameNotProvided =
+                                                part ===
+                                                '(game name not provided)';
+                                              return (
+                                                <span key={idx}>
+                                                  {isGameNotProvided ? (
+                                                    <span className="text-red-600">
+                                                      {part}
+                                                    </span>
+                                                  ) : (
+                                                    part
+                                                  )}
+                                                  {idx < parts.length - 1 &&
+                                                    ', '}
+                                                </span>
+                                              );
+                                            })}
+                                            )
+                                          </>
+                                        );
+                                      })()}
+                                    </span>
+                                  </h4>
+                                  <ExternalLink className="h-3 w-3 flex-shrink-0 text-blue-600" />
+                                </button>
+                              </div>
                             </div>
-                            <div className="ml-2 flex flex-shrink-0 items-center gap-1">
+                            <div className="flex flex-shrink-0 items-center gap-1">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -2790,9 +3276,21 @@ export default function MachinesTab() {
                             <span className="text-muted-foreground">
                               Location:
                             </span>
-                            <span className="font-medium">
-                              {machine.locationName}
-                            </span>
+                            <button
+                              onClick={() => {
+                                if (machine.locationId) {
+                                  router.push(
+                                    `/locations/${machine.locationId}`
+                                  );
+                                }
+                              }}
+                              className="group flex items-center gap-1 text-blue-600 transition-opacity hover:opacity-80"
+                            >
+                              <span className="font-medium underline decoration-blue-600 decoration-2 underline-offset-2">
+                                {machine.locationName || 'Unknown'}
+                              </span>
+                              <ExternalLink className="h-3 w-3 flex-shrink-0 text-blue-600" />
+                            </button>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">
@@ -2818,7 +3316,21 @@ export default function MachinesTab() {
                             <span className="text-muted-foreground">
                               Location:
                             </span>
-                            <p>{machine.locationName}</p>
+                            <button
+                              onClick={() => {
+                                if (machine.locationId) {
+                                  router.push(
+                                    `/locations/${machine.locationId}`
+                                  );
+                                }
+                              }}
+                              className="group flex items-center gap-1 text-blue-600 transition-opacity hover:opacity-80"
+                            >
+                              <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                {machine.locationName || 'Unknown'}
+                              </span>
+                              <ExternalLink className="h-3 w-3 flex-shrink-0 text-blue-600" />
+                            </button>
                           </div>
                           <div>
                             <span className="text-muted-foreground">

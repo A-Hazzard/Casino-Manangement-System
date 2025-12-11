@@ -21,20 +21,20 @@
  * @param onRefresh - Callback when refresh button is clicked
  * @param onBack - Callback when back button is clicked
  */
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import RefreshButton from '@/components/ui/RefreshButton';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import StatusIcon from '@/components/ui/common/StatusIcon';
+import type { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
   Pencil2Icon,
 } from '@radix-ui/react-icons';
-import { RefreshCw } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { differenceInMinutes } from 'date-fns';
-import RefreshButton from '@/components/ui/RefreshButton';
-import StatusIcon from '@/components/ui/common/StatusIcon';
-import type { GamingMachine as CabinetDetail } from '@/shared/types/entities';
+import { AnimatePresence, motion } from 'framer-motion';
+import { RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 // Removed unused LocationInfo import
 
 // Removed unused ExtendedLocationInfo type
@@ -183,8 +183,12 @@ export const CabinetDetailsHeader = ({
               {cabinetDetails.assetNumber || 'Unknown Asset'}
             </h1>
             <p className="text-sm text-gray-600">
-              {cabinetDetails.game || 'Unknown Game'} •{' '}
-              {cabinetDetails.locationName || 'Unknown Location'}
+              {cabinetDetails.game ? (
+                cabinetDetails.game
+              ) : (
+                <span className="text-red-600">(game name not provided)</span>
+              )}{' '}
+              • {cabinetDetails.locationName || 'Unknown Location'}
             </p>
           </div>
         </div>

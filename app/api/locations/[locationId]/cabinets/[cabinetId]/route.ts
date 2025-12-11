@@ -157,6 +157,36 @@ export async function PUT(
       );
     }
 
+    // Check if user has permission to edit machines (admin, technician, developer)
+    const { getUserFromServer } = await import('@/app/api/lib/helpers/users');
+    const user = await getUserFromServer();
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Unauthorized: User not authenticated',
+        },
+        { status: 401 }
+      );
+    }
+
+    const userRoles = (user.roles as string[])?.map(r => r.toLowerCase()) || [];
+    const canEditMachines =
+      userRoles.includes('admin') ||
+      userRoles.includes('technician') ||
+      userRoles.includes('developer');
+
+    if (!canEditMachines) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Forbidden: Only admins, technicians, and developers can edit machines',
+        },
+        { status: 403 }
+      );
+    }
+
     // Verify location exists and is not deleted
     const location = await GamingLocations.findOne({
       _id: locationId,
@@ -508,6 +538,36 @@ export async function DELETE(
         {
           success: false,
           error: 'Unauthorized: You do not have access to this location',
+        },
+        { status: 403 }
+      );
+    }
+
+    // Check if user has permission to delete machines (admin, technician, developer)
+    const { getUserFromServer } = await import('@/app/api/lib/helpers/users');
+    const user = await getUserFromServer();
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Unauthorized: User not authenticated',
+        },
+        { status: 401 }
+      );
+    }
+
+    const userRoles = (user.roles as string[])?.map(r => r.toLowerCase()) || [];
+    const canDeleteMachines =
+      userRoles.includes('admin') ||
+      userRoles.includes('technician') ||
+      userRoles.includes('developer');
+
+    if (!canDeleteMachines) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Forbidden: Only admins, technicians, and developers can delete machines',
         },
         { status: 403 }
       );

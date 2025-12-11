@@ -5,6 +5,7 @@ import type { TimePeriod } from './common';
 export type MachineData = {
   machineId: string;
   serialNumber?: string;
+  customName?: string;
   machineName: string;
   locationName: string;
   locationId: string;

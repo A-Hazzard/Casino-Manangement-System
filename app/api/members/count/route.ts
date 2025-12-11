@@ -136,8 +136,12 @@ export async function GET(req: NextRequest) {
             filterConditions.push({ 'locationDetails.noSMIBLocation': true });
             break;
           case 'MembershipOnly':
+            // Check both membershipEnabled and enableMembership fields for compatibility
             filterConditions.push({
-              'locationDetails.membershipEnabled': true,
+              $or: [
+                { 'locationDetails.membershipEnabled': true },
+                { 'locationDetails.enableMembership': true },
+              ],
             });
             break;
         }

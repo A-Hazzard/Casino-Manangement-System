@@ -1,15 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  getMoneyInColorClass,
-  getMoneyOutColorClass,
-  getGrossColorClass,
-} from '@/lib/utils/financialColors';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import PaginationControls from '@/components/ui/PaginationControls';
 import {
   Table,
   TableBody,
@@ -18,16 +13,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  ArrowUpDown,
-  MapPin,
-  Monitor,
-} from 'lucide-react';
-import { AggregatedLocation } from '@/lib/types/location';
 import type { RevenueAnalysisTableProps } from '@/lib/types/components';
+import { AggregatedLocation } from '@/lib/types/location';
+import {
+  getGrossColorClass,
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+} from '@/lib/utils/financialColors';
+import { ArrowUpDown, MapPin, Monitor, Search } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
 
 export default function RevenueAnalysisTable({
   locations,
@@ -77,12 +71,8 @@ export default function RevenueAnalysisTable({
     });
   }, [filteredLocations, sortField, sortDirection]);
 
-  // Paginate locations
-  const paginatedLocations = useMemo(() => {
-    const startIndex = (currentPage - 1) * 10;
-    const endIndex = startIndex + 10;
-    return sortedLocations.slice(startIndex, endIndex);
-  }, [sortedLocations, currentPage]);
+  // Don't paginate here - locations are already paginated by parent component
+  // Just use the locations prop directly
 
   const handleSort = (field: keyof AggregatedLocation) => {
     if (sortField === field) {
@@ -200,19 +190,25 @@ export default function RevenueAnalysisTable({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Drop</p>
-            <p className={`text-sm font-medium ${getMoneyInColorClass(location.moneyIn)}`}>
+            <p
+              className={`text-sm font-medium ${getMoneyInColorClass(location.moneyIn)}`}
+            >
               ${location.moneyIn.toLocaleString()}
             </p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Cancelled Credits</p>
-            <p className={`text-sm font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}>
+            <p
+              className={`text-sm font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
+            >
               ${location.moneyOut.toLocaleString()}
             </p>
           </div>
           <div className="col-span-2 space-y-1">
             <p className="text-xs text-gray-500">Gross Revenue</p>
-            <p className={`text-lg font-semibold ${getGrossColorClass(location.gross)}`}>
+            <p
+              className={`text-lg font-semibold ${getGrossColorClass(location.gross)}`}
+            >
               ${location.gross.toLocaleString()}
             </p>
           </div>
@@ -320,7 +316,7 @@ export default function RevenueAnalysisTable({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedLocations.map(location => (
+                  locations.map(location => (
                     <TableRow
                       key={location._id || location.location || location.name}
                       className="cursor-pointer transition-colors hover:bg-gray-50"
@@ -337,13 +333,19 @@ export default function RevenueAnalysisTable({
                           {location.totalMachines}
                         </Badge>
                       </TableCell>
-                      <TableCell className={`text-right font-mono ${getMoneyInColorClass(location.moneyIn)}`}>
+                      <TableCell
+                        className={`text-right font-mono ${getMoneyInColorClass(location.moneyIn)}`}
+                      >
                         ${location.moneyIn.toLocaleString()}
                       </TableCell>
-                      <TableCell className={`text-right font-mono ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}>
+                      <TableCell
+                        className={`text-right font-mono ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
+                      >
                         ${location.moneyOut.toLocaleString()}
                       </TableCell>
-                      <TableCell className={`text-right font-mono font-semibold ${getGrossColorClass(location.gross)}`}>
+                      <TableCell
+                        className={`text-right font-mono font-semibold ${getGrossColorClass(location.gross)}`}
+                      >
                         ${location.gross.toLocaleString()}
                       </TableCell>
                     </TableRow>
@@ -364,84 +366,22 @@ export default function RevenueAnalysisTable({
             </div>
           ) : (
             paginatedLocations.map(location => (
-              <LocationCard key={location._id || location.location || location.name} location={location} />
+              <LocationCard
+                key={location._id || location.location || location.name}
+                location={location}
+              />
             ))
           )}
         </div>
 
-        {/* Pagination - Fixed positioning to prevent overlap */}
-        {totalPages > 1 && (
+        {/* Pagination - Use standard PaginationControls */}
+        {onPageChange && totalPages > 1 && (
           <div className="mt-8 border-t border-gray-200 pt-6">
-            <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-              <div className="text-center text-sm text-gray-600 sm:text-left">
-                Showing {(currentPage - 1) * 10 + 1} to{' '}
-                {Math.min(currentPage * 10, totalCount)} of {totalCount}{' '}
-                locations
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onPageChange?.(currentPage - 1)}
-                  disabled={currentPage <= 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const page = i + 1;
-                    return (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => onPageChange?.(page)}
-                        className="h-8 w-8 p-0"
-                      >
-                        {page}
-                      </Button>
-                    );
-                  })}
-                  {totalPages > 5 && (
-                    <>
-                      {currentPage > 3 && <span className="px-2">...</span>}
-                      {currentPage > 3 && currentPage < totalPages - 2 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          {currentPage}
-                        </Button>
-                      )}
-                      {currentPage < totalPages - 2 && (
-                        <span className="px-2">...</span>
-                      )}
-                      {currentPage < totalPages - 2 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onPageChange?.(totalPages)}
-                          className="h-8 w-8 p-0"
-                        >
-                          {totalPages}
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onPageChange?.(currentPage + 1)}
-                  disabled={currentPage >= totalPages}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+            <PaginationControls
+              currentPage={currentPage - 1}
+              totalPages={totalPages}
+              setCurrentPage={page => onPageChange(page + 1)}
+            />
           </div>
         )}
       </CardContent>

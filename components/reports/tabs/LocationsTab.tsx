@@ -309,12 +309,12 @@ export default function LocationsTab() {
     });
   }, [selectedLicencee, makeGamingLocationsRequest]);
 
-  // Calculate which batch we need based on current page (each batch covers 5 pages of 10 items)
+  // Calculate which batch we need based on current page (0-based, like admin page)
   const calculateBatchNumber = useCallback(
     (page: number) => {
-      return Math.floor((page - 1) / (itemsPerBatch / itemsPerPage)) + 1;
+      return Math.floor(page / pagesPerBatch) + 1;
     },
-    [itemsPerBatch, itemsPerPage]
+    [pagesPerBatch]
   );
 
   // Fetch a specific batch of locations (like locations page)
@@ -401,7 +401,7 @@ export default function LocationsTab() {
         // Reset accumulated locations and batches when filters change
         setAccumulatedLocations([]);
         setLoadedBatches(new Set());
-        setCurrentPage(1);
+        setCurrentPage(0);
 
         // Fetch first batch (50 items) for table
         const firstBatchResult = await fetchBatch(1, itemsPerBatch, signal);
@@ -1111,7 +1111,7 @@ export default function LocationsTab() {
   };
   // Reset pagination when filters change
   useEffect(() => {
-    setCurrentPage(1);
+    setCurrentPage(0);
   }, [activeMetricsFilter, selectedDateRange, selectedLicencee]);
 
   // Filter displayed data when selectedLocations changes
@@ -1205,10 +1205,9 @@ export default function LocationsTab() {
     if (paginationLoading || !activeMetricsFilter) return; // Skip while loading or no filter
 
     const currentBatch = calculateBatchNumber(currentPage);
-    const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5 pages per batch
 
-    // Check if we're on the last page of the current batch
-    const isLastPageOfBatch = currentPage % pagesPerBatch === 0;
+    // Check if we're on the last page of the current batch (0-based: pages 0-4 are batch 1, pages 5-9 are batch 2, etc.)
+    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
     const nextBatch = currentBatch + 1;
 
     // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
@@ -1284,19 +1283,34 @@ export default function LocationsTab() {
     totalCount,
   ]);
 
-  // Calculate paginated items for overview table (from accumulated locations)
+  // Calculate total pages based on accumulated locations (like admin page)
+  // This will dynamically increase as more batches are loaded
+  const calculatedTotalPages = useMemo(() => {
+    const totalItems = accumulatedLocations.length;
+    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
+    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
+  }, [accumulatedLocations.length, itemsPerPage]);
+
+  // Update totalPages when calculatedTotalPages changes
+  useEffect(() => {
+    setTotalPages(calculatedTotalPages);
+  }, [calculatedTotalPages]);
+
+  // Calculate paginated items for overview table (from accumulated locations) - 0-based page
   const paginatedTableItems = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
+    const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
+    const startIndex = positionInBatch;
     const endIndex = startIndex + itemsPerPage;
     return accumulatedLocations.slice(startIndex, endIndex);
-  }, [accumulatedLocations, currentPage, itemsPerPage]);
+  }, [accumulatedLocations, currentPage, itemsPerPage, pagesPerBatch]);
 
-  // Update paginatedLocations state from accumulatedLocations (for Location Evaluation and Revenue Analysis tabs)
+  // Update paginatedLocations state from accumulatedLocations (for Location Evaluation and Revenue Analysis tabs) - 0-based page
   useEffect(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
+    const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
+    const startIndex = positionInBatch;
     const endIndex = startIndex + itemsPerPage;
     setPaginatedLocations(accumulatedLocations.slice(startIndex, endIndex));
-  }, [accumulatedLocations, currentPage, itemsPerPage]);
+  }, [accumulatedLocations, currentPage, itemsPerPage, pagesPerBatch]);
 
   const handleLocationSelect = (locationIds: string[]) => {
     setCurrentSelectedLocations(locationIds);
@@ -1700,6 +1714,7 @@ export default function LocationsTab() {
 
                       setAccumulatedLocations(firstBatchResult.data);
                       setLoadedBatches(new Set([1]));
+                      setCurrentPage(0);
 
                       // Also refresh dropdown data
                       await fetchLocationDataAsync(
@@ -2111,9 +2126,9 @@ export default function LocationsTab() {
                     {totalPages > 1 && (
                       <div className="mt-4 flex justify-center">
                         <PaginationControls
-                          currentPage={currentPage - 1}
+                          currentPage={currentPage}
                           totalPages={totalPages}
-                          setCurrentPage={page => setCurrentPage(page + 1)}
+                          setCurrentPage={setCurrentPage}
                         />
                       </div>
                     )}
@@ -2392,6 +2407,11 @@ export default function LocationsTab() {
                         }}
                         loading={paginationLoading}
                         error={null}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalCount={accumulatedLocations.length}
+                        onPageChange={page => setCurrentPage(page)}
+                        itemsPerPage={itemsPerPage}
                       />
                     </CardContent>
                   </Card>
@@ -2715,7 +2735,13 @@ export default function LocationsTab() {
                                         machine.machineId}
                                     </td>
                                     <td className="p-3 text-sm">
-                                      {machine.gameTitle}
+                                      {machine.gameTitle ? (
+                                        machine.gameTitle
+                                      ) : (
+                                        <span className="text-red-600">
+                                          (game name not provided)
+                                        </span>
+                                      )}
                                     </td>
                                     <td className="p-3 text-sm">
                                       {machine.manufacturer}
@@ -2777,7 +2803,14 @@ export default function LocationsTab() {
                                     {machine.machineName}
                                   </h4>
                                   <p className="text-xs text-muted-foreground">
-                                    {machine.locationName} • {machine.gameTitle}
+                                    {machine.locationName} •{' '}
+                                    {machine.gameTitle ? (
+                                      machine.gameTitle
+                                    ) : (
+                                      <span className="text-red-600">
+                                        (game name not provided)
+                                      </span>
+                                    )}
                                   </p>
                                 </div>
 
@@ -3119,6 +3152,10 @@ export default function LocationsTab() {
                     key={`revenue-table-${activeTab}-${paginatedLocations.length}`}
                     locations={paginatedLocations}
                     loading={paginationLoading}
+                    currentPage={currentPage + 1}
+                    totalPages={totalPages}
+                    totalCount={accumulatedLocations.length}
+                    onPageChange={page => setCurrentPage(page - 1)}
                     onLocationClick={(location: AggregatedLocation) => {
                       // Handle location click if needed
                       console.warn(
@@ -3381,7 +3418,13 @@ export default function LocationsTab() {
                                         machine.machineId}
                                     </td>
                                     <td className="p-3 text-sm">
-                                      {machine.gameTitle}
+                                      {machine.gameTitle ? (
+                                        machine.gameTitle
+                                      ) : (
+                                        <span className="text-red-600">
+                                          (game name not provided)
+                                        </span>
+                                      )}
                                     </td>
                                     <td className="p-3 text-sm">
                                       {machine.manufacturer}
@@ -3443,7 +3486,14 @@ export default function LocationsTab() {
                                     {machine.machineName}
                                   </h4>
                                   <p className="text-xs text-muted-foreground">
-                                    {machine.locationName} • {machine.gameTitle}
+                                    {machine.locationName} •{' '}
+                                    {machine.gameTitle ? (
+                                      machine.gameTitle
+                                    ) : (
+                                      <span className="text-red-600">
+                                        (game name not provided)
+                                      </span>
+                                    )}
                                   </p>
                                 </div>
 

@@ -7,11 +7,11 @@
  * @module app/api/lib/helpers/topMachines
  */
 
-import { getDatesForTimePeriod } from '../utils/dates';
-import type { TimePeriod } from '../types';
 import { Meters } from '@/app/api/lib/models/meters';
 import type { Db } from 'mongodb';
 import type { PipelineStage } from 'mongoose';
+import type { TimePeriod } from '../types';
+import { getDatesForTimePeriod } from '../utils/dates';
 
 /**
  * Top machines query parameters
@@ -382,7 +382,7 @@ export function buildTopMachinesDetailedPipeline(
             },
           },
         },
-        game: { $ifNull: ['$game', 'Unknown Game'] },
+        game: { $ifNull: ['$game', '(game name not provided)'] },
         manufacturer: { $ifNull: ['$manufacturer', 'Not Specified'] },
         handle: { $round: ['$handle', 2] },
         totalDrop: { $round: ['$handle', 2] },

@@ -79,11 +79,18 @@ export async function GET(req: NextRequest) {
     // STEP 4: Build query for membership-enabled locations
     // ============================================================================
     const query: Record<string, unknown> = {
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2025-01-01') } },
+      $and: [
+        {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
+          ],
+        },
+        // Check both membershipEnabled and enableMembership fields for compatibility
+        {
+          $or: [{ membershipEnabled: true }, { enableMembership: true }],
+        },
       ],
-      enableMembership: true,
     };
 
     // Apply location permissions

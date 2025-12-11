@@ -1,21 +1,15 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import PaginationControls from '@/components/ui/PaginationControls';
 import {
   getGrossColorClass,
   getMoneyInColorClass,
   getMoneyOutColorClass,
 } from '@/lib/utils/financialColors';
 import { AggregatedLocation } from '@/shared/types/entities';
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
-} from '@radix-ui/react-icons';
 import { ChevronDown, ChevronUp, Home, Search, Server } from 'lucide-react';
 import { useState } from 'react';
 
@@ -266,73 +260,6 @@ export default function EnhancedLocationTable({
     </div>
   );
 
-  // Pagination Component
-  const Pagination = () => {
-    if (totalPages <= 1) return null;
-
-    const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, currentPage + 2);
-
-    return (
-      <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
-        <div className="flex items-center text-sm text-gray-700">
-          <span>
-            Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
-            {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount}{' '}
-            results
-          </span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange?.(1)}
-            disabled={currentPage === 1}
-          >
-            <DoubleArrowLeftIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange?.(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeftIcon className="h-4 w-4" />
-          </Button>
-          {[...Array(endPage - startPage + 1)].map((_, i) => {
-            const page = startPage + i;
-            return (
-              <Button
-                key={page}
-                variant={page === currentPage ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => onPageChange?.(page)}
-              >
-                {page}
-              </Button>
-            );
-          })}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange?.(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            <ChevronRightIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange?.(totalPages)}
-            disabled={currentPage === totalPages}
-          >
-            <DoubleArrowRightIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className={`rounded-lg bg-white shadow ${className}`}>
       {/* Search Bar */}
@@ -365,13 +292,13 @@ export default function EnhancedLocationTable({
         <>
           {/* Mobile Card View */}
           <div className="p-4 md:hidden">
-            {sortedLocations.length === 0 ? (
+            {locations.length === 0 ? (
               <div className="py-8 text-center text-gray-500">
                 No locations found
               </div>
             ) : (
               <div className="space-y-4">
-                {sortedLocations.map(location => (
+                {locations.map(location => (
                   <LocationCard key={location.location} location={location} />
                 ))}
               </div>
@@ -455,7 +382,7 @@ export default function EnhancedLocationTable({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {sortedLocations.map(location => {
+                  {locations.map(location => {
                     const holdPercentage =
                       location.moneyIn > 0
                         ? (location.gross / location.moneyIn) * 100
@@ -549,8 +476,16 @@ export default function EnhancedLocationTable({
         </>
       )}
 
-      {/* Pagination */}
-      {onPageChange && <Pagination />}
+      {/* Pagination - Use standard PaginationControls if onPageChange provided */}
+      {onPageChange && totalPages > 1 && (
+        <div className="border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+          <PaginationControls
+            currentPage={currentPage - 1}
+            totalPages={totalPages}
+            setCurrentPage={page => onPageChange(page + 1)}
+          />
+        </div>
+      )}
     </div>
   );
 }

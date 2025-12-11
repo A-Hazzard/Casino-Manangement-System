@@ -16,8 +16,8 @@ import {
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -60,8 +60,13 @@ export async function GET(request: NextRequest) {
     const userRoles = (userPayload?.roles as string[]) || [];
     // Use only new field
     let userLocationPermissions: string[] = [];
-    if (Array.isArray((userPayload as { assignedLocations?: string[] })?.assignedLocations)) {
-      userLocationPermissions = (userPayload as { assignedLocations: string[] }).assignedLocations;
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
     }
 
     // ============================================================================
@@ -99,7 +104,14 @@ export async function GET(request: NextRequest) {
     ];
 
     if (membershipOnly) {
-      matchStage.membershipEnabled = true;
+      // Check both membershipEnabled and enableMembership fields for compatibility
+      matchStage.$and = [
+        { $or: matchStage.$or },
+        {
+          $or: [{ membershipEnabled: true }, { enableMembership: true }],
+        },
+      ];
+      delete matchStage.$or;
     }
 
     // Apply location filter based on user permissions

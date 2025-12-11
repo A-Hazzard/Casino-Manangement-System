@@ -16,12 +16,12 @@
  * @param onClick - Callback when card is clicked
  * @param isSelected - Whether the card is currently selected
  */
-import React from 'react';
-import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils/formatting';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
+import { motion } from 'framer-motion';
 import { Eye } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React from 'react';
 
 // ============================================================================
 // Types & Animation Variants
@@ -75,7 +75,11 @@ const CabinetCard: React.FC<ExtendedCabinetCardProps> = ({
                 'No ID'}
             </h3>
             <p className="text-xs text-gray-500">
-              {cabinet.installedGame || cabinet.game || 'No Game'}
+              {cabinet.installedGame || cabinet.game ? (
+                cabinet.installedGame || cabinet.game
+              ) : (
+                <span className="text-red-600">(game name not provided)</span>
+              )}
             </p>
           </div>
           {/* Status indicator - kept for consistency, logic based on lastActivity */}
@@ -116,7 +120,7 @@ const CabinetCard: React.FC<ExtendedCabinetCardProps> = ({
             onClick={() => onClick(cabinet._id, cabinet.locationId || '')}
             variant="outline"
             size="sm"
-            className="w-full flex items-center justify-center gap-1.5 text-xs"
+            className="flex w-full items-center justify-center gap-1.5 text-xs"
           >
             <Eye className="h-3.5 w-3.5" />
             <span>View</span>

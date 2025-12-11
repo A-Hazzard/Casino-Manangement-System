@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { TopMachine, TopMachinesTableProps } from '@/lib/types/components';
+import axios from 'axios';
 import { Trophy } from 'lucide-react';
-import type { TopMachinesTableProps, TopMachine } from '@/lib/types/components';
+import { useEffect, useState } from 'react';
 
 export default function TopMachinesTable({
   timePeriod,
@@ -81,7 +81,13 @@ export default function TopMachinesTable({
           <CardTitle className="flex items-center justify-between text-lg">
             <span className="flex items-center gap-2">
               <span className="text-2xl">#{index + 1}</span>
-              <span className="truncate">{machine.game || 'Unknown Game'}</span>
+              <span className="truncate">
+                {machine.game ? (
+                  machine.game
+                ) : (
+                  <span className="text-red-600">(game name not provided)</span>
+                )}
+              </span>
             </span>
             <span className="text-sm text-gray-500">
               #{machine.machineId || 'N/A'}
@@ -287,7 +293,13 @@ export default function TopMachinesTable({
                       {machine.machineId ?? 'N/A'}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-900">
-                      {machine.game ?? 'N/A'}
+                      {machine.game ? (
+                        machine.game
+                      ) : (
+                        <span className="text-red-600">
+                          (game name not provided)
+                        </span>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-900">
                       {machine.manufacturer ?? 'N/A'}

@@ -200,10 +200,16 @@ export async function GET(req: NextRequest) {
             });
             break;
           case 'MembershipOnly':
+            // Check both membershipEnabled and enableMembership fields for compatibility
             filterConditions.push({
               $and: [
                 { locationDetails: { $ne: null } },
-                { 'locationDetails.membershipEnabled': true },
+                {
+                  $or: [
+                    { 'locationDetails.membershipEnabled': true },
+                    { 'locationDetails.enableMembership': true },
+                  ],
+                },
               ],
             });
             break;

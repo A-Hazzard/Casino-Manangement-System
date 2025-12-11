@@ -287,6 +287,9 @@ export async function GET(req: NextRequest) {
         return await getOfflineMachines(
           db,
           searchParams,
+          page,
+          limit,
+          skip,
           startDate,
           endDate,
           locationMatchStage
@@ -803,9 +806,17 @@ const getOverviewMachines = async (
           (machine.Custom as Record<string, unknown>)?.name ||
           machine.serialNumber ||
           'Unknown Machine',
+        serialNumber:
+          (machine.serialNumber as string) ||
+          (machine.origSerialNumber as string) ||
+          '',
+        customName:
+          ((machine.custom as Record<string, unknown>)?.name as string) ||
+          ((machine.Custom as Record<string, unknown>)?.name as string) ||
+          '',
         locationId: machine.gamingLocation?.toString() || '',
         locationName: machine.locationName || 'Unknown Location',
-        gameTitle: machine.game || 'Unknown Game',
+        gameTitle: machine.game || '(game name not provided)',
         manufacturer:
           machine.manufacturer || machine.manuf || 'Unknown Manufacturer',
         isOnline: !!(
@@ -1071,16 +1082,20 @@ const getAllMachines = async (
         return {
           machineId: (machine._id as string).toString(),
           serialNumber:
-            machine.serialNumber ||
-            machine.origSerialNumber ||
-            (machine._id as string).toString(),
+            (machine.serialNumber as string) ||
+            (machine.origSerialNumber as string) ||
+            '',
+          customName:
+            ((machine.custom as Record<string, unknown>)?.name as string) ||
+            ((machine.Custom as Record<string, unknown>)?.name as string) ||
+            '',
           machineName:
             (machine.custom as Record<string, unknown>)?.name ||
             machine.serialNumber ||
             'Unknown Machine',
           locationId: machine.gamingLocation?.toString() || '',
           locationName: machine.locationName || 'Unknown Location',
-          gameTitle: machine.game || 'Unknown Game',
+          gameTitle: machine.game || '(game name not provided)',
           manufacturer:
             machine.manufacturer || machine.manuf || 'Unknown Manufacturer',
           isOnline: !!(
@@ -1141,6 +1156,9 @@ const getAllMachines = async (
 const getOfflineMachines = async (
   db: Db, // MongoDB database connection
   searchParams: URLSearchParams,
+  page: number,
+  limit: number,
+  skip: number,
   startDate: Date | undefined,
   endDate: Date | undefined,
   locationMatchStage: Record<string, unknown>
@@ -1262,6 +1280,8 @@ const getOfflineMachines = async (
         $project: {
           _id: 1,
           serialNumber: 1,
+          origSerialNumber: 1,
+          'custom.name': 1,
           'Custom.name': 1,
           gamingLocation: 1,
           game: 1,
@@ -1318,6 +1338,18 @@ const getOfflineMachines = async (
       { $sort: { netWin: -1 } }
     );
 
+    // Get total count for pagination (before skip/limit)
+    const countPipeline = [...aggregationPipeline];
+    countPipeline.push({ $count: 'total' });
+    const countResult = await db
+      .collection('machines')
+      .aggregate(countPipeline as Document[])
+      .toArray();
+    const totalCount = countResult[0]?.total || 0;
+
+    // Add pagination to main pipeline
+    (aggregationPipeline as unknown[]).push({ $skip: skip }, { $limit: limit });
+
     // Get offline machines
     const machines = await db
       .collection('machines')
@@ -1331,13 +1363,21 @@ const getOfflineMachines = async (
       (machine: Record<string, unknown>) => {
         return {
           machineId: (machine._id as string).toString(),
+          serialNumber:
+            (machine.serialNumber as string) ||
+            (machine.origSerialNumber as string) ||
+            '',
+          customName:
+            ((machine.custom as Record<string, unknown>)?.name as string) ||
+            ((machine.Custom as Record<string, unknown>)?.name as string) ||
+            '',
           machineName:
             (machine.custom as Record<string, unknown>)?.name ||
             machine.serialNumber ||
             'Unknown Machine',
           locationId: machine.gamingLocation?.toString() || '',
           locationName: machine.locationName || 'Unknown Location',
-          gameTitle: machine.game || 'Unknown Game',
+          gameTitle: machine.game || '(game name not provided)',
           manufacturer:
             machine.manufacturer || machine.manuf || 'Unknown Manufacturer',
           isOnline: false, // All machines in this query are offline

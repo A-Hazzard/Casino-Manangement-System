@@ -112,7 +112,10 @@ export const getLocationsWithMetrics = async (
           filterConditions.push({ noSMIBLocation: true });
           break;
         case 'MembershipOnly':
-          filterConditions.push({ membershipEnabled: true });
+          // Check both membershipEnabled and enableMembership fields for compatibility
+          filterConditions.push({
+            $or: [{ membershipEnabled: true }, { enableMembership: true }],
+          });
           break;
       }
     });

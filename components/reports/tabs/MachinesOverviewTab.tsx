@@ -3,7 +3,10 @@
  * Handles the overview tab with machine statistics, charts, and table
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
+import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
 import {
   Card,
   CardContent,
@@ -11,16 +14,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
+import { GamesPerformanceChart } from '@/components/ui/GamesPerformanceChart';
+import { GamesPerformanceRevenueChart } from '@/components/ui/GamesPerformanceRevenueChart';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  BarChart3,
-  Download,
-  RefreshCw,
-  ChevronUp,
-  ChevronDown,
-} from 'lucide-react';
+import { ManufacturerPerformanceChart } from '@/components/ui/ManufacturerPerformanceChart';
 import {
   Select,
   SelectContent,
@@ -28,23 +26,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
-import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
-import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
-import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import {
   ChartNoData,
   ChartSkeleton,
   MachinesOverviewSkeleton,
 } from '@/components/ui/skeletons/ReportsSkeletons';
-import { ManufacturerPerformanceChart } from '@/components/ui/ManufacturerPerformanceChart';
-import { GamesPerformanceChart } from '@/components/ui/GamesPerformanceChart';
-import { GamesPerformanceRevenueChart } from '@/components/ui/GamesPerformanceRevenueChart';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import {
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  ExternalLink,
+  RefreshCw,
+} from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 // Removed duplicate import - using MachineData and MachineStats from lib/types/machinesOverviewTab instead
+import StatusIcon from '@/components/ui/common/StatusIcon';
+import { useUserStore } from '@/lib/store/userStore';
+import { getFinancialColorClass } from '@/lib/utils/financialColors';
+import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
 import { Pencil2Icon } from '@radix-ui/react-icons';
 import { Trash2 } from 'lucide-react';
-import StatusIcon from '@/components/ui/common/StatusIcon';
-import { getFinancialColorClass } from '@/lib/utils/financialColors';
+import { useRouter } from 'next/navigation';
 
 // Sortable table header component
 const SortableHeader = ({
@@ -87,8 +91,8 @@ const SortableHeader = ({
 };
 
 import type {
-  MachinesOverviewTabProps,
   MachineData,
+  MachinesOverviewTabProps,
 } from '@/lib/types/machinesOverviewTab';
 
 export const MachinesOverviewTab = ({
@@ -109,6 +113,16 @@ export const MachinesOverviewTab = ({
   onExport,
 }: MachinesOverviewTabProps) => {
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
+  const router = useRouter();
+  const { user } = useUserStore();
+
+  // Check if user can edit/delete machines (admin, technician, or developer)
+  const canEditMachines = useMemo(() => {
+    const userRoles = user?.roles || [];
+    return userRoles.some(role =>
+      ['admin', 'technician', 'developer'].includes(role.toLowerCase())
+    );
+  }, [user?.roles]);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -532,13 +546,56 @@ export const MachinesOverviewTab = ({
                       className="border-b hover:bg-gray-50"
                     >
                       <td className="p-3 text-center">
-                        {machine.machineId || 'N/A'}
+                        {machine.machineId ? (
+                          <button
+                            onClick={() => {
+                              router.push(`/cabinets/${machine.machineId}`);
+                            }}
+                            className="group mx-auto flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                          >
+                            <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                              {formatMachineDisplayNameWithBold({
+                                serialNumber:
+                                  machine.serialNumber || machine.machineId,
+                                custom: { name: machine.machineName },
+                                game: machine.gameTitle,
+                              })}
+                            </span>
+                            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                          </button>
+                        ) : (
+                          <div className="font-mono text-sm text-gray-900">
+                            N/A
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 text-center">
-                        {machine.gameTitle || 'N/A'}
+                        {machine.gameTitle ? (
+                          machine.gameTitle
+                        ) : (
+                          <span className="text-red-600">
+                            (game name not provided)
+                          </span>
+                        )}
                       </td>
                       <td className="p-3 text-center">
-                        {machine.locationName || 'N/A'}
+                        {machine.locationId ? (
+                          <button
+                            onClick={() => {
+                              router.push(`/locations/${machine.locationId}`);
+                            }}
+                            className="group mx-auto flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
+                          >
+                            <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                              {machine.locationName || 'N/A'}
+                            </span>
+                            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                          </button>
+                        ) : (
+                          <div className="text-sm font-medium text-gray-900">
+                            {machine.locationName || 'N/A'}
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 text-center">
                         {machine.manufacturer || 'N/A'}
@@ -569,25 +626,30 @@ export const MachinesOverviewTab = ({
                         </span>
                       </td>
                       <td className="p-3 text-center">
-                        <StatusIcon isOnline={machine.isOnline || false} />
+                        <StatusIcon
+                          isOnline={machine.isOnline || false}
+                          className={machine.isOnline ? 'animate-pulse' : ''}
+                        />
                       </td>
                       <td className="p-3 text-center">
-                        <div className="flex justify-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEdit(machine)}
-                          >
-                            <Pencil2Icon className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDelete(machine)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        {canEditMachines && (
+                          <div className="flex justify-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(machine)}
+                            >
+                              <Pencil2Icon className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDelete(machine)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

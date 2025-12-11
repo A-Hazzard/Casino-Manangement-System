@@ -3,18 +3,18 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/ui/card';
 import LocationMultiSelect from '@/components/ui/common/LocationMultiSelect';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { MetersHourlyCharts } from '@/components/ui/MetersHourlyCharts';
@@ -29,28 +29,28 @@ import { useUserStore } from '@/lib/store/userStore';
 import type { TopPerformingItem } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils/currency';
 import {
-    exportMetersReportExcel,
-    exportMetersReportPDF,
+  exportMetersReportExcel,
+  exportMetersReportPDF,
 } from '@/lib/utils/export';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
 import { useDebounce } from '@/lib/utils/hooks';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import type {
-    MetersReportData,
-    MetersReportResponse,
+  MetersReportData,
+  MetersReportResponse,
 } from '@/shared/types/meters';
 import axios from 'axios';
 import {
-    AlertCircle,
-    BarChart3,
-    ChevronDown,
-    Download,
-    ExternalLink,
-    FileSpreadsheet,
-    FileText,
-    Monitor,
-    RefreshCw,
-    Search,
+  AlertCircle,
+  BarChart3,
+  ChevronDown,
+  Download,
+  ExternalLink,
+  FileSpreadsheet,
+  FileText,
+  Monitor,
+  RefreshCw,
+  Search,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -260,109 +260,107 @@ export default function MetersTab() {
 
   // Fetch locations data
   const fetchLocations = useCallback(async () => {
-    await makeLocationsRequest(
-      async signal => {
-        try {
-          setLocationsLoading(true);
+    await makeLocationsRequest(async signal => {
+      try {
+        setLocationsLoading(true);
 
-          // For location admins with stale JWT, fetch fresh permissions first
-          if (isLocationAdmin) {
-            await fetchUserPermissions();
-          }
-
-          // Build API parameters
-          const params: Record<string, string> = {};
-          // Location admin should not filter by licensee (they only see their assigned location)
-          if (
-            !isLocationAdmin &&
-            selectedLicencee &&
-            selectedLicencee !== 'all'
-          ) {
-            params.licencee = selectedLicencee;
-          }
-
-          const response = await axios.get('/api/locations', {
-            params,
-            signal,
-          });
-
-          const locationsData = response.data.locations || [];
-          const mappedLocations = locationsData.map(
-            (loc: Record<string, unknown>) => ({
-              id: loc._id,
-              name: loc.name,
-              sasEnabled: loc.sasEnabled || false, // Default to false if not available
-            })
-          );
-
-          console.log('[MetersTab] Fetched locations:', {
-            total: mappedLocations.length,
-            locationAdmin: isLocationAdmin,
-            assignedLocations: locationAdminLocations,
-            fetchedLocationIds: mappedLocations.map(
-              (l: { id: string; name: string; sasEnabled: boolean }) => l.id
-            ),
-          });
-
-          setLocations(mappedLocations);
-
-          // Don't auto-select locations - user must manually select
-          // For location admins, the API returns only their accessible locations,
-          // but we still require manual selection
-          if (isLocationAdmin) {
-            if (
-              mappedLocations.length === 0 &&
-              locationAdminLocations.length > 0
-            ) {
-              // JWT has locations but API returned none - might be a permission mismatch
-              console.warn(
-                '[MetersTab] JWT has location permissions but API returned no locations. This may indicate a permission mismatch.'
-              );
-              toast.warning(
-                'No locations found. Your permissions may have changed. Please refresh the page or log out and log back in.',
-                { duration: 3000 }
-              );
-            } else if (
-              mappedLocations.length === 0 &&
-              locationAdminLocations.length === 0
-            ) {
-              // No locations in JWT and API returned none - user has no location access
-              console.warn(
-                '[MetersTab] Location admin has no assigned locations.'
-              );
-            }
-          }
-        } catch (err: unknown) {
-          // Check if request was aborted - don't show error for cancelled requests
-          // useAbortableRequest already handles abort errors, but check here as well for safety
-          if (err instanceof Error && err.name === 'AbortError') {
-            setLocationsLoading(false);
-            return; // Request was aborted, don't show error
-          }
-          if (axios.isCancel && axios.isCancel(err)) {
-            setLocationsLoading(false);
-            return; // Request was cancelled, don't show error
-          }
-
-          console.error('Error fetching locations:', err);
-          const errorMessage =
-            (
-              (
-                (err as Record<string, unknown>)?.response as Record<
-                  string,
-                  unknown
-                >
-              )?.data as Record<string, unknown>
-            )?.error ||
-            (err as Error)?.message ||
-            'Failed to load locations';
-          toast.error(errorMessage as string, {
-            duration: 3000,
-          });
-          setLocationsLoading(false);
+        // For location admins with stale JWT, fetch fresh permissions first
+        if (isLocationAdmin) {
+          await fetchUserPermissions();
         }
+
+        // Build API parameters
+        const params: Record<string, string> = {};
+        // Location admin should not filter by licensee (they only see their assigned location)
+        if (
+          !isLocationAdmin &&
+          selectedLicencee &&
+          selectedLicencee !== 'all'
+        ) {
+          params.licencee = selectedLicencee;
+        }
+
+        const response = await axios.get('/api/locations', {
+          params,
+          signal,
+        });
+
+        const locationsData = response.data.locations || [];
+        const mappedLocations = locationsData.map(
+          (loc: Record<string, unknown>) => ({
+            id: loc._id,
+            name: loc.name,
+            sasEnabled: loc.sasEnabled || false, // Default to false if not available
+          })
+        );
+
+        console.log('[MetersTab] Fetched locations:', {
+          total: mappedLocations.length,
+          locationAdmin: isLocationAdmin,
+          assignedLocations: locationAdminLocations,
+          fetchedLocationIds: mappedLocations.map(
+            (l: { id: string; name: string; sasEnabled: boolean }) => l.id
+          ),
+        });
+
+        setLocations(mappedLocations);
+
+        // Don't auto-select locations - user must manually select
+        // For location admins, the API returns only their accessible locations,
+        // but we still require manual selection
+        if (isLocationAdmin) {
+          if (
+            mappedLocations.length === 0 &&
+            locationAdminLocations.length > 0
+          ) {
+            // JWT has locations but API returned none - might be a permission mismatch
+            console.warn(
+              '[MetersTab] JWT has location permissions but API returned no locations. This may indicate a permission mismatch.'
+            );
+            toast.warning(
+              'No locations found. Your permissions may have changed. Please refresh the page or log out and log back in.',
+              { duration: 3000 }
+            );
+          } else if (
+            mappedLocations.length === 0 &&
+            locationAdminLocations.length === 0
+          ) {
+            // No locations in JWT and API returned none - user has no location access
+            console.warn(
+              '[MetersTab] Location admin has no assigned locations.'
+            );
+          }
+        }
+      } catch (err: unknown) {
+        // Check if request was aborted - don't show error for cancelled requests
+        // useAbortableRequest already handles abort errors, but check here as well for safety
+        if (err instanceof Error && err.name === 'AbortError') {
+          setLocationsLoading(false);
+          return; // Request was aborted, don't show error
+        }
+        if (axios.isCancel && axios.isCancel(err)) {
+          setLocationsLoading(false);
+          return; // Request was cancelled, don't show error
+        }
+
+        console.error('Error fetching locations:', err);
+        const errorMessage =
+          (
+            (
+              (err as Record<string, unknown>)?.response as Record<
+                string,
+                unknown
+              >
+            )?.data as Record<string, unknown>
+          )?.error ||
+          (err as Error)?.message ||
+          'Failed to load locations';
+        toast.error(errorMessage as string, {
+          duration: 3000,
+        });
+        setLocationsLoading(false);
       }
-    );
+    });
   }, [
     selectedLicencee,
     isLocationAdmin,
@@ -422,20 +420,44 @@ export default function MetersTab() {
         .sort((a, b) => b.totalDrop - a.totalDrop)
         .slice(0, 10)
         .map((item, index) => {
-          // Format machine name with game in brackets if available
-          // machineId format is already "CustomName (SerialNumber)" or just "SerialNumber"
-          // We need to add game to the brackets: "CustomName (SerialNumber, Game)" or "SerialNumber (Game)"
-          let displayName = item.machineId;
-          if (item.game) {
-            // Check if machineId already has brackets (contains serial number)
-            if (item.machineId.includes('(') && item.machineId.includes(')')) {
-              // Add game to existing brackets: "CustomName (SerialNumber, Game)"
-              displayName = item.machineId.replace(/\)$/, `, ${item.game})`);
-            } else {
-              // Add new brackets with game: "SerialNumber (Game)"
-              displayName = `${item.machineId} (${item.game})`;
-            }
+          // Format machine name: serialNumber || custom.name (custom.name || "", game)
+          const itemRecord = item as Record<string, unknown>;
+          const serialNumberRaw = itemRecord.serialNumber as string | undefined;
+          const serialNumber = serialNumberRaw?.trim() || '';
+          const hasSerialNumber = serialNumber !== '';
+
+          const customNameRaw = (itemRecord.custom as Record<string, unknown>)
+            ?.name as string | undefined;
+          const customName = customNameRaw?.trim() || '';
+          const hasCustomName = customName !== '';
+
+          // Main identifier: serialNumber if exists, otherwise custom.name, otherwise machineId
+          const mainIdentifier = hasSerialNumber
+            ? serialNumber
+            : hasCustomName
+              ? customName
+              : item.machineId;
+
+          // Get game
+          const game = item.game?.trim() || '';
+          const hasGame = game !== '';
+
+          // Build bracket parts
+          const bracketParts: string[] = [];
+
+          // Only add customName if it's provided AND different from main identifier
+          if (hasCustomName && customName !== mainIdentifier) {
+            bracketParts.push(customName);
           }
+
+          // Always include game (or "(game name not provided)" if blank)
+          if (hasGame) {
+            bracketParts.push(game);
+          } else {
+            bracketParts.push('(game name not provided)');
+          }
+
+          const displayName = `${mainIdentifier} (${bracketParts.join(', ')})`;
 
           return {
             _id: item.machineDocumentId,
@@ -481,140 +503,133 @@ export default function MetersTab() {
       setReportsLoading(true);
       setError(null);
 
-      await makeMetersRequest(
-        async signal => {
-          const params = new URLSearchParams({
-            locations: selectedLocations.join(','),
-            timePeriod: activeMetricsFilter,
-            page: batch.toString(),
-            limit: itemsPerBatch.toString(),
-          });
+      await makeMetersRequest(async signal => {
+        const params = new URLSearchParams({
+          locations: selectedLocations.join(','),
+          timePeriod: activeMetricsFilter,
+          page: batch.toString(),
+          limit: itemsPerBatch.toString(),
+        });
 
-          if (activeMetricsFilter === 'Custom' && customDateRange) {
-            params.append(
-              'startDate',
-              customDateRange.startDate.toISOString().split('T')[0]
-            );
-            params.append(
-              'endDate',
-              customDateRange.endDate.toISOString().split('T')[0]
-            );
-          }
-
-          if (selectedLicencee && selectedLicencee !== 'all') {
-            params.append('licencee', selectedLicencee);
-          }
-
-          if (displayCurrency) {
-            params.append('currency', displayCurrency);
-          }
-
-          if (selectedLocations.length > 0) {
-            params.append('includeHourlyData', 'true');
-            setHourlyChartLoading(true);
-          }
-
-          try {
-            const response = await axios.get<
-              MetersReportResponse & {
-                hourlyChartData?: Array<{
-                  day: string;
-                  hour: string;
-                  gamesPlayed: number;
-                  coinIn: number;
-                  coinOut: number;
-                }>;
-              }
-            >(`/api/reports/meters?${params}`, { signal });
-
-            const newMetersData = response.data.data || [];
-
-            // Log response for debugging (especially in production)
-            if (
-              process.env.NODE_ENV === 'development' ||
-              !newMetersData.length
-            ) {
-              console.log('[MetersTab] API Response:', {
-                batch,
-                dataLength: newMetersData.length,
-                totalCount: response.data.totalCount,
-                locations: selectedLocations,
-                timePeriod: activeMetricsFilter,
-                licensee: selectedLicencee,
-                currency: displayCurrency,
-                hasHourlyData: !!response.data.hourlyChartData,
-                responseKeys: Object.keys(response.data),
-              });
-            }
-
-            if (response.data.hourlyChartData) {
-              setHourlyChartData(response.data.hourlyChartData);
-              setAllHourlyChartData(response.data.hourlyChartData);
-            }
-            setHourlyChartLoading(false);
-
-            setAllMetersData(prev => {
-              const existingIds = new Set(
-                prev.map(
-                  m =>
-                    m.machineId ||
-                    ((m as Record<string, unknown>)._id as string)
-                )
-              );
-              const uniqueNewMeters = newMetersData.filter(
-                (m: MetersReportData) => {
-                  const id =
-                    m.machineId ||
-                    ((m as Record<string, unknown>)._id as string);
-                  return !existingIds.has(id);
-                }
-              );
-              return [...prev, ...uniqueNewMeters];
-            });
-          } catch (err: unknown) {
-            // Check if request was aborted - don't show error for cancelled requests
-            const axios = (await import('axios')).default;
-            if (axios.isCancel(err)) {
-              // Request was cancelled - ensure loading states are cleared
-              setLoading(false);
-              setReportsLoading(false);
-              setHourlyChartLoading(false);
-              return; // Request was cancelled, don't show error
-            }
-            if (err instanceof Error && err.name === 'AbortError') {
-              // Request was aborted - ensure loading states are cleared
-              setLoading(false);
-              setReportsLoading(false);
-              setHourlyChartLoading(false);
-              return; // Request was aborted, don't show error
-            }
-
-            console.error('Error fetching meters data:', err);
-            const errorMessage =
-              (
-                (
-                  (err as Record<string, unknown>)?.response as Record<
-                    string,
-                    unknown
-                  >
-                )?.data as Record<string, unknown>
-              )?.error ||
-              (err as Error)?.message ||
-              'Failed to load meters data';
-            setError(errorMessage as string);
-            setLoading(false);
-            setReportsLoading(false);
-            setHourlyChartLoading(false);
-            toast.error(errorMessage as string, {
-              duration: 3000,
-            });
-          } finally {
-            // Always clear loading states, even if request was aborted
-            setLoading(false);
-            setReportsLoading(false);
-          }
+        if (activeMetricsFilter === 'Custom' && customDateRange) {
+          params.append(
+            'startDate',
+            customDateRange.startDate.toISOString().split('T')[0]
+          );
+          params.append(
+            'endDate',
+            customDateRange.endDate.toISOString().split('T')[0]
+          );
         }
-      );
+
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.append('licencee', selectedLicencee);
+        }
+
+        if (displayCurrency) {
+          params.append('currency', displayCurrency);
+        }
+
+        if (selectedLocations.length > 0) {
+          params.append('includeHourlyData', 'true');
+          setHourlyChartLoading(true);
+        }
+
+        try {
+          const response = await axios.get<
+            MetersReportResponse & {
+              hourlyChartData?: Array<{
+                day: string;
+                hour: string;
+                gamesPlayed: number;
+                coinIn: number;
+                coinOut: number;
+              }>;
+            }
+          >(`/api/reports/meters?${params}`, { signal });
+
+          const newMetersData = response.data.data || [];
+
+          // Log response for debugging (especially in production)
+          if (process.env.NODE_ENV === 'development' || !newMetersData.length) {
+            console.log('[MetersTab] API Response:', {
+              batch,
+              dataLength: newMetersData.length,
+              totalCount: response.data.totalCount,
+              locations: selectedLocations,
+              timePeriod: activeMetricsFilter,
+              licensee: selectedLicencee,
+              currency: displayCurrency,
+              hasHourlyData: !!response.data.hourlyChartData,
+              responseKeys: Object.keys(response.data),
+            });
+          }
+
+          if (response.data.hourlyChartData) {
+            setHourlyChartData(response.data.hourlyChartData);
+            setAllHourlyChartData(response.data.hourlyChartData);
+          }
+          setHourlyChartLoading(false);
+
+          setAllMetersData(prev => {
+            const existingIds = new Set(
+              prev.map(
+                m =>
+                  m.machineId || ((m as Record<string, unknown>)._id as string)
+              )
+            );
+            const uniqueNewMeters = newMetersData.filter(
+              (m: MetersReportData) => {
+                const id =
+                  m.machineId || ((m as Record<string, unknown>)._id as string);
+                return !existingIds.has(id);
+              }
+            );
+            return [...prev, ...uniqueNewMeters];
+          });
+        } catch (err: unknown) {
+          // Check if request was aborted - don't show error for cancelled requests
+          const axios = (await import('axios')).default;
+          if (axios.isCancel(err)) {
+            // Request was cancelled - ensure loading states are cleared
+            setLoading(false);
+            setReportsLoading(false);
+            setHourlyChartLoading(false);
+            return; // Request was cancelled, don't show error
+          }
+          if (err instanceof Error && err.name === 'AbortError') {
+            // Request was aborted - ensure loading states are cleared
+            setLoading(false);
+            setReportsLoading(false);
+            setHourlyChartLoading(false);
+            return; // Request was aborted, don't show error
+          }
+
+          console.error('Error fetching meters data:', err);
+          const errorMessage =
+            (
+              (
+                (err as Record<string, unknown>)?.response as Record<
+                  string,
+                  unknown
+                >
+              )?.data as Record<string, unknown>
+            )?.error ||
+            (err as Error)?.message ||
+            'Failed to load meters data';
+          setError(errorMessage as string);
+          setLoading(false);
+          setReportsLoading(false);
+          setHourlyChartLoading(false);
+          toast.error(errorMessage as string, {
+            duration: 3000,
+          });
+        } finally {
+          // Always clear loading states, even if request was aborted
+          setLoading(false);
+          setReportsLoading(false);
+        }
+      });
     },
     [
       selectedLocations,
@@ -732,77 +747,75 @@ export default function MetersTab() {
         return;
       }
 
-      await makeHourlyChartRequest(
-        async signal => {
-          try {
-            setHourlyChartLoading(true);
-            setReportsLoading(true); // Set reports store loading state
-            const params = new URLSearchParams({
-              locations: selectedLocations.join(','),
-              timePeriod: activeMetricsFilter,
-              includeHourlyData: 'true',
-              hourlyDataMachineIds: filteredMachineIds.join(','),
-            });
+      await makeHourlyChartRequest(async signal => {
+        try {
+          setHourlyChartLoading(true);
+          setReportsLoading(true); // Set reports store loading state
+          const params = new URLSearchParams({
+            locations: selectedLocations.join(','),
+            timePeriod: activeMetricsFilter,
+            includeHourlyData: 'true',
+            hourlyDataMachineIds: filteredMachineIds.join(','),
+          });
 
-            // Add custom dates if needed
-            if (activeMetricsFilter === 'Custom' && customDateRange) {
-              params.append(
-                'startDate',
-                customDateRange.startDate.toISOString().split('T')[0]
-              );
-              params.append(
-                'endDate',
-                customDateRange.endDate.toISOString().split('T')[0]
-              );
-            }
+          // Add custom dates if needed
+          if (activeMetricsFilter === 'Custom' && customDateRange) {
+            params.append(
+              'startDate',
+              customDateRange.startDate.toISOString().split('T')[0]
+            );
+            params.append(
+              'endDate',
+              customDateRange.endDate.toISOString().split('T')[0]
+            );
+          }
 
-            // Add licensee filter if selected
-            if (selectedLicencee && selectedLicencee !== 'all') {
-              params.append('licencee', selectedLicencee);
-            }
+          // Add licensee filter if selected
+          if (selectedLicencee && selectedLicencee !== 'all') {
+            params.append('licencee', selectedLicencee);
+          }
 
-            // Add currency parameter
-            if (displayCurrency) {
-              params.append('currency', displayCurrency);
-            }
+          // Add currency parameter
+          if (displayCurrency) {
+            params.append('currency', displayCurrency);
+          }
 
-            const response = await axios.get<{
-              hourlyChartData?: Array<{
-                day: string;
-                hour: string;
-                gamesPlayed: number;
-                coinIn: number;
-                coinOut: number;
-              }>;
-            }>(`/api/reports/meters?${params}`, { signal });
+          const response = await axios.get<{
+            hourlyChartData?: Array<{
+              day: string;
+              hour: string;
+              gamesPlayed: number;
+              coinIn: number;
+              coinOut: number;
+            }>;
+          }>(`/api/reports/meters?${params}`, { signal });
 
-            if (response.data.hourlyChartData) {
-              setHourlyChartData(response.data.hourlyChartData);
-            } else {
-              setHourlyChartData([]);
-            }
-          } catch (error) {
-            // Check if request was aborted - don't show error for cancelled requests
-            // useAbortableRequest already handles abort errors, but check here as well for safety
-            if (error instanceof Error && error.name === 'AbortError') {
-              setHourlyChartLoading(false);
-              setReportsLoading(false);
-              return; // Request was aborted, don't show error
-            }
-            if (axios.isCancel && axios.isCancel(error)) {
-              setHourlyChartLoading(false);
-              setReportsLoading(false);
-              return; // Request was cancelled, don't show error
-            }
-
-            console.error('Error fetching filtered hourly chart data:', error);
-            // On error, fall back to all data
-            setHourlyChartData(allHourlyChartData);
+          if (response.data.hourlyChartData) {
+            setHourlyChartData(response.data.hourlyChartData);
+          } else {
+            setHourlyChartData([]);
+          }
+        } catch (error) {
+          // Check if request was aborted - don't show error for cancelled requests
+          // useAbortableRequest already handles abort errors, but check here as well for safety
+          if (error instanceof Error && error.name === 'AbortError') {
             setHourlyChartLoading(false);
             setReportsLoading(false);
+            return; // Request was aborted, don't show error
           }
+          if (axios.isCancel && axios.isCancel(error)) {
+            setHourlyChartLoading(false);
+            setReportsLoading(false);
+            return; // Request was cancelled, don't show error
+          }
+
+          console.error('Error fetching filtered hourly chart data:', error);
+          // On error, fall back to all data
+          setHourlyChartData(allHourlyChartData);
+          setHourlyChartLoading(false);
+          setReportsLoading(false);
         }
-      );
+      });
     };
 
     fetchFilteredHourlyData();
@@ -1454,16 +1467,152 @@ export default function MetersTab() {
                                     className="group mx-auto flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
                                   >
                                     <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
-                                      {/* machineId is already computed by the API with proper fallback:
-                                        1. serialNumber (if not blank/whitespace)
-                                        2. custom.name (if serialNumber is blank) */}
-                                      {item.machineId}
+                                      {/* Format: serialNumber || custom.name (custom.name || "", game) */}
+                                      {(() => {
+                                        // Get serialNumber (if available in item)
+                                        const serialNumberRaw = (
+                                          item as Record<string, unknown>
+                                        ).serialNumber as string | undefined;
+                                        const serialNumber =
+                                          serialNumberRaw?.trim() || '';
+                                        const hasSerialNumber =
+                                          serialNumber !== '';
+
+                                        // Get custom.name (if available in item)
+                                        const customNameRaw = (
+                                          item as Record<string, unknown>
+                                        ).customName as string | undefined;
+                                        const customName =
+                                          customNameRaw?.trim() || '';
+                                        const hasCustomName = customName !== '';
+
+                                        // Main identifier: serialNumber if exists, otherwise custom.name, otherwise machineId
+                                        const mainIdentifier = hasSerialNumber
+                                          ? serialNumber
+                                          : hasCustomName
+                                            ? customName
+                                            : item.machineId;
+                                        const usedSerialNumber =
+                                          hasSerialNumber;
+
+                                        // Get game
+                                        const game = item.game?.trim() || '';
+                                        const hasGame = game !== '';
+
+                                        // Format: serialNumber || custom.name (custom.name if different, game)
+                                        const parts: string[] = [];
+
+                                        // Only add customName if:
+                                        // 1. We used serialNumber as main identifier
+                                        // 2. customName exists and is different from serialNumber
+                                        if (
+                                          usedSerialNumber &&
+                                          hasCustomName &&
+                                          customName !== serialNumber
+                                        ) {
+                                          parts.push(customName);
+                                        }
+
+                                        // Always include game (or "(game name not provided)" in red if blank)
+                                        if (hasGame) {
+                                          parts.push(game);
+                                        } else {
+                                          parts.push(
+                                            '(game name not provided)'
+                                          );
+                                        }
+
+                                        return (
+                                          <span>
+                                            {mainIdentifier} (
+                                            {parts.map((part, idx) => {
+                                              const isGameNotProvided =
+                                                part ===
+                                                '(game name not provided)';
+                                              return (
+                                                <span key={idx}>
+                                                  {isGameNotProvided ? (
+                                                    <span className="text-red-600">
+                                                      {part}
+                                                    </span>
+                                                  ) : (
+                                                    part
+                                                  )}
+                                                  {idx < parts.length - 1 &&
+                                                    ', '}
+                                                </span>
+                                              );
+                                            })}
+                                            )
+                                          </span>
+                                        );
+                                      })()}
                                     </span>
                                     <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
                                   </button>
                                 ) : (
                                   <div className="font-mono text-sm text-gray-900">
-                                    {item.machineId}
+                                    {(() => {
+                                      // Get serialNumber and custom.name
+                                      const serialNumberRaw = (
+                                        item as Record<string, unknown>
+                                      ).serialNumber as string | undefined;
+                                      const serialNumber =
+                                        serialNumberRaw?.trim() || '';
+                                      const customNameRaw = (
+                                        item as Record<string, unknown>
+                                      ).customName as string | undefined;
+                                      const customName =
+                                        customNameRaw?.trim() || '';
+
+                                      // Main identifier: serialNumber if exists and not blank, otherwise custom.name, otherwise machineId
+                                      const mainIdentifier =
+                                        serialNumber ||
+                                        customName ||
+                                        item.machineId;
+
+                                      const game = item.game?.trim() || '';
+                                      const parts: string[] = [];
+
+                                      // Only add customName if it's provided AND different from main identifier
+                                      if (
+                                        customName &&
+                                        customName !== mainIdentifier
+                                      ) {
+                                        parts.push(customName);
+                                      }
+
+                                      // Always include game - show "(game name not provided)" in red if blank
+                                      if (game) {
+                                        parts.push(game);
+                                      } else {
+                                        parts.push('(game name not provided)');
+                                      }
+
+                                      return (
+                                        <span>
+                                          {mainIdentifier} (
+                                          {parts.map((part, idx) => {
+                                            const isGameNotProvided =
+                                              part ===
+                                              '(game name not provided)';
+                                            return (
+                                              <span key={idx}>
+                                                {isGameNotProvided ? (
+                                                  <span className="text-red-600">
+                                                    {part}
+                                                  </span>
+                                                ) : (
+                                                  part
+                                                )}
+                                                {idx < parts.length - 1 && ', '}
+                                              </span>
+                                            );
+                                          })}
+                                          )
+                                        </span>
+                                      );
+                                    })()}
                                   </div>
                                 )}
                               </td>

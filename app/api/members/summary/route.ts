@@ -367,11 +367,18 @@ export async function GET(request: NextRequest) {
     let totalLocationsCount = 0;
     try {
       const locationMatchConditions: Record<string, unknown> = {
-        membershipEnabled: true,
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $exists: false } },
-          { deletedAt: { $lt: new Date('2025-01-01') } }, // Include locations deleted before 2025
+        $and: [
+          // Check both membershipEnabled and enableMembership fields for compatibility
+          {
+            $or: [{ membershipEnabled: true }, { enableMembership: true }],
+          },
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $exists: false } },
+              { deletedAt: { $lt: new Date('2025-01-01') } }, // Include locations deleted before 2025
+            ],
+          },
         ],
       };
 

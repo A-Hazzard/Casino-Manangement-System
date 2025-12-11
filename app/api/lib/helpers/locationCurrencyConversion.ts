@@ -127,7 +127,10 @@ export function applyMachineTypeFilter(
         case 'NoSMIBLocation':
           return loc.noSMIBLocation === true;
         case 'MembershipOnly':
-          return loc.membershipEnabled === true;
+          // Check both membershipEnabled and enableMembership fields for compatibility
+          return (
+            loc.membershipEnabled === true || loc.enableMembership === true
+          );
         default:
           return true;
       }

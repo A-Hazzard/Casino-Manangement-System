@@ -34,9 +34,9 @@ import type { CabinetGridProps } from '@/lib/types/components';
 import type { ExtendedCabinetDetail } from '@/lib/types/pages';
 import { formatCurrency } from '@/lib/utils';
 import {
+  getGrossColorClass,
   getMoneyInColorClass,
   getMoneyOutColorClass,
-  getGrossColorClass,
 } from '@/lib/utils/financialColors';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
@@ -107,7 +107,12 @@ function CabinetCardMobile({
         ></span>
       </div>
       <p className="mb-1 text-sm text-gray-600">
-        Game: {cabinet.game || cabinet.installedGame || 'Unknown'}
+        Game:{' '}
+        {cabinet.game || cabinet.installedGame ? (
+          cabinet.game || cabinet.installedGame
+        ) : (
+          <span className="text-red-600">(game name not provided)</span>
+        )}
       </p>
       <div className="mb-1 flex items-center gap-1.5">
         <span className="text-sm text-gray-600">SMIB:</span>
@@ -179,26 +184,26 @@ function CabinetCardMobile({
           <span>View</span>
         </Button>
         {canEditMachines && (
-        <Button
-          onClick={() => onEdit(cabinet)}
-          variant="outline"
-          size="sm"
+          <Button
+            onClick={() => onEdit(cabinet)}
+            variant="outline"
+            size="sm"
             className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          <span>Edit</span>
-        </Button>
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span>Edit</span>
+          </Button>
         )}
         {canDeleteMachines && (
-        <Button
-          onClick={() => onDelete(cabinet)}
-          variant="outline"
-          size="sm"
+          <Button
+            onClick={() => onDelete(cabinet)}
+            variant="outline"
+            size="sm"
             className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          <span>Delete</span>
-        </Button>
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Delete</span>
+          </Button>
         )}
       </div>
     </div>
@@ -217,8 +222,10 @@ export default function CabinetGrid({
   // Use external sort state if provided, otherwise use local state
   const [internalSortOption, setInternalSortOption] =
     useState<CabinetSortOption>('moneyIn');
-  const [internalSortOrder, setInternalSortOrder] = useState<'asc' | 'desc'>('desc');
-  
+  const [internalSortOrder, setInternalSortOrder] = useState<'asc' | 'desc'>(
+    'desc'
+  );
+
   const sortOption = externalSortOption || internalSortOption;
   const sortOrder = externalSortOrder || internalSortOrder;
 
@@ -295,7 +302,8 @@ export default function CabinetGrid({
   const handleColumnSort = (column: CabinetSortOption) => {
     if (onSortChange) {
       // If external sort handler provided, use it
-      const newOrder = sortOption === column ? (sortOrder === 'asc' ? 'desc' : 'asc') : 'desc';
+      const newOrder =
+        sortOption === column ? (sortOrder === 'asc' ? 'desc' : 'asc') : 'desc';
       onSortChange(column, newOrder);
     } else {
       // Otherwise use internal state

@@ -21,9 +21,9 @@ import { toast } from 'sonner';
 // jsPDF autotable typings are declared in lib/types/jspdf-autotable.d.ts
 
 import type {
-  ExportData,
-  ExportFormat,
-  LegacyExportData,
+    ExportData,
+    ExportFormat,
+    LegacyExportData,
 } from '@shared/types/export';
 
 // ============================================================================
@@ -687,7 +687,7 @@ const convertToExcelFormat = (data: ExtendedExportData) => {
         data: data.revenueAnalysis.map((item: RevenueAnalysisItem) => ({
           Location: item.locationName || 'Unknown',
           'Machine ID': item.machineId || 'Unknown',
-          Game: item.game || 'Unknown',
+          Game: item.game || '(game name not provided)',
           Manufacturer: item.manufacturer || 'Not Specified',
           Handle: item.handle || 0,
           'Win/Loss': item.winLoss || 0,
@@ -702,7 +702,7 @@ const convertToExcelFormat = (data: ExtendedExportData) => {
         data: data.machines.map((item: MachineItem) => ({
           'Machine ID': item.machineId || 'Unknown',
           'Machine Name': item.machineName || 'Unknown',
-          'Game Title': item.gameTitle || 'Unknown',
+          'Game Title': item.gameTitle || '(game name not provided)',
           Location: item.locationName || 'Unknown',
           Manufacturer: item.manufacturer || 'Unknown',
           Type: item.machineType || 'Unknown',

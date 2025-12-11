@@ -3,7 +3,10 @@
  * Handles the offline machines tab with offline machine management
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
+import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
 import {
   Card,
   CardContent,
@@ -11,16 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Monitor,
-  Download,
-  RefreshCw,
-  ChevronUp,
-  ChevronDown,
-} from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -28,16 +23,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
-import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
-import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
-import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import { MachinesOfflineSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import {
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Monitor,
+  RefreshCw,
+} from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 // Removed duplicate import - using MachineData from lib/types/machinesOfflineTab instead
-import { Pencil2Icon } from '@radix-ui/react-icons';
-import { Trash2 } from 'lucide-react';
 import StatusIcon from '@/components/ui/common/StatusIcon';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
+import { Pencil2Icon } from '@radix-ui/react-icons';
+import { Trash2 } from 'lucide-react';
 
 // Sortable table header component for offline machines
 const SortableOfflineHeader = ({
@@ -77,8 +77,8 @@ const SortableOfflineHeader = ({
 };
 
 import type {
-  MachinesOfflineTabProps,
   MachineData,
+  MachinesOfflineTabProps,
 } from '@/lib/types/machinesOfflineTab';
 
 export const MachinesOfflineTab = ({
@@ -489,7 +489,13 @@ export const MachinesOfflineTab = ({
                           {machine.machineId || 'N/A'}
                         </td>
                         <td className="p-3 text-center">
-                          {machine.gameTitle || 'N/A'}
+                          {machine.gameTitle ? (
+                            machine.gameTitle
+                          ) : (
+                            <span className="text-red-600">
+                              (game name not provided)
+                            </span>
+                          )}
                         </td>
                         <td className="p-3 text-center">
                           {machine.locationName || 'N/A'}

@@ -769,7 +769,9 @@ export const EditCabinetModal = ({
           'machine',
           selectedCabinet._id,
           `${
-            selectedCabinet.installedGame || selectedCabinet.game || 'Unknown'
+            selectedCabinet.installedGame ||
+              selectedCabinet.game ||
+              '(game name not provided)'
           } - ${
             selectedCabinet.assetNumber ||
             getSerialNumberIdentifier(selectedCabinet) ||
