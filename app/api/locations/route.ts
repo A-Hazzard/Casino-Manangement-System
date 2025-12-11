@@ -64,32 +64,9 @@ export async function GET(request: Request) {
       searchParams.get('licensee') || searchParams.get('licencee');
     const minimal = searchParams.get('minimal') === '1';
 
-    // Check if user is a collector (collectors should not access locations list)
-    // Note: Allow minimal=true requests for dropdown usage in other pages
-    if (!minimal) {
-      const user = await getUserFromServer();
-      if (user) {
-        const userRoles =
-          (user.roles as string[])?.map(r => r.toLowerCase()) || [];
-        const isCollectorOnly =
-          userRoles.includes('collector') &&
-          !userRoles.includes('developer') &&
-          !userRoles.includes('admin') &&
-          !userRoles.includes('manager') &&
-          !userRoles.includes('location admin') &&
-          !userRoles.includes('technician');
-
-        if (isCollectorOnly) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: 'Collectors do not have access to locations page',
-            },
-            { status: 403 }
-          );
-        }
-      }
-    }
+    // Note: Collectors can access location data via API for collection reports
+    // Page-level access is restricted in ProtectedRoute, but API access is allowed
+    // The minimal parameter check is no longer needed as API access is allowed
     const showAll = searchParams.get('showAll') === 'true';
     const forceAll =
       searchParams.get('forceAll') === 'true' ||

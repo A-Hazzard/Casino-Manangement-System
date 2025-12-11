@@ -31,6 +31,14 @@ function validateDatabaseContext(
       tokenContext: tokenDbContext,
       currentContext: currentDbContext,
     });
+
+    // In development, provide helpful message
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(
+        '🔧 Development mode: Database context mismatch detected. This usually happens when MONGODB_URI changes. Clear your browser cookies and login again.'
+      );
+    }
+
     return false;
   }
 

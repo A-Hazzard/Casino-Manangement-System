@@ -34,7 +34,6 @@ interface CurrencyDisplayProps {
 export function CurrencyDisplay({
   amount,
   currency,
-  showSymbol: _showSymbol = true,
   showCode = false,
   className = '',
   precision = 2,

@@ -27,7 +27,10 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 import { toast } from 'sonner';
-type CabinetTableProps = DataTableProps<Cabinet> & {
+type CabinetTableProps = Omit<
+  DataTableProps<Cabinet>,
+  'loading' | 'onPageChange'
+> & {
   onMachineClick?: (machineId: string) => void;
   showLocation?: boolean;
   showStatus?: boolean;
@@ -47,11 +50,9 @@ type CabinetTableProps = DataTableProps<Cabinet> & {
 
 export default function CabinetTable({
   data: cabinets,
-  loading: _loading,
   sortOption,
   sortOrder,
   onSort,
-  onPageChange: _onPageChange,
   onEdit,
   onDelete,
   canEditMachines = true, // Default to true for backward compatibility

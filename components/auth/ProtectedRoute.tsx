@@ -17,7 +17,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { PageName, hasPageAccess } from '@/lib/utils/permissions';
 import { hasAdminAccessDb, hasPageAccessDb } from '@/lib/utils/permissionsDb';
@@ -43,6 +43,7 @@ export default function ProtectedRoute({
   // ============================================================================
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
   const [hasWaitedForRoles, setHasWaitedForRoles] = useState(false);
 
@@ -73,6 +74,22 @@ export default function ProtectedRoute({
           }, 2000);
         }
         return;
+      }
+
+      // Check if user is collector-only (has ONLY collector role, no other roles)
+      const isCollectorOnly =
+        user.roles.length === 1 && user.roles.includes('collector');
+
+      // If collector-only, block access to all pages except collection-report
+      if (isCollectorOnly) {
+        // Allow access to collection-report pages (including report details)
+        const isCollectionReportPage =
+          pathname === '/collection-report' ||
+          pathname?.startsWith('/collection-report/');
+        if (!isCollectionReportPage) {
+          router.push('/collection-report');
+          return;
+        }
       }
 
       // Check local permissions first (faster)
@@ -151,6 +168,7 @@ export default function ProtectedRoute({
   }, [
     user,
     router,
+    pathname,
     isLoading,
     isAuthenticated,
     requireAdminAccess,

@@ -71,10 +71,7 @@ export default function CollectionReportTable({
   onSort,
   editableReportIds,
 }: ExtendedCollectionReportTableProps) {
-  const {
-    formatAmount: _formatAmount,
-    shouldShowCurrency: _shouldShowCurrency,
-  } = useCurrencyFormat();
+  useCurrencyFormat();
   const router = useRouter();
   const user = useUserStore(state => state.user);
 

@@ -162,10 +162,10 @@ export const MobileCollectedListPanel: React.FC<
               </div>
             ) : isViewingFinancialForm ? (
               // Show Financial Form
-              <div className="flex flex-1 flex-col">
-                <div className="flex-1 overflow-y-auto">
+              <div className="flex flex-1 flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto pb-4">
                   {/* Financial Form Section */}
-                  <div className="p-4">
+                  <div className="p-4 pb-8">
                     <h3 className="mb-4 text-center text-lg font-semibold text-gray-700">
                       Financial Summary
                     </h3>

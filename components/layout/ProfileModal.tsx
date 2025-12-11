@@ -1561,6 +1561,85 @@ export default function ProfileModal({
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                            {/* Roles */}
+                            <div>
+                              <div className="mb-4">
+                                <Label className="text-base font-medium text-gray-900">
+                                  Roles
+                                </Label>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  Your assigned roles and permissions
+                                </p>
+                              </div>
+                              {isEditMode && isPrivilegedEditor ? (
+                                <div className="space-y-2">
+                                  {[
+                                    'developer',
+                                    'admin',
+                                    'manager',
+                                    'location admin',
+                                    'technician',
+                                    'collector',
+                                  ].map(role => (
+                                    <div
+                                      key={role}
+                                      className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2"
+                                    >
+                                      <Checkbox
+                                        id={`role-${role}`}
+                                        checked={selectedRoles
+                                          .map(r => r.toLowerCase())
+                                          .includes(role.toLowerCase())}
+                                        onCheckedChange={checked => {
+                                          if (checked === true) {
+                                            setSelectedRoles(prev => [
+                                              ...prev.filter(
+                                                r =>
+                                                  r.toLowerCase() !==
+                                                  role.toLowerCase()
+                                              ),
+                                              role,
+                                            ]);
+                                          } else {
+                                            setSelectedRoles(prev =>
+                                              prev.filter(
+                                                r =>
+                                                  r.toLowerCase() !==
+                                                  role.toLowerCase()
+                                              )
+                                            );
+                                          }
+                                        }}
+                                      />
+                                      <Label
+                                        htmlFor={`role-${role}`}
+                                        className="cursor-pointer text-sm font-medium capitalize text-gray-900"
+                                      >
+                                        {role}
+                                      </Label>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="flex flex-wrap gap-2">
+                                  {userData?.roles && userData.roles.length > 0 ? (
+                                    userData.roles.map((role, index) => (
+                                      <span
+                                        key={index}
+                                        className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium capitalize text-blue-800"
+                                      >
+                                        {role}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <div className="text-gray-700">
+                                      No roles assigned
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
                             {/* Assigned Licensees */}
                             <div>
                               <div className="mb-4">

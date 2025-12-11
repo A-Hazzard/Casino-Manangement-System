@@ -30,6 +30,29 @@ This document provides critical guidelines for understanding, debugging, and mod
 - **Collection Report Frontend Docs**: See `Documentation/frontend/collection-report.md` for feature documentation
 - **Collection Report Backend Docs**: See `Documentation/backend/collection-report.md` for API documentation
 
+## Membership Filtering Compatibility
+
+**Last Updated:** December 11, 2025
+
+When filtering by membership-enabled locations in API endpoints, the system checks both `membershipEnabled` and `enableMembership` fields for backward compatibility. This ensures locations are included if either field is set to `true`, supporting both legacy and current data formats.
+
+**Affected Endpoints:**
+- `/api/locations/membership-count`
+- `/api/machines/status` (with `machineTypeFilter=MembershipOnly`)
+- `/api/reports/locations` (with `machineTypeFilter=MembershipOnly`)
+- `/api/members/count` (with `machineTypeFilter=MembershipOnly`)
+- `/api/lib/helpers/locationAggregation.ts`
+
+**MongoDB Query Pattern:**
+```typescript
+{
+  $or: [
+    { membershipEnabled: true },
+    { enableMembership: true }
+  ]
+}
+```
+
 ---
 
 ## Core Concepts

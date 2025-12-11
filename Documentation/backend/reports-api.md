@@ -158,7 +158,7 @@ The Location Aggregation API calculates financial metrics by aggregating meter d
 - `startDate` - Custom start date (ISO format)
 - `endDate` - Custom end date (ISO format)
 - `licencee` - Filter by licensee
-- `machineTypeFilter` - Comma-separated list: "LocalServersOnly", "SMIBLocationsOnly", "NoSMIBLocation", "MembershipOnly" (uses OR logic - locations matching ANY selected filter are returned)
+- `machineTypeFilter` - Comma-separated list: "LocalServersOnly", "SMIBLocationsOnly", "NoSMIBLocation", "MembershipOnly" (uses OR logic - locations matching ANY selected filter are returned). Note: "MembershipOnly" filter checks both `membershipEnabled` and `enableMembership` fields for backward compatibility using: `$or: [{ membershipEnabled: true }, { enableMembership: true }]`
 - `showAllLocations` - Include locations without metrics
 - `basicList` - If false, returns all locations with financial data
 - `page` - Pagination page number
@@ -243,7 +243,7 @@ type LocationAggregationParams = {
   startDate?: string; // ISO date string for custom range
   endDate?: string; // ISO date string for custom range
   licencee?: string; // Filter by licensee
-  machineTypeFilter?: string; // Comma-separated: "LocalServersOnly", "SMIBLocationsOnly", "NoSMIBLocation", "MembershipOnly" (OR logic - matches ANY filter)
+  machineTypeFilter?: string; // Comma-separated: "LocalServersOnly", "SMIBLocationsOnly", "NoSMIBLocation", "MembershipOnly" (OR logic - matches ANY filter). Note: "MembershipOnly" checks both `membershipEnabled` and `enableMembership` fields for backward compatibility
   showAllLocations?: boolean; // Include locations without metrics
   basicList?: boolean; // If false, returns all locations with financial data
   page?: number; // Pagination page number

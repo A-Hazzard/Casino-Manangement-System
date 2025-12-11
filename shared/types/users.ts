@@ -20,6 +20,7 @@ export type UserDocument = {
   sessionVersion?: number;
   loginCount?: number;
   lastLoginAt?: Date | string | null;
+  deletedAt?: Date | string | null;
 };
 
 export type UserDocumentWithPassword = UserDocument & {

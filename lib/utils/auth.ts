@@ -46,10 +46,27 @@ export function getRefreshTokenSecret(): string {
 }
 
 export function getCurrentDbConnectionString(): string {
+  // Always read from process.env directly (no caching) to ensure we get the latest value
   const mongoUri = process.env.MONGODB_URI as string;
+
+  // Debug logging for connection string mismatches (development mode)
+  if (process.env.NODE_ENV === 'development') {
+    if (!mongoUri) {
+      console.warn(
+        '[getCurrentDbConnectionString] MONGODB_URI is not defined in environment variables'
+      );
+    } else {
+      // Log connection string prefix for debugging (without exposing credentials)
+      const uriPrefix = mongoUri.substring(0, 50) + '...';
+      console.debug(
+        `[getCurrentDbConnectionString] Current connection string: ${uriPrefix}`
+      );
+    }
+  }
+
   if (!mongoUri) {
     throw new Error(
-      'MONGODB_URI or MONGODB_URI is not defined in environment variables.'
+      'MONGODB_URI is not defined in environment variables.'
     );
   }
   return mongoUri;
@@ -68,11 +85,13 @@ export async function generateAccessToken(
   // Use sessionId from payload if provided, otherwise generate new one
   const sessionId = payload.sessionId || crypto.randomUUID();
 
+  const connectionString = getCurrentDbConnectionString();
+
   const tokenPayload: JwtPayload = {
     ...payload,
     sessionId,
     dbContext: {
-      connectionString: getCurrentDbConnectionString(),
+      connectionString: connectionString,
       timestamp: Date.now(),
     },
     iat: Math.floor(Date.now() / 1000),

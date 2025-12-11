@@ -699,18 +699,16 @@ export default function MachinesTab() {
   useEffect(() => {
     if (activeTab === 'overview') {
       // Clear data and set loading state FIRST to ensure skeleton shows
+      // Must be synchronous to prevent flash of "no data" message
       setAllOverviewMachines([]);
       setOverviewLoadedBatches(new Set([1]));
       setOverviewCurrentPage(0);
       // Ensure loading state is set synchronously before any async operations
       setOverviewLoading(true);
       setLoading(true);
-      // Use requestAnimationFrame to ensure state updates are rendered before fetch
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          fetchOverviewMachines(1, debouncedSearchTerm);
-        });
-      });
+      
+      // Fetch data immediately - no delay needed as state is already set
+      fetchOverviewMachines(1, debouncedSearchTerm);
     } else {
       // Clear loading state when switching away from overview tab
       setOverviewLoading(false);
@@ -729,6 +727,7 @@ export default function MachinesTab() {
     overviewSelectedLocation,
     activeMetricsFilter,
     displayCurrency,
+    setLoading,
   ]);
 
   // Fetch next batch for overview when crossing batch boundaries
@@ -791,6 +790,7 @@ export default function MachinesTab() {
     setOfflineLoadedBatches,
     setOfflineCurrentPage,
     fetchOfflineMachines,
+    setLoading,
   ]);
 
   // Fetch next batch for offline when crossing batch boundaries
@@ -1293,11 +1293,16 @@ export default function MachinesTab() {
   ]);
 
   // Ensure overview loading state is set on initial mount if on overview tab
+  // This must run synchronously before any renders to ensure skeleton shows immediately
   useEffect(() => {
-    if (activeTab === 'overview' && allOverviewMachines.length === 0) {
-      setOverviewLoading(true);
+    if (activeTab === 'overview') {
+      // Set loading immediately if no machines loaded yet
+      if (allOverviewMachines.length === 0) {
+        setOverviewLoading(true);
+        setLoading(true);
+      }
     }
-  }, []); // Run only on mount
+  }, [activeTab, allOverviewMachines.length, setLoading]);
 
   // Load data on component mount and when dependencies change
   // Note: Overview tab data is handled by the filter change useEffect (line 699)
@@ -1848,8 +1853,8 @@ export default function MachinesTab() {
               </div>
             </CardHeader>
             <CardContent>
-              {overviewLoading ||
-              (allOverviewMachines.length === 0 && activeTab === 'overview') ? (
+              {/* Show skeleton if loading OR if no machines and on overview tab (prevents flash of "no data" on initial load) */}
+              {overviewLoading || (allOverviewMachines.length === 0 && activeTab === 'overview') ? (
                 <MachinesOverviewSkeleton />
               ) : (
                 <>

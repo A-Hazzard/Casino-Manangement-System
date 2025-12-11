@@ -259,11 +259,9 @@ export const CabinetContentDisplay = ({
       <div className="hidden lg:block" ref={tableRef}>
         <CabinetTable
           data={paginatedCabinets.map(transformCabinet)}
-          loading={loading}
           sortOption={sortOption}
           sortOrder={sortOrder}
           onSort={(column: string) => onSort(column as CabinetSortOption)}
-          onPageChange={onPageChange}
           onEdit={handleEdit}
           onDelete={handleDelete}
           canEditMachines={canEditMachines}

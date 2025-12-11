@@ -37,13 +37,25 @@ export function setupAxiosInterceptors() {
           errorMessage.includes('database') ||
           errorMessage.includes('context') ||
           errorMessage.includes('mismatch') ||
-          errorCode === 'database_mismatch'
+          errorCode === 'database_mismatch' ||
+          errorCode === 'database_context_mismatch'
         ) {
           console.warn('🔒 Database mismatch detected in API response');
           handleDatabaseMismatch();
 
-          // Try to clear all tokens via API first
+          // Clear all authentication-related cookies and storage
           if (typeof window !== 'undefined') {
+            // Clear all cookies
+            document.cookie.split(';').forEach((c) => {
+              const cookieName = c.replace(/^ +/, '').split('=')[0];
+              document.cookie = `${cookieName}=;expires=${new Date(0).toUTCString()};path=/`;
+            });
+            
+            // Clear localStorage and sessionStorage
+            localStorage.clear();
+            sessionStorage.clear();
+
+            // Try to clear all tokens via API first
             // Use promise-based approach instead of await in non-async function
             axios
               .post('/api/auth/clear-all-tokens')
@@ -55,9 +67,16 @@ export function setupAxiosInterceptors() {
               })
               .finally(() => {
                 // Redirect to login with database mismatch error
-                window.location.href = '/login?error=database_mismatch';
+                toast.error('Database connection has changed. Please login again.', {
+                  duration: 5000,
+                });
+                setTimeout(() => {
+                  window.location.href = '/login?error=database_context_mismatch';
+                }, 1000);
               });
           }
+          
+          return Promise.reject(error);
         } else {
           // Any other 401 error (session invalidation, expired token, etc.)
           console.warn('🔒 Session invalidated or authentication failed');

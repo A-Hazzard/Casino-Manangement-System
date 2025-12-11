@@ -51,7 +51,6 @@ export default function FinancialMetricsCards({
   loading = false,
   title = 'Financial Metrics',
   className = '',
-  disableCurrencyConversion: _disableCurrencyConversion = false,
 }: FinancialMetricsCardsProps) {
   const { selectedLicencee } = useDashBoardStore();
   const { displayCurrency } = useCurrencyFormat();

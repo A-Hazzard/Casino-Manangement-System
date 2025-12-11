@@ -2357,7 +2357,7 @@ export default function NewCollectionModal({
               )}
 
               <div className="min-h-[100px] flex-grow space-y-2 overflow-y-auto">
-                {isLoadingExistingCollections ? (
+                {isLoadingExistingCollections && !selectedLocationId && !lockedLocationId ? (
                   <div className="space-y-2">
                     {[1, 2, 3, 4, 5].map(i => (
                       <div

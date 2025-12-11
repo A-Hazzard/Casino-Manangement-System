@@ -72,6 +72,23 @@ export async function POST(request: NextRequest) {
       'Login successful'
     );
 
+    // Clear any existing authentication cookies before setting new ones
+    // This ensures old tokens from previous database connections don't persist
+    response.cookies.set('token', '', {
+      expires: new Date(0),
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+    response.cookies.set('refreshToken', '', {
+      expires: new Date(0),
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+
     // Set cookies on the response
     const cookieOptions = {
       httpOnly: true,

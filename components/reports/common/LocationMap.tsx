@@ -291,10 +291,11 @@ export default function LocationMap({
     if (!(panes.markerPane instanceof HTMLElement)) return false;
 
     // ENHANCED: Check that panes have _leaflet_pos property and are attached to DOM
-    // @ts-expect-error - _leaflet_pos is a Leaflet internal property
-    if (!panes.mapPane._leaflet_pos) return false;
-    // @ts-expect-error - _leaflet_pos is a Leaflet internal property
-    if (!panes.markerPane._leaflet_pos) return false;
+    // _leaflet_pos is a Leaflet internal property not in TypeScript types
+    const mapPaneWithPos = panes.mapPane as HTMLElement & { _leaflet_pos?: { x: number; y: number } };
+    const markerPaneWithPos = panes.markerPane as HTMLElement & { _leaflet_pos?: { x: number; y: number } };
+    if (!mapPaneWithPos._leaflet_pos) return false;
+    if (!markerPaneWithPos._leaflet_pos) return false;
     
     // Verify panes are attached to the DOM (have parent elements)
     if (!panes.mapPane.parentElement) return false;

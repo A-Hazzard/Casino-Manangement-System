@@ -572,6 +572,20 @@ The Locations API provides comprehensive endpoints for managing gaming locations
   - Sets `onlineMachines = 0` for locations without recent collection reports
   - Adds `hasNoRecentCollectionReport: true` flag to location data for frontend warning icon display
   - Collection reports with `isEditing: true` are excluded from the check
+- **Membership Filtering Compatibility**:
+  - When filtering by `machineTypeFilter` with `MembershipOnly`, the API checks both `membershipEnabled` and `enableMembership` fields for backward compatibility
+  - Uses MongoDB query pattern: `$or: [{ membershipEnabled: true }, { enableMembership: true }]`
+  - This ensures locations are included if either field is set to `true`, supporting both legacy and current data formats
+
+##### **GET `/api/locations/membership-count`**
+
+- **Purpose**: Count locations with membership enabled
+- **Features**: Licensee filtering, location filtering, membership compatibility check
+- **Membership Compatibility**: Checks both `membershipEnabled` and `enableMembership` fields using `$or: [{ membershipEnabled: true }, { enableMembership: true }]`
+- **Query Parameters**:
+  - `licensee`: Filter by licensee ID
+  - `locationId`: Filter by specific location ID
+- **Response**: `{ membershipCount: number }`
 
 ### 📊 **Data Models**
 

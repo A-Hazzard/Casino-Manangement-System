@@ -264,22 +264,22 @@ function DashboardContent() {
     };
 
     fetchMetrics();
-    // Note: dateRangeKey is used in fetchKey, so it must be in dependencies
-    // effectiveDateRange is also included to ensure effect runs when dates change
-    // Zustand setters (setGamingLocations, setTotals, etc.) are stable and don't need to be in dependencies.
-    // loadGamingLocations is a stable function import and doesn't need to be in dependencies.
-    // makeMetricsRequest and stableHandleApiCallWithRetry are stable (from useCallback/useAbortableRequest).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeMetricsFilter,
     selectedLicencee,
-    dateRangeKey, // Used in fetchKey - must be in dependencies
-    effectiveDateRange, // Memoized - only changes when dates actually change
+    dateRangeKey,
+    effectiveDateRange,
     displayCurrency,
     isAdminUser,
     stableHandleApiCallWithRetry,
     makeMetricsRequest,
     chartGranularity,
+    setGamingLocations,
+    setTotals,
+    setChartData,
+    setActiveFilters,
+    setShowDatePicker,
+    setLoadingChartData,
   ]);
 
   // Track if we're in initial load phase for automatic fallback

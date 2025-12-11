@@ -37,6 +37,7 @@ export async function GET() {
     // STEP 1: Authenticate user from JWT token
     // ============================================================================
     const jwtUser = await getUserFromServer();
+
     if (!jwtUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

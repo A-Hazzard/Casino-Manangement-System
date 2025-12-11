@@ -75,12 +75,10 @@ export default function SessionEventsPage() {
   // Computed Values & Utilities
   // ============================================================================
   // Calculate which batch we need based on current page
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / pagesPerBatch) + 1;
-    },
-    [pagesPerBatch]
-  );
+  // pagesPerBatch is a constant (5) so adding it to deps is safe but unnecessary
+  const calculateBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / pagesPerBatch) + 1;
+  }, [pagesPerBatch]);
 
   // ============================================================================
   // Event Handlers
@@ -268,10 +266,7 @@ export default function SessionEventsPage() {
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
     fetchEvents(1);
-    // Note: fetchEvents is a useCallback with all necessary dependencies
-    // We don't include fetchEvents in deps to avoid re-triggering when it's recreated
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, machineId, activeMetricsFilter, customDateRange]);
+  }, [sessionId, machineId, activeMetricsFilter, customDateRange, fetchEvents]);
 
   // Fetch next batch when crossing batch boundaries
   useEffect(() => {
@@ -292,16 +287,13 @@ export default function SessionEventsPage() {
       setLoadedBatches(prev => new Set([...prev, currentBatch]));
       fetchEvents(currentBatch);
     }
-    // Note: fetchEvents is a useCallback with all necessary dependencies
-    // We don't include fetchEvents in deps to avoid re-triggering when it's recreated
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentPage,
     loading,
-    itemsPerBatch,
-    pagesPerBatch,
     loadedBatches,
     calculateBatchNumber,
+    fetchEvents,
+    pagesPerBatch,
   ]);
 
   // Get items for current page from the current batch

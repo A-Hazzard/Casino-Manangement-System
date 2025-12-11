@@ -25,7 +25,6 @@ export default function MembersNavigation({
   onTabChange,
   selectedLicencee,
   onRefresh,
-  onNewMember: _onNewMember,
   refreshing = false,
   locationName,
 }: MembersNavigationProps) {

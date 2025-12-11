@@ -80,8 +80,7 @@ function LocationsPageContent() {
   // ============================================================================
   // Hooks & Context
   // ============================================================================
-  const { handleApiCallWithRetry: _handleApiCallWithRetry } =
-    useGlobalErrorHandler();
+  useGlobalErrorHandler();
   const {
     selectedLicencee,
     setSelectedLicencee,

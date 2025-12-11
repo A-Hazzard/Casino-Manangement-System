@@ -68,8 +68,7 @@ export function useCurrentUserQuery() {
     gcTime: 10 * 60 * 1000, // 10 minutes
     retry: (failureCount, error) => {
       // Don't retry on 401 errors (unauthorized) - this is expected when not logged in
-      // @ts-expect-error - axios error structure
-      if (error?.response?.status === 401) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
         return false;
       }
       // Retry once for other errors
@@ -123,11 +122,8 @@ export function useCurrentUserQuery() {
 
   // Handle authentication errors
   useEffect(() => {
-    if (error) {
-      // @ts-expect-error - axios error structure
-      if (error?.response?.status === 401) {
-        clearUser();
-      }
+    if (error && axios.isAxiosError(error) && error.response?.status === 401) {
+      clearUser();
     }
   }, [error, clearUser]);
 

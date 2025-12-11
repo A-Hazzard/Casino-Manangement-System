@@ -341,11 +341,9 @@ export default function CabinetGrid({
               onEdit: () => handleEdit(cabinet),
               onDelete: () => handleDelete(cabinet),
             }))}
-          loading={false}
           sortOption={sortOption}
           sortOrder={sortOrder}
           onSort={column => handleColumnSort(column as CabinetSortOption)}
-          onPageChange={() => {}}
           onEdit={cabinet => handleEdit(cabinet as ExtendedCabinetDetail)}
           onDelete={cabinet => handleDelete(cabinet as ExtendedCabinetDetail)}
           canEditMachines={canEditMachines}

@@ -107,25 +107,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if user is a collector (collectors should not access machines/cabinets)
-    const userRoles = (user.roles as string[])?.map(r => r.toLowerCase()) || [];
-    const isCollectorOnly =
-      userRoles.includes('collector') &&
-      !userRoles.includes('developer') &&
-      !userRoles.includes('admin') &&
-      !userRoles.includes('manager') &&
-      !userRoles.includes('location admin') &&
-      !userRoles.includes('technician');
-
-    if (isCollectorOnly) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Collectors do not have access to cabinets/machines',
-        },
-        { status: 403 }
-      );
-    }
+    // Note: Collectors can access machine data via API for collection reports
+    // Page-level access is restricted in ProtectedRoute, but API access is allowed
 
     // ============================================================================
     // STEP 2: Parse query parameters

@@ -48,10 +48,10 @@ function validateDatabaseContext(
       currentContext: currentDbContext,
     });
 
-    // In development, we can be more lenient or provide better error messages
+    // In development, provide helpful message
     if (process.env.NODE_ENV === 'development') {
       console.warn(
-        '🔧 Development mode: Database context mismatch detected. Clear your browser cookies and login again.'
+        '🔧 Development mode: Database context mismatch detected. This usually happens when MONGODB_URI changes. Clear your browser cookies and login again.'
       );
     }
 
@@ -143,12 +143,23 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
           return null;
         }
 
-        // Check if user is soft-deleted (deletedAt is set and not in the past)
-        if (dbUser.deletedAt && dbUser.deletedAt > new Date('2025-01-01')) {
-          console.warn(
-            `[SESSION INVALIDATION] User ${jwtPayload._id} has been deleted (soft delete)`
-          );
-          return null;
+        // Check if user is soft-deleted (deletedAt >= 2025)
+        // Only reject users with deletedAt set to 2025 or later
+        // Users without deletedAt or with deletedAt < 2025 can still use their session
+        if (dbUser.deletedAt) {
+          const year2025Start = new Date('2025-01-01T00:00:00.000Z');
+          const deletedAtDate =
+            dbUser.deletedAt instanceof Date
+              ? dbUser.deletedAt
+              : new Date(dbUser.deletedAt);
+
+          // Only invalidate session if deletedAt is >= 2025
+          if (deletedAtDate >= year2025Start) {
+            console.warn(
+              `[SESSION INVALIDATION] User ${jwtPayload._id} has been deleted (soft delete, 2025+)`
+            );
+            return null;
+          }
         }
 
         // Check if user is disabled

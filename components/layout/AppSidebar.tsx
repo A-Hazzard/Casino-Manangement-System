@@ -421,61 +421,77 @@ export default function AppSidebar() {
             ) : (
               // Render items based on pre-loaded permissions
               items
-                .filter(item => navigationPermissions[item.href])
-                .map(item => {
-                    const Icon = item.icon;
-                    const active =
-                      pathname === item.href ||
-                      pathname.startsWith(item.href + '/');
+                .filter(item => {
+                  // Check if user is collector-only
+                  const isCollectorOnly =
+                    user?.roles &&
+                    user.roles.length === 1 &&
+                    user.roles.includes('collector');
 
-                    return (
-                      <div key={item.href} className="relative">
-                        <Link
-                          href={item.href}
+                  // Hide Locations and Cabinets for collector-only users
+                  if (
+                    isCollectorOnly &&
+                    (item.href === '/locations' || item.href === '/cabinets')
+                  ) {
+                    return false;
+                  }
+
+                  return navigationPermissions[item.href];
+                })
+                .map(item => {
+                  const Icon = item.icon;
+                  const active =
+                    pathname === item.href ||
+                    pathname.startsWith(item.href + '/');
+
+                  return (
+                    <div key={item.href} className="relative">
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                          active
+                            ? 'bg-buttonActive font-medium text-white'
+                            : 'text-gray-700 hover:bg-gray-100 hover:text-white dark:hover:bg-gray-800 dark:hover:text-white'
+                        )}
+                        onClick={() => {
+                          // Close sidebar on mobile when a link is clicked
+                          if (
+                            typeof window !== 'undefined' &&
+                            window.innerWidth < 768
+                          ) {
+                            setIsOpen(false);
+                          }
+                        }}
+                        onMouseEnter={e => {
+                          if (collapsed) {
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
+                            setTooltipPosition({
+                              top: rect.top + rect.height / 2,
+                              left: rect.right + 8,
+                            });
+                            setHoveredItem(item.href);
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredItem(null);
+                          setTooltipPosition(null);
+                        }}
+                      >
+                        <Icon className={collapsed ? 'h-7 w-7' : 'h-5 w-5'} />
+                        <span
                           className={cn(
-                            'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                            active
-                              ? 'bg-buttonActive font-medium text-white'
-                              : 'text-gray-700 hover:bg-gray-100 hover:text-white dark:hover:bg-gray-800 dark:hover:text-white'
+                            'truncate',
+                            collapsed ? 'md:hidden' : ''
                           )}
-                          onClick={() => {
-                            // Close sidebar on mobile when a link is clicked
-                            if (
-                              typeof window !== 'undefined' &&
-                              window.innerWidth < 768
-                            ) {
-                              setIsOpen(false);
-                            }
-                          }}
-                          onMouseEnter={e => {
-                            if (collapsed) {
-                              const rect =
-                                e.currentTarget.getBoundingClientRect();
-                              setTooltipPosition({
-                                top: rect.top + rect.height / 2,
-                                left: rect.right + 8,
-                              });
-                              setHoveredItem(item.href);
-                            }
-                          }}
-                          onMouseLeave={() => {
-                            setHoveredItem(null);
-                            setTooltipPosition(null);
-                          }}
                         >
-                          <Icon className={collapsed ? 'h-7 w-7' : 'h-5 w-5'} />
-                          <span
-                            className={cn(
-                              'truncate',
-                              collapsed ? 'md:hidden' : ''
-                            )}
-                          >
-                            {item.label}
-                          </span>
-                        </Link>
-                      </div>
-                    );
-                  })
+                          {item.label}
+                        </span>
+                      </Link>
+                    </div>
+                  );
+                })
             )}
           </nav>
           {/* Currency Filter Section - Mobile Only */}
@@ -502,7 +518,7 @@ export default function AppSidebar() {
                     }
                   }}
                 >
-                  <SelectTrigger className="h-8 w-full text-sm [&>span:first-child]:text-center [&>span:first-child]:absolute [&>span:first-child]:left-0 [&>span:first-child]:right-0 [&>span:first-child]:flex [&>span:first-child]:justify-center">
+                  <SelectTrigger className="h-8 w-full text-sm [&>span:first-child]:absolute [&>span:first-child]:left-0 [&>span:first-child]:right-0 [&>span:first-child]:flex [&>span:first-child]:justify-center [&>span:first-child]:text-center">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="z-[100000]">

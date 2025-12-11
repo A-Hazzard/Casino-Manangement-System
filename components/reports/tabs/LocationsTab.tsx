@@ -249,6 +249,7 @@ export default function LocationsTab() {
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 10; // Items per page for overview table
   const itemsPerBatch = 50; // Items per batch (5 pages of 10 items each)
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
   // Store accumulated locations for batch loading (like locations page)
   const [accumulatedLocations, setAccumulatedLocations] = useState<
@@ -310,12 +311,10 @@ export default function LocationsTab() {
   }, [selectedLicencee, makeGamingLocationsRequest]);
 
   // Calculate which batch we need based on current page (0-based, like admin page)
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / pagesPerBatch) + 1;
-    },
-    [pagesPerBatch]
-  );
+  // pagesPerBatch is a constant (5) so adding it to deps is safe but unnecessary
+  const calculateBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / pagesPerBatch) + 1;
+  }, [pagesPerBatch]);
 
   // Fetch a specific batch of locations (like locations page)
   const fetchBatch = useCallback(
@@ -1262,6 +1261,7 @@ export default function LocationsTab() {
     itemsPerPage,
     calculateBatchNumber,
     fetchBatch,
+    pagesPerBatch,
   ]);
 
   // Debug effect to log state changes
@@ -1297,6 +1297,7 @@ export default function LocationsTab() {
   }, [calculatedTotalPages]);
 
   // Calculate paginated items for overview table (from accumulated locations) - 0-based page
+  // pagesPerBatch is a constant (5) so adding it to deps is safe but unnecessary
   const paginatedTableItems = useMemo(() => {
     const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
     const startIndex = positionInBatch;
@@ -1305,6 +1306,7 @@ export default function LocationsTab() {
   }, [accumulatedLocations, currentPage, itemsPerPage, pagesPerBatch]);
 
   // Update paginatedLocations state from accumulatedLocations (for Location Evaluation and Revenue Analysis tabs) - 0-based page
+  // pagesPerBatch is a constant (5) so adding it to deps is safe but unnecessary
   useEffect(() => {
     const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
     const startIndex = positionInBatch;

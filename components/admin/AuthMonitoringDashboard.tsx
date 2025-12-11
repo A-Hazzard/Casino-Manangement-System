@@ -76,12 +76,10 @@ type AuthEvent = {
 };
 
 type AuthMonitoringDashboardProps = {
-  userRole: string;
+  userRole?: string;
 };
 
-export function AuthMonitoringDashboard({
-  userRole: _userRole,
-}: AuthMonitoringDashboardProps) {
+export function AuthMonitoringDashboard({}: AuthMonitoringDashboardProps) {
   const [metrics, setMetrics] = useState<AuthMetrics | null>(null);
   const [events, setEvents] = useState<AuthEvent[]>([]);
   const [loading, setLoading] = useState(true);

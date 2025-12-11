@@ -46,9 +46,7 @@ export default function EnhancedLocationTable({
   error = null,
   currentPage = 1,
   totalPages = 1,
-  totalCount = 0,
   onPageChange,
-  itemsPerPage = 10,
 }: EnhancedLocationTableProps) {
   const [sortField, setSortField] = useState<SortField>('moneyIn');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -292,13 +290,13 @@ export default function EnhancedLocationTable({
         <>
           {/* Mobile Card View */}
           <div className="p-4 md:hidden">
-            {locations.length === 0 ? (
+            {sortedLocations.length === 0 ? (
               <div className="py-8 text-center text-gray-500">
                 No locations found
               </div>
             ) : (
               <div className="space-y-4">
-                {locations.map(location => (
+                {sortedLocations.map(location => (
                   <LocationCard key={location.location} location={location} />
                 ))}
               </div>
@@ -382,7 +380,7 @@ export default function EnhancedLocationTable({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {locations.map(location => {
+                  {sortedLocations.map(location => {
                     const holdPercentage =
                       location.moneyIn > 0
                         ? (location.gross / location.moneyIn) * 100

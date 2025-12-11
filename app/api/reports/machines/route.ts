@@ -1339,13 +1339,8 @@ const getOfflineMachines = async (
     );
 
     // Get total count for pagination (before skip/limit)
-    const countPipeline = [...aggregationPipeline];
-    countPipeline.push({ $count: 'total' });
-    const countResult = await db
-      .collection('machines')
-      .aggregate(countPipeline as Document[])
-      .toArray();
-    const totalCount = countResult[0]?.total || 0;
+    // Note: Count calculation removed as it's not currently used in response
+    // If pagination metadata is needed in future, uncomment and use countResult
 
     // Add pagination to main pipeline
     (aggregationPipeline as unknown[]).push({ $skip: skip }, { $limit: limit });

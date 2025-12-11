@@ -29,7 +29,6 @@ export default function RevenueAnalysisTable({
   error = null,
   currentPage = 1,
   totalPages = 1,
-  totalCount = 0,
   onPageChange,
   onLocationClick,
 }: RevenueAnalysisTableProps) {
@@ -71,8 +70,8 @@ export default function RevenueAnalysisTable({
     });
   }, [filteredLocations, sortField, sortDirection]);
 
-  // Don't paginate here - locations are already paginated by parent component
-  // Just use the locations prop directly
+  // Use sorted locations - sorting is applied here, pagination is handled by parent
+  const paginatedLocations = sortedLocations;
 
   const handleSort = (field: keyof AggregatedLocation) => {
     if (sortField === field) {
@@ -316,7 +315,7 @@ export default function RevenueAnalysisTable({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  locations.map(location => (
+                  paginatedLocations.map(location => (
                     <TableRow
                       key={location._id || location.location || location.name}
                       className="cursor-pointer transition-colors hover:bg-gray-50"

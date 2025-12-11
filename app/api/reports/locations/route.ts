@@ -899,20 +899,19 @@ export async function GET(req: NextRequest) {
         // Apply all selected filters with AND logic (location must match ALL selected filters)
         // This ensures that if SMIB is selected, Local Servers are excluded (unless Local Server is also selected)
 
-        // SMIBLocationsOnly: Must have SMIB machines (check hasSmib flag only)
+        // SMIBLocationsOnly: Must have SMIB machines (check hasSmib flag or sasMachines > 0)
         // This is the authoritative check - must verify based on actual machine data
-        // Note: sasMachines > 0 does NOT mean SMIB - SMIB requires relayId or smibBoard
         if (smibOnlyFilter) {
           const totalMachines =
             (loc as { totalMachines?: number }).totalMachines || 0;
-          // Only check hasSmib - do NOT check sasMachines as that's different from SMIB
-          const hasSmib = (loc as { hasSmib?: boolean }).hasSmib === true;
+          const hasSmib =
+            (loc as { hasSmib?: boolean }).hasSmib === true ||
+            ((loc as { sasMachines?: number }).sasMachines || 0) > 0;
 
           // If location has no machines, exclude it (can't have SMIB without machines)
           if (totalMachines === 0) return false;
 
           // If location has machines but no SMIB machines, exclude it
-          // hasSmib must be explicitly true (based on relayId or smibBoard check)
           if (!hasSmib) return false;
 
           // If SMIB is selected, exclude Local Servers (unless Local Server is also selected)

@@ -52,10 +52,7 @@ export default function CollectionReportCards({
   editableReportIds,
 }: ExtendedCollectionReportCardsProps) {
   const router = useRouter();
-  const {
-    formatAmount: _formatAmount,
-    shouldShowCurrency: _shouldShowCurrency,
-  } = useCurrencyFormat();
+  useCurrencyFormat();
   const user = useUserStore(state => state.user);
 
   // Check if user has admin access to see issue highlights

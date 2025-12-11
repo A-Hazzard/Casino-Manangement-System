@@ -85,6 +85,50 @@ export async function authenticateUser(
       return { success: false, message: 'Invalid email/username or password.' };
     }
 
+    // Check if user is soft-deleted (deletedAt >= 2025)
+    // Only reject users with deletedAt set to 2025 or later
+    // Users without deletedAt or with deletedAt < 2025 can still login
+    // Note: getUserByEmail/getUserByUsername no longer filter soft-deleted users,
+    // so we check here to prevent login and show appropriate error message
+    if (user.deletedAt) {
+      const year2025Start = new Date('2025-01-01T00:00:00.000Z');
+      const deletedAtDate =
+        user.deletedAt instanceof Date
+          ? user.deletedAt
+          : new Date(user.deletedAt);
+
+      // Only block login if deletedAt is >= 2025
+      if (deletedAtDate >= year2025Start) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(
+            '[authenticateUser] User account is soft-deleted (2025+):',
+            {
+              identifier,
+              userId: user._id,
+              username: user.username,
+              deletedAt: user.deletedAt,
+            }
+          );
+        }
+        await logActivity({
+          action: 'login_blocked',
+          details: `Soft-deleted user (2025+) attempted login: ${identifier}`,
+          ipAddress,
+          userAgent,
+          userId: user._id,
+          username: user.username,
+        });
+        // Show generic error message based on identifier format to avoid revealing account status
+        const errorMessage = looksLikeEmail
+          ? 'Invalid email or password.'
+          : 'Invalid username or password.';
+        return {
+          success: false,
+          message: errorMessage,
+        };
+      }
+    }
+
     // Check if user is enabled
     if (!user.isEnabled) {
       if (process.env.NODE_ENV === 'development') {

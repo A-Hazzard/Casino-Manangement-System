@@ -45,6 +45,15 @@ This tracker monitors the progress of updating documentation files to match the 
 - Files Updated: 19. ✅ .cursor/collection-reports-guidelines.md - Added parallel machine updates documentation 20. ✅ .cursor/reports-page-queries-analysis.md - Added OR filter logic for machineTypeFilter 21. ✅ .cursor/known-issues-and-solutions.md - Updated ModernCalendar mobile behavior 22. ✅ .cursor/application-context.md - Added parallel machine updates to Collection Report Creation
 - Completion Date: December 10, 2025
 
+### Batch 5 (Membership Filtering Compatibility) ✅ COMPLETED
+
+- Status: Completed
+- Files Updated:
+  23. ✅ Documentation/backend/reports-api.md - Added membership filtering compatibility note for MembershipOnly filter
+  24. ✅ Documentation/backend/locations-api.md - Added membership filtering compatibility section for GET /api/locations/membership-count and GET /api/locationAggregation
+  25. ✅ .cursor/collection-reports-guidelines.md - Added membership filtering compatibility section
+- Completion Date: December 11, 2025
+
 ## Summary
 
 ### Key Updates Made:
@@ -54,6 +63,7 @@ This tracker monitors the progress of updating documentation files to match the 
 3. **ModernCalendar Component** - Updated 3 files to document mobile behavior (calendar only shows when "Custom" is selected)
 4. **OR Filter Logic** - Updated 1 file to document that multiple machine type filters use OR logic
 5. **Parallel Updates** - Updated 2 files to document parallel machine updates optimization in collection report creation
+6. **Membership Filtering Compatibility** - Updated 3 files to document that membership filtering checks both `membershipEnabled` and `enableMembership` fields for backward compatibility (December 11, 2025)
 
 ### Files Verified Up-to-Date (No Changes Needed):
 
@@ -88,6 +98,10 @@ This tracker monitors the progress of updating documentation files to match the 
 | .cursor/known-issues-and-solutions.md           | ✅ Updated | 2025-12-10   | ModernCalendar mobile behavior                 |
 | .cursor/application-context.md                  | ✅ Updated | 2025-12-10   | Parallel machine updates in collection reports |
 |                                                 |            |              |                                                |
+| Documentation/backend/reports-api.md            | ✅ Updated | 2025-12-11   | Membership filtering compatibility note         |
+| Documentation/backend/locations-api.md          | ✅ Updated | 2025-12-11   | Membership filtering compatibility section      |
+| .cursor/collection-reports-guidelines.md        | ✅ Updated | 2025-12-11   | Membership filtering compatibility section      |
+|                                                 |            |              |                                                |
 | **Total Files Reviewed**: 60                    |            |              |                                                |
-| **Total Files Updated**: 22                     |            |              |                                                |
-| **Total Files Verified Up-to-Date**: 38         |            |              |                                                |
+| **Total Files Updated**: 25                     |            |              |                                                |
+| **Total Files Verified Up-to-Date**: 35         |            |              |                                                |
