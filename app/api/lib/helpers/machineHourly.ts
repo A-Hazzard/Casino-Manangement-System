@@ -9,6 +9,9 @@
  */
 
 import { Countries } from '@/app/api/lib/models/countries';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
+import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
   convertFromUSD,
@@ -237,22 +240,21 @@ async function getLocationCurrenciesForMachineHourly(
     country?: unknown;
   }>
 ): Promise<Map<string, string>> {
-  const licenseesData = await db
-    .collection('licencees')
-    .find(
-      {
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2025-01-01') } },
-        ],
-      },
-      { projection: { _id: 1, name: 1 } }
-    )
-    .toArray();
+  const licenseesData = await Licencee.find(
+    {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
+      ],
+    },
+    { _id: 1, name: 1 }
+  )
+    .lean()
+    .exec();
 
   const licenseeIdToName = new Map<string, string>();
   licenseesData.forEach(lic => {
-    licenseeIdToName.set(lic._id.toString(), lic.name);
+    licenseeIdToName.set(String(lic._id), lic.name as string);
   });
 
   const countriesData = await Countries.find({}).lean();
@@ -431,10 +433,14 @@ export async function getMachineHourlyData(
     licencee
   );
 
-  const hourlyData = (await db
-    .collection('meters')
-    .aggregate(pipeline)
-    .toArray()) as HourlyDataItem[];
+  // Use cursor for Meters aggregation
+  const hourlyData: HourlyDataItem[] = [];
+  const hourlyDataCursor = Meters.aggregate(pipeline).cursor({
+    batchSize: 1000,
+  });
+  for await (const doc of hourlyDataCursor) {
+    hourlyData.push(doc as HourlyDataItem);
+  }
 
   // Group data by location
   const locationHourlyData = groupHourlyDataByLocation(hourlyData);
@@ -447,12 +453,12 @@ export async function getMachineHourlyData(
 
   // Fetch location names
   const locationStringIds = Object.keys(locationHourlyData);
-  const locationsData = await db
-    .collection('gaminglocations')
-    .find({ _id: { $in: locationStringIds } } as never, {
-      projection: { _id: 1, name: 1, rel: 1, country: 1 },
-    })
-    .toArray();
+  const locationsData = await GamingLocations.find(
+    { _id: { $in: locationStringIds } },
+    { _id: 1, name: 1, rel: 1, country: 1 }
+  )
+    .lean()
+    .exec();
 
   const locationNames: Record<string, string> = {};
   locationsData.forEach(loc => {

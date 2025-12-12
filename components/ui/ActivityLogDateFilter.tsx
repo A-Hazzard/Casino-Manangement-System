@@ -15,10 +15,9 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { TimePeriod } from '@/app/api/lib/types';
 import { Button } from '@/components/ui/button';
 import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
-import { TimePeriod } from '@/app/api/lib/types';
 import {
   Select,
   SelectContent,
@@ -26,6 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useUserStore } from '@/lib/store/userStore';
+import { useMemo, useState } from 'react';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 
 export type ActivityLogDateFilterProps = {
@@ -43,15 +44,29 @@ export default function ActivityLogDateFilter({
   const [showCustomPicker, setShowCustomPicker] = useState(false);
   const [pendingCustomDateRange, setPendingCustomDateRange] =
     useState<RDPDateRange>();
+  const user = useUserStore(state => state.user);
+  const isDeveloper = (user?.roles || []).includes('developer');
 
-  const timeFilterButtons: { label: string; value: TimePeriod }[] = [
-    { label: 'Today', value: 'Today' as TimePeriod },
-    { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
-    { label: 'Last 7 Days', value: '7d' as TimePeriod },
-    { label: 'Last 30 Days', value: '30d' as TimePeriod },
-    { label: 'All Time', value: 'All Time' as TimePeriod },
-    { label: 'Custom', value: 'Custom' as TimePeriod },
-  ];
+  const timeFilterButtons: { label: string; value: TimePeriod }[] =
+    useMemo(() => {
+      const baseButtons = [
+        { label: 'Today', value: 'Today' as TimePeriod },
+        { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
+        { label: 'Last 7 Days', value: '7d' as TimePeriod },
+      ];
+
+      // Only show "Last 30 Days" to developers
+      if (isDeveloper) {
+        baseButtons.push({ label: 'Last 30 Days', value: '30d' as TimePeriod });
+      }
+
+      baseButtons.push(
+        { label: 'All Time', value: 'All Time' as TimePeriod },
+        { label: 'Custom', value: 'Custom' as TimePeriod }
+      );
+
+      return baseButtons;
+    }, [isDeveloper]);
 
   const handleFilterClick = (filter: TimePeriod) => {
     if (filter === 'Custom') {

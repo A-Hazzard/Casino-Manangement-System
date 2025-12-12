@@ -13,11 +13,9 @@
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
-import {
-  LocationResponse,
-  MeterMatchStage,
-  Metric,
-} from '@/lib/types/location';
+import { Meters } from '@/app/api/lib/models/meters';
+import { LocationResponse, MeterMatchStage } from '@/lib/types/location';
+import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -89,123 +87,122 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 5: Fetch location data with machine statistics
+    // STEP 5 & 6: Single aggregation combining meters, machines, and locations
     // ============================================================================
-    const metrics = await db
-      .collection('meters')
-      .aggregate<Metric>([
-        // Stage 1: Filter meter records by date range and licencee
-        { $match: matchStage },
-        // Stage 2: Group by location to calculate financial metrics
-        {
-          $group: {
-            _id: '$location',
-            moneyIn: { $sum: '$movement.drop' },
-            moneyOut: { $sum: '$movement.totalCancelledCredits' },
-          },
+    // 🚀 OPTIMIZED: Single aggregation starting from Meters, joining to machines, then locations
+    // This eliminates the need for 2 separate queries and in-memory combination
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+
+    const aggregationPipeline: PipelineStage[] = [
+      // Stage 1: Start from Meters - filter by date range
+      { $match: matchStage },
+      // Stage 2: Join to machines to get gamingLocation
+      {
+        $lookup: {
+          from: 'machines',
+          localField: 'machine',
+          foreignField: '_id',
+          as: 'machineDetails',
         },
-        // Stage 3: Calculate gross revenue (money in minus money out)
-        { $addFields: { gross: { $subtract: ['$moneyIn', '$moneyOut'] } } },
-      ])
-      .toArray();
-
-    const metricsMap = new Map<string, Metric>(
-      metrics.map((m: Metric) => [m._id, m])
-    );
-
-    // ============================================================================
-    // STEP 6: Combine location and metrics data
-    // ============================================================================
-    const locations = await db
-      .collection('gaminglocations')
-      .aggregate<LocationResponse>([
-        // Stage 1: Filter locations by deletion status, search term, and licencee
-        { $match: locationMatch },
-        // Stage 2: Lookup machine statistics for each location
-        {
-          $lookup: {
-            from: 'machines',
-            let: { id: '$_id' },
-            pipeline: [
-              // Stage 2a: Match machines for this location (excluding deleted ones)
-              {
-                $match: {
-                  $expr: { $eq: ['$gamingLocation', '$$id'] },
-                  $or: [
-                    { deletedAt: null },
-                    { deletedAt: { $lt: new Date('2025-01-01') } },
-                  ],
-                },
-              },
-              // Stage 2b: Group machines to calculate counts and online status
-              {
-                $group: {
-                  _id: null,
-                  totalMachines: { $sum: 1 },
-                  onlineMachines: {
-                    $sum: {
-                      $cond: [
-                        {
-                          $gt: [
-                            '$lastActivity',
-                            new Date(Date.now() - 3 * 60 * 1000),
-                          ],
-                        },
-                        1,
-                        0,
-                      ],
+      },
+      {
+        $unwind: {
+          path: '$machineDetails',
+          preserveNullAndEmptyArrays: false,
+        },
+      },
+      // Stage 3: Join to locations to apply location filters and get location data
+      {
+        $lookup: {
+          from: 'gaminglocations',
+          localField: 'machineDetails.gamingLocation',
+          foreignField: '_id',
+          as: 'locationDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$locationDetails',
+          preserveNullAndEmptyArrays: false,
+        },
+      },
+      // Stage 4: Apply location filters (deletion status, search, licensee)
+      // Note: locationMatch already includes deletion status, search, and licensee filters
+      { $match: locationMatch },
+      // Stage 5: Group by location to calculate financial metrics and machine stats
+            {
+              $group: {
+          _id: '$locationDetails._id',
+          // Location fields
+          name: { $first: '$locationDetails.name' },
+          address: { $first: '$locationDetails.address' },
+          country: { $first: '$locationDetails.country' },
+          rel: { $first: '$locationDetails.rel' },
+          profitShare: { $first: '$locationDetails.profitShare' },
+          geoCoords: { $first: '$locationDetails.geoCoords' },
+          isLocalServer: { $first: '$locationDetails.isLocalServer' },
+          // Financial metrics from meters
+          moneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
+          moneyOut: {
+            $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+          },
+          // Machine statistics (count unique machines and online status)
+          machineIds: { $addToSet: '$machineDetails._id' },
+          onlineMachineIds: {
+            $addToSet: {
+                    $cond: [
+                      {
+                  $and: [
+                    { $ne: ['$machineDetails.lastActivity', null] },
+                    {
+                      $gte: ['$machineDetails.lastActivity', threeMinutesAgo],
                     },
+                        ],
+                      },
+                '$machineDetails._id',
+                '$$REMOVE',
+                    ],
                   },
                 },
               },
-            ],
-            as: 'machineStats',
-          },
-        },
-        // Stage 3: Add computed fields for machine statistics and location flags
-        {
-          $addFields: {
-            totalMachines: {
-              $ifNull: [
-                { $arrayElemAt: ['$machineStats.totalMachines', 0] },
-                0,
-              ],
             },
-            onlineMachines: {
-              $ifNull: [
-                { $arrayElemAt: ['$machineStats.onlineMachines', 0] },
-                0,
-              ],
-            },
-            isLocalServer: { $ifNull: ['$isLocalServer', false] },
-            hasSmib: { $ifNull: ['$hasSmib', false] },
-          },
+      // Stage 6: Calculate derived fields
+      {
+        $addFields: {
+          gross: { $subtract: ['$moneyIn', '$moneyOut'] },
+          totalMachines: { $size: '$machineIds' },
+          onlineMachines: { $size: '$onlineMachineIds' },
         },
-        // Stage 4: Project final fields for location response
-        {
-          $project: {
-            _id: 1,
-            name: 1,
-            address: 1,
-            country: 1,
-            rel: 1,
-            profitShare: 1,
-            geoCoords: 1,
-            totalMachines: 1,
-            onlineMachines: 1,
-            isLocalServer: 1,
-            hasSmib: 1,
-          },
+      },
+      // Stage 7: Project final fields
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          address: 1,
+          country: 1,
+          rel: 1,
+          profitShare: 1,
+          geoCoords: 1,
+          totalMachines: 1,
+          onlineMachines: 1,
+          moneyIn: 1,
+          moneyOut: 1,
+          gross: 1,
+          isLocalServer: { $ifNull: ['$isLocalServer', false] },
+          hasSmib: { $gt: ['$totalMachines', 0] }, // Simplified - assumes machines with meters have SMIB
         },
-      ])
-      .toArray();
+      },
+    ];
+
+    const locations = await Meters.aggregate<
+      LocationResponse & { moneyIn?: number; moneyOut?: number }
+    >(aggregationPipeline).exec();
 
     // ============================================================================
     // STEP 7: Return search results
     // ============================================================================
-    const response = locations.map((loc: LocationResponse) => {
-      const metric: Metric | undefined = metricsMap.get(loc._id);
-      return {
+    const response = locations.map(loc => ({
         _id: loc._id,
         locationName: loc.name,
         country: loc.country,
@@ -213,15 +210,14 @@ export async function GET(request: NextRequest) {
         rel: loc.rel,
         profitShare: loc.profitShare,
         geoCoords: loc.geoCoords,
-        totalMachines: loc.totalMachines,
-        onlineMachines: loc.onlineMachines,
-        moneyIn: metric?.moneyIn ?? 0,
-        moneyOut: metric?.moneyOut ?? 0,
-        gross: metric?.gross ?? 0,
-        isLocalServer: loc.isLocalServer,
-        hasSmib: loc.hasSmib,
-      };
-    });
+      totalMachines: loc.totalMachines || 0,
+      onlineMachines: loc.onlineMachines || 0,
+      moneyIn: (loc as { moneyIn?: number }).moneyIn || 0,
+      moneyOut: (loc as { moneyOut?: number }).moneyOut || 0,
+      gross: loc.gross || 0,
+      isLocalServer: loc.isLocalServer || false,
+      hasSmib: loc.hasSmib || false,
+    }));
 
     const duration = Date.now() - startTime;
     if (duration > 2000) {

@@ -102,17 +102,6 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const params = parseMetersReportParams(searchParams);
 
-    // Log request for debugging (especially in production)
-    console.log('[Meters Report API] Request:', {
-      locations: params.requestedLocationList,
-      timePeriod: params.timePeriod,
-      page: params.page,
-      limit: params.limit,
-      licensee: params.licencee,
-      currency: params.displayCurrency,
-      includeHourlyData: params.includeHourlyData,
-    });
-
     // ============================================================================
     // STEP 2: Connect to database and authenticate user
     // ============================================================================
@@ -282,14 +271,6 @@ export async function GET(req: NextRequest) {
       locationMap
     );
 
-    // Log intermediate results for debugging
-    console.log('[Meters Report API] Data transformation:', {
-      machinesCount: machinesData.length,
-      metersCount: metersMap.size,
-      transformedCount: transformedData.length,
-      locationsCount: locationsData.length,
-    });
-
     // ============================================================================
     // STEP 9: Apply search filter if provided
     // ============================================================================
@@ -398,16 +379,6 @@ export async function GET(req: NextRequest) {
       },
       ...(hourlyChartData && { hourlyChartData }),
     };
-
-    // Log final response for debugging
-    console.log('[Meters Report API] Response:', {
-      dataLength: serializedData.length,
-      totalCount,
-      totalPages,
-      locations: responseLocationList.length,
-      hasHourlyData: !!hourlyChartData,
-      duration: `${duration}ms`,
-    });
 
     // Prevent caching to avoid stale data issues
     return NextResponse.json(response, {

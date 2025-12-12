@@ -12,6 +12,8 @@ import {
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { Member } from '@/app/api/lib/models/members';
+import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -79,7 +81,7 @@ export async function GET(req: NextRequest) {
     // STEP 4: Build aggregation pipeline for members count with location filters
     // ============================================================================
     // Use aggregation to join members with locations for filtering
-    const aggregationPipeline: Array<Record<string, unknown>> = [
+    const aggregationPipeline: PipelineStage[] = [
       {
         $match: {
           $or: [
@@ -157,10 +159,10 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 5: Count members using aggregation
     // ============================================================================
-    const countResult = await db
-      .collection('members')
-      .aggregate([...aggregationPipeline, { $count: 'total' }])
-      .toArray();
+    const countResult = await Member.aggregate([
+      ...aggregationPipeline,
+      { $count: 'total' },
+    ]).exec();
     const memberCount = countResult[0]?.total || 0;
 
     return NextResponse.json({ memberCount });

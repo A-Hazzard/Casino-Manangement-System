@@ -3,9 +3,9 @@
  * Extracts complex sorting logic from the Locations page
  */
 
-import { useState, useEffect, useMemo } from 'react';
-import { AggregatedLocation } from '@/shared/types/common';
 import { LocationSortOption } from '@/lib/types/location';
+import { AggregatedLocation } from '@/shared/types/common';
+import { useEffect, useMemo, useState } from 'react';
 
 type UseLocationSortingProps = {
   locationData: AggregatedLocation[];
@@ -39,11 +39,15 @@ export function useLocationSorting({
 }: Omit<UseLocationSortingProps, 'selectedFilters'>): UseLocationSortingReturn {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [sortOption, setSortOption] = useState<LocationSortOption>('moneyIn');
-  
+
   // Use external currentPage if provided, otherwise use internal state
   const [internalCurrentPage, setInternalCurrentPage] = useState(0);
-  const currentPage = externalCurrentPage !== undefined ? externalCurrentPage : internalCurrentPage;
-  const setCurrentPage = externalCurrentPage !== undefined ? () => {} : setInternalCurrentPage;
+  const currentPage =
+    externalCurrentPage !== undefined
+      ? externalCurrentPage
+      : internalCurrentPage;
+  const setCurrentPage =
+    externalCurrentPage !== undefined ? () => {} : setInternalCurrentPage;
 
   // Memoized filtered data to prevent unnecessary recalculations
   // NOTE: Filters are now handled by the backend API, so we just pass through the data
@@ -86,18 +90,27 @@ export function useLocationSorting({
   };
 
   const itemsPerPage = externalItemsPerPage;
-  // Use totalCount if provided (for server-side pagination), otherwise calculate from sortedData
-  const totalPages = totalCount !== undefined 
-    ? Math.ceil(totalCount / itemsPerPage)
-    : Math.ceil(sortedData.length / itemsPerPage);
-  const currentItems = sortedData.slice(
-    currentPage * itemsPerPage,
-    (currentPage + 1) * itemsPerPage
-  );
+  // For batch pagination (like cabinets page): calculate pages based on current batch size (50 items = 5 pages)
+  // Don't use totalCount for pagination display - only show pages for current batch
+  const itemsPerBatch = 50; // Each batch contains 50 items
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5 pages per batch
+  // Calculate position within current batch (0-4 for pages 0-4, then 0-4 again for pages 5-9, etc.)
+  const positionInBatch = currentPage % pagesPerBatch;
+  const startIndex = positionInBatch * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = sortedData.slice(startIndex, endIndex);
+
+  // Total pages: max 5 pages per batch, or actual pages if less than 5
+  const totalPages =
+    Math.min(pagesPerBatch, Math.ceil(sortedData.length / itemsPerPage)) || 1;
 
   // Reset current page if it exceeds total pages (only for internal state)
   useEffect(() => {
-    if (externalCurrentPage === undefined && currentPage >= totalPages && totalPages > 0) {
+    if (
+      externalCurrentPage === undefined &&
+      currentPage >= totalPages &&
+      totalPages > 0
+    ) {
       setInternalCurrentPage(0);
     }
   }, [currentPage, totalPages, externalCurrentPage]);

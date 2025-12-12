@@ -9,6 +9,9 @@
  */
 
 import { Countries } from '@/app/api/lib/models/countries';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
+import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
   convertFromUSD,
@@ -237,22 +240,21 @@ async function getLocationCurrencies(
     country?: unknown;
   }>
 ): Promise<Map<string, string>> {
-  const licenseesData = await db
-    .collection('licencees')
-    .find(
-      {
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2025-01-01') } },
-        ],
-      },
-      { projection: { _id: 1, name: 1 } }
-    )
-    .toArray();
+  const licenseesData = await Licencee.find(
+    {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
+      ],
+    },
+    { _id: 1, name: 1 }
+  )
+    .lean()
+    .exec();
 
   const licenseeIdToName = new Map<string, string>();
   licenseesData.forEach(lic => {
-    licenseeIdToName.set(lic._id.toString(), lic.name);
+    licenseeIdToName.set(String(lic._id), lic.name as string);
   });
 
   const countriesData = await Countries.find({}).lean();
@@ -562,12 +564,12 @@ export async function getLocationTrends(
   }
 
   // Fetch locations to get their gaming day offsets
-  const locationsData = await db
-    .collection('gaminglocations')
-    .find({ _id: { $in: targetLocations } } as never, {
-      projection: { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 },
-    })
-    .toArray();
+  const locationsData = await GamingLocations.find(
+    { _id: { $in: targetLocations } },
+    { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 }
+  )
+    .lean()
+    .exec();
 
   const locationsList = locationsData.map(loc => ({
     _id: String(loc._id),
@@ -605,10 +607,15 @@ export async function getLocationTrends(
     useMinute
   );
 
-  const dailyData = (await db
-    .collection('meters')
-    .aggregate(pipeline)
-    .toArray()) as DailyTrendItem[];
+  // Use cursor for Meters aggregation (even though grouped, still use cursor for consistency)
+  const dailyData: DailyTrendItem[] = [];
+  const dailyDataCursor = Meters.aggregate(pipeline).cursor({
+    batchSize: 1000,
+  });
+
+  for await (const doc of dailyDataCursor) {
+    dailyData.push(doc as DailyTrendItem);
+  }
 
   // Create location names mapping
   const locationNames: Record<string, string> = {};

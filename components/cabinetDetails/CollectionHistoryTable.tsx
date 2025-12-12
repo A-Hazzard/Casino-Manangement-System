@@ -13,6 +13,8 @@
  *
  * Large component (~648 lines) handling collection history display and navigation.
  */
+'use client';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -36,6 +38,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useUserStore } from '@/lib/store/userStore';
 import {
   AlertCircle,
   ChevronDown,
@@ -61,12 +64,10 @@ const formatLargeNumber = (num: number): string => {
 
 // Smart number display component - only abbreviates if it would overflow
 // Shows tooltip with full value on hover
-const SmartNumberDisplay: React.FC<{ value: number }> = ({
-  value,
-}) => {
+const SmartNumberDisplay: React.FC<{ value: number }> = ({ value }) => {
   const formattedFull = value.toLocaleString();
   const formattedCompact = formatLargeNumber(value);
-  
+
   // Use compact format if number is >= 1000 (likely to overflow in typical column width)
   const shouldAbbreviate = value >= 1000;
   const displayValue = shouldAbbreviate ? formattedCompact : formattedFull;
@@ -86,7 +87,7 @@ const SmartNumberDisplay: React.FC<{ value: number }> = ({
           </span>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
-          <p className="text-sm font-mono">{formattedFull}</p>
+          <p className="font-mono text-sm">{formattedFull}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -128,6 +129,8 @@ export function CollectionHistoryTable({
   issuesMap = {},
 }: CollectionHistoryTableProps) {
   const router = useRouter();
+  const user = useUserStore(state => state.user);
+  const isDeveloper = (user?.roles || []).includes('developer');
 
   // State for filtering and sorting
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
@@ -350,7 +353,9 @@ export function CollectionHistoryTable({
                 <SelectItem value="today">Today</SelectItem>
                 <SelectItem value="yesterday">Yesterday</SelectItem>
                 <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="30d">Last 30 days</SelectItem>
+                {isDeveloper && (
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                )}
                 <SelectItem value="90d">Last 90 days</SelectItem>
                 <SelectItem value="1y">Last year</SelectItem>
               </SelectContent>
@@ -461,7 +466,10 @@ export function CollectionHistoryTable({
                                 <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
                               </div>
                             </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-xs z-50 bg-slate-900 text-white">
+                            <TooltipContent
+                              side="right"
+                              className="z-50 max-w-xs bg-slate-900 text-white"
+                            >
                               <p className="text-xs">
                                 {issuesMap[row.locationReportId]}
                               </p>

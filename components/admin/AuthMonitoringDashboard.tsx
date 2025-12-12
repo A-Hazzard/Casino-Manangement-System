@@ -17,7 +17,9 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -25,8 +27,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -35,19 +35,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useUserStore } from '@/lib/store/userStore';
+import axios from 'axios';
 import {
-  Shield,
-  Users,
   AlertTriangle,
   CheckCircle,
-  XCircle,
   Clock,
+  Download,
   Eye,
   RefreshCw,
-  Download,
+  Shield,
+  Users,
+  XCircle,
 } from 'lucide-react';
-import axios from 'axios';
+import { useCallback, useEffect, useState } from 'react';
 
 // ============================================================================
 // Types
@@ -90,6 +91,8 @@ export function AuthMonitoringDashboard({}: AuthMonitoringDashboardProps) {
     timeRange: '24h',
     search: '',
   });
+  const user = useUserStore(state => state.user);
+  const isDeveloper = (user?.roles || []).includes('developer');
 
   const loadData = useCallback(async () => {
     try {
@@ -367,7 +370,9 @@ export function AuthMonitoringDashboard({}: AuthMonitoringDashboardProps) {
                   <SelectItem value="1h">Last Hour</SelectItem>
                   <SelectItem value="24h">Last 24 Hours</SelectItem>
                   <SelectItem value="7d">Last 7 Days</SelectItem>
-                  <SelectItem value="30d">Last 30 Days</SelectItem>
+                  {isDeveloper && (
+                    <SelectItem value="30d">Last 30 Days</SelectItem>
+                  )}
                   <SelectItem value="all">All Time</SelectItem>
                 </SelectContent>
               </Select>

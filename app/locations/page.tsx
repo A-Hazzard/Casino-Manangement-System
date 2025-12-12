@@ -131,7 +131,6 @@ function LocationsPageContent() {
     searchLoading,
     error,
     fetchData,
-    totalCount,
     fetchBatch,
   } = useLocationData({
     selectedLicencee,
@@ -297,12 +296,8 @@ function LocationsPageContent() {
     useLocationSorting({
       locationData: filteredLocationData,
       currentPage,
-      // For frontend search, use filtered length; for backend search, use locationData length; otherwise use totalCount
-      totalCount: searchTerm.trim()
-        ? shouldUseBackendSearch
-          ? locationData.length
-          : frontendFilteredLocations.length
-        : totalCount,
+      // Don't pass totalCount - use batch pagination (max 5 pages per batch of 50 items)
+      // This matches the cabinets page behavior
       itemsPerPage,
     });
 

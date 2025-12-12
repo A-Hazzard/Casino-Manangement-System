@@ -9,6 +9,9 @@
 
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
+import { Licencee } from '@/app/api/lib/models/licencee';
+import { Countries } from '@/app/api/lib/models/countries';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
   convertFromUSD,
@@ -358,9 +361,7 @@ async function processLocationMetricsSingleAggregation(
   shouldUseHourly: boolean,
   shouldUseMinute?: boolean
 ): Promise<MeterTrendMetric[]> {
-  console.log(
-    `[processLocationMetricsSingleAggregation] Processing ${locations.length} locations with single aggregation`
-  );
+  // Note: Avoid verbose logs here — this path runs for 7d/30d and can be hot.
 
   // Get global date range (earliest start, latest end) for initial query
   let globalStart = new Date();
@@ -383,6 +384,11 @@ async function processLocationMetricsSingleAggregation(
 
   if (allMachineIds.length === 0) {
     return [];
+  }
+
+  const locationById = new Map<string, LocationData>();
+  for (const location of locations) {
+    locationById.set(String(location._id), location);
   }
 
   // Single aggregation for all machines - group by machine, day, and time
@@ -466,20 +472,33 @@ async function processLocationMetricsSingleAggregation(
     },
   ];
 
-  const allMetrics = await db
-    .collection('meters')
-    .aggregate(pipeline, {
-      allowDiskUse: true,
-      hint: { machine: 1, readAt: 1 },
-    })
-    .toArray();
-
   // Filter by gaming day ranges per location and group by location/day/time
   // Since we grouped by machine/day/time, we need to check if the day falls within
   // the gaming day range for that location
   const locationMetricsMap = new Map<string, MeterTrendMetric>();
 
-  for (const metric of allMetrics) {
+  // IMPORTANT: Stream aggregation results to avoid loading large arrays into memory.
+  const cursor = Meters.aggregate(pipeline, {
+    allowDiskUse: true,
+    hint: { machine: 1, readAt: 1 },
+    maxTimeMS: 300000,
+  })
+    .cursor({ batchSize: 5000 });
+
+  for await (const metricDoc of cursor) {
+    const metric = metricDoc as {
+      machine: string;
+      day: string;
+      time: string;
+      drop?: number;
+      totalCancelledCredits?: number;
+      gross?: number;
+      gamesPlayed?: number;
+      jackpot?: number;
+      minReadAt: Date;
+      maxReadAt: Date;
+    };
+
     const machineId = metric.machine;
     const locationId = machineToLocation.get(machineId);
     if (!locationId) continue;
@@ -506,7 +525,7 @@ async function processLocationMetricsSingleAggregation(
       continue;
     }
 
-    const location = locations.find(loc => String(loc._id) === locationId);
+    const location = locationById.get(locationId);
     if (!location) continue;
 
     // Group by location/day/time
@@ -600,14 +619,17 @@ export async function processLocationMetricsBatches(
         };
 
         // Check aggregation results directly without preflight read
-
-        const results = await db
-          .collection('meters')
-          .aggregate<PipelineMetric>(pipeline, {
-            allowDiskUse: true,
-            hint: { machine: 1, readAt: 1 },
-          })
-          .toArray();
+        // Use cursor for aggregation to avoid loading all results into memory
+        const results: PipelineMetric[] = [];
+        const resultsCursor = Meters.aggregate<PipelineMetric>(pipeline, {
+          allowDiskUse: true,
+          hint: { machine: 1, readAt: 1 },
+        })
+          .cursor({ batchSize: 5000 });
+        
+        for await (const doc of resultsCursor) {
+          results.push(doc);
+        }
 
         return results.map(metric => ({
           ...metric,
@@ -656,25 +678,25 @@ export async function loadCurrencyMetadata(
   );
 
   if (licenceeIds.length > 0) {
-    const licenseeDocs = await db
-      .collection('licencees')
-      .find(
-        {
-          _id: {
-            $in: licenceeIds
-              .map(id => {
-                try {
-                  return new ObjectId(id);
-                } catch {
-                  return null;
-                }
-              })
-              .filter((id): id is ObjectId => id !== null),
-          },
+    // Use Mongoose model with lean() for read-only query
+    const licenseeDocs = await Licencee.find(
+      {
+        _id: {
+          $in: licenceeIds
+            .map(id => {
+              try {
+                return new ObjectId(id);
+              } catch {
+                return null;
+              }
+            })
+            .filter((id): id is ObjectId => id !== null),
         },
-        { projection: { name: 1 } }
-      )
-      .toArray();
+      },
+      { name: 1 }
+    )
+      .lean()
+      .exec();
 
     licenseeDocs.forEach(doc => {
       licenseeIdToName.set(String(doc._id), doc.name);
@@ -690,25 +712,25 @@ export async function loadCurrencyMetadata(
   );
 
   if (countryIds.length > 0) {
-    const countryDocs = await db
-      .collection('countries')
-      .find(
-        {
-          _id: {
-            $in: countryIds
-              .map(id => {
-                try {
-                  return new ObjectId(id);
-                } catch {
-                  return null;
-                }
-              })
-              .filter((id): id is ObjectId => id !== null),
-          },
+    // Use Mongoose model with lean() for read-only query
+    const countryDocs = await Countries.find(
+      {
+        _id: {
+          $in: countryIds
+            .map(id => {
+              try {
+                return new ObjectId(id);
+              } catch {
+                return null;
+              }
+            })
+            .filter((id): id is ObjectId => id !== null),
         },
-        { projection: { name: 1 } }
-      )
-      .toArray();
+      },
+      { name: 1 }
+    )
+      .lean()
+      .exec();
 
     countryDocs.forEach(doc => {
       countryIdToName.set(String(doc._id), doc.name);

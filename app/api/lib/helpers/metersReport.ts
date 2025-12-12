@@ -13,6 +13,9 @@ import { getLicenseeCurrency } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { Db } from 'mongodb';
+import { GamingLocations } from '../models/gaminglocations';
+import { Machine } from '../models/machines';
+import { Meters } from '../models/meters';
 
 /**
  * Request parameters for the meters report API
@@ -257,21 +260,18 @@ export async function fetchLocationData(
     return [];
   }
 
-  const locationsData = await db
-    .collection('gaminglocations')
-    .find(
-      {
-        _id: { $in: locationIds as never[] },
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2025-01-01') } },
-        ],
-      } as never,
-      {
-        projection: { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 },
-      }
-    )
-    .toArray();
+  const locationsData = await GamingLocations.find(
+    {
+      _id: { $in: locationIds },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
+      ],
+    },
+    { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 }
+  )
+    .lean()
+    .exec();
 
   return locationsData.map((loc: Record<string, unknown>) => ({
     _id: String(loc._id),
@@ -353,32 +353,29 @@ export async function fetchMachinesData(
   }
 
   // Get machines data for the selected locations
-  let machinesData = await db
-    .collection('machines')
-    .find(machineMatchStage)
-    .project({
-      _id: 1,
-      serialNumber: 1,
-      custom: 1, // Get entire custom object to access custom.name
-      gamingLocation: 1,
-      sasMeters: 1,
-      lastActivity: 1,
-      game: 1, // Include game field for display
-    })
+  let machinesData = await Machine.find(machineMatchStage, {
+    _id: 1,
+    serialNumber: 1,
+    custom: 1, // Get entire custom object to access custom.name
+    gamingLocation: 1,
+    sasMeters: 1,
+    lastActivity: 1,
+    game: 1, // Include game field for display
+  })
     .sort({ lastActivity: -1 })
-    .toArray();
+    .lean()
+    .exec();
 
   // Filter by licensee if provided
   if (licencee && licencee !== 'all') {
-    const licenseeLocations = await db
-      .collection('gaminglocations')
-      .find({ 'rel.licencee': licencee })
-      .project({ _id: 1 })
-      .toArray();
+    const licenseeLocations = await GamingLocations.find(
+      { 'rel.licencee': licencee },
+      { _id: 1 }
+    )
+      .lean()
+      .exec();
 
-    const licenseeLocationIds = licenseeLocations.map(loc =>
-      loc._id.toString()
-    );
+    const licenseeLocationIds = licenseeLocations.map(loc => String(loc._id));
 
     machinesData = machinesData.filter(machine =>
       licenseeLocationIds.includes(
@@ -421,49 +418,52 @@ export async function getLastMeterPerMachine(
   queryStartDate: Date,
   queryEndDate: Date
 ): Promise<Map<string, MeterAggregationResult>> {
-  const metersAggregation = await db
-    .collection('meters')
-    .aggregate([
-      {
-        $match: {
-          machine: { $in: machineIds },
-          // Use $lt (not $lte) for end date because queryEndDate is the start of the next gaming day
-          // and we want to exclude it (only include up to but not including that time)
-          readAt: { $gte: queryStartDate, $lt: queryEndDate },
+  // Use cursor for Meters aggregation
+  const metersAggregation: Array<Record<string, unknown>> = [];
+  const metersCursor = Meters.aggregate([
+    {
+      $match: {
+        machine: { $in: machineIds },
+        // Use $lt (not $lte) for end date because queryEndDate is the start of the next gaming day
+        // and we want to exclude it (only include up to but not including that time)
+        readAt: { $gte: queryStartDate, $lt: queryEndDate },
+      },
+    },
+    // Sort by readAt descending to get the latest meter first
+    // This ensures $first in the $group stage gets the most recent meter document
+    {
+      $sort: { readAt: -1 },
+    },
+    // Group by machine and take the first (latest) document's absolute values
+    // CRITICAL: We use $first (NOT $sum) to get the absolute values from the LAST meter document
+    // These are cumulative totals from the meter, not deltas - we want the final state
+    // at the end of the gaming day
+    {
+      $group: {
+        _id: '$machine',
+        // Use top-level absolute values from the last meter document (NOT summing)
+        drop: { $first: { $ifNull: ['$drop', 0] } },
+        totalCancelledCredits: {
+          $first: { $ifNull: ['$totalCancelledCredits', 0] },
         },
-      },
-      // Sort by readAt descending to get the latest meter first
-      // This ensures $first in the $group stage gets the most recent meter document
-      {
-        $sort: { readAt: -1 },
-      },
-      // Group by machine and take the first (latest) document's absolute values
-      // CRITICAL: We use $first (NOT $sum) to get the absolute values from the LAST meter document
-      // These are cumulative totals from the meter, not deltas - we want the final state
-      // at the end of the gaming day
-      {
-        $group: {
-          _id: '$machine',
-          // Use top-level absolute values from the last meter document (NOT summing)
-          drop: { $first: { $ifNull: ['$drop', 0] } },
-          totalCancelledCredits: {
-            $first: { $ifNull: ['$totalCancelledCredits', 0] },
-          },
-          totalHandPaidCancelledCredits: {
-            $first: { $ifNull: ['$totalHandPaidCancelledCredits', 0] },
-          },
-          coinIn: { $first: { $ifNull: ['$coinIn', 0] } },
-          coinOut: { $first: { $ifNull: ['$coinOut', 0] } },
-          totalWonCredits: {
-            $first: { $ifNull: ['$totalWonCredits', 0] },
-          },
-          gamesPlayed: { $first: { $ifNull: ['$gamesPlayed', 0] } },
-          jackpot: { $first: { $ifNull: ['$jackpot', 0] } },
-          lastReadAt: { $first: '$readAt' },
+        totalHandPaidCancelledCredits: {
+          $first: { $ifNull: ['$totalHandPaidCancelledCredits', 0] },
         },
+        coinIn: { $first: { $ifNull: ['$coinIn', 0] } },
+        coinOut: { $first: { $ifNull: ['$coinOut', 0] } },
+        totalWonCredits: {
+          $first: { $ifNull: ['$totalWonCredits', 0] },
+        },
+        gamesPlayed: { $first: { $ifNull: ['$gamesPlayed', 0] } },
+        jackpot: { $first: { $ifNull: ['$jackpot', 0] } },
+        lastReadAt: { $first: '$readAt' },
       },
-    ])
-    .toArray();
+    },
+  ]).cursor({ batchSize: 1000 });
+
+  for await (const doc of metersCursor) {
+    metersAggregation.push(doc);
+  }
 
   // Create a map for meter data lookup
   const metersMap = new Map<string, MeterAggregationResult>();
@@ -504,74 +504,77 @@ export async function getHourlyChartData(
   queryStartDate: Date,
   queryEndDate: Date
 ): Promise<HourlyChartData[]> {
-  const hourlyAggregation = await db
-    .collection('meters')
-    .aggregate([
-      {
-        $match: {
-          machine: { $in: machineIds },
-          // Use $lt (not $lte) for end date because queryEndDate is the start of the next gaming day
-          // and we want to exclude it (only include up to but not including that time)
-          readAt: { $gte: queryStartDate, $lt: queryEndDate },
-        },
+  // Use cursor for Meters aggregation
+  const hourlyAggregation: Array<Record<string, unknown>> = [];
+  const hourlyCursor = Meters.aggregate([
+    {
+      $match: {
+        machine: { $in: machineIds },
+        // Use $lt (not $lte) for end date because queryEndDate is the start of the next gaming day
+        // and we want to exclude it (only include up to but not including that time)
+        readAt: { $gte: queryStartDate, $lt: queryEndDate },
       },
-      {
-        $project: {
-          machine: 1,
-          readAt: 1,
-          'movement.gamesPlayed': 1,
-          'movement.coinIn': 1,
-          'movement.coinOut': 1,
-          // Also use top-level fields as fallback
-          gamesPlayed: 1,
-          coinIn: 1,
-          coinOut: 1,
-        },
+    },
+    {
+      $project: {
+        machine: 1,
+        readAt: 1,
+        'movement.gamesPlayed': 1,
+        'movement.coinIn': 1,
+        'movement.coinOut': 1,
+        // Also use top-level fields as fallback
+        gamesPlayed: 1,
+        coinIn: 1,
+        coinOut: 1,
       },
-      {
-        $addFields: {
-          hour: {
-            $dateToString: {
-              format: '%H:00',
-              date: '$readAt',
-            },
-          },
-          day: {
-            $dateToString: {
-              format: '%Y-%m-%d',
-              date: '$readAt',
-            },
-          },
-          gamesPlayedValue: {
-            $ifNull: ['$movement.gamesPlayed', '$gamesPlayed', 0],
-          },
-          coinInValue: {
-            $ifNull: ['$movement.coinIn', '$coinIn', 0],
-          },
-          coinOutValue: {
-            $ifNull: ['$movement.coinOut', '$coinOut', 0],
+    },
+    {
+      $addFields: {
+        hour: {
+          $dateToString: {
+            format: '%H:00',
+            date: '$readAt',
           },
         },
-      },
-      {
-        $group: {
-          _id: {
-            day: '$day',
-            hour: '$hour',
+        day: {
+          $dateToString: {
+            format: '%Y-%m-%d',
+            date: '$readAt',
           },
-          gamesPlayed: { $sum: '$gamesPlayedValue' },
-          coinIn: { $sum: '$coinInValue' },
-          coinOut: { $sum: '$coinOutValue' },
+        },
+        gamesPlayedValue: {
+          $ifNull: ['$movement.gamesPlayed', '$gamesPlayed', 0],
+        },
+        coinInValue: {
+          $ifNull: ['$movement.coinIn', '$coinIn', 0],
+        },
+        coinOutValue: {
+          $ifNull: ['$movement.coinOut', '$coinOut', 0],
         },
       },
-      {
-        $sort: {
-          '_id.day': 1,
-          '_id.hour': 1,
+    },
+    {
+      $group: {
+        _id: {
+          day: '$day',
+          hour: '$hour',
         },
+        gamesPlayed: { $sum: '$gamesPlayedValue' },
+        coinIn: { $sum: '$coinInValue' },
+        coinOut: { $sum: '$coinOutValue' },
       },
-    ])
-    .toArray();
+    },
+    {
+      $sort: {
+        '_id.day': 1,
+        '_id.hour': 1,
+      },
+    },
+  ]).cursor({ batchSize: 1000 });
+
+  for await (const doc of hourlyCursor) {
+    hourlyAggregation.push(doc);
+  }
 
   // Only return hours with actual data - filter out hours where all values are zero
   return hourlyAggregation

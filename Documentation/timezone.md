@@ -399,7 +399,7 @@ console.log('Trinidad:', utcToTrinidadTime(testDate).toISOString());
 
 - [Financial Metrics Guide](financial-metrics-guide.md) - Date field usage in financial calculations
 - [API Overview](backend/api-overview.md) - API implementation patterns
-- [Engineering Guidelines](ENGINEERING_GUIDELINES.md) - Development standards
+- [Engineering Guidelines](PROJECT_GUIDE.md) - Development standards
 
 ## Support
 

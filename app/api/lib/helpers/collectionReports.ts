@@ -8,6 +8,7 @@
  */
 
 import { connectDB } from '../middleware/db';
+import { GamingLocations } from '../models/gaminglocations';
 
 /**
  * User role and permission information
@@ -65,9 +66,7 @@ export async function buildCollectionReportsLocationFilter(
       throw new Error('Database connection failed');
     }
 
-    const managerLocations = await db
-      .collection('gaminglocations')
-      .find(
+    const managerLocations = await GamingLocations.find(
         {
           'rel.licencee': { $in: licensees },
           $or: [
@@ -75,9 +74,10 @@ export async function buildCollectionReportsLocationFilter(
             { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
         },
-        { projection: { _id: 1 } }
+      { _id: 1 }
       )
-      .toArray();
+      .lean()
+      .exec();
 
     const managerLocationIds = managerLocations.map(loc => String(loc._id));
 

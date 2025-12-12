@@ -177,7 +177,13 @@ export async function getTopMachinesByLocation(
   );
   const pipeline = buildTopMachinesPipeline(locationId, start, end);
 
-  return await Meters.aggregate(pipeline);
+  // Use cursor for Meters aggregation
+  const results: unknown[] = [];
+  const cursor = Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
+  for await (const doc of cursor) {
+    results.push(doc);
+  }
+  return results;
 }
 
 /**
@@ -349,9 +355,24 @@ export function buildTopMachinesDetailedPipeline(
           $cond: {
             if: {
               $and: [
-                { $ne: [{ $trim: { input: { $ifNull: ['$customName', ''] } } }, ''] },
-                { $ne: [{ $trim: { input: { $ifNull: ['$serialNumber', ''] } } }, ''] },
-                { $ne: [{ $trim: { input: { $ifNull: ['$customName', ''] } } }, { $trim: { input: { $ifNull: ['$serialNumber', ''] } } }] },
+                {
+                  $ne: [
+                    { $trim: { input: { $ifNull: ['$customName', ''] } } },
+                    '',
+                  ],
+                },
+                {
+                  $ne: [
+                    { $trim: { input: { $ifNull: ['$serialNumber', ''] } } },
+                    '',
+                  ],
+                },
+                {
+                  $ne: [
+                    { $trim: { input: { $ifNull: ['$customName', ''] } } },
+                    { $trim: { input: { $ifNull: ['$serialNumber', ''] } } },
+                  ],
+                },
               ],
             },
             then: {
@@ -364,16 +385,39 @@ export function buildTopMachinesDetailedPipeline(
             },
             else: {
               $cond: {
-                if: { $ne: [{ $trim: { input: { $ifNull: ['$serialNumber', ''] } } }, ''] },
+                if: {
+                  $ne: [
+                    { $trim: { input: { $ifNull: ['$serialNumber', ''] } } },
+                    '',
+                  ],
+                },
                 then: { $trim: { input: { $ifNull: ['$serialNumber', ''] } } },
                 else: {
                   $cond: {
-                    if: { $ne: [{ $trim: { input: { $ifNull: ['$customName', ''] } } }, ''] },
-                    then: { $trim: { input: { $ifNull: ['$customName', ''] } } },
+                    if: {
+                      $ne: [
+                        { $trim: { input: { $ifNull: ['$customName', ''] } } },
+                        '',
+                      ],
+                    },
+                    then: {
+                      $trim: { input: { $ifNull: ['$customName', ''] } },
+                    },
                     else: {
                       $concat: [
                         'Machine ',
-                        { $substr: ['$machineDocumentId', { $subtract: [{ $strLenCP: '$machineDocumentId' }, 6] }, 6] },
+                        {
+                          $substr: [
+                            '$machineDocumentId',
+                            {
+                              $subtract: [
+                                { $strLenCP: '$machineDocumentId' },
+                                6,
+                              ],
+                            },
+                            6,
+                          ],
+                        },
                       ],
                     },
                   },
@@ -415,7 +459,9 @@ export async function getTopMachinesDetailed(
   locationIds?: string | null,
   limit: number = 5
 ): Promise<unknown[]> {
-  const { startDate, endDate } = getDatesForTimePeriod(timePeriod as TimePeriod);
+  const { startDate, endDate } = getDatesForTimePeriod(
+    timePeriod as TimePeriod
+  );
   const pipeline = buildTopMachinesDetailedPipeline(
     timePeriod,
     startDate!,
@@ -425,6 +471,11 @@ export async function getTopMachinesDetailed(
     limit
   );
 
-  return await Meters.aggregate(pipeline);
+  // Use cursor for Meters aggregation
+  const results: unknown[] = [];
+  const cursor = Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
+  for await (const doc of cursor) {
+    results.push(doc);
+  }
+  return results;
 }
-

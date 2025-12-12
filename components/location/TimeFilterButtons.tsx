@@ -17,10 +17,13 @@
  * @param setIsFilterChangeInProgress - Callback to set filter change progress state
  * @param setActiveMetricsFilter - Callback to change active filter
  */
-import React from 'react';
-import { motion } from 'framer-motion';
+'use client';
+
 import { Button } from '@/components/ui/button';
+import { useUserStore } from '@/lib/store/userStore';
 import { TimePeriod } from '@/lib/types/api';
+import { motion } from 'framer-motion';
+import React, { useMemo } from 'react';
 
 // ============================================================================
 // Types & Constants
@@ -35,7 +38,7 @@ type ExtendedTimeFilterButtonsProps = {
   setActiveMetricsFilter: (filter: TimePeriod) => void;
 };
 
-const filterOptions = [
+const BASE_FILTER_OPTIONS = [
   { label: 'Today', value: 'Today' as TimePeriod },
   { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
   { label: 'Last 7 days', value: '7d' as TimePeriod },
@@ -53,6 +56,16 @@ export default function TimeFilterButtons({
 }: ExtendedTimeFilterButtonsProps) {
   // Check if any loading state is active
   const isLoading = metricsLoading || isFilterChangeInProgress;
+  const user = useUserStore(state => state.user);
+  const isDeveloper = (user?.roles || []).includes('developer');
+
+  // Filter out "30 days" if user is not a developer
+  const filterOptions = useMemo(() => {
+    if (!isDeveloper) {
+      return BASE_FILTER_OPTIONS.filter(option => option.value !== '30d');
+    }
+    return BASE_FILTER_OPTIONS;
+  }, [isDeveloper]);
 
   return (
     <motion.div

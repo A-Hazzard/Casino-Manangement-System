@@ -243,8 +243,8 @@ export default function LocationsTab() {
     [activeTab]
   );
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
+  // Pagination state (0-based for PaginationControls)
+  const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 10; // Items per page for overview table
@@ -312,9 +312,12 @@ export default function LocationsTab() {
 
   // Calculate which batch we need based on current page (0-based, like admin page)
   // pagesPerBatch is a constant (5) so adding it to deps is safe but unnecessary
-  const calculateBatchNumber = useCallback((page: number) => {
-    return Math.floor(page / pagesPerBatch) + 1;
-  }, [pagesPerBatch]);
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / pagesPerBatch) + 1;
+    },
+    [pagesPerBatch]
+  );
 
   // Fetch a specific batch of locations (like locations page)
   const fetchBatch = useCallback(
@@ -1283,13 +1286,17 @@ export default function LocationsTab() {
     totalCount,
   ]);
 
-  // Calculate total pages based on accumulated locations (like admin page)
-  // This will dynamically increase as more batches are loaded
+  // Calculate total pages based on batch pagination (max 5 pages per batch of 50 items)
+  // This matches the behavior of locations page and cabinets page
   const calculatedTotalPages = useMemo(() => {
     const totalItems = accumulatedLocations.length;
     const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
-    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [accumulatedLocations.length, itemsPerPage]);
+    // Cap at pagesPerBatch (5 pages) per batch, or actual pages if less than 5
+    return Math.min(
+      pagesPerBatch,
+      totalPagesFromItems > 0 ? totalPagesFromItems : 1
+    );
+  }, [accumulatedLocations.length, itemsPerPage, pagesPerBatch]);
 
   // Update totalPages when calculatedTotalPages changes
   useEffect(() => {
@@ -1690,7 +1697,7 @@ export default function LocationsTab() {
                       // Reset batches and page
                       setAccumulatedLocations([]);
                       setLoadedBatches(new Set());
-                      setCurrentPage(1);
+                      setCurrentPage(0);
 
                       // Fetch first batch
                       const firstBatchResult = await fetchBatch(
@@ -2409,10 +2416,10 @@ export default function LocationsTab() {
                         }}
                         loading={paginationLoading}
                         error={null}
-                        currentPage={currentPage}
+                        currentPage={currentPage + 1}
                         totalPages={totalPages}
                         totalCount={accumulatedLocations.length}
-                        onPageChange={page => setCurrentPage(page)}
+                        onPageChange={page => setCurrentPage(page - 1)}
                         itemsPerPage={itemsPerPage}
                       />
                     </CardContent>

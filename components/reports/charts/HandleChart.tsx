@@ -1,19 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { HandleChartData, HandleChartProps } from '@/lib/types/components';
 import axios from 'axios';
+import { TrendingUp } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp } from 'lucide-react';
-import type { HandleChartProps, HandleChartData } from '@/lib/types/components';
 
 export default function HandleChart({
   timePeriod,
@@ -79,6 +79,12 @@ export default function HandleChart({
       });
     }
   };
+
+  // Filter data to only show times with actual data (no zero-value periods)
+  // This matches the behavior of location details and cabinet details pages
+  const filteredData = useMemo(() => {
+    return data.filter(item => item.handle > 0);
+  }, [data]);
 
   if (loading) {
     return (
@@ -158,7 +164,7 @@ export default function HandleChart({
       <CardContent>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
+            <BarChart data={filteredData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="time"

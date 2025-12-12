@@ -74,7 +74,14 @@ export function MetersHourlyCharts({
   }, [data]);
 
   const chartData = useMemo(() => {
-    return sortedData.map(item => ({
+    // Filter data to only show times with actual data (no zero-value periods)
+    // This matches the behavior of location details and cabinet details pages
+    // Include entries where at least one metric has data
+    const filtered = sortedData.filter(
+      item => item.gamesPlayed > 0 || item.coinIn > 0 || item.coinOut > 0
+    );
+
+    return filtered.map(item => ({
       time: `${item.day} ${item.hour}`,
       day: item.day,
       hour: item.hour,
@@ -194,7 +201,9 @@ export function MetersHourlyCharts({
         <CardContent className={isMobile && chartData.length > 8 ? 'p-0' : ''}>
           {!hasGamesPlayedData || chartData.length === 0 ? (
             <div className="flex h-64 flex-col items-center justify-center text-gray-500">
-              <div className="mb-2 text-lg text-gray-500">No Data to Display</div>
+              <div className="mb-2 text-lg text-gray-500">
+                No Data to Display
+              </div>
               <div className="text-center text-sm text-gray-400">
                 No games played data available for the selected time period
               </div>
@@ -262,7 +271,9 @@ export function MetersHourlyCharts({
           >
             {!hasCoinInData || chartData.length === 0 ? (
               <div className="flex h-64 flex-col items-center justify-center text-gray-500">
-                <div className="mb-2 text-lg text-gray-500">No Data to Display</div>
+                <div className="mb-2 text-lg text-gray-500">
+                  No Data to Display
+                </div>
                 <div className="text-center text-sm text-gray-400">
                   No coin in data available for the selected time period
                 </div>
@@ -333,7 +344,9 @@ export function MetersHourlyCharts({
           >
             {!hasCoinOutData || chartData.length === 0 ? (
               <div className="flex h-64 flex-col items-center justify-center text-gray-500">
-                <div className="mb-2 text-lg text-gray-500">No Data to Display</div>
+                <div className="mb-2 text-lg text-gray-500">
+                  No Data to Display
+                </div>
                 <div className="text-center text-sm text-gray-400">
                   No coin out data available for the selected time period
                 </div>

@@ -20,6 +20,10 @@ import {
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
+import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
@@ -171,127 +175,211 @@ export async function GET(request: NextRequest) {
     // STEP 6: Fetch locations with aggregation (machines, financial data)
     // ============================================================================
     // First, get matching locations
-    const matchingLocations = await db
-      .collection('gaminglocations')
-      .aggregate([
-        { $match: locationMatch },
-        {
-          $lookup: {
-            from: 'machines',
-            let: { id: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $or: [
-                      {
-                        $eq: [
-                          { $toString: '$gamingLocation' },
-                          { $toString: '$$id' },
-                        ],
-                      },
-                      { $eq: ['$gamingLocation', '$$id'] },
-                    ],
-                  },
+    const matchingLocations = await GamingLocations.aggregate([
+      { $match: locationMatch },
+      {
+        $lookup: {
+          from: 'machines',
+          let: { id: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
                   $or: [
-                    { deletedAt: null },
-                    { deletedAt: { $lt: new Date('2025-01-01') } },
-                  ],
-                },
-              },
-              {
-                $group: {
-                  _id: null,
-                  totalMachines: { $sum: 1 },
-                  onlineMachines: {
-                    $sum: {
-                      $cond: [
-                        {
-                          $gt: [
-                            '$lastActivity',
-                            new Date(Date.now() - 3 * 60 * 1000),
-                          ],
-                        },
-                        1,
-                        0,
+                    {
+                      $eq: [
+                        { $toString: '$gamingLocation' },
+                        { $toString: '$$id' },
                       ],
                     },
+                    { $eq: ['$gamingLocation', '$$id'] },
+                  ],
+                },
+                $or: [
+                  { deletedAt: null },
+                  { deletedAt: { $lt: new Date('2025-01-01') } },
+                ],
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalMachines: { $sum: 1 },
+                onlineMachines: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $gt: [
+                          '$lastActivity',
+                          new Date(Date.now() - 3 * 60 * 1000),
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
                   },
                 },
               },
-            ],
-            as: 'machineStats',
-          },
+            },
+          ],
+          as: 'machineStats',
         },
-      ])
-      .toArray();
+      },
+    ]).exec();
 
-    // Now calculate financial metrics for each location using gaming day ranges
-    const locations = await Promise.all(
-      matchingLocations.map(async location => {
-        const locationId = location._id.toString();
+    // ============================================================================
+    // OPTIMIZED: Calculate financial metrics using batch queries instead of N+1
+    // ============================================================================
+    // Step 1: Calculate gaming day ranges for all locations
+    const gamingDayRanges = new Map<
+      string,
+      { rangeStart: Date; rangeEnd: Date; gameDayOffset: number }
+    >();
+    matchingLocations.forEach(location => {
+      const locationId = String(location._id);
         const gameDayOffset = location.gameDayOffset ?? 8;
-
-        // Calculate gaming day range for this location
         const gamingDayRange = getGamingDayRangeForPeriod(
           timePeriod,
           gameDayOffset,
           customStartDate,
           customEndDate
         );
+      gamingDayRanges.set(locationId, {
+        ...gamingDayRange,
+        gameDayOffset,
+      });
+    });
 
-        // Get all machines for this location
-        const machinesForLocation = await db
-          .collection('machines')
-          .find(
-            {
-              $and: [
-                {
-                  $or: [
-                    { gamingLocation: locationId },
-                    { gamingLocation: location._id },
-                  ],
-                },
-                {
-                  $or: [
-                    { deletedAt: null },
-                    { deletedAt: { $lt: new Date('2025-01-01') } },
-                  ],
-                },
-              ],
+    // Step 2: Get global date range for initial meter query
+    let globalStart = new Date();
+    let globalEnd = new Date(0);
+    gamingDayRanges.forEach(range => {
+      if (range.rangeStart < globalStart) globalStart = range.rangeStart;
+      if (range.rangeEnd > globalEnd) globalEnd = range.rangeEnd;
+    });
+
+    // Step 3: Get ALL location IDs
+    const allLocationIds = matchingLocations.map(loc => String(loc._id));
+
+    // Step 4: Get ALL machines for ALL locations in one query
+    const allMachines = await Machine.find(
+          {
+            $and: [
+              {
+                $or: [
+              { gamingLocation: { $in: allLocationIds } },
+              { gamingLocation: { $in: matchingLocations.map(l => l._id) } },
+                ],
+              },
+              {
+                $or: [
+                  { deletedAt: null },
+                  { deletedAt: { $lt: new Date('2025-01-01') } },
+                ],
+              },
+            ],
+          },
+      { _id: 1, gamingLocation: 1 }
+        )
+          .lean()
+      .exec();
+
+    // Step 5: Group machines by location
+    const machinesByLocation = new Map<string, string[]>();
+    allMachines.forEach(machine => {
+      const locationId = machine.gamingLocation
+        ? String(machine.gamingLocation)
+        : null;
+      if (locationId && allLocationIds.includes(locationId)) {
+        if (!machinesByLocation.has(locationId)) {
+          machinesByLocation.set(locationId, []);
+        }
+        machinesByLocation.get(locationId)!.push(String(machine._id));
+      }
+    });
+
+    // Step 6: Get ALL meters for ALL machines, grouped by location
+    const allMachineIds = allMachines.map(m => String(m._id));
+    const metersByLocation = new Map<
+      string,
+      { totalMoneyIn: number; totalMoneyOut: number }
+    >();
+
+    if (allMachineIds.length > 0) {
+      const metersAggregation = await Meters.aggregate([
+          {
+            $match: {
+            machine: { $in: allMachineIds },
+              readAt: {
+              $gte: globalStart,
+              $lte: globalEnd,
             },
-            { projection: { _id: 1 } }
-          )
-          .toArray();
-
-        const machineIds = machinesForLocation.map(m => m._id.toString());
-
-        // Aggregate meters for all machines in this location using gaming day range
-        const metersAggregation = await db
-          .collection('meters')
-          .aggregate([
-            {
-              $match: {
-                machine: { $in: machineIds },
-                readAt: {
-                  $gte: gamingDayRange.rangeStart,
-                  $lte: gamingDayRange.rangeEnd,
-                },
+          },
+        },
+        {
+          $lookup: {
+            from: 'machines',
+            localField: 'machine',
+            foreignField: '_id',
+            as: 'machineDetails',
+          },
+        },
+        {
+          $unwind: {
+            path: '$machineDetails',
+            preserveNullAndEmptyArrays: false,
+          },
+        },
+        {
+          $addFields: {
+            locationId: {
+              $toString: '$machineDetails.gamingLocation',
               },
             },
-            {
-              $group: {
-                _id: null,
-                totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
-                totalMoneyOut: {
-                  $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-                },
+          },
+          {
+            $group: {
+            _id: '$locationId',
+              totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
+              totalMoneyOut: {
+                $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
               },
+            minReadAt: { $min: '$readAt' },
+            maxReadAt: { $max: '$readAt' },
             },
-          ])
-          .toArray();
+          },
+      ]).exec();
 
-        const financialData = metersAggregation[0] || {
+      // Step 7: Filter by gaming day ranges in memory
+      metersAggregation.forEach(agg => {
+        const locationId = String(agg._id);
+        const gamingDayRange = gamingDayRanges.get(locationId);
+        if (!gamingDayRange) return;
+
+        // Check if the aggregated data falls within the gaming day range
+        const minReadAt = new Date(agg.minReadAt as Date);
+        const maxReadAt = new Date(agg.maxReadAt as Date);
+        const hasValidReadAt =
+          (minReadAt >= gamingDayRange.rangeStart &&
+            minReadAt <= gamingDayRange.rangeEnd) ||
+          (maxReadAt >= gamingDayRange.rangeStart &&
+            maxReadAt <= gamingDayRange.rangeEnd) ||
+          (minReadAt <= gamingDayRange.rangeStart &&
+            maxReadAt >= gamingDayRange.rangeEnd);
+
+        if (hasValidReadAt) {
+          metersByLocation.set(locationId, {
+            totalMoneyIn: (agg.totalMoneyIn as number) || 0,
+            totalMoneyOut: (agg.totalMoneyOut as number) || 0,
+          });
+        }
+      });
+    }
+
+    // Step 8: Combine results
+    const locations = matchingLocations.map(location => {
+      const locationId = String(location._id);
+      const financialData = metersByLocation.get(locationId) || {
           totalMoneyIn: 0,
           totalMoneyOut: 0,
         };
@@ -306,8 +394,7 @@ export async function GET(request: NextRequest) {
             (financialData.totalMoneyIn || 0) -
             (financialData.totalMoneyOut || 0),
         };
-      })
-    );
+    });
     // Format locations for response
     const formattedLocations = (locations as LocationAggregationResult[]).map(
       loc => ({
@@ -342,23 +429,22 @@ export async function GET(request: NextRequest) {
     let finalLocations = formattedLocations;
     if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
       // Get licensee details for currency mapping
-      const licenseesData = await db
-        .collection('licencees')
-        .find(
+      const licenseesData = await Licencee.find(
           {
             $or: [
               { deletedAt: null },
               { deletedAt: { $lt: new Date('2025-01-01') } },
             ],
           },
-          { projection: { _id: 1, name: 1 } }
+          { _id: 1, name: 1 }
         )
-        .toArray();
+          .lean()
+          .exec();
 
       // Create a map of licensee ID to name
       const licenseeIdToName = new Map<string, string>();
       licenseesData.forEach(lic => {
-        licenseeIdToName.set(lic._id.toString(), lic.name);
+        licenseeIdToName.set(String(lic._id), lic.name);
       });
 
       // Get country details for currency mapping (for unassigned locations)

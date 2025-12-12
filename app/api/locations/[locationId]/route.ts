@@ -16,7 +16,11 @@
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
+import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
 import {
   convertFromUSD,
@@ -108,11 +112,12 @@ export async function GET(request: NextRequest) {
           : [licenseeId]
         : [];
 
+      const locationData = location as { _id: unknown; name?: string };
       return NextResponse.json({
         success: true,
         location: {
-          _id: location._id,
-          name: location.name,
+          _id: locationData._id,
+          name: locationData.name,
           licenseeId: licenseeIdArray,
         },
       });
@@ -291,46 +296,43 @@ export async function GET(request: NextRequest) {
     // This avoids N+1 query pattern from $lookup with nested pipeline
 
     // First, fetch all machines for this location
-    const machines = await db
-      .collection('machines')
-      .find(
-        {
-          $and: [
-            {
-              $or: [
-                { gamingLocation: locationId }, // String match
-                { gamingLocation: locationIdObj }, // ObjectId match
-              ],
-            },
-            {
-              // Include machines that are not deleted OR have sentinel deletedAt date
-              $or: [
-                { deletedAt: null },
-                { deletedAt: { $lt: new Date('2025-01-01') } },
-              ],
-            },
-          ],
-        },
-        {
-          projection: {
-            _id: 1,
-            serialNumber: 1,
-            relayId: 1,
-            smibBoard: 1,
-            'custom.name': 1,
-            lastActivity: 1,
-            game: 1,
-            manufacturer: 1,
-            manuf: 1,
-            cabinetType: 1,
-            assetStatus: 1,
-            gameType: 1,
-            isCronosMachine: 1,
-            sasMeters: 1,
+    const machines = await Machine.find(
+      {
+        $and: [
+          {
+            $or: [
+              { gamingLocation: locationId }, // String match
+              { gamingLocation: locationIdObj }, // ObjectId match
+            ],
           },
-        }
-      )
-      .toArray();
+          {
+            // Include machines that are not deleted OR have sentinel deletedAt date
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ],
+          },
+        ],
+      },
+      {
+        _id: 1,
+        serialNumber: 1,
+        relayId: 1,
+        smibBoard: 1,
+        'custom.name': 1,
+        lastActivity: 1,
+        game: 1,
+        manufacturer: 1,
+        manuf: 1,
+        cabinetType: 1,
+        assetStatus: 1,
+        gameType: 1,
+        isCronosMachine: 1,
+        sasMeters: 1,
+      }
+    )
+      .lean()
+      .exec();
 
     if (machines.length === 0) {
       return NextResponse.json({
@@ -372,48 +374,59 @@ export async function GET(request: NextRequest) {
     const machineIds = filteredMachines.map(m => String(m._id));
 
     // 🚀 OPTIMIZED: Single aggregation for ALL meters (much faster than per-machine lookups)
-    const metersAggregation = await db
-      .collection('meters')
-      .aggregate(
-        [
-          {
-            $match: {
-              $or: [
-                { machine: { $in: machineIds } }, // String match
-                {
-                  machine: {
-                    $in: filteredMachines.map(m => m._id),
-                  },
-                }, // ObjectId match
-              ],
-              readAt: {
-                $gte: gamingDayRange.rangeStart,
-                $lte: gamingDayRange.rangeEnd,
-              },
-            },
-          },
-          {
-            $group: {
-              _id: '$machine',
-              moneyIn: { $sum: '$movement.drop' },
-              moneyOut: { $sum: '$movement.totalCancelledCredits' },
-              jackpot: { $sum: '$movement.jackpot' },
-              gamesPlayed: { $sum: '$movement.gamesPlayed' },
-              gamesWon: { $sum: '$movement.gamesWon' },
-            },
-          },
-          {
-            $addFields: {
-              gross: { $subtract: ['$moneyIn', '$moneyOut'] },
-            },
-          },
-        ],
+    // Use cursor for Meters aggregation (even though grouped, still use cursor for consistency)
+    const metersAggregation: Array<{
+      _id: string;
+      moneyIn: number;
+      moneyOut: number;
+      jackpot: number;
+      gamesPlayed: number;
+      gamesWon: number;
+      gross: number;
+    }> = [];
+    const metersCursor = Meters.aggregate(
+      [
         {
-          allowDiskUse: true,
-          maxTimeMS: 60000,
-        }
-      )
-      .toArray();
+          $match: {
+            $or: [
+              { machine: { $in: machineIds } }, // String match
+              {
+                machine: {
+                  $in: filteredMachines.map(m => m._id),
+                },
+              }, // ObjectId match
+            ],
+            readAt: {
+              $gte: gamingDayRange.rangeStart,
+              $lte: gamingDayRange.rangeEnd,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: '$machine',
+            moneyIn: { $sum: '$movement.drop' },
+            moneyOut: { $sum: '$movement.totalCancelledCredits' },
+            jackpot: { $sum: '$movement.jackpot' },
+            gamesPlayed: { $sum: '$movement.gamesPlayed' },
+            gamesWon: { $sum: '$movement.gamesWon' },
+          },
+        },
+        {
+          $addFields: {
+            gross: { $subtract: ['$moneyIn', '$moneyOut'] },
+          },
+        },
+      ],
+      {
+        allowDiskUse: true,
+        maxTimeMS: 60000,
+      }
+    ).cursor({ batchSize: 1000 });
+
+    for await (const doc of metersCursor) {
+      metersAggregation.push(doc as (typeof metersAggregation)[0]);
+    }
 
     // Create metrics map for fast lookup
     const metricsMap = new Map();
@@ -423,7 +436,8 @@ export async function GET(request: NextRequest) {
     });
 
     // Get location name for response
-    const locationName = locationCheck.name || 'Location';
+    const locationCheckData = locationCheck as { name?: string } | null;
+    const locationName = locationCheckData?.name || 'Location';
 
     // ============================================================================
     // STEP 9: Build cabinet results by joining machines with metrics
@@ -497,40 +511,51 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // Get location info for currency conversion
     // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
-    const location = await db
-      .collection('gaminglocations')
-      .findOne({ _id: locationId } as Record<string, unknown>, {
-        projection: { 'rel.licencee': 1, country: 1 },
-      });
+    const location = await GamingLocations.findOne(
+      { _id: locationId },
+      { 'rel.licencee': 1, country: 1 }
+    )
+      .lean()
+      .exec();
 
     // Get licensee and country info for currency conversion
     let nativeCurrency: CurrencyCode = 'USD';
     if (location) {
-      const locationLicenseeId = location.rel?.licencee as string | undefined;
+      const locationData = location as {
+        rel?: { licencee?: string };
+        country?: string;
+      };
+      const locationLicenseeId = locationData.rel?.licencee as
+        | string
+        | undefined;
       if (!locationLicenseeId) {
         // Unassigned locations - determine currency from country
-        const countryId = location.country as string | undefined;
+        const countryId = locationData.country as string | undefined;
         if (countryId) {
           // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
-          const country = await db
-            .collection('countries')
-            .findOne({ _id: countryId } as Record<string, unknown>, {
-              projection: { name: 1 },
-            });
-          if (country?.name) {
-            nativeCurrency = getCountryCurrency(country.name);
+          const country = await Countries.findOne(
+            { _id: countryId },
+            { name: 1 }
+          )
+            .lean()
+            .exec();
+          const countryData = country as { name?: string } | null;
+          if (countryData?.name) {
+            nativeCurrency = getCountryCurrency(countryData.name);
           }
         }
       } else {
         // Get licensee's native currency
         // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
-        const licensee = await db
-          .collection('licencees')
-          .findOne({ _id: locationLicenseeId } as Record<string, unknown>, {
-            projection: { name: 1 },
-          });
-        if (licensee?.name) {
-          nativeCurrency = getLicenseeCurrency(licensee.name);
+        const licensee = await Licencee.findOne(
+          { _id: locationLicenseeId },
+          { name: 1 }
+        )
+          .lean()
+          .exec();
+        const licenseeData = licensee as { name?: string } | null;
+        if (licenseeData?.name) {
+          nativeCurrency = getLicenseeCurrency(licenseeData.name);
         }
       }
     }

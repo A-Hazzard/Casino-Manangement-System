@@ -25,7 +25,8 @@ import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
-import { Db, Document } from 'mongodb';
+import { Db } from 'mongodb';
+import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -332,7 +333,7 @@ const getMachineStats = async (
   const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
   // Use aggregation to join machines with gaminglocations for licensee filtering
-  const aggregationPipeline: Document[] = [
+  const aggregationPipeline: PipelineStage[] = [
     { $match: { deletedAt: { $in: [null, new Date(-1)] } } },
     {
       $lookup: {
@@ -361,31 +362,23 @@ const getMachineStats = async (
   }
 
   // Get total machines count (only machines with lastActivity field)
-  const totalCountResult = await db
-    .collection('machines')
-    .aggregate([
+  const totalCountResult = await Machine.aggregate([
       ...aggregationPipeline,
       { $match: { lastActivity: { $exists: true } } },
       { $count: 'total' },
-    ] as Document[])
-    .toArray();
+  ]).exec();
   const totalCount = totalCountResult[0]?.total || 0;
 
   // Get online machines count (machines with lastActivity >= 3 minutes ago)
-  const onlineCountResult = await db
-    .collection('machines')
-    .aggregate([
+  const onlineCountResult = await Machine.aggregate([
       ...aggregationPipeline,
       { $match: { lastActivity: { $exists: true, $gte: threeMinutesAgo } } },
       { $count: 'total' },
-    ] as Document[])
-    .toArray();
+  ]).exec();
   const onlineCount = onlineCountResult[0]?.total || 0;
 
   // Calculate financial totals from meters collection within the date filter
-  const financialTotals = await db
-    .collection('machines')
-    .aggregate([
+  const financialTotals = await Machine.aggregate([
       { $match: machineMatchStage },
       {
         $lookup: {
@@ -472,8 +465,7 @@ const getMachineStats = async (
           },
         },
       },
-    ])
-    .toArray();
+  ]).exec();
 
   const totals = financialTotals[0] || {
     totalGross: 0,
@@ -789,10 +781,7 @@ const getOverviewMachines = async (
     { $limit: limit }
   );
 
-  const machines = await db
-    .collection('machines')
-    .aggregate(aggregationPipeline as Document[])
-    .toArray();
+  const machines = await Machine.aggregate(aggregationPipeline).exec();
 
   // console.log(`🔍 Found ${machines.length} machines for overview`);
 
@@ -856,7 +845,7 @@ const getOverviewMachines = async (
   );
 
   // Step 4: Get total count for pagination using aggregation with licensee filtering
-  const countPipeline: Document[] = [
+  const countPipeline: PipelineStage[] = [
     { $match: machineMatchStage },
     {
       $lookup: {
@@ -878,12 +867,9 @@ const getOverviewMachines = async (
     });
   }
 
-  (countPipeline as unknown[]).push({ $count: 'total' });
+  countPipeline.push({ $count: 'total' });
 
-  const totalCountResult = await db
-    .collection('machines')
-    .aggregate(countPipeline as Document[])
-    .toArray();
+  const totalCountResult = await Machine.aggregate(countPipeline).exec();
 
   const totalCount = totalCountResult[0]?.total || 0;
   const totalPages = Math.ceil(totalCount / limit);
@@ -934,7 +920,7 @@ const getAllMachines = async (
     }
 
     // Use aggregation to join machines with gaminglocations for licensee filtering
-    const aggregationPipeline = [
+    const aggregationPipeline: PipelineStage[] = [
       { $match: machineMatchStage },
       {
         $lookup: {
@@ -1069,10 +1055,7 @@ const getAllMachines = async (
     });
 
     // Get all machines for analysis
-    const machines = await db
-      .collection('machines')
-      .aggregate(aggregationPipeline as Document[])
-      .toArray();
+    const machines = await Machine.aggregate(aggregationPipeline).exec();
 
     // console.log(`🔍 Found ${machines.length} machines for analysis`);
 
@@ -1193,7 +1176,7 @@ const getOfflineMachines = async (
     }
 
     // Use aggregation to join machines with gaminglocations for licensee filtering
-    const aggregationPipeline = [
+    const aggregationPipeline: PipelineStage[] = [
       { $match: machineMatchStage },
       {
         $lookup: {
@@ -1343,13 +1326,10 @@ const getOfflineMachines = async (
     // If pagination metadata is needed in future, uncomment and use countResult
 
     // Add pagination to main pipeline
-    (aggregationPipeline as unknown[]).push({ $skip: skip }, { $limit: limit });
+    aggregationPipeline.push({ $skip: skip }, { $limit: limit });
 
     // Get offline machines
-    const machines = await db
-      .collection('machines')
-      .aggregate(aggregationPipeline as Document[])
-      .toArray();
+    const machines = await Machine.aggregate(aggregationPipeline).exec();
 
     // console.log(`🔍 Found ${machines.length} offline machines`);
 

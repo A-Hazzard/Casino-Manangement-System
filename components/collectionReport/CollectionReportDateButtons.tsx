@@ -19,11 +19,12 @@
  */
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
 import type { DateRange } from '@/components/ui/dateRangePicker';
+import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
+import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportDateFilter } from '@/lib/types/componentProps';
+import { useMemo, useState } from 'react';
 
 type CollectionReportDateButtonsProps = {
   activeFilter: CollectionReportDateFilter;
@@ -35,7 +36,7 @@ type CollectionReportDateButtonsProps = {
   isLoading?: boolean;
 };
 
-const FILTERS: { label: string; value: CollectionReportDateFilter }[] = [
+const BASE_FILTERS: { label: string; value: CollectionReportDateFilter }[] = [
   { label: 'Today', value: 'today' },
   { label: 'Yesterday', value: 'yesterday' },
   { label: 'Last 7 Days', value: 'last7' },
@@ -53,6 +54,16 @@ export default function CollectionReportDateButtons({
   isLoading = false,
 }: CollectionReportDateButtonsProps) {
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const user = useUserStore(state => state.user);
+  const isDeveloper = (user?.roles || []).includes('developer');
+
+  // Filter out "Last 30 Days" if user is not a developer
+  const FILTERS = useMemo(() => {
+    if (!isDeveloper) {
+      return BASE_FILTERS.filter(filter => filter.value !== 'last30');
+    }
+    return BASE_FILTERS;
+  }, [isDeveloper]);
 
   const handlePresetClick = (value: CollectionReportDateFilter) => {
     setShowCustomPicker(false);

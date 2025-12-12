@@ -7,10 +7,11 @@
  * @module app/api/lib/helpers/hourlyTrends
  */
 
-import { getDatesForTimePeriod } from '../utils/dates';
-import type { TimePeriod } from '../types';
 import type { Db } from 'mongodb';
 import type { PipelineStage } from 'mongoose';
+import { Meters } from '../models/meters';
+import type { TimePeriod } from '../types';
+import { getDatesForTimePeriod } from '../utils/dates';
 
 /**
  * Hourly data item type
@@ -364,10 +365,14 @@ export async function getHourlyTrends(
     startDate,
     endDate
   );
-  const currentResult = await db
-    .collection('meters')
-    .aggregate(currentPipeline)
-    .toArray();
+  // Use cursor for Meters aggregation
+  const currentResult: Array<{ totalRevenue?: number }> = [];
+  const currentCursor = Meters.aggregate(currentPipeline).cursor({
+    batchSize: 1000,
+  });
+  for await (const doc of currentCursor) {
+    currentResult.push(doc as { totalRevenue?: number });
+  }
   const currentPeriodRevenue = currentResult[0]?.totalRevenue || 0;
 
   const days = 7;
@@ -377,10 +382,12 @@ export async function getHourlyTrends(
     prevStart,
     prevEnd
   );
-  const prevResult = (await db
-    .collection('meters')
-    .aggregate(prevPipeline)
-    .toArray()) as DailyRevenueItem[];
+  // Use cursor for Meters aggregation
+  const prevResult: DailyRevenueItem[] = [];
+  const prevCursor = Meters.aggregate(prevPipeline).cursor({ batchSize: 1000 });
+  for await (const doc of prevCursor) {
+    prevResult.push(doc as DailyRevenueItem);
+  }
   const prevDays = prevResult.length;
   const prevTotal = prevResult.reduce(
     (sum: number, d: DailyRevenueItem) => sum + (d.dailyRevenue || 0),
@@ -394,10 +401,14 @@ export async function getHourlyTrends(
     endDate,
     licencee
   );
-  const hourlyData = (await db
-    .collection('meters')
-    .aggregate(hourlyPipeline)
-    .toArray()) as HourlyDataItem[];
+  // Use cursor for Meters aggregation
+  const hourlyData: HourlyDataItem[] = [];
+  const hourlyCursor = Meters.aggregate(hourlyPipeline).cursor({
+    batchSize: 1000,
+  });
+  for await (const doc of hourlyCursor) {
+    hourlyData.push(doc as HourlyDataItem);
+  }
 
   return {
     currentPeriodRevenue,
@@ -406,4 +417,3 @@ export async function getHourlyTrends(
     targetLocations,
   };
 }
-

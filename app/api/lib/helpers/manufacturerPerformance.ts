@@ -7,10 +7,11 @@
  * @module app/api/lib/helpers/manufacturerPerformance
  */
 
-import { getDatesForTimePeriod } from '../utils/dates';
-import type { TimePeriod } from '../types';
 import type { Db } from 'mongodb';
 import type { PipelineStage } from 'mongoose';
+import { Meters } from '../models/meters';
+import type { TimePeriod } from '../types';
+import { getDatesForTimePeriod } from '../utils/dates';
 
 /**
  * Manufacturer data item from aggregation
@@ -279,12 +280,10 @@ export async function getManufacturerPerformance(
     licencee
   );
 
-  const manufacturerData = (await db
-    .collection('meters')
-    .aggregate(pipeline)
-    .toArray()) as ManufacturerDataItem[];
+  const manufacturerData = (await Meters.aggregate(
+    pipeline
+  ).exec()) as ManufacturerDataItem[];
 
   const totals = calculateManufacturerTotals(manufacturerData);
   return calculateManufacturerPercentages(manufacturerData, totals);
 }
-

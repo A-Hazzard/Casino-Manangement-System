@@ -9,6 +9,8 @@
 
 import type { Db } from 'mongodb';
 import type { PipelineStage } from 'mongoose';
+import { CollectionReport } from '../models/collectionReport';
+import { Meters } from '../models/meters';
 import type { TimePeriod } from '../types';
 import { getDatesForTimePeriod } from '../utils/dates';
 
@@ -229,10 +231,13 @@ export async function getWinLossTrends(
     locationIds
   );
 
-  return (await db
-    .collection('meters')
-    .aggregate(pipeline)
-    .toArray()) as WinLossTrendItem[];
+  // Use cursor for Meters aggregation
+  const results: WinLossTrendItem[] = [];
+  const cursor = Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
+  for await (const doc of cursor) {
+    results.push(doc as WinLossTrendItem);
+  }
+  return results;
 }
 
 /**
@@ -263,10 +268,7 @@ export async function getPlaysTrends(
     locationIds
   );
 
-  return (await db
-    .collection('meters')
-    .aggregate(pipeline)
-    .toArray()) as PlaysTrendItem[];
+  return (await Meters.aggregate(pipeline).exec()) as PlaysTrendItem[];
 }
 
 /**
@@ -438,10 +440,9 @@ export async function getHourlyRevenue(
   );
 
   const pipeline = buildHourlyRevenuePipeline(locationId, start, end);
-  const hourlyData = (await db
-    .collection('collectionReports')
-    .aggregate(pipeline)
-    .toArray()) as HourlyDataItem[];
+  const hourlyData = (await CollectionReport.aggregate(
+    pipeline
+  ).exec()) as HourlyDataItem[];
 
   return formatHourlyRevenueData(hourlyData);
 }
@@ -565,10 +566,13 @@ export async function getHandleTrends(
     locationIds
   );
 
-  return (await db
-    .collection('meters')
-    .aggregate(pipeline)
-    .toArray()) as HandleTrendItem[];
+  // Use cursor for Meters aggregation
+  const results: HandleTrendItem[] = [];
+  const cursor = Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
+  for await (const doc of cursor) {
+    results.push(doc as HandleTrendItem);
+  }
+  return results;
 }
 
 /**
@@ -690,8 +694,11 @@ export async function getJackpotTrends(
     locationIds
   );
 
-  return (await db
-    .collection('meters')
-    .aggregate(pipeline)
-    .toArray()) as JackpotTrendItem[];
+  // Use cursor for Meters aggregation
+  const results: JackpotTrendItem[] = [];
+  const cursor = Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
+  for await (const doc of cursor) {
+    results.push(doc as JackpotTrendItem);
+  }
+  return results;
 }

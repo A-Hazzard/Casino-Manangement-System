@@ -7,15 +7,19 @@
  * @module app/api/lib/helpers/metersReportCurrency
  */
 
-import type { Db } from 'mongodb';
-import type { CurrencyCode } from '@/shared/types/currency';
-import type { TransformedMeterData } from './metersReport';
 import {
   convertFromUSD,
   convertToUSD,
   getCountryCurrency,
 } from '@/lib/helpers/rates';
-import type { LocationWithGamingDay } from './metersReport';
+import type { CurrencyCode } from '@/shared/types/currency';
+import type { Db } from 'mongodb';
+import { Countries } from '../models/countries';
+import { Licencee } from '../models/licencee';
+import type {
+  LocationWithGamingDay,
+  TransformedMeterData,
+} from './metersReport';
 
 /**
  * Location details for currency determination
@@ -41,10 +45,9 @@ export async function buildCurrencyMaps(
   locationDetailsMap: Map<string, LocationDetails>;
 }> {
   // Fetch licensee mappings
-  const allLicensees = await db
-    .collection('licencees')
-    .find({}, { projection: { _id: 1, name: 1, country: 1 } })
-    .toArray();
+  const allLicensees = await Licencee.find({}, { _id: 1, name: 1, country: 1 })
+    .lean()
+    .exec();
 
   const licenseeMap = new Map<string, string>();
   allLicensees.forEach((lic: Record<string, unknown>) => {
@@ -56,12 +59,12 @@ export async function buildCurrencyMaps(
     .map(loc => loc.country)
     .filter((id): id is string => !!id);
 
-  const countries = await db
-    .collection('countries')
-    .find({ _id: { $in: countryIds as never[] } } as never, {
-      projection: { _id: 1, name: 1 },
-    })
-    .toArray();
+  const countries = await Countries.find(
+    { _id: { $in: countryIds } },
+    { _id: 1, name: 1 }
+  )
+    .lean()
+    .exec();
 
   const countryNameMap = new Map<string, string>();
   countries.forEach((country: Record<string, unknown>) => {
@@ -187,4 +190,3 @@ export function applyCurrencyConversion(
     return convertMeterDataCurrency(item, nativeCurrency, displayCurrency);
   });
 }
-

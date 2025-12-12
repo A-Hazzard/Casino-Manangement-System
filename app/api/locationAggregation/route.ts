@@ -303,8 +303,6 @@ export async function GET(req: NextRequest) {
     // STEP 7: Fetch aggregated location metrics (with backend filtering)
     // ============================================================================
     const { rows, totalCount } = await getLocationsWithMetrics(
-      db,
-      { startDate, endDate },
       licencee,
       page,
       limit,
@@ -349,32 +347,6 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 11: Cache and return results
     // ============================================================================
-    // Debug logging for filtered results
-    if (machineTypeFilter) {
-      console.log('[Location Aggregation API] Filtered results:', {
-        machineTypeFilter,
-        totalCount,
-        dataLength: convertedRows.length,
-        sampleLocations: convertedRows.slice(0, 3).map(loc => ({
-          name: loc.name,
-          moneyIn: loc.moneyIn,
-          noSMIBLocation: loc.noSMIBLocation,
-          isLocalServer: loc.isLocalServer,
-        })),
-        totalMoneyIn: convertedRows.reduce(
-          (sum, loc) => sum + (loc.moneyIn || 0),
-          0
-        ),
-        totalMoneyOut: convertedRows.reduce(
-          (sum, loc) => sum + (loc.moneyOut || 0),
-          0
-        ),
-        totalGross: convertedRows.reduce(
-          (sum, loc) => sum + (loc.gross || 0),
-          0
-        ),
-      });
-    }
 
     const result = {
       data: convertedRows,

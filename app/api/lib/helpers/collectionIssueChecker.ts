@@ -10,6 +10,7 @@ import type {
   CollectionIssueDetails,
 } from '@/shared/types/entities';
 import { Collections } from '../models/collections';
+import { Machine } from '../models/machines';
 
 /**
  * Finds the previous collection for a machine
@@ -367,13 +368,12 @@ export async function checkCollectionHistoryIssues(
       })
       .filter((id): id is NonNullable<typeof id> => id !== null);
 
-    const machinesWithHistory = await db
-      .collection('machines')
-      .find({
+    const machinesWithHistory = await Machine.find({
         _id: { $in: machineObjectIds },
         collectionMetersHistory: { $exists: true, $ne: [] },
       })
-      .toArray();
+      .lean()
+      .exec();
 
     for (const machine of machinesWithHistory) {
       const history = machine.collectionMetersHistory || [];
@@ -385,7 +385,7 @@ export async function checkCollectionHistoryIssues(
 
         const matchingCollection = await Collections.findOne({
           locationReportId: entry.locationReportId,
-          machineId: machine._id.toString(),
+          machineId: String(machine._id),
         }).lean();
 
         if (!matchingCollection) continue;
@@ -400,12 +400,12 @@ export async function checkCollectionHistoryIssues(
           Math.abs(historyPrevOut - collectionPrevOut) > 0.1
         ) {
           issues.push({
-            collectionId: `machine-${machine._id}-history-${i}`,
+            collectionId: `machine-${String(machine._id)}-history-${i}`,
             machineName:
               machine.serialNumber ||
               machine.custom?.name ||
               machine.origSerialNumber ||
-              machine._id.toString(),
+              String(machine._id),
             issueType: 'prev_meters_mismatch',
             details: {
               current: {

@@ -197,7 +197,7 @@ export default function MachinesTab() {
   const [overviewLoading, setOverviewLoading] = useState(true);
 
   const [offlineLoading, setOfflineLoading] = useState(false);
-  const [evaluationLoading, setEvaluationLoading] = useState(false);
+  const [evaluationLoading, setEvaluationLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Batch-based pagination for overview tab
@@ -706,7 +706,7 @@ export default function MachinesTab() {
       // Ensure loading state is set synchronously before any async operations
       setOverviewLoading(true);
       setLoading(true);
-      
+
       // Fetch data immediately - no delay needed as state is already set
       fetchOverviewMachines(1, debouncedSearchTerm);
     } else {
@@ -1854,7 +1854,8 @@ export default function MachinesTab() {
             </CardHeader>
             <CardContent>
               {/* Show skeleton if loading OR if no machines and on overview tab (prevents flash of "no data" on initial load) */}
-              {overviewLoading || (allOverviewMachines.length === 0 && activeTab === 'overview') ? (
+              {overviewLoading ||
+              (allOverviewMachines.length === 0 && activeTab === 'overview') ? (
                 <MachinesOverviewSkeleton />
               ) : (
                 <>

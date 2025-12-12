@@ -15,6 +15,31 @@ alwaysApply: true
 This document provides strict engineering guidelines to ensure code quality, maintainability, and security for Next.js projects.  
 All contributors should adhere to the following rules, which are enforced throughout the codebase.
 
+## Project Context: Evolution One CMS
+
+**System Overview:**
+
+- **Purpose**: Casino Management System for managing gaming operations, financial reporting, and player tracking
+- **Technology Stack**: Next.js 15, TypeScript, MongoDB with Mongoose, Tailwind CSS, Zustand
+- **Key Features**: Real-time machine monitoring, financial analytics, collection management, multi-licensee support
+- **Performance Targets**: 7d queries <10s, 30d queries <15s
+
+**Critical Performance Requirements:**
+
+- All `Meters.aggregate()` calls MUST use `.cursor({ batchSize: 1000 })` instead of `.exec()`
+- Use `location` field directly from Meters collection instead of expensive `$lookup` operations
+- Eliminate N+1 query patterns with batch queries
+- Handle per-location gaming day offsets with global aggregation + in-memory filtering
+
+**Key Database Models:**
+
+- `Meters` - Financial metrics source (has `location` field for direct access)
+- `Machines` - Primary UI data source
+- `GamingLocations` - Location management with `gameDayOffset` field
+- All dates stored in UTC, displayed in Trinidad time (UTC-4)
+
+**See `Documentation/PROJECT_GUIDE.md` for complete project documentation.**
+
 ---
 
 ## 2. TypeScript Discipline & Types Organization
@@ -684,6 +709,133 @@ export const GenericSkeleton = () => (
 
 ## 8. Performance Optimization
 
+### 8.1. Database Query Optimization - CRITICAL RULES
+
+#### Cursor Usage for Meters Aggregations
+
+**MANDATORY**: All `Meters.aggregate()` calls MUST use `.cursor({ batchSize: 1000 })` instead of `.exec()`
+
+```typescript
+// ✅ CORRECT - Use cursor for Meters aggregations
+const results: Array<Record<string, unknown>> = [];
+const cursor = Meters.aggregate(pipeline, {
+  allowDiskUse: true,
+  maxTimeMS: 120000,
+}).cursor({ batchSize: 1000 });
+
+for await (const doc of cursor) {
+  results.push(doc as Record<string, unknown>);
+}
+
+// ❌ INCORRECT - Don't use exec() for Meters
+const results = await Meters.aggregate(pipeline).exec();
+```
+
+**Why:**
+
+- Prevents loading large result sets into memory at once
+- Significantly improves performance for 7d/30d periods (10-20x faster)
+- Reduces memory usage and prevents timeouts
+
+#### Location Field Direct Access
+
+**MANDATORY**: When aggregating Meters by location, use the `location` field directly instead of `$lookup` operations
+
+```typescript
+// ✅ CORRECT - Use location field directly (uses index)
+const pipeline: PipelineStage[] = [
+  {
+    $match: {
+      location: { $in: allLocationIds }, // Direct field access (uses index)
+      readAt: { $gte: globalStart, $lte: globalEnd },
+    },
+  },
+  {
+    $group: {
+      _id: '$location', // Group by location field directly (no lookup needed!)
+      totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+    },
+  },
+];
+
+// ❌ INCORRECT - Expensive $lookup operation
+const pipeline: PipelineStage[] = [
+  { $match: { machine: { $in: allMachineIds } } },
+  { $lookup: { from: 'machines', ... } }, // Expensive!
+  { $unwind: '$machineDetails' },
+  { $addFields: { locationId: { $toString: '$machineDetails.gamingLocation' } } },
+  { $group: { _id: '$locationId' } }, // Much slower!
+];
+```
+
+**Performance Impact:**
+
+- Before: 31+ seconds with `$lookup` operations
+- After: 5-10 seconds using direct location field
+- Improvement: 10-20x faster for 7d/30d periods
+
+#### N+1 Query Pattern Elimination
+
+**MANDATORY**: Consolidate multiple sequential queries into single aggregations or batch queries
+
+```typescript
+// ❌ INCORRECT - N+1 query pattern
+for (const location of locations) {
+  const machines = await Machine.find({ gamingLocation: location._id });
+  const metrics = await Meters.aggregate([...]);
+}
+
+// ✅ CORRECT - Batch queries
+const allLocationIds = locations.map(loc => loc._id);
+const allMachines = await Machine.find({ gamingLocation: { $in: allLocationIds } }).lean();
+const allMachineIds = allMachines.map(m => m._id);
+const allMetrics = await Meters.aggregate([...]).cursor({ batchSize: 1000 });
+// Combine results in memory
+```
+
+#### Gaming Day Offset Handling
+
+For per-location gaming day offsets:
+
+1. Calculate global date range (earliest start, latest end)
+2. Aggregate globally using wide date range
+3. Filter in memory by location-specific gaming day ranges
+
+```typescript
+// Global aggregation
+const globalStart = earliestGamingDayStart;
+const globalEnd = latestGamingDayEnd;
+const aggregation = await Meters.aggregate([
+  {
+    $match: {
+      location: { $in: allLocationIds },
+      readAt: { $gte: globalStart, $lte: globalEnd },
+    },
+  },
+  {
+    $group: {
+      _id: '$location',
+      totalDrop: { $sum: '$movement.drop' },
+      minReadAt: { $min: '$readAt' },
+      maxReadAt: { $max: '$readAt' },
+    },
+  },
+]).cursor({ batchSize: 1000 });
+
+// Filter by gaming day ranges in memory
+for await (const agg of aggregation) {
+  const gamingDayRange = gamingDayRanges.get(String(agg._id));
+  const hasOverlap =
+    agg.minReadAt <= gamingDayRange.rangeEnd &&
+    agg.maxReadAt >= gamingDayRange.rangeStart;
+  if (hasOverlap) {
+    /* use result */
+  }
+}
+```
+
+### 8.2. Frontend Performance Optimization
+
 - Implement proper code-splitting and lazy loading for pages and large components.
 - Optimize images using Next.js Image component.
 - Minimize unnecessary re-renders with memoization techniques.
@@ -694,6 +846,15 @@ export const GenericSkeleton = () => (
 - **Memoize expensive computations** and callback functions to prevent unnecessary re-renders.
 - **Calculate derived data efficiently** - Use `useMemo` for expensive calculations like financial totals.
 - **Optimize data aggregation** - Calculate totals once and reuse them across components.
+
+### 8.3. Performance Targets
+
+- **7d period**: <10 seconds (target: 5-10s)
+- **30d period**: <15 seconds (target: 10-15s)
+- **No timeouts**: All queries should complete within maxTimeMS limits
+- **Memory efficiency**: Use cursors to prevent memory issues
+
+**See `Documentation/PERFORMANCE_OPTIMIZATION_GUIDE.md` for detailed optimization strategies.**
 
 ---
 

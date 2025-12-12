@@ -18,7 +18,8 @@ import {
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import type { Document } from 'mongodb';
+import { Machine } from '@/app/api/lib/models/machines';
+import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -102,7 +103,7 @@ export async function GET(req: NextRequest) {
     const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
     // Build aggregation pipeline to join machines with locations for filtering
-    const aggregationPipeline: Document[] = [
+    const aggregationPipeline: PipelineStage[] = [
       {
         $match: {
           deletedAt: { $in: [null, new Date(-1)] },
@@ -224,28 +225,28 @@ export async function GET(req: NextRequest) {
     }
 
     // Get total machines count (ALL machines, including those without lastActivity)
-    const totalCountResult = await db
-      .collection('machines')
-      .aggregate([...aggregationPipeline, { $count: 'total' }])
-      .toArray();
+    // Single result aggregation - use exec() for efficiency
+    const totalCountResult = await Machine.aggregate([
+      ...aggregationPipeline,
+      { $count: 'total' },
+    ]).exec();
     const totalCount = totalCountResult[0]?.total || 0;
+    
     // Get online machines count (lastActivity exists AND within last 3 minutes)
     // Machines without lastActivity are considered offline
-    const onlineCountResult = await db
-      .collection('machines')
-      .aggregate([
-        ...aggregationPipeline,
-        {
-          $match: {
-            lastActivity: {
-              $exists: true,
-              $gte: threeMinutesAgo,
-            },
+    // Single result aggregation - use exec() for efficiency
+    const onlineCountResult = await Machine.aggregate([
+      ...aggregationPipeline,
+      {
+        $match: {
+          lastActivity: {
+            $exists: true,
+            $gte: threeMinutesAgo,
           },
         },
-        { $count: 'total' },
-      ])
-      .toArray();
+      },
+      { $count: 'total' },
+    ]).exec();
     const onlineCount = onlineCountResult[0]?.total || 0;
 
     // Offline = total - online (includes machines without lastActivity)

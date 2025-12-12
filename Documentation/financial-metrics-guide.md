@@ -155,7 +155,6 @@ Where:
 #### Location Aggregation
 
 ```
-
 Location Money In = Sum of all machine drops at location
 Location Money Out = Sum of all machine cancelled credits at location
 Location Gross = Location Money In - Location Money Out
@@ -340,25 +339,29 @@ Location Total Gross = Σ(Machine Gross) for all machines at location
 Location Total Drop = Σ(Machine Money In) for all machines at location
 Location Total Money Out = Σ(Machine Money Out) for all machines at location
 
-````
-
 ## UI Implementation
 
 ### Financial Metrics Cards
+
 The main dashboard displays three core metrics:
+
 - **Money In**: Total cash inserted into machines
 - **Money Out**: Total manual payouts from machines
 - **Gross**: Net revenue (Money In - Money Out)
 
 ### Location Tables
+
 Location performance shows:
+
 - **Money In**: Aggregated drop from all machines at location
 - **Money Out**: Aggregated cancelled credits from all machines
 - **Jackpot**: Total jackpot payouts at location
 - **Gross**: Net revenue for the location
 
 ### Machine Evaluation
+
 Machine performance metrics include:
+
 - **Handle**: Total betting activity (coinIn)
 - **Average Wager Per Game**: Handle divided by games played
 - **Money In/Out**: Individual machine financial performance
@@ -375,23 +378,23 @@ The UI primarily uses these fields from the `Meters` collection:
 type UIFinancialFields = {
   // Movement data (primary source)
   movement: {
-    drop: number;                    // Money In - physical cash inserted
-    totalCancelledCredits: number;   // Money Out - manual payouts
-    coinIn: number;                  // Handle - total bets placed
-    jackpot: number;                 // Jackpot payouts
-    gamesPlayed: number;             // Total games played
+    drop: number; // Money In - physical cash inserted
+    totalCancelledCredits: number; // Money Out - manual payouts
+    coinIn: number; // Handle - total bets placed
+    jackpot: number; // Jackpot payouts
+    gamesPlayed: number; // Total games played
   };
 
   // Machine embedded data (fallback)
   sasMeters: {
-    drop: number;                    // Money In fallback
-    totalCancelledCredits: number;   // Money Out fallback
-    coinIn: number;                  // Handle fallback
-    jackpot: number;                 // Jackpot fallback
-    gamesPlayed: number;             // Games played fallback
+    drop: number; // Money In fallback
+    totalCancelledCredits: number; // Money Out fallback
+    coinIn: number; // Handle fallback
+    jackpot: number; // Jackpot fallback
+    gamesPlayed: number; // Games played fallback
   };
-}
-````
+};
+```
 
 ### Collection Meters (for Collection Reports)
 

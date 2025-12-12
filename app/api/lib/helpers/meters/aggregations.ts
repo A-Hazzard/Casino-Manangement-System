@@ -1,4 +1,5 @@
 import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
 import { Db } from 'mongodb';
 import { PipelineStage } from 'mongoose';
 import { CustomDate, QueryFilter } from '../../types';
@@ -348,12 +349,9 @@ export async function getMetricsForLocations(
   // The compound index (machine + readAt) is optimal for our queries
   const hint = machineIds ? { machine: 1, readAt: 1 } : { readAt: 1 };
 
-  return db
-    .collection('meters')
-    .aggregate(aggregationPipeline, {
+  return Meters.aggregate(aggregationPipeline, {
       allowDiskUse: true,
       maxTimeMS: 90000, // Increased to 90 seconds for 30d queries
       hint, // Force MongoDB to use the optimal index
-    })
-    .toArray();
+  }).exec();
 }

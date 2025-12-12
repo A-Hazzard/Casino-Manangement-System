@@ -16,15 +16,8 @@
  * @param onTimePeriodChange - Callback when time period changes
  * @param onCustomDateRangeChange - Callback when custom date range changes
  */
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { formatCurrency } from '@/lib/utils';
-import {
-  getMoneyInColorClass,
-  getMoneyOutColorClass,
-  getGrossColorClass,
-} from '@/lib/utils/financialColors';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+'use client';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,8 +28,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { toast } from 'sonner';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useUserStore } from '@/lib/store/userStore';
+import { formatCurrency } from '@/lib/utils';
+import {
+  getGrossColorClass,
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+} from '@/lib/utils/financialColors';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 type TimePeriod = 'Today' | 'Yesterday' | '7d' | '30d' | 'All Time' | 'Custom';
 
@@ -68,6 +71,8 @@ export const AccountingMetricsSection = ({
   onCustomDateRangeChange,
 }: AccountingMetricsSectionProps) => {
   const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
+  const user = useUserStore(state => state.user);
+  const isDeveloper = (user?.roles || []).includes('developer');
 
   // State management
   const [selectedTimePeriod, setSelectedTimePeriod] =
@@ -180,7 +185,7 @@ export const AccountingMetricsSection = ({
               <SelectItem value="Today">Today</SelectItem>
               <SelectItem value="Yesterday">Yesterday</SelectItem>
               <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
+              {isDeveloper && <SelectItem value="30d">Last 30 days</SelectItem>}
               <SelectItem value="All Time">All Time</SelectItem>
               <SelectItem value="Custom">Custom Range</SelectItem>
             </SelectContent>
@@ -246,7 +251,9 @@ export const AccountingMetricsSection = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Money In</p>
-              <p className={`text-2xl font-bold ${getMoneyInColorClass(financialMetrics.moneyIn)}`}>
+              <p
+                className={`text-2xl font-bold ${getMoneyInColorClass(financialMetrics.moneyIn)}`}
+              >
                 {shouldShowCurrency()
                   ? formatAmount(financialMetrics.moneyIn)
                   : formatCurrency(financialMetrics.moneyIn)}
@@ -263,7 +270,9 @@ export const AccountingMetricsSection = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Money Out</p>
-              <p className={`text-2xl font-bold ${getMoneyOutColorClass(financialMetrics.moneyOut, financialMetrics.moneyIn)}`}>
+              <p
+                className={`text-2xl font-bold ${getMoneyOutColorClass(financialMetrics.moneyOut, financialMetrics.moneyIn)}`}
+              >
                 {shouldShowCurrency()
                   ? formatAmount(financialMetrics.moneyOut)
                   : formatCurrency(financialMetrics.moneyOut)}

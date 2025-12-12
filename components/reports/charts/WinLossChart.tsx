@@ -1,23 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type {
+  WinLossChartData,
+  WinLossChartProps,
+} from '@/lib/types/components';
 import axios from 'axios';
+import { BarChart3 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3 } from 'lucide-react';
-import type {
-  WinLossChartProps,
-  WinLossChartData,
-} from '@/lib/types/components';
 
 export default function WinLossChart({
   timePeriod,
@@ -88,6 +88,13 @@ export default function WinLossChart({
     return value >= 0 ? '#10b981' : '#ef4444';
   };
 
+  // Filter data to only show times with actual data (no zero-value periods)
+  // This matches the behavior of location details and cabinet details pages
+  // WinLoss can be negative, so filter where winLoss !== 0
+  const filteredData = useMemo(() => {
+    return data.filter(item => item.winLoss !== 0);
+  }, [data]);
+
   if (loading) {
     return (
       <Card className={className}>
@@ -125,7 +132,7 @@ export default function WinLossChart({
     );
   }
 
-  if (data.length === 0) {
+  if (filteredData.length === 0) {
     return (
       <Card className={className}>
         <CardHeader>
@@ -148,8 +155,13 @@ export default function WinLossChart({
     );
   }
 
-  const totalWinLoss = data.reduce((sum, item) => sum + item.winLoss, 0);
-  const maxWinLoss = Math.max(...data.map(item => Math.abs(item.winLoss)));
+  const totalWinLoss = filteredData.reduce(
+    (sum, item) => sum + item.winLoss,
+    0
+  );
+  const maxWinLoss = Math.max(
+    ...filteredData.map(item => Math.abs(item.winLoss))
+  );
 
   return (
     <Card className={className}>
@@ -166,7 +178,7 @@ export default function WinLossChart({
       <CardContent>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
+            <BarChart data={filteredData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="time"
@@ -195,7 +207,7 @@ export default function WinLossChart({
                 }}
               />
               <Bar dataKey="winLoss" fill="#3b82f6" radius={[4, 4, 0, 0]}>
-                {data.map((entry, index) => (
+                {filteredData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={getBarColor(entry.winLoss)}

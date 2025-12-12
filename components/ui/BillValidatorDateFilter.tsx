@@ -22,10 +22,10 @@
  */
 'use client';
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
 import { TimePeriod } from '@/app/api/lib/types';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
 import {
   Select,
   SelectContent,
@@ -33,10 +33,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { TimePicker } from '@mui/x-date-pickers/TimePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { useUserStore } from '@/lib/store/userStore';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { useMemo, useState } from 'react';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 
 export type BillValidatorDateFilterProps = {
@@ -71,15 +72,29 @@ export default function BillValidatorDateFilter({
     startTime: '',
     endTime: '',
   });
+  const user = useUserStore(state => state.user);
+  const isDeveloper = (user?.roles || []).includes('developer');
 
-  const timeFilterButtons: { label: string; value: TimePeriod }[] = [
-    { label: 'Today', value: 'Today' as TimePeriod },
-    { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
-    { label: 'Last 7 Days', value: '7d' as TimePeriod },
-    { label: 'Last 30 Days', value: '30d' as TimePeriod },
-    { label: 'All Time', value: 'All Time' as TimePeriod },
-    { label: 'Custom', value: 'Custom' as TimePeriod },
-  ];
+  const timeFilterButtons: { label: string; value: TimePeriod }[] =
+    useMemo(() => {
+      const baseButtons = [
+        { label: 'Today', value: 'Today' as TimePeriod },
+        { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
+        { label: 'Last 7 Days', value: '7d' as TimePeriod },
+      ];
+
+      // Only show "Last 30 Days" to developers
+      if (isDeveloper) {
+        baseButtons.push({ label: 'Last 30 Days', value: '30d' as TimePeriod });
+      }
+
+      baseButtons.push(
+        { label: 'All Time', value: 'All Time' as TimePeriod },
+        { label: 'Custom', value: 'Custom' as TimePeriod }
+      );
+
+      return baseButtons;
+    }, [isDeveloper]);
 
   const handleFilterClick = (filter: TimePeriod) => {
     if (filter === 'Custom') {

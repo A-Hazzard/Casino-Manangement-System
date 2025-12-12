@@ -287,9 +287,8 @@ export async function determineAllowedLocationIds(
       throw new Error('Database connection failed');
     }
 
-    const managerLocations = await db
-      .collection('gaminglocations')
-      .find(
+    const { GamingLocations } = await import('../models/gaminglocations');
+    const managerLocations = await GamingLocations.find(
         {
           'rel.licencee': { $in: userLicensees },
           $or: [
@@ -297,9 +296,10 @@ export async function determineAllowedLocationIds(
             { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
         },
-        { projection: { _id: 1 } }
+      { _id: 1 }
       )
-      .toArray();
+      .lean()
+      .exec();
 
     return managerLocations.map(loc => String(loc._id));
   }
@@ -326,15 +326,15 @@ export async function getLocationNamesFromIds(
     throw new Error('Database connection failed');
   }
 
-  const locations = await db
-    .collection('gaminglocations')
-    .find(
+  const { GamingLocations } = await import('../models/gaminglocations');
+  const locations = await GamingLocations.find(
       {
-        _id: { $in: locationIds as never[] },
+      _id: { $in: locationIds },
       },
-      { projection: { _id: 1, name: 1 } }
+    { _id: 1, name: 1 }
     )
-    .toArray();
+    .lean()
+    .exec();
 
   return locations.map(loc => String(loc.name));
 }

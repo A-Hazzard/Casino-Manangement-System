@@ -9,9 +9,8 @@
  * @module app/api/lib/helpers/bulkCollectionHistoryFix
  */
 
-import mongoose from 'mongoose';
-import { Collections } from '../models/collections';
 import { CollectionReport } from '../models/collectionReport';
+import { Collections } from '../models/collections';
 import { Machine } from '../models/machines';
 
 type CollectionDocument = {
@@ -107,9 +106,9 @@ export async function fixAllCollectionHistoryData(): Promise<{
 
       // Check if this machine actually has collectionMetersHistory issues
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const machine = (await Machine.findOne({ _id: machineId })) as
-        | MachineDocument
-        | null;
+      const machine = (await Machine.findOne({
+        _id: machineId,
+      })) as MachineDocument | null;
       if (
         !machine ||
         !machine.collectionMetersHistory ||
@@ -142,13 +141,10 @@ export async function fixAllCollectionHistoryData(): Promise<{
       const mostRecentCollection =
         machineCollections[machineCollections.length - 1];
 
-      // Use raw MongoDB driver to ensure update works
-      const db = mongoose.connection.db;
-      if (!db) throw new Error('Database connection not available');
-
-      const updateResult = await db
-        .collection('machines')
-        .updateOne({ _id: machineId as unknown as mongoose.Types.ObjectId }, {
+      // Use Mongoose model for update
+      const updateResult = await Machine.updateOne(
+        { _id: machineId },
+        {
           $set: {
             collectionMetersHistory: newHistory,
             collectionTime: mostRecentCollection
@@ -164,7 +160,8 @@ export async function fixAllCollectionHistoryData(): Promise<{
             'collectionMeters.metersOut': mostRecentCollection?.metersOut || 0,
             updatedAt: new Date(),
           },
-        });
+        }
+      );
 
       if (updateResult.modifiedCount > 0) {
         machinesFixedCount++;
@@ -177,10 +174,15 @@ export async function fixAllCollectionHistoryData(): Promise<{
           `   ⚠️ Machine ${machineId} was matched but no changes were made (history already correct?)`
         );
       } else {
-        console.warn(`   ⚠️ Machine ${machineId} was not found in the database`);
+        console.warn(
+          `   ⚠️ Machine ${machineId} was not found in the database`
+        );
       }
     } catch (machineError) {
-      console.error(`   ❌ Error processing machine ${machineId}:`, machineError);
+      console.error(
+        `   ❌ Error processing machine ${machineId}:`,
+        machineError
+      );
       errors.push({
         machineId,
         error:
@@ -252,9 +254,7 @@ function checkMachineHistoryForIssues(machine: MachineDocument): boolean {
  * @param collections - Array of collection documents for the machine (already sorted chronologically)
  * @returns Array of history entries with correct prevIn/prevOut
  */
-function rebuildHistoryForMachine(
-  collections: CollectionDocument[]
-): Array<{
+function rebuildHistoryForMachine(collections: CollectionDocument[]): Array<{
   locationReportId?: string;
   metersIn: number;
   metersOut: number;
@@ -284,5 +284,3 @@ function rebuildHistoryForMachine(
     };
   });
 }
-
-

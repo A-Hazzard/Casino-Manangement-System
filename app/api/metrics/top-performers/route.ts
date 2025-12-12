@@ -12,9 +12,9 @@
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
-import type { TimePeriod } from '@/app/api/lib/types';
 import { Meters } from '@/app/api/lib/models/meters';
+import type { TimePeriod } from '@/app/api/lib/types';
+import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
 import type { Db } from 'mongodb';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
@@ -178,7 +178,12 @@ async function getTopPerformer(
     licencee
   );
 
-  const topPerformers = await Meters.aggregate(pipeline);
+  // Use cursor for Meters aggregation
+  const topPerformers: unknown[] = [];
+  const cursor = Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
+  for await (const doc of cursor) {
+    topPerformers.push(doc);
+  }
   return topPerformers[0] || null;
 }
 

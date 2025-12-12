@@ -8,6 +8,7 @@
  */
 
 import { Countries } from '@/app/api/lib/models/countries';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -71,72 +72,85 @@ export async function getTopLocations(
     },
   ]);
 
-  // Now get financial metrics for each location using meters collection
-  const topLocationsWithMetrics = await Promise.all(
-    locations.map(async location => {
-      const locationId = location._id.toString();
+  // 🚀 OPTIMIZED: Get financial metrics for all locations in one query instead of N+1
+  const allLocationIds = locations.map(loc => loc._id.toString());
 
-      // Get financial metrics from meters collection with date filtering
-      const matchStage: Record<string, unknown> = {
-        location: locationId,
-      };
+  // Build match stage for all locations
+  const matchStage: Record<string, unknown> = {
+    location: { $in: allLocationIds },
+  };
 
-      // Add date filtering if provided
-      if (startDate && endDate) {
-        matchStage.readAt = { $gte: startDate, $lte: endDate };
-      }
+  // Add date filtering if provided
+  if (startDate && endDate) {
+    matchStage.readAt = { $gte: startDate, $lte: endDate };
+  }
 
-      const metersAggregation =
-        (await Machine.db?.db
-          ?.collection('meters')
-          ?.aggregate([
-            // Stage 1: Filter meter records by location and date range
-            {
-              $match: matchStage,
-            },
+  // Single aggregation for all locations - use cursor for Meters
+  const allMetersAggregation: Array<{
+    _id: string;
+    totalDrop: number;
+    totalCancelledCredits: number;
+  }> = [];
+  const allMetersCursor = Meters.aggregate([
+    { $match: matchStage },
+    {
+      $group: {
+        _id: '$location',
+        totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+        totalCancelledCredits: {
+          $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+        },
+      },
+    },
+  ]).cursor({ batchSize: 1000 });
 
-            // Stage 2: Aggregate financial metrics for this location
-            {
-              $group: {
-                _id: null,
-                totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-                totalCancelledCredits: {
-                  $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-                },
-              },
-            },
-          ])
-          ?.toArray()) || [];
+  for await (const doc of allMetersCursor) {
+    allMetersAggregation.push(doc as (typeof allMetersAggregation)[0]);
+  }
 
-      const financialMetrics = metersAggregation[0] || {
-        totalDrop: 0,
-        totalCancelledCredits: 0,
-      };
-      const gross =
-        financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
+  // Create map for fast lookup
+  const financialMetricsMap = new Map<
+    string,
+    { totalDrop: number; totalCancelledCredits: number }
+  >();
+  allMetersAggregation.forEach(agg => {
+    financialMetricsMap.set(String(agg._id), {
+      totalDrop: (agg.totalDrop as number) || 0,
+      totalCancelledCredits: (agg.totalCancelledCredits as number) || 0,
+    });
+  });
 
-      return {
-        id: locationId,
-        name: location.locationInfo.name,
-        totalDrop: financialMetrics.totalDrop,
-        cancelledCredits: financialMetrics.totalCancelledCredits,
-        gross: gross,
-        machineCount: location.machineCount,
-        onlineMachines: location.onlineMachines,
-        sasMachines: location.sasMachines,
-        coordinates:
-          location.locationInfo.geoCoords?.latitude &&
-          location.locationInfo.geoCoords?.longitude
-            ? [
-                location.locationInfo.geoCoords.longitude,
-                location.locationInfo.geoCoords.latitude,
-              ]
-            : null,
-        trend: gross >= 10000 ? 'up' : 'down',
-        trendPercentage: Math.abs(Math.random() * 10),
-      };
-    })
-  );
+  // Combine location data with financial metrics
+  const topLocationsWithMetrics = locations.map(location => {
+    const locationId = location._id.toString();
+    const financialMetrics = financialMetricsMap.get(locationId) || {
+      totalDrop: 0,
+      totalCancelledCredits: 0,
+    };
+    const gross =
+      financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
+
+    return {
+      id: locationId,
+      name: location.locationInfo.name,
+      totalDrop: financialMetrics.totalDrop,
+      cancelledCredits: financialMetrics.totalCancelledCredits,
+      gross: gross,
+      machineCount: location.machineCount,
+      onlineMachines: location.onlineMachines,
+      sasMachines: location.sasMachines,
+      coordinates:
+        location.locationInfo.geoCoords?.latitude &&
+        location.locationInfo.geoCoords?.longitude
+          ? [
+              location.locationInfo.geoCoords.longitude,
+              location.locationInfo.geoCoords.latitude,
+            ]
+          : null,
+      trend: gross >= 10000 ? 'up' : 'down',
+      trendPercentage: Math.abs(Math.random() * 10),
+    };
+  });
 
   // Sort by gross and return top 5
   return topLocationsWithMetrics.sort((a, b) => b.gross - a.gross).slice(0, 5);
@@ -197,49 +211,54 @@ export async function getMachineStats(licensee: string) {
     sasMachines: 0,
   };
 
-  // Get financial metrics from meters collection for the licensee
-  const financialMetrics =
-    (await Machine.db?.db
-      ?.collection('meters')
-      ?.aggregate([
-        {
-          $lookup: {
-            from: 'machines',
-            localField: 'machine',
-            foreignField: '_id',
-            as: 'machineInfo',
-          },
+  // Get financial metrics from meters collection for the licensee - use cursor for Meters
+  const financialMetrics: Array<{
+    _id: null;
+    totalDrop: number;
+    totalCancelledCredits: number;
+  }> = [];
+  const financialMetricsCursor = Meters.aggregate([
+    {
+      $lookup: {
+        from: 'machines',
+        localField: 'machine',
+        foreignField: '_id',
+        as: 'machineInfo',
+      },
+    },
+    {
+      $unwind: '$machineInfo',
+    },
+    {
+      $lookup: {
+        from: 'gaminglocations',
+        localField: 'machineInfo.gamingLocation',
+        foreignField: '_id',
+        as: 'locationInfo',
+      },
+    },
+    {
+      $unwind: '$locationInfo',
+    },
+    {
+      $match: {
+        'locationInfo.rel.licencee': licensee,
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+        totalCancelledCredits: {
+          $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
         },
-        {
-          $unwind: '$machineInfo',
-        },
-        {
-          $lookup: {
-            from: 'gaminglocations',
-            localField: 'machineInfo.gamingLocation',
-            foreignField: '_id',
-            as: 'locationInfo',
-          },
-        },
-        {
-          $unwind: '$locationInfo',
-        },
-        {
-          $match: {
-            'locationInfo.rel.licencee': licensee,
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-            totalCancelledCredits: {
-              $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-            },
-          },
-        },
-      ])
-      ?.toArray()) || [];
+      },
+    },
+  ]).cursor({ batchSize: 1000 });
+
+  for await (const doc of financialMetricsCursor) {
+    financialMetrics.push(doc as (typeof financialMetrics)[0]);
+  }
 
   const financial = financialMetrics[0] || {
     totalDrop: 0,
@@ -744,7 +763,14 @@ export async function getChartsData(
   const licenseeId = new mongoose.Types.ObjectId(licensee);
 
   const chartsPipeline = buildChartsPipeline(licenseeId, startDate, endDate);
-  const series = await Meters.aggregate(chartsPipeline);
+  // Use cursor for Meters aggregation
+  const series: Array<Record<string, unknown>> = [];
+  const seriesCursor = Meters.aggregate(chartsPipeline).cursor({
+    batchSize: 1000,
+  });
+  for await (const doc of seriesCursor) {
+    series.push(doc as Record<string, unknown>);
+  }
 
   const convertedSeries = applyChartsCurrencyConversion(
     series,
@@ -860,83 +886,104 @@ export async function getTopLocationsAnalytics(
 
   const topLocations = await Machine.aggregate(locationsPipeline);
 
-  let topLocationsWithMetrics = await Promise.all(
-    topLocations.map(async location => {
-      const locationId = location.id?.toString() || location._id?.toString();
-
-      const metersAggregation = await db
-        .collection('meters')
-        .aggregate([
-          {
-            $match: {
-              location: locationId,
-            },
-          },
-          {
-            $group: {
-              _id: null,
-              totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-              totalCancelledCredits: {
-                $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-              },
-            },
-          },
-        ])
-        .toArray();
-
-      const financialMetrics = metersAggregation[0] || {
-        totalDrop: 0,
-        totalCancelledCredits: 0,
-      };
-      const gross =
-        financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
-
-      return {
-        id: locationId,
-        name: location.locationInfo?.name || location.name,
-        totalDrop: financialMetrics.totalDrop,
-        cancelledCredits: financialMetrics.totalCancelledCredits,
-        gross: gross,
-        machineCount: location.machineCount,
-        onlineMachines: location.onlineMachines,
-        sasMachines: location.sasMachines,
-        rel: location.locationInfo?.rel,
-        country: location.locationInfo?.country,
-        coordinates:
-          location.locationInfo?.geoCoords?.latitude &&
-          location.locationInfo?.geoCoords?.longitude
-            ? ([
-                location.locationInfo.geoCoords.longitude,
-                location.locationInfo.geoCoords.latitude,
-              ] as [number, number])
-            : null,
-        trend: gross >= 10000 ? 'up' : 'down',
-        trendPercentage: Math.abs(Math.random() * 10),
-      };
-    })
+  // 🚀 OPTIMIZED: Get financial metrics for all locations in one query instead of N+1
+  const allTopLocationIds = topLocations.map(
+    loc => loc.id?.toString() || loc._id?.toString()
   );
+
+  // Use cursor for Meters aggregation
+  const allTopMetersAggregation: Array<{
+    _id: string;
+    totalDrop: number;
+    totalCancelledCredits: number;
+  }> = [];
+  const allTopMetersCursor = Meters.aggregate([
+    {
+      $match: {
+        location: { $in: allTopLocationIds },
+      },
+    },
+    {
+      $group: {
+        _id: '$location',
+        totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+        totalCancelledCredits: {
+          $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+        },
+      },
+    },
+  ]).cursor({ batchSize: 1000 });
+
+  for await (const doc of allTopMetersCursor) {
+    allTopMetersAggregation.push(doc as (typeof allTopMetersAggregation)[0]);
+  }
+
+  // Create map for fast lookup
+  const topFinancialMetricsMap = new Map<
+    string,
+    { totalDrop: number; totalCancelledCredits: number }
+  >();
+  allTopMetersAggregation.forEach(agg => {
+    topFinancialMetricsMap.set(String(agg._id), {
+      totalDrop: (agg.totalDrop as number) || 0,
+      totalCancelledCredits: (agg.totalCancelledCredits as number) || 0,
+    });
+  });
+
+  // Combine location data with financial metrics
+  let topLocationsWithMetrics = topLocations.map(location => {
+    const locationId = location.id?.toString() || location._id?.toString();
+    const financialMetrics = topFinancialMetricsMap.get(locationId) || {
+      totalDrop: 0,
+      totalCancelledCredits: 0,
+    };
+    const gross =
+      financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
+
+    return {
+      id: locationId,
+      name: location.locationInfo?.name || location.name,
+      totalDrop: financialMetrics.totalDrop,
+      cancelledCredits: financialMetrics.totalCancelledCredits,
+      gross: gross,
+      machineCount: location.machineCount,
+      onlineMachines: location.onlineMachines,
+      sasMachines: location.sasMachines,
+      rel: location.locationInfo?.rel,
+      country: location.locationInfo?.country,
+      coordinates:
+        location.locationInfo?.geoCoords?.latitude &&
+        location.locationInfo?.geoCoords?.longitude
+          ? ([
+              location.locationInfo.geoCoords.longitude,
+              location.locationInfo.geoCoords.latitude,
+            ] as [number, number])
+          : null,
+      trend: gross >= 10000 ? 'up' : 'down',
+      trendPercentage: Math.abs(Math.random() * 10),
+    };
+  });
 
   if (shouldApplyCurrencyConversion(licensee)) {
     const { convertToUSD, getCountryCurrency } = await import(
       '@/lib/helpers/rates'
     );
 
-    const licenseesData = await db
-      .collection('licencees')
-      .find(
-        {
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2025-01-01') } },
-          ],
-        },
-        { projection: { _id: 1, name: 1 } }
-      )
-      .toArray();
+    const licenseesData = await Licencee.find(
+      {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      },
+      { _id: 1, name: 1 }
+    )
+      .lean()
+      .exec();
 
     const licenseeIdToName = new Map<string, string>();
     licenseesData.forEach(lic => {
-      licenseeIdToName.set(lic._id.toString(), lic.name);
+      licenseeIdToName.set(String(lic._id), lic.name as string);
     });
 
     const countriesData = await Countries.find({}).lean();

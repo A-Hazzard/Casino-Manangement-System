@@ -1,19 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { PlaysChartData, PlaysChartProps } from '@/lib/types/components';
 import axios from 'axios';
+import { Play } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play } from 'lucide-react';
-import type { PlaysChartProps, PlaysChartData } from '@/lib/types/components';
 
 export default function PlaysChart({
   timePeriod,
@@ -75,6 +75,12 @@ export default function PlaysChart({
     }
   };
 
+  // Filter data to only show times with actual data (no zero-value periods)
+  // This matches the behavior of location details and cabinet details pages
+  const filteredData = useMemo(() => {
+    return data.filter(item => item.gamesPlayed > 0);
+  }, [data]);
+
   if (loading) {
     return (
       <Card className={className}>
@@ -112,7 +118,7 @@ export default function PlaysChart({
     );
   }
 
-  if (data.length === 0) {
+  if (filteredData.length === 0) {
     return (
       <Card className={className}>
         <CardHeader>
@@ -135,8 +141,11 @@ export default function PlaysChart({
     );
   }
 
-  const totalGames = data.reduce((sum, item) => sum + item.gamesPlayed, 0);
-  const maxGames = Math.max(...data.map(item => item.gamesPlayed));
+  const totalGames = filteredData.reduce(
+    (sum, item) => sum + item.gamesPlayed,
+    0
+  );
+  const maxGames = Math.max(...filteredData.map(item => item.gamesPlayed));
 
   return (
     <Card className={className}>
@@ -152,7 +161,7 @@ export default function PlaysChart({
       <CardContent>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
+            <BarChart data={filteredData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="time"
