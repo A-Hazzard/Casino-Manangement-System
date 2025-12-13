@@ -5,16 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import MapLoader from '@/components/ui/MapLoader';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { LocationMapProps } from '@/lib/types/components';
 import { formatCurrency } from '@/lib/utils/formatting';
 import { getMapCenterByLicensee } from '@/lib/utils/location';
+import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 import { MapPin, Search, TrendingUp } from 'lucide-react';
@@ -292,11 +293,15 @@ export default function LocationMap({
 
     // ENHANCED: Check that panes have _leaflet_pos property and are attached to DOM
     // _leaflet_pos is a Leaflet internal property not in TypeScript types
-    const mapPaneWithPos = panes.mapPane as HTMLElement & { _leaflet_pos?: { x: number; y: number } };
-    const markerPaneWithPos = panes.markerPane as HTMLElement & { _leaflet_pos?: { x: number; y: number } };
+    const mapPaneWithPos = panes.mapPane as HTMLElement & {
+      _leaflet_pos?: { x: number; y: number };
+    };
+    const markerPaneWithPos = panes.markerPane as HTMLElement & {
+      _leaflet_pos?: { x: number; y: number };
+    };
     if (!mapPaneWithPos._leaflet_pos) return false;
     if (!markerPaneWithPos._leaflet_pos) return false;
-    
+
     // Verify panes are attached to the DOM (have parent elements)
     if (!panes.mapPane.parentElement) return false;
     if (!panes.markerPane.parentElement) return false;
@@ -305,7 +310,7 @@ export default function LocationMap({
     if (map.getContainer) {
       const container = map.getContainer();
       if (!container || !(container instanceof HTMLElement)) return false;
-      
+
       // Verify container has dimensions (width > 0)
       if (container.offsetWidth <= 0) return false;
     }
@@ -381,11 +386,17 @@ export default function LocationMap({
               try {
                 mapRef.current.setView(locationCenter, zoomLevel);
               } catch (error) {
-                if (error instanceof Error && error.message.includes('_leaflet_pos')) {
+                if (
+                  error instanceof Error &&
+                  error.message.includes('_leaflet_pos')
+                ) {
                   console.warn('Map not fully initialized, deferring setView');
                   // Retry after longer delay
                   setTimeout(() => {
-                    if (mapRef.current && isMapReadyForOperations(mapRef.current)) {
+                    if (
+                      mapRef.current &&
+                      isMapReadyForOperations(mapRef.current)
+                    ) {
                       try {
                         mapRef.current.setView(locationCenter, zoomLevel);
                       } catch (e) {
@@ -463,7 +474,10 @@ export default function LocationMap({
           try {
             mapRef.current.setView(defaultCenter, zoomLevel);
           } catch (error) {
-            if (error instanceof Error && error.message.includes('_leaflet_pos')) {
+            if (
+              error instanceof Error &&
+              error.message.includes('_leaflet_pos')
+            ) {
               console.warn('Map not fully initialized, deferring setView');
               // Retry after longer delay
               setTimeout(() => {
@@ -519,7 +533,7 @@ export default function LocationMap({
     }
 
     const fetchData = async () => {
-      await makeLocationMapRequest(async (signal) => {
+      await makeLocationMapRequest(async signal => {
         setLoading(true);
         try {
           if (Array.isArray(aggregates)) {
@@ -575,12 +589,17 @@ export default function LocationMap({
               params.append('licencee', selectedLicencee);
             }
 
-            // Fetch location aggregation data
-            const aggResponse = await axios.get(
-              `/api/locationAggregation?${params.toString()}`,
-              { signal }
+            // Fetch location aggregation data with deduplication
+            const requestKey = `/api/locationAggregation?${params.toString()}`;
+            const aggData = await deduplicateRequest(
+              requestKey,
+              async abortSignal => {
+                const aggResponse = await axios.get(requestKey, {
+                  signal: abortSignal || signal,
+                });
+                return aggResponse.data;
+              }
             );
-            const aggData = aggResponse.data;
             // Handle both old array format and new paginated format
             const locationData = Array.isArray(aggData)
               ? aggData
@@ -608,7 +627,8 @@ export default function LocationMap({
           }
         } finally {
           // Delay slightly to avoid flicker, but also guard with a hard cap
-          if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+          if (loadingTimeoutRef.current)
+            clearTimeout(loadingTimeoutRef.current);
           loadingTimeoutRef.current = setTimeout(() => setLoading(false), 300);
           // Hard cap to ensure loading never lingers beyond 2s
           setTimeout(() => setLoading(false), 2000);
@@ -694,7 +714,10 @@ export default function LocationMap({
         try {
           mapRef.current.setView([lat as number, lon as number], 15);
         } catch (error) {
-          if (error instanceof Error && error.message.includes('_leaflet_pos')) {
+          if (
+            error instanceof Error &&
+            error.message.includes('_leaflet_pos')
+          ) {
             console.warn('Map not fully initialized, deferring setView');
             // Retry after longer delay
             setTimeout(() => {

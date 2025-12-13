@@ -76,14 +76,14 @@ export async function getTopLocations(
   const allLocationIds = locations.map(loc => loc._id.toString());
 
   // Build match stage for all locations
-  const matchStage: Record<string, unknown> = {
+      const matchStage: Record<string, unknown> = {
     location: { $in: allLocationIds },
-  };
+      };
 
-  // Add date filtering if provided
-  if (startDate && endDate) {
-    matchStage.readAt = { $gte: startDate, $lte: endDate };
-  }
+      // Add date filtering if provided
+      if (startDate && endDate) {
+        matchStage.readAt = { $gte: startDate, $lte: endDate };
+      }
 
   // Single aggregation for all locations - use cursor for Meters
   const allMetersAggregation: Array<{
@@ -93,15 +93,15 @@ export async function getTopLocations(
   }> = [];
   const allMetersCursor = Meters.aggregate([
     { $match: matchStage },
-    {
-      $group: {
+            {
+              $group: {
         _id: '$location',
-        totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-        totalCancelledCredits: {
-          $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-        },
-      },
-    },
+                totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+                totalCancelledCredits: {
+                  $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+                },
+              },
+            },
   ]).cursor({ batchSize: 1000 });
 
   for await (const doc of allMetersCursor) {
@@ -124,32 +124,32 @@ export async function getTopLocations(
   const topLocationsWithMetrics = locations.map(location => {
     const locationId = location._id.toString();
     const financialMetrics = financialMetricsMap.get(locationId) || {
-      totalDrop: 0,
-      totalCancelledCredits: 0,
-    };
-    const gross =
-      financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
+        totalDrop: 0,
+        totalCancelledCredits: 0,
+      };
+      const gross =
+        financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
 
-    return {
-      id: locationId,
-      name: location.locationInfo.name,
-      totalDrop: financialMetrics.totalDrop,
-      cancelledCredits: financialMetrics.totalCancelledCredits,
-      gross: gross,
-      machineCount: location.machineCount,
-      onlineMachines: location.onlineMachines,
-      sasMachines: location.sasMachines,
-      coordinates:
-        location.locationInfo.geoCoords?.latitude &&
-        location.locationInfo.geoCoords?.longitude
-          ? [
-              location.locationInfo.geoCoords.longitude,
-              location.locationInfo.geoCoords.latitude,
-            ]
-          : null,
-      trend: gross >= 10000 ? 'up' : 'down',
-      trendPercentage: Math.abs(Math.random() * 10),
-    };
+      return {
+        id: locationId,
+        name: location.locationInfo.name,
+        totalDrop: financialMetrics.totalDrop,
+        cancelledCredits: financialMetrics.totalCancelledCredits,
+        gross: gross,
+        machineCount: location.machineCount,
+        onlineMachines: location.onlineMachines,
+        sasMachines: location.sasMachines,
+        coordinates:
+          location.locationInfo.geoCoords?.latitude &&
+          location.locationInfo.geoCoords?.longitude
+            ? [
+                location.locationInfo.geoCoords.longitude,
+                location.locationInfo.geoCoords.latitude,
+              ]
+            : null,
+        trend: gross >= 10000 ? 'up' : 'down',
+        trendPercentage: Math.abs(Math.random() * 10),
+      };
   });
 
   // Sort by gross and return top 5
@@ -218,42 +218,42 @@ export async function getMachineStats(licensee: string) {
     totalCancelledCredits: number;
   }> = [];
   const financialMetricsCursor = Meters.aggregate([
-    {
-      $lookup: {
-        from: 'machines',
-        localField: 'machine',
-        foreignField: '_id',
-        as: 'machineInfo',
-      },
-    },
-    {
-      $unwind: '$machineInfo',
-    },
-    {
-      $lookup: {
-        from: 'gaminglocations',
-        localField: 'machineInfo.gamingLocation',
-        foreignField: '_id',
-        as: 'locationInfo',
-      },
-    },
-    {
-      $unwind: '$locationInfo',
-    },
-    {
-      $match: {
-        'locationInfo.rel.licencee': licensee,
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-        totalCancelledCredits: {
-          $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+        {
+          $lookup: {
+            from: 'machines',
+            localField: 'machine',
+            foreignField: '_id',
+            as: 'machineInfo',
+          },
         },
-      },
-    },
+        {
+          $unwind: '$machineInfo',
+        },
+        {
+          $lookup: {
+            from: 'gaminglocations',
+            localField: 'machineInfo.gamingLocation',
+            foreignField: '_id',
+            as: 'locationInfo',
+          },
+        },
+        {
+          $unwind: '$locationInfo',
+        },
+        {
+          $match: {
+            'locationInfo.rel.licencee': licensee,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+            totalCancelledCredits: {
+              $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+            },
+          },
+        },
   ]).cursor({ batchSize: 1000 });
 
   for await (const doc of financialMetricsCursor) {
@@ -898,20 +898,20 @@ export async function getTopLocationsAnalytics(
     totalCancelledCredits: number;
   }> = [];
   const allTopMetersCursor = Meters.aggregate([
-    {
-      $match: {
+          {
+            $match: {
         location: { $in: allTopLocationIds },
-      },
-    },
-    {
-      $group: {
+            },
+          },
+          {
+            $group: {
         _id: '$location',
-        totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-        totalCancelledCredits: {
-          $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-        },
-      },
-    },
+              totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+              totalCancelledCredits: {
+                $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+              },
+            },
+          },
   ]).cursor({ batchSize: 1000 });
 
   for await (const doc of allTopMetersCursor) {
@@ -934,34 +934,34 @@ export async function getTopLocationsAnalytics(
   let topLocationsWithMetrics = topLocations.map(location => {
     const locationId = location.id?.toString() || location._id?.toString();
     const financialMetrics = topFinancialMetricsMap.get(locationId) || {
-      totalDrop: 0,
-      totalCancelledCredits: 0,
-    };
-    const gross =
-      financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
+        totalDrop: 0,
+        totalCancelledCredits: 0,
+      };
+      const gross =
+        financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
 
-    return {
-      id: locationId,
-      name: location.locationInfo?.name || location.name,
-      totalDrop: financialMetrics.totalDrop,
-      cancelledCredits: financialMetrics.totalCancelledCredits,
-      gross: gross,
-      machineCount: location.machineCount,
-      onlineMachines: location.onlineMachines,
-      sasMachines: location.sasMachines,
-      rel: location.locationInfo?.rel,
-      country: location.locationInfo?.country,
-      coordinates:
-        location.locationInfo?.geoCoords?.latitude &&
-        location.locationInfo?.geoCoords?.longitude
-          ? ([
-              location.locationInfo.geoCoords.longitude,
-              location.locationInfo.geoCoords.latitude,
-            ] as [number, number])
-          : null,
-      trend: gross >= 10000 ? 'up' : 'down',
-      trendPercentage: Math.abs(Math.random() * 10),
-    };
+      return {
+        id: locationId,
+        name: location.locationInfo?.name || location.name,
+        totalDrop: financialMetrics.totalDrop,
+        cancelledCredits: financialMetrics.totalCancelledCredits,
+        gross: gross,
+        machineCount: location.machineCount,
+        onlineMachines: location.onlineMachines,
+        sasMachines: location.sasMachines,
+        rel: location.locationInfo?.rel,
+        country: location.locationInfo?.country,
+        coordinates:
+          location.locationInfo?.geoCoords?.latitude &&
+          location.locationInfo?.geoCoords?.longitude
+            ? ([
+                location.locationInfo.geoCoords.longitude,
+                location.locationInfo.geoCoords.latitude,
+              ] as [number, number])
+            : null,
+        trend: gross >= 10000 ? 'up' : 'down',
+        trendPercentage: Math.abs(Math.random() * 10),
+      };
   });
 
   if (shouldApplyCurrencyConversion(licensee)) {
@@ -970,14 +970,14 @@ export async function getTopLocationsAnalytics(
     );
 
     const licenseesData = await Licencee.find(
-      {
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2025-01-01') } },
-        ],
-      },
+        {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
+          ],
+        },
       { _id: 1, name: 1 }
-    )
+      )
       .lean()
       .exec();
 

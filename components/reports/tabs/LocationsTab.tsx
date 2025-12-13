@@ -5,6 +5,7 @@ import {
   BarChart3,
   ChevronDown,
   Download,
+  ExternalLink,
   FileSpreadsheet,
   FileText,
   Home,
@@ -15,7 +16,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -314,7 +315,7 @@ export default function LocationsTab() {
   // pagesPerBatch is a constant (5) so adding it to deps is safe but unnecessary
   const calculateBatchNumber = useCallback(
     (page: number) => {
-      return Math.floor(page / pagesPerBatch) + 1;
+    return Math.floor(page / pagesPerBatch) + 1;
     },
     [pagesPerBatch]
   );
@@ -382,13 +383,9 @@ export default function LocationsTab() {
 
   // Simplified data fetching for locations with batch loading
   const fetchLocationDataAsync = useCallback(
-    async (specificLocations?: string[]) => {
+    async (_specificLocations?: string[]) => {
       const result = await makeLocationDataRequest(async signal => {
-        console.warn(
-          `🔍 Starting fetchLocationDataAsync: ${JSON.stringify({
-            specificLocations,
-          })}`
-        );
+        // Removed excessive debug logging
         setGamingLocationsLoading(true);
         setLocationsLoading(true);
         setMetricsLoading(true);
@@ -503,12 +500,11 @@ export default function LocationsTab() {
           params.timePeriod = 'Today';
         }
 
-        console.warn(`🔍 Location data API params: ${JSON.stringify(params)}`);
-
         // API call to get location data with financial metrics
         // Use /api/reports/locations instead of /api/locationAggregation for better performance and consistency
         const response = await axios.get('/api/reports/locations', {
           params,
+          timeout: 60000, // 60 second timeout to prevent hanging
         });
 
         // Check for error response
@@ -524,27 +520,6 @@ export default function LocationsTab() {
         // Response structure: { data: [...], pagination: {...} }
         const locationData = response.data.data || [];
 
-        console.warn(`🔍 Location data from API: ${locationData.length}`);
-
-        // Debug: Log sample data to understand the structure
-        if (locationData.length > 0) {
-          console.warn(
-            '🔍 Sample location data from API:',
-            JSON.stringify(
-              {
-                location: locationData[0].location,
-                locationName: locationData[0].locationName,
-                sasMachines: locationData[0].sasMachines,
-                hasSasMachines: locationData[0].hasSasMachines,
-                totalMachines: locationData[0].totalMachines,
-                machines: locationData[0].machines?.slice(0, 2), // First 2 machines for debugging
-              },
-              null,
-              2
-            )
-          );
-        }
-
         // Normalize location data
         const normalizedLocations = locationData.map(
           (loc: Record<string, unknown>) => ({
@@ -556,23 +531,6 @@ export default function LocationsTab() {
         );
 
         // Store locations for dropdown selection (always all locations) - show immediately
-        console.warn(
-          '🔍 Frontend - Setting allLocationsForDropdown with',
-          normalizedLocations.length,
-          'locations'
-        );
-        console.warn(
-          '🔍 Frontend - Sample normalized location:',
-          normalizedLocations[0]
-            ? {
-                location: normalizedLocations[0].location,
-                locationName: normalizedLocations[0].locationName,
-                sasMachines: normalizedLocations[0].sasMachines,
-                hasSasMachines: normalizedLocations[0].hasSasMachines,
-                totalMachines: normalizedLocations[0].totalMachines,
-              }
-            : 'No locations'
-        );
         setAllLocationsForDropdown(normalizedLocations);
         setLocationsLoading(false); // Show dropdown immediately
 
@@ -582,18 +540,7 @@ export default function LocationsTab() {
             ? selectedSasLocations
             : selectedRevenueLocations;
 
-        console.warn('🔍 Filtering locations:', {
-          activeTab,
-          currentSelectedLocations,
-          normalizedLocationsCount: normalizedLocations.length,
-          sampleLocationIds: normalizedLocations
-            .slice(0, 3)
-            .map((loc: Record<string, unknown>) => ({
-              location: loc.location,
-              locationName: loc.locationName,
-              locationType: typeof loc.location,
-            })),
-        });
+        // Removed excessive debug logging
 
         const filteredData =
           currentSelectedLocations.length > 0
@@ -602,21 +549,12 @@ export default function LocationsTab() {
                 const isIncluded = currentSelectedLocations.some(
                   selectedId => String(selectedId) === locId
                 );
-                if (!isIncluded && currentSelectedLocations.length > 0) {
-                  console.warn('🔍 Location not in selection:', {
-                    locationId: locId,
-                    locationName: loc.locationName,
-                    selectedIds: currentSelectedLocations,
-                  });
-                }
+                // Removed excessive debug logging
                 return isIncluded;
               })
             : normalizedLocations; // Show all locations when none are selected
 
-        console.warn('🔍 Filtered data result:', {
-          filteredCount: filteredData.length,
-          selectedCount: currentSelectedLocations.length,
-        });
+        // Removed excessive debug logging
 
         // Note: Table data is now handled by batch loading above
         // This section only handles dropdown data and metrics calculation
@@ -799,9 +737,20 @@ export default function LocationsTab() {
       setTopMachinesLoading(true);
       setLoading(true); // Set reports store loading state
       try {
-        const params: Record<string, string> = {
+        const params: Record<string, string | string[]> = {
           type: 'all', // Get all machines for the selected locations
         };
+
+        // Pass location IDs to API for server-side filtering
+        // This is more efficient than fetching all machines and filtering client-side
+        if (currentSelectedLocations.length > 0) {
+          // If only one location, use locationId parameter
+          // If multiple locations, we'll filter client-side (API might not support multiple)
+          if (currentSelectedLocations.length === 1) {
+            params.locationId = currentSelectedLocations[0];
+          }
+          // For multiple locations, we'll still filter client-side after fetching
+        }
 
         if (selectedLicencee && selectedLicencee !== 'all') {
           params.licencee = selectedLicencee;
@@ -851,12 +800,22 @@ export default function LocationsTab() {
         });
         const { data: machinesData } = response.data;
 
+        // Removed excessive debug logging
+
         // Filter machines by selected locations and sort by netWin
-        const filteredMachines = machinesData
-          .filter((machine: MachineData) =>
-            currentSelectedLocations.includes(machine.locationId)
+        // Convert both to strings for comparison to handle ObjectId vs string mismatches
+        const filteredMachines = (machinesData || [])
+          .filter((machine: MachineData) => {
+            const machineLocationId = String(machine.locationId || '');
+            const matches = currentSelectedLocations.some(
+              selectedId => String(selectedId) === machineLocationId
+            );
+            return matches;
+          })
+          .sort(
+            (a: MachineData, b: MachineData) =>
+              (b.netWin || 0) - (a.netWin || 0)
           )
-          .sort((a: MachineData, b: MachineData) => b.netWin - a.netWin)
           .slice(0, 5);
 
         setTopMachinesData(filteredMachines);
@@ -886,12 +845,17 @@ export default function LocationsTab() {
   ]);
 
   // Function to fetch location trend data (daily or hourly based on time period)
-  const fetchLocationTrendData = useCallback(async () => {
+  const fetchLocationTrendData = useCallback(
+    async (overrideLocationIds?: string[]) => {
     const currentSelectedLocations =
       activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
         ? selectedSasLocations
         : selectedRevenueLocations;
-    if (currentSelectedLocations.length === 0) {
+
+      // Use override location IDs if provided, otherwise use selected locations
+      const locationsToFetch = overrideLocationIds || currentSelectedLocations;
+
+      if (locationsToFetch.length === 0) {
       setLocationTrendData(null);
       return;
     }
@@ -901,7 +865,7 @@ export default function LocationsTab() {
       setLoading(true); // Set reports store loading state
       try {
         const params: Record<string, string> = {
-          locationIds: currentSelectedLocations.join(','),
+            locationIds: locationsToFetch.join(','),
         };
 
         if (selectedLicencee && selectedLicencee !== 'all') {
@@ -954,21 +918,28 @@ export default function LocationsTab() {
         const response = await axios.get('/api/analytics/location-trends', {
           params,
           signal,
+            timeout: 120000, // 2 minute timeout to prevent hanging
         });
         setLocationTrendData(response.data);
       } catch (error) {
         if (!axios.isCancel(error)) {
           console.error('Error fetching location trend data:', error);
+            // Don't show toast for 500 errors - they're logged in console
+            // Only show toast for network errors or other issues
+            if (axios.isAxiosError(error) && error.response?.status !== 500) {
           toast.error('Failed to fetch location trend data', {
             duration: 3000,
           });
+            }
           setLocationTrendData(null);
         }
       } finally {
         setLocationTrendLoading(false);
+          setLoading(false); // Clear reports store loading state
       }
     });
-  }, [
+    },
+    [
     selectedSasLocations,
     selectedRevenueLocations,
     activeTab,
@@ -978,7 +949,8 @@ export default function LocationsTab() {
     displayCurrency,
     setLoading,
     makeTrendDataRequest,
-  ]);
+    ]
+  );
 
   // Separate useEffect to fetch metrics totals independently (like dashboard does)
   // This ensures metrics cards always show totals from all locations, separate from table pagination
@@ -991,17 +963,7 @@ export default function LocationsTab() {
         return;
       }
 
-      console.log('🔍 [LocationsTab] Starting metrics totals fetch:', {
-        activeMetricsFilter,
-        selectedLicencee,
-        displayCurrency,
-        customDateRange: customDateRange
-          ? {
-              startDate: customDateRange.startDate?.toISOString(),
-              endDate: customDateRange.endDate?.toISOString(),
-            }
-          : null,
-      });
+      // Removed excessive debug logging
 
       await makeMetricsRequest(async _signal => {
         setMetricsTotalsLoading(true);
@@ -1045,7 +1007,7 @@ export default function LocationsTab() {
           }
         } finally {
           setMetricsTotalsLoading(false);
-          console.log('🔍 [LocationsTab] Metrics totals fetch completed');
+          // Removed excessive debug logging
         }
       });
     };
@@ -1060,38 +1022,260 @@ export default function LocationsTab() {
   ]);
 
   // Consolidated useEffect to handle all data fetching
+  // Use refs to prevent unnecessary re-fetches when function references change
+  const hasFetchedForSelectedLocationsRef = useRef<string>('');
+  const hasMountedRef = useRef(false);
+  const initialMountCheckRef = useRef(false);
+
   useEffect(() => {
     const currentSelectedLocations =
       activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
         ? selectedSasLocations
         : selectedRevenueLocations;
+
+    // Create a stable key for the current selection
+    const selectionKey = [
+      activeTab,
+      currentSelectedLocations.sort().join(','),
+      selectedLicencee,
+      activeMetricsFilter,
+      customDateRange?.startDate?.toString(),
+      customDateRange?.endDate?.toString(),
+      displayCurrency,
+    ].join('|');
+
+    // On initial mount, always allow the fetch to run
+    const isInitialMount = !hasMountedRef.current;
+    if (isInitialMount) {
+      hasMountedRef.current = true;
+    }
+
+    // Only skip fetch if selection key hasn't changed AND we're not on initial mount
+    if (
+      !isInitialMount &&
+      selectionKey === hasFetchedForSelectedLocationsRef.current
+    ) {
+      return;
+    }
+
+    hasFetchedForSelectedLocationsRef.current = selectionKey;
+
     // Fetch location data when filters change or when locations are selected
     fetchLocationDataAsync(
       currentSelectedLocations.length > 0 ? currentSelectedLocations : undefined
     );
 
-    // Fetch additional data only when locations are selected
+    // Fetch additional data when locations are explicitly selected
     if (currentSelectedLocations.length > 0) {
       fetchTopMachines();
       fetchLocationTrendData();
     } else {
+      // Only clear data if we're not on revenue tab with paginated locations
+      // On revenue tab, we want to keep data for displayed locations
+      if (activeTab !== 'location-revenue') {
       setTopMachinesData([]);
       setLocationTrendData(null);
     }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedLicencee,
     activeTab,
     activeMetricsFilter,
     customDateRange?.startDate,
-    fetchLocationDataAsync,
-    fetchTopMachines,
-    fetchLocationTrendData,
-    setTopMachinesData,
-    setLocationTrendData,
     customDateRange?.endDate,
     selectedSasLocations,
     selectedRevenueLocations,
     displayCurrency,
+    // Don't include function references in dependencies to prevent cascading re-renders
+    // fetchLocationDataAsync,
+    // fetchTopMachines,
+    // fetchLocationTrendData,
+    // setTopMachinesData,
+    // setLocationTrendData,
+  ]);
+
+  // Separate useEffect to ensure initial fetch runs on mount for revenue tab
+  // This handles the case where the main useEffect might not trigger properly on initial mount
+  useEffect(() => {
+    // Only run once on mount
+    if (initialMountCheckRef.current) {
+      return;
+    }
+    initialMountCheckRef.current = true;
+
+    // On initial mount, if we're on revenue tab, reset the fetch ref
+    // This ensures the main useEffect can run the fetch
+    // The main useEffect will handle the actual fetch with proper dependencies
+    if (activeTab === 'location-revenue') {
+      hasFetchedForSelectedLocationsRef.current = '';
+    }
+  }, [activeTab]); // Include activeTab to handle URL-based initial tab
+
+  // Separate useEffect to fetch trend data for displayed locations when none are selected
+  // This ensures charts show data for locations in the table
+  // Use refs to track what we've already fetched to prevent infinite loops and re-queries
+  const lastFetchedLocationIdsRef = useRef<string>('');
+  const isFetchingRef = useRef(false);
+
+  useEffect(() => {
+    // Only for revenue analysis tab
+    if (activeTab !== 'location-revenue') {
+      return;
+    }
+
+    const currentSelectedLocations = selectedRevenueLocations;
+
+    // Only fetch if no locations are selected but we have paginated locations
+    if (
+      currentSelectedLocations.length === 0 &&
+      paginatedLocations.length > 0 &&
+      !isFetchingRef.current
+    ) {
+      const displayedLocationIds = paginatedLocations
+        .map(loc => String(loc.location || loc._id || ''))
+        .filter(id => id !== '')
+        .sort()
+        .join(',');
+
+      // Only fetch if location IDs have changed
+      if (
+        displayedLocationIds &&
+        displayedLocationIds !== lastFetchedLocationIdsRef.current
+      ) {
+        lastFetchedLocationIdsRef.current = displayedLocationIds;
+        isFetchingRef.current = true;
+        const locationIdsArray = displayedLocationIds
+          .split(',')
+          .filter(id => id);
+
+        if (locationIdsArray.length > 0) {
+          // Fetch trend data for displayed locations
+          // Use void to explicitly ignore the promise (we handle it in the function)
+          void fetchLocationTrendData(locationIdsArray);
+          // Also fetch top machines for displayed locations (don't wait for it)
+          void fetchTopMachines();
+          // Reset fetching flag after a short delay to allow requests to start
+          setTimeout(() => {
+            isFetchingRef.current = false;
+          }, 100);
+        } else {
+          isFetchingRef.current = false;
+        }
+      }
+    } else if (currentSelectedLocations.length > 0) {
+      // Reset ref when locations are selected (handled by main useEffect)
+      lastFetchedLocationIdsRef.current = '';
+      isFetchingRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeTab,
+    paginatedLocations,
+    selectedRevenueLocations,
+    // Don't include fetchLocationTrendData and fetchTopMachines in dependencies
+    // to prevent re-triggering when function references change
+  ]);
+
+  // Recovery check: Detect and fix stuck loading states
+  // If loading states are true but no fetch is in progress and no data exists, trigger fetch
+  const recoveryCheckRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    // Only check after component has mounted
+    if (!hasMountedRef.current) {
+      return;
+    }
+
+    // Clear any existing timeout
+    if (recoveryCheckRef.current) {
+      clearTimeout(recoveryCheckRef.current);
+    }
+
+    // Debounce the recovery check to avoid running too frequently
+    recoveryCheckRef.current = setTimeout(() => {
+      // Check if we're stuck in loading state
+      const isStuck =
+        (paginationLoading || metricsLoading) &&
+        paginatedLocations.length === 0 &&
+        !allLocationsForDropdown.length;
+
+      // Only trigger recovery if we're on revenue tab and stuck
+      if (isStuck && activeTab === 'location-revenue') {
+        console.warn(
+          '🔧 Recovery: Detected stuck loading state, triggering data fetch'
+        );
+        // Reset ref to allow fetch
+        hasFetchedForSelectedLocationsRef.current = '';
+        // Trigger fetch
+        const currentSelectedLocations = selectedRevenueLocations;
+        fetchLocationDataAsync(
+          currentSelectedLocations.length > 0
+            ? currentSelectedLocations
+            : undefined
+        );
+      }
+    }, 1000); // Wait 1 second before checking for stuck state
+
+    return () => {
+      if (recoveryCheckRef.current) {
+        clearTimeout(recoveryCheckRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    paginationLoading,
+    metricsLoading,
+    paginatedLocations.length,
+    allLocationsForDropdown.length,
+    activeTab,
+    selectedRevenueLocations,
+    // Don't include fetchLocationDataAsync to prevent loops
+  ]);
+
+  // Auto-select location if only one is available for SAS or Revenue tabs
+  useEffect(() => {
+    // Only auto-select for SAS evaluation and revenue analysis tabs
+    if (
+      activeTab !== 'sas-evaluation' &&
+      activeTab !== 'location-evaluation' &&
+      activeTab !== 'location-revenue'
+    ) {
+      return;
+    }
+
+    // Get available locations based on tab
+    const availableLocations =
+      activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
+        ? allLocationsForDropdown.filter(loc => (loc.sasMachines as number) > 0)
+        : allLocationsForDropdown;
+
+    // Get current selected locations
+    const currentSelectedLocations =
+      activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
+        ? selectedSasLocations
+        : selectedRevenueLocations;
+
+    // Auto-select if only one location is available and none is currently selected
+    if (
+      availableLocations.length === 1 &&
+      currentSelectedLocations.length === 0
+    ) {
+      const singleLocationId = String(
+        availableLocations[0].location || availableLocations[0]._id || ''
+      );
+      if (singleLocationId) {
+        console.warn(
+          `🔍 Auto-selecting single location: ${singleLocationId} for tab: ${activeTab}`
+        );
+        setCurrentSelectedLocations([singleLocationId]);
+      }
+    }
+  }, [
+    allLocationsForDropdown,
+    activeTab,
+    selectedSasLocations,
+    selectedRevenueLocations,
+    setCurrentSelectedLocations,
   ]);
 
   // Initialize from URL
@@ -1099,11 +1283,15 @@ export default function LocationsTab() {
     const initial = searchParams?.get('ltab') || 'overview';
     if (initial !== activeTab) {
       setActiveTab(initial);
+      // Reset fetch ref when tab changes to allow fresh fetch
+      hasFetchedForSelectedLocationsRef.current = '';
     }
   }, [searchParams, activeTab, setActiveTab]);
 
   const handleLocationsTabChange = (tab: string) => {
     setActiveTab(tab);
+    // Reset fetch ref when tab changes to allow fresh fetch
+    hasFetchedForSelectedLocationsRef.current = '';
     try {
       const sp = new URLSearchParams(searchParams?.toString() || '');
       sp.set('ltab', tab);
@@ -2221,6 +2409,95 @@ export default function LocationsTab() {
                   </p>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      const currentSelectedLocations =
+                        activeTab === 'sas-evaluation' ||
+                        activeTab === 'location-evaluation'
+                          ? selectedSasLocations
+                          : selectedRevenueLocations;
+                      setPaginationLoading(true);
+                      setLocationsLoading(true);
+                      setMetricsLoading(true);
+                      setTopMachinesLoading(true);
+                      setLoading(true);
+
+                      try {
+                        // Reset batches and page
+                        setAccumulatedLocations([]);
+                        setLoadedBatches(new Set());
+                        setCurrentPage(0);
+
+                        // Refresh location data
+                        await fetchLocationDataAsync(
+                          currentSelectedLocations.length > 0
+                            ? currentSelectedLocations
+                            : undefined
+                        );
+
+                        // Refresh additional data if locations are selected
+                        if (currentSelectedLocations.length > 0) {
+                          await fetchTopMachines();
+                          await fetchLocationTrendData();
+                        } else {
+                          setTopMachinesData([]);
+                          setLocationTrendData(null);
+                        }
+
+                        // Refresh metrics totals
+                        setMetricsTotalsLoading(true);
+                        await new Promise<void>((resolve, reject) => {
+                          fetchDashboardTotals(
+                            (activeMetricsFilter || 'Today') as TimePeriod,
+                            customDateRange || {
+                              startDate: new Date(),
+                              endDate: new Date(),
+                            },
+                            selectedLicencee,
+                            totals => {
+                              setMetricsTotals(totals);
+                              resolve();
+                            },
+                            displayCurrency
+                          ).catch(reject);
+                        });
+                      } catch (error) {
+                        console.error('Error refreshing data:', error);
+                        toast.error('Failed to refresh data', {
+                          duration: 3000,
+                        });
+                      } finally {
+                        setPaginationLoading(false);
+                        setLocationsLoading(false);
+                        setMetricsLoading(false);
+                        setTopMachinesLoading(false);
+                        setMetricsTotalsLoading(false);
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={
+                      paginationLoading ||
+                      locationsLoading ||
+                      metricsLoading ||
+                      topMachinesLoading ||
+                      metricsTotalsLoading
+                    }
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw
+                      className={`h-4 w-4 ${
+                        paginationLoading ||
+                        locationsLoading ||
+                        metricsLoading ||
+                        topMachinesLoading ||
+                        metricsTotalsLoading
+                          ? 'animate-spin'
+                          : ''
+                      }`}
+                    />
+                    Refresh
+                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -2582,13 +2859,45 @@ export default function LocationsTab() {
                   {/* Machine Hourly Charts - Stacked by Machine */}
                   {/* Location Trend Charts */}
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    {locationTrendLoading ? (
-                      <MachineHourlyChartsSkeleton />
-                    ) : locationTrendData &&
+                    {(() => {
+                      const currentSelectedLocations =
+                        activeTab === 'sas-evaluation' ||
+                        activeTab === 'location-evaluation'
+                          ? selectedSasLocations
+                          : selectedRevenueLocations;
+                      const hasSelectedLocations =
+                        currentSelectedLocations.length > 0;
+
+                      // Don't show chart skeleton if page is still in initial loading phase
+                      // Only show chart skeleton when page has loaded and we're specifically loading chart data
+                      const isInitialLoading =
+                        metricsLoading || paginationLoading;
+
+                      // Show skeleton only if:
+                      // 1. Not in initial loading phase (to avoid double skeletons)
+                      // 2. AND (chart data is loading OR locations are selected but no data yet)
+                      if (
+                        !isInitialLoading &&
+                        (locationTrendLoading ||
+                          (hasSelectedLocations && !locationTrendData))
+                      ) {
+                        return <MachineHourlyChartsSkeleton />;
+                      }
+
+                      // During initial loading, don't render anything (parent skeleton handles it)
+                      if (isInitialLoading) {
+                        return null;
+                      }
+
+                      // Show data if available
+                      if (
+                        locationTrendData &&
                       locationTrendData.locations &&
                       locationTrendData.locations.length > 0 &&
                       locationTrendData.trends &&
-                      locationTrendData.trends.length > 0 ? (
+                        locationTrendData.trends.length > 0
+                      ) {
+                        return (
                       <>
                         {/* Money In Chart */}
                         <LocationTrendChart
@@ -2666,11 +2975,16 @@ export default function LocationsTab() {
                           isHourly={locationTrendData.isHourly}
                         />
                       </>
-                    ) : (
+                        );
+                      }
+
+                      // Show message only if no locations selected
+                      return (
                       <div className="col-span-2 py-8 text-center text-muted-foreground">
                         Select locations to view location trend data
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
 
                   {/* Top 5 Machines Table */}
@@ -2686,9 +3000,49 @@ export default function LocationsTab() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {topMachinesLoading ? (
-                        <TopMachinesTableSkeleton />
-                      ) : (
+                      {(() => {
+                        const currentSelectedLocations =
+                          activeTab === 'sas-evaluation' ||
+                          activeTab === 'location-evaluation'
+                            ? selectedSasLocations
+                            : selectedRevenueLocations;
+                        const hasSelectedLocations =
+                          currentSelectedLocations.length > 0;
+
+                        // Don't show skeleton if page is still in initial loading phase
+                        // Only show skeleton when page has loaded and we're specifically loading data
+                        const isInitialLoading =
+                          metricsLoading || paginationLoading;
+
+                        // Show skeleton only if:
+                        // 1. Not in initial loading phase (to avoid double skeletons)
+                        // 2. AND (data is loading OR locations are selected but no data yet)
+                        if (
+                          !isInitialLoading &&
+                          (topMachinesLoading ||
+                            (hasSelectedLocations &&
+                              topMachinesData.length === 0))
+                        ) {
+                          return <TopMachinesTableSkeleton />;
+                        }
+
+                        // During initial loading, don't render anything (parent skeleton handles it)
+                        if (isInitialLoading) {
+                          return null;
+                        }
+
+                        // Show message only if no locations selected
+                        if (!hasSelectedLocations) {
+                          return (
+                            <div className="py-8 text-center text-muted-foreground">
+                              Select locations to view machine data
+                            </div>
+                          );
+                        }
+
+                        // Show data if available
+                        if (topMachinesData.length > 0) {
+                          return (
                         <>
                           {/* Desktop Table View */}
                           <div className="hidden overflow-x-auto md:block">
@@ -2736,12 +3090,130 @@ export default function LocationsTab() {
                                     key={`${machine.machineId}-${index}`}
                                     className="border-b hover:bg-gray-50"
                                   >
-                                    <td className="p-3 text-sm">
+                                        <td className="p-3 text-center">
+                                          {machine.locationId ? (
+                                            <button
+                                              onClick={() => {
+                                                router.push(
+                                                  `/locations/${machine.locationId}`
+                                                );
+                                              }}
+                                              className="group mx-auto flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
+                                            >
+                                              <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
                                       {machine.locationName}
+                                              </span>
+                                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                            </button>
+                                          ) : (
+                                            <div className="text-sm font-medium text-gray-900">
+                                              {machine.locationName}
+                                            </div>
+                                          )}
                                     </td>
-                                    <td className="p-3 font-mono text-sm">
+                                        <td className="p-3 text-center">
+                                          {machine.machineId ? (
+                                            <button
+                                              onClick={() => {
+                                                router.push(
+                                                  `/cabinets/${machine.machineId}`
+                                                );
+                                              }}
+                                              className="group mx-auto flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                                            >
+                                              <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                                {/* Format: serialNumber || custom.name (custom.name if different, game) */}
+                                                {(() => {
+                                                  // Get serialNumber
+                                                  const serialNumber =
+                                                    machine.serialNumber?.trim() ||
+                                                    '';
+                                                  const hasSerialNumber =
+                                                    serialNumber !== '';
+
+                                                  // Get custom.name
+                                                  const customName =
+                                                    machine.customName?.trim() ||
+                                                    '';
+                                                  const hasCustomName =
+                                                    customName !== '';
+
+                                                  // Main identifier: serialNumber if exists, otherwise custom.name, otherwise machineId
+                                                  const mainIdentifier =
+                                                    hasSerialNumber
+                                                      ? serialNumber
+                                                      : hasCustomName
+                                                        ? customName
+                                                        : machine.machineId;
+                                                  const usedSerialNumber =
+                                                    hasSerialNumber;
+
+                                                  // Get game
+                                                  const game =
+                                                    machine.gameTitle?.trim() ||
+                                                    '';
+                                                  const hasGame = game !== '';
+
+                                                  // Format: serialNumber || custom.name (custom.name if different, game)
+                                                  const parts: string[] = [];
+
+                                                  // Only add customName if:
+                                                  // 1. We used serialNumber as main identifier
+                                                  // 2. customName exists and is different from serialNumber
+                                                  if (
+                                                    usedSerialNumber &&
+                                                    hasCustomName &&
+                                                    customName !== serialNumber
+                                                  ) {
+                                                    parts.push(customName);
+                                                  }
+
+                                                  // Always include game (or "(game name not provided)" in red if blank)
+                                                  if (hasGame) {
+                                                    parts.push(game);
+                                                  } else {
+                                                    parts.push(
+                                                      '(game name not provided)'
+                                                    );
+                                                  }
+
+                                                  return (
+                                                    <span>
+                                                      {mainIdentifier} (
+                                                      {parts.map(
+                                                        (part, idx) => {
+                                                          const isGameNotProvided =
+                                                            part ===
+                                                            '(game name not provided)';
+                                                          return (
+                                                            <span key={idx}>
+                                                              {isGameNotProvided ? (
+                                                                <span className="text-red-600">
+                                                                  {part}
+                                                                </span>
+                                                              ) : (
+                                                                part
+                                                              )}
+                                                              {idx <
+                                                                parts.length -
+                                                                  1 && ', '}
+                                                            </span>
+                                                          );
+                                                        }
+                                                      )}
+                                                      )
+                                                    </span>
+                                                  );
+                                                })()}
+                                              </span>
+                                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                            </button>
+                                          ) : (
+                                            <div className="font-mono text-sm text-gray-900">
                                       {machine.serialNumber ||
                                         machine.machineId}
+                                            </div>
+                                          )}
                                     </td>
                                     <td className="p-3 text-sm">
                                       {machine.gameTitle ? (
@@ -2756,7 +3228,8 @@ export default function LocationsTab() {
                                       {machine.manufacturer}
                                     </td>
                                     <td className="p-3 text-sm font-medium">
-                                      ${(machine.drop || 0).toLocaleString()}
+                                          $
+                                          {(machine.drop || 0).toLocaleString()}
                                     </td>
                                     <td
                                       className={`p-3 text-sm font-medium ${
@@ -2765,10 +3238,16 @@ export default function LocationsTab() {
                                           : 'text-red-600'
                                       }`}
                                     >
-                                      ${(machine.netWin || 0).toLocaleString()}
+                                          $
+                                          {(
+                                            machine.netWin || 0
+                                          ).toLocaleString()}
                                     </td>
                                     <td className="p-3 text-sm">
-                                      ${(machine.jackpot || 0).toLocaleString()}
+                                          $
+                                          {(
+                                            machine.jackpot || 0
+                                          ).toLocaleString()}
                                     </td>
                                     <td className="p-3 text-sm">
                                       $
@@ -2779,14 +3258,16 @@ export default function LocationsTab() {
                                     <td className="p-3 text-sm font-medium text-gray-600">
                                       {machine.actualHold != null &&
                                       !isNaN(machine.actualHold)
-                                        ? machine.actualHold.toFixed(2) + '%'
+                                            ? machine.actualHold.toFixed(2) +
+                                              '%'
                                         : 'N/A'}
                                     </td>
                                     <td className="p-3 text-sm text-gray-600">
                                       {machine.theoreticalHold != null &&
                                       !isNaN(machine.theoreticalHold)
-                                        ? machine.theoreticalHold.toFixed(2) +
-                                          '%'
+                                            ? machine.theoreticalHold.toFixed(
+                                                2
+                                              ) + '%'
                                         : 'N/A'}
                                     </td>
                                     <td className="p-3 text-sm">
@@ -2838,7 +3319,8 @@ export default function LocationsTab() {
                                       Money In:
                                     </span>
                                     <span className="font-medium">
-                                      ${(machine.drop || 0).toLocaleString()}
+                                          $
+                                          {(machine.drop || 0).toLocaleString()}
                                     </span>
                                   </div>
                                   <div className="flex justify-between">
@@ -2852,7 +3334,10 @@ export default function LocationsTab() {
                                           : 'text-red-600'
                                       }`}
                                     >
-                                      ${(machine.netWin || 0).toLocaleString()}
+                                          $
+                                          {(
+                                            machine.netWin || 0
+                                          ).toLocaleString()}
                                     </span>
                                   </div>
                                   <div className="flex justify-between">
@@ -2873,7 +3358,8 @@ export default function LocationsTab() {
                                     <span className="font-medium text-gray-600">
                                       {machine.actualHold != null &&
                                       !isNaN(machine.actualHold)
-                                        ? machine.actualHold.toFixed(2) + '%'
+                                            ? machine.actualHold.toFixed(2) +
+                                              '%'
                                         : 'N/A'}
                                     </span>
                                   </div>
@@ -2884,8 +3370,9 @@ export default function LocationsTab() {
                                     <span className="font-medium text-gray-600">
                                       {machine.theoreticalHold != null &&
                                       !isNaN(machine.theoreticalHold)
-                                        ? machine.theoreticalHold.toFixed(2) +
-                                          '%'
+                                            ? machine.theoreticalHold.toFixed(
+                                                2
+                                              ) + '%'
                                         : 'N/A'}
                                     </span>
                                   </div>
@@ -2914,7 +3401,8 @@ export default function LocationsTab() {
                                       Money In:
                                     </span>
                                     <p className="font-medium">
-                                      ${(machine.drop || 0).toLocaleString()}
+                                          $
+                                          {(machine.drop || 0).toLocaleString()}
                                     </p>
                                   </div>
                                   <div>
@@ -2928,7 +3416,10 @@ export default function LocationsTab() {
                                           : 'text-red-600'
                                       }`}
                                     >
-                                      ${(machine.netWin || 0).toLocaleString()}
+                                          $
+                                          {(
+                                            machine.netWin || 0
+                                          ).toLocaleString()}
                                     </p>
                                   </div>
                                   <div>
@@ -2949,7 +3440,8 @@ export default function LocationsTab() {
                                     <p className="font-medium text-gray-600">
                                       {machine.actualHold != null &&
                                       !isNaN(machine.actualHold)
-                                        ? machine.actualHold.toFixed(2) + '%'
+                                            ? machine.actualHold.toFixed(2) +
+                                              '%'
                                         : 'N/A'}
                                     </p>
                                   </div>
@@ -2960,8 +3452,9 @@ export default function LocationsTab() {
                                     <p className="text-gray-600">
                                       {machine.theoreticalHold != null &&
                                       !isNaN(machine.theoreticalHold)
-                                        ? machine.theoreticalHold.toFixed(2) +
-                                          '%'
+                                            ? machine.theoreticalHold.toFixed(
+                                                2
+                                              ) + '%'
                                         : 'N/A'}
                                     </p>
                                   </div>
@@ -2979,14 +3472,17 @@ export default function LocationsTab() {
                               </Card>
                             ))}
                           </div>
+                            </>
+                          );
+                        }
 
-                          {topMachinesData.length === 0 && (
-                            <div className="py-8 text-center text-gray-500">
+                        // Show message if locations selected but no data
+                        return (
+                          <div className="py-8 text-center text-muted-foreground">
                               No machine data available for evaluation
                             </div>
-                          )}
-                        </>
-                      )}
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 </>
@@ -3022,6 +3518,95 @@ export default function LocationsTab() {
                   </p>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      const currentSelectedLocations =
+                        activeTab === 'sas-evaluation' ||
+                        activeTab === 'location-evaluation'
+                          ? selectedSasLocations
+                          : selectedRevenueLocations;
+                      setPaginationLoading(true);
+                      setLocationsLoading(true);
+                      setMetricsLoading(true);
+                      setTopMachinesLoading(true);
+                      setLoading(true);
+
+                      try {
+                        // Reset batches and page
+                        setAccumulatedLocations([]);
+                        setLoadedBatches(new Set());
+                        setCurrentPage(0);
+
+                        // Refresh location data
+                        await fetchLocationDataAsync(
+                          currentSelectedLocations.length > 0
+                            ? currentSelectedLocations
+                            : undefined
+                        );
+
+                        // Refresh additional data if locations are selected
+                        if (currentSelectedLocations.length > 0) {
+                          await fetchTopMachines();
+                          await fetchLocationTrendData();
+                        } else {
+                          setTopMachinesData([]);
+                          setLocationTrendData(null);
+                        }
+
+                        // Refresh metrics totals
+                        setMetricsTotalsLoading(true);
+                        await new Promise<void>((resolve, reject) => {
+                          fetchDashboardTotals(
+                            (activeMetricsFilter || 'Today') as TimePeriod,
+                            customDateRange || {
+                              startDate: new Date(),
+                              endDate: new Date(),
+                            },
+                            selectedLicencee,
+                            totals => {
+                              setMetricsTotals(totals);
+                              resolve();
+                            },
+                            displayCurrency
+                          ).catch(reject);
+                        });
+                      } catch (error) {
+                        console.error('Error refreshing data:', error);
+                        toast.error('Failed to refresh data', {
+                          duration: 3000,
+                        });
+                      } finally {
+                        setPaginationLoading(false);
+                        setLocationsLoading(false);
+                        setMetricsLoading(false);
+                        setTopMachinesLoading(false);
+                        setMetricsTotalsLoading(false);
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={
+                      paginationLoading ||
+                      locationsLoading ||
+                      metricsLoading ||
+                      topMachinesLoading ||
+                      metricsTotalsLoading
+                    }
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw
+                      className={`h-4 w-4 ${
+                        paginationLoading ||
+                        locationsLoading ||
+                        metricsLoading ||
+                        topMachinesLoading ||
+                        metricsTotalsLoading
+                          ? 'animate-spin'
+                          : ''
+                      }`}
+                    />
+                    Refresh
+                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -3283,14 +3868,49 @@ export default function LocationsTab() {
                     ))}
 
                   {/* Revenue Analysis Charts - Drop, Win/Loss, and Jackpot */}
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    {locationTrendLoading ? (
-                      <RevenueAnalysisChartsSkeleton />
-                    ) : locationTrendData &&
+                  <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-3">
+                    {(() => {
+                      const currentSelectedLocations =
+                        activeTab === 'sas-evaluation' ||
+                        activeTab === 'location-evaluation'
+                          ? selectedSasLocations
+                          : selectedRevenueLocations;
+                      const hasSelectedLocations =
+                        currentSelectedLocations.length > 0;
+                      const hasDisplayedLocations =
+                        paginatedLocations.length > 0;
+
+                      // Don't show chart skeleton if page is still in initial loading phase
+                      // Only show chart skeleton when page has loaded and we're specifically loading chart data
+                      const isInitialLoading =
+                        metricsLoading || paginationLoading;
+
+                      // Show skeleton only if:
+                      // 1. Not in initial loading phase (to avoid double skeletons)
+                      // 2. AND (chart data is loading OR we have locations but no data yet)
+                      if (
+                        !isInitialLoading &&
+                        (locationTrendLoading ||
+                          ((hasSelectedLocations || hasDisplayedLocations) &&
+                            !locationTrendData))
+                      ) {
+                        return <RevenueAnalysisChartsSkeleton />;
+                      }
+
+                      // During initial loading, don't render anything (parent skeleton handles it)
+                      if (isInitialLoading) {
+                        return null;
+                      }
+
+                      // Show data if available
+                      if (
+                        locationTrendData &&
                       locationTrendData.locations &&
                       locationTrendData.locations.length > 0 &&
                       locationTrendData.trends &&
-                      locationTrendData.trends.length > 0 ? (
+                        locationTrendData.trends.length > 0
+                      ) {
+                        return (
                       <>
                         {/* Money In Chart */}
                         <LocationTrendChart
@@ -3349,11 +3969,33 @@ export default function LocationsTab() {
                           isHourly={locationTrendData.isHourly}
                         />
                       </>
-                    ) : (
+                        );
+                      }
+
+                      // Show skeleton only if:
+                      // 1. Chart data is actively loading
+                      // 2. OR we have locations but no data yet (and not loading, which means initial fetch)
+                      if (
+                        locationTrendLoading ||
+                        ((hasSelectedLocations || hasDisplayedLocations) &&
+                          !locationTrendData &&
+                          !locationTrendLoading)
+                      ) {
+                        return <RevenueAnalysisChartsSkeleton />;
+                      }
+
+                      // Show message only if no locations selected and no displayed locations
+                      if (!hasSelectedLocations && !hasDisplayedLocations) {
+                        return (
                       <div className="col-span-3 py-8 text-center text-muted-foreground">
                         Select locations to view revenue analysis data
                       </div>
-                    )}
+                        );
+                      }
+
+                      // Fallback: show skeleton if we have locations but no data
+                      return <RevenueAnalysisChartsSkeleton />;
+                    })()}
                   </div>
 
                   {/* Top 5 Machines Table for Revenue Analysis */}
@@ -3369,9 +4011,51 @@ export default function LocationsTab() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {topMachinesLoading ? (
-                        <TopMachinesTableSkeleton />
-                      ) : (
+                      {(() => {
+                        const currentSelectedLocations =
+                          activeTab === 'sas-evaluation' ||
+                          activeTab === 'location-evaluation'
+                            ? selectedSasLocations
+                            : selectedRevenueLocations;
+                        const hasSelectedLocations =
+                          currentSelectedLocations.length > 0;
+                        const hasDisplayedLocations =
+                          paginatedLocations.length > 0;
+
+                        // Don't show skeleton if page is still in initial loading phase
+                        // Only show skeleton when page has loaded and we're specifically loading data
+                        const isInitialLoading =
+                          metricsLoading || paginationLoading;
+
+                        // Show skeleton only if:
+                        // 1. Not in initial loading phase (to avoid double skeletons)
+                        // 2. AND (data is loading OR locations are selected/displayed but no data yet)
+                        if (
+                          !isInitialLoading &&
+                          (topMachinesLoading ||
+                            ((hasSelectedLocations || hasDisplayedLocations) &&
+                              topMachinesData.length === 0))
+                        ) {
+                          return <TopMachinesTableSkeleton />;
+                        }
+
+                        // During initial loading, don't render anything (parent skeleton handles it)
+                        if (isInitialLoading) {
+                          return null;
+                        }
+
+                        // Show message only if no locations selected and no displayed locations
+                        if (!hasSelectedLocations && !hasDisplayedLocations) {
+                          return (
+                            <div className="py-8 text-center text-muted-foreground">
+                              Select locations to view machine data
+                            </div>
+                          );
+                        }
+
+                        // Show data if available
+                        if (topMachinesData.length > 0) {
+                          return (
                         <>
                           {/* Desktop Table View */}
                           <div className="hidden overflow-x-auto md:block">
@@ -3419,12 +4103,130 @@ export default function LocationsTab() {
                                     key={`${machine.machineId}-${index}`}
                                     className="border-b hover:bg-gray-50"
                                   >
-                                    <td className="p-3 text-sm">
+                                        <td className="p-3 text-center">
+                                          {machine.locationId ? (
+                                            <button
+                                              onClick={() => {
+                                                router.push(
+                                                  `/locations/${machine.locationId}`
+                                                );
+                                              }}
+                                              className="group mx-auto flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
+                                            >
+                                              <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
                                       {machine.locationName}
+                                              </span>
+                                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                            </button>
+                                          ) : (
+                                            <div className="text-sm font-medium text-gray-900">
+                                              {machine.locationName}
+                                            </div>
+                                          )}
                                     </td>
-                                    <td className="p-3 font-mono text-sm">
+                                        <td className="p-3 text-center">
+                                          {machine.machineId ? (
+                                            <button
+                                              onClick={() => {
+                                                router.push(
+                                                  `/cabinets/${machine.machineId}`
+                                                );
+                                              }}
+                                              className="group mx-auto flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                                            >
+                                              <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                                {/* Format: serialNumber || custom.name (custom.name if different, game) */}
+                                                {(() => {
+                                                  // Get serialNumber
+                                                  const serialNumber =
+                                                    machine.serialNumber?.trim() ||
+                                                    '';
+                                                  const hasSerialNumber =
+                                                    serialNumber !== '';
+
+                                                  // Get custom.name
+                                                  const customName =
+                                                    machine.customName?.trim() ||
+                                                    '';
+                                                  const hasCustomName =
+                                                    customName !== '';
+
+                                                  // Main identifier: serialNumber if exists, otherwise custom.name, otherwise machineId
+                                                  const mainIdentifier =
+                                                    hasSerialNumber
+                                                      ? serialNumber
+                                                      : hasCustomName
+                                                        ? customName
+                                                        : machine.machineId;
+                                                  const usedSerialNumber =
+                                                    hasSerialNumber;
+
+                                                  // Get game
+                                                  const game =
+                                                    machine.gameTitle?.trim() ||
+                                                    '';
+                                                  const hasGame = game !== '';
+
+                                                  // Format: serialNumber || custom.name (custom.name if different, game)
+                                                  const parts: string[] = [];
+
+                                                  // Only add customName if:
+                                                  // 1. We used serialNumber as main identifier
+                                                  // 2. customName exists and is different from serialNumber
+                                                  if (
+                                                    usedSerialNumber &&
+                                                    hasCustomName &&
+                                                    customName !== serialNumber
+                                                  ) {
+                                                    parts.push(customName);
+                                                  }
+
+                                                  // Always include game (or "(game name not provided)" in red if blank)
+                                                  if (hasGame) {
+                                                    parts.push(game);
+                                                  } else {
+                                                    parts.push(
+                                                      '(game name not provided)'
+                                                    );
+                                                  }
+
+                                                  return (
+                                                    <span>
+                                                      {mainIdentifier} (
+                                                      {parts.map(
+                                                        (part, idx) => {
+                                                          const isGameNotProvided =
+                                                            part ===
+                                                            '(game name not provided)';
+                                                          return (
+                                                            <span key={idx}>
+                                                              {isGameNotProvided ? (
+                                                                <span className="text-red-600">
+                                                                  {part}
+                                                                </span>
+                                                              ) : (
+                                                                part
+                                                              )}
+                                                              {idx <
+                                                                parts.length -
+                                                                  1 && ', '}
+                                                            </span>
+                                                          );
+                                                        }
+                                                      )}
+                                                      )
+                                                    </span>
+                                                  );
+                                                })()}
+                                              </span>
+                                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                            </button>
+                                          ) : (
+                                            <div className="font-mono text-sm text-gray-900">
                                       {machine.serialNumber ||
                                         machine.machineId}
+                                            </div>
+                                          )}
                                     </td>
                                     <td className="p-3 text-sm">
                                       {machine.gameTitle ? (
@@ -3439,7 +4241,8 @@ export default function LocationsTab() {
                                       {machine.manufacturer}
                                     </td>
                                     <td className="p-3 text-sm font-medium">
-                                      ${(machine.drop || 0).toLocaleString()}
+                                          $
+                                          {(machine.drop || 0).toLocaleString()}
                                     </td>
                                     <td
                                       className={`p-3 text-sm font-medium ${
@@ -3448,10 +4251,16 @@ export default function LocationsTab() {
                                           : 'text-red-600'
                                       }`}
                                     >
-                                      ${(machine.netWin || 0).toLocaleString()}
+                                          $
+                                          {(
+                                            machine.netWin || 0
+                                          ).toLocaleString()}
                                     </td>
                                     <td className="p-3 text-sm">
-                                      ${(machine.jackpot || 0).toLocaleString()}
+                                          $
+                                          {(
+                                            machine.jackpot || 0
+                                          ).toLocaleString()}
                                     </td>
                                     <td className="p-3 text-sm">
                                       $
@@ -3462,14 +4271,16 @@ export default function LocationsTab() {
                                     <td className="p-3 text-sm font-medium text-gray-600">
                                       {machine.actualHold != null &&
                                       !isNaN(machine.actualHold)
-                                        ? machine.actualHold.toFixed(2) + '%'
+                                            ? machine.actualHold.toFixed(2) +
+                                              '%'
                                         : 'N/A'}
                                     </td>
                                     <td className="p-3 text-sm text-gray-600">
                                       {machine.theoreticalHold != null &&
                                       !isNaN(machine.theoreticalHold)
-                                        ? machine.theoreticalHold.toFixed(2) +
-                                          '%'
+                                            ? machine.theoreticalHold.toFixed(
+                                                2
+                                              ) + '%'
                                         : 'N/A'}
                                     </td>
                                     <td className="p-3 text-sm">
@@ -3521,7 +4332,8 @@ export default function LocationsTab() {
                                       Money In:
                                     </span>
                                     <span className="font-medium">
-                                      ${(machine.drop || 0).toLocaleString()}
+                                          $
+                                          {(machine.drop || 0).toLocaleString()}
                                     </span>
                                   </div>
                                   <div className="flex justify-between">
@@ -3535,7 +4347,10 @@ export default function LocationsTab() {
                                           : 'text-red-600'
                                       }`}
                                     >
-                                      ${(machine.netWin || 0).toLocaleString()}
+                                          $
+                                          {(
+                                            machine.netWin || 0
+                                          ).toLocaleString()}
                                     </span>
                                   </div>
                                   <div className="flex justify-between">
@@ -3556,7 +4371,8 @@ export default function LocationsTab() {
                                     <span className="font-medium text-gray-600">
                                       {machine.actualHold != null &&
                                       !isNaN(machine.actualHold)
-                                        ? machine.actualHold.toFixed(2) + '%'
+                                            ? machine.actualHold.toFixed(2) +
+                                              '%'
                                         : 'N/A'}
                                     </span>
                                   </div>
@@ -3567,8 +4383,9 @@ export default function LocationsTab() {
                                     <span className="font-medium text-gray-600">
                                       {machine.theoreticalHold != null &&
                                       !isNaN(machine.theoreticalHold)
-                                        ? machine.theoreticalHold.toFixed(2) +
-                                          '%'
+                                            ? machine.theoreticalHold.toFixed(
+                                                2
+                                              ) + '%'
                                         : 'N/A'}
                                     </span>
                                   </div>
@@ -3597,7 +4414,8 @@ export default function LocationsTab() {
                                       Money In:
                                     </span>
                                     <p className="font-medium">
-                                      ${(machine.drop || 0).toLocaleString()}
+                                          $
+                                          {(machine.drop || 0).toLocaleString()}
                                     </p>
                                   </div>
                                   <div>
@@ -3611,7 +4429,10 @@ export default function LocationsTab() {
                                           : 'text-red-600'
                                       }`}
                                     >
-                                      ${(machine.netWin || 0).toLocaleString()}
+                                          $
+                                          {(
+                                            machine.netWin || 0
+                                          ).toLocaleString()}
                                     </p>
                                   </div>
                                   <div>
@@ -3632,7 +4453,8 @@ export default function LocationsTab() {
                                     <p className="font-medium text-gray-600">
                                       {machine.actualHold != null &&
                                       !isNaN(machine.actualHold)
-                                        ? machine.actualHold.toFixed(2) + '%'
+                                            ? machine.actualHold.toFixed(2) +
+                                              '%'
                                         : 'N/A'}
                                     </p>
                                   </div>
@@ -3643,8 +4465,9 @@ export default function LocationsTab() {
                                     <p className="text-gray-600">
                                       {machine.theoreticalHold != null &&
                                       !isNaN(machine.theoreticalHold)
-                                        ? machine.theoreticalHold.toFixed(2) +
-                                          '%'
+                                            ? machine.theoreticalHold.toFixed(
+                                                2
+                                              ) + '%'
                                         : 'N/A'}
                                     </p>
                                   </div>
@@ -3662,14 +4485,17 @@ export default function LocationsTab() {
                               </Card>
                             ))}
                           </div>
+                            </>
+                          );
+                        }
 
-                          {topMachinesData.length === 0 && (
-                            <div className="py-8 text-center text-gray-500">
+                        // Show message if locations selected but no data
+                        return (
+                          <div className="py-8 text-center text-muted-foreground">
                               No machine data available for evaluation
                             </div>
-                          )}
-                        </>
-                      )}
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 </>

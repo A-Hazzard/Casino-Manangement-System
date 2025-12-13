@@ -20,7 +20,13 @@ import {
   getMoneyInColorClass,
   getMoneyOutColorClass,
 } from '@/lib/utils/financialColors';
-import { ArrowUpDown, MapPin, Monitor, Search } from 'lucide-react';
+import {
+  ArrowUpDown,
+  ExternalLink,
+  MapPin,
+  Monitor,
+  Search,
+} from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 
 export default function RevenueAnalysisTable({
@@ -41,8 +47,12 @@ export default function RevenueAnalysisTable({
     if (!searchTerm?.trim()) return locations;
     const q = (searchTerm || '').toLowerCase();
     return locations.filter(location => {
-      const name = location.name || '';
-      const id = location._id || '';
+      const name =
+        location.name ||
+        (location as Record<string, unknown>).locationName ||
+        '';
+      const id =
+        location._id || (location as Record<string, unknown>).location || '';
       return (
         (typeof name === 'string' && name.toLowerCase().includes(q)) ||
         (typeof id === 'string' && id.toLowerCase().includes(q))
@@ -175,10 +185,49 @@ export default function RevenueAnalysisTable({
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h3 className="truncate text-sm font-medium text-gray-900">
-              {location.name}
-            </h3>
-            <p className="truncate text-xs text-gray-500">{location._id}</p>
+            {(() => {
+              // Get location ID - try multiple possible fields
+              const locationId =
+                (location as Record<string, unknown>).location ||
+                location._id ||
+                (location as Record<string, unknown>).locationId;
+              const locationName: string = String(
+                location.name ||
+                  (location as Record<string, unknown>).locationName ||
+                  'Unknown'
+              );
+
+              if (locationId) {
+                return (
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      window.location.href = `/locations/${String(locationId)}`;
+                    }}
+                    className="group flex items-center gap-1.5 text-left"
+                  >
+                    <h3 className="truncate text-sm font-medium text-gray-900 underline decoration-blue-600 decoration-2 underline-offset-2">
+                      {locationName}
+                    </h3>
+                    <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                  </button>
+                );
+              }
+
+              return (
+                <h3 className="truncate text-sm font-medium text-gray-900">
+                  {locationName}
+                </h3>
+              );
+            })()}
+            <p className="truncate text-xs text-gray-500">
+              {String(
+                (location as Record<string, unknown>).location ||
+                  location._id ||
+                  (location as Record<string, unknown>).locationId ||
+                  ''
+              )}
+            </p>
           </div>
           <Badge variant="secondary" className="font-mono text-xs">
             {location.totalMachines} machines
@@ -322,10 +371,44 @@ export default function RevenueAnalysisTable({
                       onClick={() => onLocationClick?.(location)}
                     >
                       <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-gray-400" />
-                          {location.name}
-                        </div>
+                        {(() => {
+                          // Get location ID - try multiple possible fields
+                          const locationId =
+                            (location as Record<string, unknown>).location ||
+                            location._id ||
+                            (location as Record<string, unknown>).locationId;
+                          const locationName: string = String(
+                            location.name ||
+                              (location as Record<string, unknown>)
+                                .locationName ||
+                              'Unknown'
+                          );
+
+                          if (locationId) {
+                            return (
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  window.location.href = `/locations/${String(locationId)}`;
+                                }}
+                                className="group flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
+                              >
+                                <MapPin className="h-4 w-4 text-gray-400" />
+                                <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                  {locationName}
+                                </span>
+                                <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                              </button>
+                            );
+                          }
+
+                          return (
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-gray-400" />
+                              {locationName}
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="font-mono">

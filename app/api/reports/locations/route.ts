@@ -481,9 +481,9 @@ export async function GET(req: NextRequest) {
         {
           $match: {
             location: { $in: allLocationIds }, // Filter by location directly (uses index)
-            readAt: {
-              $gte: globalStart,
-              $lte: globalEnd,
+          readAt: {
+            $gte: globalStart,
+            $lte: globalEnd,
             },
           },
         },
@@ -522,7 +522,7 @@ export async function GET(req: NextRequest) {
 
         if (!hasOverlap) continue;
 
-        locationMetricsMap.set(locationId, {
+          locationMetricsMap.set(locationId, {
           moneyIn: agg.totalDrop || 0,
           moneyOut: agg.totalCancelledCredits || 0,
           meterCount: agg.meterCount || 0,

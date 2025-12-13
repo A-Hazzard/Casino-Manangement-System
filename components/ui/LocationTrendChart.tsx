@@ -21,19 +21,19 @@
  * @param formatter - Value formatter function
  * @param isHourly - Whether data is hourly
  */
-import React from 'react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDisplayDate } from '@/shared/utils/dateFormat';
+import React, { useMemo } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 type LocationTrendChartProps = {
   title: string;
@@ -73,37 +73,52 @@ export function LocationTrendChart({
   isHourly = false,
 }: LocationTrendChartProps) {
   // Transform data for the chart
-  const chartData = data.map(item => {
-    const transformed: Record<string, string | number> = {
-      xValue: isHourly ? (item.time || '') : item.day,
-      day: item.day,
-    };
+  const chartData = useMemo(() => {
+    return data.map(item => {
+      const transformed: Record<string, string | number> = {
+        xValue: isHourly ? item.time || '' : item.day,
+        day: item.day,
+      };
 
-    locations.forEach(locationId => {
-      const displayName = locationNames?.[locationId] || locationId;
-      const locationData = item[locationId];
-      // Extract the specific metric from the nested data
-      if (typeof locationData === 'object' && locationData !== null) {
-        transformed[displayName] = locationData[dataKey] || 0;
-      } else {
-        transformed[displayName] = 0;
-      }
+      locations.forEach(locationId => {
+        const displayName = locationNames?.[locationId] || locationId;
+        const locationData = item[locationId];
+        // Extract the specific metric from the nested data
+        if (typeof locationData === 'object' && locationData !== null) {
+          transformed[displayName] = locationData[dataKey] || 0;
+        } else {
+          transformed[displayName] = 0;
+        }
+      });
+
+      return transformed;
     });
+  }, [data, locations, locationNames, dataKey, isHourly]);
 
-    return transformed;
-  });
+  // Filter data to only show periods with actual data (no zero-value periods)
+  // This matches the behavior of location details and cabinet details pages
+  const filteredData = useMemo(() => {
+    return chartData.filter(item => {
+      // Check if any location has a value > 0 for this period
+      return locations.some(locationId => {
+        const displayName = locationNames?.[locationId] || locationId;
+        const value = item[displayName];
+        return typeof value === 'number' && value > 0;
+      });
+    });
+  }, [chartData, locations, locationNames]);
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           {icon}
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="w-full">
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData}>
+          <BarChart data={filteredData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="xValue"
@@ -145,4 +160,3 @@ export function LocationTrendChart({
     </Card>
   );
 }
-

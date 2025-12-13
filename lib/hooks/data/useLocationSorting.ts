@@ -34,7 +34,7 @@ type UseLocationSortingReturn = {
 export function useLocationSorting({
   locationData,
   currentPage: externalCurrentPage = 0,
-  totalCount,
+  totalCount: _totalCount,
   itemsPerPage: externalItemsPerPage = 10,
 }: Omit<UseLocationSortingProps, 'selectedFilters'>): UseLocationSortingReturn {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');

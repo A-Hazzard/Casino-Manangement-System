@@ -473,11 +473,11 @@ export async function GET(req: NextRequest) {
         // Step 2: Get ALL machines for ALL locations in batch (1 query)
         const batchAllMachines = await Machine.find({
           gamingLocation: { $in: batchLocationIds },
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2025-01-01') } },
-          ],
-        }).lean();
+              $or: [
+                { deletedAt: null },
+                { deletedAt: { $lt: new Date('2025-01-01') } },
+              ],
+            }).lean();
 
         if (batchAllMachines.length === 0) continue;
 
@@ -554,7 +554,7 @@ export async function GET(req: NextRequest) {
             },
           },
           {
-            $group: {
+              $group: {
               _id: {
                 machine: '$machine',
                 locationId: '$locationId',
@@ -564,21 +564,21 @@ export async function GET(req: NextRequest) {
                 $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
               },
               jackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
-              coinIn: { $last: '$coinIn' },
-              coinOut: { $last: '$coinOut' },
-              gamesPlayed: { $last: '$gamesPlayed' },
-              gamesWon: { $last: '$gamesWon' },
-              handPaidCancelledCredits: {
-                $last: '$handPaidCancelledCredits',
-              },
-              meterCount: { $sum: 1 },
+                coinIn: { $last: '$coinIn' },
+                coinOut: { $last: '$coinOut' },
+                gamesPlayed: { $last: '$gamesPlayed' },
+                gamesWon: { $last: '$gamesWon' },
+                handPaidCancelledCredits: {
+                  $last: '$handPaidCancelledCredits',
+                },
+                meterCount: { $sum: 1 },
               minReadAt: { $min: '$readAt' },
               maxReadAt: { $max: '$readAt' },
-            },
+              },
           },
         ];
 
-        const batchMetricsAggregation =
+            const batchMetricsAggregation =
           await Meters.aggregate(batchMetersPipeline).exec();
 
         // Step 6: Filter by gaming day ranges and group by machine
@@ -665,74 +665,74 @@ export async function GET(req: NextRequest) {
           const locationResults = locationMachines.map(machine => {
             const machineId = String(machine._id);
             const metrics = metricsByMachine.get(machineId) || {
-              moneyIn: 0,
-              moneyOut: 0,
-              jackpot: 0,
-              coinIn: 0,
-              coinOut: 0,
-              gamesPlayed: 0,
-              gamesWon: 0,
-              handPaidCancelledCredits: 0,
-              meterCount: 0,
-            };
+                moneyIn: 0,
+                moneyOut: 0,
+                jackpot: 0,
+                coinIn: 0,
+                coinOut: 0,
+                gamesPlayed: 0,
+                gamesWon: 0,
+                handPaidCancelledCredits: 0,
+                meterCount: 0,
+              };
 
-            const moneyIn = metrics.moneyIn || 0;
-            const moneyOut = metrics.moneyOut || 0;
-            const jackpot = metrics.jackpot || 0;
-            const coinIn = metrics.coinIn || 0;
-            const coinOut = metrics.coinOut || 0;
-            const gamesPlayed = metrics.gamesPlayed || 0;
-            const gamesWon = metrics.gamesWon || 0;
-            const gross = moneyIn - moneyOut;
+              const moneyIn = metrics.moneyIn || 0;
+              const moneyOut = metrics.moneyOut || 0;
+              const jackpot = metrics.jackpot || 0;
+              const coinIn = metrics.coinIn || 0;
+              const coinOut = metrics.coinOut || 0;
+              const gamesPlayed = metrics.gamesPlayed || 0;
+              const gamesWon = metrics.gamesWon || 0;
+              const gross = moneyIn - moneyOut;
 
-            // Get serialNumber with fallback to custom.name
+              // Get serialNumber with fallback to custom.name
             const serialNumber = (machine.serialNumber as string)?.trim() || '';
-            const customName =
-              (
-                (machine.custom as Record<string, unknown>)?.name as string
-              )?.trim() || '';
-            const finalSerialNumber = serialNumber || customName || '';
+              const customName =
+                (
+                  (machine.custom as Record<string, unknown>)?.name as string
+                )?.trim() || '';
+              const finalSerialNumber = serialNumber || customName || '';
 
-            return {
-              _id: machineId,
-              locationId: locationIdStr,
-              locationName: (location.name as string) || '(No Location)',
-              assetNumber: finalSerialNumber,
-              serialNumber: finalSerialNumber,
-              smbId: machine.relayId || '',
-              relayId: machine.relayId || '',
-              installedGame: machine.game || '',
-              game: machine.game || '',
-              manufacturer:
+              return {
+                _id: machineId,
+                locationId: locationIdStr,
+                locationName: (location.name as string) || '(No Location)',
+                assetNumber: finalSerialNumber,
+                serialNumber: finalSerialNumber,
+                smbId: machine.relayId || '',
+                relayId: machine.relayId || '',
+                installedGame: machine.game || '',
+                game: machine.game || '',
+                manufacturer:
                 machine.manufacturer || machine.manuf || 'Unknown Manufacturer',
-              status: machine.assetStatus || '',
-              assetStatus: machine.assetStatus || '',
-              cabinetType: machine.cabinetType || '',
-              accountingDenomination:
+                status: machine.assetStatus || '',
+                assetStatus: machine.assetStatus || '',
+                cabinetType: machine.cabinetType || '',
+                accountingDenomination:
                 ((machine.gameConfig as Record<string, unknown>)
                   ?.accountingDenomination as string) || '1',
-              collectionMultiplier: '1',
-              isCronosMachine: false,
+                collectionMultiplier: '1',
+                isCronosMachine: false,
               lastOnline: (machine.lastActivity as Date | undefined) || null,
               lastActivity: (machine.lastActivity as Date | undefined) || null,
-              // Calculate online status: machine is online if lastActivity is within last 3 minutes
-              online: machine.lastActivity
+                // Calculate online status: machine is online if lastActivity is within last 3 minutes
+                online: machine.lastActivity
                 ? new Date(machine.lastActivity as Date) >
-                  new Date(Date.now() - 3 * 60 * 1000)
-                : false,
+                    new Date(Date.now() - 3 * 60 * 1000)
+                  : false,
               createdAt: machine.createdAt as Date | undefined,
-              timePeriod: timePeriod,
-              moneyIn,
-              moneyOut,
-              cancelledCredits: moneyOut,
-              jackpot,
-              gross,
-              coinIn,
-              coinOut,
-              gamesPlayed,
-              gamesWon,
-            };
-          });
+                timePeriod: timePeriod,
+                moneyIn,
+                moneyOut,
+                cancelledCredits: moneyOut,
+                jackpot,
+                gross,
+                coinIn,
+                coinOut,
+                gamesPlayed,
+                gamesWon,
+              };
+            });
           batchResults.push(...locationResults);
         });
 
@@ -810,14 +810,14 @@ export async function GET(req: NextRequest) {
 
       const { Licencee } = await import('@/app/api/lib/models/licencee');
       const licenseesData = await Licencee.find(
-        {
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2025-01-01') } },
-          ],
-        },
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ],
+          },
         { _id: 1, name: 1 }
-      )
+        )
         .lean()
         .exec();
 

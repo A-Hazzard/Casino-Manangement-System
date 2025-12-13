@@ -1,11 +1,12 @@
-import axios from 'axios';
 import { locations } from '@/lib/types';
-import { GamingMachine as Cabinet } from '@/shared/types/entities';
-import { LocationData, AggregatedLocation } from '../types/location';
-import { TimePeriod } from '../types/api';
-import { DateRange } from 'react-day-picker';
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
+import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
+import { GamingMachine as Cabinet } from '@/shared/types/entities';
+import axios from 'axios';
+import { DateRange } from 'react-day-picker';
+import { TimePeriod } from '../types/api';
+import { AggregatedLocation, LocationData } from '../types/location';
 
 /**
  * Fetches both location details and its cabinets for a given locationId.
@@ -79,13 +80,19 @@ export default async function getAllGamingLocations(
       // Convert licensee name to ObjectId for API compatibility
       const licenseeObjectId = getLicenseeObjectId(licencee);
       console.log('[getAllGamingLocations] Input licencee:', licencee);
-      console.log('[getAllGamingLocations] Converted ObjectId:', licenseeObjectId);
+      console.log(
+        '[getAllGamingLocations] Converted ObjectId:',
+        licenseeObjectId
+      );
       if (licenseeObjectId) {
         params.licencee = licenseeObjectId;
       }
     }
 
-    console.log('[getAllGamingLocations] Calling /api/locations with params:', params);
+    console.log(
+      '[getAllGamingLocations] Calling /api/locations with params:',
+      params
+    );
     const response = await axios.get<{ locations: locations }>(
       '/api/locations',
       {
@@ -94,7 +101,10 @@ export default async function getAllGamingLocations(
       }
     );
     const fetchedLocations = response.data.locations;
-    console.log('[getAllGamingLocations] Received locations:', fetchedLocations?.length || 0);
+    console.log(
+      '[getAllGamingLocations] Received locations:',
+      fetchedLocations?.length || 0
+    );
 
     return Array.isArray(fetchedLocations) ? fetchedLocations : [];
   } catch (error) {
@@ -186,7 +196,11 @@ export async function fetchCabinets(
       headers: getAuthHeaders(),
     });
     // Handle paginated response format
-    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+    if (
+      response.data &&
+      typeof response.data === 'object' &&
+      'data' in response.data
+    ) {
       return Array.isArray(response.data.data) ? response.data.data : [];
     }
     return Array.isArray(response.data) ? response.data : [];
@@ -359,12 +373,21 @@ export const fetchLocationsData = async (
       params.timePeriod = 'Custom';
     }
 
-    const response = await axios.get('/api/locationAggregation', { params });
+    // Use deduplication to prevent duplicate requests
+    const paramsString = new URLSearchParams(params).toString();
+    const requestKey = `/api/locationAggregation?${paramsString}`;
+    const responseData = await deduplicateRequest(requestKey, async signal => {
+      const response = await axios.get('/api/locationAggregation', {
+        params,
+        signal,
+      });
+      return response.data;
+    });
 
     // Handle both old array format and new paginated format
-    const result = Array.isArray(response.data)
-      ? response.data
-      : response.data?.data || [];
+    const result = Array.isArray(responseData)
+      ? responseData
+      : responseData?.data || [];
 
     return result;
   } catch (error) {
@@ -439,7 +462,10 @@ export const searchAllLocations = async (
       params.endDate = customDateRange.to.toISOString();
     }
 
-    const response = await axios.get('/api/locations/search-all', { params, signal });
+    const response = await axios.get('/api/locations/search-all', {
+      params,
+      signal,
+    });
     return response.data || [];
   } catch (error) {
     console.error('Failed to search all locations:', error);
@@ -471,7 +497,16 @@ export async function fetchAggregatedLocationsData(
   page?: number,
   limit?: number,
   signal?: AbortSignal
-): Promise<{ data: AggregatedLocation[]; pagination?: { page: number; limit: number; total?: number; totalCount?: number; totalPages: number } }> {
+): Promise<{
+  data: AggregatedLocation[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total?: number;
+    totalCount?: number;
+    totalPages: number;
+  };
+}> {
   try {
     // Construct the URL with appropriate parameters
     let url = `/api/reports/locations`;
@@ -485,7 +520,7 @@ export async function fetchAggregatedLocationsData(
       queryParams.push(`filters=${encodeURIComponent(filterString)}`);
     if (displayCurrency)
       queryParams.push(`currency=${encodeURIComponent(displayCurrency)}`);
-    
+
     // Add pagination parameters (default: page=1, limit=50)
     if (page !== undefined) {
       queryParams.push(`page=${page}`);
@@ -541,16 +576,18 @@ export async function fetchAggregatedLocationsData(
   } catch (error) {
     // Check if this is an axios cancellation using axios.isCancel()
     if (axios.isCancel(error)) {
-      console.log('[fetchAggregatedLocationsData] Request canceled (filter/page change)');
+      console.log(
+        '[fetchAggregatedLocationsData] Request canceled (filter/page change)'
+      );
       throw error; // Re-throw so caller (useAbortableRequest) can handle it silently
     }
-    
+
     // Check for AbortError (fetch API)
     if (error instanceof Error && error.name === 'AbortError') {
       console.log('[fetchAggregatedLocationsData] Request aborted');
       throw error; // Re-throw so caller can handle it silently
     }
-    
+
     // Real errors - log and return empty data
     console.error('Error fetching locations data:', error);
     return { data: [] };

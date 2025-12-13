@@ -2628,35 +2628,193 @@ export default function MachinesTab() {
                               key={machine.machineId}
                               className="border-b hover:bg-gray-50"
                             >
-                              <td className="p-3 text-sm">
-                                {machine.locationName}
+                              {/* Location Column - Clickable with ExternalLink */}
+                              <td className="p-3 text-center">
+                                {machine.locationId ? (
+                                  <button
+                                    onClick={() => {
+                                      router.push(
+                                        `/locations/${machine.locationId}`
+                                      );
+                                    }}
+                                    className="group mx-auto flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
+                                  >
+                                    <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                      {machine.locationName}
+                                    </span>
+                                    <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                  </button>
+                                ) : (
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {machine.locationName}
+                                  </div>
+                                )}
                               </td>
-                              <td className="p-3 font-mono text-sm">
-                                {(typeof (machine as Record<string, unknown>)
-                                  .serialNumber === 'string' &&
-                                  (
-                                    (machine as Record<string, unknown>)
-                                      .serialNumber as string
-                                  ).trim()) ||
-                                  (typeof (machine as Record<string, unknown>)
-                                    .origSerialNumber === 'string' &&
-                                    (
-                                      (machine as Record<string, unknown>)
-                                        .origSerialNumber as string
-                                    ).trim()) ||
-                                  (typeof (machine as Record<string, unknown>)
-                                    .custom === 'object' &&
-                                    typeof (
-                                      (machine as Record<string, unknown>)
-                                        .custom as Record<string, unknown>
-                                    )?.name === 'string' &&
-                                    (
+                              {/* Machine Column - Clickable with ExternalLink, font-mono, complex formatting */}
+                              <td className="p-3 text-center">
+                                {machine.machineId ? (
+                                  <button
+                                    onClick={() => {
+                                      router.push(
+                                        `/cabinets/${machine.machineId}`
+                                      );
+                                    }}
+                                    className="group mx-auto flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                                  >
+                                    <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                      {/* Format: serialNumber || custom.name (custom.name if different, game) */}
+                                      {(() => {
+                                        // Get serialNumber (check both serialNumber and origSerialNumber)
+                                        const serialNumber =
+                                          (typeof (
+                                            machine as Record<string, unknown>
+                                          ).serialNumber === 'string' &&
+                                            (
+                                              (
+                                                machine as Record<
+                                                  string,
+                                                  unknown
+                                                >
+                                              ).serialNumber as string
+                                            ).trim()) ||
+                                          (typeof (
+                                            machine as Record<string, unknown>
+                                          ).origSerialNumber === 'string' &&
+                                            (
+                                              (
+                                                machine as Record<
+                                                  string,
+                                                  unknown
+                                                >
+                                              ).origSerialNumber as string
+                                            ).trim()) ||
+                                          '';
+                                        const hasSerialNumber =
+                                          serialNumber !== '';
+
+                                        // Get custom.name
+                                        const customName =
+                                          typeof (
+                                            machine as Record<string, unknown>
+                                          ).custom === 'object' &&
+                                          typeof (
+                                            (machine as Record<string, unknown>)
+                                              .custom as Record<string, unknown>
+                                          )?.name === 'string'
+                                            ? ((
+                                                (
+                                                  machine as Record<
+                                                    string,
+                                                    unknown
+                                                  >
+                                                ).custom as Record<
+                                                  string,
+                                                  unknown
+                                                >
+                                              ).name as string)
+                                            : '';
+                                        const customNameTrimmed =
+                                          customName.trim();
+                                        const hasCustomName =
+                                          customNameTrimmed !== '';
+
+                                        // Main identifier: serialNumber if exists, otherwise custom.name, otherwise machineId
+                                        const mainIdentifier = hasSerialNumber
+                                          ? serialNumber
+                                          : hasCustomName
+                                            ? customNameTrimmed
+                                            : machine.machineId;
+                                        const usedSerialNumber =
+                                          hasSerialNumber;
+
+                                        // Get game
+                                        const game =
+                                          machine.gameTitle?.trim() || '';
+                                        const hasGame = game !== '';
+
+                                        // Format: serialNumber || custom.name (custom.name if different, game)
+                                        const parts: string[] = [];
+
+                                        // Only add customName if:
+                                        // 1. We used serialNumber as main identifier
+                                        // 2. customName exists and is different from serialNumber
+                                        if (
+                                          usedSerialNumber &&
+                                          hasCustomName &&
+                                          customNameTrimmed !== serialNumber
+                                        ) {
+                                          parts.push(customNameTrimmed);
+                                        }
+
+                                        // Always include game (or "(game name not provided)" in red if blank)
+                                        if (hasGame) {
+                                          parts.push(game);
+                                        } else {
+                                          parts.push(
+                                            '(game name not provided)'
+                                          );
+                                        }
+
+                                        return (
+                                          <span>
+                                            {mainIdentifier} (
+                                            {parts.map((part, idx) => {
+                                              const isGameNotProvided =
+                                                part ===
+                                                '(game name not provided)';
+                                              return (
+                                                <span key={idx}>
+                                                  {isGameNotProvided ? (
+                                                    <span className="text-red-600">
+                                                      {part}
+                                                    </span>
+                                                  ) : (
+                                                    part
+                                                  )}
+                                                  {idx < parts.length - 1 &&
+                                                    ', '}
+                                                </span>
+                                              );
+                                            })}
+                                            )
+                                          </span>
+                                        );
+                                      })()}
+                                    </span>
+                                    <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                  </button>
+                                ) : (
+                                  <div className="font-mono text-sm text-gray-900">
+                                    {(typeof (
+                                      machine as Record<string, unknown>
+                                    ).serialNumber === 'string' &&
                                       (
                                         (machine as Record<string, unknown>)
-                                          .custom as Record<string, unknown>
-                                      ).name as string
-                                    ).trim()) ||
-                                  machine.machineId}
+                                          .serialNumber as string
+                                      ).trim()) ||
+                                      (typeof (
+                                        machine as Record<string, unknown>
+                                      ).origSerialNumber === 'string' &&
+                                        (
+                                          (machine as Record<string, unknown>)
+                                            .origSerialNumber as string
+                                        ).trim()) ||
+                                      (typeof (
+                                        machine as Record<string, unknown>
+                                      ).custom === 'object' &&
+                                        typeof (
+                                          (machine as Record<string, unknown>)
+                                            .custom as Record<string, unknown>
+                                        )?.name === 'string' &&
+                                        (
+                                          (
+                                            (machine as Record<string, unknown>)
+                                              .custom as Record<string, unknown>
+                                          ).name as string
+                                        ).trim()) ||
+                                      machine.machineId}
+                                  </div>
+                                )}
                               </td>
                               <td className="p-3 text-sm">
                                 {machine.gameTitle ? (
@@ -2717,11 +2875,99 @@ export default function MachinesTab() {
                       .map(machine => (
                         <Card key={machine.machineId} className="p-4">
                           <div className="mb-3">
+                            {/* Machine Name with Link */}
                             <h4 className="text-sm font-medium">
-                              {machine.machineName || machine.machineId}
+                              {machine.machineId ? (
+                                <button
+                                  onClick={() => {
+                                    router.push(
+                                      `/cabinets/${machine.machineId}`
+                                    );
+                                  }}
+                                  className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                                >
+                                  <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                    {(() => {
+                                      // Get serialNumber (check both serialNumber and origSerialNumber)
+                                      const serialNumber =
+                                        (typeof (
+                                          machine as Record<string, unknown>
+                                        ).serialNumber === 'string' &&
+                                          (
+                                            (machine as Record<string, unknown>)
+                                              .serialNumber as string
+                                          ).trim()) ||
+                                        (typeof (
+                                          machine as Record<string, unknown>
+                                        ).origSerialNumber === 'string' &&
+                                          (
+                                            (machine as Record<string, unknown>)
+                                              .origSerialNumber as string
+                                          ).trim()) ||
+                                        '';
+                                      const hasSerialNumber =
+                                        serialNumber !== '';
+
+                                      // Get custom.name
+                                      const customName =
+                                        typeof (
+                                          machine as Record<string, unknown>
+                                        ).custom === 'object' &&
+                                        typeof (
+                                          (machine as Record<string, unknown>)
+                                            .custom as Record<string, unknown>
+                                        )?.name === 'string'
+                                          ? ((
+                                              (
+                                                machine as Record<
+                                                  string,
+                                                  unknown
+                                                >
+                                              ).custom as Record<
+                                                string,
+                                                unknown
+                                              >
+                                            ).name as string)
+                                          : '';
+                                      const customNameTrimmed =
+                                        customName.trim();
+                                      const hasCustomName =
+                                        customNameTrimmed !== '';
+
+                                      // Main identifier: serialNumber if exists, otherwise custom.name, otherwise machineId
+                                      return hasSerialNumber
+                                        ? serialNumber
+                                        : hasCustomName
+                                          ? customNameTrimmed
+                                          : machine.machineId;
+                                    })()}
+                                  </span>
+                                  <ExternalLink className="h-3 w-3 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                </button>
+                              ) : (
+                                machine.machineName || machine.machineId
+                              )}
                             </h4>
+                            {/* Location and Game Info */}
                             <p className="text-xs text-muted-foreground">
-                              {machine.locationName} •{' '}
+                              {machine.locationId ? (
+                                <button
+                                  onClick={() => {
+                                    router.push(
+                                      `/locations/${machine.locationId}`
+                                    );
+                                  }}
+                                  className="group inline-flex items-center gap-1 text-xs text-gray-900 transition-opacity hover:opacity-80"
+                                >
+                                  <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                    {machine.locationName}
+                                  </span>
+                                  <ExternalLink className="h-3 w-3 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                </button>
+                              ) : (
+                                <span>{machine.locationName}</span>
+                              )}{' '}
+                              •{' '}
                               {machine.gameTitle ? (
                                 machine.gameTitle
                               ) : (

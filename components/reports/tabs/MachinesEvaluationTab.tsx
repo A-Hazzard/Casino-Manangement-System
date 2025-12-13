@@ -31,8 +31,10 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
+  ExternalLink,
   RefreshCw,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 // Removed duplicate import - using MachineData from lib/types/machinesEvaluationTab instead
 import StatusIcon from '@/components/ui/common/StatusIcon';
@@ -91,6 +93,7 @@ export const MachinesEvaluationTab = ({
   onRefresh,
   onExport,
 }: MachinesEvaluationTabProps) => {
+  const router = useRouter();
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
 
   // Filter states
@@ -447,11 +450,18 @@ export const MachinesEvaluationTab = ({
                 <thead>
                   <tr className="border-b">
                     <SortableEvaluationHeader
+                      sortKey="locationName"
+                      currentSort={sortConfig}
+                      onSort={onSort}
+                    >
+                      Location
+                    </SortableEvaluationHeader>
+                    <SortableEvaluationHeader
                       sortKey="machineId"
                       currentSort={sortConfig}
                       onSort={onSort}
                     >
-                      Machine ID
+                      Machine
                     </SortableEvaluationHeader>
                     <SortableEvaluationHeader
                       sortKey="gameTitle"
@@ -459,13 +469,6 @@ export const MachinesEvaluationTab = ({
                       onSort={onSort}
                     >
                       Game
-                    </SortableEvaluationHeader>
-                    <SortableEvaluationHeader
-                      sortKey="locationName"
-                      currentSort={sortConfig}
-                      onSort={onSort}
-                    >
-                      Location
                     </SortableEvaluationHeader>
                     <SortableEvaluationHeader
                       sortKey="actualHold"
@@ -509,9 +512,114 @@ export const MachinesEvaluationTab = ({
                       key={machine.machineId}
                       className="border-b hover:bg-gray-50"
                     >
+                      {/* Location Column - Clickable with ExternalLink */}
                       <td className="p-3 text-center">
-                        {machine.machineId || 'N/A'}
+                        {machine.locationId ? (
+                          <button
+                            onClick={() => {
+                              router.push(`/locations/${machine.locationId}`);
+                            }}
+                            className="group mx-auto flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
+                          >
+                            <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                              {machine.locationName || 'N/A'}
+                            </span>
+                            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                          </button>
+                        ) : (
+                          <div className="text-sm font-medium text-gray-900">
+                            {machine.locationName || 'N/A'}
+                          </div>
+                        )}
                       </td>
+                      {/* Machine Column - Clickable with ExternalLink, font-mono, complex formatting */}
+                      <td className="p-3 text-center">
+                        {machine.machineId ? (
+                          <button
+                            onClick={() => {
+                              router.push(`/cabinets/${machine.machineId}`);
+                            }}
+                            className="group mx-auto flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                          >
+                            <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                              {/* Format: serialNumber || customName || machineId (game) */}
+                              {(() => {
+                                // Get serialNumber
+                                const serialNumber =
+                                  machine.serialNumber?.trim() || '';
+                                const hasSerialNumber = serialNumber !== '';
+
+                                // Get customName
+                                const customName =
+                                  machine.customName?.trim() || '';
+                                const hasCustomName = customName !== '';
+
+                                // Main identifier: serialNumber if exists, otherwise customName, otherwise machineId
+                                const mainIdentifier = hasSerialNumber
+                                  ? serialNumber
+                                  : hasCustomName
+                                    ? customName
+                                    : machine.machineId;
+                                const usedSerialNumber = hasSerialNumber;
+
+                                // Get game
+                                const game = machine.gameTitle?.trim() || '';
+                                const hasGame = game !== '';
+
+                                // Format: serialNumber || customName || machineId (game)
+                                const parts: string[] = [];
+
+                                // Only add customName if:
+                                // 1. We used serialNumber as main identifier
+                                // 2. customName exists and is different from serialNumber
+                                if (
+                                  usedSerialNumber &&
+                                  hasCustomName &&
+                                  customName !== serialNumber
+                                ) {
+                                  parts.push(customName);
+                                }
+
+                                // Always include game (or "(game name not provided)" in red if blank)
+                                if (hasGame) {
+                                  parts.push(game);
+                                } else {
+                                  parts.push('(game name not provided)');
+                                }
+
+                                return (
+                                  <span>
+                                    {mainIdentifier} (
+                                    {parts.map((part, idx) => {
+                                      const isGameNotProvided =
+                                        part === '(game name not provided)';
+                                      return (
+                                        <span key={idx}>
+                                          {isGameNotProvided ? (
+                                            <span className="text-red-600">
+                                              {part}
+                                            </span>
+                                          ) : (
+                                            part
+                                          )}
+                                          {idx < parts.length - 1 && ', '}
+                                        </span>
+                                      );
+                                    })}
+                                    )
+                                  </span>
+                                );
+                              })()}
+                            </span>
+                            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                          </button>
+                        ) : (
+                          <div className="font-mono text-sm text-gray-900">
+                            {machine.serialNumber || machine.machineId || 'N/A'}
+                          </div>
+                        )}
+                      </td>
+                      {/* Game Column */}
                       <td className="p-3 text-center">
                         {machine.gameTitle ? (
                           machine.gameTitle
@@ -520,9 +628,6 @@ export const MachinesEvaluationTab = ({
                             (game name not provided)
                           </span>
                         )}
-                      </td>
-                      <td className="p-3 text-center">
-                        {machine.locationName || 'N/A'}
                       </td>
                       <td className="p-3 text-center">
                         <Badge

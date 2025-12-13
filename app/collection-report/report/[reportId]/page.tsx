@@ -19,41 +19,41 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
 // import { SyncButton } from '@/components/ui/RefreshButton'; // Commented out - Sync Meters feature disabled
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/ui/table';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    DoubleArrowLeftIcon,
+    DoubleArrowRightIcon,
 } from '@radix-ui/react-icons';
 // import { AnimatePresence, motion } from 'framer-motion'; // Commented out - Floating refresh button disabled
 import {
-  ArrowLeft,
-  ChevronDown,
-  ChevronUp,
-  RefreshCw,
-  Zap,
+    ArrowLeft,
+    ChevronDown,
+    ChevronUp,
+    RefreshCw,
+    Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -72,23 +72,20 @@ import UnauthorizedError from '@/components/ui/errors/UnauthorizedError';
 
 // Skeleton components
 import {
-  CardSkeleton,
-  CollectionReportSkeleton,
-  TableSkeleton,
+    CardSkeleton,
+    CollectionReportSkeleton,
+    TableSkeleton,
 } from '@/components/ui/skeletons/CollectionReportDetailSkeletons';
 
 // Helper functions
-import { MachineSearchBar } from '@/components/collectionReport/MachineSearchBar';
 import { fetchCollectionReportById } from '@/lib/helpers/collectionReport';
 import {
-  animateDesktopTabTransition,
-  calculateLocationTotal,
-  calculateSasMetricsTotals,
+    animateDesktopTabTransition,
+    calculateLocationTotal,
+    calculateSasMetricsTotals,
 } from '@/lib/helpers/collectionReportDetailPage';
-import {
-  checkSasTimeIssues,
-  // syncMetersForReport, // Commented out - Sync Meters disabled
-} from '@/lib/helpers/collectionReportDetailPageData';
+import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
+import { checkSasTimeIssues } from '@/lib/helpers/collectionReportDetailPageData';
 import { fetchCollectionsByLocationReportId } from '@/lib/helpers/collections';
 import { formatCurrency } from '@/lib/utils/currency';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
@@ -100,14 +97,13 @@ import { toast } from 'sonner';
 import type { CollectionReportData, MachineMetric } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collections';
 import type {
-  CollectionIssue,
-  CollectionIssueDetails,
+    CollectionIssue,
+    CollectionIssueDetails,
 } from '@/shared/types/entities';
 
 // Components
 import { CollectionIssueModal } from '@/components/collectionReport/CollectionIssueModal';
 import { useUserStore } from '@/lib/store/userStore';
-import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 
 // ============================================================================
 // Page Components
@@ -153,10 +149,10 @@ function CollectionReportPageContent() {
   const [selectedIssue, setSelectedIssue] = useState<CollectionIssue | null>(
     null
   );
-  const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<keyof MachineMetric>('sasGross');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  
+  const [searchTerm, setSearchTerm] = useState('');
+
   // Initialize activeTab from URL or default to "Machine Metrics"
   const [activeTab, setActiveTab] = useState<
     'Machine Metrics' | 'Location Metrics' | 'SAS Metrics Compare'
@@ -228,37 +224,23 @@ function CollectionReportPageContent() {
   // ============================================================================
   // Computed Values - Filtered & Sorted Data
   // ============================================================================
-  // Search and sort logic
+  // Sort logic
   const filteredAndSortedData = useMemo(() => {
     const metricsData = reportData?.machineMetrics || [];
-    let filtered = metricsData;
-
-    // Apply search filter
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = metricsData.filter((metric: MachineMetric) => {
-        const machineId = (metric.machineId?.toLowerCase() || '');
-        const machineIdFromId = (metric.id ? String(metric.id).toLowerCase() : '');
-        return (
-          machineId.includes(searchLower) ||
-          machineIdFromId.includes(searchLower)
-        );
-      });
-    }
 
     // Apply sorting
-    let sorted = [...filtered];
+    let sorted = [...metricsData];
 
     // If sorting by machineId, use alphabetical and numerical sorting
     if (sortField === 'machineId') {
-      sorted = sortMachinesAlphabetically(filtered);
+      sorted = sortMachinesAlphabetically(metricsData);
       // Reverse if descending order
       if (sortDirection === 'desc') {
         sorted = sorted.reverse();
       }
     } else {
       // For other fields, use the existing sorting logic
-      sorted = [...filtered].sort((a, b) => {
+      sorted = [...metricsData].sort((a, b) => {
         const aValue = a[sortField];
         const bValue = b[sortField];
 
@@ -277,18 +259,40 @@ function CollectionReportPageContent() {
     }
 
     return sorted;
-  }, [reportData?.machineMetrics, searchTerm, sortField, sortDirection]);
+  }, [reportData?.machineMetrics, sortField, sortDirection]);
+
+  // Apply search filtering
+  const filteredSortedAndSearchedData = useMemo(() => {
+    let data = filteredAndSortedData;
+
+    if (searchTerm.trim()) {
+      const lowerSearch = searchTerm.toLowerCase();
+      data = data.filter(item => {
+        return (
+          item.machineId?.toLowerCase().includes(lowerSearch) ||
+          item.actualMachineId?.toLowerCase().includes(lowerSearch) ||
+          item.dropCancelled?.toLowerCase().includes(lowerSearch) ||
+          item.metersGross?.toString().toLowerCase().includes(lowerSearch) ||
+          item.sasGross?.toString().toLowerCase().includes(lowerSearch)
+        );
+      });
+    }
+
+    return data;
+  }, [filteredAndSortedData, searchTerm]);
 
   const machineTotalPages = useMemo(() => {
-    const total = Math.ceil(filteredAndSortedData.length / ITEMS_PER_PAGE);
+    const total = Math.ceil(
+      filteredSortedAndSearchedData.length / ITEMS_PER_PAGE
+    );
     return total > 0 ? total : 1; // At least 1 page if there's data
-  }, [filteredAndSortedData.length]);
-  const hasData = filteredAndSortedData.length > 0;
+  }, [filteredSortedAndSearchedData.length]);
+  const hasData = filteredSortedAndSearchedData.length > 0;
 
   // Apply pagination to the filtered and sorted data
   const startIndex = (machinePage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedMetricsData = filteredAndSortedData.slice(
+  const paginatedMetricsData = filteredSortedAndSearchedData.slice(
     startIndex,
     endIndex
   );
@@ -451,7 +455,11 @@ function CollectionReportPageContent() {
           console.error('Error fetching collection report:', error);
         }
         // Check if it's a 403 Unauthorized error
-        if (error?.response?.status === 403 || error?.message?.includes('Unauthorized') || error?.message?.includes('do not have access')) {
+        if (
+          error?.response?.status === 403 ||
+          error?.message?.includes('Unauthorized') ||
+          error?.message?.includes('do not have access')
+        ) {
           setError('UNAUTHORIZED');
         } else {
           setError('Failed to fetch report data. Please try again.');
@@ -463,7 +471,14 @@ function CollectionReportPageContent() {
     fetchCollectionsByLocationReportId(reportId)
       .then(setCollections)
       .catch(() => setCollections([]));
-  }, [reportId, checkForSasTimeIssues, setCollections, setLoading, setError, setReportData]);
+  }, [
+    reportId,
+    checkForSasTimeIssues,
+    setCollections,
+    setLoading,
+    setError,
+    setReportData,
+  ]);
 
   // Redirect users to the main collection page to resume unfinished edits
   useEffect(() => {
@@ -798,7 +813,7 @@ function CollectionReportPageContent() {
     </button>
   );
 
-  const MachineMetricsContent = ({ loading }: { loading: boolean }) => {
+  const renderMachineMetricsContent = ({ loading }: { loading: boolean }) => {
     if (loading) {
       return (
         <>
@@ -811,7 +826,15 @@ function CollectionReportPageContent() {
         </>
       );
     }
-    if (!hasData) {
+    // If we have no data at all (not just filtered data), show specific message
+    // If we have filtered data but it's empty, we still want to show the search bar
+    const isTotallyEmpty =
+      !loading &&
+      (reportData?.machineMetrics === undefined ||
+        reportData?.machineMetrics === null ||
+        reportData?.machineMetrics.length === 0);
+
+    if (isTotallyEmpty) {
       return (
         <div className="flex flex-col items-center justify-center py-12">
           <div className="mb-4 text-4xl">🛠️</div>
@@ -824,13 +847,36 @@ function CollectionReportPageContent() {
         </div>
       );
     }
+
     return (
       <div>
         <div className="space-y-4 lg:hidden">
           <h2 className="my-4 text-center text-xl font-bold">
             Machine Metrics
           </h2>
-          {(reportData?.machineMetrics || []).some((m: MachineMetric) => m.ramClear) && (
+
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Search machines..."
+              value={searchTerm}
+              onChange={e => {
+                setSearchTerm(e.target.value);
+                setMachinePage(1); // Reset to first page on search
+              }}
+              className="w-full rounded-md border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
+          {!hasData ? (
+            <div className="py-8 text-center text-gray-500">
+              No machines match your search.
+            </div>
+          ) : (
+            <>
+          {(reportData?.machineMetrics || []).some(
+            (m: MachineMetric) => m.ramClear
+          ) && (
             <div className="rounded-md border-l-4 border-orange-500 bg-orange-100 p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -838,26 +884,17 @@ function CollectionReportPageContent() {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm font-semibold text-orange-700">
-                    {(reportData?.machineMetrics || []).filter((m: MachineMetric) => m.ramClear).length} machine(s) were
-                    ram cleared
+                    {
+                      (reportData?.machineMetrics || []).filter(
+                        (m: MachineMetric) => m.ramClear
+                      ).length
+                    }{' '}
+                    machine(s) were ram cleared
                   </p>
                 </div>
               </div>
             </div>
           )}
-
-          {/* Search Bar - Mobile */}
-          <MachineSearchBar
-            value={searchTerm}
-            onChange={value => {
-              setSearchTerm(value);
-              setMachinePage(1);
-            }}
-            onClear={() => setMachinePage(1)}
-            placeholder="Search machines by name or ID..."
-            resultCount={filteredAndSortedData.length}
-            totalCount={(reportData?.machineMetrics || []).length}
-          />
 
           {paginatedMetricsData.map((metric: MachineMetric) => (
             <div
@@ -890,7 +927,7 @@ function CollectionReportPageContent() {
                       }
                     }}
                   >
-                    {metric.machineId}
+                    {metric.machineId || metric.id || 'Unknown Machine'}
                   </h3>
                   {metric.ramClear && (
                     <TooltipProvider>
@@ -1017,9 +1054,13 @@ function CollectionReportPageContent() {
               <DoubleArrowRightIcon className="h-4 w-4" />
             </Button>
           </div>
+            </>
+          )}
         </div>
         <div className="hidden lg:block">
-          {(reportData?.machineMetrics || []).some((m: MachineMetric) => m.ramClear) && (
+          {(reportData?.machineMetrics || []).some(
+            (m: MachineMetric) => m.ramClear
+          ) && (
             <div className="mb-4 rounded-md border-l-4 border-orange-500 bg-orange-100 p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -1027,28 +1068,38 @@ function CollectionReportPageContent() {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm font-semibold text-orange-700">
-                    {(reportData?.machineMetrics || []).filter((m: MachineMetric) => m.ramClear).length} machine(s) were
-                    ram cleared
+                    {
+                      (reportData?.machineMetrics || []).filter(
+                        (m: MachineMetric) => m.ramClear
+                      ).length
+                    }{' '}
+                    machine(s) were ram cleared
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Search Bar */}
-          <MachineSearchBar
-            value={searchTerm}
-            onChange={value => {
-              setSearchTerm(value);
-              setMachinePage(1);
-            }}
-            onClear={() => setMachinePage(1)}
-            placeholder="Search machines by name or ID..."
-            resultCount={filteredAndSortedData.length}
-            totalCount={(reportData?.machineMetrics || []).length}
-          />
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Search machines..."
+              value={searchTerm}
+              onChange={e => {
+                setSearchTerm(e.target.value);
+                setMachinePage(1); // Reset to first page on search
+              }}
+              className="w-full rounded-md border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none placeholder:text-gray-400"
+            />
+          </div>
 
-          <div className="overflow-x-auto rounded-lg bg-white pb-6 shadow-md">
+          {!hasData ? (
+            <div className="rounded-lg bg-white py-12 text-center shadow-md">
+              <div className="mb-2 text-2xl">🔍</div>
+              <p className="text-gray-600">No machines match your search.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg bg-white pb-6 shadow-md">
             <Table>
               <TableHeader>
                 <TableRow className="bg-button hover:bg-button">
@@ -1186,7 +1237,9 @@ function CollectionReportPageContent() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-left">{metric.dropCancelled || '0 / 0'}</TableCell>
+                    <TableCell className="text-left">
+                      {metric.dropCancelled || '0 / 0'}
+                    </TableCell>
                     <TableCell className="text-left">
                       {metric.metersGross?.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
@@ -1213,12 +1266,12 @@ function CollectionReportPageContent() {
                         // Handle missing SAS times gracefully
                         if (!metric.sasStartTime && !metric.sasEndTime) {
                           return (
-                            <div className="text-gray-400 italic">
+                            <div className="italic text-gray-400">
                               No SAS Times
                             </div>
                           );
                         }
-                        
+
                         const start = metric.sasStartTime
                           ? new Date(metric.sasStartTime)
                           : null;
@@ -1309,6 +1362,7 @@ function CollectionReportPageContent() {
               </Button>
             </div>
           </div>
+          )}
         </div>
       </div>
     );
@@ -1970,13 +2024,13 @@ function CollectionReportPageContent() {
   const renderDesktopTabContent = () => {
     switch (activeTab) {
       case 'Machine Metrics':
-        return <MachineMetricsContent loading={false} />;
+        return renderMachineMetricsContent({ loading: false });
       case 'Location Metrics':
         return <LocationMetricsContent loading={false} />;
       case 'SAS Metrics Compare':
         return <SASMetricsCompareContent loading={false} />;
       default:
-        return <MachineMetricsContent loading={false} />;
+        return renderMachineMetricsContent({ loading: false });
     }
   };
 
@@ -2038,26 +2092,27 @@ function CollectionReportPageContent() {
               disabled={loading || refreshing || isFixingReport}
             /> */}
             {/* Fix Report Button - Developer Only */}
-            {user?.roles?.includes('developer') && (hasSasTimeIssues || hasCollectionHistoryIssues) && (
-              <Button
-                onClick={handleFixReportClick}
-                disabled={loading || refreshing || isFixingReport}
-                variant="outline"
-                className="flex items-center gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
-              >
-                {isFixingReport ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Fixing Report...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="h-4 w-4" />
-                    Fix Report
-                  </>
-                )}
-              </Button>
-            )}
+            {user?.roles?.includes('developer') &&
+              (hasSasTimeIssues || hasCollectionHistoryIssues) && (
+                <Button
+                  onClick={handleFixReportClick}
+                  disabled={loading || refreshing || isFixingReport}
+                  variant="outline"
+                  className="flex items-center gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
+                >
+                  {isFixingReport ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Fixing Report...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4" />
+                      Fix Report
+                    </>
+                  )}
+                </Button>
+              )}
           </div>
         </div>
       </div>
@@ -2098,160 +2153,162 @@ function CollectionReportPageContent() {
                 className="w-full justify-center"
               /> */}
               {/* Fix Report Button (Mobile) - Developer Only */}
-              {user?.roles?.includes('developer') && (hasSasTimeIssues || hasCollectionHistoryIssues) && (
-                <Button
-                  onClick={handleFixReportClick}
-                  disabled={loading || refreshing || isFixingReport}
-                  variant="outline"
-                  className="flex w-full items-center justify-center gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
-                >
-                  {isFixingReport ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Fixing Report...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-4 w-4" />
-                      Fix Report
-                    </>
-                  )}
-                </Button>
-              )}
+              {user?.roles?.includes('developer') &&
+                (hasSasTimeIssues || hasCollectionHistoryIssues) && (
+                  <Button
+                    onClick={handleFixReportClick}
+                    disabled={loading || refreshing || isFixingReport}
+                    variant="outline"
+                    className="flex w-full items-center justify-center gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
+                  >
+                    {isFixingReport ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Fixing Report...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4" />
+                        Fix Report
+                      </>
+                    )}
+                  </Button>
+                )}
             </div>
           </div>
         </div>
       </div>
 
       {/* Warning Banner for SAS Time Issues - Developer Only */}
-      {user?.roles?.includes('developer') && (hasSasTimeIssues || hasCollectionHistoryIssues) && (
-        <div className="mx-2 mb-6 lg:mx-6">
-          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-5 w-5 text-yellow-400"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">
-                  {hasSasTimeIssues && hasCollectionHistoryIssues
-                    ? 'Multiple Issues Detected'
-                    : hasSasTimeIssues
-                      ? 'SAS Time Issues Detected'
-                      : 'Collection History Issues Detected'}
-                </h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>
+      {user?.roles?.includes('developer') &&
+        (hasSasTimeIssues || hasCollectionHistoryIssues) && (
+          <div className="mx-2 mb-6 lg:mx-6">
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-5 w-5 text-yellow-400"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
                     {hasSasTimeIssues && hasCollectionHistoryIssues
-                      ? 'This report has multiple types of data inconsistencies:'
+                      ? 'Multiple Issues Detected'
                       : hasSasTimeIssues
-                        ? 'This report has SAS time inconsistencies:'
-                        : 'This report has collection history inconsistencies:'}
-                  </p>
-                  <div className="mt-2 space-y-1">
-                    {/* Show SAS Time Issues */}
-                    {hasSasTimeIssues && sasTimeIssues.length > 0 && (
-                      <div>
-                        <p className="font-semibold text-yellow-800">
-                          SAS Time Issues:
-                        </p>
-                        {sasTimeIssues
-                          .reduce(
-                            (acc, issue) => {
-                              const existing = acc.find(
-                                item => item.machineName === issue.machineName
-                              );
-                              if (existing) {
-                                existing.issues.push(issue);
-                              } else {
-                                acc.push({
-                                  machineName: issue.machineName,
-                                  issues: [issue],
-                                });
-                              }
-                              return acc;
-                            },
-                            [] as {
-                              machineName: string;
-                              issues: CollectionIssue[];
-                            }[]
-                          )
-                          .map((machine, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center gap-2"
-                            >
-                              <button
-                                onClick={() =>
-                                  handleIssueClick(machine.issues[0])
-                                }
-                                className="cursor-pointer text-blue-600 underline hover:text-blue-800"
-                              >
-                                {machine.machineName} ({machine.issues.length}{' '}
-                                issue
-                                {machine.issues.length > 1 ? 's' : ''})
-                              </button>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-
-                    {/* Show Collection History Issues */}
-                    {hasCollectionHistoryIssues && (
-                      <div className="mt-3">
-                        <p className="font-semibold text-yellow-800">
-                          Collection History Issues:
-                        </p>
-                        {collectionHistoryMachines.length > 0 ? (
-                          <div className="mt-1 space-y-1">
-                            {collectionHistoryMachines.map(
-                              (machineName, index) => (
-                                <p
-                                  key={index}
-                                  className="text-sm text-yellow-700"
-                                >
-                                  •{' '}
-                                  <span className="font-medium">
-                                    {machineName}
-                                  </span>{' '}
-                                  has orphaned or duplicate history entries
-                                </p>
-                              )
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-yellow-700">
-                            • Some machines in this report have collection
-                            history inconsistencies
+                        ? 'SAS Time Issues Detected'
+                        : 'Collection History Issues Detected'}
+                  </h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>
+                      {hasSasTimeIssues && hasCollectionHistoryIssues
+                        ? 'This report has multiple types of data inconsistencies:'
+                        : hasSasTimeIssues
+                          ? 'This report has SAS time inconsistencies:'
+                          : 'This report has collection history inconsistencies:'}
+                    </p>
+                    <div className="mt-2 space-y-1">
+                      {/* Show SAS Time Issues */}
+                      {hasSasTimeIssues && sasTimeIssues.length > 0 && (
+                        <div>
+                          <p className="font-semibold text-yellow-800">
+                            SAS Time Issues:
                           </p>
-                        )}
-                        <p className="mt-2 text-xs italic text-yellow-600">
-                          Use the &quot;Fix Report&quot; button below to
-                          automatically correct these issues.
-                        </p>
-                      </div>
-                    )}
+                          {sasTimeIssues
+                            .reduce(
+                              (acc, issue) => {
+                                const existing = acc.find(
+                                  item => item.machineName === issue.machineName
+                                );
+                                if (existing) {
+                                  existing.issues.push(issue);
+                                } else {
+                                  acc.push({
+                                    machineName: issue.machineName,
+                                    issues: [issue],
+                                  });
+                                }
+                                return acc;
+                              },
+                              [] as {
+                                machineName: string;
+                                issues: CollectionIssue[];
+                              }[]
+                            )
+                            .map((machine, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center gap-2"
+                              >
+                                <button
+                                  onClick={() =>
+                                    handleIssueClick(machine.issues[0])
+                                  }
+                                  className="cursor-pointer text-blue-600 underline hover:text-blue-800"
+                                >
+                                  {machine.machineName} ({machine.issues.length}{' '}
+                                  issue
+                                  {machine.issues.length > 1 ? 's' : ''})
+                                </button>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+
+                      {/* Show Collection History Issues */}
+                      {hasCollectionHistoryIssues && (
+                        <div className="mt-3">
+                          <p className="font-semibold text-yellow-800">
+                            Collection History Issues:
+                          </p>
+                          {collectionHistoryMachines.length > 0 ? (
+                            <div className="mt-1 space-y-1">
+                              {collectionHistoryMachines.map(
+                                (machineName, index) => (
+                                  <p
+                                    key={index}
+                                    className="text-sm text-yellow-700"
+                                  >
+                                    •{' '}
+                                    <span className="font-medium">
+                                      {machineName}
+                                    </span>{' '}
+                                    has orphaned or duplicate history entries
+                                  </p>
+                                )
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-yellow-700">
+                              • Some machines in this report have collection
+                              history inconsistencies
+                            </p>
+                          )}
+                          <p className="mt-2 text-xs italic text-yellow-600">
+                            Use the &quot;Fix Report&quot; button below to
+                            automatically correct these issues.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <p className="mt-2">
+                      {hasSasTimeIssues && sasTimeIssues.length > 0
+                        ? 'Click on any machine name above to navigate to it, or use the "Fix Report" button to automatically correct all issues.'
+                        : 'Use the "Fix Report" button below to automatically correct all issues.'}
+                    </p>
                   </div>
-                  <p className="mt-2">
-                    {hasSasTimeIssues && sasTimeIssues.length > 0
-                      ? 'Click on any machine name above to navigate to it, or use the "Fix Report" button to automatically correct all issues.'
-                      : 'Use the "Fix Report" button below to automatically correct all issues.'}
-                  </p>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Desktop Content Section: Sidebar navigation and main content */}
       <div className="hidden px-2 pb-6 lg:flex lg:flex-row lg:space-x-6 lg:px-6">
@@ -2289,9 +2346,8 @@ function CollectionReportPageContent() {
 
         {/* Mobile Content - Show only active tab */}
         <div className="space-y-4">
-          {activeTab === 'Machine Metrics' && (
-            <MachineMetricsContent loading={false} />
-          )}
+          {activeTab === 'Machine Metrics' &&
+            renderMachineMetricsContent({ loading: false })}
           {activeTab === 'Location Metrics' && (
             <LocationMetricsContent loading={false} />
           )}

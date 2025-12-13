@@ -126,6 +126,8 @@ function DashboardContent() {
   const prevFetchParams = useRef<string>('');
   // Track if we've done an initial fetch to distinguish between "no data loaded" and "loaded but empty"
   const hasInitialFetchRef = useRef(false);
+  // Track if top-performing data has been fetched
+  const hasTopPerformingFetchedRef = useRef(false);
 
   // ============================================================================
   // Custom Hooks
@@ -216,6 +218,12 @@ function DashboardContent() {
 
     const fetchMetrics = async () => {
       try {
+        // Ensure activeTab has a default value for top-performing fetch
+        const effectiveTab = activeTab || 'Cabinets';
+
+        // Set loading states
+        setLoadingTopPerforming(true);
+
         // Wrap API calls with error handling
         await stableHandleApiCallWithRetry(
           () =>
@@ -225,20 +233,37 @@ function DashboardContent() {
           'Dashboard Locations'
         );
 
-        await makeMetricsRequest(async signal => {
-          await fetchMetricsData(
-            activeMetricsFilter as TimePeriod,
-            effectiveDateRange,
-            selectedLicencee,
-            setTotals,
-            setChartData,
-            setActiveFilters,
-            setShowDatePicker,
-            displayCurrency,
-            signal,
-            chartGranularity === 'minute' ? 'minute' : 'hourly'
-          );
-        });
+        // Fetch metrics and top-performing data in parallel
+        await Promise.all([
+          makeMetricsRequest(async signal => {
+            await fetchMetricsData(
+              activeMetricsFilter as TimePeriod,
+              effectiveDateRange,
+              selectedLicencee,
+              setTotals,
+              setChartData,
+              setActiveFilters,
+              setShowDatePicker,
+              displayCurrency,
+              signal,
+              chartGranularity === 'minute' ? 'minute' : 'hourly'
+            );
+          }),
+          makeTopPerformingRequest(async signal => {
+            await fetchTopPerformingDataHelper(
+              effectiveTab,
+              activeMetricsFilter as TimePeriod,
+              (data: TopPerformingData) => {
+                setTopPerformingData(data);
+                hasTopPerformingFetchedRef.current = true; // Mark that we've completed a fetch
+              },
+              setLoadingTopPerforming,
+              selectedLicencee,
+              displayCurrency,
+              signal
+            );
+          }),
+        ]);
 
         // Only update previous fetch params AFTER successful fetch
         // This ensures that if filters change while fetch is in progress, we can fetch again
@@ -258,6 +283,7 @@ function DashboardContent() {
         // Set loading to false on error as well, but after a brief delay
         setTimeout(() => {
           setLoadingChartData(false);
+          setLoadingTopPerforming(false);
         }, 200);
         throw error;
       }
@@ -266,6 +292,7 @@ function DashboardContent() {
     fetchMetrics();
   }, [
     activeMetricsFilter,
+    activeTab,
     selectedLicencee,
     dateRangeKey,
     effectiveDateRange,
@@ -273,6 +300,7 @@ function DashboardContent() {
     isAdminUser,
     stableHandleApiCallWithRetry,
     makeMetricsRequest,
+    makeTopPerformingRequest,
     chartGranularity,
     setGamingLocations,
     setTotals,
@@ -280,116 +308,9 @@ function DashboardContent() {
     setActiveFilters,
     setShowDatePicker,
     setLoadingChartData,
-  ]);
-
-  // Track if we're in initial load phase for automatic fallback
-  const isInitialLoadRef = useRef(true);
-  const fallbackAttemptsRef = useRef<TimePeriod[]>([]);
-  const isAutomaticFallbackRef = useRef(false);
-  const lastProcessedKeyRef = useRef<string>('');
-  const hasTopPerformingFetchedRef = useRef(false);
-
-  // Fetch top performing data when tab or filter changes
-  // Use activeMetricsFilter instead of activePieChartFilter to sync with chart/metrics
-  useEffect(() => {
-    // Fetch top performing data whenever we have a valid filter
-    if (!activeMetricsFilter) {
-      return;
-    }
-
-    // Skip if we're in automatic fallback mode to prevent loops
-    if (isAutomaticFallbackRef.current) {
-      return;
-    }
-
-    // Create a unique key combining tab and filter to detect both changes
-    const currentKey = `${activeTab}-${activeMetricsFilter}`;
-
-    // Skip if we've already processed this exact combination
-    // This prevents re-processing when the effect runs due to other dependency changes
-    if (lastProcessedKeyRef.current === currentKey) {
-      return;
-    }
-
-    const currentFilter = (activeMetricsFilter || 'Today') as TimePeriod;
-    lastProcessedKeyRef.current = currentKey;
-
-    // Reset fetch status when tab or filter changes to show skeleton during new fetch
-    hasTopPerformingFetchedRef.current = false;
-
-    // If this is not an automatic fallback and we're not in initial load, user manually changed filter
-    if (!isAutomaticFallbackRef.current && !isInitialLoadRef.current) {
-      // User manually changed filter, disable automatic fallbacks
-      fallbackAttemptsRef.current = [];
-    }
-
-    // Set loading to true before starting fetch
-    setLoadingTopPerforming(true);
-
-    makeTopPerformingRequest(async signal => {
-      await fetchTopPerformingDataHelper(
-        activeTab,
-        currentFilter,
-        (data: TopPerformingData) => {
-          setTopPerformingData(data);
-          hasTopPerformingFetchedRef.current = true; // Mark that we've completed a fetch
-
-          // If no data and we're in initial load, try fallback periods
-          if (
-            isInitialLoadRef.current &&
-            data.length === 0 &&
-            !fallbackAttemptsRef.current.includes(currentFilter)
-          ) {
-            fallbackAttemptsRef.current.push(currentFilter);
-
-            // Define fallback order: Today -> Yesterday -> 7d -> 30d
-            const fallbackOrder: TimePeriod[] = [
-              'Today',
-              'Yesterday',
-              '7d',
-              '30d',
-            ];
-            const currentIndex = fallbackOrder.indexOf(currentFilter);
-            const nextFallback = fallbackOrder[currentIndex + 1];
-
-            if (
-              nextFallback &&
-              !fallbackAttemptsRef.current.includes(nextFallback)
-            ) {
-              // Set flag BEFORE state update to prevent effect from running
-              isAutomaticFallbackRef.current = true;
-              lastProcessedKeyRef.current = ''; // Reset to allow processing of new filter
-              setActiveMetricsFilter(nextFallback);
-              // Reset flag after a delay to allow the new filter to load
-              setTimeout(() => {
-                isAutomaticFallbackRef.current = false;
-              }, 500); // Increased delay to ensure state update completes
-            } else {
-              // All fallbacks exhausted, mark initial load as complete
-              isInitialLoadRef.current = false;
-              isAutomaticFallbackRef.current = false;
-            }
-          } else if (data.length > 0) {
-            // Data found, mark initial load as complete
-            isInitialLoadRef.current = false;
-            isAutomaticFallbackRef.current = false;
-          }
-        },
-        setLoadingTopPerforming,
-        selectedLicencee,
-        displayCurrency,
-        signal
-      );
-    });
-  }, [
-    activeTab,
-    activeMetricsFilter,
-    selectedLicencee,
-    displayCurrency,
-    makeTopPerformingRequest,
-    setActiveMetricsFilter,
     setLoadingTopPerforming,
     setTopPerformingData,
+    // fetchTopPerformingDataHelper is from outer scope and doesn't need to be in deps
   ]);
 
   // Update previous totals reference when new data arrives

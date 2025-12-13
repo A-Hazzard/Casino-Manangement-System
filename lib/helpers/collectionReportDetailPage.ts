@@ -13,8 +13,8 @@
  * - Generates machine metrics content data for tables.
  */
 
-import { gsap } from 'gsap';
 import type { CollectionDocument } from '@/lib/types/collections';
+import { gsap } from 'gsap';
 
 // ============================================================================
 // Animation Utilities
@@ -42,14 +42,18 @@ export function animateDesktopTabTransition(
 
 /**
  * Calculates the total location value from collections
+ * Uses raw meter difference: (metersIn - metersOut) for each collection
+ * Note: This is different from Total Meters Gross which uses movement.gross
  * @param collections - Array of collection documents
- * @returns Total location value
+ * @returns Total location value (sum of raw meter differences)
  */
 export function calculateLocationTotal(
   collections: CollectionDocument[]
 ): number {
   if (!collections || collections.length === 0) return 0;
   return collections.reduce((total, collection) => {
+    // Calculate raw meter difference: current meters minus previous meters
+    // This represents the total physical money movement for the location
     const gross = (collection.metersIn || 0) - (collection.metersOut || 0);
     return total + gross;
   }, 0);

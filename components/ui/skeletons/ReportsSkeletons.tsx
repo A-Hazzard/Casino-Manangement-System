@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import React from 'react';
 
@@ -26,14 +20,14 @@ export const TableSkeleton = () => (
  * Skeleton component for chart loading state
  */
 export const ChartSkeleton = () => (
-  <Card>
+  <Card className="w-full">
     <CardHeader className="pb-3">
       <CardTitle className="flex items-center gap-2 text-lg">
         <Skeleton className="h-5 w-5" />
         <Skeleton className="h-6 w-20" />
       </CardTitle>
     </CardHeader>
-    <CardContent className="p-0">
+    <CardContent className="w-full p-0">
       <div className="h-[300px] w-full p-6">
         <Skeleton className="h-full w-full" />
       </div>
@@ -92,28 +86,33 @@ export const DropdownSkeleton = () => (
 
 /**
  * Skeleton component for machine hourly charts grid
+ * Note: This component does NOT include its own grid wrapper since it's rendered
+ * inside a grid container. It just returns the individual chart skeletons.
  */
 export const MachineHourlyChartsSkeleton = () => (
-  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+  <>
     {Array.from({ length: 4 }).map((_, i) => (
       <ChartSkeleton key={i} />
     ))}
-  </div>
+  </>
 );
 
 /**
  * Skeleton component for revenue analysis charts grid
+ * Note: This component does NOT include its own grid wrapper since it's rendered
+ * inside a grid container. It just returns the individual chart skeletons.
  */
 export const RevenueAnalysisChartsSkeleton = () => (
-  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <>
     {Array.from({ length: 3 }).map((_, i) => (
       <ChartSkeleton key={i} />
     ))}
-  </div>
+  </>
 );
 
 /**
  * Skeleton component for top machines table
+ * Matches the exact structure of the Top 5 Machines table
  */
 export const TopMachinesTableSkeleton = () => (
   <Card>
@@ -125,29 +124,141 @@ export const TopMachinesTableSkeleton = () => (
       <Skeleton className="h-4 w-64" />
     </CardHeader>
     <CardContent>
-      <div className="space-y-3">
-        {/* Desktop table skeleton */}
-        <div className="hidden md:block">
-          <div className="mb-3 h-10 animate-pulse rounded bg-gray-200" />
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="mb-2 h-12 animate-pulse rounded bg-gray-100"
-            />
-          ))}
-        </div>
-        {/* Mobile cards skeleton */}
-        <div className="space-y-3 md:hidden">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="rounded-lg border p-4">
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-4 w-2/3" />
+      {/* Desktop Table View Skeleton */}
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b bg-gray-50">
+              {/* 11 columns matching the actual table */}
+              <th className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-16" />
+              </th>
+              <th className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-16" />
+              </th>
+              <th className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-12" />
+              </th>
+              <th className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-20" />
+              </th>
+              <th className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-16" />
+              </th>
+              <th className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-16" />
+              </th>
+              <th className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-14" />
+              </th>
+              <th className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-24" />
+              </th>
+              <th className="p-3 text-center">
+                <Skeleton className="w-18 mx-auto h-4" />
+              </th>
+              <th className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-24" />
+              </th>
+              <th className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-20" />
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <tr key={i} className="border-b hover:bg-gray-50">
+                {/* Location column - with link icon */}
+                <td className="p-3 text-center">
+                  <div className="mx-auto flex items-center justify-center gap-1.5">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-3.5 w-3.5 rounded" />
+                  </div>
+                </td>
+                {/* Machine column - with link icon */}
+                <td className="p-3 text-center">
+                  <div className="mx-auto flex items-center justify-center gap-1.5">
+                    <Skeleton className="h-4 w-24 font-mono" />
+                    <Skeleton className="h-3.5 w-3.5 rounded" />
+                  </div>
+                </td>
+                {/* Game column */}
+                <td className="p-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-20" />
+                </td>
+                {/* Manufacturer column */}
+                <td className="p-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-16" />
+                </td>
+                {/* Money In column */}
+                <td className="p-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-20" />
+                </td>
+                {/* Win/Loss column */}
+                <td className="p-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-20" />
+                </td>
+                {/* Jackpot column */}
+                <td className="p-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-16" />
+                </td>
+                {/* Avg. Wag. per Game column */}
+                <td className="p-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-16" />
+                </td>
+                {/* Actual Hold column */}
+                <td className="p-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-12" />
+                </td>
+                {/* Theoretical Hold column */}
+                <td className="p-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-12" />
+                </td>
+                {/* Games Played column */}
+                <td className="p-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-16" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Card View Skeleton */}
+      <div className="space-y-4 md:hidden">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Card key={i} className="p-4">
+            {/* Card Header - Machine name and location/game */}
+            <div className="mb-3">
+              <Skeleton className="mb-2 h-4 w-3/4" />
+              <div className="flex items-center gap-1">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-1" />
+                <Skeleton className="h-3 w-20" />
               </div>
             </div>
-          ))}
-        </div>
+
+            {/* Tiny screen layout (< 425px) - Single column with flex justify-between */}
+            <div className="block space-y-2 text-xs sm:hidden">
+              {Array.from({ length: 7 }).map((_, j) => (
+                <div key={j} className="flex justify-between">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              ))}
+            </div>
+
+            {/* Small screen layout (425px+) - Two columns grid */}
+            <div className="hidden gap-4 text-sm sm:grid sm:grid-cols-2">
+              {Array.from({ length: 7 }).map((_, j) => (
+                <div key={j} className={j === 6 ? 'col-span-2' : ''}>
+                  <Skeleton className="mb-1 h-3 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ))}
+            </div>
+          </Card>
+        ))}
       </div>
     </CardContent>
   </Card>
@@ -843,9 +954,9 @@ export const LocationsOverviewSkeleton = () => (
               <Skeleton className="h-5 w-5" />
               <Skeleton className="h-6 w-48" />
             </CardTitle>
-            <CardDescription>
+            <div className="text-sm text-gray-500">
               <Skeleton className="h-4 w-64" />
-            </CardDescription>
+            </div>
           </div>
           <Skeleton className="h-10 w-24" />
         </div>
@@ -935,9 +1046,9 @@ export const LocationsSASEvaluationSkeleton = () => (
           <Skeleton className="h-5 w-5" />
           <Skeleton className="h-6 w-48" />
         </CardTitle>
-        <CardDescription>
+        <div className="text-sm text-gray-500">
           <Skeleton className="h-4 w-64" />
-        </CardDescription>
+        </div>
       </CardHeader>
       <CardContent>
         {/* Desktop table skeleton - 9 columns */}
@@ -1171,9 +1282,9 @@ export const LocationsRevenueAnalysisSkeleton = () => (
           <Skeleton className="h-5 w-5" />
           <Skeleton className="h-6 w-40" />
         </CardTitle>
-        <CardDescription>
+        <div className="text-sm text-gray-500">
           <Skeleton className="h-4 w-64" />
-        </CardDescription>
+        </div>
       </CardHeader>
       <CardContent>
         {/* Desktop table skeleton - 11 columns */}

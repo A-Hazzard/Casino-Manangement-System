@@ -49,25 +49,14 @@ export function getCurrentDbConnectionString(): string {
   // Always read from process.env directly (no caching) to ensure we get the latest value
   const mongoUri = process.env.MONGODB_URI as string;
 
-  // Debug logging for connection string mismatches (development mode)
-  if (process.env.NODE_ENV === 'development') {
-    if (!mongoUri) {
+  // Only log warnings for missing URI, not every call (reduces log spam)
+  if (!mongoUri) {
+    if (process.env.NODE_ENV === 'development') {
       console.warn(
         '[getCurrentDbConnectionString] MONGODB_URI is not defined in environment variables'
       );
-    } else {
-      // Log connection string prefix for debugging (without exposing credentials)
-      const uriPrefix = mongoUri.substring(0, 50) + '...';
-      console.debug(
-        `[getCurrentDbConnectionString] Current connection string: ${uriPrefix}`
-      );
     }
-  }
-
-  if (!mongoUri) {
-    throw new Error(
-      'MONGODB_URI is not defined in environment variables.'
-    );
+    throw new Error('MONGODB_URI is not defined in environment variables.');
   }
   return mongoUri;
 }

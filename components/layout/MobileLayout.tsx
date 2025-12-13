@@ -345,6 +345,8 @@ export default function MobileLayout(props: MobileLayoutProps) {
               (!props.hasTopPerformingFetched &&
                 props.topPerformingData.length === 0) ? (
                 <DashboardTopPerformingSkeleton />
+              ) : !props.hasTopPerformingFetched ? (
+                <DashboardTopPerformingSkeleton />
               ) : props.topPerformingData.length === 0 ? (
                 <NoDataMessage
                   message={`No metrics found for ${props.selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}

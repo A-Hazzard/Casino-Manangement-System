@@ -10,7 +10,14 @@ import {
   getMoneyOutColorClass,
 } from '@/lib/utils/financialColors';
 import { AggregatedLocation } from '@/shared/types/entities';
-import { ChevronDown, ChevronUp, Home, Search, Server } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Home,
+  Search,
+  Server,
+} from 'lucide-react';
 import { useState } from 'react';
 
 export type EnhancedLocationTableProps = {
@@ -159,7 +166,22 @@ export default function EnhancedLocationTable({
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between gap-2 text-lg">
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
-              <span className="truncate">{location.locationName}</span>
+              {location.location ? (
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    window.location.href = `/locations/${location.location}`;
+                  }}
+                  className="group flex items-center gap-1.5"
+                >
+                  <span className="truncate underline decoration-blue-600 decoration-2 underline-offset-2">
+                    {location.locationName}
+                  </span>
+                  <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                </button>
+              ) : (
+                <span className="truncate">{location.locationName}</span>
+              )}
               {/* SMIB Icon - Show if location has SMIB machines */}
               {Boolean(
                 (location as { hasSmib?: boolean }).hasSmib ||
@@ -398,35 +420,75 @@ export default function EnhancedLocationTable({
                         }`}
                         onClick={() => onLocationClick?.(location.location)}
                       >
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
-                            <span>{location.locationName}</span>
-                            {/* SMIB Icon - Show if location has SMIB machines */}
-                            {Boolean(
-                              (location as { hasSmib?: boolean }).hasSmib ||
-                                !(location as { noSMIBLocation?: boolean })
-                                  .noSMIBLocation
-                            ) && (
-                              <div className="group relative inline-flex flex-shrink-0">
-                                <Server className="h-4 w-4 text-blue-600" />
-                                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                                  SMIB Location
+                        <td className="whitespace-nowrap px-4 py-3 text-center">
+                          {location.location ? (
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                window.location.href = `/locations/${location.location}`;
+                              }}
+                              className="group mx-auto flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
+                            >
+                              <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                {location.locationName}
+                              </span>
+                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                              {/* SMIB Icon - Show if location has SMIB machines */}
+                              {Boolean(
+                                (location as { hasSmib?: boolean }).hasSmib ||
+                                  !(location as { noSMIBLocation?: boolean })
+                                    .noSMIBLocation
+                              ) && (
+                                <div className="group relative inline-flex flex-shrink-0">
+                                  <Server className="h-4 w-4 text-blue-600" />
+                                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                    SMIB Location
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                            {/* Local Server Icon */}
-                            {Boolean(
-                              (location as { isLocalServer?: boolean })
-                                .isLocalServer
-                            ) && (
-                              <div className="group relative inline-flex flex-shrink-0">
-                                <Home className="h-4 w-4 text-purple-600" />
-                                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                                  Local Server
+                              )}
+                              {/* Local Server Icon */}
+                              {Boolean(
+                                (location as { isLocalServer?: boolean })
+                                  .isLocalServer
+                              ) && (
+                                <div className="group relative inline-flex flex-shrink-0">
+                                  <Home className="h-4 w-4 text-purple-600" />
+                                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                    Local Server
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </div>
+                              )}
+                            </button>
+                          ) : (
+                            <div className="flex items-center justify-center gap-1.5 text-sm font-medium text-gray-900">
+                              <span>{location.locationName}</span>
+                              {/* SMIB Icon - Show if location has SMIB machines */}
+                              {Boolean(
+                                (location as { hasSmib?: boolean }).hasSmib ||
+                                  !(location as { noSMIBLocation?: boolean })
+                                    .noSMIBLocation
+                              ) && (
+                                <div className="group relative inline-flex flex-shrink-0">
+                                  <Server className="h-4 w-4 text-blue-600" />
+                                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                    SMIB Location
+                                  </div>
+                                </div>
+                              )}
+                              {/* Local Server Icon */}
+                              {Boolean(
+                                (location as { isLocalServer?: boolean })
+                                  .isLocalServer
+                              ) && (
+                                <div className="group relative inline-flex flex-shrink-0">
+                                  <Home className="h-4 w-4 text-purple-600" />
+                                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                    Local Server
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">
                           <Badge
@@ -437,7 +499,7 @@ export default function EnhancedLocationTable({
                             {location.hasSasMachines ? 'SAS' : 'Non-SAS'}
                           </Badge>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                        <td className="whitespace-nowrap px-4 py-3 text-center text-sm font-medium text-gray-900">
                           {location.totalMachines}
                         </td>
                         <td

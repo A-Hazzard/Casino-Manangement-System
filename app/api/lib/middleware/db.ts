@@ -77,7 +77,9 @@ export async function connectDB() {
         bufferCommands: false,
         connectTimeoutMS: 30000,
         serverSelectionTimeoutMS: 30000,
-        socketTimeoutMS: 30000,
+        socketTimeoutMS: 120000, // 2 minute socket timeout to prevent hanging
+        maxPoolSize: 10, // Limit connection pool size
+        minPoolSize: 2, // Maintain minimum connections
       })
       .then(mongooseInstance => {
         return mongooseInstance.connection;

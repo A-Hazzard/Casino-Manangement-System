@@ -314,88 +314,8 @@ export async function getCollectionReportById(
     },
   ]);
 
-  // Calculate location metrics from actual collections using the same logic as individual machines
-  const totalDrop = collections.reduce(
-    (sum, col) => sum + ((col.metersIn || 0) - (col.prevIn || 0)),
-    0
-  );
-  const totalCancelled = collections.reduce(
-    (sum, col) => sum + ((col.metersOut || 0) - (col.prevOut || 0)),
-    0
-  );
-
-  const totalMetersGross = collections.reduce(
-    (sum, col) => sum + (col.movement?.gross || 0),
-    0
-  );
-  const totalSasGross = collections.reduce(
-    (sum, col) => sum + (col.sasMeters?.gross || 0),
-    0
-  );
-  const totalVariation = totalMetersGross - totalSasGross;
-
-  // Get total number of machines for this location
-  let totalMachinesForLocation = collections.length; // Default fallback
-  try {
-    if (report.location) {
-      const totalMachinesCount = await Machine.countDocuments({
-        gamingLocation: report.location,
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2025-01-01') } },
-        ],
-      });
-      totalMachinesForLocation = totalMachinesCount;
-    }
-  } catch (error) {
-    console.warn('Could not count total machines for location:', error);
-    // Keep the fallback value
-  }
-
-  // Map location metrics (use calculated values for core metrics, keep report values for financial fields)
-  const locationMetrics = {
-    droppedCancelled: `${totalDrop}/${totalCancelled}`,
-    metersGross: totalMetersGross,
-    variation: totalVariation,
-    sasGross: totalSasGross,
-    locationRevenue: report.partnerProfit || 0,
-    amountUncollected: report.amountUncollected || 0,
-    amountToCollect: report.amountToCollect || 0,
-    machinesNumber: `${collections.length}/${totalMachinesForLocation}`,
-    collectedAmount: report.amountCollected || 0,
-    reasonForShortage: report.reasonShortagePayment || '-',
-    taxes: report.taxes || 0,
-    advance: report.advance || 0,
-    previousBalanceOwed: report.previousBalance || 0,
-    balanceCorrection: report.balanceCorrection || 0,
-    currentBalanceOwed: report.currentBalance || 0,
-    correctionReason: report.balanceCorrectionReas || '-',
-    variance: report.variance || '-',
-    varianceReason: report.varianceReason || '-',
-  };
-
-  // Calculate SAS-specific metrics from sasMeters data
-  const sasDropTotal = collections.reduce(
-    (sum, col) => sum + (col.sasMeters?.drop || 0),
-    0
-  );
-  const sasCancelledTotal = collections.reduce(
-    (sum, col) => sum + (col.sasMeters?.totalCancelledCredits || 0),
-    0
-  );
-  const sasGrossTotal = collections.reduce(
-    (sum, col) => sum + (col.sasMeters?.gross || 0),
-    0
-  );
-
-  // Map SAS metrics from actual collections
-  const sasMetrics = {
-    dropped: sasDropTotal,
-    cancelled: sasCancelledTotal,
-    gross: sasGrossTotal,
-  };
-
   // 🚀 OPTIMIZATION: Batch fetch ALL meter data in ONE query instead of N queries
+  // This must be done BEFORE calculating location metrics so we can use it for SAS gross
   const { Meters } = await import('@/app/api/lib/models/meters');
 
   // Collect all machine IDs and their SAS time ranges
@@ -439,6 +359,107 @@ export async function getCollectionReportById(
       { drop: m.totalDrop, cancelled: m.totalCancelled, count: m.meterCount },
     ])
   );
+
+  // Calculate location metrics from actual collections using the same logic as individual machines
+  const totalDrop = collections.reduce(
+    (sum, col) => sum + ((col.metersIn || 0) - (col.prevIn || 0)),
+    0
+  );
+  const totalCancelled = collections.reduce(
+    (sum, col) => sum + ((col.metersOut || 0) - (col.prevOut || 0)),
+    0
+  );
+
+  const totalMetersGross = collections.reduce(
+    (sum, col) => sum + (col.movement?.gross || 0),
+    0
+  );
+
+  // Calculate total SAS gross from meter data map (same method as machine metrics)
+  // This ensures consistency between machine metrics and location metrics
+  let totalSasGross = 0;
+  for (const collection of collections) {
+    if (
+      collection.machineId &&
+      collection.sasMeters?.sasStartTime &&
+      collection.sasMeters?.sasEndTime
+    ) {
+      const meterData = meterDataMap.get(collection.machineId);
+      if (meterData) {
+        totalSasGross += meterData.drop - meterData.cancelled;
+      }
+    }
+  }
+
+  const totalVariation = totalMetersGross - totalSasGross;
+
+  // Get total number of machines for this location
+  let totalMachinesForLocation = collections.length; // Default fallback
+  try {
+    if (report.location) {
+      const totalMachinesCount = await Machine.countDocuments({
+        gamingLocation: report.location,
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      });
+      totalMachinesForLocation = totalMachinesCount;
+    }
+  } catch (error) {
+    console.warn('Could not count total machines for location:', error);
+    // Keep the fallback value
+  }
+
+  // Map location metrics (use calculated values for core metrics, keep report values for financial fields)
+  const locationMetrics = {
+    droppedCancelled: `${totalDrop}/${totalCancelled}`,
+    metersGross: totalMetersGross,
+    variation: totalVariation,
+    sasGross: totalSasGross,
+    locationRevenue: report.partnerProfit || 0,
+    amountUncollected: report.amountUncollected || 0,
+    amountToCollect: report.amountToCollect || 0,
+    machinesNumber: `${collections.length}/${totalMachinesForLocation}`,
+    collectedAmount: report.amountCollected || 0,
+    reasonForShortage: report.reasonShortagePayment || '-',
+    taxes: report.taxes || 0,
+    advance: report.advance || 0,
+    previousBalanceOwed: report.previousBalance || 0,
+    balanceCorrection: report.balanceCorrection || 0,
+    currentBalanceOwed: report.currentBalance || 0,
+    correctionReason: report.balanceCorrectionReas || '-',
+    variance: report.variance || '-',
+    varianceReason: report.varianceReason || '-',
+  };
+
+  // Calculate SAS-specific metrics from meter data map (same method as machine metrics)
+  // This ensures consistency and uses the actual calculated values from meters
+  let sasDropTotal = 0;
+  let sasCancelledTotal = 0;
+  let sasGrossTotal = 0;
+
+  for (const collection of collections) {
+    if (
+      collection.machineId &&
+      collection.sasMeters?.sasStartTime &&
+      collection.sasMeters?.sasEndTime
+    ) {
+      const meterData = meterDataMap.get(collection.machineId);
+      if (meterData) {
+        sasDropTotal += meterData.drop;
+        sasCancelledTotal += meterData.cancelled;
+        sasGrossTotal += meterData.drop - meterData.cancelled;
+      }
+    }
+  }
+
+  // Map SAS metrics from meter data map (calculated above)
+  const sasMetrics = {
+    dropped: sasDropTotal,
+    cancelled: sasCancelledTotal,
+    gross: sasGrossTotal,
+  };
 
   return {
     reportId: report.locationReportId,

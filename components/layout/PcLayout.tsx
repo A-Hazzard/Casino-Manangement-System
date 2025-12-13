@@ -34,10 +34,11 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { TopPerformingItem } from '@/lib/types';
 import { PcLayoutProps } from '@/lib/types/componentProps';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
+import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
 import axios from 'axios';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 export default function PcLayout(props: PcLayoutProps) {
@@ -83,10 +84,6 @@ export default function PcLayout(props: PcLayoutProps) {
   >([]);
   const [aggLoading, setAggLoading] = useState(true);
 
-  // Track fetch to prevent duplicate calls
-  const lastAggFetchRef = useRef<string>('');
-  const aggFetchInProgressRef = useRef(false);
-
   // Only fetch locationAggregation for MapPreview when needed
   useEffect(() => {
     let aborted = false;
@@ -103,58 +100,50 @@ export default function PcLayout(props: PcLayoutProps) {
         return;
       }
 
-      // Create unique key for this fetch
-      const fetchKey = `${activeMetricsFilter}-${selectedLicencee}-${customDateRange?.startDate?.getTime()}-${customDateRange?.endDate?.getTime()}`;
+      // Create unique key for this fetch (used for deduplication)
+      const params = new URLSearchParams();
+      params.append('timePeriod', activeMetricsFilter);
 
-      // Skip if this exact fetch is already in progress
-      if (
-        aggFetchInProgressRef.current &&
-        lastAggFetchRef.current === fetchKey
-      ) {
-        return;
+      // Add custom date range if applicable
+      if (activeMetricsFilter === 'Custom' && customDateRange) {
+        if (customDateRange.startDate && customDateRange.endDate) {
+          const sd =
+            customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate as unknown as string);
+          const ed =
+            customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate as unknown as string);
+          params.append('startDate', sd.toISOString());
+          params.append('endDate', ed.toISOString());
+        }
       }
 
-      // Mark as in progress and update key
-      aggFetchInProgressRef.current = true;
-      lastAggFetchRef.current = fetchKey;
+      // Add licensee filter if applicable
+      if (selectedLicencee && selectedLicencee !== 'all') {
+        params.append('licencee', selectedLicencee);
+      }
+
+      const requestKey = `/api/locationAggregation?${params.toString()}`;
 
       setAggLoading(true);
       try {
-        const params = new URLSearchParams();
-        params.append('timePeriod', activeMetricsFilter);
+        // Use deduplication to prevent duplicate requests
+        const json = await deduplicateRequest(requestKey, async signal => {
+          const res = await axios.get(requestKey, { signal });
+          return res.data;
+        });
 
-        // Add custom date range if applicable
-        if (activeMetricsFilter === 'Custom' && customDateRange) {
-          if (customDateRange.startDate && customDateRange.endDate) {
-            const sd =
-              customDateRange.startDate instanceof Date
-                ? customDateRange.startDate
-                : new Date(customDateRange.startDate as unknown as string);
-            const ed =
-              customDateRange.endDate instanceof Date
-                ? customDateRange.endDate
-                : new Date(customDateRange.endDate as unknown as string);
-            params.append('startDate', sd.toISOString());
-            params.append('endDate', ed.toISOString());
-          }
-        }
-
-        // Add licensee filter if applicable
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.append('licencee', selectedLicencee);
-        }
-
-        const res = await axios.get(
-          `/api/locationAggregation?${params.toString()}`
-        );
-        const json = res.data;
         if (!aborted) setLocationAggregates(json.data || []);
-      } catch {
-        if (!aborted) setLocationAggregates([]);
+      } catch (error) {
+        // Ignore abort errors (request was cancelled)
+        if (!aborted && !axios.isCancel(error)) {
+          setLocationAggregates([]);
+        }
       } finally {
         if (!aborted) {
           setAggLoading(false);
-          aggFetchInProgressRef.current = false;
         }
       }
     };

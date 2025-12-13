@@ -12,6 +12,7 @@ import { fetchTopPerformingData } from '@/lib/helpers/topPerforming';
 import { classifyError } from '@/lib/utils/errorHandling';
 import { showErrorNotification } from '@/lib/utils/errorNotifications';
 import { switchFilter } from '@/lib/utils/metrics';
+import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
 import { TimePeriod } from '@/shared/types/common';
 import axios from 'axios';
 
@@ -43,9 +44,14 @@ export const loadGamingLocations = async (
       params.append('showAll', 'true');
     }
 
-    const response = await axios.get(`/api/locations?${params.toString()}`);
-    const { locations: locationsData } = response.data;
+    const requestKey = `/api/locations?${params.toString()}`;
+    // Use deduplication to prevent duplicate requests
+    const responseData = await deduplicateRequest(requestKey, async signal => {
+      const response = await axios.get(requestKey, { signal });
+      return response.data;
+    });
 
+    const { locations: locationsData } = responseData;
     setGamingLocations(locationsData);
 
     return locationsData;
@@ -116,15 +122,18 @@ export const fetchDashboardTotals = async (
 
     // Explicitly request a very high limit to ensure we get ALL filtered locations
     // This is critical for accurate totals calculation - we need all locations, not just first page
+    // Note: limit and page are removed from deduplication key, so this won't prevent deduplication
     url += `&limit=1000000&page=1`;
 
-    // Add cache-busting parameter to ensure fresh data (especially for location admins)
-    // This prevents stale cache from showing incorrect totals
-    url += `&clearCache=true`;
+    // Note: clearCache parameter removed - deduplication utility now handles this
+    // The deduplication utility will normalize the request key and prevent duplicate calls
 
     console.log('🔍 [fetchDashboardTotals] Calling API:', url);
-    const response = await axios.get(url, { signal });
-    const locationData = response.data;
+    // Use deduplication to prevent duplicate requests
+    const locationData = await deduplicateRequest(url, async abortSignal => {
+      const response = await axios.get(url, { signal: abortSignal || signal });
+      return response.data;
+    });
 
     console.log('🔍 [fetchDashboardTotals] API Response:', {
       hasData: !!locationData.data,

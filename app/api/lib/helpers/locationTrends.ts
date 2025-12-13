@@ -564,12 +564,41 @@ export async function getLocationTrends(
   }
 
   // Fetch locations to get their gaming day offsets
+  // Handle case where targetLocations might be empty or invalid
+  if (!targetLocations || targetLocations.length === 0) {
+    throw new Error('No valid location IDs provided');
+  }
+
+  // Filter out empty strings and invalid IDs
+  const validLocationIds = targetLocations.filter(id => id && id.trim() !== '');
+
+  if (validLocationIds.length === 0) {
+    throw new Error('No valid location IDs provided after filtering');
+  }
+
   const locationsData = await GamingLocations.find(
-    { _id: { $in: targetLocations } },
+    { _id: { $in: validLocationIds } },
     { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 }
   )
     .lean()
     .exec();
+
+  // If no locations found, return empty result instead of error
+  if (!locationsData || locationsData.length === 0) {
+    return {
+      locationIds: validLocationIds,
+      timePeriod,
+      startDate: (startDate || new Date()).toISOString(),
+      endDate: (endDate || new Date()).toISOString(),
+      trends: [],
+      totals: {},
+      locations: validLocationIds,
+      locationNames: {},
+      currency: displayCurrency,
+      converted: false,
+      isHourly: false,
+    };
+  }
 
   const locationsList = locationsData.map(loc => ({
     _id: String(loc._id),

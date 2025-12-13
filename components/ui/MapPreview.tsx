@@ -25,6 +25,7 @@ import MapSkeleton from '@/components/ui/MapSkeleton';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { Location } from '@/lib/types';
 import { MapPreviewProps } from '@/lib/types/componentProps';
+import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
 import { EnterFullScreenIcon, ExitFullScreenIcon } from '@radix-ui/react-icons';
 import axios from 'axios';
 import gsap from 'gsap';
@@ -395,50 +396,61 @@ export default function MapPreview(props: MapPreviewProps) {
 
     let aborted = false;
     const fetchLocationAggregation = async () => {
-      setAggLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (activeMetricsFilter === 'Today') {
-          params.append('timePeriod', 'Today');
-        } else if (activeMetricsFilter === 'Yesterday') {
-          params.append('timePeriod', 'Yesterday');
-        } else if (activeMetricsFilter === '7d') {
-          params.append('timePeriod', '7d');
-        } else if (activeMetricsFilter === '30d') {
-          params.append('timePeriod', '30d');
-        } else if (activeMetricsFilter === 'All Time') {
-          params.append('timePeriod', 'All Time');
-        } else if (activeMetricsFilter === 'Custom' && customDateRange) {
-          if (customDateRange.startDate && customDateRange.endDate) {
-            const sd =
-              customDateRange.startDate instanceof Date
-                ? customDateRange.startDate
-                : new Date(customDateRange.startDate as unknown as string);
-            const ed =
-              customDateRange.endDate instanceof Date
-                ? customDateRange.endDate
-                : new Date(customDateRange.endDate as unknown as string);
-            params.append('startDate', sd.toISOString());
-            params.append('endDate', ed.toISOString());
-          } else {
-            // No valid timePeriod, skip the request
-            return;
-          }
+      const params = new URLSearchParams();
+      if (activeMetricsFilter === 'Today') {
+        params.append('timePeriod', 'Today');
+      } else if (activeMetricsFilter === 'Yesterday') {
+        params.append('timePeriod', 'Yesterday');
+      } else if (activeMetricsFilter === '7d') {
+        params.append('timePeriod', '7d');
+      } else if (activeMetricsFilter === '30d') {
+        params.append('timePeriod', '30d');
+      } else if (activeMetricsFilter === 'All Time') {
+        params.append('timePeriod', 'All Time');
+      } else if (activeMetricsFilter === 'Custom' && customDateRange) {
+        if (customDateRange.startDate && customDateRange.endDate) {
+          const sd =
+            customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate as unknown as string);
+          const ed =
+            customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate as unknown as string);
+          params.append('startDate', sd.toISOString());
+          params.append('endDate', ed.toISOString());
         } else {
           // No valid timePeriod, skip the request
           return;
         }
-        if (selectedLicencee) {
-          params.append('licencee', selectedLicencee);
+      } else {
+        // No valid timePeriod, skip the request
+        return;
+      }
+      if (selectedLicencee) {
+        params.append('licencee', selectedLicencee);
+      }
+
+      const requestKey = `/api/locationAggregation?${params.toString()}`;
+
+      setAggLoading(true);
+      try {
+        // Use deduplication to prevent duplicate requests
+        const response = await deduplicateRequest(requestKey, async signal => {
+          const res = await axios.get(requestKey, { signal });
+          return res.data;
+        });
+
+        if (!aborted) setLocationAggregates(response.data || []);
+      } catch (error) {
+        // Ignore abort errors (request was cancelled)
+        if (!aborted && !axios.isCancel(error)) {
+          setLocationAggregates([]);
         }
-        const response = await axios.get(
-          `/api/locationAggregation?${params.toString()}`
-        );
-        if (!aborted) setLocationAggregates(response.data.data || []);
-      } catch {
-        if (!aborted) setLocationAggregates([]);
       } finally {
-        if (!aborted) setAggLoading(false);
+        if (!aborted) {
+          setAggLoading(false);
+        }
       }
     };
     fetchLocationAggregation();
@@ -587,11 +599,13 @@ export default function MapPreview(props: MapPreviewProps) {
   return (
     <>
       {/* Small Map Preview */}
-      <div className="relative w-full rounded-lg bg-container p-3 sm:p-4 shadow-md">
-        <div className="mb-2 sm:mb-3 flex items-center justify-between">
-          <h3 className="text-xs sm:text-sm font-medium text-gray-700">Map Preview</h3>
+      <div className="relative w-full rounded-lg bg-container p-3 shadow-md sm:p-4">
+        <div className="mb-2 flex items-center justify-between sm:mb-3">
+          <h3 className="text-xs font-medium text-gray-700 sm:text-sm">
+            Map Preview
+          </h3>
           <button
-            className="rounded-full bg-white p-1.5 sm:p-2 shadow-lg transition-all duration-200 ease-in-out hover:scale-110 active:scale-95 flex-shrink-0 z-[30]"
+            className="z-[30] flex-shrink-0 rounded-full bg-white p-1.5 shadow-lg transition-all duration-200 ease-in-out hover:scale-110 active:scale-95 sm:p-2"
             onClick={() => setIsModalOpen(true)}
             aria-label="Open map in fullscreen"
           >
@@ -601,9 +615,9 @@ export default function MapPreview(props: MapPreviewProps) {
 
         {/* Notification for locations without coordinates */}
         {locationsWithoutCoords.length > 0 && (
-          <div className="mb-2 sm:mb-3 rounded-md border border-yellow-200 bg-yellow-50 p-2">
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-yellow-800">
-              <MapPin className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+          <div className="mb-2 rounded-md border border-yellow-200 bg-yellow-50 p-2 sm:mb-3">
+            <div className="flex items-center gap-2 text-xs text-yellow-800 sm:text-sm">
+              <MapPin className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
               <span>
                 <strong>{locationsWithoutCoords.length}</strong> location
                 {locationsWithoutCoords.length !== 1 ? 's' : ''}
@@ -625,7 +639,7 @@ export default function MapPreview(props: MapPreviewProps) {
         <MapContainer
           center={userDefaultCenter} // Always use licensee-based center
           zoom={10}
-          className="z-0 mt-2 h-48 sm:h-56 w-full rounded-lg"
+          className="z-0 mt-2 h-48 w-full rounded-lg sm:h-56"
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -649,32 +663,32 @@ export default function MapPreview(props: MapPreviewProps) {
 
       {/* Modal for Expanded Map */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-md p-2 sm:p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-2 backdrop-blur-md sm:p-4">
           <div
             ref={modalRef}
-            className="relative w-full max-w-5xl rounded-lg bg-white p-3 sm:p-4 shadow-lg max-h-[95vh] overflow-y-auto"
+            className="relative max-h-[95vh] w-full max-w-5xl overflow-y-auto rounded-lg bg-white p-3 shadow-lg sm:p-4"
           >
-            <div className="mb-3 sm:mb-4 flex items-center justify-between">
-              <h3 className="flex items-center gap-2 text-base sm:text-lg font-semibold text-gray-800">
+            <div className="mb-3 flex items-center justify-between sm:mb-4">
+              <h3 className="flex items-center gap-2 text-base font-semibold text-gray-800 sm:text-lg">
                 <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span className="truncate">Casino Locations Map</span>
               </h3>
               <button
-                className="rounded-full bg-gray-200 p-1.5 sm:p-2 shadow-md transition-all duration-200 ease-in-out hover:scale-110 flex-shrink-0"
+                className="flex-shrink-0 rounded-full bg-gray-200 p-1.5 shadow-md transition-all duration-200 ease-in-out hover:scale-110 sm:p-2"
                 onClick={closeModal}
               >
                 <ExitFullScreenIcon className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
-            <p className="mb-3 sm:mb-4 text-xs sm:text-sm text-muted-foreground">
+            <p className="mb-3 text-xs text-muted-foreground sm:mb-4 sm:text-sm">
               Interactive map showing casino location performance metrics
             </p>
 
             {/* Notification for locations without coordinates in modal */}
             {locationsWithoutCoords.length > 0 && (
-              <div className="mb-3 sm:mb-4 rounded-md border border-yellow-200 bg-yellow-50 p-2 sm:p-3">
-                <div className="flex items-center gap-2 text-xs sm:text-sm text-yellow-800">
-                  <MapPin className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <div className="mb-3 rounded-md border border-yellow-200 bg-yellow-50 p-2 sm:mb-4 sm:p-3">
+                <div className="flex items-center gap-2 text-xs text-yellow-800 sm:text-sm">
+                  <MapPin className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
                   <span>
                     <strong>{locationsWithoutCoords.length}</strong> location
                     {locationsWithoutCoords.length !== 1 ? 's' : ''}
@@ -693,24 +707,24 @@ export default function MapPreview(props: MapPreviewProps) {
               </div>
             )}
             {/* Flex row on desktop, column on mobile: sidebar + map */}
-            <div className="flex flex-col md:flex-row gap-3 sm:gap-4">
+            <div className="flex flex-col gap-3 sm:gap-4 md:flex-row">
               {/* Sidebar */}
-              <div className="flex w-full md:w-72 flex-col">
+              <div className="flex w-full flex-col md:w-72">
                 <div className="relative mb-3 sm:mb-4">
                   <div className="relative">
-                    <Search className="absolute left-2 sm:left-3 top-1/2 h-3 w-3 sm:h-4 sm:w-4 -translate-y-1/2 transform text-gray-400" />
+                    <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 transform text-gray-400 sm:left-3 sm:h-4 sm:w-4" />
                     <input
                       type="text"
                       placeholder="Search locations..."
                       value={searchQuery}
                       onChange={e => handleSearch(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 py-1.5 sm:py-2 pl-8 sm:pl-10 pr-3 sm:pr-4 text-sm sm:text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-gray-300 py-1.5 pl-8 pr-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 sm:py-2 sm:pl-10 sm:pr-4 sm:text-base"
                     />
                   </div>
                 </div>
                 {/* Dropdown always below input */}
                 {showSearchResults && (
-                  <div className="max-h-48 sm:max-h-60 overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
+                  <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg sm:max-h-60">
                     {searchResults.length > 0 ? (
                       searchResults.map(location => {
                         const locationName =
@@ -727,10 +741,10 @@ export default function MapPreview(props: MapPreviewProps) {
                           <button
                             key={location._id}
                             onClick={() => zoomToLocation(location)}
-                            className="flex w-full items-center gap-2 border-b border-gray-200 px-3 sm:px-4 py-2 text-left last:border-b-0 hover:bg-gray-100 text-sm sm:text-base"
+                            className="flex w-full items-center gap-2 border-b border-gray-200 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-gray-100 sm:px-4 sm:text-base"
                           >
                             <MapPin
-                              className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${
+                              className={`h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4 ${
                                 hasValidCoords
                                   ? 'text-gray-400'
                                   : 'text-yellow-500'
@@ -744,7 +758,7 @@ export default function MapPreview(props: MapPreviewProps) {
                               {locationName}
                             </span>
                             {!hasValidCoords && (
-                              <span className="ml-auto rounded bg-yellow-100 px-1 text-xs text-yellow-600 flex-shrink-0">
+                              <span className="ml-auto flex-shrink-0 rounded bg-yellow-100 px-1 text-xs text-yellow-600">
                                 No map
                               </span>
                             )}
@@ -752,7 +766,7 @@ export default function MapPreview(props: MapPreviewProps) {
                         );
                       })
                     ) : (
-                      <div className="p-3 sm:p-4 text-center text-gray-500 text-sm sm:text-base">
+                      <div className="p-3 text-center text-sm text-gray-500 sm:p-4 sm:text-base">
                         No locations found matching &quot;{searchQuery}&quot;
                       </div>
                     )}
@@ -760,11 +774,11 @@ export default function MapPreview(props: MapPreviewProps) {
                 )}
               </div>
               {/* Map */}
-              <div className="relative z-0 flex-1 min-h-[300px] sm:min-h-[400px]">
+              <div className="relative z-0 min-h-[300px] flex-1 sm:min-h-[400px]">
                 <MapContainer
                   center={userDefaultCenter} // Always use licensee-based center
                   zoom={10}
-                  className="h-[50vh] sm:h-[60vh] md:h-[70vh] w-full rounded-lg"
+                  className="h-[50vh] w-full rounded-lg sm:h-[60vh] md:h-[70vh]"
                   ref={handleMapCreated}
                 >
                   <TileLayer
@@ -786,21 +800,21 @@ export default function MapPreview(props: MapPreviewProps) {
                   })}
                 </MapContainer>
                 {/* Map Legend */}
-                <div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-4 text-xs text-muted-foreground">
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground sm:mt-4 sm:gap-4">
                   <div className="flex items-center gap-1">
-                    <div className="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-green-500"></div>
+                    <div className="h-2 w-2 rounded-full bg-green-500 sm:h-3 sm:w-3"></div>
                     <span className="text-xs">Excellent</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-blue-500"></div>
+                    <div className="h-2 w-2 rounded-full bg-blue-500 sm:h-3 sm:w-3"></div>
                     <span className="text-xs">Good</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-yellow-500"></div>
+                    <div className="h-2 w-2 rounded-full bg-yellow-500 sm:h-3 sm:w-3"></div>
                     <span className="text-xs">Average</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-red-500"></div>
+                    <div className="h-2 w-2 rounded-full bg-red-500 sm:h-3 sm:w-3"></div>
                     <span className="text-xs">Poor</span>
                   </div>
                 </div>
