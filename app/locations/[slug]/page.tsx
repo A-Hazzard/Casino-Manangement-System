@@ -1988,13 +1988,13 @@ export default function LocationPage() {
                     </div>
                   </div>
                 ) : (
-                  <Image
-                    src={IMAGES.locationIcon}
-                    alt="Location Icon"
-                    width={32}
-                    height={32}
-                    className="h-4 w-4 flex-shrink-0"
-                  />
+                <Image
+                  src={IMAGES.locationIcon}
+                  alt="Location Icon"
+                  width={32}
+                  height={32}
+                  className="h-4 w-4 flex-shrink-0"
+                />
                 )}
               </h1>
               {/* Refresh icon - Hidden on members tab */}
@@ -2051,13 +2051,13 @@ export default function LocationPage() {
                     </div>
                   </div>
                 ) : (
-                  <Image
-                    src={IMAGES.locationIcon}
-                    alt="Location Icon"
-                    width={32}
-                    height={32}
-                    className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
-                  />
+                <Image
+                  src={IMAGES.locationIcon}
+                  alt="Location Icon"
+                  width={32}
+                  height={32}
+                  className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
+                />
                 )}
               </h1>
               {/* Mobile: Refresh icon - Hidden on members tab */}

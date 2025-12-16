@@ -127,22 +127,22 @@ export function useLocationMachineStats(
       setError(null);
 
       try {
-        const result = await makeRequest(async signal => {
-          const licensee = selectedLicencee || 'all';
-          const stats = await fetchMachineStats(
-            licensee,
-            locationId,
-            machineTypeFilter,
-            signal
-          );
-          return stats;
-        }, 'machine-stats');
+      const result = await makeRequest(async signal => {
+        const licensee = selectedLicencee || 'all';
+        const stats = await fetchMachineStats(
+          licensee,
+          locationId,
+          machineTypeFilter,
+          signal
+        );
+        return stats;
+      }, 'machine-stats');
 
-        // Only update state if request wasn't aborted
-        if (result !== null) {
-          setMachineStats(result);
-          setMachineStatsLoading(false);
-        } else {
+      // Only update state if request wasn't aborted
+      if (result !== null) {
+        setMachineStats(result);
+        setMachineStatsLoading(false);
+      } else {
           // If aborted, set loading to false - the next request will handle loading state
           // Keeping it true would cause stuck loading state
           setMachineStatsLoading(false);

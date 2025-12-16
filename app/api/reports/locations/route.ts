@@ -1078,7 +1078,7 @@ export async function GET(req: NextRequest) {
       filteredResults = locationResults.filter(loc => {
         // Get location properties
         const totalMachines = (loc as { totalMachines?: number }).totalMachines || 0;
-        const hasSmib = (loc as { hasSmib?: boolean }).hasSmib === true;
+          const hasSmib = (loc as { hasSmib?: boolean }).hasSmib === true;
         const isLocalServer = (loc as { isLocalServer?: boolean }).isLocalServer === true;
         const membershipEnabled = (loc as { membershipEnabled?: boolean }).membershipEnabled === true;
         const geoCoords = (loc as { geoCoords?: { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number } }).geoCoords;
@@ -1113,15 +1113,15 @@ export async function GET(req: NextRequest) {
             }
           }
           
-          if (noSmibFilter) {
+        if (noSmibFilter) {
             const hasSmibCheck = hasSmib || ((loc as { sasMachines?: number }).sasMachines || 0) > 0;
-            const noSMIB = (loc as { noSMIBLocation?: boolean }).noSMIBLocation;
+          const noSMIB = (loc as { noSMIBLocation?: boolean }).noSMIBLocation;
             if (!hasSmibCheck && noSMIB !== false) {
               matchesLocationType = true;
             }
-          }
-          
-          if (localServerFilter) {
+        }
+
+        if (localServerFilter) {
             if (isLocalServer) {
               matchesLocationType = true;
             }
@@ -1140,7 +1140,7 @@ export async function GET(req: NextRequest) {
         // If multiple are selected, location matches if it matches ANY of them
         
         const additionalMatches: boolean[] = [];
-        
+
         // MembershipOnly: Must have membership enabled
         if (membershipFilter) {
           additionalMatches.push(membershipEnabled);
@@ -1161,7 +1161,7 @@ export async function GET(req: NextRequest) {
           const matchesAdditional = additionalMatches.some(match => match === true);
           if (!matchesAdditional) {
             return false; // Doesn't match any additional filter
-          }
+        }
         }
 
         // Location matches if:

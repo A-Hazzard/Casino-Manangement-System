@@ -127,12 +127,12 @@ function LocationsPageContent() {
   // ============================================================================
   const { locationData, loading, searchLoading, error, fetchData, fetchBatch } =
     useLocationData({
-      selectedLicencee,
-      activeMetricsFilter,
-      customDateRange,
-      searchTerm,
-      selectedFilters,
-    });
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    searchTerm,
+    selectedFilters,
+  });
 
   // ============================================================================
   // Refs
@@ -1473,14 +1473,14 @@ function LocationsPageContent() {
                     {!isLoading ? (
                       currentItems.map(
                         (location: AggregatedLocation, index: number) => (
-                          <LocationCard
-                            key={`${location._id}-${index}`}
-                            location={location}
-                            onLocationClick={handleLocationClick}
-                            onEdit={() => openEditModal(location)}
-                            canManageLocations={canManageLocations}
-                            selectedFilters={selectedFilters}
-                          />
+                        <LocationCard
+                          key={`${location._id}-${index}`}
+                          location={location}
+                          onLocationClick={handleLocationClick}
+                          onEdit={() => openEditModal(location)}
+                          canManageLocations={canManageLocations}
+                          selectedFilters={selectedFilters}
+                        />
                         )
                       )
                     ) : (

@@ -198,7 +198,7 @@ export default function Chart({
     activeMetricsFilter === 'All Time';
 
   let filteredChartData = finalChartData;
-  
+
   // Only filter $0 values if it's not a daily chart for long periods
   // For daily charts with long periods, we want to show all days even if some have $0
   if (!(isDailyChart && isLongPeriod)) {

@@ -248,26 +248,26 @@ export async function getMachineChartData(
         useHourly = false;
         useMinute = false;
       } else {
-        const defaultGranularity = getDefaultChartGranularity(
-          timePeriod,
-          startDate,
-          endDate
-        );
+      const defaultGranularity = getDefaultChartGranularity(
+        timePeriod,
+        startDate,
+        endDate
+      );
 
-        // Use the default granularity, but also check if API returned minute-level data
-        if (defaultGranularity === 'minute') {
-          useMinute = true;
-          useHourly = false;
+      // Use the default granularity, but also check if API returned minute-level data
+      if (defaultGranularity === 'minute') {
+        useMinute = true;
+        useHourly = false;
+      } else {
+        // Default is hourly, but check if API returned minute data
+        if (hasMinuteLevelData) {
+          // API has minute data, but we default to hourly grouping
+          // User can manually select minute granularity to see minute-level data
+          useMinute = false;
+          useHourly = true;
         } else {
-          // Default is hourly, but check if API returned minute data
-          if (hasMinuteLevelData) {
-            // API has minute data, but we default to hourly grouping
-            // User can manually select minute granularity to see minute-level data
-            useMinute = false;
-            useHourly = true;
-          } else {
-            useMinute = false;
-            useHourly = true;
+          useMinute = false;
+          useHourly = true;
           }
         }
       }
