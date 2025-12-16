@@ -1,9 +1,9 @@
 import type {
-  Address,
-  AggregatedLocation,
-  GeoCoordinates,
-  RelationshipInfo,
-  Location as SharedLocation,
+    Address,
+    AggregatedLocation,
+    GeoCoordinates,
+    RelationshipInfo,
+    Location as SharedLocation,
 } from '@shared/types';
 
 // Re-export shared location types
@@ -56,6 +56,7 @@ export type LocationSortOption =
   | 'totalMachines'
   | 'onlineMachines';
 
+// Filter types
 export type LocationFilter =
   | 'NoSMIBLocation'
   | 'SMIBLocationsOnly'
@@ -123,10 +124,10 @@ export type LocationActionsState = {
 };
 
 import {
-  ArrayFilter,
-  DateRangeFilter,
-  MongoDBQueryValue,
-  RegexFilter,
+    ArrayFilter,
+    DateRangeFilter,
+    MongoDBQueryValue,
+    RegexFilter,
 } from './mongo';
 
 export type LocationMatchStage = {

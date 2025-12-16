@@ -1,9 +1,9 @@
 // UI Component types
-import type { ExtendedCabinetDetail } from './pages';
-import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
-import type { MachineMovementRecord } from '@/lib/types/reports';
-import type { AggregatedLocation } from '@/lib/types/location';
 import type { ActivityLog } from '@/app/api/lib/types/activityLog';
+import type { AggregatedLocation } from '@/lib/types/location';
+import type { MachineMovementRecord } from '@/lib/types/reports';
+import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
+import type { ExtendedCabinetDetail } from './pages';
 
 export type SmibConfig = {
   firmwareVersion: string;
@@ -133,6 +133,7 @@ export type LocationMultiSelectProps = {
   placeholder?: string;
   maxSelections?: number;
   className?: string;
+  showSearch?: boolean;
 };
 
 export type NewMovementModalProps = {

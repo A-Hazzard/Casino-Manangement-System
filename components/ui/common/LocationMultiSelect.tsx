@@ -35,6 +35,7 @@ export default function LocationMultiSelect({
   placeholder = 'Select locations...',
   className,
   maxSelections,
+  showSearch = true,
 }: LocationMultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -139,17 +140,19 @@ export default function LocationMultiSelect({
               )}
             </div>
             {/* Search input */}
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search locations..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="h-8 pl-8 text-sm"
-                onClick={e => e.stopPropagation()}
-              />
-            </div>
+            {showSearch && (
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search locations..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="h-8 pl-8 text-sm"
+                  onClick={e => e.stopPropagation()}
+                />
+              </div>
+            )}
           </div>
 
           {/* Select All Option */}

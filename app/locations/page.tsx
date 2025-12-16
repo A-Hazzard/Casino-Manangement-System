@@ -37,6 +37,7 @@ import PageLayout from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import ClientOnly from '@/components/ui/common/ClientOnly';
+import LocationMultiSelect from '@/components/ui/common/LocationMultiSelect';
 import { NetworkError } from '@/components/ui/errors';
 import FinancialMetricsCards from '@/components/ui/FinancialMetricsCards';
 import { Label } from '@/components/ui/label';
@@ -1243,7 +1244,7 @@ function LocationsPageContent() {
 
         {/* Search and Filter Section: Desktop search bar with SMIB filters */}
         <div className="mt-4 hidden items-center gap-4 bg-buttonActive p-4 md:flex">
-          <div className="relative min-w-0 flex-1">
+          <div className="relative min-w-[250px] flex-1">
             <Input
               type="text"
               placeholder="Search locations..."
@@ -1254,8 +1255,27 @@ function LocationsPageContent() {
             <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           </div>
 
-          {/* SMIB Filter Checkboxes */}
-          <div className="flex flex-shrink-0 items-center gap-3">
+          {/* Filter Dropdown (Visible below XL) */}
+          <div className="flex-shrink-0 xl:hidden">
+            <LocationMultiSelect
+              locations={[
+                { id: 'SMIBLocationsOnly', name: 'SMIB' },
+                { id: 'NoSMIBLocation', name: 'No SMIB' },
+                { id: 'LocalServersOnly', name: 'Local Server' },
+                { id: 'MembershipOnly', name: 'Membership' },
+                { id: 'MissingCoordinates', name: 'Missing Coordinates' },
+                { id: 'HasCoordinates', name: 'Has Coordinates' },
+              ]}
+              selectedLocations={selectedFilters as string[]}
+              onSelectionChange={(ids) => setSelectedFilters(ids as LocationFilter[])}
+              placeholder="Location Status"
+              showSearch={false}
+              className="w-[200px]"
+            />
+          </div>
+
+          {/* SMIB Filter Checkboxes (Visible on XL+) */}
+          <div className="hidden flex-wrap items-center justify-end gap-3 px-2 xl:flex">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="smibFilter"
@@ -1406,6 +1426,7 @@ function LocationsPageContent() {
               </Label>
             </div>
           </div>
+
         </div>
 
         {/* Content Section: Main data display with responsive layouts */}
