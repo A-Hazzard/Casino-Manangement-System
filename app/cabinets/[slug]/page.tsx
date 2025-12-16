@@ -35,6 +35,8 @@ import { useCabinetDetailsData, useSmibConfiguration } from '@/lib/hooks/data';
 import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
+import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -159,11 +161,73 @@ function CabinetDetailPageContent() {
       ['technician', 'admin', 'developer'].includes(role)
     );
 
-  // Show granularity selector for Today, Yesterday, or Custom
-  const showGranularitySelector =
-    activeMetricsFilter === 'Today' ||
-    activeMetricsFilter === 'Yesterday' ||
-    activeMetricsFilter === 'Custom';
+  // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
+  const showGranularitySelector = useMemo(() => {
+    if (
+      activeMetricsFilter === 'Today' ||
+      activeMetricsFilter === 'Yesterday'
+    ) {
+      return true;
+    }
+    if (
+      activeMetricsFilter === 'Custom' &&
+      customDateRange?.startDate &&
+      customDateRange?.endDate
+    ) {
+      // Check if spans more than 1 gaming day
+      try {
+        const range = getGamingDayRangeForPeriod(
+          'Custom',
+          8, // Default gaming day start hour
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate),
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate)
+        );
+        const hoursDiff =
+          (range.rangeEnd.getTime() - range.rangeStart.getTime()) /
+          (1000 * 60 * 60);
+        return hoursDiff <= 24; // Show toggle only if ≤ 24 hours
+      } catch (error) {
+        console.error('Error calculating gaming day range:', error);
+        return false;
+      }
+    }
+    return false;
+  }, [activeMetricsFilter, customDateRange]);
+
+  // Recalculate default granularity when date filters change
+  // For "Today", also recalculate periodically as time passes
+  useEffect(() => {
+    if (!activeMetricsFilter) return undefined;
+
+    const updateGranularity = () => {
+      const defaultGranularity = getDefaultChartGranularity(
+        activeMetricsFilter,
+        customDateRange?.startDate,
+        customDateRange?.endDate
+      );
+      setChartGranularity(defaultGranularity);
+    };
+
+    // Update immediately
+    updateGranularity();
+
+    // For "Today" filter, set up interval to recalculate every minute
+    // This ensures granularity switches from 'minute' to 'hourly' when 5 hours pass
+    if (activeMetricsFilter === 'Today') {
+      const interval = setInterval(updateGranularity, 60000); // Every minute
+      return () => clearInterval(interval);
+    }
+
+    return undefined;
+  }, [
+    activeMetricsFilter,
+    customDateRange?.startDate,
+    customDateRange?.endDate,
+  ]);
 
   // Check if user can edit/delete machines
   // Technicians can edit but not delete, collectors cannot edit or delete
@@ -285,7 +349,7 @@ function CabinetDetailPageContent() {
 
   // Fetch chart data for this specific machine
   useEffect(() => {
-      if (!cabinet?._id || !activeMetricsFilter) return;
+    if (!cabinet?._id || !activeMetricsFilter) return;
 
     makeChartRequest(async signal => {
       setLoadingChart(true);

@@ -12,6 +12,7 @@
  */
 
 import type { dashboardData } from '@/lib/types';
+import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
 import {
   formatISODate,
   formatLocalDateTimeString,
@@ -221,34 +222,28 @@ export async function getMachineChartData(
         useMinute = true;
       }
     } else {
-      // Auto-detect granularity based on API response and time period
-      // Default to hourly for Today, Yesterday, and Custom ranges <= 1 day
-    const shouldUseHourly =
-      timePeriod === 'Today' || timePeriod === 'Yesterday';
+      // Auto-detect granularity based on time range (5-hour threshold)
+      const defaultGranularity = getDefaultChartGranularity(
+        timePeriod,
+        startDate,
+        endDate
+      );
 
-      // For custom ranges: default to hourly if <= 1 day (unless API returns minute data and user wants to preserve it)
-      const isCustomRangeOneDayOrLess =
-      timePeriod === 'Custom' &&
-      startDate &&
-      endDate &&
-      (() => {
-          const sd =
-            startDate instanceof Date ? startDate : new Date(startDate);
-        const ed = endDate instanceof Date ? endDate : new Date(endDate);
-        const diffInMs = ed.getTime() - sd.getTime();
-        const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
-        return diffInDays <= 1;
-      })();
-
-      // Default to hourly for Today, Yesterday, and Custom ranges <= 1 day
-      // Only use minute if API explicitly returns minute-level data (user can manually select minute granularity)
-      useHourly = Boolean(shouldUseHourly || isCustomRangeOneDayOrLess);
-
-      // Only use minute-level if API explicitly returned minute data
-      // This preserves minute data when user manually selects minute granularity
-      if (hasMinuteLevelData) {
+      // Use the default granularity, but also check if API returned minute-level data
+      if (defaultGranularity === 'minute') {
         useMinute = true;
         useHourly = false;
+      } else {
+        // Default is hourly, but check if API returned minute data
+        if (hasMinuteLevelData) {
+          // API has minute data, but we default to hourly grouping
+          // User can manually select minute granularity to see minute-level data
+          useMinute = false;
+          useHourly = true;
+        } else {
+          useMinute = false;
+          useHourly = true;
+        }
       }
     }
 
@@ -260,8 +255,8 @@ export async function getMachineChartData(
       if (item.time) {
         if (useHourly) {
           // For hourly: strip minutes (convert "14:15" to "14:00")
-        const [hh] = item.time.split(':');
-        time = `${hh.padStart(2, '0')}:00`;
+          const [hh] = item.time.split(':');
+          time = `${hh.padStart(2, '0')}:00`;
         } else if (useMinute) {
           // For minute-level: preserve original time from API (e.g., "14:15")
           time = item.time;

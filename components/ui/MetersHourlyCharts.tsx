@@ -16,6 +16,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatTime12Hour } from '@/shared/utils/dateFormat';
 import { useEffect, useMemo, useState } from 'react';
 import {
   CartesianGrid,
@@ -110,25 +111,26 @@ export function MetersHourlyCharts({
     return '100%';
   }, [isMobile, chartData.length]);
 
-  // Format time for display - shorter on mobile
+  // Format time for display - shorter on mobile, 12-hour format
   const formatTimeLabel = (timeStr: string) => {
     try {
       const [day, hour] = timeStr.split(' ');
       const date = new Date(day + 'T' + hour + ':00Z');
 
+      // Convert hour to 12-hour format using formatTime12Hour utility
+      const hour12 = formatTime12Hour(hour.includes(':') ? hour : `${hour}:00`);
+
       if (isMobile) {
-        // Mobile: shorter format - just "MM-DD HH:MM" or even just "HH:MM" if same day
+        // Mobile: shorter format - "MM-DD HH:MM AM/PM"
         const month = date.toLocaleDateString('en-US', { month: 'short' });
         const dayNum = date.getDate();
-        // Extract just hour:minute from hour string (e.g., "14:00" from "14:00")
-        const timeOnly = hour.includes(':') ? hour : `${hour}:00`;
-        return `${month}-${dayNum.toString().padStart(2, '0')} ${timeOnly}`;
+        return `${month}-${dayNum.toString().padStart(2, '0')} ${hour12}`;
       }
 
-      // Desktop: full format
+      // Desktop: full format - "MM-DD HH:MM AM/PM"
       const month = date.toLocaleDateString('en-US', { month: 'short' });
       const dayNum = date.getDate();
-      return `${month}-${dayNum.toString().padStart(2, '0')} ${hour}`;
+      return `${month}-${dayNum.toString().padStart(2, '0')} ${hour12}`;
     } catch {
       return timeStr;
     }

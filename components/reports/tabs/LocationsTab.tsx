@@ -56,12 +56,14 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
 import { DashboardTotals } from '@/lib/types';
+import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
 import type { ExtendedLegacyExportData } from '@/lib/utils/exportUtils';
 import {
   getGrossColorClass,
   getMoneyInColorClass,
   getMoneyOutColorClass,
 } from '@/lib/utils/financialColors';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 // Error handling imports removed - using wrapper component instead
 
 // Recharts imports for CasinoLocationCard charts - Commented out since Top 5 Locations section is hidden
@@ -208,6 +210,80 @@ export default function LocationsTab() {
   } | null>(null);
   const [locationTrendLoading, setLocationTrendLoading] = useState(false);
 
+  // Add chart granularity state
+  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
+    () =>
+      getDefaultChartGranularity(
+        activeMetricsFilter || 'Today',
+        customDateRange?.startDate,
+        customDateRange?.endDate
+      )
+  );
+
+  // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
+  const showGranularitySelector = useMemo(() => {
+    if (
+      activeMetricsFilter === 'Today' ||
+      activeMetricsFilter === 'Yesterday'
+    ) {
+      return true;
+    }
+    if (
+      activeMetricsFilter === 'Custom' &&
+      customDateRange?.startDate &&
+      customDateRange?.endDate
+    ) {
+      // Check if spans more than 1 gaming day
+      try {
+        const range = getGamingDayRangeForPeriod(
+          'Custom',
+          8, // Default gaming day start hour
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate),
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate)
+        );
+        const hoursDiff =
+          (range.rangeEnd.getTime() - range.rangeStart.getTime()) /
+          (1000 * 60 * 60);
+        return hoursDiff <= 24; // Show toggle only if ≤ 24 hours
+      } catch (error) {
+        console.error('Error calculating gaming day range:', error);
+        return false;
+      }
+    }
+    return false;
+  }, [activeMetricsFilter, customDateRange]);
+
+  // Recalculate default granularity when date filters change
+  useEffect(() => {
+    const updateGranularity = () => {
+      const defaultGranularity = getDefaultChartGranularity(
+        activeMetricsFilter || 'Today',
+        customDateRange?.startDate,
+        customDateRange?.endDate
+      );
+      setChartGranularity(defaultGranularity);
+    };
+
+    // Update immediately
+    updateGranularity();
+
+    // For "Today" filter, set up interval to recalculate every minute
+    if (activeMetricsFilter === 'Today') {
+      const interval = setInterval(updateGranularity, 60000); // Every minute
+      return () => clearInterval(interval);
+    }
+
+    return undefined;
+  }, [
+    activeMetricsFilter,
+    customDateRange?.startDate,
+    customDateRange?.endDate,
+  ]);
+
   // Two-phase loading: gaming locations (fast) + financial data (slow)
   const [gamingLocations, setGamingLocations] = useState<
     Record<string, unknown>[]
@@ -229,9 +305,16 @@ export default function LocationsTab() {
   // const [sasLoading, setSasLoading] = useState(false);
   // const [revenueLoading, setRevenueLoading] = useState(false);
 
+  // Track if user has manually selected a location (prevents auto-selection after manual selection)
+  const hasManuallySelectedLocationRef = useRef(false);
+
   // Helper function to set current selected locations based on active tab
   const setCurrentSelectedLocations = useCallback(
     (locations: string[]) => {
+      // Mark as manually selected if locations array is not empty and was set by user action
+      if (locations.length > 0) {
+        hasManuallySelectedLocationRef.current = true;
+      }
       if (
         activeTab === 'sas-evaluation' ||
         activeTab === 'location-evaluation'
@@ -269,6 +352,59 @@ export default function LocationsTab() {
   const [allLocationsForDropdown, setAllLocationsForDropdown] = useState<
     AggregatedLocation[]
   >([]);
+
+  // ============================================================================
+  // Computed Values - Financial Totals for Selected Locations
+  // ============================================================================
+  // Calculate totals from all selected locations (not paginated) for location-evaluation and location-revenue tabs
+  // Overview tab uses metricsTotals from fetchDashboardTotals (all locations)
+  const selectedLocationsTotals = useMemo(() => {
+    // Only calculate for location-evaluation and location-revenue tabs
+    if (
+      activeTab !== 'location-evaluation' &&
+      activeTab !== 'sas-evaluation' &&
+      activeTab !== 'location-revenue'
+    ) {
+      return null;
+    }
+
+    // Get selected locations based on active tab
+    const currentSelectedLocations =
+      activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
+        ? selectedSasLocations
+        : selectedRevenueLocations;
+
+    // Filter accumulated locations by selected locations
+    const filteredLocations = accumulatedLocations.filter(loc =>
+      currentSelectedLocations.includes(loc.location || loc._id)
+    );
+
+    // Calculate totals from filtered locations
+    return filteredLocations.reduce(
+      (acc, loc) => ({
+        moneyIn: acc.moneyIn + (loc.moneyIn || 0),
+        moneyOut: acc.moneyOut + (loc.moneyOut || 0),
+        gross: acc.gross + (loc.gross || 0),
+      }),
+      { moneyIn: 0, moneyOut: 0, gross: 0 }
+    );
+  }, [
+    activeTab,
+    accumulatedLocations,
+    selectedSasLocations,
+    selectedRevenueLocations,
+  ]);
+
+  // Determine which totals to use based on active tab
+  const displayTotals = useMemo(() => {
+    // Overview tab uses metricsTotals from fetchDashboardTotals
+    if (activeTab === 'overview') {
+      // Return metricsTotals if available, otherwise return null (will show loading skeleton)
+      return metricsTotals;
+    }
+    // Other tabs use calculated totals from selected locations
+    return selectedLocationsTotals;
+  }, [activeTab, metricsTotals, selectedLocationsTotals]);
 
   // ============================================================================
   // Abort Controllers
@@ -315,7 +451,7 @@ export default function LocationsTab() {
   // pagesPerBatch is a constant (5) so adding it to deps is safe but unnecessary
   const calculateBatchNumber = useCallback(
     (page: number) => {
-    return Math.floor(page / pagesPerBatch) + 1;
+      return Math.floor(page / pagesPerBatch) + 1;
     },
     [pagesPerBatch]
   );
@@ -361,10 +497,23 @@ export default function LocationsTab() {
         activeMetricsFilter === '30d'
       ) {
         timePeriod = '30d';
+      } else if (activeMetricsFilter === 'Quarterly') {
+        timePeriod = 'Quarterly';
       } else if (activeMetricsFilter === 'All Time') {
         timePeriod = 'All Time';
       } else if (activeMetricsFilter === 'Custom') {
         timePeriod = 'Custom';
+      }
+
+      // Determine locations to fetch based on active tab
+      let locationsToFetch: string[] = [];
+      if (
+        activeTab === 'sas-evaluation' ||
+        activeTab === 'location-evaluation'
+      ) {
+        locationsToFetch = selectedSasLocations;
+      } else if (activeTab === 'location-revenue') {
+        locationsToFetch = selectedRevenueLocations;
       }
 
       return await fetchAggregatedLocationsData(
@@ -375,10 +524,19 @@ export default function LocationsTab() {
         displayCurrency,
         page,
         limit,
-        signal
+        signal,
+        locationsToFetch
       );
     },
-    [selectedLicencee, activeMetricsFilter, customDateRange, displayCurrency]
+    [
+      activeMetricsFilter,
+      customDateRange,
+      displayCurrency,
+      selectedLicencee,
+      activeTab,
+      selectedSasLocations,
+      selectedRevenueLocations,
+    ]
   );
 
   // Simplified data fetching for locations with batch loading
@@ -402,8 +560,38 @@ export default function LocationsTab() {
         setLoadedBatches(new Set());
         setCurrentPage(0);
 
-        // Fetch first batch (50 items) for table
-        const firstBatchResult = await fetchBatch(1, itemsPerBatch, signal);
+        // Determine effective selected locations
+        const currentSelectedLocations =
+          activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
+            ? selectedSasLocations
+            : activeTab === 'location-revenue'
+              ? selectedRevenueLocations
+              : [];
+
+        const effectiveLocations =
+          _specificLocations || currentSelectedLocations;
+
+        // Optimization: For SAS Evaluation and Revenue Analysis, do NOT fetch table data
+        // until locations are explicitly selected. This prevents slow initial load.
+        // For 'overview' or other tabs, we might still want default data.
+        const shouldSkipTableFetch =
+          (activeTab === 'sas-evaluation' ||
+            activeTab === 'location-evaluation' ||
+            activeTab === 'location-revenue') &&
+          effectiveLocations.length === 0;
+
+        // Fetch first batch (50 items) for table ONLY if we shouldn't skip
+        let firstBatchResult;
+
+        if (shouldSkipTableFetch) {
+          console.log('⚡ Skipping initial table fetch for optimization');
+          firstBatchResult = {
+            data: [],
+            pagination: { totalCount: 0, totalPages: 0, total: 0 },
+          };
+        } else {
+          firstBatchResult = await fetchBatch(1, itemsPerBatch, signal);
+        }
 
         return firstBatchResult;
       });
@@ -439,6 +627,7 @@ export default function LocationsTab() {
           limit: '1000', // Get all locations for dropdown
           page: '1',
           showAllLocations: 'true',
+          summary: 'true', // Use fast summary mode (avoids expensive financial aggregation)
         };
 
         if (selectedLicencee && selectedLicencee !== 'all') {
@@ -475,6 +664,8 @@ export default function LocationsTab() {
           activeMetricsFilter === '30d'
         ) {
           params.timePeriod = '30d';
+        } else if (activeMetricsFilter === 'Quarterly') {
+          params.timePeriod = 'Quarterly';
         } else if (activeMetricsFilter === 'All Time') {
           params.timePeriod = 'All Time';
         } else if (
@@ -771,6 +962,8 @@ export default function LocationsTab() {
           activeMetricsFilter === '30d'
         ) {
           params.timePeriod = '30d';
+        } else if (activeMetricsFilter === 'Quarterly') {
+          params.timePeriod = 'Quarterly';
         } else if (activeMetricsFilter === 'All Time') {
           params.timePeriod = 'All Time';
         } else if (
@@ -778,6 +971,7 @@ export default function LocationsTab() {
           customDateRange?.startDate &&
           customDateRange?.endDate
         ) {
+          params.timePeriod = 'Custom';
           const sd =
             customDateRange.startDate instanceof Date
               ? customDateRange.startDate
@@ -821,8 +1015,13 @@ export default function LocationsTab() {
         setTopMachinesData(filteredMachines);
       } catch (error) {
         if (!axios.isCancel(error)) {
-          console.error('Error fetching top machines:', error);
-          toast.error('Failed to fetch top machines data', {
+          const errorMessage = axios.isAxiosError(error)
+            ? error.response?.data?.error || error.message
+            : error instanceof Error
+              ? error.message
+              : 'Failed to fetch top machines data';
+          console.error('Error fetching top machines:', errorMessage, error);
+          toast.error(`Failed to fetch top machines: ${errorMessage}`, {
             duration: 3000,
           });
           setTopMachinesData([]);
@@ -847,156 +1046,196 @@ export default function LocationsTab() {
   // Function to fetch location trend data (daily or hourly based on time period)
   const fetchLocationTrendData = useCallback(
     async (overrideLocationIds?: string[]) => {
-    const currentSelectedLocations =
-      activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
-        ? selectedSasLocations
-        : selectedRevenueLocations;
+      const currentSelectedLocations =
+        activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
+          ? selectedSasLocations
+          : selectedRevenueLocations;
 
       // Use override location IDs if provided, otherwise use selected locations
       const locationsToFetch = overrideLocationIds || currentSelectedLocations;
 
       if (locationsToFetch.length === 0) {
-      setLocationTrendData(null);
-      return;
-    }
+        setLocationTrendData(null);
+        return;
+      }
 
-    await makeTrendDataRequest(async signal => {
-      setLocationTrendLoading(true);
-      setLoading(true); // Set reports store loading state
-      try {
-        const params: Record<string, string> = {
+      await makeTrendDataRequest(async signal => {
+        setLocationTrendLoading(true);
+        setLoading(true); // Set reports store loading state
+        try {
+          const params: Record<string, string> = {
             locationIds: locationsToFetch.join(','),
-        };
+          };
 
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.licencee = selectedLicencee;
-        }
+          if (selectedLicencee && selectedLicencee !== 'all') {
+            params.licencee = selectedLicencee;
+          }
 
-        // Add currency parameter
-        if (displayCurrency) {
-          params.currency = displayCurrency;
-        }
+          // Add currency parameter
+          if (displayCurrency) {
+            params.currency = displayCurrency;
+          }
 
-        // Add date parameters
-        if (activeMetricsFilter === 'Today') {
-          params.timePeriod = 'Today';
-        } else if (activeMetricsFilter === 'Yesterday') {
-          params.timePeriod = 'Yesterday';
-        } else if (
-          activeMetricsFilter === 'last7days' ||
-          activeMetricsFilter === '7d'
-        ) {
-          params.timePeriod = '7d';
-        } else if (
-          activeMetricsFilter === 'last30days' ||
-          activeMetricsFilter === '30d'
-        ) {
-          params.timePeriod = '30d';
-        } else if (activeMetricsFilter === 'All Time') {
-          params.timePeriod = 'All Time';
-        } else if (
-          activeMetricsFilter === 'Custom' &&
-          customDateRange?.startDate &&
-          customDateRange?.endDate
-        ) {
-          const sd =
-            customDateRange.startDate instanceof Date
-              ? customDateRange.startDate
-              : new Date(customDateRange.startDate as string);
-          const ed =
-            customDateRange.endDate instanceof Date
-              ? customDateRange.endDate
-              : new Date(customDateRange.endDate as string);
+          // Add date parameters
+          if (activeMetricsFilter === 'Today') {
+            params.timePeriod = 'Today';
+          } else if (activeMetricsFilter === 'Yesterday') {
+            params.timePeriod = 'Yesterday';
+          } else if (
+            activeMetricsFilter === 'last7days' ||
+            activeMetricsFilter === '7d'
+          ) {
+            params.timePeriod = '7d';
+          } else if (
+            activeMetricsFilter === 'last30days' ||
+            activeMetricsFilter === '30d'
+          ) {
+            params.timePeriod = '30d';
+          } else if (activeMetricsFilter === 'All Time') {
+            params.timePeriod = 'All Time';
+          } else if (
+            activeMetricsFilter === 'Custom' &&
+            customDateRange?.startDate &&
+            customDateRange?.endDate
+          ) {
+            const sd =
+              customDateRange.startDate instanceof Date
+                ? customDateRange.startDate
+                : new Date(customDateRange.startDate as string);
+            const ed =
+              customDateRange.endDate instanceof Date
+                ? customDateRange.endDate
+                : new Date(customDateRange.endDate as string);
 
-          // Send dates in local format (YYYY-MM-DD) to avoid double timezone conversion
-          params.startDate = sd.toISOString().split('T')[0];
-          params.endDate = ed.toISOString().split('T')[0];
-        } else {
-          params.timePeriod = 'Today';
-        }
+            // Send dates in local format (YYYY-MM-DD) to avoid double timezone conversion
+            params.startDate = sd.toISOString().split('T')[0];
+            params.endDate = ed.toISOString().split('T')[0];
+          } else {
+            params.timePeriod = 'Today';
+          }
 
-        const response = await axios.get('/api/analytics/location-trends', {
-          params,
-          signal,
+          // Add granularity parameter
+          if (chartGranularity) {
+            params.granularity = chartGranularity;
+          }
+
+          const response = await axios.get('/api/analytics/location-trends', {
+            params,
+            signal,
             timeout: 120000, // 2 minute timeout to prevent hanging
-        });
-        setLocationTrendData(response.data);
-      } catch (error) {
-        if (!axios.isCancel(error)) {
-          console.error('Error fetching location trend data:', error);
+          });
+          setLocationTrendData(response.data);
+        } catch (error) {
+          if (!axios.isCancel(error)) {
+            console.error('Error fetching location trend data:', error);
             // Don't show toast for 500 errors - they're logged in console
             // Only show toast for network errors or other issues
             if (axios.isAxiosError(error) && error.response?.status !== 500) {
-          toast.error('Failed to fetch location trend data', {
-            duration: 3000,
-          });
+              toast.error('Failed to fetch location trend data', {
+                duration: 3000,
+              });
             }
-          setLocationTrendData(null);
-        }
-      } finally {
-        setLocationTrendLoading(false);
+            setLocationTrendData(null);
+          }
+        } finally {
+          setLocationTrendLoading(false);
           setLoading(false); // Clear reports store loading state
-      }
-    });
+        }
+      });
     },
     [
-    selectedSasLocations,
-    selectedRevenueLocations,
-    activeTab,
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-    displayCurrency,
-    setLoading,
-    makeTrendDataRequest,
+      selectedSasLocations,
+      selectedRevenueLocations,
+      activeTab,
+      selectedLicencee,
+      activeMetricsFilter,
+      customDateRange,
+      displayCurrency,
+      setLoading,
+      makeTrendDataRequest,
+
+      chartGranularity, // Included to trigger refetch when granularity changes (used in params.granularity)
     ]
   );
 
   // Separate useEffect to fetch metrics totals independently (like dashboard does)
   // This ensures metrics cards always show totals from all locations, separate from table pagination
+  // Fetch metrics totals only for overview tab (uses fetchDashboardTotals for all locations)
+  // Other tabs calculate totals from selected locations in accumulatedLocations
   useEffect(() => {
     const fetchMetrics = async () => {
+      // Only fetch dashboard totals for overview tab
+      if (activeTab !== 'overview') {
+        // Don't reset loading state or metricsTotals when switching away from overview
+        // This preserves the data when switching back
+        return;
+      }
+
       if (!activeMetricsFilter) {
         console.log(
           '🔍 [LocationsTab] Skipping metrics fetch - no activeMetricsFilter'
         );
+        setMetricsTotalsLoading(false);
         return;
       }
 
       // Removed excessive debug logging
 
-      await makeMetricsRequest(async _signal => {
+      await makeMetricsRequest(async signal => {
         setMetricsTotalsLoading(true);
         try {
-          await new Promise<void>((resolve, reject) => {
-            // Note: fetchDashboardTotals doesn't support signal yet, but wrapping prevents overlapping calls
-            fetchDashboardTotals(
-              activeMetricsFilter || 'Today',
-              customDateRange || {
-                startDate: new Date(),
-                endDate: new Date(),
-              },
-              selectedLicencee,
-              totals => {
-                console.log(
-                  '🔍 [LocationsTab] fetchDashboardTotals callback received:',
-                  {
-                    totals,
-                    moneyIn: totals?.moneyIn,
-                    moneyOut: totals?.moneyOut,
-                    gross: totals?.gross,
-                  }
-                );
-                setMetricsTotals(totals);
-                console.log(
-                  '🔍 [LocationsTab] setMetricsTotals called with:',
-                  totals
-                );
-                resolve();
-              },
-              displayCurrency
-            ).catch(reject);
-          });
+          // Create effective date range matching dashboard pattern
+          // For Custom period, use customDateRange; otherwise use default (today's range)
+          let effectiveDateRange: { startDate: Date; endDate: Date };
+          if (
+            activeMetricsFilter === 'Custom' &&
+            customDateRange?.startDate &&
+            customDateRange?.endDate
+          ) {
+            // Ensure Date objects for Custom period
+            effectiveDateRange = {
+              startDate:
+                customDateRange.startDate instanceof Date
+                  ? customDateRange.startDate
+                  : new Date(customDateRange.startDate),
+              endDate:
+                customDateRange.endDate instanceof Date
+                  ? customDateRange.endDate
+                  : new Date(customDateRange.endDate),
+            };
+          } else {
+            // For non-Custom periods, use today's date range (same as dashboard)
+            const today = new Date();
+            const start = new Date(today);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(today);
+            end.setHours(23, 59, 59, 999);
+            effectiveDateRange = { startDate: start, endDate: end };
+          }
+
+          await fetchDashboardTotals(
+            activeMetricsFilter || 'Today',
+            effectiveDateRange,
+            selectedLicencee,
+            totals => {
+              console.log(
+                '🔍 [LocationsTab] fetchDashboardTotals callback received:',
+                {
+                  totals,
+                  moneyIn: totals?.moneyIn,
+                  moneyOut: totals?.moneyOut,
+                  gross: totals?.gross,
+                }
+              );
+              setMetricsTotals(totals);
+              console.log(
+                '🔍 [LocationsTab] setMetricsTotals called with:',
+                totals
+              );
+            },
+            displayCurrency,
+            signal
+          );
         } catch (error) {
           if (!axios.isCancel(error)) {
             console.error(
@@ -1013,12 +1252,16 @@ export default function LocationsTab() {
     };
 
     fetchMetrics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    activeTab,
     activeMetricsFilter,
     selectedLicencee,
-    customDateRange,
+    customDateRange?.startDate?.getTime(),
+    customDateRange?.endDate?.getTime(),
     displayCurrency,
-    makeMetricsRequest,
+    // makeMetricsRequest is stable from useAbortableRequest hook, but including it causes dependency array size issues
+    // The hook ensures requests are properly aborted when dependencies change
   ]);
 
   // Consolidated useEffect to handle all data fetching
@@ -1073,9 +1316,9 @@ export default function LocationsTab() {
       // Only clear data if we're not on revenue tab with paginated locations
       // On revenue tab, we want to keep data for displayed locations
       if (activeTab !== 'location-revenue') {
-      setTopMachinesData([]);
-      setLocationTrendData(null);
-    }
+        setTopMachinesData([]);
+        setLocationTrendData(null);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -1087,6 +1330,7 @@ export default function LocationsTab() {
     selectedSasLocations,
     selectedRevenueLocations,
     displayCurrency,
+    chartGranularity, // Include to trigger refetch when granularity changes
     // Don't include function references in dependencies to prevent cascading re-renders
     // fetchLocationDataAsync,
     // fetchTopMachines,
@@ -1234,9 +1478,8 @@ export default function LocationsTab() {
 
   // Auto-select location if only one is available for SAS or Revenue tabs
   useEffect(() => {
-    // Only auto-select for SAS evaluation and revenue analysis tabs
+    // Only auto-select for location-evaluation and location-revenue tabs
     if (
-      activeTab !== 'sas-evaluation' &&
       activeTab !== 'location-evaluation' &&
       activeTab !== 'location-revenue'
     ) {
@@ -1245,20 +1488,24 @@ export default function LocationsTab() {
 
     // Get available locations based on tab
     const availableLocations =
-      activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
+      activeTab === 'location-evaluation'
         ? allLocationsForDropdown.filter(loc => (loc.sasMachines as number) > 0)
         : allLocationsForDropdown;
 
     // Get current selected locations
     const currentSelectedLocations =
-      activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
+      activeTab === 'location-evaluation'
         ? selectedSasLocations
         : selectedRevenueLocations;
 
-    // Auto-select if only one location is available and none is currently selected
+    // Auto-select ONLY if:
+    // 1. Exactly one location is available
+    // 2. No location is currently selected
+    // 3. User has not manually selected a location before
     if (
       availableLocations.length === 1 &&
-      currentSelectedLocations.length === 0
+      currentSelectedLocations.length === 0 &&
+      !hasManuallySelectedLocationRef.current
     ) {
       const singleLocationId = String(
         availableLocations[0].location || availableLocations[0]._id || ''
@@ -1277,6 +1524,11 @@ export default function LocationsTab() {
     selectedRevenueLocations,
     setCurrentSelectedLocations,
   ]);
+
+  // Reset manual selection flag when tab changes
+  useEffect(() => {
+    hasManuallySelectedLocationRef.current = false;
+  }, [activeTab]);
 
   // Initialize from URL
   useEffect(() => {
@@ -1933,18 +2185,18 @@ export default function LocationsTab() {
                   <RefreshCw className="mr-2 h-4 w-4" /> Refresh
                 </Button>
               </div>
-              {metricsLoading ? (
+              {metricsLoading || metricsTotalsLoading ? (
                 <SummaryCardsSkeleton />
-              ) : metricsOverview ? (
+              ) : metricsTotals ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                   <Card>
                     <CardContent className="p-4">
                       <div
-                        className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsOverview.totalGross)}`}
+                        className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsTotals.gross || 0)}`}
                       >
                         {shouldShowCurrency()
-                          ? formatAmount(metricsOverview.totalGross)
-                          : `$${metricsOverview.totalGross.toLocaleString()}`}
+                          ? formatAmount(metricsTotals.gross || 0)
+                          : `$${(metricsTotals.gross || 0).toLocaleString()}`}
                       </div>
                       <p className="break-words text-xs text-muted-foreground sm:text-sm">
                         Total Gross Revenue
@@ -1954,11 +2206,11 @@ export default function LocationsTab() {
                   <Card>
                     <CardContent className="p-4">
                       <div
-                        className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsOverview.totalDrop)}`}
+                        className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsTotals.moneyIn || 0)}`}
                       >
                         {shouldShowCurrency()
-                          ? formatAmount(metricsOverview.totalDrop)
-                          : `$${metricsOverview.totalDrop.toLocaleString()}`}
+                          ? formatAmount(metricsTotals.moneyIn || 0)
+                          : `$${(metricsTotals.moneyIn || 0).toLocaleString()}`}
                       </div>
                       <p className="break-words text-xs text-muted-foreground sm:text-sm">
                         Money In
@@ -1968,11 +2220,11 @@ export default function LocationsTab() {
                   <Card>
                     <CardContent className="p-4">
                       <div
-                        className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsOverview.totalCancelledCredits, metricsOverview.totalDrop)}`}
+                        className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsTotals.moneyOut || 0, metricsTotals.moneyIn || 0)}`}
                       >
                         {shouldShowCurrency()
-                          ? formatAmount(metricsOverview.totalCancelledCredits)
-                          : `$${metricsOverview.totalCancelledCredits.toLocaleString()}`}
+                          ? formatAmount(metricsTotals.moneyOut || 0)
+                          : `$${(metricsTotals.moneyOut || 0).toLocaleString()}`}
                       </div>
                       <p className="break-words text-xs text-muted-foreground sm:text-sm">
                         Money Out
@@ -1982,16 +2234,33 @@ export default function LocationsTab() {
                   <Card>
                     <CardContent className="p-4">
                       <div className="break-words text-lg font-bold text-blue-600 sm:text-xl lg:text-2xl">
-                        {metricsOverview.onlineMachines}/
-                        {metricsOverview.totalMachines}
+                        {allLocationsForDropdown.reduce(
+                          (sum: number, loc: AggregatedLocation) =>
+                            sum + (loc.onlineMachines || 0),
+                          0
+                        )}
+                        /
+                        {allLocationsForDropdown.reduce(
+                          (sum: number, loc: AggregatedLocation) =>
+                            sum + (loc.totalMachines || 0),
+                          0
+                        )}
                       </div>
                       <p className="break-words text-xs text-muted-foreground sm:text-sm">
                         Online Machines
                       </p>
                       <Progress
                         value={
-                          (metricsOverview.onlineMachines /
-                            metricsOverview.totalMachines) *
+                          (allLocationsForDropdown.reduce(
+                            (sum: number, loc: AggregatedLocation) =>
+                              sum + (loc.onlineMachines || 0),
+                            0
+                          ) /
+                            (allLocationsForDropdown.reduce(
+                              (sum: number, loc: AggregatedLocation) =>
+                                sum + (loc.totalMachines || 0),
+                              0
+                            ) || 1)) *
                           100
                         }
                         className="mt-2"
@@ -2537,7 +2806,7 @@ export default function LocationsTab() {
                     Location Selection & Controls
                   </CardTitle>
                   <CardDescription>
-                    Select up to 5 SAS-enabled locations to filter data (SAS
+                    Select up to 3 SAS-enabled locations to filter data (SAS
                     locations only)
                   </CardDescription>
                 </CardHeader>
@@ -2545,9 +2814,11 @@ export default function LocationsTab() {
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
                       <label className="mb-2 block text-sm font-medium text-gray-700">
-                        Select SAS Locations (Max 5)
+                        Select SAS Locations (Max 3)
                       </label>
-                      {locationsLoading ? (
+                      {/* Only show skeleton if loading AND dropdown has no data yet */}
+                      {locationsLoading &&
+                      allLocationsForDropdown.length === 0 ? (
                         <div className="h-10 w-full animate-pulse rounded-md bg-gray-100" />
                       ) : (
                         <LocationMultiSelect
@@ -2579,18 +2850,18 @@ export default function LocationsTab() {
                               : selectedRevenueLocations
                           }
                           onSelectionChange={newSelection => {
-                            // Limit to 5 selections
-                            if (newSelection.length <= 5) {
+                            // Limit to 3 selections for location-evaluation and location-revenue tabs
+                            if (newSelection.length <= 3) {
                               setCurrentSelectedLocations(newSelection);
                             } else {
                               toast.error(
-                                'Maximum 5 locations can be selected',
+                                'Maximum 3 locations can be selected',
                                 { duration: 3000 }
                               );
                             }
                           }}
                           placeholder="Choose SAS locations to filter..."
-                          maxSelections={5}
+                          maxSelections={3}
                         />
                       )}
                     </div>
@@ -2632,6 +2903,19 @@ export default function LocationsTab() {
               {/* Show skeleton loaders when data is loading */}
               {metricsLoading || paginationLoading ? (
                 <LocationsSASEvaluationSkeleton />
+              ) : (activeTab === 'location-evaluation' ||
+                  activeTab === 'location-revenue') &&
+                (activeTab === 'location-evaluation'
+                  ? selectedSasLocations
+                  : selectedRevenueLocations
+                ).length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <p className="text-gray-500">
+                      Please select locations to view data
+                    </p>
+                  </CardContent>
+                </Card>
               ) : paginatedLocations.length > 0 ? (
                 <>
                   {/* Enhanced Location Table */}
@@ -2704,34 +2988,24 @@ export default function LocationsTab() {
 
                   {/* Summary Cards for SAS Evaluation - Show when locations are available */}
                   {paginatedLocations.length > 0 &&
-                    (locationsLoading ? (
+                    (locationsLoading || metricsTotalsLoading ? (
                       <SummaryCardsSkeleton />
                     ) : (
                       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
                         <Card>
                           <CardContent className="p-4">
                             <div
-                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsTotals?.gross || 0)}`}
+                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(
+                                displayTotals?.gross || 0
+                              )}`}
                             >
-                              {(() => {
-                                const value = metricsTotals?.gross || 0;
-                                console.log(
-                                  '🔍 [LocationsTab] Rendering Gross card (SAS Evaluation):',
-                                  {
-                                    metricsTotals,
-                                    value,
-                                    isLoading: metricsTotalsLoading,
-                                    shouldShowCurrency: shouldShowCurrency(),
-                                  }
-                                );
-                                return metricsTotalsLoading ? (
-                                  <Skeleton className="h-8 w-24" />
-                                ) : shouldShowCurrency() ? (
-                                  formatAmount(value)
-                                ) : (
-                                  `$${value.toLocaleString()}`
-                                );
-                              })()}
+                              {metricsTotalsLoading ? (
+                                <Skeleton className="h-8 w-24" />
+                              ) : shouldShowCurrency() ? (
+                                formatAmount(displayTotals?.gross || 0)
+                              ) : (
+                                `$${(displayTotals?.gross || 0).toLocaleString()}`
+                              )}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
                               Total Net Win (Gross)
@@ -2744,27 +3018,17 @@ export default function LocationsTab() {
                         <Card>
                           <CardContent className="p-4">
                             <div
-                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsTotals?.moneyIn || 0)}`}
+                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(
+                                displayTotals?.moneyIn || 0
+                              )}`}
                             >
-                              {(() => {
-                                const value = metricsTotals?.moneyIn || 0;
-                                console.log(
-                                  '🔍 [LocationsTab] Rendering MoneyIn card (SAS Evaluation):',
-                                  {
-                                    metricsTotals,
-                                    value,
-                                    isLoading: metricsTotalsLoading,
-                                    shouldShowCurrency: shouldShowCurrency(),
-                                  }
-                                );
-                                return metricsTotalsLoading ? (
-                                  <Skeleton className="h-8 w-24" />
-                                ) : shouldShowCurrency() ? (
-                                  formatAmount(value)
-                                ) : (
-                                  `$${value.toLocaleString()}`
-                                );
-                              })()}
+                              {metricsTotalsLoading ? (
+                                <Skeleton className="h-8 w-24" />
+                              ) : shouldShowCurrency() ? (
+                                formatAmount(displayTotals?.moneyIn || 0)
+                              ) : (
+                                `$${(displayTotals?.moneyIn || 0).toLocaleString()}`
+                              )}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
                               Money In
@@ -2774,27 +3038,18 @@ export default function LocationsTab() {
                         <Card>
                           <CardContent className="p-4">
                             <div
-                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsTotals?.moneyOut || 0, metricsTotals?.moneyIn || 0)}`}
+                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(
+                                displayTotals?.moneyOut || 0,
+                                displayTotals?.moneyIn || 0
+                              )}`}
                             >
-                              {(() => {
-                                const value = metricsTotals?.moneyOut || 0;
-                                console.log(
-                                  '🔍 [LocationsTab] Rendering MoneyOut card (SAS Evaluation):',
-                                  {
-                                    metricsTotals,
-                                    value,
-                                    isLoading: metricsTotalsLoading,
-                                    shouldShowCurrency: shouldShowCurrency(),
-                                  }
-                                );
-                                return metricsTotalsLoading ? (
-                                  <Skeleton className="h-8 w-24" />
-                                ) : shouldShowCurrency() ? (
-                                  formatAmount(value)
-                                ) : (
-                                  `$${value.toLocaleString()}`
-                                );
-                              })()}
+                              {metricsTotalsLoading ? (
+                                <Skeleton className="h-8 w-24" />
+                              ) : shouldShowCurrency() ? (
+                                formatAmount(displayTotals?.moneyOut || 0)
+                              ) : (
+                                `$${(displayTotals?.moneyOut || 0).toLocaleString()}`
+                              )}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
                               Money Out
@@ -2858,7 +3113,7 @@ export default function LocationsTab() {
 
                   {/* Machine Hourly Charts - Stacked by Machine */}
                   {/* Location Trend Charts */}
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-4">
                     {(() => {
                       const currentSelectedLocations =
                         activeTab === 'sas-evaluation' ||
@@ -2892,97 +3147,138 @@ export default function LocationsTab() {
                       // Show data if available
                       if (
                         locationTrendData &&
-                      locationTrendData.locations &&
-                      locationTrendData.locations.length > 0 &&
-                      locationTrendData.trends &&
+                        locationTrendData.locations &&
+                        locationTrendData.locations.length > 0 &&
+                        locationTrendData.trends &&
                         locationTrendData.trends.length > 0
                       ) {
                         return (
-                      <>
-                        {/* Money In Chart */}
-                        <LocationTrendChart
-                          title="Money In"
-                          icon={<BarChart3 className="h-5 w-5" />}
-                          data={locationTrendData.trends}
-                          dataKey="drop"
-                          locations={locationTrendData.locations}
-                          locationNames={locationTrendData.locationNames}
-                          colors={[
-                            '#3b82f6',
-                            '#ef4444',
-                            '#10b981',
-                            '#f59e0b',
-                            '#8b5cf6',
-                          ]}
-                          formatter={value => `$${value.toLocaleString()}`}
-                          isHourly={locationTrendData.isHourly}
-                        />
+                          <>
+                            {/* Granularity Toggle */}
+                            {showGranularitySelector && (
+                              <div className="col-span-1 mb-3 flex items-center justify-end gap-2 lg:col-span-2 xl:col-span-4">
+                                <label
+                                  htmlFor="chart-granularity-location-evaluation"
+                                  className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                                >
+                                  Granularity:
+                                </label>
+                                <select
+                                  id="chart-granularity-location-evaluation"
+                                  value={chartGranularity}
+                                  onChange={e =>
+                                    setChartGranularity(
+                                      e.target.value as 'hourly' | 'minute'
+                                    )
+                                  }
+                                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                                >
+                                  <option value="minute">Minute</option>
+                                  <option value="hourly">Hourly</option>
+                                </select>
+                              </div>
+                            )}
 
-                        {/* Win/Loss Chart */}
-                        <LocationTrendChart
-                          title="Win/Loss"
-                          icon={<TrendingUp className="h-5 w-5" />}
-                          data={locationTrendData.trends}
-                          dataKey="gross"
-                          locations={locationTrendData.locations}
-                          locationNames={locationTrendData.locationNames}
-                          colors={[
-                            '#10b981',
-                            '#ef4444',
-                            '#3b82f6',
-                            '#f59e0b',
-                            '#8b5cf6',
-                          ]}
-                          formatter={value => `$${value.toLocaleString()}`}
-                          isHourly={locationTrendData.isHourly}
-                        />
+                            {/* Money In Chart */}
+                            <LocationTrendChart
+                              title="Money In"
+                              icon={<BarChart3 className="h-5 w-5" />}
+                              data={locationTrendData.trends}
+                              dataKey="drop"
+                              locations={locationTrendData.locations}
+                              locationNames={locationTrendData.locationNames}
+                              colors={[
+                                '#3b82f6',
+                                '#ef4444',
+                                '#10b981',
+                                '#f59e0b',
+                                '#8b5cf6',
+                              ]}
+                              formatter={value => `$${value.toLocaleString()}`}
+                              isHourly={locationTrendData.isHourly}
+                              timePeriod={
+                                (activeMetricsFilter || 'Today') as TimePeriod
+                              }
+                              granularity={chartGranularity}
+                            />
 
-                        {/* Jackpot Chart */}
-                        <LocationTrendChart
-                          title="Jackpot"
-                          icon={<Trophy className="h-5 w-5" />}
-                          data={locationTrendData.trends}
-                          dataKey="jackpot"
-                          locations={locationTrendData.locations}
-                          locationNames={locationTrendData.locationNames}
-                          colors={[
-                            '#f59e0b',
-                            '#ef4444',
-                            '#10b981',
-                            '#3b82f6',
-                            '#8b5cf6',
-                          ]}
-                          formatter={value => `$${value.toLocaleString()}`}
-                          isHourly={locationTrendData.isHourly}
-                        />
+                            {/* Win/Loss Chart */}
+                            <LocationTrendChart
+                              title="Win/Loss"
+                              icon={<TrendingUp className="h-5 w-5" />}
+                              data={locationTrendData.trends}
+                              dataKey="gross"
+                              locations={locationTrendData.locations}
+                              locationNames={locationTrendData.locationNames}
+                              colors={[
+                                '#10b981',
+                                '#ef4444',
+                                '#3b82f6',
+                                '#f59e0b',
+                                '#8b5cf6',
+                              ]}
+                              formatter={value => `$${value.toLocaleString()}`}
+                              isHourly={locationTrendData.isHourly}
+                              timePeriod={
+                                (activeMetricsFilter || 'Today') as TimePeriod
+                              }
+                              granularity={chartGranularity}
+                            />
 
-                        {/* Plays Chart */}
-                        <LocationTrendChart
-                          title="Plays"
-                          icon={<Activity className="h-5 w-5" />}
-                          data={locationTrendData.trends}
-                          dataKey="plays"
-                          locations={locationTrendData.locations}
-                          locationNames={locationTrendData.locationNames}
-                          colors={[
-                            '#8b5cf6',
-                            '#ef4444',
-                            '#10b981',
-                            '#3b82f6',
-                            '#f59e0b',
-                          ]}
-                          formatter={value => value.toLocaleString()}
-                          isHourly={locationTrendData.isHourly}
-                        />
-                      </>
+                            {/* Jackpot Chart */}
+                            <LocationTrendChart
+                              title="Jackpot"
+                              icon={<Trophy className="h-5 w-5" />}
+                              data={locationTrendData.trends}
+                              dataKey="jackpot"
+                              locations={locationTrendData.locations}
+                              locationNames={locationTrendData.locationNames}
+                              colors={[
+                                '#f59e0b',
+                                '#ef4444',
+                                '#10b981',
+                                '#3b82f6',
+                                '#8b5cf6',
+                              ]}
+                              formatter={value => `$${value.toLocaleString()}`}
+                              isHourly={locationTrendData.isHourly}
+                              timePeriod={
+                                (activeMetricsFilter || 'Today') as TimePeriod
+                              }
+                              granularity={chartGranularity}
+                            />
+
+                            {/* Plays Chart */}
+                            <LocationTrendChart
+                              title="Plays"
+                              icon={<Activity className="h-5 w-5" />}
+                              data={locationTrendData.trends}
+                              dataKey="plays"
+                              locations={locationTrendData.locations}
+                              locationNames={locationTrendData.locationNames}
+                              colors={[
+                                '#8b5cf6',
+                                '#ef4444',
+                                '#10b981',
+                                '#3b82f6',
+                                '#f59e0b',
+                              ]}
+                              formatter={value => value.toLocaleString()}
+                              isHourly={locationTrendData.isHourly}
+                              timePeriod={
+                                (activeMetricsFilter || 'Today') as TimePeriod
+                              }
+                              granularity={chartGranularity}
+                            />
+                          </>
                         );
                       }
 
                       // Show message only if no locations selected
                       return (
-                      <div className="col-span-2 py-8 text-center text-muted-foreground">
-                        Select locations to view location trend data
-                      </div>
+                        <div className="col-span-2 py-8 text-center text-muted-foreground">
+                          Select locations to view location trend data
+                        </div>
                       );
                     })()}
                   </div>
@@ -3043,53 +3339,53 @@ export default function LocationsTab() {
                         // Show data if available
                         if (topMachinesData.length > 0) {
                           return (
-                        <>
-                          {/* Desktop Table View */}
-                          <div className="hidden overflow-x-auto md:block">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="border-b bg-gray-50">
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Location
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Machine
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Game
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Manufacturer
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Money In
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Win/Loss
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Jackpot
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Avg. Wag. per Game
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Actual Hold
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Theoretical Hold
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Games Played
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {topMachinesData.map((machine, index) => (
-                                  <tr
-                                    key={`${machine.machineId}-${index}`}
-                                    className="border-b hover:bg-gray-50"
-                                  >
+                            <>
+                              {/* Desktop Table View */}
+                              <div className="hidden overflow-x-auto md:block">
+                                <table className="w-full">
+                                  <thead>
+                                    <tr className="border-b bg-gray-50">
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Location
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Machine
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Game
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Manufacturer
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Money In
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Win/Loss
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Jackpot
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Avg. Wag. per Game
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Actual Hold
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Theoretical Hold
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Games Played
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {topMachinesData.map((machine, index) => (
+                                      <tr
+                                        key={`${machine.machineId}-${index}`}
+                                        className="border-b hover:bg-gray-50"
+                                      >
                                         <td className="p-3 text-center">
                                           {machine.locationId ? (
                                             <button
@@ -3101,7 +3397,7 @@ export default function LocationsTab() {
                                               className="group mx-auto flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
                                             >
                                               <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
-                                      {machine.locationName}
+                                                {machine.locationName}
                                               </span>
                                               <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
                                             </button>
@@ -3110,7 +3406,7 @@ export default function LocationsTab() {
                                               {machine.locationName}
                                             </div>
                                           )}
-                                    </td>
+                                        </td>
                                         <td className="p-3 text-center">
                                           {machine.machineId ? (
                                             <button
@@ -3210,268 +3506,268 @@ export default function LocationsTab() {
                                             </button>
                                           ) : (
                                             <div className="font-mono text-sm text-gray-900">
-                                      {machine.serialNumber ||
-                                        machine.machineId}
+                                              {machine.serialNumber ||
+                                                machine.machineId}
                                             </div>
                                           )}
-                                    </td>
-                                    <td className="p-3 text-sm">
-                                      {machine.gameTitle ? (
-                                        machine.gameTitle
-                                      ) : (
-                                        <span className="text-red-600">
-                                          (game name not provided)
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-sm">
-                                      {machine.manufacturer}
-                                    </td>
-                                    <td className="p-3 text-sm font-medium">
+                                        </td>
+                                        <td className="p-3 text-sm">
+                                          {machine.gameTitle ? (
+                                            machine.gameTitle
+                                          ) : (
+                                            <span className="text-red-600">
+                                              (game name not provided)
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="p-3 text-sm">
+                                          {machine.manufacturer}
+                                        </td>
+                                        <td className="p-3 text-sm font-medium">
                                           $
                                           {(machine.drop || 0).toLocaleString()}
-                                    </td>
-                                    <td
-                                      className={`p-3 text-sm font-medium ${
-                                        (machine.netWin || 0) >= 0
-                                          ? 'text-green-600'
-                                          : 'text-red-600'
-                                      }`}
-                                    >
+                                        </td>
+                                        <td
+                                          className={`p-3 text-sm font-medium ${
+                                            (machine.netWin || 0) >= 0
+                                              ? 'text-green-600'
+                                              : 'text-red-600'
+                                          }`}
+                                        >
                                           $
                                           {(
                                             machine.netWin || 0
                                           ).toLocaleString()}
-                                    </td>
-                                    <td className="p-3 text-sm">
+                                        </td>
+                                        <td className="p-3 text-sm">
                                           $
                                           {(
                                             machine.jackpot || 0
                                           ).toLocaleString()}
-                                    </td>
-                                    <td className="p-3 text-sm">
-                                      $
-                                      {machine.avgBet
-                                        ? machine.avgBet.toFixed(2)
-                                        : '0.00'}
-                                    </td>
-                                    <td className="p-3 text-sm font-medium text-gray-600">
-                                      {machine.actualHold != null &&
-                                      !isNaN(machine.actualHold)
+                                        </td>
+                                        <td className="p-3 text-sm">
+                                          $
+                                          {machine.avgBet
+                                            ? machine.avgBet.toFixed(2)
+                                            : '0.00'}
+                                        </td>
+                                        <td className="p-3 text-sm font-medium text-gray-600">
+                                          {machine.actualHold != null &&
+                                          !isNaN(machine.actualHold)
                                             ? machine.actualHold.toFixed(2) +
                                               '%'
-                                        : 'N/A'}
-                                    </td>
-                                    <td className="p-3 text-sm text-gray-600">
-                                      {machine.theoreticalHold != null &&
-                                      !isNaN(machine.theoreticalHold)
+                                            : 'N/A'}
+                                        </td>
+                                        <td className="p-3 text-sm text-gray-600">
+                                          {machine.theoreticalHold != null &&
+                                          !isNaN(machine.theoreticalHold)
                                             ? machine.theoreticalHold.toFixed(
                                                 2
                                               ) + '%'
-                                        : 'N/A'}
-                                    </td>
-                                    <td className="p-3 text-sm">
-                                      {(
-                                        machine.gamesPlayed || 0
-                                      ).toLocaleString()}
-                                    </td>
-                                  </tr>
+                                            : 'N/A'}
+                                        </td>
+                                        <td className="p-3 text-sm">
+                                          {(
+                                            machine.gamesPlayed || 0
+                                          ).toLocaleString()}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              {/* Mobile Card View */}
+                              <div className="space-y-4 md:hidden">
+                                {topMachinesData.map((machine, index) => (
+                                  <Card
+                                    key={`${machine.machineId}-${index}`}
+                                    className="p-4"
+                                  >
+                                    <div className="mb-3">
+                                      <h4 className="text-sm font-medium">
+                                        {machine.machineName}
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground">
+                                        {machine.locationName} •{' '}
+                                        {machine.gameTitle ? (
+                                          machine.gameTitle
+                                        ) : (
+                                          <span className="text-red-600">
+                                            (game name not provided)
+                                          </span>
+                                        )}
+                                      </p>
+                                    </div>
+
+                                    {/* Tiny screen layout (< 425px) - Single column */}
+                                    <div className="block space-y-2 text-xs sm:hidden">
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Manufacturer:
+                                        </span>
+                                        <span className="font-medium">
+                                          {machine.manufacturer}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Money In:
+                                        </span>
+                                        <span className="font-medium">
+                                          $
+                                          {(machine.drop || 0).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Win/Loss:
+                                        </span>
+                                        <span
+                                          className={`font-medium ${
+                                            (machine.netWin || 0) >= 0
+                                              ? 'text-green-600'
+                                              : 'text-red-600'
+                                          }`}
+                                        >
+                                          $
+                                          {(
+                                            machine.netWin || 0
+                                          ).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Avg. Wag. per Game:
+                                        </span>
+                                        <span className="font-medium">
+                                          $
+                                          {machine.avgBet
+                                            ? machine.avgBet.toFixed(2)
+                                            : '0.00'}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Actual Hold:
+                                        </span>
+                                        <span className="font-medium text-gray-600">
+                                          {machine.actualHold != null &&
+                                          !isNaN(machine.actualHold)
+                                            ? machine.actualHold.toFixed(2) +
+                                              '%'
+                                            : 'N/A'}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Theoretical Hold:
+                                        </span>
+                                        <span className="font-medium text-gray-600">
+                                          {machine.theoreticalHold != null &&
+                                          !isNaN(machine.theoreticalHold)
+                                            ? machine.theoreticalHold.toFixed(
+                                                2
+                                              ) + '%'
+                                            : 'N/A'}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Games Played:
+                                        </span>
+                                        <span className="font-medium">
+                                          {(
+                                            machine.gamesPlayed || 0
+                                          ).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Small screen layout (425px+) - Two columns */}
+                                    <div className="hidden gap-4 text-sm sm:grid sm:grid-cols-2">
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Manufacturer:
+                                        </span>
+                                        <p>{machine.manufacturer}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Money In:
+                                        </span>
+                                        <p className="font-medium">
+                                          $
+                                          {(machine.drop || 0).toLocaleString()}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Win/Loss:
+                                        </span>
+                                        <p
+                                          className={`font-medium ${
+                                            (machine.netWin || 0) >= 0
+                                              ? 'text-green-600'
+                                              : 'text-red-600'
+                                          }`}
+                                        >
+                                          $
+                                          {(
+                                            machine.netWin || 0
+                                          ).toLocaleString()}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Avg. Wag. per Game:
+                                        </span>
+                                        <p>
+                                          $
+                                          {machine.avgBet
+                                            ? machine.avgBet.toFixed(2)
+                                            : '0.00'}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Actual Hold:
+                                        </span>
+                                        <p className="font-medium text-gray-600">
+                                          {machine.actualHold != null &&
+                                          !isNaN(machine.actualHold)
+                                            ? machine.actualHold.toFixed(2) +
+                                              '%'
+                                            : 'N/A'}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Theoretical Hold:
+                                        </span>
+                                        <p className="text-gray-600">
+                                          {machine.theoreticalHold != null &&
+                                          !isNaN(machine.theoreticalHold)
+                                            ? machine.theoreticalHold.toFixed(
+                                                2
+                                              ) + '%'
+                                            : 'N/A'}
+                                        </p>
+                                      </div>
+                                      <div className="col-span-2">
+                                        <span className="text-muted-foreground">
+                                          Games Played:
+                                        </span>
+                                        <p>
+                                          {(
+                                            machine.gamesPlayed || 0
+                                          ).toLocaleString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </Card>
                                 ))}
-                              </tbody>
-                            </table>
-                          </div>
-
-                          {/* Mobile Card View */}
-                          <div className="space-y-4 md:hidden">
-                            {topMachinesData.map((machine, index) => (
-                              <Card
-                                key={`${machine.machineId}-${index}`}
-                                className="p-4"
-                              >
-                                <div className="mb-3">
-                                  <h4 className="text-sm font-medium">
-                                    {machine.machineName}
-                                  </h4>
-                                  <p className="text-xs text-muted-foreground">
-                                    {machine.locationName} •{' '}
-                                    {machine.gameTitle ? (
-                                      machine.gameTitle
-                                    ) : (
-                                      <span className="text-red-600">
-                                        (game name not provided)
-                                      </span>
-                                    )}
-                                  </p>
-                                </div>
-
-                                {/* Tiny screen layout (< 425px) - Single column */}
-                                <div className="block space-y-2 text-xs sm:hidden">
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Manufacturer:
-                                    </span>
-                                    <span className="font-medium">
-                                      {machine.manufacturer}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Money In:
-                                    </span>
-                                    <span className="font-medium">
-                                          $
-                                          {(machine.drop || 0).toLocaleString()}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Win/Loss:
-                                    </span>
-                                    <span
-                                      className={`font-medium ${
-                                        (machine.netWin || 0) >= 0
-                                          ? 'text-green-600'
-                                          : 'text-red-600'
-                                      }`}
-                                    >
-                                          $
-                                          {(
-                                            machine.netWin || 0
-                                          ).toLocaleString()}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Avg. Wag. per Game:
-                                    </span>
-                                    <span className="font-medium">
-                                      $
-                                      {machine.avgBet
-                                        ? machine.avgBet.toFixed(2)
-                                        : '0.00'}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Actual Hold:
-                                    </span>
-                                    <span className="font-medium text-gray-600">
-                                      {machine.actualHold != null &&
-                                      !isNaN(machine.actualHold)
-                                            ? machine.actualHold.toFixed(2) +
-                                              '%'
-                                        : 'N/A'}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Theoretical Hold:
-                                    </span>
-                                    <span className="font-medium text-gray-600">
-                                      {machine.theoreticalHold != null &&
-                                      !isNaN(machine.theoreticalHold)
-                                            ? machine.theoreticalHold.toFixed(
-                                                2
-                                              ) + '%'
-                                        : 'N/A'}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Games Played:
-                                    </span>
-                                    <span className="font-medium">
-                                      {(
-                                        machine.gamesPlayed || 0
-                                      ).toLocaleString()}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Small screen layout (425px+) - Two columns */}
-                                <div className="hidden gap-4 text-sm sm:grid sm:grid-cols-2">
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Manufacturer:
-                                    </span>
-                                    <p>{machine.manufacturer}</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Money In:
-                                    </span>
-                                    <p className="font-medium">
-                                          $
-                                          {(machine.drop || 0).toLocaleString()}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Win/Loss:
-                                    </span>
-                                    <p
-                                      className={`font-medium ${
-                                        (machine.netWin || 0) >= 0
-                                          ? 'text-green-600'
-                                          : 'text-red-600'
-                                      }`}
-                                    >
-                                          $
-                                          {(
-                                            machine.netWin || 0
-                                          ).toLocaleString()}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Avg. Wag. per Game:
-                                    </span>
-                                    <p>
-                                      $
-                                      {machine.avgBet
-                                        ? machine.avgBet.toFixed(2)
-                                        : '0.00'}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Actual Hold:
-                                    </span>
-                                    <p className="font-medium text-gray-600">
-                                      {machine.actualHold != null &&
-                                      !isNaN(machine.actualHold)
-                                            ? machine.actualHold.toFixed(2) +
-                                              '%'
-                                        : 'N/A'}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Theoretical Hold:
-                                    </span>
-                                    <p className="text-gray-600">
-                                      {machine.theoreticalHold != null &&
-                                      !isNaN(machine.theoreticalHold)
-                                            ? machine.theoreticalHold.toFixed(
-                                                2
-                                              ) + '%'
-                                        : 'N/A'}
-                                    </p>
-                                  </div>
-                                  <div className="col-span-2">
-                                    <span className="text-muted-foreground">
-                                      Games Played:
-                                    </span>
-                                    <p>
-                                      {(
-                                        machine.gamesPlayed || 0
-                                      ).toLocaleString()}
-                                    </p>
-                                  </div>
-                                </div>
-                              </Card>
-                            ))}
-                          </div>
+                              </div>
                             </>
                           );
                         }
@@ -3479,8 +3775,8 @@ export default function LocationsTab() {
                         // Show message if locations selected but no data
                         return (
                           <div className="py-8 text-center text-muted-foreground">
-                              No machine data available for evaluation
-                            </div>
+                            No machine data available for evaluation
+                          </div>
                         );
                       })()}
                     </CardContent>
@@ -3493,7 +3789,7 @@ export default function LocationsTab() {
                       No Data to Display
                     </div>
                     <div className="text-sm text-gray-400">
-                      Please select up to 5 SAS-enabled locations to view
+                      Please select up to 3 SAS-enabled locations to view
                       evaluation data
                     </div>
                   </CardContent>
@@ -3646,7 +3942,7 @@ export default function LocationsTab() {
                     Location Selection & Controls
                   </CardTitle>
                   <CardDescription>
-                    Select up to 5 locations to filter data (SAS and non-SAS
+                    Select up to 3 locations to filter data (SAS and non-SAS
                     locations)
                   </CardDescription>
                 </CardHeader>
@@ -3654,25 +3950,15 @@ export default function LocationsTab() {
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
                       <label className="mb-2 block text-sm font-medium text-gray-700">
-                        Select Locations (Max 5)
+                        Select Locations (Max 3)
                       </label>
-                      {locationsLoading ? (
+                      {/* Only show skeleton if loading AND dropdown has no data yet */}
+                      {locationsLoading &&
+                      allLocationsForDropdown.length === 0 ? (
                         <div className="h-10 w-full animate-pulse rounded-md bg-gray-100" />
                       ) : (
                         <LocationMultiSelect
                           locations={(() => {
-                            console.warn(
-                              `🔍 Revenue Analysis - allLocationsForDropdown: ${allLocationsForDropdown.length}`
-                            );
-                            console.warn(
-                              '🔍 Revenue Analysis - allLocationsForDropdown:',
-                              allLocationsForDropdown.map(loc => ({
-                                location: loc.location,
-                                locationName: loc.locationName,
-                                sasMachines: loc.sasMachines,
-                                hasSasMachines: loc.hasSasMachines,
-                              }))
-                            );
                             return allLocationsForDropdown.map(loc => ({
                               id: loc.location,
                               name: loc.locationName,
@@ -3686,18 +3972,18 @@ export default function LocationsTab() {
                               : selectedRevenueLocations
                           }
                           onSelectionChange={newSelection => {
-                            // Limit to 5 selections
-                            if (newSelection.length <= 5) {
+                            // Limit to 3 selections for location-evaluation and location-revenue tabs
+                            if (newSelection.length <= 3) {
                               setCurrentSelectedLocations(newSelection);
                             } else {
                               toast.error(
-                                'Maximum 5 locations can be selected',
+                                'Maximum 3 locations can be selected',
                                 { duration: 3000 }
                               );
                             }
                           }}
                           placeholder="Choose locations to filter..."
-                          maxSelections={5}
+                          maxSelections={3}
                         />
                       )}
                     </div>
@@ -3739,6 +4025,19 @@ export default function LocationsTab() {
               {/* Show skeleton loaders when data is loading */}
               {metricsLoading || paginationLoading ? (
                 <LocationsRevenueAnalysisSkeleton />
+              ) : (activeTab === 'location-evaluation' ||
+                  activeTab === 'location-revenue') &&
+                (activeTab === 'location-evaluation'
+                  ? selectedSasLocations
+                  : selectedRevenueLocations
+                ).length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <p className="text-gray-500">
+                      Please select locations to view data
+                    </p>
+                  </CardContent>
+                </Card>
               ) : paginatedLocations.length > 0 ? (
                 <>
                   {/* Revenue Analysis Table */}
@@ -3760,21 +4059,23 @@ export default function LocationsTab() {
 
                   {/* Summary Cards for Revenue Analysis - Show when locations are available */}
                   {paginatedLocations.length > 0 &&
-                    (locationsLoading ? (
+                    (locationsLoading || metricsTotalsLoading ? (
                       <SummaryCardsSkeleton />
                     ) : (
                       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
                         <Card>
                           <CardContent className="p-4">
                             <div
-                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsTotals?.gross || 0)}`}
+                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(
+                                displayTotals?.gross || 0
+                              )}`}
                             >
                               {metricsTotalsLoading ? (
                                 <Skeleton className="h-8 w-24" />
                               ) : shouldShowCurrency() ? (
-                                formatAmount(metricsTotals?.gross || 0)
+                                formatAmount(displayTotals?.gross || 0)
                               ) : (
-                                `$${(metricsTotals?.gross || 0).toLocaleString()}`
+                                `$${(displayTotals?.gross || 0).toLocaleString()}`
                               )}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
@@ -3789,14 +4090,16 @@ export default function LocationsTab() {
                         <Card>
                           <CardContent className="p-4">
                             <div
-                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsTotals?.moneyIn || 0)}`}
+                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(
+                                displayTotals?.moneyIn || 0
+                              )}`}
                             >
                               {metricsTotalsLoading ? (
                                 <Skeleton className="h-8 w-24" />
                               ) : shouldShowCurrency() ? (
-                                formatAmount(metricsTotals?.moneyIn || 0)
+                                formatAmount(displayTotals?.moneyIn || 0)
                               ) : (
-                                `$${(metricsTotals?.moneyIn || 0).toLocaleString()}`
+                                `$${(displayTotals?.moneyIn || 0).toLocaleString()}`
                               )}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
@@ -3808,14 +4111,17 @@ export default function LocationsTab() {
                         <Card>
                           <CardContent className="p-4">
                             <div
-                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsTotals?.moneyOut || 0, metricsTotals?.moneyIn || 0)}`}
+                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(
+                                displayTotals?.moneyOut || 0,
+                                displayTotals?.moneyIn || 0
+                              )}`}
                             >
                               {metricsTotalsLoading ? (
                                 <Skeleton className="h-8 w-24" />
                               ) : shouldShowCurrency() ? (
-                                formatAmount(metricsTotals?.moneyOut || 0)
+                                formatAmount(displayTotals?.moneyOut || 0)
                               ) : (
-                                `$${(metricsTotals?.moneyOut || 0).toLocaleString()}`
+                                `$${(displayTotals?.moneyOut || 0).toLocaleString()}`
                               )}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
@@ -3868,7 +4174,7 @@ export default function LocationsTab() {
                     ))}
 
                   {/* Revenue Analysis Charts - Drop, Win/Loss, and Jackpot */}
-                  <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-3">
+                  <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
                     {(() => {
                       const currentSelectedLocations =
                         activeTab === 'sas-evaluation' ||
@@ -3885,18 +4191,6 @@ export default function LocationsTab() {
                       const isInitialLoading =
                         metricsLoading || paginationLoading;
 
-                      // Show skeleton only if:
-                      // 1. Not in initial loading phase (to avoid double skeletons)
-                      // 2. AND (chart data is loading OR we have locations but no data yet)
-                      if (
-                        !isInitialLoading &&
-                        (locationTrendLoading ||
-                          ((hasSelectedLocations || hasDisplayedLocations) &&
-                            !locationTrendData))
-                      ) {
-                        return <RevenueAnalysisChartsSkeleton />;
-                      }
-
                       // During initial loading, don't render anything (parent skeleton handles it)
                       if (isInitialLoading) {
                         return null;
@@ -3905,96 +4199,138 @@ export default function LocationsTab() {
                       // Show data if available
                       if (
                         locationTrendData &&
-                      locationTrendData.locations &&
-                      locationTrendData.locations.length > 0 &&
-                      locationTrendData.trends &&
+                        locationTrendData.locations &&
+                        locationTrendData.locations.length > 0 &&
+                        locationTrendData.trends &&
                         locationTrendData.trends.length > 0
                       ) {
                         return (
-                      <>
-                        {/* Money In Chart */}
-                        <LocationTrendChart
-                          title="Money In"
-                          icon={<BarChart3 className="h-5 w-5" />}
-                          data={locationTrendData.trends}
-                          dataKey="drop"
-                          locations={locationTrendData.locations}
-                          locationNames={locationTrendData.locationNames}
-                          colors={[
-                            '#3b82f6',
-                            '#ef4444',
-                            '#10b981',
-                            '#f59e0b',
-                            '#8b5cf6',
-                          ]}
-                          formatter={value => `$${value.toLocaleString()}`}
-                          isHourly={locationTrendData.isHourly}
-                        />
+                          <>
+                            {/* Granularity Toggle */}
+                            {showGranularitySelector && (
+                              <div className="col-span-1 mb-3 flex items-center justify-end gap-2 lg:col-span-2 xl:col-span-3">
+                                <label
+                                  htmlFor="chart-granularity-location-revenue"
+                                  className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                                >
+                                  Granularity:
+                                </label>
+                                <select
+                                  id="chart-granularity-location-revenue"
+                                  value={chartGranularity}
+                                  onChange={e =>
+                                    setChartGranularity(
+                                      e.target.value as 'hourly' | 'minute'
+                                    )
+                                  }
+                                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                                >
+                                  <option value="minute">Minute</option>
+                                  <option value="hourly">Hourly</option>
+                                </select>
+                              </div>
+                            )}
 
-                        {/* Win/Loss Chart */}
-                        <LocationTrendChart
-                          title="Win/Loss"
-                          icon={<TrendingUp className="h-5 w-5" />}
-                          data={locationTrendData.trends}
-                          dataKey="gross"
-                          locations={locationTrendData.locations}
-                          locationNames={locationTrendData.locationNames}
-                          colors={[
-                            '#10b981',
-                            '#ef4444',
-                            '#3b82f6',
-                            '#f59e0b',
-                            '#8b5cf6',
-                          ]}
-                          formatter={value => `$${value.toLocaleString()}`}
-                          isHourly={locationTrendData.isHourly}
-                        />
+                            {/* Money In Chart */}
+                            <LocationTrendChart
+                              title="Money In"
+                              icon={<BarChart3 className="h-5 w-5" />}
+                              data={locationTrendData.trends}
+                              dataKey="drop"
+                              locations={locationTrendData.locations}
+                              locationNames={locationTrendData.locationNames}
+                              colors={[
+                                '#3b82f6',
+                                '#ef4444',
+                                '#10b981',
+                                '#f59e0b',
+                                '#8b5cf6',
+                              ]}
+                              formatter={value => `$${value.toLocaleString()}`}
+                              isHourly={locationTrendData.isHourly}
+                              timePeriod={
+                                (activeMetricsFilter || 'Today') as TimePeriod
+                              }
+                              granularity={chartGranularity}
+                            />
 
-                        {/* Jackpot Chart */}
-                        <LocationTrendChart
-                          title="Jackpot"
-                          icon={<Trophy className="h-5 w-5" />}
-                          data={locationTrendData.trends}
-                          dataKey="jackpot"
-                          locations={locationTrendData.locations}
-                          locationNames={locationTrendData.locationNames}
-                          colors={[
-                            '#f59e0b',
-                            '#ef4444',
-                            '#10b981',
-                            '#3b82f6',
-                            '#8b5cf6',
-                          ]}
-                          formatter={value => `$${value.toLocaleString()}`}
-                          isHourly={locationTrendData.isHourly}
-                        />
-                      </>
+                            {/* Win/Loss Chart */}
+                            <LocationTrendChart
+                              title="Win/Loss"
+                              icon={<TrendingUp className="h-5 w-5" />}
+                              data={locationTrendData.trends}
+                              dataKey="gross"
+                              locations={locationTrendData.locations}
+                              locationNames={locationTrendData.locationNames}
+                              colors={[
+                                '#10b981',
+                                '#ef4444',
+                                '#3b82f6',
+                                '#f59e0b',
+                                '#8b5cf6',
+                              ]}
+                              formatter={value => `$${value.toLocaleString()}`}
+                              isHourly={locationTrendData.isHourly}
+                              timePeriod={
+                                (activeMetricsFilter || 'Today') as TimePeriod
+                              }
+                              granularity={chartGranularity}
+                            />
+
+                            {/* Jackpot Chart */}
+                            <LocationTrendChart
+                              title="Jackpot"
+                              icon={<Trophy className="h-5 w-5" />}
+                              data={locationTrendData.trends}
+                              dataKey="jackpot"
+                              locations={locationTrendData.locations}
+                              locationNames={locationTrendData.locationNames}
+                              colors={[
+                                '#f59e0b',
+                                '#ef4444',
+                                '#10b981',
+                                '#3b82f6',
+                                '#8b5cf6',
+                              ]}
+                              formatter={value => `$${value.toLocaleString()}`}
+                              isHourly={locationTrendData.isHourly}
+                              timePeriod={
+                                (activeMetricsFilter || 'Today') as TimePeriod
+                              }
+                              granularity={chartGranularity}
+                            />
+                          </>
                         );
                       }
 
-                      // Show skeleton only if:
-                      // 1. Chart data is actively loading
-                      // 2. OR we have locations but no data yet (and not loading, which means initial fetch)
-                      if (
-                        locationTrendLoading ||
-                        ((hasSelectedLocations || hasDisplayedLocations) &&
-                          !locationTrendData &&
-                          !locationTrendLoading)
-                      ) {
+                      // Show skeleton only when actively loading chart data
+                      if (locationTrendLoading) {
                         return <RevenueAnalysisChartsSkeleton />;
                       }
 
-                      // Show message only if no locations selected and no displayed locations
+                      // Show message if no locations selected and no displayed locations
                       if (!hasSelectedLocations && !hasDisplayedLocations) {
                         return (
-                      <div className="col-span-3 py-8 text-center text-muted-foreground">
-                        Select locations to view revenue analysis data
-                      </div>
+                          <div className="col-span-1 py-8 text-center text-muted-foreground lg:col-span-2 xl:col-span-3">
+                            Select locations to view revenue analysis data
+                          </div>
                         );
                       }
 
-                      // Fallback: show skeleton if we have locations but no data
-                      return <RevenueAnalysisChartsSkeleton />;
+                      // If we have locations but no data (and not loading), show message instead of skeleton
+                      if (
+                        (hasSelectedLocations || hasDisplayedLocations) &&
+                        !locationTrendData
+                      ) {
+                        return (
+                          <div className="col-span-1 py-8 text-center text-muted-foreground md:col-span-2 lg:col-span-3">
+                            No chart data available for selected locations
+                          </div>
+                        );
+                      }
+
+                      // Safe fallback - should not normally reach here
+                      return null;
                     })()}
                   </div>
 
@@ -4056,53 +4392,53 @@ export default function LocationsTab() {
                         // Show data if available
                         if (topMachinesData.length > 0) {
                           return (
-                        <>
-                          {/* Desktop Table View */}
-                          <div className="hidden overflow-x-auto md:block">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="border-b bg-gray-50">
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Location
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Machine
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Game
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Manufacturer
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Money In
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Win/Loss
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Jackpot
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Avg. Wag. per Game
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Actual Hold
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Theoretical Hold
-                                  </th>
-                                  <th className="p-3 text-center font-medium text-gray-700">
-                                    Games Played
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {topMachinesData.map((machine, index) => (
-                                  <tr
-                                    key={`${machine.machineId}-${index}`}
-                                    className="border-b hover:bg-gray-50"
-                                  >
+                            <>
+                              {/* Desktop Table View */}
+                              <div className="hidden overflow-x-auto md:block">
+                                <table className="w-full">
+                                  <thead>
+                                    <tr className="border-b bg-gray-50">
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Location
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Machine
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Game
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Manufacturer
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Money In
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Win/Loss
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Jackpot
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Avg. Wag. per Game
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Actual Hold
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Theoretical Hold
+                                      </th>
+                                      <th className="p-3 text-center font-medium text-gray-700">
+                                        Games Played
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {topMachinesData.map((machine, index) => (
+                                      <tr
+                                        key={`${machine.machineId}-${index}`}
+                                        className="border-b hover:bg-gray-50"
+                                      >
                                         <td className="p-3 text-center">
                                           {machine.locationId ? (
                                             <button
@@ -4114,7 +4450,7 @@ export default function LocationsTab() {
                                               className="group mx-auto flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
                                             >
                                               <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
-                                      {machine.locationName}
+                                                {machine.locationName}
                                               </span>
                                               <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
                                             </button>
@@ -4123,7 +4459,7 @@ export default function LocationsTab() {
                                               {machine.locationName}
                                             </div>
                                           )}
-                                    </td>
+                                        </td>
                                         <td className="p-3 text-center">
                                           {machine.machineId ? (
                                             <button
@@ -4223,268 +4559,268 @@ export default function LocationsTab() {
                                             </button>
                                           ) : (
                                             <div className="font-mono text-sm text-gray-900">
-                                      {machine.serialNumber ||
-                                        machine.machineId}
+                                              {machine.serialNumber ||
+                                                machine.machineId}
                                             </div>
                                           )}
-                                    </td>
-                                    <td className="p-3 text-sm">
-                                      {machine.gameTitle ? (
-                                        machine.gameTitle
-                                      ) : (
-                                        <span className="text-red-600">
-                                          (game name not provided)
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-sm">
-                                      {machine.manufacturer}
-                                    </td>
-                                    <td className="p-3 text-sm font-medium">
+                                        </td>
+                                        <td className="p-3 text-sm">
+                                          {machine.gameTitle ? (
+                                            machine.gameTitle
+                                          ) : (
+                                            <span className="text-red-600">
+                                              (game name not provided)
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="p-3 text-sm">
+                                          {machine.manufacturer}
+                                        </td>
+                                        <td className="p-3 text-sm font-medium">
                                           $
                                           {(machine.drop || 0).toLocaleString()}
-                                    </td>
-                                    <td
-                                      className={`p-3 text-sm font-medium ${
-                                        (machine.netWin || 0) >= 0
-                                          ? 'text-green-600'
-                                          : 'text-red-600'
-                                      }`}
-                                    >
+                                        </td>
+                                        <td
+                                          className={`p-3 text-sm font-medium ${
+                                            (machine.netWin || 0) >= 0
+                                              ? 'text-green-600'
+                                              : 'text-red-600'
+                                          }`}
+                                        >
                                           $
                                           {(
                                             machine.netWin || 0
                                           ).toLocaleString()}
-                                    </td>
-                                    <td className="p-3 text-sm">
+                                        </td>
+                                        <td className="p-3 text-sm">
                                           $
                                           {(
                                             machine.jackpot || 0
                                           ).toLocaleString()}
-                                    </td>
-                                    <td className="p-3 text-sm">
-                                      $
-                                      {machine.avgBet
-                                        ? machine.avgBet.toFixed(2)
-                                        : '0.00'}
-                                    </td>
-                                    <td className="p-3 text-sm font-medium text-gray-600">
-                                      {machine.actualHold != null &&
-                                      !isNaN(machine.actualHold)
+                                        </td>
+                                        <td className="p-3 text-sm">
+                                          $
+                                          {machine.avgBet
+                                            ? machine.avgBet.toFixed(2)
+                                            : '0.00'}
+                                        </td>
+                                        <td className="p-3 text-sm font-medium text-gray-600">
+                                          {machine.actualHold != null &&
+                                          !isNaN(machine.actualHold)
                                             ? machine.actualHold.toFixed(2) +
                                               '%'
-                                        : 'N/A'}
-                                    </td>
-                                    <td className="p-3 text-sm text-gray-600">
-                                      {machine.theoreticalHold != null &&
-                                      !isNaN(machine.theoreticalHold)
+                                            : 'N/A'}
+                                        </td>
+                                        <td className="p-3 text-sm text-gray-600">
+                                          {machine.theoreticalHold != null &&
+                                          !isNaN(machine.theoreticalHold)
                                             ? machine.theoreticalHold.toFixed(
                                                 2
                                               ) + '%'
-                                        : 'N/A'}
-                                    </td>
-                                    <td className="p-3 text-sm">
-                                      {(
-                                        machine.gamesPlayed || 0
-                                      ).toLocaleString()}
-                                    </td>
-                                  </tr>
+                                            : 'N/A'}
+                                        </td>
+                                        <td className="p-3 text-sm">
+                                          {(
+                                            machine.gamesPlayed || 0
+                                          ).toLocaleString()}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              {/* Mobile Card View */}
+                              <div className="space-y-4 md:hidden">
+                                {topMachinesData.map((machine, index) => (
+                                  <Card
+                                    key={`${machine.machineId}-${index}`}
+                                    className="p-4"
+                                  >
+                                    <div className="mb-3">
+                                      <h4 className="text-sm font-medium">
+                                        {machine.machineName}
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground">
+                                        {machine.locationName} •{' '}
+                                        {machine.gameTitle ? (
+                                          machine.gameTitle
+                                        ) : (
+                                          <span className="text-red-600">
+                                            (game name not provided)
+                                          </span>
+                                        )}
+                                      </p>
+                                    </div>
+
+                                    {/* Tiny screen layout (< 425px) - Single column */}
+                                    <div className="block space-y-2 text-xs sm:hidden">
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Manufacturer:
+                                        </span>
+                                        <span className="font-medium">
+                                          {machine.manufacturer}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Money In:
+                                        </span>
+                                        <span className="font-medium">
+                                          $
+                                          {(machine.drop || 0).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Win/Loss:
+                                        </span>
+                                        <span
+                                          className={`font-medium ${
+                                            (machine.netWin || 0) >= 0
+                                              ? 'text-green-600'
+                                              : 'text-red-600'
+                                          }`}
+                                        >
+                                          $
+                                          {(
+                                            machine.netWin || 0
+                                          ).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Avg. Wag. per Game:
+                                        </span>
+                                        <span className="font-medium">
+                                          $
+                                          {machine.avgBet
+                                            ? machine.avgBet.toFixed(2)
+                                            : '0.00'}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Actual Hold:
+                                        </span>
+                                        <span className="font-medium text-gray-600">
+                                          {machine.actualHold != null &&
+                                          !isNaN(machine.actualHold)
+                                            ? machine.actualHold.toFixed(2) +
+                                              '%'
+                                            : 'N/A'}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Theoretical Hold:
+                                        </span>
+                                        <span className="font-medium text-gray-600">
+                                          {machine.theoreticalHold != null &&
+                                          !isNaN(machine.theoreticalHold)
+                                            ? machine.theoreticalHold.toFixed(
+                                                2
+                                              ) + '%'
+                                            : 'N/A'}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">
+                                          Games Played:
+                                        </span>
+                                        <span className="font-medium">
+                                          {(
+                                            machine.gamesPlayed || 0
+                                          ).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Small screen layout (425px+) - Two columns */}
+                                    <div className="hidden gap-4 text-sm sm:grid sm:grid-cols-2">
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Manufacturer:
+                                        </span>
+                                        <p>{machine.manufacturer}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Money In:
+                                        </span>
+                                        <p className="font-medium">
+                                          $
+                                          {(machine.drop || 0).toLocaleString()}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Win/Loss:
+                                        </span>
+                                        <p
+                                          className={`font-medium ${
+                                            (machine.netWin || 0) >= 0
+                                              ? 'text-green-600'
+                                              : 'text-red-600'
+                                          }`}
+                                        >
+                                          $
+                                          {(
+                                            machine.netWin || 0
+                                          ).toLocaleString()}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Avg. Wag. per Game:
+                                        </span>
+                                        <p>
+                                          $
+                                          {machine.avgBet
+                                            ? machine.avgBet.toFixed(2)
+                                            : '0.00'}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Actual Hold:
+                                        </span>
+                                        <p className="font-medium text-gray-600">
+                                          {machine.actualHold != null &&
+                                          !isNaN(machine.actualHold)
+                                            ? machine.actualHold.toFixed(2) +
+                                              '%'
+                                            : 'N/A'}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Theoretical Hold:
+                                        </span>
+                                        <p className="text-gray-600">
+                                          {machine.theoreticalHold != null &&
+                                          !isNaN(machine.theoreticalHold)
+                                            ? machine.theoreticalHold.toFixed(
+                                                2
+                                              ) + '%'
+                                            : 'N/A'}
+                                        </p>
+                                      </div>
+                                      <div className="col-span-2">
+                                        <span className="text-muted-foreground">
+                                          Games Played:
+                                        </span>
+                                        <p>
+                                          {(
+                                            machine.gamesPlayed || 0
+                                          ).toLocaleString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </Card>
                                 ))}
-                              </tbody>
-                            </table>
-                          </div>
-
-                          {/* Mobile Card View */}
-                          <div className="space-y-4 md:hidden">
-                            {topMachinesData.map((machine, index) => (
-                              <Card
-                                key={`${machine.machineId}-${index}`}
-                                className="p-4"
-                              >
-                                <div className="mb-3">
-                                  <h4 className="text-sm font-medium">
-                                    {machine.machineName}
-                                  </h4>
-                                  <p className="text-xs text-muted-foreground">
-                                    {machine.locationName} •{' '}
-                                    {machine.gameTitle ? (
-                                      machine.gameTitle
-                                    ) : (
-                                      <span className="text-red-600">
-                                        (game name not provided)
-                                      </span>
-                                    )}
-                                  </p>
-                                </div>
-
-                                {/* Tiny screen layout (< 425px) - Single column */}
-                                <div className="block space-y-2 text-xs sm:hidden">
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Manufacturer:
-                                    </span>
-                                    <span className="font-medium">
-                                      {machine.manufacturer}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Money In:
-                                    </span>
-                                    <span className="font-medium">
-                                          $
-                                          {(machine.drop || 0).toLocaleString()}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Win/Loss:
-                                    </span>
-                                    <span
-                                      className={`font-medium ${
-                                        (machine.netWin || 0) >= 0
-                                          ? 'text-green-600'
-                                          : 'text-red-600'
-                                      }`}
-                                    >
-                                          $
-                                          {(
-                                            machine.netWin || 0
-                                          ).toLocaleString()}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Avg. Wag. per Game:
-                                    </span>
-                                    <span className="font-medium">
-                                      $
-                                      {machine.avgBet
-                                        ? machine.avgBet.toFixed(2)
-                                        : '0.00'}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Actual Hold:
-                                    </span>
-                                    <span className="font-medium text-gray-600">
-                                      {machine.actualHold != null &&
-                                      !isNaN(machine.actualHold)
-                                            ? machine.actualHold.toFixed(2) +
-                                              '%'
-                                        : 'N/A'}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Theoretical Hold:
-                                    </span>
-                                    <span className="font-medium text-gray-600">
-                                      {machine.theoreticalHold != null &&
-                                      !isNaN(machine.theoreticalHold)
-                                            ? machine.theoreticalHold.toFixed(
-                                                2
-                                              ) + '%'
-                                        : 'N/A'}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Games Played:
-                                    </span>
-                                    <span className="font-medium">
-                                      {(
-                                        machine.gamesPlayed || 0
-                                      ).toLocaleString()}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Small screen layout (425px+) - Two columns */}
-                                <div className="hidden gap-4 text-sm sm:grid sm:grid-cols-2">
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Manufacturer:
-                                    </span>
-                                    <p>{machine.manufacturer}</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Money In:
-                                    </span>
-                                    <p className="font-medium">
-                                          $
-                                          {(machine.drop || 0).toLocaleString()}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Win/Loss:
-                                    </span>
-                                    <p
-                                      className={`font-medium ${
-                                        (machine.netWin || 0) >= 0
-                                          ? 'text-green-600'
-                                          : 'text-red-600'
-                                      }`}
-                                    >
-                                          $
-                                          {(
-                                            machine.netWin || 0
-                                          ).toLocaleString()}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Avg. Wag. per Game:
-                                    </span>
-                                    <p>
-                                      $
-                                      {machine.avgBet
-                                        ? machine.avgBet.toFixed(2)
-                                        : '0.00'}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Actual Hold:
-                                    </span>
-                                    <p className="font-medium text-gray-600">
-                                      {machine.actualHold != null &&
-                                      !isNaN(machine.actualHold)
-                                            ? machine.actualHold.toFixed(2) +
-                                              '%'
-                                        : 'N/A'}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">
-                                      Theoretical Hold:
-                                    </span>
-                                    <p className="text-gray-600">
-                                      {machine.theoreticalHold != null &&
-                                      !isNaN(machine.theoreticalHold)
-                                            ? machine.theoreticalHold.toFixed(
-                                                2
-                                              ) + '%'
-                                        : 'N/A'}
-                                    </p>
-                                  </div>
-                                  <div className="col-span-2">
-                                    <span className="text-muted-foreground">
-                                      Games Played:
-                                    </span>
-                                    <p>
-                                      {(
-                                        machine.gamesPlayed || 0
-                                      ).toLocaleString()}
-                                    </p>
-                                  </div>
-                                </div>
-                              </Card>
-                            ))}
-                          </div>
+                              </div>
                             </>
                           );
                         }
@@ -4492,8 +4828,8 @@ export default function LocationsTab() {
                         // Show message if locations selected but no data
                         return (
                           <div className="py-8 text-center text-muted-foreground">
-                              No machine data available for evaluation
-                            </div>
+                            No machine data available for evaluation
+                          </div>
                         );
                       })()}
                     </CardContent>
@@ -4506,7 +4842,7 @@ export default function LocationsTab() {
                       No Data to Display
                     </div>
                     <div className="text-sm text-gray-400">
-                      Please select up to 5 locations to view revenue analysis
+                      Please select up to 3 locations to view revenue analysis
                       data
                     </div>
                   </CardContent>

@@ -58,6 +58,8 @@ import {
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
+import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 import type { TimePeriod } from '@/shared/types';
 
@@ -114,6 +116,7 @@ function CabinetsPageContent() {
   };
 
   // Chart granularity state
+  // Initialize after activeMetricsFilter and customDateRange are available
   const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
     'hourly'
   );
@@ -172,14 +175,73 @@ function CabinetsPageContent() {
   const [loadingChartData, setLoadingChartDataLocal] = useState(false);
   const chartRequestIdRef = useRef(0);
 
-  // Show granularity selector for Today/Yesterday
+  // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   const showGranularitySelector = useMemo(() => {
-    return (
+    if (
       activeMetricsFilter === 'Today' ||
-      activeMetricsFilter === 'Yesterday' ||
-      activeMetricsFilter === 'Custom'
-    );
-  }, [activeMetricsFilter]);
+      activeMetricsFilter === 'Yesterday'
+    ) {
+      return true;
+    }
+    if (
+      activeMetricsFilter === 'Custom' &&
+      customDateRange?.startDate &&
+      customDateRange?.endDate
+    ) {
+      // Check if spans more than 1 gaming day
+      try {
+        const range = getGamingDayRangeForPeriod(
+          'Custom',
+          8, // Default gaming day start hour
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate),
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate)
+        );
+        const hoursDiff =
+          (range.rangeEnd.getTime() - range.rangeStart.getTime()) /
+          (1000 * 60 * 60);
+        return hoursDiff <= 24; // Show toggle only if ≤ 24 hours
+      } catch (error) {
+        console.error('Error calculating gaming day range:', error);
+        return false;
+      }
+    }
+    return false;
+  }, [activeMetricsFilter, customDateRange]);
+
+  // Recalculate default granularity when date filters change
+  // For "Today", also recalculate periodically as time passes
+  useEffect(() => {
+    if (!activeMetricsFilter) return undefined;
+
+    const updateGranularity = () => {
+      const defaultGranularity = getDefaultChartGranularity(
+        activeMetricsFilter,
+        customDateRange?.startDate,
+        customDateRange?.endDate
+      );
+      setChartGranularity(defaultGranularity);
+    };
+
+    // Update immediately
+    updateGranularity();
+
+    // For "Today" filter, set up interval to recalculate every minute
+    // This ensures granularity switches from 'minute' to 'hourly' when 5 hours pass
+    if (activeMetricsFilter === 'Today') {
+      const interval = setInterval(updateGranularity, 60000); // Every minute
+      return () => clearInterval(interval);
+    }
+
+    return undefined;
+  }, [
+    activeMetricsFilter,
+    customDateRange?.startDate,
+    customDateRange?.endDate,
+  ]);
 
   // Track if filters are initialized (similar to location page pattern)
   // This prevents premature requests before dependencies are ready
@@ -252,24 +314,24 @@ function CabinetsPageContent() {
             setChartData([]);
             return;
           }
-            // Convert dashboardData[] to chart format
-            const chartDataFormatted = metricsData.map(item => ({
-              day: item.day || '',
-              time: item.time || '',
-              drop: item.moneyIn || 0,
-              gross: item.gross || 0,
-            }));
-            setLocalChartData(chartDataFormatted);
-            setChartData(
-              chartDataFormatted.map(item => ({
-                xValue: item.time || item.day,
-                day: item.day,
-                time: item.time,
-                moneyIn: item.drop,
-                moneyOut: 0,
-                gross: item.gross,
-              }))
-            );
+          // Convert dashboardData[] to chart format
+          const chartDataFormatted = metricsData.map(item => ({
+            day: item.day || '',
+            time: item.time || '',
+            drop: item.moneyIn || 0,
+            gross: item.gross || 0,
+          }));
+          setLocalChartData(chartDataFormatted);
+          setChartData(
+            chartDataFormatted.map(item => ({
+              xValue: item.time || item.day,
+              day: item.day,
+              time: item.time,
+              moneyIn: item.drop,
+              moneyOut: 0,
+              gross: item.gross,
+            }))
+          );
         }, 'chart');
       } catch (error) {
         if (reqId !== chartRequestIdRef.current) return;
@@ -352,24 +414,24 @@ function CabinetsPageContent() {
                 setChartData([]);
                 return;
               }
-                // Convert dashboardData[] to chart format
-                const chartDataFormatted = metricsData.map(item => ({
-                  day: item.day || '',
-                  time: item.time || '',
-                  drop: item.moneyIn || 0,
-                  gross: item.gross || 0,
-                }));
-                setLocalChartData(chartDataFormatted);
-                setChartData(
-                  chartDataFormatted.map(item => ({
-                    xValue: item.time || item.day,
-                    day: item.day,
-                    time: item.time,
-                    moneyIn: item.drop,
-                    moneyOut: 0,
-                    gross: item.gross,
-                  }))
-                );
+              // Convert dashboardData[] to chart format
+              const chartDataFormatted = metricsData.map(item => ({
+                day: item.day || '',
+                time: item.time || '',
+                drop: item.moneyIn || 0,
+                gross: item.gross || 0,
+              }));
+              setLocalChartData(chartDataFormatted);
+              setChartData(
+                chartDataFormatted.map(item => ({
+                  xValue: item.time || item.day,
+                  day: item.day,
+                  time: item.time,
+                  moneyIn: item.drop,
+                  moneyOut: 0,
+                  gross: item.gross,
+                }))
+              );
             }, 'chart');
           } catch (error) {
             console.error('Error refreshing chart data:', error);

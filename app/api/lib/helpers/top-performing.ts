@@ -11,24 +11,32 @@ type ActiveTab = 'locations' | 'Cabinets';
  *
  * @param db - MongoDB database instance.
  * @param activeTab - The current tab the user is on ("locations" or "Cabinets").
- * @param timePeriod - The time range (e.g., "7d", "30d").
+ * @param timePeriod - The time range (e.g., "7d", "30d", "Custom").
  * @param licensee - (Optional) Licensee filter to restrict results.
+ * @param customStartDate - (Optional) Custom start date for Custom time period.
+ * @param customEndDate - (Optional) Custom end date for Custom time period.
  * @returns Promise resolving to aggregated results sorted by performance.
  */
 export async function getTopPerformingMetrics(
   db: Db,
   activeTab: ActiveTab,
   timePeriod: TimePeriod,
-  licensee?: string
+  licensee?: string,
+  customStartDate?: Date,
+  customEndDate?: Date
 ) {
   const filter: QueryFilter = {};
 
   // Align date filtering with gaming-day logic used by location aggregation,
   // machines detail, etc. For "All Time" we deliberately skip the date filter.
   if (timePeriod !== 'All Time') {
+    // Use gaming day range calculation for all periods (including Custom)
+    // This ensures consistent gaming day offset logic across the application
     const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod(
       timePeriod,
-      8 // Default gaming day start hour (8 AM Trinidad time)
+      8, // Default gaming day start hour (8 AM Trinidad time)
+      customStartDate, // Required for Custom period
+      customEndDate // Required for Custom period
     );
     filter.readAt = { $gte: rangeStart, $lte: rangeEnd };
   }

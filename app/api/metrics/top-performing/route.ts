@@ -10,12 +10,10 @@
  * @module app/api/metrics/top-performing/route
  */
 
-import { getTopPerformingMetrics } from '@/app/api/lib/helpers/top-performing';
-import {
-  convertTopPerformingCurrency,
-} from '@/app/api/lib/helpers/topPerformingCurrencyConversion';
-import type { TopPerformingItem } from '@/app/api/lib/helpers/topPerformingCurrencyConversion';
 import { shouldApplyCurrencyConversion } from '@/app/api/lib/helpers/currencyHelper';
+import { getTopPerformingMetrics } from '@/app/api/lib/helpers/top-performing';
+import type { TopPerformingItem } from '@/app/api/lib/helpers/topPerformingCurrencyConversion';
+import { convertTopPerformingCurrency } from '@/app/api/lib/helpers/topPerformingCurrencyConversion';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
@@ -63,6 +61,25 @@ export async function GET(req: NextRequest) {
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;
     const displayCurrency: CurrencyCode = currencyParam || 'USD';
 
+    // Parse custom date range for Custom time period
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
+    let customStartDate: Date | undefined;
+    let customEndDate: Date | undefined;
+
+    if (timePeriod === 'Custom' && startDateParam && endDateParam) {
+      customStartDate = new Date(startDateParam);
+      customEndDate = new Date(endDateParam);
+
+      // Validate dates
+      if (isNaN(customStartDate.getTime()) || isNaN(customEndDate.getTime())) {
+        return NextResponse.json(
+          { error: 'Invalid date parameters' },
+          { status: 400 }
+        );
+      }
+    }
+
     // ============================================================================
     // STEP 2: Connect to database
     // ============================================================================
@@ -77,7 +94,14 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 3: Fetch top performing metrics
     // ============================================================================
-    const data = await getTopPerformingMetrics(db, activeTab, timePeriod, licenseeForFilter);
+    const data = await getTopPerformingMetrics(
+      db,
+      activeTab,
+      timePeriod,
+      licenseeForFilter,
+      customStartDate,
+      customEndDate
+    );
 
     // ============================================================================
     // STEP 4: Apply currency conversion if needed

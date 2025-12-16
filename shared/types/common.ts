@@ -24,6 +24,7 @@ export type TimePeriod =
   | '7d'
   | 'last30days'
   | '30d'
+  | 'Quarterly'
   | 'All Time'
   | 'Custom';
 

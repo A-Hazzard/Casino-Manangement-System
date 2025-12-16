@@ -39,7 +39,9 @@ export async function fetchTopPerformingData(
   timePeriod: string,
   licensee?: string,
   currency?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  startDate?: Date,
+  endDate?: Date
 ): Promise<TopPerformingData> {
   try {
     const params: Record<string, string> = { activeTab, timePeriod };
@@ -49,6 +51,12 @@ export async function fetchTopPerformingData(
     if (currency) {
       params.currency = currency;
     }
+    // Add start/end dates for Custom time periods
+    if (timePeriod === 'Custom' && startDate && endDate) {
+      params.startDate = startDate.toISOString();
+      params.endDate = endDate.toISOString();
+    }
+
     const headers = { 'Content-Type': 'application/json' };
     const response = await axios.get(`/api/metrics/top-performing`, {
       params,

@@ -3,18 +3,18 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/ui/card';
 import LocationMultiSelect from '@/components/ui/common/LocationMultiSelect';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { MetersHourlyCharts } from '@/components/ui/MetersHourlyCharts';
@@ -29,28 +29,31 @@ import { useUserStore } from '@/lib/store/userStore';
 import type { TopPerformingItem } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils/currency';
 import {
-  exportMetersReportExcel,
-  exportMetersReportPDF,
+    exportMetersReportExcel,
+    exportMetersReportPDF,
 } from '@/lib/utils/export';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
 import { useDebounce } from '@/lib/utils/hooks';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
+import {
+  getGranularityFromDataPoints,
+} from '@/lib/utils/chartGranularity';
 import type {
-  MetersReportData,
-  MetersReportResponse,
+    MetersReportData,
+    MetersReportResponse,
 } from '@/shared/types/meters';
 import axios from 'axios';
 import {
-  AlertCircle,
-  BarChart3,
-  ChevronDown,
-  Download,
-  ExternalLink,
-  FileSpreadsheet,
-  FileText,
-  Monitor,
-  RefreshCw,
-  Search,
+    AlertCircle,
+    BarChart3,
+    ChevronDown,
+    Download,
+    ExternalLink,
+    FileSpreadsheet,
+    FileText,
+    Monitor,
+    RefreshCw,
+    Search,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -102,6 +105,14 @@ export default function MetersTab() {
   );
   const [topMachinesLoading, setTopMachinesLoading] = useState(false);
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
+  
+  // Chart granularity state
+  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
+    'hourly'
+  );
+  // Track if user has manually changed granularity (to prevent auto-determination from overriding)
+  const hasManuallySetGranularityRef = useRef(false);
+  
   const itemsPerPage = 10;
   const itemsPerBatch = 50;
   const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
@@ -532,6 +543,7 @@ export default function MetersTab() {
 
         if (selectedLocations.length > 0) {
           params.append('includeHourlyData', 'true');
+          params.append('granularity', chartGranularity);
           setHourlyChartLoading(true);
         }
 
@@ -568,6 +580,17 @@ export default function MetersTab() {
           if (response.data.hourlyChartData) {
             setHourlyChartData(response.data.hourlyChartData);
             setAllHourlyChartData(response.data.hourlyChartData);
+            
+            // Auto-determine granularity based on actual data points (only if user hasn't manually set it)
+            if (!hasManuallySetGranularityRef.current) {
+              const dataBasedGranularity = getGranularityFromDataPoints(
+                response.data.hourlyChartData.map(item => ({
+                  day: item.day,
+                  time: item.hour || '',
+                }))
+              );
+              setChartGranularity(dataBasedGranularity);
+            }
           }
           setHourlyChartLoading(false);
 
@@ -637,6 +660,7 @@ export default function MetersTab() {
       customDateRange,
       selectedLicencee,
       displayCurrency,
+      chartGranularity,
       itemsPerBatch,
       setReportsLoading,
       makeMetersRequest,
@@ -678,6 +702,7 @@ export default function MetersTab() {
     activeMetricsFilter,
     customDateRange,
     selectedLicencee,
+    chartGranularity, // Include to trigger refetch when granularity changes
     setAllMetersData,
     setLoadedBatches,
     setCurrentPage,
@@ -756,6 +781,7 @@ export default function MetersTab() {
             timePeriod: activeMetricsFilter,
             includeHourlyData: 'true',
             hourlyDataMachineIds: filteredMachineIds.join(','),
+            granularity: chartGranularity,
           });
 
           // Add custom dates if needed
@@ -792,6 +818,17 @@ export default function MetersTab() {
 
           if (response.data.hourlyChartData) {
             setHourlyChartData(response.data.hourlyChartData);
+            
+            // Auto-determine granularity based on actual data points (only if user hasn't manually set it)
+            if (!hasManuallySetGranularityRef.current) {
+              const dataBasedGranularity = getGranularityFromDataPoints(
+                response.data.hourlyChartData.map(item => ({
+                  day: item.day,
+                  time: item.hour || '',
+                }))
+              );
+              setChartGranularity(dataBasedGranularity);
+            }
           } else {
             setHourlyChartData([]);
           }
@@ -827,6 +864,7 @@ export default function MetersTab() {
     customDateRange,
     selectedLicencee,
     displayCurrency,
+    chartGranularity,
     allHourlyChartData,
     setReportsLoading,
     makeHourlyChartRequest,
@@ -1408,8 +1446,6 @@ export default function MetersTab() {
                       />
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                      Showing {paginatedMetersData.length} of{' '}
-                      {filteredMetersData.length} records
                       {debouncedSearchTerm &&
                         ` (filtered by "${debouncedSearchTerm}")`}
                     </p>
@@ -1814,6 +1850,28 @@ export default function MetersTab() {
                 {/* Hourly Charts Section - Order 1 on mobile (appears first), Order 2 on md+ (appears after table) */}
                 {selectedLocations.length > 0 && (
                   <div className="order-1 mb-6 md:order-2">
+                    {/* Granularity Selector */}
+                    <div className="mb-4 flex items-center justify-end gap-2">
+                      <label
+                        htmlFor="chart-granularity-meters"
+                        className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        Granularity:
+                      </label>
+                      <select
+                        id="chart-granularity-meters"
+                        value={chartGranularity}
+                        onChange={e => {
+                          const newGranularity = e.target.value as 'hourly' | 'minute';
+                          setChartGranularity(newGranularity);
+                          hasManuallySetGranularityRef.current = true;
+                        }}
+                        className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                      >
+                        <option value="minute">Minute</option>
+                        <option value="hourly">Hourly</option>
+                      </select>
+                    </div>
                     <MetersHourlyCharts
                       data={hourlyChartData}
                       loading={hourlyChartLoading}

@@ -25,7 +25,9 @@ import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { getMetrics } from '@/lib/helpers/metrics';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { dashboardData } from '@/lib/types';
+import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
 import { formatCurrencyWithCode } from '@/lib/utils/currency';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { TimePeriod } from '@/shared/types/common';
 import axios from 'axios';
 import gsap from 'gsap';
@@ -67,23 +69,80 @@ export default function TopPerformingLocationModal({
   const [chartData, setChartData] = useState<dashboardData[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingChart, setLoadingChart] = useState(false);
-  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
-    'minute'
-  );
   const router = useRouter();
   const { displayCurrency } = useCurrency();
   const { activePieChartFilter, customDateRange, selectedLicencee } =
     useDashBoardStore();
 
-  // Show granularity selector for Today/Yesterday/Custom
+  // Chart granularity state - initialize after store values are available
+  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
+    'hourly'
+  );
+
+  // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   const showGranularitySelector = useMemo(() => {
     const timePeriod = (activePieChartFilter || 'Today') as TimePeriod;
-    return (
-      timePeriod === 'Today' ||
-      timePeriod === 'Yesterday' ||
-      timePeriod === 'Custom'
-    );
-  }, [activePieChartFilter]);
+    if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
+      return true;
+    }
+    if (
+      timePeriod === 'Custom' &&
+      customDateRange?.startDate &&
+      customDateRange?.endDate
+    ) {
+      // Check if spans more than 1 gaming day
+      try {
+        const range = getGamingDayRangeForPeriod(
+          'Custom',
+          8, // Default gaming day start hour
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate),
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate)
+        );
+        const hoursDiff =
+          (range.rangeEnd.getTime() - range.rangeStart.getTime()) /
+          (1000 * 60 * 60);
+        return hoursDiff <= 24; // Show toggle only if ≤ 24 hours
+      } catch (error) {
+        console.error('Error calculating gaming day range:', error);
+        return false;
+      }
+    }
+    return false;
+  }, [activePieChartFilter, customDateRange]);
+
+  // Recalculate default granularity when date filters change
+  // For "Today", also recalculate periodically as time passes
+  useEffect(() => {
+    const timePeriod = (activePieChartFilter || 'Today') as TimePeriod;
+    const updateGranularity = () => {
+      const defaultGranularity = getDefaultChartGranularity(
+        timePeriod,
+        customDateRange?.startDate,
+        customDateRange?.endDate
+      );
+      setChartGranularity(defaultGranularity);
+    };
+
+    // Update immediately
+    updateGranularity();
+
+    // For "Today" filter, set up interval to recalculate every minute
+    // This ensures granularity switches from 'minute' to 'hourly' when 5 hours pass
+    if (timePeriod === 'Today') {
+      const interval = setInterval(updateGranularity, 60000); // Every minute
+      return () => clearInterval(interval);
+    }
+
+    return undefined;
+  }, [
+    activePieChartFilter,
+    customDateRange?.startDate,
+    customDateRange?.endDate,
+  ]);
 
   // Fetch location data and chart data
   useEffect(() => {

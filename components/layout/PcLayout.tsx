@@ -349,8 +349,8 @@ export default function PcLayout(props: PcLayoutProps) {
                         message={`No metrics found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}
                       />
                     ) : (
-                      <div className="flex flex-col gap-6 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
-                        <ul className="flex-1 space-y-2 lg:min-w-0">
+                      <div className="flex flex-col gap-6 md:flex-col lg:flex-col xl:flex-row xl:flex-wrap xl:items-start xl:justify-between">
+                        <ul className="flex-1 space-y-2 xl:min-w-0">
                           {props.topPerformingData.map(
                             (item: TopPerformingItem, index: number) => {
                               // Debug: Log location data to verify locationId is present
@@ -447,7 +447,7 @@ export default function PcLayout(props: PcLayoutProps) {
                             }
                           )}
                         </ul>
-                        <div className="mt-4 flex justify-center lg:mt-0 lg:flex-shrink-0 lg:justify-end">
+                        <div className="flex justify-center xl:flex-shrink-0 xl:justify-end">
                           <ResponsiveContainer width={160} height={160}>
                             <PieChart>
                               <Pie

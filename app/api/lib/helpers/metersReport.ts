@@ -31,6 +31,7 @@ export type MetersReportParams = {
   licencee: string | null;
   currency: CurrencyCode | null;
   includeHourlyData: boolean;
+  granularity?: 'hourly' | 'minute' | null;
 };
 
 /**
@@ -48,6 +49,7 @@ export type ParsedMetersReportParams = {
   includeHourlyData: boolean;
   requestedLocationList: string[];
   hourlyDataMachineIds?: string[]; // Optional: filter hourly data by specific machine IDs
+  granularity?: 'hourly' | 'minute'; // Optional: granularity for chart data
 };
 
 /**
@@ -190,6 +192,13 @@ export function parseMetersReportParams(
         .filter(id => id !== '')
     : undefined;
 
+  // Parse granularity parameter
+  const granularityParam = searchParams.get('granularity');
+  const granularity =
+    granularityParam === 'minute' || granularityParam === 'hourly'
+      ? granularityParam
+      : undefined;
+
   return {
     timePeriod,
     customStartDate: parsedCustomStart,
@@ -202,6 +211,7 @@ export function parseMetersReportParams(
     includeHourlyData,
     requestedLocationList,
     hourlyDataMachineIds,
+    granularity,
   };
 }
 
@@ -487,23 +497,28 @@ export async function getLastMeterPerMachine(
 }
 
 /**
- * Aggregate meters by hour for chart visualization
+ * Aggregate meters by hour or minute for chart visualization
  *
- * This aggregation sums movement fields (deltas) by hour for hourly chart display.
+ * This aggregation sums movement fields (deltas) by hour or minute for chart display.
  * Unlike the main meter aggregation, this uses $sum to aggregate movement values.
  *
  * @param db - MongoDB database instance
  * @param machineIds - List of machine IDs to query
  * @param queryStartDate - Start date for the query range
  * @param queryEndDate - End date for the query range
- * @returns Array of hourly chart data points
+ * @param granularity - 'hourly' to group by hour, 'minute' to group by minute
+ * @returns Array of chart data points (hourly or minute-level)
  */
 export async function getHourlyChartData(
   db: Db,
   machineIds: string[],
   queryStartDate: Date,
-  queryEndDate: Date
+  queryEndDate: Date,
+  granularity: 'hourly' | 'minute' = 'hourly'
 ): Promise<HourlyChartData[]> {
+  // Determine time format based on granularity
+  const timeFormat = granularity === 'minute' ? '%H:%M' : '%H:00';
+
   // Use cursor for Meters aggregation
   const hourlyAggregation: Array<Record<string, unknown>> = [];
   const hourlyCursor = Meters.aggregate([
@@ -532,7 +547,7 @@ export async function getHourlyChartData(
         $addFields: {
           hour: {
             $dateToString: {
-              format: '%H:00',
+              format: timeFormat,
               date: '$readAt',
             },
           },

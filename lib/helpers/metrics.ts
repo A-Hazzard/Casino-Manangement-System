@@ -20,6 +20,7 @@ import {
 } from '@/shared/utils/dateFormat';
 import { TimePeriod } from '@shared/types';
 import axios from 'axios';
+import { getGranularityFromDataPoints } from '../utils/chartGranularity';
 
 // ============================================================================
 // Metrics Data Fetching and Processing
@@ -131,65 +132,23 @@ export async function getMetrics(
         useMinute = true;
       }
     } else {
-      // Auto-detect granularity based on API response and time period
-      // Only use hourly for predefined periods OR date-only custom ranges (without minute data)
-      const shouldUseHourly =
-        timePeriod === 'Today' || timePeriod === 'Yesterday';
+      // Auto-detect granularity based on actual data points' time range
+      // Check all meters and if they span more than 5 hours, default to hourly
+      const dataBasedGranularity = getGranularityFromDataPoints(
+        data.map(doc => ({
+          day: doc.day,
+          time: doc.time || '',
+        }))
+      );
 
-      // For custom ranges: use hourly only if date-only (no time inputs) AND API didn't return minute data
-      const isCustomDateOnly =
-        timePeriod === 'Custom' &&
-        startDate &&
-        endDate &&
-        !hasMinuteLevelData &&
-        (() => {
-          const sd =
-            startDate instanceof Date ? startDate : new Date(startDate);
-          const ed = endDate instanceof Date ? endDate : new Date(endDate);
-          // Check if dates have no time components (midnight = date-only)
-          const hasNoTime =
-            sd.getHours() === 0 &&
-            sd.getMinutes() === 0 &&
-            sd.getSeconds() === 0 &&
-            ed.getHours() === 0 &&
-            ed.getMinutes() === 0 &&
-            ed.getSeconds() === 0;
-          if (!hasNoTime) return false;
-          // Check if range is <= 1 day
-          const diffInMs = ed.getTime() - sd.getTime();
-          const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
-          return diffInDays <= 1;
-        })();
-
-      // Use hourly only for predefined periods or date-only custom ranges (without minute data)
-      groupByHour = Boolean(shouldUseHourly || isCustomDateOnly);
-
-      // Detect if we should use minute-level aggregation
-      // For Custom: use minute if time inputs are provided OR API returns minute data
-      // For Today/Yesterday: use minute if API returns minute data
-      if (timePeriod === 'Custom' && startDate && endDate) {
-        const sd = startDate instanceof Date ? startDate : new Date(startDate);
-        const ed = endDate instanceof Date ? endDate : new Date(endDate);
-        // Check if custom range has time components (not date-only)
-        const hasTime =
-          sd.getHours() !== 0 ||
-          sd.getMinutes() !== 0 ||
-          sd.getSeconds() !== 0 ||
-          ed.getHours() !== 0 ||
-          ed.getMinutes() !== 0 ||
-          ed.getSeconds() !== 0;
-
-        // If custom range has time inputs, use minute-level
-        if (hasTime || hasMinuteLevelData) {
-          useMinute = true;
-          groupByHour = false;
-        }
-      } else if (
-        (timePeriod === 'Today' || timePeriod === 'Yesterday') &&
-        hasMinuteLevelData
-      ) {
+      // Use the data-based granularity
+      if (dataBasedGranularity === 'minute') {
         useMinute = true;
         groupByHour = false;
+      } else {
+        // Data spans > 5 hours, use hourly
+        useMinute = false;
+        groupByHour = true;
       }
     }
 

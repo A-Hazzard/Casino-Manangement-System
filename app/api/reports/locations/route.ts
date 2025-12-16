@@ -80,6 +80,12 @@ export async function GET(req: NextRequest) {
     const filtersParam = searchParams.get('filters');
     const filters = filtersParam ? filtersParam.split(',') : [];
 
+    // Parse specific locations param (comma-separated IDs)
+    const specificLocationsParam = searchParams.get('locations');
+    const specificLocations = specificLocationsParam
+      ? specificLocationsParam.split(',').filter(Boolean)
+      : [];
+
     const showAllLocations = searchParams.get('showAllLocations') === 'true';
 
     // Pagination parameters
@@ -243,28 +249,63 @@ export async function GET(req: NextRequest) {
           converted: false,
         });
       }
-      locationMatchStage['_id'] = { $in: allowedLocationIds };
-    } else if (licencee && licencee !== 'all') {
-      // Admin with all access but specific licensee filter requested
-      // Resolve licensee name to ID if needed (getUserLocationFilter should handle this, but double-check)
-      let licenseeId = licencee;
-      try {
-        const licenseeDoc = await Licencee.findOne({
-          $or: [
-            { _id: licencee },
-            { name: { $regex: new RegExp(`^${licencee}$`, 'i') } },
-          ],
-        })
-          .select('_id')
-          .lean();
-        if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc._id) {
-          licenseeId = String(licenseeDoc._id);
+
+      // If specific locations requested, ensure they are within allowed permissions
+      if (specificLocations.length > 0) {
+        // Filter allowedLocationIds to include only requested locations
+        const intersection = allowedLocationIds.filter(id =>
+          specificLocations.includes(String(id))
+        );
+
+        if (intersection.length === 0) {
+          // Requested locations are not accessible
+          return NextResponse.json({
+            data: [],
+            pagination: {
+              page,
+              limit,
+              totalCount: 0,
+              totalPages: 0,
+              hasNextPage: false,
+              hasPrevPage: false,
+            },
+            currency: displayCurrency,
+            converted: false,
+          });
         }
-      } catch {
-        // Failed to resolve licensee - use as-is
+        locationMatchStage['_id'] = { $in: intersection };
+      } else {
+        locationMatchStage['_id'] = { $in: allowedLocationIds };
       }
-      // rel.licencee is stored as a String
-      locationMatchStage['rel.licencee'] = licenseeId;
+    } else {
+      // User has access to ALL locations (admin/dev)
+      // Check if specific locations requested
+      if (specificLocations.length > 0) {
+        locationMatchStage['_id'] = { $in: specificLocations };
+      }
+
+      if (licencee && licencee !== 'all') {
+        // Admin with all access but specific licensee filter requested
+        // Resolve licensee name to ID if needed (getUserLocationFilter should handle this, but double-check)
+        let licenseeId = licencee;
+        try {
+          const licenseeDoc = await Licencee.findOne({
+            $or: [
+              { _id: licencee },
+              { name: { $regex: new RegExp(`^${licencee}$`, 'i') } },
+            ],
+          })
+            .select('_id')
+            .lean();
+          if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc._id) {
+            licenseeId = String(licenseeDoc._id);
+          }
+        } catch {
+          // Failed to resolve licensee - use as-is
+        }
+        // rel.licencee is stored as a String
+        locationMatchStage['rel.licencee'] = licenseeId;
+      }
     }
 
     // Apply machine type filters (SMIB, No SMIB, Local Server, Membership) at database level
@@ -394,6 +435,120 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 8: Calculate gaming day ranges for locations
     // ============================================================================
+    const summaryMode = searchParams.get('summary') === 'true';
+
+    // 🚀 OPTIMIZATION: If summary mode is requested (for dropdowns), skip expensive financial calcs
+    if (summaryMode) {
+      // Get machine counts per location
+      const allLocationIds = locations.map(loc => String(loc._id));
+
+      // faster machine counting using aggregation
+      const machineCounts = await Machine.aggregate([
+        {
+          $match: {
+            gamingLocation: { $in: allLocationIds },
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ],
+          },
+        },
+        {
+          $group: {
+            _id: '$gamingLocation',
+            totalMachines: { $sum: 1 },
+            sasMachines: {
+              $sum: { $cond: [{ $eq: ['$isSasMachine', true] }, 1, 0] },
+            },
+            onlineMachines: {
+              $sum: {
+                $cond: [
+                  {
+                    $gt: [
+                      '$lastActivity',
+                      new Date(Date.now() - 24 * 60 * 60 * 1000),
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]);
+
+      const countsMap = new Map();
+      machineCounts.forEach(count => {
+        countsMap.set(count._id, count);
+      });
+
+      const summaryResults = locations.map(location => {
+        const locId = String(location._id);
+        const counts = countsMap.get(locId) || {
+          totalMachines: 0,
+          sasMachines: 0,
+          onlineMachines: 0,
+        };
+
+        const sasMachines = counts.sasMachines || 0;
+        const totalMachines = counts.totalMachines || 0;
+        const nonSasMachines = totalMachines - sasMachines;
+
+        return {
+          _id: locId,
+          location: locId,
+          locationName: location.name,
+          totalMachines,
+          sasMachines,
+          nonSasMachines,
+          hasSasMachines: sasMachines > 0,
+          hasNonSasMachines: nonSasMachines > 0,
+          onlineMachines: counts.onlineMachines || 0,
+          // Zero out financial metrics
+          moneyIn: 0,
+          moneyOut: 0,
+          gross: 0,
+          // Include other necessary fields
+          rel: location.rel,
+          isLocalServer: location.isLocalServer,
+          membershipEnabled:
+            location.membershipEnabled ||
+            (location as { enableMembership?: boolean }).enableMembership ||
+            false,
+        };
+      });
+
+      // Apply filters if needed (e.g. sasEvaluationOnly which checks sasMachines > 0)
+      // The sasEvaluationOnly param is not standard in this route but usually handled by caller filtering.
+      // However, seeing Step 10 logic in original code, let's keep it simple.
+      // The caller (LocationsTab) likely filters the result.
+      // But wait, the previous code had 'sasEvaluationOnly' logic somewhere?
+      // Looking at the file, 'sasEvaluationOnly' wasn't explicitly in Step 1,
+      // but 'SMIBLocationsOnly' etc were.
+      // We'll return the full list and let the client filter or simple pagination apply.
+
+      const totalTime = Date.now() - perfStart;
+
+      return NextResponse.json({
+        data: summaryResults,
+        pagination: {
+          page: 1,
+          limit: locations.length,
+          totalCount: locations.length,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
+        currency: displayCurrency,
+        converted: false,
+        performance: {
+          totalTime,
+          mode: 'summary',
+        },
+      });
+    }
+
     const gamingDayStart = Date.now();
     const gamingDayRanges = getGamingDayRangesForLocations(
       locations.map(loc => ({
@@ -412,11 +567,12 @@ export async function GET(req: NextRequest) {
     const processingStart = Date.now();
     const locationResults: AggregatedLocation[] = [];
 
-    // 🚀 OPTIMIZED: Use single aggregation for 7d/30d periods (much faster)
+    // 🚀 OPTIMIZED: Use single aggregation for 7d/30d/Quarterly periods (much faster)
     // For shorter periods (Today/Yesterday/Custom), use batch processing
     const useSingleAggregation =
       timePeriod === '7d' ||
       timePeriod === '30d' ||
+      timePeriod === 'Quarterly' ||
       timePeriod === 'last7days' ||
       timePeriod === 'last30days';
 
@@ -481,9 +637,9 @@ export async function GET(req: NextRequest) {
         {
           $match: {
             location: { $in: allLocationIds }, // Filter by location directly (uses index)
-          readAt: {
-            $gte: globalStart,
-            $lte: globalEnd,
+            readAt: {
+              $gte: globalStart,
+              $lte: globalEnd,
             },
           },
         },
@@ -522,7 +678,7 @@ export async function GET(req: NextRequest) {
 
         if (!hasOverlap) continue;
 
-          locationMetricsMap.set(locationId, {
+        locationMetricsMap.set(locationId, {
           moneyIn: agg.totalDrop || 0,
           moneyOut: agg.totalCancelledCredits || 0,
           meterCount: agg.meterCount || 0,

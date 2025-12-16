@@ -81,6 +81,29 @@ export const getDatesForTimePeriod = (timePeriod: TimePeriod): CustomDate => {
       endDate = new Date(today30dLocalStr + 'T23:59:59.999Z');
       break;
 
+    case 'Quarterly':
+      // Define quarterly range (last 90 days / 3 months, including today, so go back 89 days)
+      const quarterStart = new Date();
+      quarterStart.setDate(quarterStart.getDate() - 89);
+      const quarterStartLocal = new Date(
+        quarterStart.getTime() - quarterStart.getTimezoneOffset() * 60000
+      );
+      const quarterStartLocalStr = quarterStartLocal
+        .toISOString()
+        .split('T')[0];
+
+      const todayQuarterly = new Date();
+      const todayQuarterlyLocal = new Date(
+        todayQuarterly.getTime() - todayQuarterly.getTimezoneOffset() * 60000
+      );
+      const todayQuarterlyLocalStr = todayQuarterlyLocal
+        .toISOString()
+        .split('T')[0];
+
+      startDate = new Date(quarterStartLocalStr + 'T00:00:00.000Z');
+      endDate = new Date(todayQuarterlyLocalStr + 'T23:59:59.999Z');
+      break;
+
     case 'All Time':
       // For All Time, return undefined dates to fetch all records
       startDate = undefined;

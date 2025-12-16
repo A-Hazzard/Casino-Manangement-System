@@ -71,6 +71,17 @@ export const getDatesForTimePeriod = (timePeriod: TimePeriod): CustomDate => {
       endDate.setUTCHours(23, 59, 59, 999);
       break;
 
+    case 'Quarterly':
+      // Define quarterly range (last 3 months / 90 days)
+      // Including today, so go back 89 days
+      startDate = new Date();
+      startDate.setUTCDate(startDate.getUTCDate() - 89);
+      startDate.setUTCHours(0, 0, 0, 0);
+
+      endDate = new Date();
+      endDate.setUTCHours(23, 59, 59, 999);
+      break;
+
     case 'All Time':
       // For All Time, return undefined dates to fetch all records
       startDate = undefined;

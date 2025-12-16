@@ -79,6 +79,8 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import type { dashboardData } from '@/lib/types';
 import { getAuthHeaders } from '@/lib/utils/auth';
+import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 import { TimePeriod } from '@/shared/types/common';
 import { formatLocalDateTimeString } from '@/shared/utils/dateFormat';
@@ -191,11 +193,81 @@ export default function LocationPage() {
     customDateRange,
   } = useDashBoardStore();
 
-  // Show granularity selector only for Today or Yesterday
-  const showGranularitySelector =
-    activeMetricsFilter === 'Today' || activeMetricsFilter === 'Yesterday';
-
   const user = useUserStore(state => state.user);
+
+  // Chart granularity selector (only shown for Today/Yesterday/Custom)
+  // Initialize after activeMetricsFilter and customDateRange are available
+  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
+    'hourly'
+  );
+
+  // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
+  const showGranularitySelector = useMemo(() => {
+    if (
+      activeMetricsFilter === 'Today' ||
+      activeMetricsFilter === 'Yesterday'
+    ) {
+      return true;
+    }
+    if (
+      activeMetricsFilter === 'Custom' &&
+      customDateRange?.startDate &&
+      customDateRange?.endDate
+    ) {
+      // Check if spans more than 1 gaming day
+      try {
+        const range = getGamingDayRangeForPeriod(
+          'Custom',
+          8, // Default gaming day start hour
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate),
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate)
+        );
+        const hoursDiff =
+          (range.rangeEnd.getTime() - range.rangeStart.getTime()) /
+          (1000 * 60 * 60);
+        return hoursDiff <= 24; // Show toggle only if ≤ 24 hours
+      } catch (error) {
+        console.error('Error calculating gaming day range:', error);
+        return false;
+      }
+    }
+    return false;
+  }, [activeMetricsFilter, customDateRange]);
+
+  // Initialize and recalculate default granularity when date filters change
+  // For "Today", also recalculate periodically as time passes
+  useEffect(() => {
+    if (!activeMetricsFilter) return undefined;
+
+    const updateGranularity = () => {
+      const defaultGranularity = getDefaultChartGranularity(
+        activeMetricsFilter,
+        customDateRange?.startDate,
+        customDateRange?.endDate
+      );
+      setChartGranularity(defaultGranularity);
+    };
+
+    // Update immediately
+    updateGranularity();
+
+    // For "Today" filter, set up interval to recalculate every minute
+    // This ensures granularity switches from 'minute' to 'hourly' when 5 hours pass
+    if (activeMetricsFilter === 'Today') {
+      const interval = setInterval(updateGranularity, 60000); // Every minute
+      return () => clearInterval(interval);
+    }
+
+    return undefined;
+  }, [
+    activeMetricsFilter,
+    customDateRange?.startDate,
+    customDateRange?.endDate,
+  ]);
 
   // AbortController for different query types
   const makeCabinetsRequest = useAbortableRequest();
@@ -258,10 +330,6 @@ export default function LocationPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [chartData, setChartData] = useState<dashboardData[]>([]);
   const [loadingChartData, setLoadingChartData] = useState(false);
-  // Chart granularity selector (only shown for Today/Yesterday/Custom)
-  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
-    'hourly'
-  );
   // Prevent premature data fetching
   const [filtersInitialized, setFiltersInitialized] = useState(false);
   const chartRequestInProgress = useRef(false);

@@ -77,6 +77,31 @@ export function formatTime(date: DateInput): string {
 }
 
 /**
+ * Convert 24-hour format time string to 12-hour format
+ * @param time24 - Time string in 24-hour format (e.g., "14:00", "09:30", "23:45")
+ * @returns Time string in 12-hour format (e.g., "2:00 PM", "9:30 AM", "11:45 PM")
+ */
+export function formatTime12Hour(time24: string): string {
+  try {
+    // Handle formats like "HH:MM" or "HH:MM:SS"
+    const [hours, minutes] = time24.split(':').map(Number);
+    
+    if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return time24; // Return original if invalid
+    }
+
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+    const minutesStr = minutes.toString().padStart(2, '0');
+
+    return `${hour12}:${minutesStr} ${period}`;
+  } catch (error) {
+    console.warn('Time formatting error:', error);
+    return time24; // Return original on error
+  }
+}
+
+/**
  * Format date for API/ISO format (e.g., "2024-01-15")
  */
 export function formatISODate(date: DateInput): string {

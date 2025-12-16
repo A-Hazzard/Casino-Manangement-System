@@ -258,7 +258,8 @@ export async function GET(req: NextRequest) {
         db,
         machineIdsForHourlyData,
         queryStartDate,
-        queryEndDate
+        queryEndDate,
+        params.granularity || 'hourly'
       );
     }
 

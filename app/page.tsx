@@ -46,6 +46,8 @@ import {
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useUserStore } from '@/lib/store/userStore';
+import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 
 /**
@@ -111,13 +113,6 @@ function DashboardContent() {
   } = useDashBoardStore();
 
   // ============================================================================
-  // State - Chart Granularity
-  // ============================================================================
-  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
-    'hourly'
-  );
-
-  // ============================================================================
   // Refs
   // ============================================================================
   // To compare new totals with previous ones.
@@ -128,6 +123,8 @@ function DashboardContent() {
   const hasInitialFetchRef = useRef(false);
   // Track if top-performing data has been fetched
   const hasTopPerformingFetchedRef = useRef(false);
+  // Track previous top performing fetch key to prevent duplicates
+  const prevTopPerformingKeyRef = useRef<string>('');
 
   // ============================================================================
   // Custom Hooks
@@ -139,14 +136,85 @@ function DashboardContent() {
     setShowDatePicker,
   } = useDashboardFilters({ selectedLicencee });
 
-  // Show granularity selector for Today/Yesterday/Custom
+  // ============================================================================
+  // State - Chart Granularity
+  // ============================================================================
+  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
+    () =>
+      getDefaultChartGranularity(
+        activeMetricsFilter || 'Today',
+        customDateRange?.startDate,
+        customDateRange?.endDate
+      )
+  );
+
+  // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   const showGranularitySelector = useMemo(() => {
-    return (
+    if (
       activeMetricsFilter === 'Today' ||
-      activeMetricsFilter === 'Yesterday' ||
-      activeMetricsFilter === 'Custom'
-    );
-  }, [activeMetricsFilter]);
+      activeMetricsFilter === 'Yesterday'
+    ) {
+      return true;
+    }
+    if (
+      activeMetricsFilter === 'Custom' &&
+      customDateRange?.startDate &&
+      customDateRange?.endDate
+    ) {
+      // Check if spans more than 1 gaming day
+      try {
+        const range = getGamingDayRangeForPeriod(
+          'Custom',
+          8, // Default gaming day start hour
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate),
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate)
+        );
+        const hoursDiff =
+          (range.rangeEnd.getTime() - range.rangeStart.getTime()) /
+          (1000 * 60 * 60);
+        return hoursDiff <= 24; // Show toggle only if ≤ 24 hours
+      } catch (error) {
+        console.error('Error calculating gaming day range:', error);
+        return false;
+      }
+    }
+    return false;
+  }, [activeMetricsFilter, customDateRange]);
+
+  // Recalculate default granularity when date filters change
+  // For "Today", also recalculate periodically as time passes
+  useEffect(() => {
+    if (!activeMetricsFilter) return undefined;
+
+    const updateGranularity = () => {
+      const defaultGranularity = getDefaultChartGranularity(
+        activeMetricsFilter,
+        customDateRange?.startDate,
+        customDateRange?.endDate
+      );
+      setChartGranularity(defaultGranularity);
+    };
+
+    // Update immediately
+    updateGranularity();
+
+    // For "Today" filter, set up interval to recalculate every minute
+    // This ensures granularity switches from 'minute' to 'hourly' when 5 hours pass
+    if (activeMetricsFilter === 'Today') {
+      const interval = setInterval(updateGranularity, 60000); // Every minute
+      return () => clearInterval(interval);
+    }
+
+    return undefined;
+  }, [
+    activeMetricsFilter,
+    customDateRange?.startDate,
+    customDateRange?.endDate,
+  ]);
 
   const { showFloatingRefresh } = useDashboardScroll();
 
@@ -204,7 +272,8 @@ function DashboardContent() {
 
     // Create a unique key for this fetch to prevent duplicate calls
     // Use dateRangeKey (string) for comparison, but effectiveDateRange is in dependencies
-    // Include chartGranularity to trigger refetch when granularity changes
+    // Include chartGranularity to trigger refetch when it changes
+    // NOTE: activeTab is NOT included - charts/cards should NOT refetch on tab change
     const currentDateRangeKey = dateRangeKey;
     const fetchKey = `${activeMetricsFilter}-${selectedLicencee}-${currentDateRangeKey}-${displayCurrency}-${isAdminUser}-${chartGranularity}`;
 
@@ -218,12 +287,6 @@ function DashboardContent() {
 
     const fetchMetrics = async () => {
       try {
-        // Ensure activeTab has a default value for top-performing fetch
-        const effectiveTab = activeTab || 'Cabinets';
-
-        // Set loading states
-        setLoadingTopPerforming(true);
-
         // Wrap API calls with error handling
         await stableHandleApiCallWithRetry(
           () =>
@@ -233,37 +296,21 @@ function DashboardContent() {
           'Dashboard Locations'
         );
 
-        // Fetch metrics and top-performing data in parallel
-        await Promise.all([
-          makeMetricsRequest(async signal => {
-            await fetchMetricsData(
-              activeMetricsFilter as TimePeriod,
-              effectiveDateRange,
-              selectedLicencee,
-              setTotals,
-              setChartData,
-              setActiveFilters,
-              setShowDatePicker,
-              displayCurrency,
-              signal,
-              chartGranularity === 'minute' ? 'minute' : 'hourly'
-            );
-          }),
-          makeTopPerformingRequest(async signal => {
-            await fetchTopPerformingDataHelper(
-              effectiveTab,
-              activeMetricsFilter as TimePeriod,
-              (data: TopPerformingData) => {
-                setTopPerformingData(data);
-                hasTopPerformingFetchedRef.current = true; // Mark that we've completed a fetch
-              },
-              setLoadingTopPerforming,
-              selectedLicencee,
-              displayCurrency,
-              signal
-            );
-          }),
-        ]);
+        // Fetch metrics data (charts and cards) - NOT top performing data
+        await makeMetricsRequest(async signal => {
+          await fetchMetricsData(
+            activeMetricsFilter as TimePeriod,
+            effectiveDateRange,
+            selectedLicencee,
+            setTotals,
+            setChartData,
+            setActiveFilters,
+            setShowDatePicker,
+            displayCurrency,
+            signal,
+            chartGranularity === 'minute' ? 'minute' : 'hourly'
+          );
+        });
 
         // Only update previous fetch params AFTER successful fetch
         // This ensures that if filters change while fetch is in progress, we can fetch again
@@ -292,7 +339,7 @@ function DashboardContent() {
     fetchMetrics();
   }, [
     activeMetricsFilter,
-    activeTab,
+    // activeTab removed - charts/cards should NOT refetch on tab change
     selectedLicencee,
     dateRangeKey,
     effectiveDateRange,
@@ -300,7 +347,7 @@ function DashboardContent() {
     isAdminUser,
     stableHandleApiCallWithRetry,
     makeMetricsRequest,
-    makeTopPerformingRequest,
+    // makeTopPerformingRequest removed - top performing has separate useEffect
     chartGranularity,
     setGamingLocations,
     setTotals,
@@ -308,9 +355,61 @@ function DashboardContent() {
     setActiveFilters,
     setShowDatePicker,
     setLoadingChartData,
-    setLoadingTopPerforming,
+    // setLoadingTopPerforming removed - top performing has separate useEffect
+    // setTopPerformingData removed - top performing has separate useEffect
+  ]);
+
+  // Separate useEffect for top performing data - refetches when tab OR filters change
+  useEffect(() => {
+    // Skip if no active filter
+    if (!activeMetricsFilter) {
+      return;
+    }
+
+    const effectiveTab = activeTab || 'Cabinets';
+    const topPerformingKey = `top-performing-${effectiveTab}-${activeMetricsFilter}-${selectedLicencee}-${dateRangeKey}-${displayCurrency}`;
+
+    // Skip if this exact fetch was already triggered and completed
+    if (prevTopPerformingKeyRef.current === topPerformingKey) {
+      return;
+    }
+
+    const fetchTopPerforming = async () => {
+      try {
+        setLoadingTopPerforming(true);
+        await makeTopPerformingRequest(async signal => {
+          await fetchTopPerformingDataHelper(
+            effectiveTab,
+            activeMetricsFilter as TimePeriod,
+            (data: TopPerformingData) => {
+              setTopPerformingData(data);
+              hasTopPerformingFetchedRef.current = true;
+              prevTopPerformingKeyRef.current = topPerformingKey;
+            },
+            setLoadingTopPerforming,
+            selectedLicencee,
+            displayCurrency,
+            signal,
+            effectiveDateRange
+          );
+        });
+      } catch (error) {
+        console.error('Error fetching top performing data:', error);
+        setLoadingTopPerforming(false);
+      }
+    };
+
+    fetchTopPerforming();
+  }, [
+    activeTab,
+    activeMetricsFilter,
+    selectedLicencee,
+    dateRangeKey,
+    effectiveDateRange,
+    displayCurrency,
+    makeTopPerformingRequest,
     setTopPerformingData,
-    // fetchTopPerformingDataHelper is from outer scope and doesn't need to be in deps
+    setLoadingTopPerforming,
   ]);
 
   // Update previous totals reference when new data arrives

@@ -6,6 +6,7 @@ import { ModernCalendar } from '@/components/ui/ModernCalendar';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
 import { useUserStore } from '@/lib/store/userStore';
+import { useSearchParams } from 'next/navigation';
 
 /**
  * Reports Date Filters Component
@@ -23,6 +24,14 @@ export default function ReportsDateFilters() {
   const { setDateRange, activeView } = useReportsStore();
   const user = useUserStore(state => state.user);
   const isDeveloper = (user?.roles || []).includes('developer');
+  const searchParams = useSearchParams();
+
+  // Check if we're in location-evaluation or location-revenue sub-tabs
+  const activeLocationSubTab = searchParams?.get('ltab') || '';
+  const isLocationEvaluationOrRevenue =
+    activeView === 'locations' &&
+    (activeLocationSubTab === 'location-evaluation' ||
+      activeLocationSubTab === 'location-revenue');
 
   // Conditional filter buttons based on active tab
   const getTimeFilterButtons = () => {
@@ -37,6 +46,13 @@ export default function ReportsDateFilters() {
       // Only show "Last 30 Days" to developers
       if (isDeveloper) {
         baseButtons.push({ label: 'Last 30 Days', value: '30d' as TimePeriod });
+      }
+      // Show "Quarterly" only for location-evaluation and location-revenue tabs
+      if (isLocationEvaluationOrRevenue) {
+        baseButtons.push({
+          label: 'Quarterly',
+          value: 'Quarterly' as TimePeriod,
+        });
       }
     }
 
@@ -112,6 +128,13 @@ export default function ReportsDateFilters() {
       case 'last30days':
         startDate = new Date(now.setDate(now.getDate() - 30));
         endDate = new Date();
+        break;
+      case 'Quarterly':
+        // Quarterly: last 90 days (3 months)
+        startDate = new Date(now.setDate(now.getDate() - 89));
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
         break;
       case 'All Time':
         // For "All Time", set a very wide range

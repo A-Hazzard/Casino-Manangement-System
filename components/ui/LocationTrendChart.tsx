@@ -1,13 +1,13 @@
 /**
  * Location Trend Chart Component
- * Bar chart component displaying location trend data over time.
+ * Line chart component displaying location trend data over time.
  *
  * Features:
  * - Location trend data visualization
  * - Multiple location support
  * - Configurable data keys (handle, winLoss, jackpot, plays, drop, gross)
  * - Hourly or daily time series
- * - Recharts bar chart
+ * - Recharts line chart
  * - Responsive design
  * - Custom formatters
  *
@@ -22,13 +22,19 @@
  * @param isHourly - Whether data is hourly
  */
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatDisplayDate } from '@/shared/utils/dateFormat';
+import { TimePeriod } from '@/shared/types/common';
+import {
+  formatDate,
+  formatDisplayDate,
+  formatTime,
+  formatTime12Hour,
+} from '@/shared/utils/dateFormat';
 import React, { useMemo } from 'react';
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -59,6 +65,8 @@ type LocationTrendChartProps = {
   colors: string[];
   formatter: (value: number) => string;
   isHourly?: boolean;
+  timePeriod?: TimePeriod;
+  granularity?: 'hourly' | 'minute';
 };
 
 export function LocationTrendChart({
@@ -71,13 +79,154 @@ export function LocationTrendChart({
   colors,
   formatter,
   isHourly = false,
+  timePeriod,
+  granularity,
 }: LocationTrendChartProps) {
+  // Debug: Log raw data for jackpot to investigate missing data points
+  React.useEffect(() => {
+    if (dataKey === 'jackpot' && data.length > 0) {
+      const jackpotDataPoints = data.filter(item =>
+        locations.some(locId => {
+          const locData = item[locId];
+          return (
+            typeof locData === 'object' &&
+            locData !== null &&
+            (locData.jackpot || 0) > 0
+          );
+        })
+      );
+      console.log(`[LocationTrendChart] ${title} - Raw Data Analysis`, {
+        dataKey,
+        totalDataPoints: data.length,
+        jackpotDataPoints: jackpotDataPoints.length,
+        sampleRawData: data.slice(0, 3).map(item => ({
+          day: item.day,
+          time: item.time,
+          locations: locations.map(locId => ({
+            id: locId,
+            name: locationNames?.[locId],
+            data: item[locId],
+          })),
+        })),
+        sampleJackpotPoints: jackpotDataPoints.slice(0, 5).map(item => ({
+          day: item.day,
+          time: item.time,
+          locations: locations.map(locId => ({
+            name: locationNames?.[locId],
+            jackpot: (item[locId] as { jackpot?: number })?.jackpot || 0,
+          })),
+        })),
+      });
+    }
+  }, [data, dataKey, locations, locationNames, title]);
+  // Determine formatting based on time period (matching dashboard chart logic)
+  const shouldShowTimes = useMemo(() => {
+    // Explicitly check for 7d and 30d - always use daily format
+    if (
+      timePeriod === '7d' ||
+      timePeriod === '30d' ||
+      timePeriod === 'last7days' ||
+      timePeriod === 'last30days'
+    ) {
+      return false;
+    }
+
+    if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
+      // Show times if granularity is set (minute or hourly) OR if isHourly
+      return granularity === 'minute' || granularity === 'hourly' || isHourly;
+    }
+
+    if (timePeriod === 'Custom') {
+      // Check if custom range spans only one day by examining the data
+      const uniqueDays = new Set(data.map(d => d.day).filter(Boolean));
+      if (uniqueDays.size === 1) {
+        // Show times if granularity is set OR if we have time data
+        return (
+          granularity === 'minute' ||
+          granularity === 'hourly' ||
+          isHourly ||
+          data.some(d => d.time)
+        );
+      }
+      return false;
+    }
+
+    return false; // Show dates for Quarterly, All Time
+  }, [timePeriod, data, granularity, isHourly]);
+
+  const shouldShowMonths = timePeriod === 'Quarterly';
+
+  // Detect if chart data has minute-level detail
+  const hasMinuteLevelData = useMemo(() => {
+    return data.some(d => {
+      const time = d.time;
+      if (!time) return false;
+      const timeParts = time.split(':');
+      if (timeParts.length !== 2) return false;
+      const minutes = parseInt(timeParts[1], 10);
+      return !isNaN(minutes) && minutes !== 0; // Has non-zero minutes
+    });
+  }, [data]);
+
   // Transform data for the chart
+  // If granularity is 'hourly' but data has minute-level detail, aggregate by hour
   const chartData = useMemo(() => {
+    // If granularity is hourly and we have minute-level data, aggregate by hour
+    if (granularity === 'hourly' && hasMinuteLevelData && shouldShowTimes) {
+      const hourlyData: Record<string, Record<string, string | number>> = {};
+
+      data.forEach(item => {
+        if (!item.time) return;
+
+        // Extract hour from time (e.g., "14:30" -> "14:00", "09:58" -> "09:00")
+        const timeParts = item.time.split(':');
+        const hours = timeParts[0] || '00';
+        const hour = `${hours}:00`;
+        const key = `${item.day}_${hour}`;
+
+        if (!hourlyData[key]) {
+          hourlyData[key] = {
+            xValue: hour,
+            day: item.day,
+            time: hour,
+          };
+
+          // Initialize all location values to 0
+          locations.forEach(locationId => {
+            const displayName = locationNames?.[locationId] || locationId;
+            hourlyData[key][displayName] = 0;
+          });
+        }
+
+        // Sum values for each location
+        locations.forEach(locationId => {
+          const displayName = locationNames?.[locationId] || locationId;
+          const locationData = item[locationId];
+          if (typeof locationData === 'object' && locationData !== null) {
+            const value = locationData[dataKey] || 0;
+            hourlyData[key][displayName] =
+              (hourlyData[key][displayName] as number) + value;
+          }
+        });
+      });
+
+      // Convert to array and sort by day and time
+      return Object.values(hourlyData).sort((a, b) => {
+        const dayA = new Date(a.day as string).getTime();
+        const dayB = new Date(b.day as string).getTime();
+        if (dayA !== dayB) return dayA - dayB;
+        const timeA = (a.time as string).split(':').map(Number);
+        const timeB = (b.time as string).split(':').map(Number);
+        return timeA[0] * 60 + timeA[1] - (timeB[0] * 60 + timeB[1]);
+      });
+    }
+
+    // Otherwise, use data as-is
     return data.map(item => {
       const transformed: Record<string, string | number> = {
         xValue: isHourly ? item.time || '' : item.day,
         day: item.day,
+        time: item.time || '',
       };
 
       locations.forEach(locationId => {
@@ -93,20 +242,92 @@ export function LocationTrendChart({
 
       return transformed;
     });
-  }, [data, locations, locationNames, dataKey, isHourly]);
+  }, [
+    data,
+    locations,
+    locationNames,
+    dataKey,
+    isHourly,
+    granularity,
+    hasMinuteLevelData,
+    shouldShowTimes,
+  ]);
 
-  // Filter data to only show periods with actual data (no zero-value periods)
-  // This matches the behavior of location details and cabinet details pages
+  // Filter data to show all periods with activity (including 0 values for the metric)
+  // Show periods where at least one location has ANY activity (not just non-zero for this metric)
+  // This ensures we see all time periods where there's activity, even if the specific metric is 0
   const filteredData = useMemo(() => {
-    return chartData.filter(item => {
-      // Check if any location has a value > 0 for this period
+    // For sparse metrics like jackpot, show all periods where there's ANY activity
+    // Check if the period exists in the original data (meaning there's activity)
+    // This allows showing 0 values for jackpot when there's activity in other metrics
+    const filtered = chartData.filter(item => {
+      if (shouldShowTimes) {
+        // For time-based charts, show all periods that exist in the data
+        // This means if a period exists, show it even if the metric is 0
+        // The period existing means there's activity (meter readings) at that time
+        return true; // Show all periods that exist in the data
+      }
+      // For date-based charts, only show periods with data
       return locations.some(locationId => {
         const displayName = locationNames?.[locationId] || locationId;
         const value = item[displayName];
         return typeof value === 'number' && value > 0;
       });
     });
-  }, [chartData, locations, locationNames]);
+
+    // Debug logging for jackpot data
+    if (dataKey === 'jackpot' && shouldShowTimes) {
+      console.log(
+        `[LocationTrendChart] Jackpot filtering - dataKey: ${dataKey}`,
+        {
+          totalChartData: chartData.length,
+          filteredCount: filtered.length,
+          sampleFiltered: filtered.slice(0, 5).map(item => ({
+            day: item.day,
+            time: item.time,
+            values: locations.map(locId => {
+              const displayName = locationNames?.[locId] || locId;
+              return {
+                location: displayName,
+                value: item[displayName],
+              };
+            }),
+          })),
+        }
+      );
+    }
+
+    return filtered;
+  }, [chartData, locations, locationNames, shouldShowTimes, dataKey]);
+
+  // Calculate Y-axis domain from all location values to ensure all lines are visible
+  // Similar to dashboard chart logic
+  const yAxisDomain = useMemo(() => {
+    const allValues: number[] = [];
+    filteredData.forEach(item => {
+      locations.forEach(locationId => {
+        const displayName = locationNames?.[locationId] || locationId;
+        const value = item[displayName];
+        if (typeof value === 'number') {
+          allValues.push(value);
+        }
+      });
+    });
+
+    if (allValues.length > 0) {
+      const minValue = Math.min(...allValues);
+      const maxValue = Math.max(...allValues);
+
+      // Calculate domain: only go negative if data actually goes negative
+      // Add 10% padding to the top, but don't go below 0 unless data actually goes negative
+      return [
+        minValue < 0 ? minValue * 1.1 : 0,
+        maxValue > 0 ? maxValue * 1.1 : 0,
+      ] as [number, number];
+    }
+
+    return undefined;
+  }, [filteredData, locations, locationNames]);
 
   return (
     <Card className="w-full">
@@ -117,44 +338,129 @@ export function LocationTrendChart({
         </CardTitle>
       </CardHeader>
       <CardContent className="w-full">
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={filteredData}>
+        <ResponsiveContainer width="100%" height={380}>
+          <LineChart
+            data={filteredData}
+            margin={{ top: 5, right: 20, bottom: 80, left: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
-              dataKey="xValue"
-              tickFormatter={val => {
-                if (isHourly) {
-                  return val; // Already formatted as "HH:00"
+              dataKey={shouldShowTimes ? 'time' : 'day'}
+              tickFormatter={(val, index) => {
+                if (shouldShowTimes) {
+                  // For Today/Yesterday/Custom single day: show times
+                  const day = filteredData[index]?.day;
+                  if (day && val) {
+                    // Handle both hourly (HH:00) and minute-level (HH:MM) formats
+                    const timeParts = (val as string).split(':');
+                    const hours = timeParts[0] || '00';
+                    const minutes = timeParts[1] || '00';
+                    const utcDateString = `${day}T${hours}:${minutes}:00Z`;
+                    const utcDate = new Date(utcDateString);
+                    // formatTime will convert to local time automatically
+                    return formatTime(utcDate);
+                  }
+                  return formatTime12Hour(val as string);
+                } else if (shouldShowMonths) {
+                  // For Quarterly: show months
+                  const date = new Date(val as string);
+                  return formatDate(date, { month: 'short', year: 'numeric' });
                 } else {
+                  // For 7d, 30d, All Time: show dates
                   return formatDisplayDate(val);
                 }
               }}
+              interval={
+                shouldShowTimes && hasMinuteLevelData
+                  ? undefined
+                  : shouldShowTimes
+                    ? undefined
+                    : 'preserveStartEnd'
+              }
+              minTickGap={
+                shouldShowTimes &&
+                hasMinuteLevelData &&
+                granularity === 'minute'
+                  ? 30
+                  : shouldShowTimes && hasMinuteLevelData
+                    ? 30
+                    : shouldShowTimes && granularity === 'hourly'
+                      ? 60
+                      : shouldShowTimes
+                        ? 60
+                        : undefined
+              }
+              angle={
+                shouldShowTimes && filteredData.length > 15 ? -45 : undefined
+              }
+              textAnchor={
+                shouldShowTimes && filteredData.length > 15 ? 'end' : undefined
+              }
             />
-            <YAxis />
+            <YAxis
+              domain={yAxisDomain || ['auto', 'auto']}
+              tickFormatter={value => {
+                // Format large numbers compactly for Y-axis to prevent overflow (like dashboard chart)
+                const numValue =
+                  typeof value === 'number'
+                    ? value
+                    : parseFloat(String(value)) || 0;
+                if (numValue === 0) return '0';
+                if (numValue < 1000) return numValue.toFixed(0);
+                if (numValue < 1000000)
+                  return `${(numValue / 1000).toFixed(1)}K`;
+                if (numValue < 1000000000)
+                  return `${(numValue / 1000000).toFixed(1)}M`;
+                if (numValue < 1000000000000)
+                  return `${(numValue / 1000000000).toFixed(1)}B`;
+                return `${(numValue / 1000000000000).toFixed(1)}T`;
+              }}
+            />
             <Tooltip
               formatter={(value: number) => [formatter(value), '']}
-              labelFormatter={label => {
-                if (isHourly) {
-                  return `Hour: ${label}`;
+              labelFormatter={(label, payload) => {
+                if (shouldShowTimes && payload && payload[0]) {
+                  const day = payload[0].payload?.day;
+                  if (day && label) {
+                    // Handle both hourly (HH:00) and minute-level (HH:MM) formats
+                    const timeParts = String(label).split(':');
+                    const hours = timeParts[0] || '00';
+                    const minutes = timeParts[1] || '00';
+                    const utcDateString = `${day}T${hours}:${minutes}:00Z`;
+                    const utcDate = new Date(utcDateString);
+                    // formatTime will convert to local time automatically
+                    return formatTime(utcDate);
+                  }
+                  return formatTime12Hour(label as string);
+                } else if (shouldShowMonths) {
+                  const date = new Date(label as string);
+                  return formatDate(date, { month: 'short', year: 'numeric' });
                 } else {
                   return formatDisplayDate(label as string);
                 }
               }}
             />
-            <Legend />
+            <Legend
+              wrapperStyle={{ paddingTop: '20px', paddingBottom: '10px' }}
+              iconType="line"
+              verticalAlign="bottom"
+            />
             {locations.map((locationId, index) => {
               const displayName = locationNames?.[locationId] || locationId;
               return (
-                <Bar
+                <Line
                   key={locationId}
+                  type="monotone"
                   dataKey={displayName}
-                  stackId="a"
-                  fill={colors[index % colors.length]}
+                  stroke={colors[index % colors.length]}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
                   name={displayName}
                 />
               );
             })}
-          </BarChart>
+          </LineChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>

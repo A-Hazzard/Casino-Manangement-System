@@ -79,6 +79,11 @@ function determineAggregationGranularity(
     return { useHourly: true, useMinute: false };
   }
 
+  if (timePeriod === 'Quarterly') {
+    // Quarterly is 90 days, so use daily aggregation
+    return { useHourly: false, useMinute: false };
+  }
+
   if (timePeriod === 'Custom' && startDate && endDate) {
     // Check if date strings have time components (not date-only)
     const hasTimeComponents =

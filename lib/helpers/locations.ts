@@ -108,6 +108,25 @@ export default async function getAllGamingLocations(
 
     return Array.isArray(fetchedLocations) ? fetchedLocations : [];
   } catch (error) {
+    // Check if this is a cancellation error (expected behavior, don't log)
+    const isCanceled =
+      axios.isCancel(error) ||
+      (error instanceof Error &&
+        (error.name === 'CanceledError' ||
+          error.name === 'AbortError' ||
+          error.message === 'canceled' ||
+          error.message === 'The user aborted a request.')) ||
+      (error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'));
+
+    // Re-throw cancellation errors so useAbortableRequest can handle them silently
+    if (isCanceled) {
+      throw error;
+    }
+
+    // Only log non-cancellation errors
     console.error('Error fetching gaming locations:', error);
     return [];
   }
@@ -391,6 +410,25 @@ export const fetchLocationsData = async (
 
     return result;
   } catch (error) {
+    // Check if this is a cancellation error (expected behavior, don't log)
+    const isCanceled =
+      axios.isCancel(error) ||
+      (error instanceof Error &&
+        (error.name === 'CanceledError' ||
+          error.name === 'AbortError' ||
+          error.message === 'canceled' ||
+          error.message === 'The user aborted a request.')) ||
+      (error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'));
+
+    // Re-throw cancellation errors so useAbortableRequest can handle them silently
+    if (isCanceled) {
+      throw error;
+    }
+
+    // Only log non-cancellation errors
     console.error(' fetchLocationsData Error:', error);
     return [];
   }
@@ -496,7 +534,8 @@ export async function fetchAggregatedLocationsData(
   displayCurrency?: string,
   page?: number,
   limit?: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  locations?: string[]
 ): Promise<{
   data: AggregatedLocation[];
   pagination?: {
@@ -520,6 +559,11 @@ export async function fetchAggregatedLocationsData(
       queryParams.push(`filters=${encodeURIComponent(filterString)}`);
     if (displayCurrency)
       queryParams.push(`currency=${encodeURIComponent(displayCurrency)}`);
+      
+    // Add specific locations filter
+    if (locations && locations.length > 0) {
+      queryParams.push(`locations=${encodeURIComponent(locations.join(','))}`);
+    }
 
     // Add pagination parameters (default: page=1, limit=50)
     if (page !== undefined) {

@@ -78,6 +78,7 @@ import { Pencil2Icon } from '@radix-ui/react-icons';
 import { ExternalLink, Trash2 } from 'lucide-react';
 
 import StatusIcon from '@/components/ui/common/StatusIcon';
+import { useLocationMachineStats } from '@/lib/hooks/data';
 import { useUserStore } from '@/lib/store/userStore';
 import {
   getGrossColorClass,
@@ -156,6 +157,10 @@ export default function MachinesTab() {
     []
   ); // All offline machines loaded
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null); // Counts for dashboard cards
+
+  // Get machine stats from dedicated API (for accurate offline count)
+  // No locationId specified = all locations
+  const { machineStats: locationMachineStats } = useLocationMachineStats();
 
   // Manufacturer performance data
   const [manufacturerData, setManufacturerData] = useState<
@@ -3219,7 +3224,8 @@ export default function MachinesTab() {
 
                   <div className="mb-4">
                     <Badge variant="destructive" className="mb-2">
-                      {filteredOfflineData.length} Machines Offline
+                      {locationMachineStats?.offlineMachines || 0} Machines
+                      Offline
                     </Badge>
                   </div>
 

@@ -11,8 +11,8 @@
  * - Fetches machine statistics (total, online, offline counts).
  */
 
-import axios from 'axios';
 import type { AggregatedLocation } from '@/lib/types/location';
+import axios from 'axios';
 
 // ============================================================================
 // Location Data Fetching
@@ -50,6 +50,25 @@ export async function fetchLocationsData(
     const response = await axios.get(`/api/locations?${params.toString()}`);
     return response.data;
   } catch (error) {
+    // Check if this is a cancellation error (expected behavior, don't log)
+    const isCanceled =
+      axios.isCancel(error) ||
+      (error instanceof Error &&
+        (error.name === 'CanceledError' ||
+          error.name === 'AbortError' ||
+          error.message === 'canceled' ||
+          error.message === 'The user aborted a request.')) ||
+      (error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'));
+
+    // Re-throw cancellation errors so useAbortableRequest can handle them silently
+    if (isCanceled) {
+      throw error;
+    }
+
+    // Only log non-cancellation errors
     console.error(' Error fetching locations data:', error);
     return [];
   }
@@ -78,6 +97,25 @@ export async function searchAllLocations(
     );
     return response.data;
   } catch (error) {
+    // Check if this is a cancellation error (expected behavior, don't log)
+    const isCanceled =
+      axios.isCancel(error) ||
+      (error instanceof Error &&
+        (error.name === 'CanceledError' ||
+          error.name === 'AbortError' ||
+          error.message === 'canceled' ||
+          error.message === 'The user aborted a request.')) ||
+      (error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'));
+
+    // Re-throw cancellation errors so useAbortableRequest can handle them silently
+    if (isCanceled) {
+      throw error;
+    }
+
+    // Only log non-cancellation errors
     console.error(' Error searching locations:', error);
     return [];
   }

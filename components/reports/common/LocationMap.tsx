@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import MapLoader from '@/components/ui/MapLoader';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -301,7 +301,7 @@ export default function LocationMap({
     };
     if (!mapPaneWithPos._leaflet_pos) return false;
     if (!markerPaneWithPos._leaflet_pos) return false;
-
+    
     // Verify panes are attached to the DOM (have parent elements)
     if (!panes.mapPane.parentElement) return false;
     if (!panes.markerPane.parentElement) return false;
@@ -310,7 +310,7 @@ export default function LocationMap({
     if (map.getContainer) {
       const container = map.getContainer();
       if (!container || !(container instanceof HTMLElement)) return false;
-
+      
       // Verify container has dimensions (width > 0)
       if (container.offsetWidth <= 0) return false;
     }
@@ -557,6 +557,8 @@ export default function LocationMap({
               activeMetricsFilter === '30d'
             ) {
               params.append('timePeriod', '30d');
+            } else if (activeMetricsFilter === 'Quarterly') {
+              params.append('timePeriod', 'Quarterly');
             } else if (activeMetricsFilter === 'Custom' && customDateRange) {
               // For custom range, use the date range directly
               if (customDateRange.startDate && customDateRange.endDate) {

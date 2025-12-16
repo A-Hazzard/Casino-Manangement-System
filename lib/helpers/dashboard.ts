@@ -56,6 +56,25 @@ export const loadGamingLocations = async (
 
     return locationsData;
   } catch (error) {
+    // Check if this is a cancellation error (expected behavior, don't log or show notification)
+    const axios = (await import('axios')).default;
+    const isCanceled =
+      axios.isCancel(error) ||
+      (error instanceof Error &&
+        (error.name === 'CanceledError' ||
+          error.name === 'AbortError' ||
+          error.message === 'canceled' ||
+          error.message === 'The user aborted a request.')) ||
+      (error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'));
+
+    // Re-throw cancellation errors so useAbortableRequest can handle them silently
+    if (isCanceled) {
+      throw error;
+    }
+
     const apiError = classifyError(error);
     showErrorNotification(apiError, 'Gaming Locations');
 
@@ -73,6 +92,24 @@ export const loadGamingLocations = async (
       setGamingLocations(locationsData);
       return locationsData;
     } catch (fallbackError) {
+      // Check if fallback error is also a cancellation
+      const isFallbackCanceled =
+        axios.isCancel(fallbackError) ||
+        (fallbackError instanceof Error &&
+          (fallbackError.name === 'CanceledError' ||
+            fallbackError.name === 'AbortError' ||
+            fallbackError.message === 'canceled' ||
+            fallbackError.message === 'The user aborted a request.')) ||
+        (fallbackError &&
+          typeof fallbackError === 'object' &&
+          'code' in fallbackError &&
+          (fallbackError.code === 'ERR_CANCELED' ||
+            fallbackError.code === 'ECONNABORTED'));
+
+      if (isFallbackCanceled) {
+        throw fallbackError;
+      }
+
       const fallbackApiError = classifyError(fallbackError);
       showErrorNotification(fallbackApiError, 'Gaming Locations Fallback');
     }
@@ -365,7 +402,8 @@ export const fetchTopPerformingDataHelper = async (
   setLoadingTopPerforming: (loading: boolean) => void,
   selectedLicencee?: string,
   currency?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  customDateRange?: { startDate: Date; endDate: Date }
 ) => {
   // Only fetch data if there's a valid filter
   if (!activePieChartFilter) {
@@ -375,12 +413,22 @@ export const fetchTopPerformingDataHelper = async (
 
   try {
     setLoadingTopPerforming(true);
+    // Clear existing data to prevent stale data display during loading or on error
+    // This fixes the bug where switching tabs might show previous tab's data if fetch fails
+    // setTopPerformingData([]); // Optional: enable this if we want to clear immediately, but keeping old data might be better UX if we handle error correctly.
+    // Actually, for the tab switching bug, user sees stale data.
+    // If we are switching tabs, we should probably clear or ensure the new data replaces it.
+
     const data = await fetchTopPerformingData(
       activeTab,
       activePieChartFilter,
       selectedLicencee,
       currency,
-      signal
+      signal,
+      activePieChartFilter === 'Custom'
+        ? customDateRange?.startDate
+        : undefined,
+      activePieChartFilter === 'Custom' ? customDateRange?.endDate : undefined
     );
     setTopPerformingData(data);
   } catch (error) {
@@ -407,6 +455,10 @@ export const fetchTopPerformingDataHelper = async (
     // Only show error notification for actual errors
     const apiError = classifyError(error);
     showErrorNotification(apiError, 'Top Performing Data');
+
+    // On error, clear the data so we don't show stale/misleading info
+    // This is crucial for fixing the "Cabinets tab showing Location modal" bug
+    setTopPerformingData([]);
 
     if (process.env.NODE_ENV === 'development') {
       console.error('Error fetching top-performing data:', error);
@@ -463,7 +515,12 @@ export const handleDashboardRefresh = async (
         activeTab,
         activePieChartFilter,
         selectedLicencee,
-        displayCurrency
+        displayCurrency,
+        undefined,
+        activePieChartFilter === 'Custom'
+          ? customDateRange?.startDate
+          : undefined,
+        activePieChartFilter === 'Custom' ? customDateRange?.endDate : undefined
       ),
       axios.get(`/api/locations?${locationsParams.toString()}`),
     ]);
