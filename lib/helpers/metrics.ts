@@ -147,8 +147,8 @@ export async function getMetrics(
         groupByHour = false;
       } else {
         // Data spans > 5 hours, use hourly
-        useMinute = false;
-        groupByHour = true;
+          useMinute = false;
+          groupByHour = true;
       }
     }
 

@@ -19,7 +19,14 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
 import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 import Image from 'next/image';
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 // Modal components
 import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
@@ -62,6 +69,7 @@ import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 import type { TimePeriod } from '@/shared/types';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 
 // Configuration
 const CABINET_TABS_CONFIG: {
@@ -110,6 +118,8 @@ function CabinetsPageContent() {
     useState(false);
   const [isUploadSmibDataModalOpen, setIsUploadSmibDataModalOpen] =
     useState(false);
+  const [accumulatedCabinets, setAccumulatedCabinets] = useState<Cabinet[]>([]);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
 
   const closeUploadSmibDataModal = () => {
     setIsUploadSmibDataModalOpen(false);
@@ -147,20 +157,138 @@ function CabinetsPageContent() {
     searchTerm,
   });
 
+  // ============================================================================
+  // Constants
+  // ============================================================================
+  const itemsPerPage = 10;
+  const itemsPerBatch = 50;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5 pages per batch
+
+  // Calculate which batch we need based on current page (each batch covers 5 pages of 10 items)
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / pagesPerBatch) + 1;
+    },
+    [pagesPerBatch]
+  );
+
+  // Update accumulatedCabinets when allCabinets changes (from initial load or search)
+  useEffect(() => {
+    // When searching, use allCabinets directly (search returns all results)
+    // When not searching, accumulate batches
+    if (searchTerm.trim()) {
+      // Search mode: use allCabinets directly, don't accumulate
+      setAccumulatedCabinets(allCabinets);
+    } else if (allCabinets.length > 0) {
+      // Normal mode: accumulate cabinets from batches
+      setAccumulatedCabinets(prev => {
+        // Merge with existing, avoiding duplicates
+        const existingIds = new Set(prev.map(cab => cab._id));
+        const newCabinets = allCabinets.filter(
+          cab => !existingIds.has(cab._id)
+        );
+        return [...prev, ...newCabinets];
+      });
+    }
+  }, [allCabinets, searchTerm]);
+
+  // Reset accumulated cabinets when filters change (but not on initial mount)
+  const prevFiltersRef = useRef<string>('');
+  useEffect(() => {
+    const filtersKey = `${selectedLicencee}-${activeMetricsFilter}-${selectedLocation}-${selectedGameType}-${selectedStatus}`;
+    if (prevFiltersRef.current && prevFiltersRef.current !== filtersKey) {
+      // Filters changed, reset accumulated data
+      setAccumulatedCabinets([]);
+      setLoadedBatches(new Set());
+    }
+    prevFiltersRef.current = filtersKey;
+  }, [
+    selectedLicencee,
+    activeMetricsFilter,
+    selectedLocation,
+    selectedGameType,
+    selectedStatus,
+  ]);
+
+  // Use accumulatedCabinets for filtering/sorting when not searching
+  const cabinetsForFiltering = searchTerm.trim()
+    ? filteredCabinets
+    : accumulatedCabinets.length > 0
+      ? accumulatedCabinets
+      : filteredCabinets;
+
   const {
     sortOption,
     sortOrder,
     handleColumnSort,
     currentPage,
-    totalPages,
     setCurrentPage,
     paginatedCabinets,
     transformCabinet,
   } = useCabinetSorting({
-    filteredCabinets,
+    filteredCabinets: cabinetsForFiltering,
     itemsPerPage: 10,
     useBatchPagination: true,
   });
+
+  // Fetch new batch when crossing batch boundary
+  useEffect(() => {
+    if (searchTerm.trim() || loading) return; // Skip for search or while loading
+
+    const currentBatch = calculateBatchNumber(currentPage);
+    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
+      setLoadedBatches(prev => {
+        const newSet = new Set(prev);
+        newSet.add(nextBatch);
+        return newSet;
+      });
+      loadCabinets(nextBatch, itemsPerBatch).then(() => {
+        // Cabinets will be accumulated in the useEffect above
+      });
+    }
+
+    // Also ensure current batch is loaded
+    if (!loadedBatches.has(currentBatch)) {
+      setLoadedBatches(prev => {
+        const newSet = new Set(prev);
+        newSet.add(currentBatch);
+        return newSet;
+      });
+      loadCabinets(currentBatch, itemsPerBatch).then(() => {
+        // Cabinets will be accumulated in the useEffect above
+      });
+    }
+  }, [
+    currentPage,
+    searchTerm,
+    loading,
+    loadedBatches,
+    itemsPerBatch,
+    pagesPerBatch,
+    calculateBatchNumber,
+    loadCabinets,
+  ]);
+
+  // Use accumulatedCabinets for pagination when not searching, otherwise use allCabinets
+  const cabinetsForPagination = searchTerm.trim()
+    ? allCabinets
+    : accumulatedCabinets.length > 0
+      ? accumulatedCabinets
+      : allCabinets;
+
+  // Calculate total pages based on accumulated cabinets (allows pagination beyond first batch)
+  // This allows pagination to show more than 5 pages when multiple batches are loaded
+  const calculatedTotalPages = useMemo(() => {
+    const totalItems = cabinetsForPagination.length;
+    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
+    // Return the actual number of pages based on accumulated data
+    // This allows pagination to show more than 5 pages when multiple batches are loaded
+    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
+  }, [cabinetsForPagination.length, itemsPerPage]);
 
   // Get machine stats for all locations (no locationId specified)
   const { machineStats, machineStatsLoading } = useLocationMachineStats();
@@ -262,8 +390,10 @@ function CabinetsPageContent() {
       return;
     }
 
-    // Load cabinets when filters change
-    loadCabinets();
+    // Load first batch when filters change (page 1, limit 50)
+    setAccumulatedCabinets([]);
+    setLoadedBatches(new Set([1]));
+    loadCabinets(1, itemsPerBatch);
   }, [
     filtersInitialized,
     activeMetricsFilter,
@@ -382,7 +512,9 @@ function CabinetsPageContent() {
     try {
       if (activeSection === 'cabinets') {
         // Refresh cabinets data
-        await loadCabinets();
+        await loadCabinets(1, itemsPerBatch);
+        setAccumulatedCabinets([]);
+        setLoadedBatches(new Set([1]));
 
         // Refresh chart data
         if (
@@ -456,7 +588,9 @@ function CabinetsPageContent() {
   };
 
   const handleMovementRequestSubmit = () => {
-    loadCabinets();
+    loadCabinets(1, itemsPerBatch);
+    setAccumulatedCabinets([]);
+    setLoadedBatches(new Set([1]));
     setMovementRefreshTrigger(prev => prev + 1);
     closeNewMovementRequestModal();
   };
@@ -472,7 +606,7 @@ function CabinetsPageContent() {
   };
 
   // Sort change handler
-  const handleSortChange = (_option: string, _order: 'asc' | 'desc') => {
+  const handleSortChange = () => {
     // This will be handled by the useCabinetSorting hook
   };
 
@@ -742,13 +876,13 @@ function CabinetsPageContent() {
             sortOption={sortOption}
             sortOrder={sortOrder}
             currentPage={currentPage}
-            totalPages={totalPages}
+            totalPages={calculatedTotalPages}
             onSort={handleColumnSort}
             onPageChange={setCurrentPage}
-            onEdit={_cabinet => {
+            onEdit={() => {
               // Edit functionality is handled by the CabinetActions component
             }}
-            onDelete={_cabinet => {
+            onDelete={() => {
               // Delete functionality is handled by the CabinetActions component
             }}
             onRetry={loadCabinets}

@@ -22,15 +22,6 @@ export default function Chart({
 }: ChartProps) {
   // Chart data received for rendering
 
-  // Debug: Log the chart data to see what values we're getting
-  if (
-    process.env.NODE_ENV === 'development' &&
-    chartData &&
-    chartData.length > 0
-  ) {
-    console.warn('Chart data received:', chartData);
-  }
-
   // Always show skeleton when loading
   if (loadingChartData) {
     return <DashboardChartSkeleton />;
@@ -85,11 +76,6 @@ export default function Chart({
 
   // Determine if we should use hourly or daily formatting
   const shouldUseHourlyFormat = () => {
-    // Explicitly check for 7d and 30d - always use daily format
-    if (activeMetricsFilter === '7d' || activeMetricsFilter === '30d') {
-      return false;
-    }
-
     if (
       activeMetricsFilter === 'Today' ||
       activeMetricsFilter === 'Yesterday'
@@ -108,6 +94,7 @@ export default function Chart({
       return false;
     }
 
+    // All other values (7d, 30d, last7days, last30days, etc.) use daily format
     return false;
   };
 
@@ -125,10 +112,13 @@ export default function Chart({
   };
 
   const isHourlyChart = shouldUseHourlyFormat();
+  const isMinuteLevel = hasMinuteLevelData();
 
   // For hourly charts, filter to only the most common day
-  let filteredChartData = chartData;
-  if (isHourlyChart) {
+  // BUT: For minute-level data, don't filter by day - show all data points
+  // This ensures minute data for Today shows all waves, even if gaming day spans calendar days
+  let dayFilteredChartData = chartData;
+  if (isHourlyChart && !isMinuteLevel) {
     const dayCounts: Record<string, number> = {};
     chartData.forEach(d => {
       if (d.day) dayCounts[d.day] = (dayCounts[d.day] || 0) + 1;
@@ -136,11 +126,11 @@ export default function Chart({
     const [mostCommonDay] =
       Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0] || [];
     if (mostCommonDay) {
-      filteredChartData = chartData.filter(d => d.day === mostCommonDay);
+      dayFilteredChartData = chartData.filter(d => d.day === mostCommonDay);
     }
   }
 
-  const sortedChartData = filteredChartData.slice().sort((a, b) => {
+  const sortedChartData = dayFilteredChartData.slice().sort((a, b) => {
     // If using hourly format, sort by day then time
     if (isHourlyChart) {
       const dayDiff = parseDay(a.day) - parseDay(b.day);
@@ -154,7 +144,6 @@ export default function Chart({
   // For hourly charts, we need to aggregate the data by hour to avoid showing individual meter readings
   // BUT: Don't aggregate if data already contains minute-level detail (for custom time ranges)
   let finalChartData = sortedChartData;
-  const isMinuteLevel = hasMinuteLevelData();
 
   if (isHourlyChart && !isMinuteLevel) {
     // Group by hour and sum the values (only for hourly data, not minute-level)
@@ -180,15 +169,6 @@ export default function Chart({
         };
       }
 
-      // Debug: Log what we're aggregating
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(`Aggregating ${item.day} ${item.time} -> ${hour}:`, {
-          moneyIn: item.moneyIn,
-          moneyOut: item.moneyOut,
-          gross: item.gross,
-        });
-      }
-
       hourlyData[key].moneyIn += item.moneyIn || 0;
       hourlyData[key].moneyOut += item.moneyOut || 0;
       hourlyData[key].gross += item.gross || 0;
@@ -200,48 +180,152 @@ export default function Chart({
       if (dayDiff !== 0) return dayDiff;
       return parseTime(a.time, a.day) - parseTime(b.time, b.day);
     });
-
-    // Debug: Log the final aggregated data
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('Hourly aggregation result:', finalChartData);
-    }
   } else if (isMinuteLevel) {
     // For minute-level data, use data as-is (already processed in helper)
     // Just ensure proper sorting
     finalChartData = sortedChartData;
-
-    // Debug: Log that we're preserving minute-level data
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(
-        'Preserving minute-level data (no hourly aggregation):',
-        finalChartData
-      );
-    }
   }
 
-  // Debug: Log the final aggregated data
-  if (
-    process.env.NODE_ENV === 'development' &&
-    finalChartData &&
-    finalChartData.length > 0
-  ) {
-    console.warn('Final chart data (aggregated):', finalChartData);
+  // Filter out $0 values (but keep cents like $0.30)
+  // For financial metrics (moneyIn, moneyOut, gross, jackpot), filter out $0 but keep cents >= $0.01
+  // EXCEPTION: For daily charts (7d, 30d, etc.), keep all days even if $0 to show the full time range
+  const isDailyChart = !isHourlyChart && !hasMinuteLevelData();
+  const isLongPeriod =
+    activeMetricsFilter === '7d' ||
+    activeMetricsFilter === '30d' ||
+    activeMetricsFilter === 'last7days' ||
+    activeMetricsFilter === 'last30days' ||
+    activeMetricsFilter === 'All Time';
+
+  let filteredChartData = finalChartData;
+  
+  // Only filter $0 values if it's not a daily chart for long periods
+  // For daily charts with long periods, we want to show all days even if some have $0
+  if (!(isDailyChart && isLongPeriod)) {
+    filteredChartData = finalChartData.filter(item => {
+      const moneyIn = item.moneyIn || 0;
+      const moneyOut = item.moneyOut || 0;
+      const gross = item.gross || 0;
+      const jackpot = (item as { jackpot?: number }).jackpot || 0;
+
+      // Keep if any financial metric >= $0.01 (filters out $0 but keeps cents)
+      return (
+        moneyIn >= 0.01 || moneyOut >= 0.01 || gross >= 0.01 || jackpot >= 0.01
+      );
+    });
+  }
+
+  // Track if we added a previous point for single data point scenario
+  let addedPreviousPointForSingle = false;
+
+  // If there's only 1 data point after filtering, include the previous point (even if 0)
+  if (filteredChartData.length === 1) {
+    const filteredPoint = filteredChartData[0];
+    let previousPointAdded = false;
+
+    // Try to find the previous point from original data
+    if (finalChartData.length > 1) {
+      const filteredIndex = finalChartData.findIndex(
+        item =>
+          item.day === filteredPoint.day && item.time === filteredPoint.time
+      );
+
+      if (filteredIndex > 0) {
+        // Get the previous data point from original data
+        const previousPoint = finalChartData[filteredIndex - 1];
+        // Create a copy with all financial values set to 0
+        const previousPointWithZeros: dashboardData = {
+          xValue:
+            previousPoint.xValue ||
+            (isHourlyChart ? previousPoint.time || '' : previousPoint.day),
+          day: previousPoint.day,
+          time: previousPoint.time || '',
+          moneyIn: 0,
+          moneyOut: 0,
+          gross: 0,
+          location: previousPoint.location,
+          geoCoords: previousPoint.geoCoords,
+        };
+
+        // Insert previous point at the beginning and sort to maintain chronological order
+        const result = [previousPointWithZeros, ...filteredChartData];
+        // Sort by day and time to ensure correct order
+        filteredChartData = result.sort((a, b) => {
+          const dayDiff = parseDay(a.day) - parseDay(b.day);
+          if (dayDiff !== 0) return dayDiff;
+          if (isHourlyChart) {
+            return parseTime(a.time, a.day) - parseTime(b.time, b.day);
+          }
+          return 0;
+        });
+        previousPointAdded = true;
+        addedPreviousPointForSingle = true;
+      }
+    }
+
+    // If we didn't add a previous point from original data, create a synthetic one
+    if (!previousPointAdded) {
+      // Create a previous point for the single data point
+      // For hourly charts, go back 1 hour; for daily charts, use the same day but earlier time
+      const singlePoint = filteredPoint;
+      let previousTime = '';
+      let previousDay = singlePoint.day;
+
+      if (isHourlyChart && singlePoint.time) {
+        // Parse the time and subtract 1 hour
+        const timeParts = singlePoint.time.split(':');
+        const hours = parseInt(timeParts[0] || '0', 10);
+        const minutes = timeParts[1] || '00';
+        const prevHours = hours > 0 ? hours - 1 : 23; // Handle midnight wrap-around
+        previousTime = `${prevHours.toString().padStart(2, '0')}:${minutes}`;
+        // If we wrapped around midnight, use previous day
+        if (hours === 0 && prevHours === 23) {
+          try {
+            const dayDate = new Date(singlePoint.day);
+            dayDate.setDate(dayDate.getDate() - 1);
+            previousDay = dayDate.toISOString().split('T')[0];
+          } catch {
+            // If date parsing fails, keep same day
+            previousDay = singlePoint.day;
+          }
+        }
+      } else {
+        // For daily charts, use same day but with an earlier time (e.g., start of day)
+        previousTime = '00:00';
+      }
+
+      const previousPointWithZeros: dashboardData = {
+        xValue: isHourlyChart ? previousTime : previousDay,
+        day: previousDay,
+        time: previousTime,
+        moneyIn: 0,
+        moneyOut: 0,
+        gross: 0,
+        location: singlePoint.location,
+        geoCoords: singlePoint.geoCoords,
+      };
+
+      // Insert previous point at the beginning
+      filteredChartData = [previousPointWithZeros, ...filteredChartData];
+      addedPreviousPointForSingle = true;
+    }
   }
 
   // Filter out leading and trailing zero-value entries to show only actual data range
   // This removes empty lines before data starts and after data ends
-  let trimmedChartData = finalChartData;
-  if (finalChartData.length > 0) {
+  // BUT: Skip trimming if we added a previous point for single data point scenario
+  let trimmedChartData = filteredChartData;
+  if (filteredChartData.length > 0 && !addedPreviousPointForSingle) {
     // Find first non-zero entry
     let firstNonZeroIndex = 0;
-    for (let i = 0; i < finalChartData.length; i++) {
-      const item = finalChartData[i];
+    for (let i = 0; i < filteredChartData.length; i++) {
+      const item = filteredChartData[i];
       const jackpot = (item as { jackpot?: number }).jackpot || 0;
       const hasData =
-        (item.moneyIn || 0) > 0 ||
-        (item.moneyOut || 0) > 0 ||
-        (item.gross || 0) > 0 ||
-        jackpot > 0;
+        (item.moneyIn || 0) >= 0.01 ||
+        (item.moneyOut || 0) >= 0.01 ||
+        (item.gross || 0) >= 0.01 ||
+        jackpot >= 0.01;
       if (hasData) {
         firstNonZeroIndex = i;
         break;
@@ -249,15 +333,15 @@ export default function Chart({
     }
 
     // Find last non-zero entry
-    let lastNonZeroIndex = finalChartData.length - 1;
-    for (let i = finalChartData.length - 1; i >= 0; i--) {
-      const item = finalChartData[i];
+    let lastNonZeroIndex = filteredChartData.length - 1;
+    for (let i = filteredChartData.length - 1; i >= 0; i--) {
+      const item = filteredChartData[i];
       const jackpot = (item as { jackpot?: number }).jackpot || 0;
       const hasData =
-        (item.moneyIn || 0) > 0 ||
-        (item.moneyOut || 0) > 0 ||
-        (item.gross || 0) > 0 ||
-        jackpot > 0;
+        (item.moneyIn || 0) >= 0.01 ||
+        (item.moneyOut || 0) >= 0.01 ||
+        (item.gross || 0) >= 0.01 ||
+        jackpot >= 0.01;
       if (hasData) {
         lastNonZeroIndex = i;
         break;
@@ -265,7 +349,7 @@ export default function Chart({
     }
 
     // Trim the data to only include the range with actual data
-    trimmedChartData = finalChartData.slice(
+    trimmedChartData = filteredChartData.slice(
       firstNonZeroIndex,
       lastNonZeroIndex + 1
     );
@@ -273,8 +357,9 @@ export default function Chart({
 
   // Filter out intermediate blank periods (where all metrics are zero or unchanged)
   // This creates a continuous line that skips over inactive time periods
+  // BUT: Skip gap filtering if we added a previous point for single data point scenario
   let gapFilteredChartData = trimmedChartData;
-  if (trimmedChartData.length > 2) {
+  if (trimmedChartData.length > 2 && !addedPreviousPointForSingle) {
     gapFilteredChartData = [];
 
     for (let i = 0; i < trimmedChartData.length; i++) {
@@ -292,27 +377,27 @@ export default function Chart({
         ? (next as { jackpot?: number }).jackpot || 0
         : 0;
 
-      // Check if current point has any activity
+      // Check if current point has any activity (>= $0.01 for financial metrics)
       const hasActivity =
-        (current.moneyIn || 0) !== 0 ||
-        (current.moneyOut || 0) !== 0 ||
-        (current.gross || 0) !== 0 ||
-        currentJackpot !== 0;
+        (current.moneyIn || 0) >= 0.01 ||
+        (current.moneyOut || 0) >= 0.01 ||
+        (current.gross || 0) >= 0.01 ||
+        currentJackpot >= 0.01;
 
-      // Check if previous point has activity
+      // Check if previous point has activity (>= $0.01 for financial metrics)
       const previousHasActivity = previous
-        ? (previous.moneyIn || 0) !== 0 ||
-          (previous.moneyOut || 0) !== 0 ||
-          (previous.gross || 0) !== 0 ||
-          previousJackpot !== 0
+        ? (previous.moneyIn || 0) >= 0.01 ||
+          (previous.moneyOut || 0) >= 0.01 ||
+          (previous.gross || 0) >= 0.01 ||
+          previousJackpot >= 0.01
         : false;
 
-      // Check if next point has activity
+      // Check if next point has activity (>= $0.01 for financial metrics)
       const nextHasActivity = next
-        ? (next.moneyIn || 0) !== 0 ||
-          (next.moneyOut || 0) !== 0 ||
-          (next.gross || 0) !== 0 ||
-          nextJackpot !== 0
+        ? (next.moneyIn || 0) >= 0.01 ||
+          (next.moneyOut || 0) >= 0.01 ||
+          (next.gross || 0) >= 0.01 ||
+          nextJackpot >= 0.01
         : false;
 
       // Check if current point values differ from previous (indicates a change)
@@ -385,7 +470,21 @@ export default function Chart({
             }
             return val;
           } else {
-            return formatDisplayDate(val);
+            // For daily charts (7d, 30d, etc.), format the day value
+            // val should be the day string (e.g., "2025-11-16")
+            if (val) {
+              // Try to get the day from the data point if val is not a valid date string
+              const dataPoint = gapFilteredChartData[index];
+              const dayValue = dataPoint?.day || val;
+              // Validate and format the date
+              const date = new Date(dayValue);
+              if (!isNaN(date.getTime())) {
+                return formatDisplayDate(date);
+              }
+              // If val is already a formatted string, return it
+              return String(val);
+            }
+            return '';
           }
         }}
       />
@@ -428,11 +527,33 @@ export default function Chart({
               const minutes = timeParts[1] || '00';
               const utcDateString = `${day}T${hours}:${minutes}:00Z`;
               const utcDate = new Date(utcDateString);
+              // Check if date is valid before formatting
+              if (isNaN(utcDate.getTime())) {
+                return String(label);
+              }
               // formatTime will convert to local time automatically
               return formatTime(utcDate);
             }
           }
-          return formatDisplayDate(label);
+          // Validate label before formatting
+          if (!label) {
+            return '';
+          }
+          // Try to get day from payload if available (for daily charts)
+          if (payload && payload[0] && payload[0].payload?.day) {
+            const day = payload[0].payload.day;
+            const testDate = new Date(day);
+            if (!isNaN(testDate.getTime())) {
+              return formatDisplayDate(day);
+            }
+          }
+          // Try to parse and validate the label as a date
+          const testDate = new Date(String(label));
+          if (!isNaN(testDate.getTime())) {
+            return formatDisplayDate(label);
+          }
+          // Fallback to string representation if label is not a valid date
+          return String(label);
         }}
       />
       <Legend />

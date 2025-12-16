@@ -82,6 +82,7 @@ export type AggregatedLocation = {
   membershipEnabled?: boolean; // Alias for enableMembership
   memberCount?: number; // Number of members at this location
   hasNoRecentCollectionReport?: boolean; // Flag indicating no collection report in past 3 months (for NON-SMIB locations)
+  geoCoords?: GeoCoordinates; // Geographic coordinates for mapping
   machines?: Array<{
     _id: string;
     assetNumber?: string;

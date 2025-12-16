@@ -13,7 +13,7 @@ import type {
   MachineStats,
   UseLocationMachineStatsReturn,
 } from '@/lib/types/locationMachineStats';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useLocationMachineStats(
   locationId?: string,
@@ -24,6 +24,10 @@ export function useLocationMachineStats(
   const [error, setError] = useState<string | null>(null);
   const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
   const makeRequest = useAbortableRequest();
+
+  // Track initial mount to prevent aborting on first load
+  const isInitialMountRef = useRef(true);
+  const prevDepsRef = useRef<string>('');
 
   // Fetch machine stats
   const fetchMachineStatsData = useCallback(async () => {
@@ -60,28 +64,100 @@ export function useLocationMachineStats(
 
   // Load machine stats on mount and when selectedLicencee, locationId, or machineTypeFilter changes
   useEffect(() => {
+    // Create dependency key to detect actual changes
+    const depsKey = `${selectedLicencee || 'all'}-${locationId || 'none'}-${machineTypeFilter || 'none'}`;
+    
+    // On initial mount, don't abort - just fetch
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      prevDepsRef.current = depsKey;
+      
+      const loadMachineStats = async () => {
+        setMachineStatsLoading(true);
+        setError(null);
+
+        try {
+          const result = await makeRequest(async signal => {
+            const licensee = selectedLicencee || 'all';
+            const stats = await fetchMachineStats(
+              licensee,
+              locationId,
+              machineTypeFilter,
+              signal
+            );
+            return stats;
+          }, 'machine-stats');
+
+          // Only update state if request wasn't aborted
+          if (result !== null) {
+            setMachineStats(result);
+            setMachineStatsLoading(false);
+          } else {
+            // If aborted on initial mount, set loading to false to prevent stuck state
+            // This can happen if component unmounts/remounts quickly
+            setMachineStatsLoading(false);
+          }
+        } catch (error) {
+          // Handle any errors
+          const errorMessage =
+            error instanceof Error ? error.message : 'Failed to fetch machine stats';
+          setError(errorMessage);
+          setMachineStats({
+            totalMachines: 0,
+            onlineMachines: 0,
+            offlineMachines: 0,
+          });
+          setMachineStatsLoading(false);
+        }
+      };
+
+      loadMachineStats();
+      return;
+    }
+
+    // After initial mount, only abort if dependencies actually changed
+    if (prevDepsRef.current === depsKey) {
+      return; // Dependencies haven't changed, don't refetch
+    }
+
+    prevDepsRef.current = depsKey;
+
     const loadMachineStats = async () => {
       setMachineStatsLoading(true);
       setError(null);
 
-      const result = await makeRequest(async signal => {
-        const licensee = selectedLicencee || 'all';
-        const stats = await fetchMachineStats(
-          licensee,
-          locationId,
-          machineTypeFilter,
-          signal
-        );
-        return stats;
-      }, 'machine-stats');
+      try {
+        const result = await makeRequest(async signal => {
+          const licensee = selectedLicencee || 'all';
+          const stats = await fetchMachineStats(
+            licensee,
+            locationId,
+            machineTypeFilter,
+            signal
+          );
+          return stats;
+        }, 'machine-stats');
 
-      // Only update state if request wasn't aborted
-      if (result !== null) {
-        setMachineStats(result);
+        // Only update state if request wasn't aborted
+        if (result !== null) {
+          setMachineStats(result);
+          setMachineStatsLoading(false);
+        } else {
+          // If aborted, set loading to false - the next request will handle loading state
+          // Keeping it true would cause stuck loading state
+          setMachineStatsLoading(false);
+        }
+      } catch (error) {
+        // Handle any errors
+        const errorMessage =
+          error instanceof Error ? error.message : 'Failed to fetch machine stats';
+        setError(errorMessage);
+        setMachineStats({
+          totalMachines: 0,
+          onlineMachines: 0,
+          offlineMachines: 0,
+        });
         setMachineStatsLoading(false);
-      } else {
-        // If aborted, keep loading state active so skeleton continues to show
-        // The next request will complete and update the loading state
       }
     };
 

@@ -197,7 +197,7 @@ export function parseMetersReportParams(
   const granularity =
     granularityParam === 'minute' || granularityParam === 'hourly'
       ? granularityParam
-      : undefined;
+    : undefined;
 
   return {
     timePeriod,

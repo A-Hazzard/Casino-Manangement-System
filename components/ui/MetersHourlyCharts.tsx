@@ -76,13 +76,20 @@ export function MetersHourlyCharts({
 
   const chartData = useMemo(() => {
     // Filter data to only show times with actual data (no zero-value periods)
-    // This matches the behavior of location details and cabinet details pages
-    // Include entries where at least one metric has data
-    const filtered = sortedData.filter(
-      item => item.gamesPlayed > 0 || item.coinIn > 0 || item.coinOut > 0
-    );
+    // For currency values (coinIn, coinOut), filter out $0 but keep cents (e.g., $0.30)
+    // For gamesPlayed, filter out 0
+    const filtered = sortedData.filter(item => {
+      // Keep if games played > 0
+      if (item.gamesPlayed > 0) return true;
+      // Keep if coinIn >= 0.01 (filters out $0 but keeps cents)
+      if (item.coinIn >= 0.01) return true;
+      // Keep if coinOut >= 0.01 (filters out $0 but keeps cents)
+      if (item.coinOut >= 0.01) return true;
+      // Otherwise filter out
+      return false;
+    });
 
-    return filtered.map(item => ({
+    const mapped = filtered.map(item => ({
       time: `${item.day} ${item.hour}`,
       day: item.day,
       hour: item.hour,
@@ -90,6 +97,41 @@ export function MetersHourlyCharts({
       coinIn: item.coinIn,
       coinOut: item.coinOut,
     }));
+
+    // If there's only 1 data point after filtering, include the previous point before it (even if 0)
+    if (mapped.length === 1 && sortedData.length > 1) {
+      // Find the index of the filtered point in the original sortedData
+      const filteredPoint = filtered[0];
+      const filteredIndex = sortedData.findIndex(
+        item =>
+          item.day === filteredPoint.day && item.hour === filteredPoint.hour
+      );
+
+      if (filteredIndex > 0) {
+        // Get the previous data point from sortedData
+        const previousPoint = sortedData[filteredIndex - 1];
+        // Create a point with all values set to 0
+        const previousPointWithZeros = {
+          time: `${previousPoint.day} ${previousPoint.hour}`,
+          day: previousPoint.day,
+          hour: previousPoint.hour,
+          gamesPlayed: 0,
+          coinIn: 0,
+          coinOut: 0,
+        };
+
+        // Insert previous point at the beginning and sort to maintain chronological order
+        const result = [previousPointWithZeros, ...mapped];
+        // Sort by day and hour to ensure correct order
+        return result.sort((a, b) => {
+          const dateA = new Date(`${a.day}T${a.hour}:00Z`);
+          const dateB = new Date(`${b.day}T${b.hour}:00Z`);
+          return dateA.getTime() - dateB.getTime();
+        });
+      }
+    }
+
+    return mapped;
   }, [sortedData]);
 
   // Calculate interval for X-axis labels - fewer labels on mobile

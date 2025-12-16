@@ -9,11 +9,13 @@ import {
   getMoneyInColorClass,
   getMoneyOutColorClass,
 } from '@/lib/utils/financialColors';
+import { hasMissingCoordinates } from '@/lib/utils/locationsPageUtils';
 import {
   BadgeCheck,
   Eye,
   FileWarning,
   Home,
+  MapPinOff,
   Pencil,
   Server,
 } from 'lucide-react';
@@ -112,6 +114,17 @@ export default function LocationCard({
                   <FileWarning className="h-4 w-4 text-red-600" />
                   <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                     No collection report in past 3 months
+                  </div>
+                </div>
+              </div>
+            )}
+          {/* Missing Coordinates Icon */}
+          {hasMissingCoordinates(location) && (
+            <div className="relative mt-0.5 inline-flex flex-shrink-0">
+              <div className="group inline-flex items-center">
+                <MapPinOff className="h-4 w-4 text-red-600" />
+                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                  This location&apos;s coordinates have not been set
                   </div>
                 </div>
               </div>

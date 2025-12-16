@@ -19,6 +19,32 @@ import type { LocationFilter, LocationSortOption } from '@/lib/types/location';
 /**
  * Filter locations based on selected filters
  */
+/**
+ * Helper function to check if a location has missing coordinates
+ */
+export function hasMissingCoordinates(location: AggregatedLocation): boolean {
+  const geoCoords = location.geoCoords;
+  if (!geoCoords) return true;
+  
+  // Check if latitude or longitude is missing
+  const hasLatitude = geoCoords.latitude !== undefined && geoCoords.latitude !== null;
+  const hasLongitude = geoCoords.longitude !== undefined && geoCoords.longitude !== null;
+  
+  // Also check for the typo variant (longtitude)
+  const hasLongtitude = (geoCoords as { longtitude?: number }).longtitude !== undefined && 
+                        (geoCoords as { longtitude?: number }).longtitude !== null;
+  
+  // Location has missing coords if neither longitude nor longtitude is present, or latitude is missing
+  return !hasLatitude || (!hasLongitude && !hasLongtitude);
+}
+
+/**
+ * Helper function to check if a location has coordinates
+ */
+export function hasCoordinates(location: AggregatedLocation): boolean {
+  return !hasMissingCoordinates(location);
+}
+
 export function filterLocations(
   locations: AggregatedLocation[],
   selectedFilters: LocationFilter[]
@@ -30,6 +56,10 @@ export function filterLocations(
       if (filter === 'LocalServersOnly' && loc.isLocalServer) return true;
       if (filter === 'SMIBLocationsOnly' && !loc.noSMIBLocation) return true;
       if (filter === 'NoSMIBLocation' && loc.noSMIBLocation === true)
+        return true;
+      if (filter === 'MissingCoordinates' && hasMissingCoordinates(loc))
+        return true;
+      if (filter === 'HasCoordinates' && hasCoordinates(loc))
         return true;
       return false;
     });

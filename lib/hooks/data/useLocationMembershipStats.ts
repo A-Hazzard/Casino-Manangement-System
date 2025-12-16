@@ -12,7 +12,7 @@ import {
 } from '@/lib/helpers/membershipStats';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type UseLocationMembershipStatsReturn = {
   membershipStats: MembershipStats | null;
@@ -63,8 +63,31 @@ export function useLocationMembershipStats(
     await fetchMembershipStatsData();
   }, [fetchMembershipStatsData]);
 
+  // Track if this is the initial mount to prevent aborting on first load
+  const isInitialMountRef = useRef(true);
+  const prevDepsRef = useRef<string>('');
+
   // Load membership stats on mount and when selectedLicencee, locationId, or machineTypeFilter changes
   useEffect(() => {
+    // Create a dependency key to detect actual changes
+    const depsKey = `${selectedLicencee || 'all'}-${locationId || 'none'}-${machineTypeFilter || 'none'}`;
+    
+    // On initial mount, don't abort anything (there's nothing to abort)
+    // Only abort if dependencies actually changed (not on initial mount)
+    const isInitialMount = isInitialMountRef.current;
+    const depsChanged = prevDepsRef.current !== depsKey;
+    
+    if (isInitialMount) {
+      isInitialMountRef.current = false;
+      prevDepsRef.current = depsKey;
+    } else if (!depsChanged) {
+      // Dependencies haven't changed, skip fetching
+      return;
+    } else {
+      // Dependencies changed, update the ref
+      prevDepsRef.current = depsKey;
+    }
+
     const loadMembershipStats = async () => {
       setMembershipStatsLoading(true);
       setError(null);

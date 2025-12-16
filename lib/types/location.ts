@@ -61,6 +61,8 @@ export type LocationFilter =
   | 'SMIBLocationsOnly'
   | 'LocalServersOnly'
   | 'MembershipOnly'
+  | 'MissingCoordinates'
+  | 'HasCoordinates'
   | ''
   | null;
 
@@ -114,8 +116,8 @@ export type LocationActionsState = {
   selectedLocation: Partial<AggregatedLocation>;
   isEditModalOpen: boolean;
   isDeleteModalOpen: boolean;
-  openEditModal: (_location: Partial<AggregatedLocation>) => void;
-  openDeleteModal: (_location: Partial<AggregatedLocation>) => void;
+  openEditModal: (location: Partial<AggregatedLocation>) => void;
+  openDeleteModal: (location: Partial<AggregatedLocation>) => void;
   closeEditModal: () => void;
   closeDeleteModal: () => void;
 };

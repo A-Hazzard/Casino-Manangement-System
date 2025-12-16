@@ -129,6 +129,7 @@ export default function MetersTab() {
   const licenseeName =
     getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
   const locationsInitialized = useRef(false);
+  const metersTabFilterInitialized = useRef(false);
 
   // Check if user is a location admin
   const isLocationAdmin = useMemo(() => {
@@ -667,10 +668,19 @@ export default function MetersTab() {
     ]
   );
 
-  // Ensure meters tab defaults to "Today" and never uses "All Time"
+  // Ensure meters tab defaults to "Yesterday" on initial page load
+  // and never uses "All Time"
   useEffect(() => {
-    if (activeView === 'meters' && activeMetricsFilter === 'All Time') {
-      setActiveMetricsFilter('Today');
+    if (activeView === 'meters') {
+      // Set to "Yesterday" on initial page load (only once)
+      if (!metersTabFilterInitialized.current) {
+        setActiveMetricsFilter('Yesterday');
+        metersTabFilterInitialized.current = true;
+      }
+      // Prevent "All Time" from being used
+      if (activeMetricsFilter === 'All Time') {
+        setActiveMetricsFilter('Yesterday');
+      }
     }
   }, [activeView, activeMetricsFilter, setActiveMetricsFilter]);
 

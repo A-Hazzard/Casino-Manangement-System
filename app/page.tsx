@@ -125,6 +125,8 @@ function DashboardContent() {
   const hasTopPerformingFetchedRef = useRef(false);
   // Track previous top performing fetch key to prevent duplicates
   const prevTopPerformingKeyRef = useRef<string>('');
+  // Track if we've started a fetch to distinguish between initial state and loading state
+  const fetchInProgressRef = useRef(false);
 
   // ============================================================================
   // Custom Hooks
@@ -284,6 +286,7 @@ function DashboardContent() {
 
     // Set loading to true before starting fetch to show skeleton immediately
     setLoadingChartData(true);
+    fetchInProgressRef.current = true;
 
     const fetchMetrics = async () => {
       try {
@@ -298,40 +301,36 @@ function DashboardContent() {
 
         // Fetch metrics data (charts and cards) - NOT top performing data
         await makeMetricsRequest(async signal => {
-          await fetchMetricsData(
-            activeMetricsFilter as TimePeriod,
-            effectiveDateRange,
-            selectedLicencee,
-            setTotals,
-            setChartData,
-            setActiveFilters,
-            setShowDatePicker,
-            displayCurrency,
-            signal,
-            chartGranularity === 'minute' ? 'minute' : 'hourly'
-          );
+            await fetchMetricsData(
+              activeMetricsFilter as TimePeriod,
+              effectiveDateRange,
+              selectedLicencee,
+              setTotals,
+              setChartData,
+              setActiveFilters,
+              setShowDatePicker,
+              displayCurrency,
+              signal,
+              chartGranularity === 'minute' ? 'minute' : 'hourly'
+            );
         });
 
         // Only update previous fetch params AFTER successful fetch
         // This ensures that if filters change while fetch is in progress, we can fetch again
         prevFetchParams.current = fetchKey;
         hasInitialFetchRef.current = true; // Mark that we've done at least one fetch
+        fetchInProgressRef.current = false; // Mark fetch as complete
 
-        // Set loading to false after a delay to ensure both totals and chartData state updates have propagated
-        // This prevents the skeleton from disappearing before data is visible
-        // The delay allows React to batch state updates and ensures both totals and chartData are set
-        setTimeout(() => {
-          setLoadingChartData(false);
-        }, 200);
+        // Don't set loading to false here - let the useEffect below handle it
+        // This ensures loading stays true until both totals and chartData are actually set
       } catch (error) {
         // On error, reset fetch key so we can retry
         prevFetchParams.current = '';
         hasInitialFetchRef.current = true; // Still mark as fetched even on error
-        // Set loading to false on error as well, but after a brief delay
-        setTimeout(() => {
+        fetchInProgressRef.current = false; // Mark fetch as complete (even on error)
+        // Set loading to false on error immediately
           setLoadingChartData(false);
           setLoadingTopPerforming(false);
-        }, 200);
         throw error;
       }
     };
@@ -352,6 +351,7 @@ function DashboardContent() {
     setGamingLocations,
     setTotals,
     setChartData,
+    setLoadingTopPerforming,
     setActiveFilters,
     setShowDatePicker,
     setLoadingChartData,
@@ -386,7 +386,7 @@ function DashboardContent() {
               hasTopPerformingFetchedRef.current = true;
               prevTopPerformingKeyRef.current = topPerformingKey;
             },
-            setLoadingTopPerforming,
+    setLoadingTopPerforming,
             selectedLicencee,
             displayCurrency,
             signal,
@@ -424,6 +424,29 @@ function DashboardContent() {
       prevTotals.current = totals;
     }
   }, [totals]);
+
+  // Set loadingChartData to false only when both totals and chartData are set
+  // This prevents showing "No Metrics Data" while data is still loading
+  useEffect(() => {
+    // Only set loading to false if:
+    // 1. We're currently loading
+    // 2. A fetch was in progress (to avoid triggering on initial mount)
+    // 3. We have totals (fetch completed)
+    // 4. chartData is an array (state has been set, even if empty)
+    if (
+      loadingChartData &&
+      fetchInProgressRef.current === false &&
+      totals &&
+      Array.isArray(chartData)
+    ) {
+      // Use a small delay to ensure state has fully propagated
+      const timer = setTimeout(() => {
+        setLoadingChartData(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [totals, chartData, loadingChartData, setLoadingChartData]);
 
   // ============================================================================
   // Event Handlers & Computed Functions

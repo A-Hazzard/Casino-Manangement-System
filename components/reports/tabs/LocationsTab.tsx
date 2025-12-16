@@ -541,7 +541,7 @@ export default function LocationsTab() {
 
   // Simplified data fetching for locations with batch loading
   const fetchLocationDataAsync = useCallback(
-    async (_specificLocations?: string[]) => {
+    async (specificLocations?: string[]) => {
       const result = await makeLocationDataRequest(async signal => {
         // Removed excessive debug logging
         setGamingLocationsLoading(true);
@@ -569,7 +569,7 @@ export default function LocationsTab() {
               : [];
 
         const effectiveLocations =
-          _specificLocations || currentSelectedLocations;
+          specificLocations || currentSelectedLocations;
 
         // Optimization: For SAS Evaluation and Revenue Analysis, do NOT fetch table data
         // until locations are explicitly selected. This prevents slow initial load.
@@ -1162,6 +1162,18 @@ export default function LocationsTab() {
   // This ensures metrics cards always show totals from all locations, separate from table pagination
   // Fetch metrics totals only for overview tab (uses fetchDashboardTotals for all locations)
   // Other tabs calculate totals from selected locations in accumulatedLocations
+  
+  // Extract complex expressions to avoid dependency array warnings
+  // Use useMemo to properly track dependencies
+  const customDateRangeStartTime = useMemo(
+    () => customDateRange?.startDate?.getTime() ?? null,
+    [customDateRange?.startDate]
+  );
+  const customDateRangeEndTime = useMemo(
+    () => customDateRange?.endDate?.getTime() ?? null,
+    [customDateRange?.endDate]
+  );
+
   useEffect(() => {
     const fetchMetrics = async () => {
       // Only fetch dashboard totals for overview tab
@@ -1214,25 +1226,25 @@ export default function LocationsTab() {
           }
 
           await fetchDashboardTotals(
-            activeMetricsFilter || 'Today',
+              activeMetricsFilter || 'Today',
             effectiveDateRange,
-            selectedLicencee,
-            totals => {
-              console.log(
-                '🔍 [LocationsTab] fetchDashboardTotals callback received:',
-                {
-                  totals,
-                  moneyIn: totals?.moneyIn,
-                  moneyOut: totals?.moneyOut,
-                  gross: totals?.gross,
-                }
-              );
-              setMetricsTotals(totals);
-              console.log(
-                '🔍 [LocationsTab] setMetricsTotals called with:',
-                totals
-              );
-            },
+              selectedLicencee,
+              totals => {
+                console.log(
+                  '🔍 [LocationsTab] fetchDashboardTotals callback received:',
+                  {
+                    totals,
+                    moneyIn: totals?.moneyIn,
+                    moneyOut: totals?.moneyOut,
+                    gross: totals?.gross,
+                  }
+                );
+                setMetricsTotals(totals);
+                console.log(
+                  '🔍 [LocationsTab] setMetricsTotals called with:',
+                  totals
+                );
+              },
             displayCurrency,
             signal
           );
@@ -1252,16 +1264,16 @@ export default function LocationsTab() {
     };
 
     fetchMetrics();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
     activeMetricsFilter,
     selectedLicencee,
-    customDateRange?.startDate?.getTime(),
-    customDateRange?.endDate?.getTime(),
+    customDateRangeStartTime,
+    customDateRangeEndTime,
+    customDateRange?.startDate,
+    customDateRange?.endDate,
     displayCurrency,
-    // makeMetricsRequest is stable from useAbortableRequest hook, but including it causes dependency array size issues
-    // The hook ensures requests are properly aborted when dependencies change
+    makeMetricsRequest,
   ]);
 
   // Consolidated useEffect to handle all data fetching
@@ -1726,17 +1738,15 @@ export default function LocationsTab() {
     totalCount,
   ]);
 
-  // Calculate total pages based on batch pagination (max 5 pages per batch of 50 items)
-  // This matches the behavior of locations page and cabinets page
+  // Calculate total pages based on accumulated locations (allows pagination beyond first batch)
+  // This allows pagination to show more than 5 pages when multiple batches are loaded
   const calculatedTotalPages = useMemo(() => {
     const totalItems = accumulatedLocations.length;
     const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
-    // Cap at pagesPerBatch (5 pages) per batch, or actual pages if less than 5
-    return Math.min(
-      pagesPerBatch,
-      totalPagesFromItems > 0 ? totalPagesFromItems : 1
-    );
-  }, [accumulatedLocations.length, itemsPerPage, pagesPerBatch]);
+    // Return the actual number of pages based on accumulated data
+    // This allows pagination to show more than 5 pages when multiple batches are loaded
+    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
+  }, [accumulatedLocations.length, itemsPerPage]);
 
   // Update totalPages when calculatedTotalPages changes
   useEffect(() => {
@@ -3000,10 +3010,10 @@ export default function LocationsTab() {
                               )}`}
                             >
                               {metricsTotalsLoading ? (
-                                <Skeleton className="h-8 w-24" />
-                              ) : shouldShowCurrency() ? (
+                                  <Skeleton className="h-8 w-24" />
+                                ) : shouldShowCurrency() ? (
                                 formatAmount(displayTotals?.gross || 0)
-                              ) : (
+                                ) : (
                                 `$${(displayTotals?.gross || 0).toLocaleString()}`
                               )}
                             </div>
@@ -3023,10 +3033,10 @@ export default function LocationsTab() {
                               )}`}
                             >
                               {metricsTotalsLoading ? (
-                                <Skeleton className="h-8 w-24" />
-                              ) : shouldShowCurrency() ? (
+                                  <Skeleton className="h-8 w-24" />
+                                ) : shouldShowCurrency() ? (
                                 formatAmount(displayTotals?.moneyIn || 0)
-                              ) : (
+                                ) : (
                                 `$${(displayTotals?.moneyIn || 0).toLocaleString()}`
                               )}
                             </div>
@@ -3044,10 +3054,10 @@ export default function LocationsTab() {
                               )}`}
                             >
                               {metricsTotalsLoading ? (
-                                <Skeleton className="h-8 w-24" />
-                              ) : shouldShowCurrency() ? (
+                                  <Skeleton className="h-8 w-24" />
+                                ) : shouldShowCurrency() ? (
                                 formatAmount(displayTotals?.moneyOut || 0)
-                              ) : (
+                                ) : (
                                 `$${(displayTotals?.moneyOut || 0).toLocaleString()}`
                               )}
                             </div>

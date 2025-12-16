@@ -46,7 +46,7 @@ import { filterAndSortCabinets as filterAndSortCabinetsUtil } from '@/lib/utils/
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import gsap from 'gsap';
-import { PlusCircle, RefreshCw, Search, Server, Users } from 'lucide-react';
+import { MapPinOff, PlusCircle, RefreshCw, Search, Server, Users } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
 import MembersNavigation from '@/components/members/common/MembersNavigation';
@@ -69,7 +69,6 @@ import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import Chart from '@/components/ui/dashboard/Chart';
 import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
 import { IMAGES } from '@/lib/constants/images';
-import { getMetrics } from '@/lib/helpers/metrics';
 import {
   useLocationMachineStats,
   useLocationMembershipStats,
@@ -82,7 +81,9 @@ import { getAuthHeaders } from '@/lib/utils/auth';
 import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
+import { hasMissingCoordinates } from '@/lib/utils/locationsPageUtils';
 import { TimePeriod } from '@/shared/types/common';
+import type { AggregatedLocation } from '@/shared/types/common';
 import { formatLocalDateTimeString } from '@/shared/utils/dateFormat';
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
 import axios from 'axios';
@@ -312,6 +313,13 @@ export default function LocationPage() {
   const [locationName, setLocationName] = useState('');
   const [locationMembershipEnabled, setLocationMembershipEnabled] =
     useState<boolean>(false);
+  const [locationData, setLocationData] = useState<{
+    geoCoords?: {
+      latitude?: number;
+      longitude?: number;
+      longtitude?: number;
+    };
+  } | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<
     'All' | 'Online' | 'Offline'
   >('All');
@@ -677,6 +685,8 @@ export default function LocationPage() {
               locationData.membershipEnabled === true ||
                 locationData.enableMembership === true
             );
+            // Store location data for geoCoords check
+            setLocationData(locationData);
           }
         } catch (locationError) {
           // Check if it's a 403 Unauthorized error
@@ -1641,68 +1651,229 @@ export default function LocationPage() {
         setError('Failed to refresh cabinets. Please try again later.');
       }
 
-      // Refresh chart data
+      // Refresh chart data using the same endpoint and logic as initial load
       setLoadingChartData(true);
       try {
         const timePeriod = activeMetricsFilter as TimePeriod;
-        const allChartData = await makeChartRequest(async signal => {
-          return await getMetrics(
-            timePeriod,
-            customDateRange.startDate,
-            customDateRange.endDate,
-            selectedLicencee && selectedLicencee !== 'all'
-              ? selectedLicencee
-              : undefined,
-            displayCurrency,
-            signal
-          );
+
+        let url = `/api/analytics/location-trends?locationIds=${locationId}&timePeriod=${timePeriod}`;
+
+        if (
+          timePeriod === 'Custom' &&
+          customDateRange.startDate &&
+          customDateRange.endDate
+        ) {
+          const sd =
+            customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate);
+          const ed =
+            customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate);
+
+          // Check if dates have time components (not midnight)
+          const hasTime =
+            sd.getHours() !== 0 ||
+            sd.getMinutes() !== 0 ||
+            sd.getSeconds() !== 0 ||
+            ed.getHours() !== 0 ||
+            ed.getMinutes() !== 0 ||
+            ed.getSeconds() !== 0;
+
+          if (hasTime) {
+            // Send local time with timezone offset to preserve user's time selection
+            url += `&startDate=${formatLocalDateTimeString(sd, -4)}&endDate=${formatLocalDateTimeString(ed, -4)}`;
+          } else {
+            // Date-only: send ISO date format for gaming day offset to apply
+            url += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
+          }
+        }
+
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          url += `&licencee=${encodeURIComponent(selectedLicencee)}`;
+        }
+
+        if (displayCurrency) {
+          url += `&currency=${displayCurrency}`;
+        }
+
+        // Pass granularity preference for Today/Yesterday
+        const granularity = showGranularitySelector
+          ? chartGranularity
+          : undefined;
+        if (granularity) {
+          url += `&granularity=${granularity}`;
+        }
+
+        const response = await makeChartRequest(async signal => {
+          return await axios.get<{
+            trends: Array<{
+              day: string;
+              time?: string;
+              [key: string]:
+                | {
+                    drop: number;
+                    gross: number;
+                    totalCancelledCredits?: number;
+                  }
+                | string
+                | undefined;
+            }>;
+            isHourly: boolean;
+          }>(url, {
+            headers: {
+              'Cache-Control': 'no-cache',
+            },
+            signal,
+          });
         });
 
-        if (!allChartData) {
+        if (!response) {
           // Request was aborted
           setLoadingChartData(false);
           return;
         }
 
-        // Filter chart data by the current location
-        // The location field in chart data can be either ID or name
-        // Try multiple matching strategies to ensure we catch the data
-        let filteredChartData = allChartData.filter(item => {
-          const itemLocation = item.location;
-          if (!itemLocation) return false;
+        const { trends, isHourly } = response.data;
 
-          // Convert to strings for comparison
-          const locationIdStr = String(locationId);
-          const selectedLocationIdStr = selectedLocationId
-            ? String(selectedLocationId)
-            : '';
-          const locationNameStr = locationName
-            ? String(locationName).toLowerCase()
-            : '';
-          const itemLocationStr = String(itemLocation).toLowerCase();
-
-          return (
-            itemLocation === locationId ||
-            itemLocation === locationIdStr ||
-            itemLocation === selectedLocationId ||
-            itemLocation === selectedLocationIdStr ||
-            itemLocation === locationName ||
-            itemLocationStr === locationNameStr ||
-            // Also check if location name matches (case-insensitive)
-            (locationName && itemLocationStr.includes(locationNameStr)) ||
-            (locationName && locationNameStr.includes(itemLocationStr))
-          );
-        });
-
-        // If no filtered data found, try showing all data (might be aggregated already)
-        // This handles cases where location filtering might not work due to data structure
-        if (filteredChartData.length === 0 && allChartData.length > 0) {
-          // If we have data but filtering returned nothing, use all data
-          // This might happen if the API already filtered by location or if location field format differs
-          filteredChartData = allChartData;
+        // Safety check: ensure trends is an array
+        if (!trends || !Array.isArray(trends) || trends.length === 0) {
+          console.warn('[Location Chart] No trends data received on refresh');
+          setChartData([]);
+          setLoadingChartData(false);
+          return;
         }
 
-        setChartData(filteredChartData);
+        // Check if API response contains minute-level data
+        const hasMinuteLevelData = trends.some(trend => {
+          if (!trend.time) return false;
+          const timeParts = trend.time.split(':');
+          if (timeParts.length !== 2) return false;
+          const minutes = parseInt(timeParts[1], 10);
+          return !isNaN(minutes) && minutes !== 0;
+        });
+
+        // Determine if we should use minute or hourly based on API response and granularity
+        let useMinute = false;
+        let useHourly = false;
+
+        if (granularity) {
+          if (granularity === 'minute') {
+            useMinute = true;
+            useHourly = false;
+          } else if (granularity === 'hourly') {
+            useMinute = false;
+            useHourly = true;
+          }
+        } else {
+          // Auto-detect based on API response
+          useMinute = hasMinuteLevelData;
+          useHourly = isHourly && !hasMinuteLevelData;
+        }
+
+        // Transform trends to dashboardData format (same as initial load)
+        const transformedData: dashboardData[] = trends.map(trend => {
+          // Find location data - try exact match first, then try string comparison
+          let locationData:
+            | {
+                drop: number;
+                gross: number;
+                totalCancelledCredits?: number;
+              }
+            | undefined;
+
+          // First try direct access
+          if (trend[locationId]) {
+            locationData = trend[locationId] as {
+              drop: number;
+              gross: number;
+              totalCancelledCredits?: number;
+            };
+          } else {
+            // Try to find by string comparison (handles ObjectId vs string differences)
+            const locationKey = Object.keys(trend).find(
+              key =>
+                key !== 'day' &&
+                key !== 'time' &&
+                String(key) === String(locationId)
+            );
+            if (locationKey) {
+              locationData = trend[locationKey] as {
+                drop: number;
+                gross: number;
+                totalCancelledCredits?: number;
+              };
+            }
+          }
+
+          // Preserve minute-level data if it exists, otherwise use hourly or daily
+          let time = trend.time || '';
+          let xValue: string;
+
+          if (useMinute) {
+            // Minute-level: preserve original time (e.g., "14:15")
+            time = trend.time || '';
+            xValue = time;
+          } else if (useHourly) {
+            // Hourly: use time as-is (already formatted as "HH:00")
+            time = trend.time || '';
+            xValue = time;
+          } else {
+            // Daily: use day as xValue
+            xValue = trend.day;
+          }
+
+          return {
+            xValue,
+            day: trend.day,
+            time,
+            moneyIn: locationData?.drop || 0,
+            moneyOut: locationData?.totalCancelledCredits || 0,
+            gross: locationData?.gross || 0,
+            location: locationId,
+          };
+        });
+
+        // Filter data to only include times within the selected custom range (if applicable)
+        let filteredData = transformedData;
+        if (
+          timePeriod === 'Custom' &&
+          customDateRange.startDate &&
+          customDateRange.endDate &&
+          (useMinute || useHourly)
+        ) {
+          const sd =
+            customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate);
+          const ed =
+            customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate);
+
+          // Check if dates have time components
+          const hasTime =
+            sd.getHours() !== 0 ||
+            sd.getMinutes() !== 0 ||
+            sd.getSeconds() !== 0 ||
+            ed.getHours() !== 0 ||
+            ed.getMinutes() !== 0 ||
+            ed.getSeconds() !== 0;
+
+          if (hasTime) {
+            // Filter by time range for hourly/minute data
+            const startUTCTime = `${String(sd.getUTCHours()).padStart(2, '0')}:${String(sd.getUTCMinutes()).padStart(2, '0')}`;
+            const endUTCTime = `${String(ed.getUTCHours()).padStart(2, '0')}:${String(ed.getUTCMinutes()).padStart(2, '0')}`;
+
+            filteredData = transformedData.filter(item => {
+              if (!item.time) return true; // Include items without time
+              return item.time >= startUTCTime && item.time <= endUTCTime;
+            });
+          }
+        }
+
+        setChartData(filteredData);
       } catch (error) {
         console.error('Error refreshing chart data:', error);
         setChartData([]);
@@ -1720,8 +1891,6 @@ export default function LocationPage() {
     customDateRange,
     dateFilterInitialized,
     locationId,
-    selectedLocationId,
-    locationName,
     refreshMachineStats,
     refreshMembershipStats,
     debouncedSearchTerm,
@@ -1730,6 +1899,8 @@ export default function LocationPage() {
     makeCabinetsRequest,
     makeChartRequest,
     activeView,
+    showGranularitySelector,
+    chartGranularity,
   ]);
 
   // Handle location change without navigation - just update the selected location
@@ -1809,13 +1980,22 @@ export default function LocationPage() {
               </Link>
               <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-lg font-bold text-gray-800">
                 Location Details
-                <Image
-                  src={IMAGES.locationIcon}
-                  alt="Location Icon"
-                  width={32}
-                  height={32}
-                  className="h-4 w-4 flex-shrink-0"
-                />
+                {locationData && hasMissingCoordinates(locationData as AggregatedLocation) ? (
+                  <div className="group relative inline-flex flex-shrink-0">
+                    <MapPinOff className="h-4 w-4 flex-shrink-0 text-red-600" />
+                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      This location&apos;s coordinates have not been set
+                    </div>
+                  </div>
+                ) : (
+                  <Image
+                    src={IMAGES.locationIcon}
+                    alt="Location Icon"
+                    width={32}
+                    height={32}
+                    className="h-4 w-4 flex-shrink-0"
+                  />
+                )}
               </h1>
               {/* Refresh icon - Hidden on members tab */}
               {activeView !== 'members' && (
@@ -1863,13 +2043,22 @@ export default function LocationPage() {
               </Link>
               <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-2xl font-bold text-gray-800 sm:text-3xl">
                 Location Details
-                <Image
-                  src={IMAGES.locationIcon}
-                  alt="Location Icon"
-                  width={32}
-                  height={32}
-                  className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
-                />
+                {locationData && hasMissingCoordinates(locationData as AggregatedLocation) ? (
+                  <div className="group relative inline-flex flex-shrink-0">
+                    <MapPinOff className="h-6 w-6 flex-shrink-0 text-red-600 sm:h-8 sm:w-8" />
+                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      This location&apos;s coordinates have not been set
+                    </div>
+                  </div>
+                ) : (
+                  <Image
+                    src={IMAGES.locationIcon}
+                    alt="Location Icon"
+                    width={32}
+                    height={32}
+                    className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
+                  />
+                )}
               </h1>
               {/* Mobile: Refresh icon - Hidden on members tab */}
               {activeView !== 'members' && (

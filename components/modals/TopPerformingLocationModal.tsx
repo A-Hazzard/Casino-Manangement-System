@@ -22,12 +22,12 @@ import { Button } from '@/components/ui/button';
 import Chart from '@/components/ui/dashboard/Chart';
 import { DashboardChartSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
-import { getMetrics } from '@/lib/helpers/metrics';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { dashboardData } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
 import { formatCurrencyWithCode } from '@/lib/utils/currency';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import { formatLocalDateTimeString } from '@/shared/utils/dateFormat';
 import { TimePeriod } from '@/shared/types/common';
 import axios from 'axios';
 import gsap from 'gsap';
@@ -71,8 +71,16 @@ export default function TopPerformingLocationModal({
   const [loadingChart, setLoadingChart] = useState(false);
   const router = useRouter();
   const { displayCurrency } = useCurrency();
-  const { activePieChartFilter, customDateRange, selectedLicencee } =
-    useDashBoardStore();
+  const {
+    activePieChartFilter,
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicencee,
+  } = useDashBoardStore();
+
+  // Use activeMetricsFilter if available (from location detail page), otherwise fall back to activePieChartFilter (from dashboard)
+  const effectiveTimePeriod =
+    activeMetricsFilter || activePieChartFilter || 'Today';
 
   // Chart granularity state - initialize after store values are available
   const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
@@ -80,8 +88,15 @@ export default function TopPerformingLocationModal({
   );
 
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
+  // Never show for 7d and 30d - they always use daily format
   const showGranularitySelector = useMemo(() => {
-    const timePeriod = (activePieChartFilter || 'Today') as TimePeriod;
+    const timePeriod = effectiveTimePeriod as TimePeriod;
+
+    // Never show granularity selector for 7d and 30d
+    if (timePeriod === '7d' || timePeriod === '30d') {
+      return false;
+    }
+
     if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
       return true;
     }
@@ -112,12 +127,25 @@ export default function TopPerformingLocationModal({
       }
     }
     return false;
-  }, [activePieChartFilter, customDateRange]);
+  }, [effectiveTimePeriod, customDateRange]);
 
   // Recalculate default granularity when date filters change
   // For "Today", also recalculate periodically as time passes
+  // For 7d and 30d, always use 'hourly' (which displays as daily format in Chart component)
   useEffect(() => {
-    const timePeriod = (activePieChartFilter || 'Today') as TimePeriod;
+    const timePeriod = effectiveTimePeriod as TimePeriod;
+
+    // Force 'hourly' for 7d and 30d (Chart component will display as daily format)
+    if (
+      timePeriod === '7d' ||
+      timePeriod === '30d' ||
+      timePeriod === 'last7days' ||
+      timePeriod === 'last30days'
+    ) {
+      setChartGranularity('hourly');
+      return;
+    }
+
     const updateGranularity = () => {
       const defaultGranularity = getDefaultChartGranularity(
         timePeriod,
@@ -139,7 +167,7 @@ export default function TopPerformingLocationModal({
 
     return undefined;
   }, [
-    activePieChartFilter,
+    effectiveTimePeriod,
     customDateRange?.startDate,
     customDateRange?.endDate,
   ]);
@@ -153,8 +181,8 @@ export default function TopPerformingLocationModal({
       setLoadingChart(true);
 
       try {
-        // Use activePieChartFilter (from top performing filter) instead of activeMetricsFilter
-        const timePeriod = (activePieChartFilter || 'Today') as TimePeriod;
+        // Use effectiveTimePeriod which prioritizes activeMetricsFilter (from location detail page) over activePieChartFilter (from dashboard)
+        const timePeriod = effectiveTimePeriod as TimePeriod;
 
         // Fetch location details and metrics
         let url = `/api/locations/${locationId}`;
@@ -219,35 +247,189 @@ export default function TopPerformingLocationModal({
             ? locationTotalsData[0]
             : null;
 
-        // Get location name for filtering chart data
-        const locationNameForFilter =
-          locationInfo?.locationName || locationInfo?.name || locationName;
+        // Fetch chart data using the same endpoint as location details page
+        // This ensures consistency between preview modal and details page
+        // For 7d and 30d, don't pass granularity (API will return daily data)
+        // For other periods, use the selected granularity
+        const shouldPassGranularity =
+          timePeriod !== '7d' &&
+          timePeriod !== '30d' &&
+          timePeriod !== 'last7days' &&
+          timePeriod !== 'last30days';
+        const granularity = shouldPassGranularity
+          ? chartGranularity
+          : undefined;
 
-        // Fetch chart data for this location
-        // Filter by location ID or name in the metrics
-        const chart = await getMetrics(
-          timePeriod,
-          customDateRange.startDate,
-          customDateRange.endDate,
-          selectedLicencee && selectedLicencee !== 'all'
-            ? selectedLicencee
-            : undefined,
-          displayCurrency,
-          undefined,
-          chartGranularity === 'minute' ? 'minute' : 'hourly'
-        );
+        // Use location-trends API (same as location details page) for consistency
+        let chartUrl = `/api/analytics/location-trends?locationIds=${locationId}&timePeriod=${timePeriod}`;
 
-        // Filter chart data to only include this location
-        // The location field in chart data can be either ID or name
-        const filteredChart = chart.filter(item => {
-          const itemLocation = item.location;
-          return (
-            itemLocation === locationId ||
-            itemLocation === locationInfo?._id?.toString() ||
-            itemLocation === locationInfo?.locationId?.toString() ||
-            itemLocation === locationNameForFilter ||
-            itemLocation === locationInfo?.name
-          );
+        if (
+          timePeriod === 'Custom' &&
+          customDateRange.startDate &&
+          customDateRange.endDate
+        ) {
+          const sd =
+            customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate);
+          const ed =
+            customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate);
+
+          // Check if dates have time components (not midnight)
+          const hasTime =
+            sd.getHours() !== 0 ||
+            sd.getMinutes() !== 0 ||
+            sd.getSeconds() !== 0 ||
+            ed.getHours() !== 0 ||
+            ed.getMinutes() !== 0 ||
+            ed.getSeconds() !== 0;
+
+          if (hasTime) {
+            // Send local time with timezone offset to preserve user's time selection
+            chartUrl += `&startDate=${formatLocalDateTimeString(sd, -4)}&endDate=${formatLocalDateTimeString(ed, -4)}`;
+          } else {
+            // Date-only: send ISO date format for gaming day offset to apply
+            chartUrl += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
+          }
+        }
+
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          chartUrl += `&licencee=${encodeURIComponent(selectedLicencee)}`;
+        }
+
+        if (displayCurrency) {
+          chartUrl += `&currency=${displayCurrency}`;
+        }
+
+        if (granularity) {
+          chartUrl += `&granularity=${granularity}`;
+        }
+
+        const chartResponse = await axios.get<{
+          trends: Array<{
+            day: string;
+            time?: string;
+            [key: string]:
+              | {
+                  drop: number;
+                  gross: number;
+                  totalCancelledCredits?: number;
+                }
+              | string
+              | undefined;
+          }>;
+          isHourly: boolean;
+        }>(chartUrl, {
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+
+        const { trends, isHourly } = chartResponse.data;
+
+        // Check if API response contains minute-level data
+        const hasMinuteLevelData = trends.some(trend => {
+          if (!trend.time) return false;
+          const timeParts = trend.time.split(':');
+          if (timeParts.length !== 2) return false;
+          const minutes = parseInt(timeParts[1], 10);
+          return !isNaN(minutes) && minutes !== 0;
+        });
+
+        // Determine if we should use minute or hourly based on API response and granularity
+        let useMinute = false;
+        let useHourly = false;
+
+        if (granularity) {
+          if (granularity === 'minute') {
+            useMinute = true;
+            useHourly = false;
+          } else if (granularity === 'hourly') {
+            useMinute = false;
+            useHourly = true;
+          }
+        } else {
+          // Auto-detect based on API response
+          useMinute = hasMinuteLevelData;
+          useHourly = isHourly && !hasMinuteLevelData;
+        }
+
+        // Transform trends to dashboardData format (same as location details page)
+        const filteredChart: dashboardData[] = trends.map(trend => {
+          // Find location data - try exact match first, then try string comparison
+          // This handles ObjectId vs string differences
+          let locationData:
+            | {
+                drop: number;
+                gross: number;
+                totalCancelledCredits?: number;
+              }
+            | undefined;
+
+          // First try direct access
+          if (trend[locationId]) {
+            locationData = trend[locationId] as {
+              drop: number;
+              gross: number;
+              totalCancelledCredits?: number;
+            };
+          } else {
+            // Try to find by string comparison (handles ObjectId vs string differences)
+            const locationKey = Object.keys(trend).find(
+              key =>
+                key !== 'day' &&
+                key !== 'time' &&
+                String(key) === String(locationId)
+            );
+            if (locationKey) {
+              locationData = trend[locationKey] as {
+                drop: number;
+                gross: number;
+                totalCancelledCredits?: number;
+              };
+            }
+          }
+
+          if (!locationData) {
+            // Return empty data point if location not found in trend
+            return {
+              xValue: useHourly || useMinute ? (trend.time || '') : trend.day,
+              day: trend.day,
+              time: trend.time || '',
+              moneyIn: 0,
+              moneyOut: 0,
+              gross: 0,
+              location: locationId,
+            };
+          }
+
+          const day = trend.day;
+          let time = '';
+
+          if (trend.time) {
+            if (useHourly) {
+              const [hh] = trend.time.split(':');
+              time = `${hh.padStart(2, '0')}:00`;
+            } else if (useMinute) {
+              time = trend.time;
+            } else {
+              time = trend.time || '';
+            }
+          }
+
+          const xValue = useHourly || useMinute ? time : day;
+
+          return {
+            xValue,
+            day,
+            time,
+            moneyIn: locationData.drop || 0,
+            moneyOut: locationData.totalCancelledCredits || 0,
+            gross: locationData.gross || 0,
+            location: locationId,
+          };
         });
 
         // Use location totals from reports API if available, otherwise calculate from chart data
@@ -296,7 +478,7 @@ export default function TopPerformingLocationModal({
   }, [
     open,
     locationId,
-    activePieChartFilter,
+    effectiveTimePeriod,
     customDateRange.startDate,
     customDateRange.endDate,
     displayCurrency,
@@ -464,9 +646,7 @@ export default function TopPerformingLocationModal({
                 <Chart
                   loadingChartData={loadingChart}
                   chartData={chartData}
-                  activeMetricsFilter={
-                    (activePieChartFilter || 'Today') as TimePeriod
-                  }
+                  activeMetricsFilter={effectiveTimePeriod as TimePeriod}
                 />
               </>
             )}

@@ -156,7 +156,7 @@ export function LocationTrendChart({
 
   const shouldShowMonths = timePeriod === 'Quarterly';
 
-  // Detect if chart data has minute-level detail
+  // Detect if chart data has minute-level detail (HH:MM format with non-zero minutes)
   const hasMinuteLevelData = useMemo(() => {
     return data.some(d => {
       const time = d.time;
@@ -164,7 +164,7 @@ export function LocationTrendChart({
       const timeParts = time.split(':');
       if (timeParts.length !== 2) return false;
       const minutes = parseInt(timeParts[1], 10);
-      return !isNaN(minutes) && minutes !== 0; // Has non-zero minutes
+      return !isNaN(minutes) && minutes !== 0; // Has non-zero minutes (not HH:00)
     });
   }, [data]);
 
@@ -253,48 +253,64 @@ export function LocationTrendChart({
     shouldShowTimes,
   ]);
 
-  // Filter data to show all periods with activity (including 0 values for the metric)
-  // Show periods where at least one location has ANY activity (not just non-zero for this metric)
-  // This ensures we see all time periods where there's activity, even if the specific metric is 0
+  // Filter data to exclude $0 values (but keep cents like $0.30)
+  // For financial metrics (drop, gross, jackpot, handle, winLoss), filter out $0 but keep cents
+  // For non-financial metrics (plays), filter out 0
+  // If there's only 1 data point after filtering, include the previous point (even if 0)
   const filteredData = useMemo(() => {
-    // For sparse metrics like jackpot, show all periods where there's ANY activity
-    // Check if the period exists in the original data (meaning there's activity)
-    // This allows showing 0 values for jackpot when there's activity in other metrics
+    const isFinancialMetric = ['drop', 'gross', 'jackpot', 'handle', 'winLoss'].includes(dataKey);
+    const threshold = isFinancialMetric ? 0.01 : 0; // For financial metrics, filter out < $0.01
+    
     const filtered = chartData.filter(item => {
-      if (shouldShowTimes) {
-        // For time-based charts, show all periods that exist in the data
-        // This means if a period exists, show it even if the metric is 0
-        // The period existing means there's activity (meter readings) at that time
-        return true; // Show all periods that exist in the data
-      }
-      // For date-based charts, only show periods with data
+      // Check if at least one location has a value above the threshold
       return locations.some(locationId => {
         const displayName = locationNames?.[locationId] || locationId;
         const value = item[displayName];
-        return typeof value === 'number' && value > 0;
+        if (typeof value !== 'number') return false;
+        // For financial metrics, keep if >= 0.01 (filters out $0 but keeps cents)
+        // For non-financial metrics (plays), keep if > 0
+        return value >= threshold;
       });
     });
 
-    // Debug logging for jackpot data
-    if (dataKey === 'jackpot' && shouldShowTimes) {
-      console.log(
-        `[LocationTrendChart] Jackpot filtering - dataKey: ${dataKey}`,
-        {
-          totalChartData: chartData.length,
-          filteredCount: filtered.length,
-          sampleFiltered: filtered.slice(0, 5).map(item => ({
-            day: item.day,
-            time: item.time,
-            values: locations.map(locId => {
-              const displayName = locationNames?.[locId] || locId;
-              return {
-                location: displayName,
-                value: item[displayName],
-              };
-            }),
-          })),
-        }
+    // If there's only 1 data point after filtering, include the previous point before it (even if 0)
+    if (filtered.length === 1 && chartData.length > 1) {
+      // Find the index of the filtered point in the original chartData
+      const filteredPoint = filtered[0];
+      const filteredIndex = chartData.findIndex(
+        item => 
+          item.day === filteredPoint.day && 
+          item.time === filteredPoint.time
       );
+      
+      if (filteredIndex > 0) {
+        // Get the previous data point from chartData
+        const previousPoint = chartData[filteredIndex - 1];
+        // Create a copy with all location values set to 0
+        const previousPointWithZeros: Record<string, string | number> = {
+          xValue: previousPoint.xValue || (shouldShowTimes ? previousPoint.time || '' : previousPoint.day),
+          day: previousPoint.day,
+          time: previousPoint.time || '',
+        };
+        
+        // Set all location values to 0 for the previous point
+        locations.forEach(locationId => {
+          const displayName = locationNames?.[locationId] || locationId;
+          previousPointWithZeros[displayName] = 0;
+        });
+        
+        // Insert previous point at the beginning and sort to maintain chronological order
+        const result = [previousPointWithZeros, ...filtered];
+        // Sort by day and time to ensure correct order
+        return result.sort((a, b) => {
+          const dayA = new Date(a.day as string).getTime();
+          const dayB = new Date(b.day as string).getTime();
+          if (dayA !== dayB) return dayA - dayB;
+          const timeA = (a.time as string || '').split(':').map(Number);
+          const timeB = (b.time as string || '').split(':').map(Number);
+          return (timeA[0] || 0) * 60 + (timeA[1] || 0) - ((timeB[0] || 0) * 60 + (timeB[1] || 0));
+        });
+      }
     }
 
     return filtered;

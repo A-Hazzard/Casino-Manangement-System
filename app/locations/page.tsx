@@ -125,20 +125,14 @@ function LocationsPageContent() {
   // ============================================================================
   // Custom Hooks - Data Management
   // ============================================================================
-  const {
-    locationData,
-    loading,
-    searchLoading,
-    error,
-    fetchData,
-    fetchBatch,
-  } = useLocationData({
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-    searchTerm,
-    selectedFilters,
-  });
+  const { locationData, loading, searchLoading, error, fetchData, fetchBatch } =
+    useLocationData({
+      selectedLicencee,
+      activeMetricsFilter,
+      customDateRange,
+      searchTerm,
+      selectedFilters,
+    });
 
   // ============================================================================
   // Refs
@@ -292,7 +286,7 @@ function LocationsPageContent() {
     handleTableAction,
   } = useLocationModals();
 
-  const { sortOrder, sortOption, handleColumnSort, totalPages, currentItems } =
+  const { sortOrder, sortOption, handleColumnSort, currentItems } =
     useLocationSorting({
       locationData: filteredLocationData,
       currentPage,
@@ -300,6 +294,16 @@ function LocationsPageContent() {
       // This matches the cabinets page behavior
       itemsPerPage,
     });
+
+  // Calculate total pages based on accumulated locations (allows pagination beyond first batch)
+  // This allows pagination to show more than 5 pages when multiple batches are loaded
+  const calculatedTotalPages = useMemo(() => {
+    const totalItems = accumulatedLocations.length;
+    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
+    // Return the actual number of pages based on accumulated data
+    // This allows pagination to show more than 5 pages when multiple batches are loaded
+    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
+  }, [accumulatedLocations.length, itemsPerPage]);
 
   // Calculate financial totals from location data (for backward compatibility, but metrics cards use metricsTotals)
   const financialTotals = calculateLocationFinancialTotals(
@@ -882,8 +886,12 @@ function LocationsPageContent() {
   useEffect(() => {
     if (!isLoading && currentItems.length > 0) {
       // Check if items actually changed (compare IDs)
-      const currentIds = currentItems.map(item => item._id).join(',');
-      const prevIds = prevItemsRef.current.map(item => item._id).join(',');
+      const currentIds = currentItems
+        .map((item: AggregatedLocation) => item._id)
+        .join(',');
+      const prevIds = prevItemsRef.current
+        .map((item: AggregatedLocation) => item._id)
+        .join(',');
 
       // Only animate if items changed AND we've already done initial render
       if (currentIds !== prevIds && hasAnimatedRef.current) {
@@ -1180,6 +1188,56 @@ function LocationsPageContent() {
                 Membership
               </Label>
             </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="mobileMissingCoordinatesFilter"
+                checked={selectedFilters.includes('MissingCoordinates')}
+                onCheckedChange={checked => {
+                  if (typeof checked === 'boolean') {
+                    handleFilterChange('MissingCoordinates', checked, prev => {
+                      if (checked) {
+                        return [...prev, 'MissingCoordinates'];
+                      } else {
+                        return prev.filter(f => f !== 'MissingCoordinates');
+                      }
+                    });
+                  }
+                }}
+                className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
+              />
+              <Label
+                htmlFor="mobileMissingCoordinatesFilter"
+                className="text-sm font-medium text-gray-700"
+              >
+                Missing Coordinates
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="mobileHasCoordinatesFilter"
+                checked={selectedFilters.includes('HasCoordinates')}
+                onCheckedChange={checked => {
+                  if (typeof checked === 'boolean') {
+                    handleFilterChange('HasCoordinates', checked, prev => {
+                      if (checked) {
+                        return [...prev, 'HasCoordinates'];
+                      } else {
+                        return prev.filter(f => f !== 'HasCoordinates');
+                      }
+                    });
+                  }
+                }}
+                className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
+              />
+              <Label
+                htmlFor="mobileHasCoordinatesFilter"
+                className="text-sm font-medium text-gray-700"
+              >
+                Has Coordinates
+              </Label>
+            </div>
           </div>
         </div>
 
@@ -1297,6 +1355,56 @@ function LocationsPageContent() {
                 Membership
               </Label>
             </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="missingCoordinatesFilter"
+                checked={selectedFilters.includes('MissingCoordinates')}
+                onCheckedChange={checked => {
+                  if (typeof checked === 'boolean') {
+                    handleFilterChange('MissingCoordinates', checked, prev => {
+                      if (checked) {
+                        return [...prev, 'MissingCoordinates'];
+                      } else {
+                        return prev.filter(f => f !== 'MissingCoordinates');
+                      }
+                    });
+                  }
+                }}
+                className="border-white text-white focus:ring-white"
+              />
+              <Label
+                htmlFor="missingCoordinatesFilter"
+                className="whitespace-nowrap text-sm font-medium text-white"
+              >
+                Missing Coordinates
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="hasCoordinatesFilter"
+                checked={selectedFilters.includes('HasCoordinates')}
+                onCheckedChange={checked => {
+                  if (typeof checked === 'boolean') {
+                    handleFilterChange('HasCoordinates', checked, prev => {
+                      if (checked) {
+                        return [...prev, 'HasCoordinates'];
+                      } else {
+                        return prev.filter(f => f !== 'HasCoordinates');
+                      }
+                    });
+                  }
+                }}
+                className="border-white text-white focus:ring-white"
+              />
+              <Label
+                htmlFor="hasCoordinatesFilter"
+                className="whitespace-nowrap text-sm font-medium text-white"
+              >
+                Has Coordinates
+              </Label>
+            </div>
           </div>
         </div>
 
@@ -1363,16 +1471,18 @@ function LocationsPageContent() {
                     ref={cardsRef}
                   >
                     {!isLoading ? (
-                      currentItems.map((location, index) => (
-                        <LocationCard
-                          key={`${location._id}-${index}`}
-                          location={location}
-                          onLocationClick={handleLocationClick}
-                          onEdit={() => openEditModal(location)}
-                          canManageLocations={canManageLocations}
-                          selectedFilters={selectedFilters}
-                        />
-                      ))
+                      currentItems.map(
+                        (location: AggregatedLocation, index: number) => (
+                          <LocationCard
+                            key={`${location._id}-${index}`}
+                            location={location}
+                            onLocationClick={handleLocationClick}
+                            onEdit={() => openEditModal(location)}
+                            canManageLocations={canManageLocations}
+                            selectedFilters={selectedFilters}
+                          />
+                        )
+                      )
                     ) : (
                       <>
                         {[...Array(3)].map((_, i) => (
@@ -1402,10 +1512,10 @@ function LocationsPageContent() {
         </div>
 
         {/* Pagination Controls */}
-        {!isLoading && currentItems.length > 0 && totalPages > 1 && (
+        {!isLoading && currentItems.length > 0 && calculatedTotalPages > 1 && (
           <PaginationControls
             currentPage={currentPage}
-            totalPages={totalPages}
+            totalPages={calculatedTotalPages}
             setCurrentPage={setCurrentPage}
           />
         )}

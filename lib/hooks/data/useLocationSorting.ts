@@ -10,7 +10,6 @@ import { useEffect, useMemo, useState } from 'react';
 type UseLocationSortingProps = {
   locationData: AggregatedLocation[];
   currentPage?: number;
-  totalCount?: number;
   itemsPerPage?: number;
 };
 
@@ -34,9 +33,8 @@ type UseLocationSortingReturn = {
 export function useLocationSorting({
   locationData,
   currentPage: externalCurrentPage = 0,
-  totalCount: _totalCount,
   itemsPerPage: externalItemsPerPage = 10,
-}: Omit<UseLocationSortingProps, 'selectedFilters'>): UseLocationSortingReturn {
+}: UseLocationSortingProps): UseLocationSortingReturn {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [sortOption, setSortOption] = useState<LocationSortOption>('moneyIn');
 
@@ -132,3 +130,4 @@ export function useLocationSorting({
     handleSort: handleColumnSort,
   };
 }
+

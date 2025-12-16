@@ -132,8 +132,7 @@ function CollectionReportPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [collections, setCollections] = useState<CollectionDocument[]>([]);
   const [machinePage, setMachinePage] = useState(1);
-  const [refreshing, _setRefreshing] = useState(false); // setRefreshing unused - Sync Meters disabled
-  const [_showFloatingRefresh, _setShowFloatingRefresh] = useState(false); // Unused - Floating refresh disabled
+  const [refreshing] = useState(false); // Sync Meters disabled
   const [showFixReportConfirmation, setShowFixReportConfirmation] =
     useState(false);
   const [isFixingReport, setIsFixingReport] = useState(false);
@@ -599,17 +598,7 @@ function CollectionReportPageContent() {
     animateDesktopTabTransition(tabContentRef);
   }, [activeTab]);
 
-  // Handle scroll to show/hide floating refresh button
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop =
-        window.pageYOffset || document.documentElement.scrollTop;
-      _setShowFloatingRefresh(scrollTop > 200);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // Floating refresh button disabled - scroll handler removed
 
   // Handle tab change with URL update
   const handleTabChange = (
@@ -955,7 +944,7 @@ function CollectionReportPageContent() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Meters Gross</span>
+                  <span className="text-gray-600">Machine Gross</span>
                   <span className="font-medium text-gray-800">
                     {metric.metersGross?.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
@@ -1136,7 +1125,7 @@ function CollectionReportPageContent() {
                     onClick={() => handleSort('metersGross')}
                   >
                     <div className="flex items-center gap-1">
-                      METER GROSS
+                      MACHINE GROSS
                       {sortField === 'metersGross' &&
                         (sortDirection === 'asc' ? (
                           <ChevronUp className="h-4 w-4" />
@@ -1391,7 +1380,7 @@ function CollectionReportPageContent() {
           </h2>
           <div className="overflow-hidden rounded-lg bg-white shadow-md">
             <div className="bg-button p-3 text-white">
-              <h3 className="font-semibold">Location Total</h3>
+              <h3 className="font-semibold">Collection Report Machine Total Gross</h3>
             </div>
             <div className="space-y-2 p-4 text-sm">
               <div className="flex justify-between">
@@ -1403,7 +1392,7 @@ function CollectionReportPageContent() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Total Meters Gross</span>
+                <span className="text-gray-600">Total Machine Gross</span>
                 <span
                   className={`font-medium ${getFinancialColorClass(
                     reportData?.locationMetrics?.metersGross
@@ -1629,7 +1618,7 @@ function CollectionReportPageContent() {
         <div className="hidden rounded-lg bg-white shadow-md lg:block">
           {/* Top summary table */}
           <div className="rounded-t-lg bg-button px-4 py-2 font-semibold text-white">
-            Location Total
+            Collection Report Machine Total Gross
           </div>
           <table className="w-full text-sm">
             <tbody>
@@ -1643,7 +1632,7 @@ function CollectionReportPageContent() {
               </tr>
               <tr className="border-b border-gray-200">
                 <td className="p-3 font-medium text-gray-700">
-                  Total Meters Gross
+                  Total Machine Gross
                 </td>
                 <td
                   className={`p-3 text-right ${getFinancialColorClass(
@@ -2136,7 +2125,7 @@ function CollectionReportPageContent() {
                 locationTotal < 0 ? 'text-red-600' : 'text-green-600';
               return (
                 <p className={`text-lg font-semibold`}>
-                  Location Total:{' '}
+                  Collection Report Machine Total Gross:{' '}
                   <span className={textColorClass}>
                     {formatCurrency(locationTotal)}
                   </span>

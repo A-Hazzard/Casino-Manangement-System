@@ -93,6 +93,57 @@ export const getLocationsWithMetrics = async (
             $or: [{ membershipEnabled: true }, { enableMembership: true }],
           });
           break;
+        case 'MissingCoordinates':
+          // Filter for locations missing coordinates
+          // Check if geoCoords doesn't exist, is null, or doesn't have valid latitude/longitude
+          filterConditions.push({
+            $or: [
+              { geoCoords: { $exists: false } },
+              { geoCoords: null },
+              { 'geoCoords.latitude': { $exists: false } },
+              { 'geoCoords.latitude': null },
+              { 'geoCoords.longitude': { $exists: false } },
+              { 'geoCoords.longitude': null },
+              { 'geoCoords.longtitude': { $exists: false } },
+              { 'geoCoords.longtitude': null },
+            ],
+          });
+          break;
+        case 'HasCoordinates':
+          // Filter for locations that have coordinates
+          filterConditions.push({
+            $and: [
+              { geoCoords: { $exists: true } },
+              { geoCoords: { $ne: null } },
+              {
+                $or: [
+                  {
+                    $and: [
+                      { 'geoCoords.latitude': { $exists: true } },
+                      { 'geoCoords.latitude': { $ne: null } },
+                      {
+                        $or: [
+                          {
+                            $and: [
+                              { 'geoCoords.longitude': { $exists: true } },
+                              { 'geoCoords.longitude': { $ne: null } },
+                            ],
+                          },
+                          {
+                            $and: [
+                              { 'geoCoords.longtitude': { $exists: true } },
+                              { 'geoCoords.longtitude': { $ne: null } },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+          break;
       }
     });
 

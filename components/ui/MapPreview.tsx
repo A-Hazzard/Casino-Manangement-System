@@ -549,24 +549,6 @@ export default function MapPreview(props: MapPreviewProps) {
     return <MapSkeleton />;
   }
 
-  // Debug logging for gaming locations data
-  if (process.env.NODE_ENV === 'development') {
-    console.warn(
-      `MapPreview - gamingLocations: ${JSON.stringify({
-        count: validLocations.length,
-        locations: validLocations.map(loc => ({
-          id: loc._id,
-          name: loc.name || loc.locationName,
-          geoCoords: loc.geoCoords,
-          hasValidCoords:
-            loc.geoCoords &&
-            loc.geoCoords.latitude !== 0 &&
-            (loc.geoCoords.longitude !== 0 || loc.geoCoords.longtitude !== 0),
-        })),
-      })}`
-    );
-  }
-
   // Handle navigation to location details
   const handleLocationClick = (locationId: string) => {
     router.push(`/locations/${locationId}`);

@@ -426,6 +426,10 @@ export const useCabinetData = ({
 
   // Removed useEffect for filtering - now handled by memoized filteredCabinets
   // Dedicated effect to fetch metrics totals reliably when filters change
+  // Track if this is the initial mount to prevent aborting on first load
+  const isInitialMountRef = useRef(true);
+  const prevTotalsDepsRef = useRef<string>('');
+
   useEffect(() => {
     const shouldFetchCustom =
       activeMetricsFilter !== 'Custom' ||
@@ -433,6 +437,25 @@ export const useCabinetData = ({
 
     if (!activeMetricsFilter || !shouldFetchCustom) {
       return;
+    }
+
+    // Create a dependency key to detect actual changes
+    const depsKey = `${activeMetricsFilter}-${selectedLicencee || 'all'}-${displayCurrency || 'default'}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}`;
+    
+    // On initial mount, don't abort anything (there's nothing to abort)
+    // Only abort if dependencies actually changed (not on initial mount)
+    const isInitialMount = isInitialMountRef.current;
+    const depsChanged = prevTotalsDepsRef.current !== depsKey;
+    
+    if (isInitialMount) {
+      isInitialMountRef.current = false;
+      prevTotalsDepsRef.current = depsKey;
+    } else if (!depsChanged) {
+      // Dependencies haven't changed, skip fetching
+      return;
+    } else {
+      // Dependencies changed, update the ref
+      prevTotalsDepsRef.current = depsKey;
     }
 
     setMetricsTotalsLoading(true);

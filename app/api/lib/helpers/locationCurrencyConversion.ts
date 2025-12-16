@@ -131,6 +131,35 @@ export function applyMachineTypeFilter(
           return (
             loc.membershipEnabled === true || loc.enableMembership === true
           );
+        case 'MissingCoordinates':
+          // Check if location has missing coordinates
+          const geoCoords = loc.geoCoords;
+          if (!geoCoords) return true;
+          // Check for lat/lng format (using type assertion for entities.ts GeoCoordinates type)
+          const geoCoordsWithLatLng = geoCoords as { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number };
+          const hasLat = geoCoordsWithLatLng.lat !== undefined && geoCoordsWithLatLng.lat !== null;
+          const hasLng = geoCoordsWithLatLng.lng !== undefined && geoCoordsWithLatLng.lng !== null;
+          // Check for latitude/longitude format
+          const hasLatitude = geoCoordsWithLatLng.latitude !== undefined && geoCoordsWithLatLng.latitude !== null;
+          const hasLongitude = geoCoordsWithLatLng.longitude !== undefined && geoCoordsWithLatLng.longitude !== null;
+          const hasLongtitude = geoCoordsWithLatLng.longtitude !== undefined && geoCoordsWithLatLng.longtitude !== null;
+          // Location has coords if it has (lat AND lng) OR (latitude AND (longitude OR longtitude))
+          const hasValidCoords = (hasLat && hasLng) || (hasLatitude && (hasLongitude || hasLongtitude));
+          return !hasValidCoords;
+        case 'HasCoordinates':
+          // Check if location has coordinates
+          const geoCoordsForHas = loc.geoCoords;
+          if (!geoCoordsForHas) return false;
+          // Check for lat/lng format (using type assertion for entities.ts GeoCoordinates type)
+          const geoCoordsForHasWithLatLng = geoCoordsForHas as { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number };
+          const hasLatForHas = geoCoordsForHasWithLatLng.lat !== undefined && geoCoordsForHasWithLatLng.lat !== null;
+          const hasLngForHas = geoCoordsForHasWithLatLng.lng !== undefined && geoCoordsForHasWithLatLng.lng !== null;
+          // Check for latitude/longitude format
+          const hasLatitudeForHas = geoCoordsForHasWithLatLng.latitude !== undefined && geoCoordsForHasWithLatLng.latitude !== null;
+          const hasLongitudeForHas = geoCoordsForHasWithLatLng.longitude !== undefined && geoCoordsForHasWithLatLng.longitude !== null;
+          const hasLongtitudeForHas = geoCoordsForHasWithLatLng.longtitude !== undefined && geoCoordsForHasWithLatLng.longtitude !== null;
+          // Location has coords if it has (lat AND lng) OR (latitude AND (longitude OR longtitude))
+          return (hasLatForHas && hasLngForHas) || (hasLatitudeForHas && (hasLongitudeForHas || hasLongtitudeForHas));
         default:
           return true;
       }

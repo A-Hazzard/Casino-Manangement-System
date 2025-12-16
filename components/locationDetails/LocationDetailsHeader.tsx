@@ -20,10 +20,12 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeftIcon, ChevronDownIcon } from '@radix-ui/react-icons';
-import { RefreshCw } from 'lucide-react';
+import { MapPinOff, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import RefreshButton from '@/components/ui/RefreshButton';
 import type { LocationInfo } from '@/lib/types/pages';
+import { hasMissingCoordinates } from '@/lib/utils/locationsPageUtils';
+import type { AggregatedLocation } from '@/shared/types/common';
 
 type ExtendedLocationInfo = LocationInfo & {
   status?: string;
@@ -34,6 +36,11 @@ type ExtendedLocationInfo = LocationInfo & {
   email?: string;
   licenseNumber?: string;
   licenseExpiry?: string | Date;
+  geoCoords?: {
+    latitude?: number;
+    longitude?: number;
+    longtitude?: number;
+  };
   cabinets?: Array<{
     online: boolean;
     [key: string]: unknown;
@@ -233,9 +240,23 @@ export const LocationDetailsHeader = ({
           className="flex w-full items-center justify-between p-4 transition-colors hover:bg-gray-50"
         >
           <div className="text-left">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Location Details
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Location Details
+              </h3>
+              {/* Missing Coordinates Icon */}
+              {(!locationInfo?.geoCoords ||
+                hasMissingCoordinates(
+                  locationInfo as AggregatedLocation
+                )) && (
+                <div className="group relative inline-flex flex-shrink-0">
+                  <MapPinOff className="h-4 w-4 text-red-600" />
+                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                    This location&apos;s coordinates have not been set
+                  </div>
+                </div>
+              )}
+            </div>
             <p className="text-sm text-gray-600">
               View location information and settings
             </p>

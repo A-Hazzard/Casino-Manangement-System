@@ -49,7 +49,28 @@ export async function fetchMembershipStats(
       membershipCount: response.data.memberCount || 0,
     };
   } catch (error) {
+    // Check if this is a cancellation error - don't log those
+    const isCancellation =
+      axios.isCancel(error) ||
+      (error instanceof Error &&
+        (error.name === 'AbortError' ||
+          error.message === 'canceled' ||
+          error.message === 'The user aborted a request.')) ||
+      (error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'));
+
+    // Only log non-cancellation errors
+    if (!isCancellation) {
     console.error('Failed to fetch membership stats:', error);
+    }
+
+    // Re-throw cancellation errors so useAbortableRequest can handle them silently
+    if (isCancellation) {
+      throw error;
+    }
+
     return {
       membershipCount: 0,
     };

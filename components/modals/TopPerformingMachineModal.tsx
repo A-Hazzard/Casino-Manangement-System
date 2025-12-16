@@ -68,7 +68,12 @@ export default function TopPerformingMachineModal({
   const [loadingChart, setLoadingChart] = useState(false);
   const router = useRouter();
   const { displayCurrency } = useCurrency();
-  const { activePieChartFilter, customDateRange } = useDashBoardStore();
+  const { activePieChartFilter, activeMetricsFilter, customDateRange } =
+    useDashBoardStore();
+
+  // Use activeMetricsFilter if available (from machine detail page), otherwise fall back to activePieChartFilter (from dashboard)
+  const effectiveTimePeriod =
+    activeMetricsFilter || activePieChartFilter || 'Today';
 
   // Chart granularity state - initialize after store values are available
   const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
@@ -76,8 +81,15 @@ export default function TopPerformingMachineModal({
   );
 
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
+  // Never show for 7d and 30d - they always use daily format
   const showGranularitySelector = useMemo(() => {
-    const timePeriod = (activePieChartFilter || 'Today') as TimePeriod;
+    const timePeriod = effectiveTimePeriod as TimePeriod;
+    
+    // Never show granularity selector for 7d and 30d
+    if (timePeriod === '7d' || timePeriod === '30d') {
+      return false;
+    }
+    
     if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
       return true;
     }
@@ -108,12 +120,25 @@ export default function TopPerformingMachineModal({
       }
     }
     return false;
-  }, [activePieChartFilter, customDateRange]);
+  }, [effectiveTimePeriod, customDateRange]);
 
   // Recalculate default granularity when date filters change
   // For "Today", also recalculate periodically as time passes
+  // For 7d and 30d, always use 'hourly' (which displays as daily format in Chart component)
   useEffect(() => {
-    const timePeriod = (activePieChartFilter || 'Today') as TimePeriod;
+    const timePeriod = effectiveTimePeriod as TimePeriod;
+    
+    // Force 'hourly' for 7d and 30d (Chart component will display as daily format)
+    if (
+      timePeriod === '7d' ||
+      timePeriod === '30d' ||
+      timePeriod === 'last7days' ||
+      timePeriod === 'last30days'
+    ) {
+      setChartGranularity('hourly');
+      return;
+    }
+    
     const updateGranularity = () => {
       const defaultGranularity = getDefaultChartGranularity(
         timePeriod,
@@ -135,7 +160,7 @@ export default function TopPerformingMachineModal({
 
     return undefined;
   }, [
-    activePieChartFilter,
+    effectiveTimePeriod,
     customDateRange?.startDate,
     customDateRange?.endDate,
   ]);
@@ -152,10 +177,23 @@ export default function TopPerformingMachineModal({
       setLoadingChart(true);
 
       try {
-        // Use activePieChartFilter (from top performing filter) instead of activeMetricsFilter
-        const timePeriod = (activePieChartFilter || 'Today') as TimePeriod;
+        // Use effectiveTimePeriod which prioritizes activeMetricsFilter (from machine detail page) over activePieChartFilter (from dashboard)
+        const timePeriod = effectiveTimePeriod as TimePeriod;
 
         // Fetch machine metrics and chart data in parallel
+        // For 7d and 30d, don't pass granularity (API will return daily data)
+        // For other periods, use the selected granularity
+        const shouldPassGranularity =
+          timePeriod !== '7d' &&
+          timePeriod !== '30d' &&
+          timePeriod !== 'last7days' &&
+          timePeriod !== 'last30days';
+        const granularityParam = shouldPassGranularity
+          ? chartGranularity === 'minute'
+            ? 'minute'
+            : 'hourly'
+          : undefined;
+
         const [metrics, chart] = await Promise.all([
           getMachineMetrics(
             machineId,
@@ -171,7 +209,7 @@ export default function TopPerformingMachineModal({
             endDate,
             displayCurrency,
             undefined,
-            chartGranularity === 'minute' ? 'minute' : 'hourly'
+            granularityParam
           ),
         ]);
 
@@ -189,7 +227,7 @@ export default function TopPerformingMachineModal({
   }, [
     open,
     machineId,
-    activePieChartFilter,
+    effectiveTimePeriod,
     customDateRange,
     displayCurrency,
     chartGranularity,
@@ -355,9 +393,7 @@ export default function TopPerformingMachineModal({
                 <Chart
                   loadingChartData={loadingChart}
                   chartData={chartData}
-                  activeMetricsFilter={
-                    (activePieChartFilter || 'Today') as TimePeriod
-                  }
+                  activeMetricsFilter={effectiveTimePeriod as TimePeriod}
                 />
               </>
             )}

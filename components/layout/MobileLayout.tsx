@@ -436,8 +436,9 @@ export default function MobileLayout(props: MobileLayoutProps) {
                         )
                       )}
                     </ul>
-                    <ResponsiveContainer width={160} height={160}>
-                      <PieChart>
+                    <div className="h-40 w-40 min-w-[160px] min-h-[160px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
                         <Pie
                           data={props.topPerformingData}
                           dataKey="totalDrop"
@@ -456,6 +457,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                         </Pie>
                       </PieChart>
                     </ResponsiveContainer>
+                    </div>
                   </div>
                 </>
               )}

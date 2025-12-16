@@ -354,8 +354,14 @@ function CabinetDetailPageContent() {
     makeChartRequest(async signal => {
       setLoadingChart(true);
       try {
-        // Pass granularity preference for Today/Yesterday
-        const granularity = showGranularitySelector
+          // Pass granularity preference for Today/Yesterday/Custom
+          // For 7d and 30d, don't pass granularity (API will return daily data)
+          const shouldPassGranularity =
+            activeMetricsFilter !== '7d' &&
+            activeMetricsFilter !== '30d' &&
+            activeMetricsFilter !== 'last7days' &&
+            activeMetricsFilter !== 'last30days';
+          const granularity = showGranularitySelector && shouldPassGranularity
           ? chartGranularity
           : undefined;
         const data = await getMachineChartData(

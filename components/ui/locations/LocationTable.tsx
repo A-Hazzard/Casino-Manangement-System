@@ -15,7 +15,15 @@ import {
   getMoneyInColorClass,
   getMoneyOutColorClass,
 } from '@/lib/utils/financialColors';
-import { BadgeCheck, Eye, FileWarning, Home, Server } from 'lucide-react';
+import { hasMissingCoordinates } from '@/lib/utils/locationsPageUtils';
+import {
+  BadgeCheck,
+  Eye,
+  FileWarning,
+  Home,
+  MapPinOff,
+  Server,
+} from 'lucide-react';
 import Image from 'next/image';
 import { useRef } from 'react';
 
@@ -165,6 +173,15 @@ const LocationTable: React.FC<LocationTableProps> = ({
                               <FileWarning className="h-4 w-4 text-red-600" />
                               <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                                 No collection report in past 3 months
+                              </div>
+                            </div>
+                          )}
+                        {/* Missing Coordinates Icon */}
+                        {hasMissingCoordinates(loc) && (
+                          <div className="group relative inline-flex flex-shrink-0">
+                            <MapPinOff className="h-4 w-4 text-red-600" />
+                            <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                              This location&apos;s coordinates have not been set
                               </div>
                             </div>
                           )}

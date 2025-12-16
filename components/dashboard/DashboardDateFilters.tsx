@@ -22,8 +22,12 @@ export default function DashboardDateFilters({
   hideIndicator?: boolean;
   showIndicatorOnly?: boolean;
 }) {
-  const { activeMetricsFilter, setActiveMetricsFilter, setCustomDateRange } =
-    useDashBoardStore();
+  const {
+    activeMetricsFilter,
+    setActiveMetricsFilter,
+    setActivePieChartFilter,
+    setCustomDateRange,
+  } = useDashBoardStore();
 
   const [shouldTriggerCallback, setShouldTriggerCallback] = useState(false);
   const user = useUserStore(state => state.user);
@@ -70,6 +74,7 @@ export default function DashboardDateFilters({
 
   const handleFilterClick = (filter: TimePeriod) => {
     setActiveMetricsFilter(filter);
+    setActivePieChartFilter(filter); // Sync pie chart filter with main filter
   };
 
   const handleSelectChange = (value: string) => {
@@ -135,6 +140,7 @@ export default function DashboardDateFilters({
                     endDate: date.to,
                   });
                   setActiveMetricsFilter('Custom');
+                  setActivePieChartFilter('Custom'); // Sync pie chart filter
                   if (onCustomRangeGo) {
                     setTimeout(() => onCustomRangeGo(), 0);
                   }
@@ -190,6 +196,7 @@ export default function DashboardDateFilters({
                     endDate: date.to,
                   });
                   setActiveMetricsFilter('Custom');
+                  setActivePieChartFilter('Custom'); // Sync pie chart filter
                   // Trigger callback
                   if (onCustomRangeGo) {
                     // Short timeout to ensure state updates propagate

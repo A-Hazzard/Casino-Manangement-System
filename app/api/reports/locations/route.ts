@@ -308,13 +308,22 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Apply machine type filters (SMIB, No SMIB, Local Server, Membership) at database level
-    // Note: Database-level filter uses OR logic for initial filtering (performance optimization)
+    // Apply location type filters (SMIB, No SMIB, Local Server, Membership) at database level
+    // Coordinate filters are handled post-aggregation since they depend on geoCoords field
+    // Note: Location type filters use OR logic (if multiple selected, show locations matching any)
     // Final accurate filtering is done post-aggregation based on calculated fields
-    if (filters.length > 0) {
+    const locationTypeFilters = filters.filter(
+      f =>
+        f === 'LocalServersOnly' ||
+        f === 'SMIBLocationsOnly' ||
+        f === 'NoSMIBLocation' ||
+        f === 'MembershipOnly'
+    );
+
+    if (locationTypeFilters.length > 0) {
       const filterConditions: Record<string, unknown>[] = [];
 
-      filters.forEach(filter => {
+      locationTypeFilters.forEach(filter => {
         switch (filter.trim()) {
           case 'LocalServersOnly':
             filterConditions.push({ isLocalServer: true });
@@ -336,9 +345,7 @@ export async function GET(req: NextRequest) {
         }
       });
 
-      // Apply filter logic - location must match the selected filters
-      // Use AND logic when multiple filters are selected (location must match ALL selected filters)
-      // Use direct condition when only one filter is selected
+      // Apply location type filter logic - use OR logic (location matches if it matches any selected type)
       if (filterConditions.length > 0) {
         // Build $and array to combine deletedAt check with filter conditions
         const andConditions: Array<Record<string, unknown>> = [
@@ -350,13 +357,13 @@ export async function GET(req: NextRequest) {
           },
         ];
 
-        // If only one filter is selected, use it directly; otherwise use AND logic
+        // If only one location type filter is selected, use it directly; otherwise use OR logic
         if (filterConditions.length === 1) {
           // Single filter - apply directly
           andConditions.push(filterConditions[0]);
         } else {
-          // Multiple filters - location must match ALL selected filters (AND logic)
-          andConditions.push({ $and: filterConditions });
+          // Multiple location type filters - location matches if it matches ANY selected type (OR logic)
+          andConditions.push({ $or: filterConditions });
         }
 
         // Add existing conditions (like _id, rel.licencee) to $and
@@ -429,6 +436,7 @@ export async function GET(req: NextRequest) {
       membershipEnabled: 1,
       enableMembership: 1, // Include for compatibility with legacy data
       noSMIBLocation: 1, // Include for SMIB filtering
+      geoCoords: 1, // Include geoCoords for coordinate filtering
     }).lean();
     perfTimers.fetchLocations = Date.now() - locationsStart;
 
@@ -516,6 +524,7 @@ export async function GET(req: NextRequest) {
             location.membershipEnabled ||
             (location as { enableMembership?: boolean }).enableMembership ||
             false,
+          geoCoords: (location as { geoCoords?: { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number } }).geoCoords, // Include geoCoords in summary response
         };
       });
 
@@ -781,6 +790,7 @@ export async function GET(req: NextRequest) {
           gamesPlayed: 0, // Default value - can be calculated if needed
           rel: location.rel,
           country: location.country,
+          geoCoords: (location as { geoCoords?: { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number } }).geoCoords, // Include geoCoords in response
           machines: machines.map((m: GamingMachine) => ({
             _id: m._id.toString(),
             assetNumber: m.assetNumber,
@@ -956,6 +966,7 @@ export async function GET(req: NextRequest) {
                 gamesPlayed: 0, // Default value - can be calculated if needed
                 rel: (location as { rel?: { licencee?: string } }).rel, // Include rel for licensee information
                 country: (location as { country?: string }).country, // Include country for currency mapping
+                geoCoords: (location as { geoCoords?: { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number } }).geoCoords, // Include geoCoords in response
                 machines: machines.map(
                   (m: {
                     _id: unknown;
@@ -1053,74 +1064,109 @@ export async function GET(req: NextRequest) {
     const noSmibFilter = filters.includes('NoSMIBLocation');
     const localServerFilter = filters.includes('LocalServersOnly');
     const membershipFilter = filters.includes('MembershipOnly');
+    const missingCoordinatesFilter = filters.includes('MissingCoordinates');
+    const hasCoordinatesFilter = filters.includes('HasCoordinates');
 
     if (
       smibOnlyFilter ||
       noSmibFilter ||
       localServerFilter ||
-      membershipFilter
+      membershipFilter ||
+      missingCoordinatesFilter ||
+      hasCoordinatesFilter
     ) {
       filteredResults = locationResults.filter(loc => {
-        // Apply all selected filters with AND logic (location must match ALL selected filters)
-        // This ensures that if SMIB is selected, Local Servers are excluded (unless Local Server is also selected)
+        // Get location properties
+        const totalMachines = (loc as { totalMachines?: number }).totalMachines || 0;
+        const hasSmib = (loc as { hasSmib?: boolean }).hasSmib === true;
+        const isLocalServer = (loc as { isLocalServer?: boolean }).isLocalServer === true;
+        const membershipEnabled = (loc as { membershipEnabled?: boolean }).membershipEnabled === true;
+        const geoCoords = (loc as { geoCoords?: { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number } }).geoCoords;
+        
+        // Check coordinates
+        let hasValidCoords = false;
+        if (geoCoords) {
+          const hasLat = geoCoords.lat !== undefined && geoCoords.lat !== null;
+          const hasLng = geoCoords.lng !== undefined && geoCoords.lng !== null;
+          const hasLatitude = geoCoords.latitude !== undefined && geoCoords.latitude !== null;
+          const hasLongitude = geoCoords.longitude !== undefined && geoCoords.longitude !== null;
+          const hasLongtitude = geoCoords.longtitude !== undefined && geoCoords.longtitude !== null;
+          hasValidCoords = (hasLat && hasLng) || (hasLatitude && (hasLongitude || hasLongtitude));
+        }
 
-        // SMIBLocationsOnly: Must have SMIB machines (check hasSmib flag only)
-        // This is the authoritative check - must verify based on actual machine data
-        // Note: sasMachines > 0 does NOT mean SMIB - SMIB requires relayId or smibBoard
-        if (smibOnlyFilter) {
-          const totalMachines =
-            (loc as { totalMachines?: number }).totalMachines || 0;
-          // Only check hasSmib - do NOT check sasMachines as that's different from SMIB
-          const hasSmib = (loc as { hasSmib?: boolean }).hasSmib === true;
-
-          // If location has no machines, exclude it (can't have SMIB without machines)
-          if (totalMachines === 0) return false;
-
-          // If location has machines but no SMIB machines, exclude it
-          // hasSmib must be explicitly true (based on relayId or smibBoard check)
-          if (!hasSmib) return false;
-
-          // If SMIB is selected, exclude Local Servers (unless Local Server is also selected)
-          if (!localServerFilter) {
-            const isLocalServer =
-              (loc as { isLocalServer?: boolean }).isLocalServer === true;
-            if (isLocalServer) return false; // Exclude Local Servers when only SMIB is selected
+        // ============================================================================
+        // STEP 1: Location Type Filters (SMIB/No SMIB/Local Server) - EXCLUSIVE
+        // ============================================================================
+        // These filters determine which location types to show
+        // If any of these are selected, ONLY show locations matching those types
+        
+        let matchesLocationType = false;
+        
+        // Check if any location type filter is selected
+        const hasLocationTypeFilter = smibOnlyFilter || noSmibFilter || localServerFilter;
+        
+        if (hasLocationTypeFilter) {
+          // Location type filters are exclusive - location must match at least one selected type
+          if (smibOnlyFilter) {
+            if (totalMachines > 0 && hasSmib) {
+              matchesLocationType = true;
+            }
+          }
+          
+          if (noSmibFilter) {
+            const hasSmibCheck = hasSmib || ((loc as { sasMachines?: number }).sasMachines || 0) > 0;
+            const noSMIB = (loc as { noSMIBLocation?: boolean }).noSMIBLocation;
+            if (!hasSmibCheck && noSMIB !== false) {
+              matchesLocationType = true;
+            }
+          }
+          
+          if (localServerFilter) {
+            if (isLocalServer) {
+              matchesLocationType = true;
+            }
+          }
+          
+          // If location type filter is selected but location doesn't match any selected type, exclude it
+          if (!matchesLocationType) {
+            return false;
           }
         }
 
-        // NoSMIBLocation: Must NOT have SMIB machines
-        if (noSmibFilter) {
-          const hasSmib =
-            (loc as { hasSmib?: boolean }).hasSmib === true ||
-            ((loc as { sasMachines?: number }).sasMachines || 0) > 0;
-          // Location must NOT have SMIB machines (check both hasSmib and noSMIBLocation flag)
-          if (hasSmib) return false;
-          // Also verify noSMIBLocation flag is true if available
-          const noSMIB = (loc as { noSMIBLocation?: boolean }).noSMIBLocation;
-          if (noSMIB === false) return false; // Explicitly false means it has SMIB
-        }
-
-        // LocalServersOnly: Must be a local server
-        if (localServerFilter) {
-          const isLocalServer =
-            (loc as { isLocalServer?: boolean }).isLocalServer === true;
-          if (!isLocalServer) return false;
-          // If Local Server is selected, exclude SMIB locations (unless SMIB is also selected)
-          if (!smibOnlyFilter) {
-            const hasSmib =
-              (loc as { hasSmib?: boolean }).hasSmib === true ||
-              ((loc as { sasMachines?: number }).sasMachines || 0) > 0;
-            if (hasSmib) return false; // Exclude SMIB locations when only Local Server is selected
-          }
-        }
-
+        // ============================================================================
+        // STEP 2: Additional Filters (Membership, Coordinates) - OR logic within type
+        // ============================================================================
+        // These filters are applied within the location type subset
+        // If multiple are selected, location matches if it matches ANY of them
+        
+        const additionalMatches: boolean[] = [];
+        
         // MembershipOnly: Must have membership enabled
         if (membershipFilter) {
-          const membershipEnabled =
-            (loc as { membershipEnabled?: boolean }).membershipEnabled === true;
-          if (!membershipEnabled) return false;
+          additionalMatches.push(membershipEnabled);
         }
 
+        // MissingCoordinates: Must have missing coordinates
+        if (missingCoordinatesFilter) {
+          additionalMatches.push(!hasValidCoords);
+        }
+
+        // HasCoordinates: Must have coordinates
+        if (hasCoordinatesFilter) {
+          additionalMatches.push(hasValidCoords);
+        }
+
+        // If additional filters are selected, location must match at least one
+        if (additionalMatches.length > 0) {
+          const matchesAdditional = additionalMatches.some(match => match === true);
+          if (!matchesAdditional) {
+            return false; // Doesn't match any additional filter
+          }
+        }
+
+        // Location matches if:
+        // 1. It matches the location type filter (if any selected), AND
+        // 2. It matches at least one additional filter (if any selected)
         return true;
       });
     }

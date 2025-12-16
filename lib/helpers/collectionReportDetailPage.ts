@@ -42,19 +42,18 @@ export function animateDesktopTabTransition(
 
 /**
  * Calculates the total location value from collections
- * Uses raw meter difference: (metersIn - metersOut) for each collection
- * Note: This is different from Total Meters Gross which uses movement.gross
+ * Uses movement.gross (meter gross) for each collection
+ * This sums the meter gross column values from all machines
  * @param collections - Array of collection documents
- * @returns Total location value (sum of raw meter differences)
+ * @returns Total location value (sum of movement.gross from all collections)
  */
 export function calculateLocationTotal(
   collections: CollectionDocument[]
 ): number {
   if (!collections || collections.length === 0) return 0;
   return collections.reduce((total, collection) => {
-    // Calculate raw meter difference: current meters minus previous meters
-    // This represents the total physical money movement for the location
-    const gross = (collection.metersIn || 0) - (collection.metersOut || 0);
+    // Sum the meter gross (movement.gross) from each collection
+    const gross = collection.movement?.gross || 0;
     return total + gross;
   }, 0);
 }

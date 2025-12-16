@@ -105,7 +105,7 @@ export function getGranularityFromDataPoints(
         if (!isNaN(timestamp.getTime())) {
           timestamps.push(timestamp);
         }
-      } catch (error) {
+      } catch {
         // Skip invalid timestamps
         console.warn('Invalid timestamp in data:', {
           day: item.day,

@@ -90,11 +90,24 @@ export async function getMachineMetrics(
     }
 
     const response = await axios.get(url);
-    const machine = response.data?.data;
+
+    // Check if response has data (some APIs may not include success flag)
+    const machine = response.data?.data || response.data;
 
     if (!machine) {
       return null;
     }
+
+    // Parse numeric values to ensure they're numbers, not strings
+    // Use nullish coalescing (??) to handle null/undefined, but preserve 0 values
+    const parseNumber = (value: unknown): number => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        const parsed = parseFloat(value);
+        return isNaN(parsed) ? 0 : parsed;
+      }
+      return 0;
+    };
 
     return {
       _id: machine._id || machineId,
@@ -102,13 +115,13 @@ export async function getMachineMetrics(
       game: machine.game || machine.installedGame,
       locationName: machine.locationName || 'Unknown Location',
       locationId: machine.gamingLocation || machine.locationId || '',
-      moneyIn: machine.moneyIn || 0,
-      moneyOut: machine.moneyOut || 0,
-      gross: machine.gross || 0,
-      jackpot: machine.jackpot || 0,
-      gamesPlayed: machine.gamesPlayed || 0,
-      coinIn: machine.coinIn || 0,
-      coinOut: machine.coinOut || 0,
+      moneyIn: parseNumber(machine.moneyIn),
+      moneyOut: parseNumber(machine.moneyOut),
+      gross: parseNumber(machine.gross),
+      jackpot: parseNumber(machine.jackpot),
+      gamesPlayed: parseNumber(machine.gamesPlayed),
+      coinIn: parseNumber(machine.coinIn),
+      coinOut: parseNumber(machine.coinOut),
     };
   } catch (error: unknown) {
     console.error('Failed to fetch machine metrics:', error);
@@ -223,26 +236,39 @@ export async function getMachineChartData(
       }
     } else {
       // Auto-detect granularity based on time range (5-hour threshold)
-      const defaultGranularity = getDefaultChartGranularity(
-        timePeriod,
-        startDate,
-        endDate
-      );
-
-      // Use the default granularity, but also check if API returned minute-level data
-      if (defaultGranularity === 'minute') {
-        useMinute = true;
+      // For 7d/30d periods, always use daily (not hourly)
+      if (
+        timePeriod === '7d' ||
+        timePeriod === '30d' ||
+        timePeriod === 'last7days' ||
+        timePeriod === 'last30days' ||
+        timePeriod === 'All Time'
+      ) {
+        // For longer periods, use daily aggregation
         useHourly = false;
+        useMinute = false;
       } else {
-        // Default is hourly, but check if API returned minute data
-        if (hasMinuteLevelData) {
-          // API has minute data, but we default to hourly grouping
-          // User can manually select minute granularity to see minute-level data
-          useMinute = false;
-          useHourly = true;
+        const defaultGranularity = getDefaultChartGranularity(
+          timePeriod,
+          startDate,
+          endDate
+        );
+
+        // Use the default granularity, but also check if API returned minute-level data
+        if (defaultGranularity === 'minute') {
+          useMinute = true;
+          useHourly = false;
         } else {
-          useMinute = false;
-          useHourly = true;
+          // Default is hourly, but check if API returned minute data
+          if (hasMinuteLevelData) {
+            // API has minute data, but we default to hourly grouping
+            // User can manually select minute granularity to see minute-level data
+            useMinute = false;
+            useHourly = true;
+          } else {
+            useMinute = false;
+            useHourly = true;
+          }
         }
       }
     }
@@ -355,6 +381,8 @@ export async function getMachineChartData(
 
 /**
  * Fills missing time intervals in chart data with zero values
+ * For longer periods (7d, 30d), only returns actual data points (no zero-filling)
+ * This allows the Chart component to filter out $0 values and show only dates with actual data
  */
 function fillMissingIntervals(
   data: dashboardData[],
@@ -365,8 +393,6 @@ function fillMissingIntervals(
   isMinute?: boolean
 ): dashboardData[] {
   if (data.length === 0) return [];
-
-  const filledData: dashboardData[] = [];
 
   // For ALL minute granularity (Custom, Today, Yesterday): Only show actual data points (don't fill zeros)
   // User wants to see ONLY times that are in the JSON response, not filled-in zeros
@@ -381,10 +407,62 @@ function fillMissingIntervals(
     return data;
   }
 
-  // Store original data length for safety check (after early returns)
-  const originalDataLength = data.length;
+  // For longer periods (7d, 30d), fill missing days with zero values
+  // This ensures all days are shown on the chart, even if they have no data
+  // The Chart component will then filter out $0 values, but we need the structure first
+  if (
+    !isHourly &&
+    !isMinute &&
+    (timePeriod === '7d' ||
+      timePeriod === '30d' ||
+      timePeriod === 'last7days' ||
+      timePeriod === 'last30days')
+  ) {
+    const filledData: dashboardData[] = [];
+    let start: Date;
+    let end: Date;
 
-  // Hourly filling logic
+    if (timePeriod === '7d' || timePeriod === 'last7days') {
+      end = new Date();
+      start = new Date();
+      start.setDate(end.getDate() - 6);
+    } else if (timePeriod === '30d' || timePeriod === 'last30days') {
+      end = new Date();
+      start = new Date();
+      start.setDate(end.getDate() - 29);
+    } else {
+      // Fallback - shouldn't reach here
+      return data;
+    }
+
+    const current = new Date(start);
+    while (current <= end) {
+      // Use the date directly as YYYY-MM-DD format to avoid timezone conversion issues
+      const dayKey = current.toISOString().split('T')[0];
+      const existingData = data.find(item => item.day === dayKey);
+
+      if (existingData) {
+        filledData.push(existingData);
+      } else {
+        filledData.push({
+          xValue: dayKey,
+          day: dayKey,
+          time: '',
+          moneyIn: 0,
+          moneyOut: 0,
+          gross: 0,
+        });
+      }
+
+      current.setDate(current.getDate() + 1);
+    }
+
+    return filledData;
+  }
+
+  const filledData: dashboardData[] = [];
+
+  // Hourly filling logic (only for Today/Yesterday/Custom single-day)
   if (isHourly) {
     // Hourly filling for predefined periods
     const baseDay = data[0]?.day || formatISODate(new Date());
@@ -407,25 +485,23 @@ function fillMissingIntervals(
       }
     }
   } else {
-    // Daily filling for longer periods
+    // Daily filling for shorter periods (Today, Yesterday, Custom single-day)
+    // For longer periods, we already returned data as-is above
     let start: Date;
     let end: Date;
 
     if (timePeriod === 'Custom' && startDate && endDate) {
       start = startDate instanceof Date ? startDate : new Date(startDate);
       end = endDate instanceof Date ? endDate : new Date(endDate);
-    } else if (timePeriod === '7d') {
-      end = new Date();
-      start = new Date();
-      start.setDate(end.getDate() - 6);
-    } else if (timePeriod === '30d') {
-      end = new Date();
-      start = new Date();
-      start.setDate(end.getDate() - 29);
+    } else if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
+      // For Today/Yesterday, fill the single day
+      const baseDay = data[0]?.day || formatISODate(new Date());
+      const dayDate = new Date(baseDay);
+      start = dayDate;
+      end = dayDate;
     } else {
-      end = new Date();
-      start = new Date();
-      start.setDate(end.getDate() - 6);
+      // For other periods, return data as-is (shouldn't reach here for 7d/30d)
+      return data;
     }
 
     const current = new Date(start);
@@ -450,7 +526,7 @@ function fillMissingIntervals(
 
   // Safety check: if we somehow ended up with no data but had input data,
   // return the original data to prevent data loss
-  if (filledData.length === 0 && originalDataLength > 0) {
+  if (filledData.length === 0 && data.length > 0) {
     if (process.env.NODE_ENV === 'development') {
       console.warn(
         'fillMissingIntervals: Returning original data to prevent data loss',
@@ -458,7 +534,7 @@ function fillMissingIntervals(
           timePeriod,
           isHourly,
           isMinute,
-          dataLength: originalDataLength,
+          dataLength: data.length,
           startDate,
           endDate,
         }
