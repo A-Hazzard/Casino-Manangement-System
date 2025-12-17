@@ -53,7 +53,7 @@
     "**/*.d.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
-  ],
+, "scripts/update-test-machines-data.js"  ],
   "exclude": [
     "node_modules",
     "scripts",

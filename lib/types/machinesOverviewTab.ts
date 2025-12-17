@@ -27,6 +27,7 @@ export type MachinesOverviewTabProps = {
     totalDrop: number;
     totalCancelledCredits: number;
     totalGross: number;
+    totalGamesPlayed: number;
   }>;
   gamesData: Array<{
     gameName: string;
@@ -36,6 +37,7 @@ export type MachinesOverviewTabProps = {
     totalDrop: number;
     totalCancelledCredits: number;
     totalGross: number;
+    totalGamesPlayed: number;
   }>;
   locations: { id: string; name: string; sasEnabled: boolean }[];
 

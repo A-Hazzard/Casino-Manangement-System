@@ -253,6 +253,20 @@ export const MachinesEvaluationTab = ({
       (sum, machine) => sum + (machine.coinIn || 0),
       0
     );
+    const totalWin = evaluationData.reduce(
+      (sum, machine) => sum + (machine.netWin || 0),
+      0
+    );
+    const totalGamesPlayed = evaluationData.reduce(
+      (sum, machine) => sum + (machine.gamesPlayed || 0),
+      0
+    );
+
+    // Calculate contribution percentages (Calc. 3)
+    // For evaluation tab, we show 100% since we're looking at all machines in the filtered set
+    const handleContribution = 100;
+    const winContribution = 100;
+    const gamesPlayedContribution = 100;
 
     return {
       totalMachines,
@@ -261,12 +275,17 @@ export const MachinesEvaluationTab = ({
       poorPerformers,
       totalRevenue,
       totalHandle,
+      totalWin,
+      totalGamesPlayed,
       topPerformersPercentage:
         totalMachines > 0 ? (topPerformers / totalMachines) * 100 : 0,
       averagePerformersPercentage:
         totalMachines > 0 ? (averagePerformers / totalMachines) * 100 : 0,
       poorPerformersPercentage:
         totalMachines > 0 ? (poorPerformers / totalMachines) * 100 : 0,
+      handleContribution,
+      winContribution,
+      gamesPlayedContribution,
     };
   }, [evaluationData]);
 
@@ -424,8 +443,9 @@ export const MachinesEvaluationTab = ({
       {/* Machine Evaluation Summary Component */}
       {evaluationSummary && (
         <MachineEvaluationSummary
-          percOfTopMachines={evaluationSummary.topPerformersPercentage}
-          percOfTopMachCoinIn={evaluationSummary.topPerformersPercentage}
+          handleStatement=""
+          winStatement=""
+          gamesPlayedStatement=""
         />
       )}
 

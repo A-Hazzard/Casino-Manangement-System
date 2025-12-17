@@ -122,6 +122,7 @@ export type DashboardDateFiltersProps = {
   disabled?: boolean;
   onCustomRangeGo?: () => void;
   hideAllTime: boolean;
+  showQuarterly?: boolean;
   mode?: 'auto' | 'mobile' | 'desktop';
   enableTimeInputs?: boolean;
 };

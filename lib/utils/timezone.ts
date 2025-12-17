@@ -59,7 +59,8 @@ export function formatTrinidadTime(
   utcDate: Date,
   options?: Intl.DateTimeFormatOptions
 ): string {
-  const trinidadTime = utcToTrinidadTime(utcDate);
+  // Use timeZone option for accurate conversion regardless of browser timezone
+  // This is more reliable than manually adjusting hours with setHours()
   const defaultOptions: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: '2-digit',
@@ -68,9 +69,10 @@ export function formatTrinidadTime(
     minute: '2-digit',
     second: '2-digit',
     hour12: true,
+    timeZone: 'America/Port_of_Spain', // Trinidad and Tobago timezone (UTC-4)
   };
 
-  return trinidadTime.toLocaleString('en-TT', {
+  return utcDate.toLocaleString('en-US', {
     ...defaultOptions,
     ...options,
   });
@@ -226,3 +228,4 @@ export function debugTimezones(): void {
   console.warn(`   Trinidad Time (Direct): ${trinidadTime.toISOString()}`);
   console.warn(`   Offset: UTC${TRINIDAD_TIMEZONE_OFFSET}`);
 }
+

@@ -2241,6 +2241,7 @@ function CabinetDetailPageContent() {
             >
               <DashboardDateFilters
                 hideAllTime={false}
+                showQuarterly={true}
                 enableTimeInputs={true}
                 mode="desktop"
               />
@@ -2258,6 +2259,7 @@ function CabinetDetailPageContent() {
         <div className="mb-4 mt-4 block md:hidden">
           <DashboardDateFilters
             hideAllTime={false}
+            showQuarterly={true}
             enableTimeInputs={true}
             mode="mobile"
           />

@@ -14,6 +14,7 @@ export default function DashboardDateFilters({
   disabled,
   onCustomRangeGo,
   hideAllTime,
+  showQuarterly = false,
   mode = 'auto',
   enableTimeInputs = false,
   hideIndicator = false,
@@ -52,6 +53,14 @@ export default function DashboardDateFilters({
         baseButtons.push({ label: 'Last 30 Days', value: '30d' as TimePeriod });
       }
 
+      // Add Quarterly option if enabled
+      if (showQuarterly) {
+        baseButtons.push({
+          label: 'Quarterly',
+          value: 'Quarterly' as TimePeriod,
+        });
+      }
+
       baseButtons.push({ label: 'Custom', value: 'Custom' as TimePeriod });
 
       if (!hideAllTime) {
@@ -62,7 +71,7 @@ export default function DashboardDateFilters({
       }
 
       return baseButtons;
-    }, [hideAllTime, isDeveloper]);
+    }, [hideAllTime, showQuarterly, isDeveloper]);
 
   // Handle callback after state updates
   useEffect(() => {

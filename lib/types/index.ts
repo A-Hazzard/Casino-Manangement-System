@@ -120,6 +120,8 @@ export type MachineEvaluationData = {
   gamesPlayed: number;
   gross: number;
   cancelledCredits: number;
+  jackpot?: number; // Added for Top Machines table (ME3-2.5)
+  averageWager?: number; // Added for Top Machines table (ME3-2.3)
 };
 
 export type MachineExportData = {

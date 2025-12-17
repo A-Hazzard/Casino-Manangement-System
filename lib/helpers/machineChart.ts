@@ -242,6 +242,7 @@ export async function getMachineChartData(
         timePeriod === '30d' ||
         timePeriod === 'last7days' ||
         timePeriod === 'last30days' ||
+        timePeriod === 'Quarterly' ||
         timePeriod === 'All Time'
       ) {
         // For longer periods, use daily aggregation

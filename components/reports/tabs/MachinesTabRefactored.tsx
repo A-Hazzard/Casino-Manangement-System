@@ -38,6 +38,7 @@ export default function MachinesTabRefactored() {
       totalDrop: number;
       totalCancelledCredits: number;
       totalGross: number;
+      totalGamesPlayed: number;
     }>
   >([]);
   const [manufacturerLoading] = useState(false);
@@ -52,6 +53,7 @@ export default function MachinesTabRefactored() {
       totalDrop: number;
       totalCancelledCredits: number;
       totalGross: number;
+      totalGamesPlayed: number;
     }>
   >([]);
   const [gamesLoading] = useState(false);

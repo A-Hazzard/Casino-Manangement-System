@@ -83,8 +83,8 @@ export default function MembersListTab({
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
-  const [sortOption, setSortOption] = useState<MemberSortOption>('name');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortOption, setSortOption] = useState<MemberSortOption>('lastSession');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(0);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
   const [isNewMemberModalOpen, setIsNewMemberModalOpen] = useState(false);

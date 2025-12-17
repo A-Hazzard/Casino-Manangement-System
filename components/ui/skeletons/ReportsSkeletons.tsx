@@ -27,9 +27,11 @@ export const ChartSkeleton = () => (
         <Skeleton className="h-6 w-20" />
       </CardTitle>
     </CardHeader>
-    <CardContent className="w-full p-0">
-      <div className="h-[300px] w-full p-6">
-        <Skeleton className="h-full w-full" />
+    <CardContent className="w-full">
+      <div className="w-full overflow-x-auto">
+        <div style={{ width: '100%' }}>
+          <Skeleton className="h-[380px] w-full" />
+        </div>
       </div>
     </CardContent>
   </Card>
@@ -91,9 +93,18 @@ export const DropdownSkeleton = () => (
  */
 export const MachineHourlyChartsSkeleton = () => (
   <>
-    {Array.from({ length: 4 }).map((_, i) => (
-      <ChartSkeleton key={i} />
-    ))}
+    {/* Granularity Selector Skeleton */}
+    <div className="flex items-center justify-end gap-2">
+      <Skeleton className="h-5 w-20" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+
+    {/* Charts Grid Skeleton */}
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <ChartSkeleton key={i} />
+      ))}
+    </div>
   </>
 );
 
@@ -104,9 +115,18 @@ export const MachineHourlyChartsSkeleton = () => (
  */
 export const RevenueAnalysisChartsSkeleton = () => (
   <>
-    {Array.from({ length: 3 }).map((_, i) => (
-      <ChartSkeleton key={i} />
-    ))}
+    {/* Granularity Selector Skeleton */}
+    <div className="flex items-center justify-end gap-2">
+      <Skeleton className="h-5 w-20" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+
+    {/* Charts Grid Skeleton - 3 columns */}
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <ChartSkeleton key={i} />
+      ))}
+    </div>
   </>
 );
 
@@ -522,7 +542,7 @@ export const MachinesOverviewSkeleton = () => (
       <div className="rounded-md border">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="border-b bg-muted/50">
+            <thead className="border-b bg-muted/50 text-left">
               <tr>
                 <th className="p-3 text-center">
                   <Skeleton className="mx-auto h-4 w-20" />
@@ -681,13 +701,48 @@ export const MachinesEvaluationSkeleton = () => (
     <div className="mb-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Skeleton className="h-5 w-5" />
-            <Skeleton className="h-6 w-40" />
-          </CardTitle>
+          <CardTitle>Manufacturers Performance</CardTitle>
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[300px] w-full" />
+          {/* Chart area with proper spacing matching actual chart */}
+          <div className="w-full" style={{ height: '450px' }}>
+            {/* Y-axis label area */}
+            <div className="mb-2 flex items-center">
+              <Skeleton className="h-4 w-24" />
+            </div>
+            {/* Chart bars area - grouped bars */}
+            <div className="flex h-[350px] items-end gap-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex flex-1 items-end gap-0.5">
+                  {/* Multiple bars per manufacturer - grouped together */}
+                  {Array.from({ length: 7 }).map((_, j) => (
+                    <Skeleton
+                      key={j}
+                      className="w-full"
+                      style={{
+                        height: `${[40, 35, 30, 25, 20, 15, 45][j]}%`,
+                      }}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+            {/* X-axis labels area */}
+            <div className="mt-4 flex justify-between">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-3 w-20" />
+              ))}
+            </div>
+            {/* Legend area */}
+            <div className="mt-4 flex flex-wrap gap-4">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Skeleton className="h-3 w-3 rounded" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -696,13 +751,27 @@ export const MachinesEvaluationSkeleton = () => (
     <div className="mb-6">
       <Card>
         <CardHeader>
-          <CardTitle>
-            <Skeleton className="h-6 w-24" />
+          <CardTitle className="text-lg font-semibold text-gray-800">
+            Summary
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center">
+          <div className="space-y-3 text-center">
             <Skeleton className="mx-auto h-5 w-64" />
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="rounded-lg bg-blue-50 p-3">
+                <Skeleton className="mx-auto mb-2 h-4 w-32" />
+                <Skeleton className="mx-auto h-6 w-16" />
+              </div>
+              <div className="rounded-lg bg-green-50 p-3">
+                <Skeleton className="mx-auto mb-2 h-4 w-24" />
+                <Skeleton className="mx-auto h-6 w-16" />
+              </div>
+              <div className="rounded-lg bg-purple-50 p-3">
+                <Skeleton className="mx-auto mb-2 h-4 w-40" />
+                <Skeleton className="mx-auto h-6 w-16" />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -712,13 +781,48 @@ export const MachinesEvaluationSkeleton = () => (
     <div className="mb-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Skeleton className="h-5 w-5" />
-            <Skeleton className="h-6 w-32" />
-          </CardTitle>
+          <CardTitle>Games Performance</CardTitle>
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[300px] w-full" />
+          {/* Chart area with proper spacing matching actual chart */}
+          <div className="w-full" style={{ height: '450px' }}>
+            {/* Y-axis label area */}
+            <div className="mb-2 flex items-center">
+              <Skeleton className="h-4 w-24" />
+            </div>
+            {/* Chart bars area - grouped bars */}
+            <div className="flex h-[350px] items-end gap-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex flex-1 items-end gap-0.5">
+                  {/* Multiple bars per game - grouped together */}
+                  {Array.from({ length: 7 }).map((_, j) => (
+                    <Skeleton
+                      key={j}
+                      className="w-full"
+                      style={{
+                        height: `${[40, 35, 30, 25, 20, 15, 45][j]}%`,
+                      }}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+            {/* X-axis labels area */}
+            <div className="mt-4 flex justify-between">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-3 w-16" />
+              ))}
+            </div>
+            {/* Legend area */}
+            <div className="mt-4 flex flex-wrap gap-4">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Skeleton className="h-3 w-3 rounded" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -727,13 +831,48 @@ export const MachinesEvaluationSkeleton = () => (
     <div className="mb-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Skeleton className="h-5 w-5" />
-            <Skeleton className="h-6 w-40" />
-          </CardTitle>
+          <CardTitle>Games Performance Revenue</CardTitle>
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[300px] w-full" />
+          {/* Chart area with proper spacing matching actual chart */}
+          <div className="w-full" style={{ height: '450px' }}>
+            {/* Y-axis label area */}
+            <div className="mb-2 flex items-center">
+              <Skeleton className="h-4 w-24" />
+            </div>
+            {/* Chart bars area - grouped bars */}
+            <div className="flex h-[350px] items-end gap-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex flex-1 items-end gap-0.5">
+                  {/* Multiple bars per game - grouped together */}
+                  {Array.from({ length: 3 }).map((_, j) => (
+                    <Skeleton
+                      key={j}
+                      className="w-full"
+                      style={{
+                        height: `${[50, 40, 45][j]}%`,
+                      }}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+            {/* X-axis labels area */}
+            <div className="mt-4 flex justify-between">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-3 w-16" />
+              ))}
+            </div>
+            {/* Legend area */}
+            <div className="mt-4 flex flex-wrap gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Skeleton className="h-3 w-3 rounded" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -1103,22 +1242,8 @@ export const LocationsSASEvaluationSkeleton = () => (
       ))}
     </div>
 
-    {/* Machine Hourly Charts - 4 charts in 2x2 grid */}
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Skeleton className="h-5 w-5" />
-              <Skeleton className="h-6 w-32" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-[300px] w-full" />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+    {/* Machine Hourly Charts */}
+    <MachineHourlyChartsSkeleton />
 
     {/* Top 5 Machines Table - 11 columns */}
     <Card>
@@ -1258,22 +1383,8 @@ export const LocationsRevenueAnalysisSkeleton = () => (
       ))}
     </div>
 
-    {/* Revenue Analysis Charts - 3 charts */}
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Skeleton className="h-5 w-5" />
-              <Skeleton className="h-6 w-28" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-[300px] w-full" />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+    {/* Revenue Analysis Charts */}
+    <RevenueAnalysisChartsSkeleton />
 
     {/* Top 5 Machines Table - 11 columns */}
     <Card>

@@ -219,6 +219,8 @@ export default function LocationsTab() {
         customDateRange?.endDate
       )
   );
+  // Track if user has manually changed granularity (to prevent auto-determination from overriding)
+  const hasManuallySetGranularityRef = useRef(false);
 
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   const showGranularitySelector = useMemo(() => {
@@ -258,7 +260,13 @@ export default function LocationsTab() {
   }, [activeMetricsFilter, customDateRange]);
 
   // Recalculate default granularity when date filters change
+  // Only update if user hasn't manually set granularity
   useEffect(() => {
+    // Skip if user has manually set granularity
+    if (hasManuallySetGranularityRef.current) {
+      return;
+    }
+
     const updateGranularity = () => {
       const defaultGranularity = getDefaultChartGranularity(
         activeMetricsFilter || 'Today',
@@ -1061,7 +1069,7 @@ export default function LocationsTab() {
 
       await makeTrendDataRequest(async signal => {
         setLocationTrendLoading(true);
-        setLoading(true); // Set reports store loading state
+        // Don't set global loading state - only charts should show loading
         try {
           const params: Record<string, string> = {
             locationIds: locationsToFetch.join(','),
@@ -1139,7 +1147,7 @@ export default function LocationsTab() {
           }
         } finally {
           setLocationTrendLoading(false);
-          setLoading(false); // Clear reports store loading state
+          // Don't clear global loading state - only charts loading state
         }
       });
     },
@@ -1151,7 +1159,6 @@ export default function LocationsTab() {
       activeMetricsFilter,
       customDateRange,
       displayCurrency,
-      setLoading,
       makeTrendDataRequest,
 
       chartGranularity, // Included to trigger refetch when granularity changes (used in params.granularity)
@@ -1162,7 +1169,7 @@ export default function LocationsTab() {
   // This ensures metrics cards always show totals from all locations, separate from table pagination
   // Fetch metrics totals only for overview tab (uses fetchDashboardTotals for all locations)
   // Other tabs calculate totals from selected locations in accumulatedLocations
-  
+
   // Extract complex expressions to avoid dependency array warnings
   // Use useMemo to properly track dependencies
   const customDateRangeStartTime = useMemo(
@@ -1226,25 +1233,25 @@ export default function LocationsTab() {
           }
 
           await fetchDashboardTotals(
-              activeMetricsFilter || 'Today',
+            activeMetricsFilter || 'Today',
             effectiveDateRange,
-              selectedLicencee,
-              totals => {
-                console.log(
-                  '🔍 [LocationsTab] fetchDashboardTotals callback received:',
-                  {
-                    totals,
-                    moneyIn: totals?.moneyIn,
-                    moneyOut: totals?.moneyOut,
-                    gross: totals?.gross,
-                  }
-                );
-                setMetricsTotals(totals);
-                console.log(
-                  '🔍 [LocationsTab] setMetricsTotals called with:',
-                  totals
-                );
-              },
+            selectedLicencee,
+            totals => {
+              console.log(
+                '🔍 [LocationsTab] fetchDashboardTotals callback received:',
+                {
+                  totals,
+                  moneyIn: totals?.moneyIn,
+                  moneyOut: totals?.moneyOut,
+                  gross: totals?.gross,
+                }
+              );
+              setMetricsTotals(totals);
+              console.log(
+                '🔍 [LocationsTab] setMetricsTotals called with:',
+                totals
+              );
+            },
             displayCurrency,
             signal
           );
@@ -1289,6 +1296,7 @@ export default function LocationsTab() {
         : selectedRevenueLocations;
 
     // Create a stable key for the current selection
+    // NOTE: chartGranularity is NOT included here - it has its own useEffect to avoid triggering full page reload
     const selectionKey = [
       activeTab,
       currentSelectedLocations.sort().join(','),
@@ -1342,7 +1350,7 @@ export default function LocationsTab() {
     selectedSasLocations,
     selectedRevenueLocations,
     displayCurrency,
-    chartGranularity, // Include to trigger refetch when granularity changes
+    // NOTE: chartGranularity is NOT included here - it has its own useEffect below
     // Don't include function references in dependencies to prevent cascading re-renders
     // fetchLocationDataAsync,
     // fetchTopMachines,
@@ -1350,6 +1358,21 @@ export default function LocationsTab() {
     // setTopMachinesData,
     // setLocationTrendData,
   ]);
+
+  // Separate useEffect for granularity changes - only refetches chart data, not main data
+  // This prevents triggering full page skeleton when only granularity changes
+  useEffect(() => {
+    const currentSelectedLocations =
+      activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
+        ? selectedSasLocations
+        : selectedRevenueLocations;
+
+    // Only refetch chart data if locations are selected
+    if (currentSelectedLocations.length > 0) {
+      fetchLocationTrendData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartGranularity]); // Only depend on chartGranularity
 
   // Separate useEffect to ensure initial fetch runs on mount for revenue tab
   // This handles the case where the main useEffect might not trigger properly on initial mount
@@ -3010,10 +3033,10 @@ export default function LocationsTab() {
                               )}`}
                             >
                               {metricsTotalsLoading ? (
-                                  <Skeleton className="h-8 w-24" />
-                                ) : shouldShowCurrency() ? (
+                                <Skeleton className="h-8 w-24" />
+                              ) : shouldShowCurrency() ? (
                                 formatAmount(displayTotals?.gross || 0)
-                                ) : (
+                              ) : (
                                 `$${(displayTotals?.gross || 0).toLocaleString()}`
                               )}
                             </div>
@@ -3033,10 +3056,10 @@ export default function LocationsTab() {
                               )}`}
                             >
                               {metricsTotalsLoading ? (
-                                  <Skeleton className="h-8 w-24" />
-                                ) : shouldShowCurrency() ? (
+                                <Skeleton className="h-8 w-24" />
+                              ) : shouldShowCurrency() ? (
                                 formatAmount(displayTotals?.moneyIn || 0)
-                                ) : (
+                              ) : (
                                 `$${(displayTotals?.moneyIn || 0).toLocaleString()}`
                               )}
                             </div>
@@ -3054,10 +3077,10 @@ export default function LocationsTab() {
                               )}`}
                             >
                               {metricsTotalsLoading ? (
-                                  <Skeleton className="h-8 w-24" />
-                                ) : shouldShowCurrency() ? (
+                                <Skeleton className="h-8 w-24" />
+                              ) : shouldShowCurrency() ? (
                                 formatAmount(displayTotals?.moneyOut || 0)
-                                ) : (
+                              ) : (
                                 `$${(displayTotals?.moneyOut || 0).toLocaleString()}`
                               )}
                             </div>
@@ -3123,7 +3146,7 @@ export default function LocationsTab() {
 
                   {/* Machine Hourly Charts - Stacked by Machine */}
                   {/* Location Trend Charts */}
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-4">
+                  <div className="space-y-6">
                     {(() => {
                       const currentSelectedLocations =
                         activeTab === 'sas-evaluation' ||
@@ -3166,7 +3189,7 @@ export default function LocationsTab() {
                           <>
                             {/* Granularity Toggle */}
                             {showGranularitySelector && (
-                              <div className="col-span-1 mb-3 flex items-center justify-end gap-2 lg:col-span-2 xl:col-span-4">
+                              <div className="flex items-center justify-end gap-2">
                                 <label
                                   htmlFor="chart-granularity-location-evaluation"
                                   className="text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -3176,11 +3199,17 @@ export default function LocationsTab() {
                                 <select
                                   id="chart-granularity-location-evaluation"
                                   value={chartGranularity}
-                                  onChange={e =>
-                                    setChartGranularity(
-                                      e.target.value as 'hourly' | 'minute'
-                                    )
-                                  }
+                                  onChange={e => {
+                                    const newGranularity = e.target.value as
+                                      | 'hourly'
+                                      | 'minute';
+                                    setChartGranularity(newGranularity);
+                                    hasManuallySetGranularityRef.current = true;
+                                    // Clear existing data and trigger loading state
+                                    setLocationTrendData(null);
+                                    setLocationTrendLoading(true);
+                                    // The useEffect will trigger fetchLocationTrendData when chartGranularity changes
+                                  }}
                                   className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
                                 >
                                   <option value="minute">Minute</option>
@@ -3189,104 +3218,71 @@ export default function LocationsTab() {
                               </div>
                             )}
 
-                            {/* Money In Chart */}
-                            <LocationTrendChart
-                              title="Money In"
-                              icon={<BarChart3 className="h-5 w-5" />}
-                              data={locationTrendData.trends}
-                              dataKey="drop"
-                              locations={locationTrendData.locations}
-                              locationNames={locationTrendData.locationNames}
-                              colors={[
-                                '#3b82f6',
-                                '#ef4444',
-                                '#10b981',
-                                '#f59e0b',
-                                '#8b5cf6',
-                              ]}
-                              formatter={value => `$${value.toLocaleString()}`}
-                              isHourly={locationTrendData.isHourly}
-                              timePeriod={
-                                (activeMetricsFilter || 'Today') as TimePeriod
-                              }
-                              granularity={chartGranularity}
-                            />
+                            {/* Charts Row: Grid layout 2x2 on desktop, stacked on mobile */}
+                            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                              <LocationTrendChart
+                                title="Money In"
+                                icon={<BarChart3 className="h-5 w-5" />}
+                                data={locationTrendData.trends}
+                                dataKey="drop"
+                                locations={locationTrendData.locations}
+                                locationNames={locationTrendData.locationNames}
+                                colors={['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6']}
+                                formatter={value => `$${value.toLocaleString()}`}
+                                isHourly={locationTrendData.isHourly}
+                                timePeriod={(activeMetricsFilter || 'Today') as TimePeriod}
+                                granularity={chartGranularity}
+                              />
 
-                            {/* Win/Loss Chart */}
-                            <LocationTrendChart
-                              title="Win/Loss"
-                              icon={<TrendingUp className="h-5 w-5" />}
-                              data={locationTrendData.trends}
-                              dataKey="gross"
-                              locations={locationTrendData.locations}
-                              locationNames={locationTrendData.locationNames}
-                              colors={[
-                                '#10b981',
-                                '#ef4444',
-                                '#3b82f6',
-                                '#f59e0b',
-                                '#8b5cf6',
-                              ]}
-                              formatter={value => `$${value.toLocaleString()}`}
-                              isHourly={locationTrendData.isHourly}
-                              timePeriod={
-                                (activeMetricsFilter || 'Today') as TimePeriod
-                              }
-                              granularity={chartGranularity}
-                            />
+                              <LocationTrendChart
+                                title="Win/Loss"
+                                icon={<TrendingUp className="h-5 w-5" />}
+                                data={locationTrendData.trends}
+                                dataKey="gross"
+                                locations={locationTrendData.locations}
+                                locationNames={locationTrendData.locationNames}
+                                colors={['#10b981','#ef4444','#3b82f6','#f59e0b','#8b5cf6']}
+                                formatter={value => `$${value.toLocaleString()}`}
+                                isHourly={locationTrendData.isHourly}
+                                timePeriod={(activeMetricsFilter || 'Today') as TimePeriod}
+                                granularity={chartGranularity}
+                              />
 
-                            {/* Jackpot Chart */}
-                            <LocationTrendChart
-                              title="Jackpot"
-                              icon={<Trophy className="h-5 w-5" />}
-                              data={locationTrendData.trends}
-                              dataKey="jackpot"
-                              locations={locationTrendData.locations}
-                              locationNames={locationTrendData.locationNames}
-                              colors={[
-                                '#f59e0b',
-                                '#ef4444',
-                                '#10b981',
-                                '#3b82f6',
-                                '#8b5cf6',
-                              ]}
-                              formatter={value => `$${value.toLocaleString()}`}
-                              isHourly={locationTrendData.isHourly}
-                              timePeriod={
-                                (activeMetricsFilter || 'Today') as TimePeriod
-                              }
-                              granularity={chartGranularity}
-                            />
+                              <LocationTrendChart
+                                title="Jackpot"
+                                icon={<Trophy className="h-5 w-5" />}
+                                data={locationTrendData.trends}
+                                dataKey="jackpot"
+                                locations={locationTrendData.locations}
+                                locationNames={locationTrendData.locationNames}
+                                colors={['#f59e0b','#ef4444','#10b981','#3b82f6','#8b5cf6']}
+                                formatter={value => `$${value.toLocaleString()}`}
+                                isHourly={locationTrendData.isHourly}
+                                timePeriod={(activeMetricsFilter || 'Today') as TimePeriod}
+                                granularity={chartGranularity}
+                              />
 
-                            {/* Plays Chart */}
-                            <LocationTrendChart
-                              title="Plays"
-                              icon={<Activity className="h-5 w-5" />}
-                              data={locationTrendData.trends}
-                              dataKey="plays"
-                              locations={locationTrendData.locations}
-                              locationNames={locationTrendData.locationNames}
-                              colors={[
-                                '#8b5cf6',
-                                '#ef4444',
-                                '#10b981',
-                                '#3b82f6',
-                                '#f59e0b',
-                              ]}
-                              formatter={value => value.toLocaleString()}
-                              isHourly={locationTrendData.isHourly}
-                              timePeriod={
-                                (activeMetricsFilter || 'Today') as TimePeriod
-                              }
-                              granularity={chartGranularity}
-                            />
+                              <LocationTrendChart
+                                title="Plays"
+                                icon={<Activity className="h-5 w-5" />}
+                                data={locationTrendData.trends}
+                                dataKey="plays"
+                                locations={locationTrendData.locations}
+                                locationNames={locationTrendData.locationNames}
+                                colors={['#8b5cf6','#ef4444','#10b981','#3b82f6','#f59e0b']}
+                                formatter={value => value.toLocaleString()}
+                                isHourly={locationTrendData.isHourly}
+                                timePeriod={(activeMetricsFilter || 'Today') as TimePeriod}
+                                granularity={chartGranularity}
+                              />
+                            </div>
                           </>
                         );
                       }
 
                       // Show message only if no locations selected
                       return (
-                        <div className="col-span-2 py-8 text-center text-muted-foreground">
+                        <div className="py-8 text-center text-muted-foreground">
                           Select locations to view location trend data
                         </div>
                       );
@@ -4184,7 +4180,7 @@ export default function LocationsTab() {
                     ))}
 
                   {/* Revenue Analysis Charts - Drop, Win/Loss, and Jackpot */}
-                  <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+                  <div className="space-y-6">
                     {(() => {
                       const currentSelectedLocations =
                         activeTab === 'sas-evaluation' ||
@@ -4218,7 +4214,7 @@ export default function LocationsTab() {
                           <>
                             {/* Granularity Toggle */}
                             {showGranularitySelector && (
-                              <div className="col-span-1 mb-3 flex items-center justify-end gap-2 lg:col-span-2 xl:col-span-3">
+                              <div className="flex items-center justify-end gap-2">
                                 <label
                                   htmlFor="chart-granularity-location-revenue"
                                   className="text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -4228,11 +4224,17 @@ export default function LocationsTab() {
                                 <select
                                   id="chart-granularity-location-revenue"
                                   value={chartGranularity}
-                                  onChange={e =>
-                                    setChartGranularity(
-                                      e.target.value as 'hourly' | 'minute'
-                                    )
-                                  }
+                                  onChange={e => {
+                                    const newGranularity = e.target.value as
+                                      | 'hourly'
+                                      | 'minute';
+                                    setChartGranularity(newGranularity);
+                                    hasManuallySetGranularityRef.current = true;
+                                    // Clear existing data and trigger loading state
+                                    setLocationTrendData(null);
+                                    setLocationTrendLoading(true);
+                                    // The useEffect will trigger fetchLocationTrendData when chartGranularity changes
+                                  }}
                                   className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
                                 >
                                   <option value="minute">Minute</option>
@@ -4241,74 +4243,74 @@ export default function LocationsTab() {
                               </div>
                             )}
 
-                            {/* Money In Chart */}
-                            <LocationTrendChart
-                              title="Money In"
-                              icon={<BarChart3 className="h-5 w-5" />}
-                              data={locationTrendData.trends}
-                              dataKey="drop"
-                              locations={locationTrendData.locations}
-                              locationNames={locationTrendData.locationNames}
-                              colors={[
-                                '#3b82f6',
-                                '#ef4444',
-                                '#10b981',
-                                '#f59e0b',
-                                '#8b5cf6',
-                              ]}
-                              formatter={value => `$${value.toLocaleString()}`}
-                              isHourly={locationTrendData.isHourly}
-                              timePeriod={
-                                (activeMetricsFilter || 'Today') as TimePeriod
-                              }
-                              granularity={chartGranularity}
-                            />
+                            {/* Charts Grid: 3 columns on desktop, stacked on mobile */}
+                            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                              <LocationTrendChart
+                                title="Money In"
+                                icon={<BarChart3 className="h-5 w-5" />}
+                                data={locationTrendData.trends}
+                                dataKey="drop"
+                                locations={locationTrendData.locations}
+                                locationNames={locationTrendData.locationNames}
+                                colors={[
+                                  '#3b82f6',
+                                  '#ef4444',
+                                  '#10b981',
+                                  '#f59e0b',
+                                  '#8b5cf6',
+                                ]}
+                                formatter={value => `$${value.toLocaleString()}`}
+                                isHourly={locationTrendData.isHourly}
+                                timePeriod={
+                                  (activeMetricsFilter || 'Today') as TimePeriod
+                                }
+                                granularity={chartGranularity}
+                              />
 
-                            {/* Win/Loss Chart */}
-                            <LocationTrendChart
-                              title="Win/Loss"
-                              icon={<TrendingUp className="h-5 w-5" />}
-                              data={locationTrendData.trends}
-                              dataKey="gross"
-                              locations={locationTrendData.locations}
-                              locationNames={locationTrendData.locationNames}
-                              colors={[
-                                '#10b981',
-                                '#ef4444',
-                                '#3b82f6',
-                                '#f59e0b',
-                                '#8b5cf6',
-                              ]}
-                              formatter={value => `$${value.toLocaleString()}`}
-                              isHourly={locationTrendData.isHourly}
-                              timePeriod={
-                                (activeMetricsFilter || 'Today') as TimePeriod
-                              }
-                              granularity={chartGranularity}
-                            />
+                              <LocationTrendChart
+                                title="Win/Loss"
+                                icon={<TrendingUp className="h-5 w-5" />}
+                                data={locationTrendData.trends}
+                                dataKey="gross"
+                                locations={locationTrendData.locations}
+                                locationNames={locationTrendData.locationNames}
+                                colors={[
+                                  '#10b981',
+                                  '#ef4444',
+                                  '#3b82f6',
+                                  '#f59e0b',
+                                  '#8b5cf6',
+                                ]}
+                                formatter={value => `$${value.toLocaleString()}`}
+                                isHourly={locationTrendData.isHourly}
+                                timePeriod={
+                                  (activeMetricsFilter || 'Today') as TimePeriod
+                                }
+                                granularity={chartGranularity}
+                              />
 
-                            {/* Jackpot Chart */}
-                            <LocationTrendChart
-                              title="Jackpot"
-                              icon={<Trophy className="h-5 w-5" />}
-                              data={locationTrendData.trends}
-                              dataKey="jackpot"
-                              locations={locationTrendData.locations}
-                              locationNames={locationTrendData.locationNames}
-                              colors={[
-                                '#f59e0b',
-                                '#ef4444',
-                                '#10b981',
-                                '#3b82f6',
-                                '#8b5cf6',
-                              ]}
-                              formatter={value => `$${value.toLocaleString()}`}
-                              isHourly={locationTrendData.isHourly}
-                              timePeriod={
-                                (activeMetricsFilter || 'Today') as TimePeriod
-                              }
-                              granularity={chartGranularity}
-                            />
+                              <LocationTrendChart
+                                title="Jackpot"
+                                icon={<Trophy className="h-5 w-5" />}
+                                data={locationTrendData.trends}
+                                dataKey="jackpot"
+                                locations={locationTrendData.locations}
+                                locationNames={locationTrendData.locationNames}
+                                colors={[
+                                  '#f59e0b',
+                                  '#ef4444',
+                                  '#10b981',
+                                  '#3b82f6',
+                                  '#8b5cf6',
+                                ]}
+                                formatter={value => `$${value.toLocaleString()}`}
+                                isHourly={locationTrendData.isHourly}
+                                timePeriod={
+                                  (activeMetricsFilter || 'Today') as TimePeriod
+                                }
+                                granularity={chartGranularity}
+                              />
+                            </div>
                           </>
                         );
                       }
@@ -4321,7 +4323,7 @@ export default function LocationsTab() {
                       // Show message if no locations selected and no displayed locations
                       if (!hasSelectedLocations && !hasDisplayedLocations) {
                         return (
-                          <div className="col-span-1 py-8 text-center text-muted-foreground lg:col-span-2 xl:col-span-3">
+                          <div className="py-8 text-center text-muted-foreground">
                             Select locations to view revenue analysis data
                           </div>
                         );
@@ -4333,7 +4335,7 @@ export default function LocationsTab() {
                         !locationTrendData
                       ) {
                         return (
-                          <div className="col-span-1 py-8 text-center text-muted-foreground md:col-span-2 lg:col-span-3">
+                          <div className="py-8 text-center text-muted-foreground">
                             No chart data available for selected locations
                           </div>
                         );

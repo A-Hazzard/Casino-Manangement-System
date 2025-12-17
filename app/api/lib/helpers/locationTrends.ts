@@ -162,24 +162,27 @@ function buildLocationTrendsPipeline(
       $dateToString: {
         format: '%Y-%m-%d',
         date: '$readAt',
+        timezone: 'UTC',
       },
     },
   };
 
   if (shouldUseMinute) {
-    // Minute-level: format as HH:MM
+    // Minute-level: format as HH:MM in UTC
     groupId.time = {
       $dateToString: {
         format: '%H:%M',
         date: '$readAt',
+        timezone: 'UTC',
       },
     };
   } else if (shouldUseHourly) {
-    // Hourly: format as HH:00
+    // Hourly: format as HH:00 in UTC
     groupId.time = {
       $dateToString: {
         format: '%H:00',
         date: '$readAt',
+        timezone: 'UTC',
       },
     };
   }

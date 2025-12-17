@@ -22,14 +22,14 @@
  * @param isHourly - Whether data is hourly
  */
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatTrinidadTime } from '@/lib/utils/timezone';
 import { TimePeriod } from '@/shared/types/common';
 import {
   formatDate,
   formatDisplayDate,
-  formatTime,
   formatTime12Hour,
 } from '@/shared/utils/dateFormat';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   CartesianGrid,
   Legend,
@@ -222,9 +222,13 @@ export function LocationTrendChart({
     }
 
     // Otherwise, use data as-is
+    // For minute granularity, always use time (even if isHourly is false)
+    // For hourly granularity, use time if isHourly is true
+    // Otherwise, use day
+    const shouldUseTime = granularity === 'minute' || (granularity === 'hourly' && isHourly) || (!granularity && isHourly);
     return data.map(item => {
       const transformed: Record<string, string | number> = {
-        xValue: isHourly ? item.time || '' : item.day,
+        xValue: shouldUseTime ? item.time || '' : item.day,
         day: item.day,
         time: item.time || '',
       };
@@ -345,36 +349,62 @@ export function LocationTrendChart({
     return undefined;
   }, [filteredData, locations, locationNames]);
 
+  const [viewportWidth, setViewportWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    onResize();
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const isSmall = viewportWidth < 768;
+  // Calculate width for internal scrolling container
+  const chartWidth = Math.max(filteredData.length * 80, 700);
+
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          {icon}
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="w-full">
-        <ResponsiveContainer width="100%" height={380}>
-          <LineChart
-            data={filteredData}
-            margin={{ top: 5, right: 20, bottom: 80, left: 0 }}
-          >
+    <div className="w-full">
+      <Card className="w-full">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            {icon}
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="w-full">
+          <div className="w-full overflow-x-auto">
+            <div style={{ width: isSmall ? chartWidth : '100%' }}>
+              <ResponsiveContainer width={isSmall ? chartWidth : '100%'} height={380}>
+                <LineChart
+                  data={filteredData}
+                  margin={{ top: 5, right: 20, bottom: 80, left: 0 }}
+                >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey={shouldShowTimes ? 'time' : 'day'}
               tickFormatter={(val, index) => {
                 if (shouldShowTimes) {
-                  // For Today/Yesterday/Custom single day: show times
+                  // For Today/Yesterday/Custom single day: show times ONLY (no date, no seconds)
                   const day = filteredData[index]?.day;
                   if (day && val) {
                     // Handle both hourly (HH:00) and minute-level (HH:MM) formats
+                    // API returns times in UTC format
                     const timeParts = (val as string).split(':');
                     const hours = timeParts[0] || '00';
                     const minutes = timeParts[1] || '00';
                     const utcDateString = `${day}T${hours}:${minutes}:00Z`;
                     const utcDate = new Date(utcDateString);
-                    // formatTime will convert to local time automatically
-                    return formatTime(utcDate);
+                    // Convert UTC to Trinidad time (UTC-4) for display
+                    // Force time only format: "8:00 AM"
+                    return formatTrinidadTime(utcDate, {
+                      year: undefined,
+                      month: undefined,
+                      day: undefined,
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      second: undefined,
+                      hour12: true,
+                    });
                   }
                   return formatTime12Hour(val as string);
                 } else if (shouldShowMonths) {
@@ -444,15 +474,29 @@ export function LocationTrendChart({
                     const minutes = timeParts[1] || '00';
                     const utcDateString = `${day}T${hours}:${minutes}:00Z`;
                     const utcDate = new Date(utcDateString);
-                    // formatTime will convert to local time automatically
-                    return formatTime(utcDate);
+                    // Convert UTC to Trinidad time (UTC-4) for display
+                    // Force time only format: "8:00 AM"
+                    return formatTrinidadTime(utcDate, {
+                      year: undefined,
+                      month: undefined,
+                      day: undefined,
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      second: undefined,
+                      hour12: true,
+                    });
                   }
                   return formatTime12Hour(label as string);
                 } else if (shouldShowMonths) {
                   const date = new Date(label as string);
                   return formatDate(date, { month: 'short', year: 'numeric' });
                 } else {
-                  return formatDisplayDate(label as string);
+                  // Validate date before formatting to prevent "Invalid Date"
+                  const date = new Date(label as string);
+                  if (!isNaN(date.getTime())) {
+                    return formatDisplayDate(label as string);
+                  }
+                  return label as string;
                 }
               }}
             />
@@ -478,7 +522,10 @@ export function LocationTrendChart({
             })}
           </LineChart>
         </ResponsiveContainer>
-      </CardContent>
-    </Card>
+              </div>
+            </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

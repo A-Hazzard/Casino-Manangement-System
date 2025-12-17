@@ -46,7 +46,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   handleExportMeters as handleExportMetersHelper,
-  handleMachineSort as handleMachineSortHelper,
   sortEvaluationData as sortEvaluationDataHelper,
 } from '@/lib/helpers/reportsPage';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -66,6 +65,7 @@ import {
   MachinesOfflineSkeleton,
   MachinesOverviewSkeleton,
 } from '@/components/ui/skeletons/ReportsSkeletons';
+import type { TopMachinesCriteria } from '@/components/ui/TopMachinesCriteriaSelector';
 import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import type { MachineEvaluationData } from '@/lib/types';
 import type {
@@ -86,6 +86,45 @@ import {
   getMoneyOutColorClass,
 } from '@/lib/utils/financialColors';
 
+// Sortable table header component for Top Machines
+const SortableTopMachinesHeader = ({
+  children,
+  sortKey,
+  currentSortKey,
+  currentSortDirection,
+  onSort,
+}: {
+  children: React.ReactNode;
+  sortKey: TopMachinesCriteria;
+  currentSortKey: TopMachinesCriteria;
+  currentSortDirection: 'asc' | 'desc';
+  onSort: (key: TopMachinesCriteria) => void;
+}) => {
+  const isActive = currentSortKey === sortKey;
+
+  return (
+    <th
+      className="cursor-pointer select-none p-3 text-left font-medium text-gray-700 transition-colors hover:bg-gray-100"
+      onClick={() => onSort(sortKey)}
+    >
+      <div className="flex items-center justify-start gap-1">
+        {children}
+        {isActive ? (
+          currentSortDirection === 'asc' ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )
+        ) : (
+          <div className="h-4 w-4 opacity-30">
+            <ChevronUp className="h-4 w-4" />
+          </div>
+        )}
+      </div>
+    </th>
+  );
+};
+
 // Sortable table header component
 const SortableHeader = ({
   children,
@@ -94,9 +133,12 @@ const SortableHeader = ({
   onSort,
 }: {
   children: React.ReactNode;
-  sortKey: keyof MachineData;
-  currentSort: { key: keyof MachineData; direction: 'asc' | 'desc' };
-  onSort: (key: keyof MachineData) => void;
+  sortKey: keyof MachineData | 'offlineDurationHours';
+  currentSort: {
+    key: keyof MachineData | 'offlineDurationHours';
+    direction: 'asc' | 'desc';
+  };
+  onSort: (key: keyof MachineData | 'offlineDurationHours') => void;
 }) => {
   const isActive = currentSort.key === sortKey;
 
@@ -172,6 +214,7 @@ export default function MachinesTab() {
       totalDrop: number;
       totalCancelledCredits: number;
       totalGross: number;
+      totalGamesPlayed: number;
     }>
   >([]);
   const [manufacturerLoading] = useState(false);
@@ -186,13 +229,12 @@ export default function MachinesTab() {
       totalDrop: number;
       totalCancelledCredits: number;
       totalGross: number;
+      totalGamesPlayed: number;
     }>
   >([]);
   const [gamesLoading] = useState(false);
 
-  // Summary calculations
-  const [percOfTopMachines, setPercOfTopMachines] = useState(0);
-  const [percOfTopMachCoinIn, setPercOfTopMachCoinIn] = useState(0);
+  // Summary calculations (now calculated in useMemo, no state needed)
   const [locations, setLocations] = useState<
     { id: string; name: string; sasEnabled: boolean }[]
   >([]);
@@ -216,12 +258,19 @@ export default function MachinesTab() {
 
   // Sorting state for machine overview table
   const [sortConfig, setSortConfig] = useState<{
-    key: keyof MachineData;
+    key: keyof MachineData | 'offlineDurationHours';
     direction: 'asc' | 'desc';
   }>({
     key: 'netWin',
     direction: 'desc',
   });
+
+  // Top Machines sorting state (ME3-1.0 to ME3-1.4)
+  const [topMachinesSortKey, setTopMachinesSortKey] =
+    useState<TopMachinesCriteria>('netWin');
+  const [topMachinesSortDirection, setTopMachinesSortDirection] = useState<
+    'asc' | 'desc'
+  >('desc');
 
   // Batch-based pagination for offline machines tab
   const [offlineCurrentPage, setOfflineCurrentPage] = useState(0);
@@ -249,14 +298,115 @@ export default function MachinesTab() {
   );
 
   // Sorting function for machine overview table
-  const handleSort = (key: keyof MachineData) => {
-    handleMachineSortHelper(key, setSortConfig);
+  const handleSort = (key: keyof MachineData | 'offlineDurationHours') => {
+    setSortConfig(prevConfig => {
+      const newDirection: 'asc' | 'desc' =
+        prevConfig.key === key && prevConfig.direction === 'desc'
+          ? 'asc'
+          : 'desc';
+      return {
+        key: key as keyof MachineData | 'offlineDurationHours',
+        direction: newDirection,
+      };
+    });
   };
 
   // Sort function for evaluation data (different structure)
   const sortEvaluationData = (machines: typeof evaluationData) => {
     return sortEvaluationDataHelper(machines, sortConfig);
   };
+
+  // Handle Top Machines header click for sorting (ME3-1.0 to ME3-1.4)
+  const handleTopMachinesSort = useCallback(
+    (criteria: TopMachinesCriteria) => {
+      if (topMachinesSortKey === criteria) {
+        // Toggle sort direction if same header clicked (ME3-1.2)
+        setTopMachinesSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+      } else {
+        // Switch to new criteria, default to descending (ME3-1.1)
+        setTopMachinesSortKey(criteria);
+        setTopMachinesSortDirection('desc');
+      }
+    },
+    [topMachinesSortKey]
+  );
+
+  // Sort Top Machines by selected criteria
+  const sortTopMachines = useCallback(
+    (machines: typeof evaluationData) => {
+      const sorted = [...machines].sort((a, b) => {
+        let aValue: number | string = 0;
+        let bValue: number | string = 0;
+
+        switch (topMachinesSortKey) {
+          case 'locationName':
+            aValue = (a.locationName || '').toLowerCase();
+            bValue = (b.locationName || '').toLowerCase();
+            break;
+          case 'machineId':
+            aValue = (a.machineId || '').toLowerCase();
+            bValue = (b.machineId || '').toLowerCase();
+            break;
+          case 'gameTitle':
+            aValue = (a.gameTitle || '').toLowerCase();
+            bValue = (b.gameTitle || '').toLowerCase();
+            break;
+          case 'manufacturer':
+            aValue = (a.manufacturer || '').toLowerCase();
+            bValue = (b.manufacturer || '').toLowerCase();
+            break;
+          case 'coinIn':
+            aValue = a.coinIn || 0;
+            bValue = b.coinIn || 0;
+            break;
+          case 'netWin':
+            aValue = a.netWin || 0;
+            bValue = b.netWin || 0;
+            break;
+          case 'gross':
+            aValue = a.gross || 0;
+            bValue = b.gross || 0;
+            break;
+          case 'gamesPlayed':
+            aValue = a.gamesPlayed || 0;
+            bValue = b.gamesPlayed || 0;
+            break;
+          case 'actualHold':
+            aValue = a.actualHold || 0;
+            bValue = b.actualHold || 0;
+            break;
+          case 'theoreticalHold':
+            aValue = a.theoreticalHold || 0;
+            bValue = b.theoreticalHold || 0;
+            break;
+          case 'averageWager':
+            // Calc. 1: Average Wager = handle / gamesPlayed (already calculated in evaluationData)
+            aValue = a.averageWager || 0;
+            bValue = b.averageWager || 0;
+            break;
+          case 'jackpot':
+            aValue = a.jackpot || 0;
+            bValue = b.jackpot || 0;
+            break;
+        }
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return topMachinesSortDirection === 'asc'
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+
+        if (topMachinesSortDirection === 'asc') {
+          return (aValue as number) - (bValue as number);
+        } else {
+          return (bValue as number) - (aValue as number);
+        }
+      });
+
+      return sorted;
+    },
+    [topMachinesSortKey, topMachinesSortDirection]
+  );
 
   // Store and filter states
   const { selectedDateRange, setLoading } = useReportsStore();
@@ -1001,6 +1151,11 @@ export default function MachinesTab() {
         gamesPlayed: machine.gamesPlayed || 0,
         avgBet: machine.avgBet || 0,
         cancelledCredits: machine.totalCancelledCredits || 0,
+        jackpot: machine.jackpot || 0, // Added for Top Machines table (ME3-2.5)
+        averageWager:
+          machine.gamesPlayed && machine.gamesPlayed > 0
+            ? (machine.coinIn || 0) / machine.gamesPlayed
+            : 0, // Calc. 1: Average Wager = handle / gamesPlayed (ME3-2.3)
       };
     });
   }, [allMachines]);
@@ -1042,17 +1197,22 @@ export default function MachinesTab() {
     );
 
     // Group by manufacturer using ALL location machines (not filtered by search)
-    const groupByManufacturer = locationMachines.reduce(
-      (acc, machine) => {
-        const manufacturer = machine.manufacturer || 'Other';
-        if (!acc[manufacturer]) {
-          acc[manufacturer] = [];
-        }
-        acc[manufacturer].push(machine);
-        return acc;
-      },
-      {} as Record<string, typeof locationMachines>
-    );
+    // Filter out machines without manufacturer data
+    const groupByManufacturer = locationMachines
+      .filter(
+        machine => machine.manufacturer && machine.manufacturer.trim() !== ''
+      )
+      .reduce(
+        (acc, machine) => {
+          const manufacturer = machine.manufacturer.trim();
+          if (!acc[manufacturer]) {
+            acc[manufacturer] = [];
+          }
+          acc[manufacturer].push(machine);
+          return acc;
+        },
+        {} as Record<string, typeof locationMachines>
+      );
 
     // Calculate total metrics across all machines for percentage calculations
     const totalMetrics = locationMachines.reduce(
@@ -1062,8 +1222,16 @@ export default function MachinesTab() {
         drop: acc.drop + (machine.drop || 0),
         gross: acc.gross + (machine.gross || 0),
         cancelledCredits: acc.cancelledCredits + 0, // cancelledCredits not available in current data structure
+        gamesPlayed: acc.gamesPlayed + (machine.gamesPlayed || 0),
       }),
-      { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 }
+      {
+        coinIn: 0,
+        netWin: 0,
+        drop: 0,
+        gross: 0,
+        cancelledCredits: 0,
+        gamesPlayed: 0,
+      }
     );
 
     const activeMachinesNumber = locationMachines.length;
@@ -1080,6 +1248,7 @@ export default function MachinesTab() {
             drop: number;
             gross: number;
             cancelledCredits: number;
+            gamesPlayed: number;
           },
           machine: MachineEvaluationData
         ) => ({
@@ -1088,8 +1257,16 @@ export default function MachinesTab() {
           drop: acc.drop + (machine.drop || 0),
           gross: acc.gross + (machine.gross || 0),
           cancelledCredits: acc.cancelledCredits + 0, // cancelledCredits not available in current data structure
+          gamesPlayed: acc.gamesPlayed + (machine.gamesPlayed || 0),
         }),
-        { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 }
+        {
+          coinIn: 0,
+          netWin: 0,
+          drop: 0,
+          gross: 0,
+          cancelledCredits: 0,
+          gamesPlayed: 0,
+        }
       );
 
       return {
@@ -1097,6 +1274,8 @@ export default function MachinesTab() {
         floorPositions,
         rawTotals: totals,
         totalMetrics, // Include total metrics for percentage calculations
+        machineCount: machines.length, // Include machine count for verification
+        totalMachinesCount: activeMachinesNumber, // Include total machines for floor positions calculation
       };
     });
   }, [filteredEvaluationData, evaluationData, evaluationSelectedLocation]);
@@ -1112,31 +1291,45 @@ export default function MachinesTab() {
     );
 
     // Group by game name using ALL location machines (not filtered by search)
-    const groupByGameName = locationMachines.reduce(
-      (acc, machine) => {
-        const gameName = machine.gameTitle || '(game name not provided)';
-        if (!acc[gameName]) {
-          acc[gameName] = [];
-        }
-        acc[gameName].push(machine);
-        return acc;
-      },
-      {} as Record<string, typeof locationMachines>
-    );
+    // Filter out machines without game data
+    const groupByGameName = locationMachines
+      .filter(machine => machine.gameTitle && machine.gameTitle.trim() !== '')
+      .reduce(
+        (acc, machine) => {
+          const gameName = machine.gameTitle.trim();
+          if (!acc[gameName]) {
+            acc[gameName] = [];
+          }
+          acc[gameName].push(machine);
+          return acc;
+        },
+        {} as Record<string, typeof locationMachines>
+      );
 
-    // Calculate total metrics across all machines for percentage calculations
-    const totalMetrics = locationMachines.reduce(
+    // Calculate total metrics across machines WITH game data for percentage calculations
+    const machinesWithGame = locationMachines.filter(
+      machine => machine.gameTitle && machine.gameTitle.trim() !== ''
+    );
+    const totalMetrics = machinesWithGame.reduce(
       (acc, machine) => ({
         coinIn: acc.coinIn + (machine.coinIn || 0),
         netWin: acc.netWin + (machine.netWin || 0),
         drop: acc.drop + (machine.drop || 0),
         gross: acc.gross + (machine.gross || 0),
         cancelledCredits: acc.cancelledCredits + 0, // cancelledCredits not available in current data structure
+        gamesPlayed: acc.gamesPlayed + (machine.gamesPlayed || 0),
       }),
-      { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 }
+      {
+        coinIn: 0,
+        netWin: 0,
+        drop: 0,
+        gross: 0,
+        cancelledCredits: 0,
+        gamesPlayed: 0,
+      }
     );
 
-    const activeMachinesNumber = locationMachines.length;
+    const activeMachinesNumber = machinesWithGame.length;
 
     return Object.keys(groupByGameName).map(gameName => {
       const machines = groupByGameName[gameName];
@@ -1150,6 +1343,7 @@ export default function MachinesTab() {
             drop: number;
             gross: number;
             cancelledCredits: number;
+            gamesPlayed: number;
           },
           machine: MachineEvaluationData
         ) => ({
@@ -1158,8 +1352,16 @@ export default function MachinesTab() {
           drop: acc.drop + (machine.drop || 0),
           gross: acc.gross + (machine.gross || 0),
           cancelledCredits: acc.cancelledCredits + 0, // cancelledCredits not available in current data structure
+          gamesPlayed: acc.gamesPlayed + (machine.gamesPlayed || 0),
         }),
-        { coinIn: 0, netWin: 0, drop: 0, gross: 0, cancelledCredits: 0 }
+        {
+          coinIn: 0,
+          netWin: 0,
+          drop: 0,
+          gross: 0,
+          cancelledCredits: 0,
+          gamesPlayed: 0,
+        }
       );
 
       return {
@@ -1167,6 +1369,8 @@ export default function MachinesTab() {
         floorPositions,
         rawTotals: totals,
         totalMetrics, // Include total metrics for percentage calculations
+        machineCount: machines.length, // Include machine count for verification
+        totalMachinesCount: activeMachinesNumber, // Include total machines for floor positions calculation
       };
     });
   }, [filteredEvaluationData, evaluationData, evaluationSelectedLocation]);
@@ -1182,6 +1386,7 @@ export default function MachinesTab() {
       drop: 0,
       gross: 0,
       cancelledCredits: 0,
+      gamesPlayed: 0,
     };
 
     return processedManufacturerData.map(item => ({
@@ -1208,6 +1413,15 @@ export default function MachinesTab() {
         totalMetrics.gross > 0
           ? (item.rawTotals.gross / totalMetrics.gross) * 100
           : 0,
+      totalGamesPlayed:
+        totalMetrics.gamesPlayed > 0
+          ? (item.rawTotals.gamesPlayed / totalMetrics.gamesPlayed) * 100
+          : 0,
+      // Include raw values and totals for verification
+      rawTotals: item.rawTotals,
+      totalMetrics,
+      machineCount: item.machineCount || 0,
+      totalMachinesCount: processedManufacturerData[0]?.totalMachinesCount || 0,
     }));
   }, [processedManufacturerData]);
 
@@ -1222,6 +1436,7 @@ export default function MachinesTab() {
       drop: 0,
       gross: 0,
       cancelledCredits: 0,
+      gamesPlayed: 0,
     };
 
     return processedGamesData.map(item => ({
@@ -1248,54 +1463,245 @@ export default function MachinesTab() {
         totalMetrics.gross > 0
           ? (item.rawTotals.gross / totalMetrics.gross) * 100
           : 0,
+      totalGamesPlayed:
+        totalMetrics.gamesPlayed > 0
+          ? (item.rawTotals.gamesPlayed / totalMetrics.gamesPlayed) * 100
+          : 0,
+      // Include raw values and totals for verification
+      rawTotals: item.rawTotals,
+      totalMetrics,
+      machineCount: item.machineCount || 0,
+      totalMachinesCount: processedGamesData[0]?.totalMachinesCount || 0,
     }));
   }, [processedGamesData]);
 
-  // Calculate summary percentages (based on Angular logic)
+  // Calculate Pareto principle summary (ME1-3.0 to ME1-3.3)
+  // Shows what percentage of machines contribute to what percentage of total metrics
   const summaryCalculations = useMemo(() => {
     if (!filteredEvaluationData.length)
-      return { percOfTopMachines: 0, percOfTopMachCoinIn: 0 };
+      return {
+        handleStatement: '',
+        winStatement: '',
+        gamesPlayedStatement: '',
+        handleDetails: undefined,
+        winDetails: undefined,
+        gamesPlayedDetails: undefined,
+      };
 
-    const HOURS_PER_DAY = 24;
-    const AVG_CONTRIBUTE_RATIO = 0.75;
-    const machinesNumber = filteredEvaluationData.length;
-
-    const coinInTotal = filteredEvaluationData.reduce((sum, machine) => {
-      return sum + (machine.coinIn || 0) / HOURS_PER_DAY;
-    }, 0);
-
-    const avgLocationHandle =
-      (coinInTotal / machinesNumber) * AVG_CONTRIBUTE_RATIO;
-    const machinesMoreThanAvg = filteredEvaluationData.filter(
-      machine => (machine.coinIn || 0) / HOURS_PER_DAY >= avgLocationHandle
+    // Calculate totals across all machines
+    const totalHandle = filteredEvaluationData.reduce(
+      (sum, machine) => sum + (machine.coinIn || 0),
+      0
     );
-
-    const topMachinesCoinInTotal = machinesMoreThanAvg.reduce(
-      (sum, machine) => {
-        return sum + (machine.coinIn || 0) / HOURS_PER_DAY;
-      },
+    const totalWin = filteredEvaluationData.reduce(
+      (sum, machine) => sum + (machine.netWin || 0),
+      0
+    );
+    const totalGamesPlayed = filteredEvaluationData.reduce(
+      (sum, machine) => sum + (machine.gamesPlayed || 0),
       0
     );
 
-    const percOfTopMachines =
-      (machinesMoreThanAvg.length / machinesNumber) * 100;
-    const percOfTopMachCoinIn =
-      coinInTotal > 0 ? (topMachinesCoinInTotal / coinInTotal) * 100 : 0;
+    // Type for verification details
+    type VerificationDetails = {
+      metricName: string;
+      totalMachines: number;
+      machinesWithData: number;
+      topMachines: Array<{
+        machineId: string;
+        machineName: string;
+        value: number;
+        cumulative: number;
+        percentageOfTotal: number;
+      }>;
+      allMachinesWithData: Array<{
+        machineId: string;
+        machineName: string;
+        locationName: string;
+        locationId: string;
+        manufacturer: string;
+        gameTitle: string;
+        value: number;
+        percentageOfTotal: number;
+        // Include all relevant metrics for context
+        coinIn?: number;
+        netWin?: number;
+        gamesPlayed?: number;
+        drop?: number;
+        gross?: number;
+      }>;
+      totalValue: number;
+      cumulativeValue: number;
+      machinePercentage: number;
+      metricPercentage: number;
+    };
 
-    return { percOfTopMachines, percOfTopMachCoinIn };
+    // Helper function to calculate Pareto statement and details
+    const calculateParetoStatement = (
+      machines: MachineEvaluationData[],
+      metricGetter: (m: MachineEvaluationData) => number,
+      total: number,
+      metricName: string
+    ): { statement: string; details: VerificationDetails | undefined } => {
+      if (total === 0 || machines.length === 0)
+        return { statement: '', details: undefined };
+
+      // Filter out machines with zero metrics - only count machines that actually have data
+      const machinesWithData = machines.filter(m => {
+        const value = metricGetter(m);
+        return value > 0 && !isNaN(value) && isFinite(value);
+      });
+
+      if (machinesWithData.length === 0) {
+        return { statement: '', details: undefined };
+      }
+
+      // Sort machines by metric descending
+      const sorted = [...machinesWithData].sort(
+        (a, b) => metricGetter(b) - metricGetter(a)
+      );
+
+      // Store ALL machines with data for the modal
+      const allMachinesWithData: VerificationDetails['allMachinesWithData'] =
+        sorted.map(machine => {
+          const metricValue = metricGetter(machine);
+          return {
+            machineId: machine.machineId,
+            machineName: machine.machineName || machine.machineId,
+            locationName: machine.locationName,
+            locationId: machine.locationId,
+            manufacturer: machine.manufacturer,
+            gameTitle: machine.gameTitle,
+            value: metricValue,
+            percentageOfTotal: total > 0 ? (metricValue / total) * 100 : 0,
+            // Include all relevant metrics for context
+            coinIn: machine.coinIn,
+            netWin: machine.netWin,
+            gamesPlayed: machine.gamesPlayed,
+            drop: machine.drop,
+            gross: machine.gross,
+          };
+        });
+
+      // Find the point where we reach 75% of total
+      let cumulative = 0;
+      let machineCount = 0;
+      const targetPercentage = 75;
+      const topMachines: VerificationDetails['topMachines'] = [];
+
+      for (const machine of sorted) {
+        const metricValue = metricGetter(machine);
+        if (metricValue <= 0 || !isFinite(metricValue)) continue;
+
+        cumulative += metricValue;
+        machineCount++;
+        const percentage = total > 0 ? (cumulative / total) * 100 : 0;
+
+        // Store machine details for verification
+        topMachines.push({
+          machineId: machine.machineId,
+          machineName: machine.machineName || machine.machineId,
+          value: metricValue,
+          cumulative,
+          percentageOfTotal: percentage,
+        });
+
+        // If we've reached or exceeded 75%, return the statement
+        if (percentage >= targetPercentage) {
+          // Calculate percentage based on machines WITH DATA, not all machines
+          const machinePercentage =
+            machinesWithData.length > 0
+              ? (machineCount / machinesWithData.length) * 100
+              : 0;
+          const statement = `${Math.max(1, Math.round(machinePercentage))}% of the machines contribute to ${Math.round(percentage)}% of the Total ${metricName}`;
+
+          return {
+            statement,
+            details: {
+              metricName,
+              totalMachines: machines.length,
+              machinesWithData: machinesWithData.length,
+              topMachines,
+              allMachinesWithData,
+              totalValue: total,
+              cumulativeValue: cumulative,
+              machinePercentage: Math.round(machinePercentage),
+              metricPercentage: Math.round(percentage),
+            },
+          };
+        }
+      }
+
+      // If we never reached 75%, show what we have (but only if we have meaningful data)
+      if (machineCount === 0 || cumulative === 0) {
+        return { statement: '', details: undefined };
+      }
+
+      const machinePercentage =
+        machinesWithData.length > 0
+          ? (machineCount / machinesWithData.length) * 100
+          : 0;
+      const finalPercentage = total > 0 ? (cumulative / total) * 100 : 0;
+
+      // Only show if we have at least 1% contribution
+      if (finalPercentage < 1) {
+        return { statement: '', details: undefined };
+      }
+
+      const statement = `${Math.max(1, Math.round(machinePercentage))}% of the machines contribute to ${Math.round(finalPercentage)}% of the Total ${metricName}`;
+
+      return {
+        statement,
+        details: {
+          metricName,
+          totalMachines: machines.length,
+          machinesWithData: machinesWithData.length,
+          topMachines,
+          allMachinesWithData,
+          totalValue: total,
+          cumulativeValue: cumulative,
+          machinePercentage: Math.round(machinePercentage),
+          metricPercentage: Math.round(finalPercentage),
+        },
+      };
+    };
+
+    const handleResult = calculateParetoStatement(
+      filteredEvaluationData,
+      m => m.coinIn || 0,
+      totalHandle,
+      'Handle'
+    );
+
+    const winResult = calculateParetoStatement(
+      filteredEvaluationData,
+      m => m.netWin || 0,
+      totalWin,
+      'Win'
+    );
+
+    const gamesPlayedResult = calculateParetoStatement(
+      filteredEvaluationData,
+      m => m.gamesPlayed || 0,
+      totalGamesPlayed,
+      'Games Played'
+    );
+
+    return {
+      handleStatement: handleResult.statement,
+      winStatement: winResult.statement,
+      gamesPlayedStatement: gamesPlayedResult.statement,
+      handleDetails: handleResult.details,
+      winDetails: winResult.details,
+      gamesPlayedDetails: gamesPlayedResult.details,
+    };
   }, [filteredEvaluationData]);
 
   // Update chart data and summary when calculations change
   useEffect(() => {
     setManufacturerData(manufacturerDataWithPercentages);
     setGamesData(gamesDataWithPercentages);
-    setPercOfTopMachines(summaryCalculations.percOfTopMachines);
-    setPercOfTopMachCoinIn(summaryCalculations.percOfTopMachCoinIn);
-  }, [
-    manufacturerDataWithPercentages,
-    gamesDataWithPercentages,
-    summaryCalculations,
-  ]);
+  }, [manufacturerDataWithPercentages, gamesDataWithPercentages]);
 
   // Ensure overview loading state is set on initial mount if on overview tab
   // This must run synchronously before any renders to ensure skeleton shows immediately
@@ -1553,32 +1959,88 @@ export default function MachinesTab() {
     }
   }, [searchParams, activeTab, setActiveTab]);
 
-  // Offline machines with duration calculation
+  // Offline machines with duration calculation and sorting
   const offlineMachinesWithDuration = useMemo(() => {
-    const machinesWithDuration = paginatedOfflineMachines
-      .map(machine => {
-        const now = new Date();
-        const lastActivity = new Date(machine.lastActivity);
-        const offlineDurationMs = now.getTime() - lastActivity.getTime();
-        const offlineDurationHours = Math.max(
-          0,
-          offlineDurationMs / (1000 * 60 * 60)
-        );
+    const machinesWithDuration = paginatedOfflineMachines.map(machine => {
+      const now = new Date();
+      const lastActivity = new Date(machine.lastActivity);
+      const offlineDurationMs = now.getTime() - lastActivity.getTime();
+      const offlineDurationHours = Math.max(
+        0,
+        offlineDurationMs / (1000 * 60 * 60)
+      );
 
-        return {
-          ...machine,
-          offlineDurationHours,
-          offlineDurationFormatted: formatOfflineDuration(offlineDurationHours),
-        };
-      })
-      .sort((a, b) => a.offlineDurationHours - b.offlineDurationHours);
+      return {
+        ...machine,
+        offlineDurationHours,
+        offlineDurationFormatted: formatOfflineDuration(offlineDurationHours),
+      };
+    });
 
-    return machinesWithDuration;
-  }, [paginatedOfflineMachines]);
+    // Apply sorting based on sortConfig
+    return [...machinesWithDuration].sort((a, b) => {
+      let aValue: number | string;
+      let bValue: number | string;
 
-  // Calculate derived fields for overview machines (backend handles filtering)
+      switch (sortConfig.key) {
+        case 'machineId':
+          aValue = a.machineId || '';
+          bValue = b.machineId || '';
+          break;
+        case 'locationName':
+          aValue = a.locationName || '';
+          bValue = b.locationName || '';
+          break;
+        case 'gameTitle':
+          aValue = a.gameTitle || '';
+          bValue = b.gameTitle || '';
+          break;
+        case 'lastActivity':
+          aValue = new Date(a.lastActivity).getTime();
+          bValue = new Date(b.lastActivity).getTime();
+          break;
+        case 'coinIn':
+          aValue = a.coinIn || 0;
+          bValue = b.coinIn || 0;
+          break;
+        case 'netWin':
+          aValue = a.netWin || 0;
+          bValue = b.netWin || 0;
+          break;
+        case 'offlineDurationHours':
+          // Sort by offline duration (calculated field)
+          aValue =
+            (a as typeof a & { offlineDurationHours: number })
+              .offlineDurationHours || 0;
+          bValue =
+            (b as typeof b & { offlineDurationHours: number })
+              .offlineDurationHours || 0;
+          break;
+        default:
+          // Default: sort by offline duration (longest first)
+          aValue =
+            (a as typeof a & { offlineDurationHours: number })
+              .offlineDurationHours || 0;
+          bValue =
+            (b as typeof b & { offlineDurationHours: number })
+              .offlineDurationHours || 0;
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortConfig.direction === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      return sortConfig.direction === 'asc'
+        ? (aValue as number) - (bValue as number)
+        : (bValue as number) - (aValue as number);
+    });
+  }, [paginatedOfflineMachines, sortConfig]);
+
+  // Calculate derived fields for overview machines and apply sorting
   const processedOverviewMachines = useMemo(() => {
-    return paginatedOverviewMachines.map(machine => ({
+    const processed = paginatedOverviewMachines.map(machine => ({
       ...machine,
       // Calculate derived fields on frontend for better performance
       actualHold:
@@ -1589,7 +2051,66 @@ export default function MachinesTab() {
       currentCredits: 0, // Default value since not provided by API
       gamesWon: 0, // Default value since not provided by API
     }));
-  }, [paginatedOverviewMachines]);
+
+    // Apply sorting based on sortConfig
+    return [...processed].sort((a, b) => {
+      let aValue: number | string;
+      let bValue: number | string;
+
+      switch (sortConfig.key) {
+        case 'machineId':
+          aValue = a.machineId || '';
+          bValue = b.machineId || '';
+          break;
+        case 'locationName':
+          aValue = a.locationName || '';
+          bValue = b.locationName || '';
+          break;
+        case 'gameTitle':
+          aValue = a.gameTitle || '';
+          bValue = b.gameTitle || '';
+          break;
+        case 'gross':
+          aValue = a.gross || 0;
+          bValue = b.gross || 0;
+          break;
+        case 'coinIn':
+          aValue = a.coinIn || 0;
+          bValue = b.coinIn || 0;
+          break;
+        case 'netWin':
+          aValue = a.netWin || 0;
+          bValue = b.netWin || 0;
+          break;
+        case 'gamesPlayed':
+          aValue = a.gamesPlayed || 0;
+          bValue = b.gamesPlayed || 0;
+          break;
+        case 'actualHold':
+          aValue = a.actualHold || 0;
+          bValue = b.actualHold || 0;
+          break;
+        case 'offlineDurationHours':
+          // This shouldn't be used for overview, but handle it just in case
+          aValue = 0;
+          bValue = 0;
+          break;
+        default:
+          aValue = a.machineId || '';
+          bValue = b.machineId || '';
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortConfig.direction === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      return sortConfig.direction === 'asc'
+        ? (aValue as number) - (bValue as number)
+        : (bValue as number) - (aValue as number);
+    });
+  }, [paginatedOverviewMachines, sortConfig]);
 
   if (error) {
     return (
@@ -1707,7 +2228,10 @@ export default function MachinesTab() {
             <Card className="min-h-[120px]">
               <CardContent className="flex h-full flex-col justify-center p-4">
                 <div className="break-words text-lg font-bold leading-tight text-blue-600 sm:text-xl lg:text-2xl">
-                  {machineStats.onlineCount}/{machineStats.totalCount}
+                  {locationMachineStats?.onlineMachines || 0}/
+                  {locationMachineStats?.totalMachines ||
+                    machineStats?.totalCount ||
+                    0}
                 </div>
                 <p className="mt-1 break-words text-xs text-muted-foreground sm:text-sm">
                   Online Machines
@@ -1870,31 +2394,59 @@ export default function MachinesTab() {
                     <div className="hidden rounded-md border md:block">
                       <div className="overflow-x-auto">
                         <table className="w-full">
-                          <thead className="border-b bg-muted/50">
+                          <thead className="t border-b bg-muted/50">
                             <tr>
                               {/* Select column removed */}
-                              <th className="p-3 text-center font-medium">
+                              <SortableHeader
+                                sortKey="machineId"
+                                currentSort={sortConfig}
+                                onSort={handleSort}
+                              >
                                 Machine
-                              </th>
-                              <th className="p-3 text-center font-medium">
+                              </SortableHeader>
+                              <SortableHeader
+                                sortKey="locationName"
+                                currentSort={sortConfig}
+                                onSort={handleSort}
+                              >
                                 Location
-                              </th>
-                              <th className="p-3 text-center font-medium">
+                              </SortableHeader>
+                              <SortableHeader
+                                sortKey="gameTitle"
+                                currentSort={sortConfig}
+                                onSort={handleSort}
+                              >
                                 Type
-                              </th>
-                              <th className="p-3 text-center font-medium">
+                              </SortableHeader>
+                              <SortableHeader
+                                sortKey="gross"
+                                currentSort={sortConfig}
+                                onSort={handleSort}
+                              >
                                 Gross
-                              </th>
-                              <th className="p-3 text-center font-medium">
+                              </SortableHeader>
+                              <SortableHeader
+                                sortKey="coinIn"
+                                currentSort={sortConfig}
+                                onSort={handleSort}
+                              >
                                 Drop
-                              </th>
-                              <th className="p-3 text-center font-medium">
+                              </SortableHeader>
+                              <SortableHeader
+                                sortKey="actualHold"
+                                currentSort={sortConfig}
+                                onSort={handleSort}
+                              >
                                 Hold %
-                              </th>
-                              <th className="p-3 text-center font-medium">
+                              </SortableHeader>
+                              <SortableHeader
+                                sortKey="gamesPlayed"
+                                currentSort={sortConfig}
+                                onSort={handleSort}
+                              >
                                 Games
-                              </th>
-                              <th className="p-3 text-center font-medium">
+                              </SortableHeader>
+                              <th className="p-3 text-left font-medium">
                                 Actions
                               </th>
                             </tr>
@@ -2494,8 +3046,14 @@ export default function MachinesTab() {
               {/* Summary Section */}
               <div className="mb-6">
                 <MachineEvaluationSummary
-                  percOfTopMachines={percOfTopMachines}
-                  percOfTopMachCoinIn={percOfTopMachCoinIn}
+                  handleStatement={summaryCalculations.handleStatement}
+                  winStatement={summaryCalculations.winStatement}
+                  gamesPlayedStatement={
+                    summaryCalculations.gamesPlayedStatement
+                  }
+                  handleDetails={summaryCalculations.handleDetails}
+                  winDetails={summaryCalculations.winDetails}
+                  gamesPlayedDetails={summaryCalculations.gamesPlayedDetails}
                 />
               </div>
 
@@ -2534,10 +3092,10 @@ export default function MachinesTab() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-orange-600" />
-                    Top 5 Machines
+                    Top Machines
                   </CardTitle>
                   <CardDescription>
-                    Highest performing machines by revenue and hold percentage
+                    Top 5 highest performing machines
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -2546,87 +3104,99 @@ export default function MachinesTab() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b bg-gray-50">
-                          <SortableHeader
+                          <SortableTopMachinesHeader
                             sortKey="locationName"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
+                            currentSortKey={topMachinesSortKey}
+                            currentSortDirection={topMachinesSortDirection}
+                            onSort={handleTopMachinesSort}
                           >
                             Location
-                          </SortableHeader>
-                          <SortableHeader
+                          </SortableTopMachinesHeader>
+                          {/* Machine ID (ME3-2.1) */}
+                          <SortableTopMachinesHeader
                             sortKey="machineId"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
+                            currentSortKey={topMachinesSortKey}
+                            currentSortDirection={topMachinesSortDirection}
+                            onSort={handleTopMachinesSort}
                           >
                             Machine ID
-                          </SortableHeader>
-                          <SortableHeader
+                          </SortableTopMachinesHeader>
+                          <SortableTopMachinesHeader
                             sortKey="gameTitle"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
+                            currentSortKey={topMachinesSortKey}
+                            currentSortDirection={topMachinesSortDirection}
+                            onSort={handleTopMachinesSort}
                           >
                             Game
-                          </SortableHeader>
-                          <SortableHeader
+                          </SortableTopMachinesHeader>
+                          <SortableTopMachinesHeader
                             sortKey="manufacturer"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
+                            currentSortKey={topMachinesSortKey}
+                            currentSortDirection={topMachinesSortDirection}
+                            onSort={handleTopMachinesSort}
                           >
                             Manufacturer
-                          </SortableHeader>
-                          <SortableHeader
+                          </SortableTopMachinesHeader>
+                          <SortableTopMachinesHeader
                             sortKey="coinIn"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
+                            currentSortKey={topMachinesSortKey}
+                            currentSortDirection={topMachinesSortDirection}
+                            onSort={handleTopMachinesSort}
                           >
-                            Money In
-                          </SortableHeader>
-                          <SortableHeader
+                            Handle
+                          </SortableTopMachinesHeader>
+                          <SortableTopMachinesHeader
+                            sortKey="averageWager"
+                            currentSortKey={topMachinesSortKey}
+                            currentSortDirection={topMachinesSortDirection}
+                            onSort={handleTopMachinesSort}
+                          >
+                            Average Wager (Calc. 1)
+                          </SortableTopMachinesHeader>
+                          <SortableTopMachinesHeader
                             sortKey="netWin"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
+                            currentSortKey={topMachinesSortKey}
+                            currentSortDirection={topMachinesSortDirection}
+                            onSort={handleTopMachinesSort}
                           >
-                            Net Win
-                          </SortableHeader>
-                          <SortableHeader
+                            Win
+                          </SortableTopMachinesHeader>
+                          <SortableTopMachinesHeader
                             sortKey="jackpot"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
+                            currentSortKey={topMachinesSortKey}
+                            currentSortDirection={topMachinesSortDirection}
+                            onSort={handleTopMachinesSort}
                           >
                             Jackpot
-                          </SortableHeader>
-                          <SortableHeader
-                            sortKey="averageWager"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                          >
-                            Avg. Wag. per Game
-                          </SortableHeader>
-                          <SortableHeader
-                            sortKey="actualHold"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
-                          >
-                            Actual Hold
-                          </SortableHeader>
-                          <SortableHeader
+                          </SortableTopMachinesHeader>
+                          <SortableTopMachinesHeader
                             sortKey="theoreticalHold"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
+                            currentSortKey={topMachinesSortKey}
+                            currentSortDirection={topMachinesSortDirection}
+                            onSort={handleTopMachinesSort}
                           >
                             Theoretical Hold
-                          </SortableHeader>
-                          <SortableHeader
+                          </SortableTopMachinesHeader>
+                          <SortableTopMachinesHeader
+                            sortKey="actualHold"
+                            currentSortKey={topMachinesSortKey}
+                            currentSortDirection={topMachinesSortDirection}
+                            onSort={handleTopMachinesSort}
+                          >
+                            Actual Hold (Calc. 2)
+                          </SortableTopMachinesHeader>
+                          <SortableTopMachinesHeader
                             sortKey="gamesPlayed"
-                            currentSort={sortConfig}
-                            onSort={handleSort}
+                            currentSortKey={topMachinesSortKey}
+                            currentSortDirection={topMachinesSortDirection}
+                            onSort={handleTopMachinesSort}
                           >
                             Games Played
-                          </SortableHeader>
+                          </SortableTopMachinesHeader>
                         </tr>
                       </thead>
                       <tbody>
-                        {sortEvaluationData(filteredEvaluationData)
+                        {sortTopMachines(filteredEvaluationData)
                           .slice(0, 5)
                           .map(machine => (
                             <tr
@@ -2833,25 +3403,36 @@ export default function MachinesTab() {
                               <td className="p-3 text-sm">
                                 {machine.manufacturer}
                               </td>
+                              {/* Handle (ME3-2.2) */}
                               <td className="p-3 text-sm font-medium">
-                                ${(machine.drop || 0).toLocaleString()}
+                                ${(machine.coinIn || 0).toLocaleString()}
                               </td>
+                              {/* Average Wager (Calc. 1) (ME3-2.3) */}
+                              <td className="p-3 text-sm">
+                                $
+                                {machine.averageWager
+                                  ? machine.averageWager.toFixed(2)
+                                  : '0.00'}
+                              </td>
+                              {/* Win (ME3-2.4) */}
                               <td
                                 className={`p-3 text-sm font-medium ${
-                                  machine.netWin >= 0
+                                  (machine.netWin || 0) >= 0
                                     ? 'text-green-600'
                                     : 'text-red-600'
                                 }`}
                               >
-                                ${machine.netWin.toLocaleString()}
+                                ${(machine.netWin || 0).toLocaleString()}
                               </td>
-                              <td className="p-3 text-sm">0</td>
+                              {/* Jackpot (ME3-2.5) */}
                               <td className="p-3 text-sm">
-                                $
-                                {machine.avgBet
-                                  ? machine.avgBet.toFixed(2)
-                                  : '0.00'}
+                                ${(machine.jackpot || 0).toLocaleString()}
                               </td>
+                              {/* Theoretical Hold (ME3-2.6) */}
+                              <td className="p-3 text-sm text-green-600">
+                                {(machine.theoreticalHold || 0).toFixed(2)}%
+                              </td>
+                              {/* Actual Hold (Calc. 2) (ME3-2.7) */}
                               <td
                                 className={`p-3 text-sm font-medium ${
                                   (machine.actualHold || 0) >= 0
@@ -2861,11 +3442,9 @@ export default function MachinesTab() {
                               >
                                 {(machine.actualHold || 0).toFixed(2)}%
                               </td>
-                              <td className="p-3 text-sm text-green-600">
-                                {machine.theoreticalHold.toFixed(2)}%
-                              </td>
+                              {/* Games Played (ME3-2.8) */}
                               <td className="p-3 text-sm">
-                                {machine.gamesPlayed.toLocaleString()}
+                                {(machine.gamesPlayed || 0).toLocaleString()}
                               </td>
                             </tr>
                           ))}
@@ -3235,19 +3814,35 @@ export default function MachinesTab() {
                       <table className="w-full">
                         <thead className="border-b bg-muted/50">
                           <tr>
-                            <th className="p-3 text-center font-medium">
+                            <SortableHeader
+                              sortKey="machineId"
+                              currentSort={sortConfig}
+                              onSort={handleSort}
+                            >
                               Machine
-                            </th>
-                            <th className="p-3 text-center font-medium">
+                            </SortableHeader>
+                            <SortableHeader
+                              sortKey="locationName"
+                              currentSort={sortConfig}
+                              onSort={handleSort}
+                            >
                               Location
-                            </th>
-                            <th className="p-3 text-center font-medium">
+                            </SortableHeader>
+                            <SortableHeader
+                              sortKey="lastActivity"
+                              currentSort={sortConfig}
+                              onSort={handleSort}
+                            >
                               Last Activity
-                            </th>
-                            <th className="p-3 text-center font-medium">
+                            </SortableHeader>
+                            <SortableHeader
+                              sortKey="offlineDurationHours"
+                              currentSort={sortConfig}
+                              onSort={handleSort}
+                            >
                               Offline Duration
-                            </th>
-                            <th className="p-3 text-center font-medium">
+                            </SortableHeader>
+                            <th className="p-3 text-left font-medium">
                               Actions
                             </th>
                           </tr>

@@ -55,10 +55,10 @@ const SortableOfflineHeader = ({
 
   return (
     <th
-      className="cursor-pointer select-none p-3 text-center font-medium text-gray-700 transition-colors hover:bg-gray-100"
+      className="cursor-pointer select-none p-3 text-left font-medium text-gray-700 transition-colors hover:bg-gray-100"
       onClick={() => onSort(sortKey)}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center justify-start gap-1">
         {children}
         {isActive ? (
           currentSort.direction === 'asc' ? (
@@ -444,7 +444,7 @@ export const MachinesOfflineTab = ({
                     >
                       Last Online
                     </SortableOfflineHeader>
-                    <th className="p-3 text-center font-medium text-gray-700">
+                    <th className="p-3 text-left font-medium text-gray-700">
                       Offline Duration
                     </th>
                     <SortableOfflineHeader
@@ -461,10 +461,10 @@ export const MachinesOfflineTab = ({
                     >
                       Net Win
                     </SortableOfflineHeader>
-                    <th className="p-3 text-center font-medium text-gray-700">
+                    <th className="p-3 text-left font-medium text-gray-700">
                       Status
                     </th>
-                    <th className="p-3 text-center font-medium text-gray-700">
+                    <th className="p-3 text-left font-medium text-gray-700">
                       Actions
                     </th>
                   </tr>

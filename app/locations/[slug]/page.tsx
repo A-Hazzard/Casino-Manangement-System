@@ -2197,7 +2197,8 @@ export default function LocationPage() {
                 <div className="min-w-0 flex-1">
                   <DashboardDateFilters
                     onCustomRangeGo={handleRefresh}
-                    hideAllTime={true}
+                    hideAllTime={false}
+                    showQuarterly={true}
                     enableTimeInputs={true}
                   />
                 </div>
@@ -2219,7 +2220,8 @@ export default function LocationPage() {
                 <div className="w-full">
                   <DashboardDateFilters
                     onCustomRangeGo={handleRefresh}
-                    hideAllTime={true}
+                    hideAllTime={false}
+                    showQuarterly={true}
                     enableTimeInputs={true}
                   />
                 </div>
