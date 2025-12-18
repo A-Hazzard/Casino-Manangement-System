@@ -427,12 +427,20 @@ export const MachinesEvaluationTab = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button onClick={onRefresh} disabled={evaluationLoading}>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button 
+              onClick={onRefresh} 
+              disabled={evaluationLoading}
+              className="w-full sm:w-auto"
+            >
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
-            <Button onClick={onExport} variant="outline">
+            <Button 
+              onClick={onExport} 
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
               <Download className="mr-2 h-4 w-4" />
               Export Data
             </Button>
@@ -465,8 +473,10 @@ export const MachinesEvaluationTab = ({
               No machines found matching your criteria.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b">
                     <SortableEvaluationHeader
@@ -718,6 +728,131 @@ export const MachinesEvaluationTab = ({
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile Card View */}
+            <div className="space-y-4 md:hidden">
+              {sortedEvaluationData.map(machine => (
+                <Card key={machine.machineId} className="p-4">
+                  <div className="mb-3 space-y-2">
+                    <div>
+                      {machine.locationId ? (
+                        <button
+                          onClick={() => {
+                            router.push(`/locations/${machine.locationId}`);
+                          }}
+                          className="group flex items-center gap-1.5 text-left"
+                        >
+                          <span className="text-sm font-semibold text-gray-900 underline decoration-blue-600 decoration-2 underline-offset-2">
+                            {machine.locationName || 'N/A'}
+                          </span>
+                          <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                        </button>
+                      ) : (
+                        <div className="text-sm font-semibold text-gray-900">
+                          {machine.locationName || 'N/A'}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      {machine.machineId ? (
+                        <button
+                          onClick={() => {
+                            router.push(`/cabinets/${machine.machineId}`);
+                          }}
+                          className="group flex items-center gap-1.5 font-mono text-sm text-gray-900"
+                        >
+                          <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                            {machine.serialNumber || machine.customName || machine.machineId}
+                            {machine.gameTitle && (
+                              <span className="ml-1 text-gray-600">
+                                ({machine.gameTitle})
+                              </span>
+                            )}
+                          </span>
+                          <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                        </button>
+                      ) : (
+                        <div className="font-mono text-sm text-gray-900">
+                          {machine.serialNumber || machine.machineId || 'N/A'}
+                        </div>
+                      )}
+                    </div>
+                    {machine.gameTitle && (
+                      <div className="text-xs text-gray-600">
+                        {machine.gameTitle}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 border-t border-gray-200 pt-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Performance:</span>
+                      <Badge
+                        variant="outline"
+                        className={
+                          (machine.actualHold || 0) > 0.8
+                            ? 'border-green-600 text-green-600'
+                            : (machine.actualHold || 0) > 0.5
+                              ? 'border-yellow-600 text-yellow-600'
+                              : 'border-red-600 text-red-600'
+                        }
+                      >
+                        {(machine.actualHold || 0) > 0.8
+                          ? 'Top'
+                          : (machine.actualHold || 0) > 0.5
+                            ? 'Average'
+                            : 'Poor'}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Handle:</span>
+                      <span
+                        className={getFinancialColorClass(machine.coinIn || 0)}
+                      >
+                        ${(machine.coinIn || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Net Win:</span>
+                      <span
+                        className={getFinancialColorClass(machine.netWin || 0)}
+                      >
+                        ${(machine.netWin || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Gross:</span>
+                      <span
+                        className={getFinancialColorClass(machine.gross || 0)}
+                      >
+                        ${(machine.gross || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Status:</span>
+                      <StatusIcon isOnline={machine.isOnline || false} />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(machine)}
+                      >
+                        <Pencil2Icon className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(machine)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+            </>
           )}
         </CardContent>
       </Card>

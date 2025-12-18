@@ -533,7 +533,10 @@ export const MachinesOfflineTab = ({
                               machine.coinIn || 0
                             )}
                           >
-                            ${(machine.coinIn || 0).toLocaleString()}
+                            ${(machine.coinIn || 0).toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
                           </span>
                         </td>
                         <td className="p-3 text-center">
@@ -542,7 +545,10 @@ export const MachinesOfflineTab = ({
                               machine.netWin || 0
                             )}
                           >
-                            ${(machine.netWin || 0).toLocaleString()}
+                            ${(machine.netWin || 0).toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
                           </span>
                         </td>
                         <td className="p-3 text-center">

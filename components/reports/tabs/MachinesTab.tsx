@@ -198,11 +198,20 @@ export default function MachinesTab() {
   const [allOfflineMachines, setAllOfflineMachines] = useState<MachineData[]>(
     []
   ); // All offline machines loaded
+  const [accumulatedOfflineMachines, setAccumulatedOfflineMachines] = useState<
+    MachineData[]
+  >([]); // Accumulated offline machines for frontend filtering
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null); // Counts for dashboard cards
 
   // Get machine stats from dedicated API (for accurate offline count)
-  // No locationId specified = all locations
-  const { machineStats: locationMachineStats } = useLocationMachineStats();
+  // Uses the same query as the locations page machine status
+  // No locationId specified = all locations, no machineTypeFilter = all machine types
+  // Pass null instead of undefined to match locations page pattern
+  const {
+    machineStats: locationMachineStats,
+    machineStatsLoading: locationMachineStatsLoading,
+    refreshMachineStats: refreshLocationMachineStats,
+  } = useLocationMachineStats(undefined, null);
 
   // Manufacturer performance data
   const [manufacturerData, setManufacturerData] = useState<
@@ -217,7 +226,6 @@ export default function MachinesTab() {
       totalGamesPlayed: number;
     }>
   >([]);
-  const [manufacturerLoading] = useState(false);
 
   // Games performance data
   const [gamesData, setGamesData] = useState<
@@ -232,7 +240,6 @@ export default function MachinesTab() {
       totalGamesPlayed: number;
     }>
   >([]);
-  const [gamesLoading] = useState(false);
 
   // Summary calculations (now calculated in useMemo, no state needed)
   const [locations, setLocations] = useState<
@@ -244,6 +251,7 @@ export default function MachinesTab() {
   const [overviewLoading, setOverviewLoading] = useState(true);
 
   const [offlineLoading, setOfflineLoading] = useState(false);
+  // Removed offlineInitialLoad - no longer needed with simplified loading logic
   const [evaluationLoading, setEvaluationLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -422,7 +430,6 @@ export default function MachinesTab() {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const [offlineSearchTerm, setOfflineSearchTerm] = useState('');
-  const [evaluationSearchTerm, setEvaluationSearchTerm] = useState('');
 
   const [onlineStatusFilter, setOnlineStatusFilter] = useState('all'); // New filter for online/offline
 
@@ -437,22 +444,24 @@ export default function MachinesTab() {
   const [offlineSelectedLocation, setOfflineSelectedLocation] =
     useState<string>('all');
 
-  // Fetch locations data
+  // Fetch locations data with SAS information
   const fetchLocationsData = useCallback(async () => {
     try {
-      const params: Record<string, string> = {};
+      const params: Record<string, string> = {
+        summary: 'true', // Use summary mode to get sasMachines count
+      };
       if (selectedLicencee && selectedLicencee !== 'all') {
         params.licensee = selectedLicencee;
       }
 
-      const response = await axios.get('/api/locations', { params });
+      const response = await axios.get('/api/reports/locations', { params });
 
-      const locationsData = response.data.locations || [];
+      const locationsData = response.data.data || [];
       const mappedLocations = locationsData.map(
         (loc: Record<string, unknown>) => ({
-          id: loc._id,
-          name: loc.name,
-          sasEnabled: loc.sasEnabled || false, // Default to false if not available
+          id: loc.location || loc._id,
+          name: loc.locationName || loc.name,
+          sasEnabled: (loc.sasMachines as number) > 0, // Use sasMachines count like locations tab
         })
       );
 
@@ -751,7 +760,7 @@ export default function MachinesTab() {
 
   // Fetch offline machines (batch-based, loads on tab switch)
   const fetchOfflineMachines = useCallback(
-    async (batch: number = 1) => {
+    async (batch: number = 1, search?: string) => {
       setOfflineLoading(true);
       setLoading(true);
 
@@ -776,6 +785,11 @@ export default function MachinesTab() {
           params.endDate = selectedDateRange.end.toISOString();
         }
 
+        // Add search parameter if provided (for backend search)
+        if (search && search.trim()) {
+          params.search = search.trim();
+        }
+
         console.warn(
           `🔍 Fetching offline machines with params: ${JSON.stringify(params)}`
         );
@@ -788,13 +802,19 @@ export default function MachinesTab() {
           const { data: offlineMachinesData } = response.data;
           const newOfflineMachines = offlineMachinesData || [];
 
-          setAllOfflineMachines(prev => {
-            const existingIds = new Set(prev.map(m => m.machineId));
-            const uniqueNewMachines = newOfflineMachines.filter(
-              (m: MachineData) => !existingIds.has(m.machineId)
-            );
-            return [...prev, ...uniqueNewMachines];
-          });
+          // If this is a search query, replace all machines (backend search)
+          // Otherwise, accumulate machines (batch loading)
+          if (search && search.trim()) {
+            setAllOfflineMachines(newOfflineMachines);
+          } else {
+            setAllOfflineMachines(prev => {
+              const existingIds = new Set(prev.map(m => m.machineId));
+              const uniqueNewMachines = newOfflineMachines.filter(
+                (m: MachineData) => !existingIds.has(m.machineId)
+              );
+              return [...prev, ...uniqueNewMachines];
+            });
+          }
         } catch (error) {
           // Silently ignore cancellation errors
           if (
@@ -817,6 +837,8 @@ export default function MachinesTab() {
       if (result !== null) {
         setOfflineLoading(false);
         setLoading(false);
+        // Mark initial load as complete after first successful fetch
+        // Initial load complete
       }
       // If result is null (canceled), keep showing skeleton until next request completes
       // Don't clear loading state so skeleton continues showing
@@ -845,9 +867,19 @@ export default function MachinesTab() {
   // Handle evaluation search change
 
   // Handle offline search change
-  const handleOfflineSearchChange = useCallback((value: string) => {
-    setOfflineSearchTerm(value);
-  }, []);
+  const handleOfflineSearchChange = useCallback(
+    (value: string) => {
+      setOfflineSearchTerm(value);
+      // Reset page when search changes
+      setOfflineCurrentPage(0);
+      // Reset accumulated machines when search changes (will be rebuilt from allOfflineMachines)
+      if (!value.trim()) {
+        // If search is cleared, rebuild accumulated from allOfflineMachines
+        setAccumulatedOfflineMachines(allOfflineMachines);
+      }
+    },
+    [allOfflineMachines]
+  );
 
   // Load initial batch for overview on mount and when filters change
   // Use debouncedSearchTerm to avoid API calls on every keystroke
@@ -922,8 +954,10 @@ export default function MachinesTab() {
     if (activeTab === 'offline') {
       // Clear data and set loading state FIRST to ensure skeleton shows
       setAllOfflineMachines([]);
+      setAccumulatedOfflineMachines([]);
       setOfflineLoadedBatches(new Set([1]));
       setOfflineCurrentPage(0);
+      // Filters changed - will trigger new fetch
       setOfflineLoading(true);
       setLoading(true);
       // Use setTimeout to ensure state updates are applied before fetch
@@ -948,9 +982,18 @@ export default function MachinesTab() {
     setLoading,
   ]);
 
+  // Update accumulated offline machines when new data arrives (only when not searching)
+  useEffect(() => {
+    // Only update accumulated when not searching (batch loading)
+    if (!offlineSearchTerm.trim() && allOfflineMachines.length > 0) {
+      setAccumulatedOfflineMachines(allOfflineMachines);
+    }
+  }, [allOfflineMachines, offlineSearchTerm]);
+
   // Fetch next batch for offline when crossing batch boundaries
   useEffect(() => {
-    if (activeTab !== 'offline' || offlineLoading) return;
+    if (activeTab !== 'offline' || offlineLoading || offlineSearchTerm.trim())
+      return; // Skip batch loading when searching
 
     const currentBatch = calculateOfflineBatchNumber(offlineCurrentPage);
     const isLastPageOfBatch =
@@ -977,6 +1020,7 @@ export default function MachinesTab() {
     offlinePagesPerBatch,
     offlineLoadedBatches,
     calculateOfflineBatchNumber,
+    offlineSearchTerm,
   ]);
 
   const handleExportMeters = async (format: 'pdf' | 'excel') => {
@@ -1013,32 +1057,71 @@ export default function MachinesTab() {
     return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
   }, [allOverviewMachines.length, overviewItemsPerPage]);
 
-  // Filter offline data based on search and location (filter first)
-  const filteredOfflineData = useMemo(() => {
-    const filtered = allOfflineMachines.filter(machine => {
-      const matchesSearch =
-        (machine.machineName || '')
-          .toLowerCase()
-          .includes(offlineSearchTerm.toLowerCase()) ||
-        (machine.gameTitle || '')
-          .toLowerCase()
-          .includes(offlineSearchTerm.toLowerCase()) ||
-        (machine.manufacturer || '')
-          .toLowerCase()
-          .includes(offlineSearchTerm.toLowerCase()) ||
-        (machine.locationName || '')
-          .toLowerCase()
-          .includes(offlineSearchTerm.toLowerCase());
+  // Frontend filter: First try to filter from accumulated offline machines
+  const frontendFilteredOfflineMachines = useMemo(() => {
+    if (!offlineSearchTerm.trim()) {
+      return accumulatedOfflineMachines;
+    }
 
+    const searchLower = offlineSearchTerm.toLowerCase().trim();
+    return accumulatedOfflineMachines.filter(machine => {
+      const serialNumber = (machine.serialNumber || '').toLowerCase();
+      const customName = (machine.customName || '').toLowerCase();
+      const gameTitle = (machine.gameTitle || '').toLowerCase();
+      const machineName = (machine.machineName || '').toLowerCase();
+      return (
+        serialNumber.includes(searchLower) ||
+        customName.includes(searchLower) ||
+        gameTitle.includes(searchLower) ||
+        machineName.includes(searchLower)
+      );
+    });
+  }, [accumulatedOfflineMachines, offlineSearchTerm]);
+
+  // Determine if we need backend search:
+  // - If frontend filter has results, use those
+  // - If frontend filter has no results AND search term is not empty, trigger backend search
+  const shouldUseBackendSearchOffline = useMemo(() => {
+    if (!offlineSearchTerm.trim()) {
+      return false;
+    }
+    // If frontend filter found results, don't use backend
+    if (frontendFilteredOfflineMachines.length > 0) {
+      return false;
+    }
+    // Only use backend if frontend found nothing
+    return true;
+  }, [offlineSearchTerm, frontendFilteredOfflineMachines.length]);
+
+  // Use frontend filtered machines if available, otherwise use backend search results
+  const offlineMachinesForPagination = shouldUseBackendSearchOffline
+    ? allOfflineMachines
+    : frontendFilteredOfflineMachines;
+
+  // Filter offline data based on location
+  const filteredOfflineData = useMemo(() => {
+    const filtered = offlineMachinesForPagination.filter(machine => {
       const matchesLocation =
         offlineSelectedLocation === 'all' ||
         offlineSelectedLocation === machine.locationId;
 
-      return matchesSearch && matchesLocation;
+      return matchesLocation;
     });
 
     return filtered;
-  }, [allOfflineMachines, offlineSearchTerm, offlineSelectedLocation]);
+  }, [offlineMachinesForPagination, offlineSelectedLocation]);
+
+  // Trigger backend search only if frontend filter found no results
+  useEffect(() => {
+    if (shouldUseBackendSearchOffline) {
+      // Use debounced search term for backend query
+      const timeoutId = setTimeout(() => {
+        fetchOfflineMachines(1, offlineSearchTerm);
+      }, 500); // Debounce backend search
+      return () => clearTimeout(timeoutId);
+    }
+    return undefined;
+  }, [shouldUseBackendSearchOffline, offlineSearchTerm, fetchOfflineMachines]);
 
   // Get items for current page from filtered offline machines (paginate after filtering)
   const paginatedOfflineMachines = useMemo(() => {
@@ -1054,13 +1137,12 @@ export default function MachinesTab() {
     offlinePagesPerBatch,
   ]);
 
-  // Calculate total pages for offline based on all loaded batches (like overview tab)
-  // This ensures we only show pages for data we've actually loaded
+  // Calculate total pages for offline based on filtered data
   const offlineTotalPages = useMemo(() => {
-    const totalItems = allOfflineMachines.length;
+    const totalItems = filteredOfflineData.length;
     const totalPagesFromItems = Math.ceil(totalItems / offlineItemsPerPage);
     return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [allOfflineMachines.length, offlineItemsPerPage]);
+  }, [filteredOfflineData.length, offlineItemsPerPage]);
 
   // Helper functions for performance analysis
   const getPerformanceRating = (holdDifference: number) => {
@@ -1160,30 +1242,16 @@ export default function MachinesTab() {
     });
   }, [allMachines]);
 
-  // Filter evaluation data based on search
+  // Filter evaluation data based on location selection
   const filteredEvaluationData = useMemo(() => {
     return evaluationData.filter(machine => {
-      const matchesSearch =
-        (machine.machineName || '')
-          .toLowerCase()
-          .includes(evaluationSearchTerm.toLowerCase()) ||
-        (machine.gameTitle || '')
-          .toLowerCase()
-          .includes(evaluationSearchTerm.toLowerCase()) ||
-        (machine.manufacturer || '')
-          .toLowerCase()
-          .includes(evaluationSearchTerm.toLowerCase()) ||
-        (machine.locationName || '')
-          .toLowerCase()
-          .includes(evaluationSearchTerm.toLowerCase());
-
       const matchesLocation =
         evaluationSelectedLocation === 'all' ||
         evaluationSelectedLocation === machine.locationId;
 
-      return matchesSearch && matchesLocation;
+      return matchesLocation;
     });
-  }, [evaluationData, evaluationSearchTerm, evaluationSelectedLocation]);
+  }, [evaluationData, evaluationSelectedLocation]);
 
   // Process data for charts (based on Angular logic)
   const processedManufacturerData = useMemo(() => {
@@ -1776,6 +1844,14 @@ export default function MachinesTab() {
     }
   }, [selectedLicencee, activeTab]);
 
+  // Ensure locations are fetched when evaluation tab is active
+  useEffect(() => {
+    if (activeTab === 'evaluation') {
+      // Always fetch locations when evaluation tab is active to ensure fresh data
+      fetchLocationsData();
+    }
+  }, [activeTab, fetchLocationsData]);
+
   // Effects to trigger data refetch when location selections change
   useEffect(() => {
     if (activeTab === 'overview' && overviewSelectedLocation) {
@@ -1789,7 +1865,10 @@ export default function MachinesTab() {
       evaluationSelectedLocation &&
       evaluationSelectedLocation !== ''
     ) {
-      fetchAllMachines();
+      setEvaluationLoading(true);
+      fetchAllMachines().finally(() => {
+        setEvaluationLoading(false);
+      });
     }
   }, [
     evaluationSelectedLocation,
@@ -2228,10 +2307,14 @@ export default function MachinesTab() {
             <Card className="min-h-[120px]">
               <CardContent className="flex h-full flex-col justify-center p-4">
                 <div className="break-words text-lg font-bold leading-tight text-blue-600 sm:text-xl lg:text-2xl">
-                  {locationMachineStats?.onlineMachines || 0}/
-                  {locationMachineStats?.totalMachines ||
-                    machineStats?.totalCount ||
-                    0}
+                  {locationMachineStatsLoading ? (
+                    <span className="text-gray-400">...</span>
+                  ) : (
+                    <>
+                      {locationMachineStats?.onlineMachines || 0}/
+                      {locationMachineStats?.totalMachines || 0}
+                    </>
+                  )}
                 </div>
                 <p className="mt-1 break-words text-xs text-muted-foreground sm:text-sm">
                   Online Machines
@@ -2330,6 +2413,7 @@ export default function MachinesTab() {
                   try {
                     await Promise.all([
                       fetchMachineStats(),
+                      refreshLocationMachineStats(),
                       fetchOverviewMachines(1, searchTerm),
                     ]);
                   } finally {
@@ -2947,14 +3031,6 @@ export default function MachinesTab() {
         <TabsContent value="evaluation" className="mt-2 space-y-6">
           {/* Filters for Evaluation Tab */}
           <div className="mb-6 flex flex-col items-center gap-4 md:flex-row">
-            <div className="flex-1">
-              <Input
-                placeholder="Search machines..."
-                value={evaluationSearchTerm}
-                onChange={e => setEvaluationSearchTerm(e.target.value)}
-                className="w-full border-gray-300 text-gray-900 placeholder:text-gray-600 focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
             <div className="w-full md:w-[420px]">
               <LocationSingleSelect
                 locations={locations}
@@ -2964,16 +3040,23 @@ export default function MachinesTab() {
                 includeAllOption={true}
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex w-full gap-2 sm:w-auto">
               <Button
                 variant="outline"
                 size="sm"
+                className="flex-1 sm:flex-initial"
                 onClick={async () => {
                   setEvaluationLoading(true);
+                  setStatsLoading(true);
                   try {
-                    await fetchAllMachines();
+                    await Promise.all([
+                      fetchAllMachines(),
+                      fetchMachineStats(),
+                      refreshLocationMachineStats(),
+                    ]);
                   } finally {
                     setEvaluationLoading(false);
+                    setStatsLoading(false);
                   }
                 }}
               >
@@ -2981,7 +3064,7 @@ export default function MachinesTab() {
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">
                     <Download className="mr-2 h-4 w-4" />
                     Export
                     <ChevronDown className="ml-2 h-4 w-4" />
@@ -3030,17 +3113,26 @@ export default function MachinesTab() {
             <>
               {/* Manufacturers Performance Chart */}
               <div className="mb-6">
-                {manufacturerLoading ? (
-                  <ChartSkeleton />
-                ) : manufacturerData && manufacturerData.length > 0 ? (
-                  <ManufacturerPerformanceChart data={manufacturerData} />
-                ) : (
-                  <ChartNoData
-                    title="Manufacturers Performance"
-                    icon={<BarChart3 className="h-5 w-5" />}
-                    message="No manufacturer performance data available for the selected location"
-                  />
-                )}
+                {(() => {
+                  // Show skeleton if loading OR if no machines data loaded yet
+                  if (evaluationLoading || allMachines.length === 0) {
+                    return <ChartSkeleton />;
+                  }
+                  // Show chart if data exists
+                  if (manufacturerData && manufacturerData.length > 0) {
+                    return (
+                      <ManufacturerPerformanceChart data={manufacturerData} />
+                    );
+                  }
+                  // Show no data message only if we're not loading and have machines but no manufacturer data
+                  return (
+                    <ChartNoData
+                      title="Manufacturers Performance"
+                      icon={<BarChart3 className="h-5 w-5" />}
+                      message="No manufacturer performance data available for the selected location"
+                    />
+                  );
+                })()}
               </div>
 
               {/* Summary Section */}
@@ -3059,32 +3151,46 @@ export default function MachinesTab() {
 
               {/* Games Performance Chart */}
               <div className="mb-6">
-                {gamesLoading ? (
-                  <ChartSkeleton />
-                ) : gamesData && gamesData.length > 0 ? (
-                  <GamesPerformanceChart data={gamesData} />
-                ) : (
-                  <ChartNoData
-                    title="Games Performance"
-                    icon={<BarChart3 className="h-5 w-5" />}
-                    message="No games performance data available for the selected location"
-                  />
-                )}
+                {(() => {
+                  // Show skeleton if loading OR if no machines data loaded yet
+                  if (evaluationLoading || allMachines.length === 0) {
+                    return <ChartSkeleton />;
+                  }
+                  // Show chart if data exists
+                  if (gamesData && gamesData.length > 0) {
+                    return <GamesPerformanceChart data={gamesData} />;
+                  }
+                  // Show no data message only if we're not loading and have machines but no games data
+                  return (
+                    <ChartNoData
+                      title="Games Performance"
+                      icon={<BarChart3 className="h-5 w-5" />}
+                      message="No games performance data available for the selected location"
+                    />
+                  );
+                })()}
               </div>
 
               {/* Games Performance Revenue Chart */}
               <div className="mb-6">
-                {gamesLoading ? (
-                  <ChartSkeleton />
-                ) : gamesData && gamesData.length > 0 ? (
-                  <GamesPerformanceRevenueChart data={gamesData} />
-                ) : (
-                  <ChartNoData
-                    title="Games Performance Revenue"
-                    icon={<BarChart3 className="h-5 w-5" />}
-                    message="No games revenue data available for the selected location"
-                  />
-                )}
+                {(() => {
+                  // Show skeleton if loading OR if no machines data loaded yet
+                  if (evaluationLoading || allMachines.length === 0) {
+                    return <ChartSkeleton />;
+                  }
+                  // Show chart if data exists
+                  if (gamesData && gamesData.length > 0) {
+                    return <GamesPerformanceRevenueChart data={gamesData} />;
+                  }
+                  // Show no data message only if we're not loading and have machines but no games data
+                  return (
+                    <ChartNoData
+                      title="Games Performance Revenue"
+                      icon={<BarChart3 className="h-5 w-5" />}
+                      message="No games revenue data available for the selected location"
+                    />
+                  );
+                })()}
               </div>
 
               {/* Top 5 Machines Table */}
@@ -3735,79 +3841,90 @@ export default function MachinesTab() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {offlineLoading || allOfflineMachines.length === 0 ? (
+              {/* Search and filters - always visible, never skeleton */}
+              <div className="mb-6 flex flex-col gap-4 md:flex-row">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Search machines..."
+                    value={offlineSearchTerm}
+                    onChange={e => handleOfflineSearchChange(e.target.value)}
+                    className="w-full border-gray-300 text-gray-900 placeholder:text-gray-600 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="w-full md:w-[420px]">
+                  <LocationSingleSelect
+                    locations={locations}
+                    selectedLocation={offlineSelectedLocation}
+                    onSelectionChange={setOfflineSelectedLocation}
+                    placeholder="Select Location"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setOfflineLoading(true);
+                      setStatsLoading(true);
+                      try {
+                        await Promise.all([
+                          fetchOfflineMachines(1),
+                          fetchMachineStats(),
+                          refreshLocationMachineStats(),
+                        ]);
+                      } finally {
+                        setOfflineLoading(false);
+                        setStatsLoading(false);
+                      }
+                    }}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Download className="mr-2 h-4 w-4" />
+                        Export
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleExportMeters('pdf')}
+                        className="cursor-pointer"
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Export as PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExportMeters('excel')}
+                        className="cursor-pointer"
+                      >
+                        <FileSpreadsheet className="mr-2 h-4 w-4" />
+                        Export as Excel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <Badge variant="destructive" className="mb-2">
+                  {locationMachineStats?.offlineMachines || 0} Machines Offline
+                </Badge>
+              </div>
+
+              {/* Show skeleton while loading */}
+              {offlineLoading ? (
                 <MachinesOfflineSkeleton />
+              ) : filteredOfflineData.length === 0 ? (
+                <div className="py-8 text-center text-gray-500">
+                  {offlineSearchTerm.trim()
+                    ? 'No offline machines found matching your search.'
+                    : 'No offline machines found for the selected filters.'}
+                </div>
               ) : (
                 <>
-                  <div className="mb-6 flex flex-col gap-4 md:flex-row">
-                    <div className="flex-1">
-                      <Input
-                        placeholder="Search machines..."
-                        value={offlineSearchTerm}
-                        onChange={e =>
-                          handleOfflineSearchChange(e.target.value)
-                        }
-                        className="w-full border-gray-300 text-gray-900 placeholder:text-gray-600 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="w-full md:w-[420px]">
-                      <LocationSingleSelect
-                        locations={locations}
-                        selectedLocation={offlineSelectedLocation}
-                        onSelectionChange={setOfflineSelectedLocation}
-                        placeholder="Select Location"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          setOfflineLoading(true);
-                          try {
-                            await fetchOfflineMachines(1);
-                          } finally {
-                            setOfflineLoading(false);
-                          }
-                        }}
-                      >
-                        <RefreshCw className="mr-2 h-4 w-4" /> Refresh
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <Download className="mr-2 h-4 w-4" />
-                            Export
-                            <ChevronDown className="ml-2 h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleExportMeters('pdf')}
-                            className="cursor-pointer"
-                          >
-                            <FileText className="mr-2 h-4 w-4" />
-                            Export as PDF
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleExportMeters('excel')}
-                            className="cursor-pointer"
-                          >
-                            <FileSpreadsheet className="mr-2 h-4 w-4" />
-                            Export as Excel
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-
-                  <div className="mb-4">
-                    <Badge variant="destructive" className="mb-2">
-                      {locationMachineStats?.offlineMachines || 0} Machines
-                      Offline
-                    </Badge>
-                  </div>
-
                   {/* Desktop Table View */}
                   <div className="hidden rounded-md border md:block">
                     <div className="overflow-x-auto">
@@ -3968,9 +4085,14 @@ export default function MachinesTab() {
                                 </button>
                               </td>
                               <td className="p-3 text-sm">
-                                {new Date(
-                                  machine.lastActivity
-                                ).toLocaleString()}
+                                {new Date(machine.lastActivity).toLocaleString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true,
+                                })}
                               </td>
                               <td className="p-3 text-sm">
                                 {machine.offlineDurationFormatted}
@@ -4150,7 +4272,14 @@ export default function MachinesTab() {
                               Last Activity:
                             </span>
                             <span className="font-medium">
-                              {new Date(machine.lastActivity).toLocaleString()}
+                              {new Date(machine.lastActivity).toLocaleString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true,
+                              })}
                             </span>
                           </div>
                           <div className="flex justify-between">
@@ -4190,7 +4319,14 @@ export default function MachinesTab() {
                               Last Activity:
                             </span>
                             <p>
-                              {new Date(machine.lastActivity).toLocaleString()}
+                              {new Date(machine.lastActivity).toLocaleString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true,
+                              })}
                             </p>
                           </div>
                           <div>
@@ -4207,13 +4343,15 @@ export default function MachinesTab() {
               )}
 
               {/* Offline Machines Pagination */}
-              {!offlineLoading && offlineTotalPages > 1 && (
-                <PaginationControls
-                  currentPage={offlineCurrentPage}
-                  totalPages={offlineTotalPages}
-                  setCurrentPage={setOfflineCurrentPage}
-                />
-              )}
+              {!offlineLoading &&
+                offlineTotalPages > 1 &&
+                filteredOfflineData.length > 0 && (
+                  <PaginationControls
+                    currentPage={offlineCurrentPage}
+                    totalPages={offlineTotalPages}
+                    setCurrentPage={setOfflineCurrentPage}
+                  />
+                )}
             </CardContent>
           </Card>
         </TabsContent>

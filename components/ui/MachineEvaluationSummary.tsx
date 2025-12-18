@@ -18,7 +18,7 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import PaginationControls from '@/components/ui/PaginationControls';
 import { formatAmount } from '@/lib/helpers/rates';
 import { useRouter } from 'next/navigation';
 
@@ -85,31 +86,44 @@ function MachinesWithDataModal({
   formatValue: (value: number) => string;
 }) {
   const router = useRouter();
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 10;
 
   // Sort machines by value descending
   const sortedMachines = [...details.allMachinesWithData].sort(
     (a, b) => b.value - a.value
   );
 
+  // Calculate pagination
+  const totalPages = Math.ceil(sortedMachines.length / itemsPerPage);
+  const startIndex = currentPage * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedMachines = sortedMachines.slice(startIndex, endIndex);
+
+  // Reset to first page when modal opens or machines change
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentPage(0);
+    }
+  }, [isOpen, sortedMachines.length]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto w-[95vw] sm:w-full">
         <DialogHeader>
           <DialogTitle>
             Machines with {details.metricName} Activity
           </DialogTitle>
-          <DialogDescription className="space-y-2">
-            <p>
-              This list shows all {details.machinesWithData} machines that have
-              recorded {details.metricName.toLowerCase()} activity during the
-              selected time period and location filter.
-            </p>
-            <p className="text-xs text-gray-600">
-              The remaining {details.totalMachines - details.machinesWithData}{' '}
-              machines have no {details.metricName.toLowerCase()} activity for
-              this period and are excluded from the calculation.
-            </p>
+          <DialogDescription>
+            This list shows all {details.machinesWithData} machines that have
+            recorded {details.metricName.toLowerCase()} activity during the
+            selected time period and location filter.
           </DialogDescription>
+          <p className="mt-2 text-xs text-gray-600">
+            The remaining {details.totalMachines - details.machinesWithData}{' '}
+            machines have no {details.metricName.toLowerCase()} activity for
+            this period and are excluded from the calculation.
+          </p>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -141,7 +155,9 @@ function MachinesWithDataModal({
               All Machines with {details.metricName} Activity (sorted by{' '}
               {details.metricName.toLowerCase()} value, highest to lowest):
             </p>
-            <div className="overflow-x-auto">
+            
+            {/* Desktop Table View */}
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-gray-300 bg-gray-100">
@@ -196,7 +212,7 @@ function MachinesWithDataModal({
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedMachines.map(machine => {
+                  {paginatedMachines.map(machine => {
                     const isInTopMachines = details.topMachines.some(
                       tm => tm.machineId === machine.machineId
                     );
@@ -366,6 +382,162 @@ function MachinesWithDataModal({
                 </tfoot>
               </table>
             </div>
+
+            {/* Mobile Card View */}
+            <div className="space-y-3 md:hidden">
+              {paginatedMachines.map(machine => {
+                const isInTopMachines = details.topMachines.some(
+                  tm => tm.machineId === machine.machineId
+                );
+                return (
+                  <div
+                    key={machine.machineId}
+                    className={`rounded-lg border p-4 ${
+                      isInTopMachines
+                        ? 'border-blue-300 bg-blue-50'
+                        : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <div className="mb-3 space-y-2">
+                      <div>
+                        <button
+                          onClick={() => {
+                            router.push(`/cabinets/${machine.machineId}`);
+                          }}
+                          className="group flex items-center gap-1.5 text-left"
+                        >
+                          <span className="text-sm font-semibold text-gray-900 underline decoration-blue-600 decoration-dotted decoration-2 underline-offset-2">
+                            {machine.machineName}
+                          </span>
+                          <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-xs text-gray-600">
+                        {machine.locationName ? (
+                          <button
+                            onClick={() => {
+                              router.push(`/locations/${machine.locationId}`);
+                            }}
+                            className="group flex items-center gap-1 transition-opacity hover:opacity-80"
+                          >
+                            <span className="underline decoration-blue-600 decoration-dotted decoration-2 underline-offset-2">
+                              {machine.locationName}
+                            </span>
+                            <ExternalLink className="h-3 w-3 flex-shrink-0 text-blue-600" />
+                          </button>
+                        ) : (
+                          <span className="text-gray-500">Unknown Location</span>
+                        )}
+                        {machine.manufacturer && (
+                          <>
+                            <span>•</span>
+                            <span>{machine.manufacturer}</span>
+                          </>
+                        )}
+                        {machine.gameTitle && (
+                          <>
+                            <span>•</span>
+                            <span>{machine.gameTitle}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 border-t border-gray-200 pt-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">
+                          {details.metricName} Value:
+                        </span>
+                        <span className="font-semibold text-gray-900">
+                          {formatValue(machine.value)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">% of Total:</span>
+                        <span className="text-gray-700">
+                          {machine.percentageOfTotal.toFixed(2)}%
+                        </span>
+                      </div>
+                      {details.metricName === 'Handle' && (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Net Win:</span>
+                            <span className="text-gray-700">
+                              {machine.netWin !== undefined
+                                ? formatValue(machine.netWin)
+                                : '-'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Games Played:</span>
+                            <span className="text-gray-700">
+                              {machine.gamesPlayed !== undefined
+                                ? machine.gamesPlayed.toLocaleString()
+                                : '-'}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                      {details.metricName === 'Win' && (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Handle:</span>
+                            <span className="text-gray-700">
+                              {machine.coinIn !== undefined
+                                ? formatValue(machine.coinIn)
+                                : '-'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Games Played:</span>
+                            <span className="text-gray-700">
+                              {machine.gamesPlayed !== undefined
+                                ? machine.gamesPlayed.toLocaleString()
+                                : '-'}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                      {details.metricName === 'Games Played' && (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Handle:</span>
+                            <span className="text-gray-700">
+                              {machine.coinIn !== undefined
+                                ? formatValue(machine.coinIn)
+                                : '-'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Net Win:</span>
+                            <span className="text-gray-700">
+                              {machine.netWin !== undefined
+                                ? formatValue(machine.netWin)
+                                : '-'}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
+                <p className="text-sm text-gray-600">
+                  Showing {startIndex + 1}-{Math.min(endIndex, sortedMachines.length)} of{' '}
+                  {sortedMachines.length} machines
+                </p>
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  setCurrentPage={setCurrentPage}
+                />
+              </div>
+            )}
           </div>
 
           <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">

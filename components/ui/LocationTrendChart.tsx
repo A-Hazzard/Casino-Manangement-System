@@ -25,20 +25,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatTrinidadTime } from '@/lib/utils/timezone';
 import { TimePeriod } from '@/shared/types/common';
 import {
-  formatDate,
-  formatDisplayDate,
-  formatTime12Hour,
+    formatDate,
+    formatDisplayDate,
+    formatTime12Hour,
 } from '@/shared/utils/dateFormat';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+    CartesianGrid,
+    Line,
+    LineChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis
 } from 'recharts';
 
 type LocationTrendChartProps = {
@@ -349,181 +348,198 @@ export function LocationTrendChart({
     return undefined;
   }, [filteredData, locations, locationNames]);
 
-  const [viewportWidth, setViewportWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1200);
-
-  useEffect(() => {
-    const onResize = () => setViewportWidth(window.innerWidth);
-    window.addEventListener('resize', onResize);
-    onResize();
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  const isSmall = viewportWidth < 768;
-  // Calculate width for internal scrolling container
-  const chartWidth = Math.max(filteredData.length * 80, 700);
+  // Calculate width based on data length to ensure points have enough space
+  // 60px per data point gives enough room for labels
+  const minWidth = Math.max(700, filteredData.length * 60);
 
   return (
     <div className="w-full">
       <Card className="w-full">
-        <CardHeader className="pb-3">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             {icon}
             {title}
           </CardTitle>
         </CardHeader>
-        <CardContent className="w-full">
-          <div className="w-full overflow-x-auto">
-            <div style={{ width: isSmall ? chartWidth : '100%' }}>
-              <ResponsiveContainer width={isSmall ? chartWidth : '100%'} height={380}>
-                <LineChart
-                  data={filteredData}
-                  margin={{ top: 5, right: 20, bottom: 80, left: 0 }}
-                >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey={shouldShowTimes ? 'time' : 'day'}
-              tickFormatter={(val, index) => {
-                if (shouldShowTimes) {
-                  // For Today/Yesterday/Custom single day: show times ONLY (no date, no seconds)
-                  const day = filteredData[index]?.day;
-                  if (day && val) {
-                    // Handle both hourly (HH:00) and minute-level (HH:MM) formats
-                    // API returns times in UTC format
-                    const timeParts = (val as string).split(':');
-                    const hours = timeParts[0] || '00';
-                    const minutes = timeParts[1] || '00';
-                    const utcDateString = `${day}T${hours}:${minutes}:00Z`;
-                    const utcDate = new Date(utcDateString);
-                    // Convert UTC to Trinidad time (UTC-4) for display
-                    // Force time only format: "8:00 AM"
-                    return formatTrinidadTime(utcDate, {
-                      year: undefined,
-                      month: undefined,
-                      day: undefined,
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      second: undefined,
-                      hour12: true,
-                    });
-                  }
-                  return formatTime12Hour(val as string);
-                } else if (shouldShowMonths) {
-                  // For Quarterly: show months
-                  const date = new Date(val as string);
-                  return formatDate(date, { month: 'short', year: 'numeric' });
-                } else {
-                  // For 7d, 30d, All Time: show dates
-                  return formatDisplayDate(val);
-                }
-              }}
-              interval={
-                shouldShowTimes && hasMinuteLevelData
-                  ? undefined
-                  : shouldShowTimes
-                    ? undefined
-                    : 'preserveStartEnd'
-              }
-              minTickGap={
-                shouldShowTimes &&
-                hasMinuteLevelData &&
-                granularity === 'minute'
-                  ? 30
-                  : shouldShowTimes && hasMinuteLevelData
-                    ? 30
-                    : shouldShowTimes && granularity === 'hourly'
-                      ? 60
-                      : shouldShowTimes
-                        ? 60
-                        : undefined
-              }
-              angle={
-                shouldShowTimes && filteredData.length > 15 ? -45 : undefined
-              }
-              textAnchor={
-                shouldShowTimes && filteredData.length > 15 ? 'end' : undefined
-              }
-            />
-            <YAxis
-              domain={yAxisDomain || ['auto', 'auto']}
-              tickFormatter={value => {
-                // Format large numbers compactly for Y-axis to prevent overflow (like dashboard chart)
-                const numValue =
-                  typeof value === 'number'
-                    ? value
-                    : parseFloat(String(value)) || 0;
-                if (numValue === 0) return '0';
-                if (numValue < 1000) return numValue.toFixed(0);
-                if (numValue < 1000000)
-                  return `${(numValue / 1000).toFixed(1)}K`;
-                if (numValue < 1000000000)
-                  return `${(numValue / 1000000).toFixed(1)}M`;
-                if (numValue < 1000000000000)
-                  return `${(numValue / 1000000000).toFixed(1)}B`;
-                return `${(numValue / 1000000000000).toFixed(1)}T`;
-              }}
-            />
-            <Tooltip
-              formatter={(value: number) => [formatter(value), '']}
-              labelFormatter={(label, payload) => {
-                if (shouldShowTimes && payload && payload[0]) {
-                  const day = payload[0].payload?.day;
-                  if (day && label) {
-                    // Handle both hourly (HH:00) and minute-level (HH:MM) formats
-                    const timeParts = String(label).split(':');
-                    const hours = timeParts[0] || '00';
-                    const minutes = timeParts[1] || '00';
-                    const utcDateString = `${day}T${hours}:${minutes}:00Z`;
-                    const utcDate = new Date(utcDateString);
-                    // Convert UTC to Trinidad time (UTC-4) for display
-                    // Force time only format: "8:00 AM"
-                    return formatTrinidadTime(utcDate, {
-                      year: undefined,
-                      month: undefined,
-                      day: undefined,
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      second: undefined,
-                      hour12: true,
-                    });
-                  }
-                  return formatTime12Hour(label as string);
-                } else if (shouldShowMonths) {
-                  const date = new Date(label as string);
-                  return formatDate(date, { month: 'short', year: 'numeric' });
-                } else {
-                  // Validate date before formatting to prevent "Invalid Date"
-                  const date = new Date(label as string);
-                  if (!isNaN(date.getTime())) {
-                    return formatDisplayDate(label as string);
-                  }
-                  return label as string;
-                }
-              }}
-            />
-            <Legend
-              wrapperStyle={{ paddingTop: '20px', paddingBottom: '10px' }}
-              iconType="line"
-              verticalAlign="bottom"
-            />
+        <CardContent className="w-full pb-6">
+          {/* Fixed Legend outside scroll container */}
+          <div className="mb-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-b pb-4">
             {locations.map((locationId, index) => {
               const displayName = locationNames?.[locationId] || locationId;
+              const color = colors[index % colors.length];
               return (
-                <Line
-                  key={locationId}
-                  type="monotone"
-                  dataKey={displayName}
-                  stroke={colors[index % colors.length]}
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                  name={displayName}
-                />
+                <div key={locationId} className="flex items-center gap-2">
+                  <div
+                    className="h-0.5 w-4"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="text-xs font-medium text-gray-700">
+                    {displayName}
+                  </span>
+                </div>
               );
             })}
-          </LineChart>
-        </ResponsiveContainer>
-              </div>
+          </div>
+
+          {/* Scrollable Container for both Mobile and Desktop */}
+          <div className="touch-pan-x overflow-x-auto overflow-y-hidden">
+            <div style={{ minWidth: `${minWidth}px`, width: '100%' }}>
+              <ResponsiveContainer width="100%" height={380}>
+                <LineChart
+                  data={filteredData}
+                  margin={{ top: 5, right: 30, bottom: 80, left: 10 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey={shouldShowTimes ? 'time' : 'day'}
+                    tickFormatter={(val, index) => {
+                      if (shouldShowTimes) {
+                        // For Today/Yesterday/Custom single day: show times ONLY (no date, no seconds)
+                        const day = filteredData[index]?.day;
+                        if (day && val) {
+                          // Handle both hourly (HH:00) and minute-level (HH:MM) formats
+                          // API returns times in UTC format
+                          const timeParts = (val as string).split(':');
+                          const hours = timeParts[0] || '00';
+                          const minutes = timeParts[1] || '00';
+                          const utcDateString = `${day}T${hours}:${minutes}:00Z`;
+                          const utcDate = new Date(utcDateString);
+                          // Convert UTC to Trinidad time (UTC-4) for display
+                          // Force time only format: "8:00 AM"
+                          return formatTrinidadTime(utcDate, {
+                            year: undefined,
+                            month: undefined,
+                            day: undefined,
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            second: undefined,
+                            hour12: true,
+                          });
+                        }
+                        return formatTime12Hour(val as string);
+                      } else if (shouldShowMonths) {
+                        // For Quarterly: show months
+                        const date = new Date(val as string);
+                        return formatDate(date, {
+                          month: 'short',
+                          year: 'numeric',
+                        });
+                      } else {
+                        // For 7d, 30d, All Time: show dates
+                        return formatDisplayDate(val);
+                      }
+                    }}
+                    interval={
+                      shouldShowTimes && hasMinuteLevelData
+                        ? undefined
+                        : shouldShowTimes
+                          ? undefined
+                          : 'preserveStartEnd'
+                    }
+                    minTickGap={
+                      shouldShowTimes &&
+                      hasMinuteLevelData &&
+                      granularity === 'minute'
+                        ? 30
+                        : shouldShowTimes && hasMinuteLevelData
+                          ? 30
+                          : shouldShowTimes && granularity === 'hourly'
+                            ? 60
+                            : shouldShowTimes
+                              ? 60
+                              : undefined
+                    }
+                    angle={
+                      shouldShowTimes && filteredData.length > 15
+                        ? -45
+                        : undefined
+                    }
+                    textAnchor={
+                      shouldShowTimes && filteredData.length > 15
+                        ? 'end'
+                        : undefined
+                    }
+                  />
+                  <YAxis
+                    domain={yAxisDomain || ['auto', 'auto']}
+                    tickFormatter={value => {
+                      // Format large numbers compactly for Y-axis to prevent overflow (like dashboard chart)
+                      const numValue =
+                        typeof value === 'number'
+                          ? value
+                          : parseFloat(String(value)) || 0;
+                      if (numValue === 0) return '0';
+                      if (numValue < 1000) return numValue.toFixed(0);
+                      if (numValue < 1000000)
+                        return `${(numValue / 1000).toFixed(1)}K`;
+                      if (numValue < 1000000000)
+                        return `${(numValue / 1000000).toFixed(1)}M`;
+                      if (numValue < 1000000000000)
+                        return `${(numValue / 1000000000).toFixed(1)}B`;
+                      return `${(numValue / 1000000000000).toFixed(1)}T`;
+                    }}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [formatter(value), '']}
+                    labelFormatter={(label, payload) => {
+                      if (shouldShowTimes && payload && payload[0]) {
+                        const day = payload[0].payload?.day;
+                        if (day && label) {
+                          // Handle both hourly (HH:00) and minute-level (HH:MM) formats
+                          const timeParts = String(label).split(':');
+                          const hours = timeParts[0] || '00';
+                          const minutes = timeParts[1] || '00';
+                          const utcDateString = `${day}T${hours}:${minutes}:00Z`;
+                          const utcDate = new Date(utcDateString);
+                          // Convert UTC to Trinidad time (UTC-4) for display
+                          // Force time only format: "8:00 AM"
+                          return formatTrinidadTime(utcDate, {
+                            year: undefined,
+                            month: undefined,
+                            day: undefined,
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            second: undefined,
+                            hour12: true,
+                          });
+                        }
+                        return formatTime12Hour(label as string);
+                      } else if (shouldShowMonths) {
+                        const date = new Date(label as string);
+                        return formatDate(date, {
+                          month: 'short',
+                          year: 'numeric',
+                        });
+                      } else {
+                        // Validate date before formatting to prevent "Invalid Date"
+                        const date = new Date(label as string);
+                        if (!isNaN(date.getTime())) {
+                          return formatDisplayDate(label as string);
+                        }
+                        return label as string;
+                      }
+                    }}
+                  />
+                  {locations.map((locationId, index) => {
+                    const displayName =
+                      locationNames?.[locationId] || locationId;
+                    return (
+                      <Line
+                        key={locationId}
+                        type="monotone"
+                        dataKey={displayName}
+                        stroke={colors[index % colors.length]}
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 4 }}
+                        name={displayName}
+                      />
+                    );
+                  })}
+                </LineChart>
+              </ResponsiveContainer>
             </div>
+          </div>
         </CardContent>
       </Card>
     </div>

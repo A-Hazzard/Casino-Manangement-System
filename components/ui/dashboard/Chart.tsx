@@ -1,18 +1,24 @@
+'use client';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { DashboardChartSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
+import type { dashboardData } from '@/lib/types';
 import { ChartProps } from '@/lib/types/componentProps';
 import { formatDisplayDate, formatTime } from '@/shared/utils/dateFormat';
+import { Search } from 'lucide-react';
+import { useRef, useState } from 'react';
 import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+    Area,
+    AreaChart,
+    CartesianGrid,
+    ReferenceArea,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis
 } from 'recharts';
 
-import type { dashboardData } from '@/lib/types';
 
 export default function Chart({
   loadingChartData,
@@ -20,6 +26,9 @@ export default function Chart({
   activeMetricsFilter,
   totals,
 }: ChartProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   // Chart data received for rendering
 
   // Always show skeleton when loading
@@ -447,184 +456,261 @@ export default function Chart({
     ];
   }
 
-  // Shared chart component JSX
-  const chartJSX = (
-    <AreaChart data={gapFilteredChartData}>
-      <CartesianGrid strokeDasharray="3 3" />
-      <XAxis
-        dataKey={isHourlyChart ? 'time' : 'day'}
-        tickFormatter={(val, index) => {
-          if (isHourlyChart) {
-            const day = gapFilteredChartData[index]?.day;
-            if (day && val) {
-              // API returns time in UTC format (HH:00 or HH:MM), combine with day to create UTC date
-              // Then convert to local time for display
-              // Handle both hourly (HH:00) and minute-level (HH:MM) formats
-              const timeParts = val.split(':');
-              const hours = timeParts[0] || '00';
-              const minutes = timeParts[1] || '00';
-              const utcDateString = `${day}T${hours}:${minutes}:00Z`;
-              const utcDate = new Date(utcDateString);
-              // formatTime will convert to local time automatically
-              return formatTime(utcDate);
-            }
-            return val;
-          } else {
-            // For daily charts (7d, 30d, etc.), format the day value
-            // val should be the day string (e.g., "2025-11-16")
-            if (val) {
-              // Try to get the day from the data point if val is not a valid date string
-              const dataPoint = gapFilteredChartData[index];
-              const dayValue = dataPoint?.day || val;
-              // Validate and format the date
-              const date = new Date(dayValue);
-              if (!isNaN(date.getTime())) {
-                return formatDisplayDate(date);
-              }
-              // If val is already a formatted string, return it
-              return String(val);
-            }
-            return '';
-          }
-        }}
-      />
-      <YAxis
-        domain={yAxisDomain || ['auto', 'auto']}
-        tickFormatter={value => {
-          // Format large numbers compactly for Y-axis to prevent overflow
-          const numValue =
-            typeof value === 'number' ? value : parseFloat(String(value)) || 0;
-          if (numValue === 0) return '0';
-          if (numValue < 1000) return numValue.toFixed(0);
-          if (numValue < 1000000) return `${(numValue / 1000).toFixed(1)}K`;
-          if (numValue < 1000000000)
-            return `${(numValue / 1000000).toFixed(1)}M`;
-          if (numValue < 1000000000000)
-            return `${(numValue / 1000000000).toFixed(1)}B`;
-          return `${(numValue / 1000000000000).toFixed(1)}T`;
-        }}
-      />
-      <Tooltip
-        formatter={(value, name) => {
-          // Format value with full number (not abbreviated) in tooltip
-          const numValue =
-            typeof value === 'number' ? value : parseFloat(String(value)) || 0;
-          const formattedValue = numValue.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          });
-          return [formattedValue, name];
-        }}
-        labelFormatter={(label, payload) => {
-          if (isHourlyChart && payload && payload[0]) {
-            const day = payload[0].payload?.day;
-            if (day && label) {
-              // API returns time in UTC format (HH:00 or HH:MM), combine with day to create UTC date
-              // Then convert to local time for display
-              // Handle both hourly (HH:00) and minute-level (HH:MM) formats
-              const timeParts = String(label).split(':');
-              const hours = timeParts[0] || '00';
-              const minutes = timeParts[1] || '00';
-              const utcDateString = `${day}T${hours}:${minutes}:00Z`;
-              const utcDate = new Date(utcDateString);
-              // Check if date is valid before formatting
-              if (isNaN(utcDate.getTime())) {
-                return String(label);
-              }
-              // formatTime will convert to local time automatically
-              return formatTime(utcDate);
-            }
-          }
-          // Validate label before formatting
-          if (!label) {
-            return '';
-          }
-          // Try to get day from payload if available (for daily charts)
-          if (payload && payload[0] && payload[0].payload?.day) {
-            const day = payload[0].payload.day;
-            const testDate = new Date(day);
-            if (!isNaN(testDate.getTime())) {
-              return formatDisplayDate(day);
-            }
-          }
-          // Try to parse and validate the label as a date
-          const testDate = new Date(String(label));
-          if (!isNaN(testDate.getTime())) {
-            return formatDisplayDate(label);
-          }
-          // Fallback to string representation if label is not a valid date
-          return String(label);
-        }}
-      />
-      <Legend />
-      <defs>
-        <linearGradient id="colorMoneyIn" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8} />
-          <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
-        </linearGradient>
-        <linearGradient id="colorMoneyOut" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-        </linearGradient>
-        <linearGradient id="colorWager" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="5%" stopColor="#8A7FFF" stopOpacity={0.8} />
-          <stop offset="95%" stopColor="#8A7FFF" stopOpacity={0} />
-        </linearGradient>
-        <linearGradient id="colorGross" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="5%" stopColor="#f97316" stopOpacity={0.8} />
-          <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      <Area
-        type="monotone"
-        dataKey="moneyIn"
-        stroke="#a855f7"
-        strokeWidth={3}
-        fill="url(#colorMoneyIn)"
-        stackId="1"
-      />
-      <Area
-        type="monotone"
-        dataKey="moneyOut"
-        stroke="#3b82f6"
-        strokeWidth={3}
-        fill="url(#colorMoneyOut)"
-        stackId="2"
-      />
-      <Area
-        type="monotone"
-        dataKey="jackpot"
-        stroke="#8A7FFF"
-        strokeWidth={3}
-        fill="url(#colorWager)"
-        stackId="3"
-      />
-      <Area
-        type="monotone"
-        dataKey="gross"
-        stroke="#f97316"
-        strokeWidth={3}
-        fill="url(#colorGross)"
-        stackId="1"
-      />
-    </AreaChart>
-  );
+  const minWidth = Math.max(600, gapFilteredChartData.length * 50);
+
+  const handleFocus = () => {
+    if (!searchTerm || !scrollRef.current) return;
+
+    const index = gapFilteredChartData.findIndex(item => {
+      const label = isHourlyChart ? item.time : item.day;
+      return String(label).toLowerCase().includes(searchTerm.toLowerCase());
+    });
+
+    if (index !== -1) {
+      setFocusedIndex(index);
+      const containerWidth = scrollRef.current.clientWidth;
+      const slotWidth = minWidth / gapFilteredChartData.length;
+      const targetScroll = (index + 0.5) * slotWidth - (containerWidth / 2);
+      
+      scrollRef.current.scrollTo({
+        left: Math.max(0, targetScroll),
+        behavior: 'smooth'
+      });
+    } else {
+      setFocusedIndex(null);
+    }
+  };
+
+  const legendItems = [
+    { label: 'Money In', color: '#a855f7' },
+    { label: 'Money Out', color: '#3b82f6' },
+    { label: 'Jackpot', color: '#8A7FFF' },
+    { label: 'Gross', color: '#f97316' },
+  ];
 
   return (
-    <div className="rounded-lg bg-container p-0 shadow-md">
-      {/* Mobile: Make chart horizontally scrollable without padding */}
-      <div className="touch-pan-x overflow-x-auto md:hidden">
-        <div className="min-w-[600px]">
-          <ResponsiveContainer width="100%" height={320}>
-            {chartJSX}
-          </ResponsiveContainer>
+    <div className="rounded-lg bg-container p-4 shadow-md">
+      {/* Header with Search */}
+      <div className="mb-6 flex flex-col items-center justify-between gap-4 border-b pb-4 sm:flex-row">
+        <h3 className="text-sm font-semibold text-gray-900">Revenue Trends</h3>
+        <div className="flex w-full max-w-sm items-center space-x-2">
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              type="text"
+              placeholder={isHourlyChart ? "Search time (HH:00)..." : "Search date (YYYY-MM-DD)..."}
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setFocusedIndex(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleFocus();
+              }}
+            />
+          </div>
+          <Button onClick={handleFocus} variant="secondary">
+            Focus
+          </Button>
         </div>
       </div>
-      {/* Desktop: Normal chart without horizontal scroll */}
-      <div className="hidden md:block">
-        <ResponsiveContainer width="100%" height={320}>
-          {chartJSX}
-        </ResponsiveContainer>
+
+      {/* Fixed Legend outside scroll container */}
+      <div className="mb-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-b pb-4">
+        {legendItems.map(item => (
+          <div key={item.label} className="flex items-center gap-2">
+            <div
+              className="h-3 w-3 rounded-sm opacity-80"
+              style={{ backgroundColor: item.color }}
+            />
+            <span className="text-xs font-medium text-gray-700">
+              {item.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Scrollable Container for both Mobile and Desktop */}
+      <div ref={scrollRef} className="touch-pan-x overflow-x-auto overflow-y-hidden">
+        <div style={{ minWidth: `${minWidth}px`, width: '100%' }}>
+          <ResponsiveContainer width="100%" height={320}>
+            <AreaChart data={gapFilteredChartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey={isHourlyChart ? 'time' : 'day'}
+                tickFormatter={(val, index) => {
+                  if (isHourlyChart) {
+                    const day = gapFilteredChartData[index]?.day;
+                    if (day && val) {
+                      // API returns time in UTC format (HH:00 or HH:MM), combine with day to create UTC date
+                      // Then convert to local time for display
+                      // Handle both hourly (HH:00) and minute-level (HH:MM) formats
+                      const timeParts = val.split(':');
+                      const hours = timeParts[0] || '00';
+                      const minutes = timeParts[1] || '00';
+                      const utcDateString = `${day}T${hours}:${minutes}:00Z`;
+                      const utcDate = new Date(utcDateString);
+                      // formatTime will convert to local time automatically
+                      return formatTime(utcDate);
+                    }
+                    return val;
+                  } else {
+                    // For daily charts (7d, 30d, etc.), format the day value
+                    // val should be the day string (e.g., "2025-11-16")
+                    if (val) {
+                      // Try to get the day from the data point if val is not a valid date string
+                      const dataPoint = gapFilteredChartData[index];
+                      const dayValue = dataPoint?.day || val;
+                      // Validate and format the date
+                      const date = new Date(dayValue);
+                      if (!isNaN(date.getTime())) {
+                        return formatDisplayDate(date);
+                      }
+                      // If val is already a formatted string, return it
+                      return String(val);
+                    }
+                    return '';
+                  }
+                }}
+              />
+              <YAxis
+                domain={yAxisDomain || ['auto', 'auto']}
+                tickFormatter={value => {
+                  // Format large numbers compactly for Y-axis to prevent overflow
+                  const numValue =
+                    typeof value === 'number'
+                      ? value
+                      : parseFloat(String(value)) || 0;
+                  if (numValue === 0) return '0';
+                  if (numValue < 1000) return numValue.toFixed(0);
+                  if (numValue < 1000000)
+                    return `${(numValue / 1000).toFixed(1)}K`;
+                  if (numValue < 1000000000)
+                    return `${(numValue / 1000000).toFixed(1)}M`;
+                  if (numValue < 1000000000000)
+                    return `${(numValue / 1000000000).toFixed(1)}B`;
+                  return `${(numValue / 1000000000000).toFixed(1)}T`;
+                }}
+              />
+              <Tooltip
+                formatter={(value, name) => {
+                  // Format value with full number (not abbreviated) in tooltip
+                  const numValue =
+                    typeof value === 'number'
+                      ? value
+                      : parseFloat(String(value)) || 0;
+                  const formattedValue = numValue.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  });
+                  return [formattedValue, name];
+                }}
+                labelFormatter={(label, payload) => {
+                  if (isHourlyChart && payload && payload[0]) {
+                    const day = payload[0].payload?.day;
+                    if (day && label) {
+                      // API returns time in UTC format (HH:00 or HH:MM), combine with day to create UTC date
+                      // Then convert to local time for display
+                      // Handle both hourly (HH:00) and minute-level (HH:MM) formats
+                      const timeParts = String(label).split(':');
+                      const hours = timeParts[0] || '00';
+                      const minutes = timeParts[1] || '00';
+                      const utcDateString = `${day}T${hours}:${minutes}:00Z`;
+                      const utcDate = new Date(utcDateString);
+                      // Check if date is valid before formatting
+                      if (isNaN(utcDate.getTime())) {
+                        return String(label);
+                      }
+                      // formatTime will convert to local time automatically
+                      return formatTime(utcDate);
+                    }
+                  }
+                  // Validate label before formatting
+                  if (!label) {
+                    return '';
+                  }
+                  // Try to get day from payload if available (for daily charts)
+                  if (payload && payload[0] && payload[0].payload?.day) {
+                    const day = payload[0].payload.day;
+                    const testDate = new Date(day);
+                    if (!isNaN(testDate.getTime())) {
+                      return formatDisplayDate(day);
+                    }
+                  }
+                  // Try to parse and validate the label as a date
+                  const testDate = new Date(String(label));
+                  if (!isNaN(testDate.getTime())) {
+                    return formatDisplayDate(label);
+                  }
+                  // Fallback to string representation if label is not a valid date
+                  return String(label);
+                }}
+              />
+              {focusedIndex !== null && gapFilteredChartData[focusedIndex] && (
+                <ReferenceArea
+                  x1={isHourlyChart ? gapFilteredChartData[focusedIndex].time : gapFilteredChartData[focusedIndex].day}
+                  x2={isHourlyChart ? gapFilteredChartData[focusedIndex].time : gapFilteredChartData[focusedIndex].day}
+                  fill="#3b82f6"
+                  fillOpacity={0.15}
+                  stroke="#3b82f6"
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.5}
+                />
+              )}
+              <defs>
+                <linearGradient id="colorMoneyIn" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorMoneyOut" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorWager" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8A7FFF" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#8A7FFF" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorGross" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f97316" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Area
+                type="monotone"
+                dataKey="moneyIn"
+                stroke="#a855f7"
+                strokeWidth={3}
+                fill="url(#colorMoneyIn)"
+                stackId="1"
+              />
+              <Area
+                type="monotone"
+                dataKey="moneyOut"
+                stroke="#3b82f6"
+                strokeWidth={3}
+                fill="url(#colorMoneyOut)"
+                stackId="2"
+              />
+              <Area
+                type="monotone"
+                dataKey="jackpot"
+                stroke="#8A7FFF"
+                strokeWidth={3}
+                fill="url(#colorWager)"
+                stackId="3"
+              />
+              <Area
+                type="monotone"
+                dataKey="gross"
+                stroke="#f97316"
+                strokeWidth={3}
+                fill="url(#colorGross)"
+                stackId="1"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );

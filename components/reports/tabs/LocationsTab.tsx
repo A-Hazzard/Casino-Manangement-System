@@ -315,13 +315,17 @@ export default function LocationsTab() {
 
   // Track if user has manually selected a location (prevents auto-selection after manual selection)
   const hasManuallySelectedLocationRef = useRef(false);
+  // Track if auto-selection has been attempted to prevent repeated attempts
+  const autoSelectionAttemptedRef = useRef<string>('');
 
   // Helper function to set current selected locations based on active tab
   const setCurrentSelectedLocations = useCallback(
-    (locations: string[]) => {
-      // Mark as manually selected if locations array is not empty and was set by user action
-      if (locations.length > 0) {
+    (locations: string[], isManualSelection = false) => {
+      // Mark as manually selected if this is a user action (not auto-selection)
+      if (isManualSelection && locations.length > 0) {
         hasManuallySelectedLocationRef.current = true;
+        // Reset auto-selection attempt ref when user manually selects
+        autoSelectionAttemptedRef.current = '';
       }
       if (
         activeTab === 'sas-evaluation' ||
@@ -1511,7 +1515,7 @@ export default function LocationsTab() {
     // Don't include fetchLocationDataAsync to prevent loops
   ]);
 
-  // Auto-select location if only one is available for SAS or Revenue tabs
+  // Auto-select location if only one is available for the selected licensee
   useEffect(() => {
     // Only auto-select for location-evaluation and location-revenue tabs
     if (
@@ -1521,11 +1525,27 @@ export default function LocationsTab() {
       return;
     }
 
+    // Only auto-select if a specific licensee is selected (not 'all' or undefined)
+    if (!selectedLicencee || selectedLicencee === 'all') {
+      return;
+    }
+
+    // Don't auto-select if locations haven't been loaded yet
+    if (allLocationsForDropdown.length === 0) {
+      return;
+    }
+
     // Get available locations based on tab
     const availableLocations =
       activeTab === 'location-evaluation'
         ? allLocationsForDropdown.filter(loc => (loc.sasMachines as number) > 0)
         : allLocationsForDropdown;
+
+    // Filter by selected licensee
+    const licenseeFilteredLocations = availableLocations.filter(loc => {
+      const locLicenseeId = (loc.rel?.licencee as string) || '';
+      return String(locLicenseeId) === String(selectedLicencee);
+    });
 
     // Get current selected locations
     const currentSelectedLocations =
@@ -1533,21 +1553,32 @@ export default function LocationsTab() {
         ? selectedSasLocations
         : selectedRevenueLocations;
 
+    // Create a unique key for this auto-selection attempt
+    const autoSelectionKey = `${activeTab}-${selectedLicencee}-${licenseeFilteredLocations.length}`;
+
     // Auto-select ONLY if:
-    // 1. Exactly one location is available
+    // 1. Exactly one location is available for the selected licensee
     // 2. No location is currently selected
     // 3. User has not manually selected a location before
+    // 4. Locations have been loaded (allLocationsForDropdown.length > 0)
+    // 5. We haven't already attempted auto-selection for this exact combination
     if (
-      availableLocations.length === 1 &&
+      licenseeFilteredLocations.length === 1 &&
       currentSelectedLocations.length === 0 &&
-      !hasManuallySelectedLocationRef.current
+      !hasManuallySelectedLocationRef.current &&
+      allLocationsForDropdown.length > 0 &&
+      autoSelectionAttemptedRef.current !== autoSelectionKey
     ) {
       const singleLocationId = String(
-        availableLocations[0].location || availableLocations[0]._id || ''
+        licenseeFilteredLocations[0].location ||
+          licenseeFilteredLocations[0]._id ||
+          ''
       );
       if (singleLocationId) {
+        // Mark this attempt as done
+        autoSelectionAttemptedRef.current = autoSelectionKey;
         console.warn(
-          `🔍 Auto-selecting single location: ${singleLocationId} for tab: ${activeTab}`
+          `🔍 Auto-selecting single location for licensee: ${singleLocationId} for tab: ${activeTab}`
         );
         setCurrentSelectedLocations([singleLocationId]);
       }
@@ -1557,13 +1588,9 @@ export default function LocationsTab() {
     activeTab,
     selectedSasLocations,
     selectedRevenueLocations,
+    selectedLicencee,
     setCurrentSelectedLocations,
   ]);
-
-  // Reset manual selection flag when tab changes
-  useEffect(() => {
-    hasManuallySelectedLocationRef.current = false;
-  }, [activeTab]);
 
   // Initialize from URL
   useEffect(() => {
@@ -1795,7 +1822,7 @@ export default function LocationsTab() {
   }, [accumulatedLocations, currentPage, itemsPerPage, pagesPerBatch]);
 
   const handleLocationSelect = (locationIds: string[]) => {
-    setCurrentSelectedLocations(locationIds);
+    setCurrentSelectedLocations(locationIds, true);
   };
 
   // Handle export for location overview
@@ -2700,17 +2727,17 @@ export default function LocationsTab() {
             {/* Enhanced SAS Evaluation Interface */}
             <div className="space-y-6">
               {/* Header with Export Buttons */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-gray-900 sm:text-2xl">
                     SAS Evaluation Dashboard
                   </h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="mt-1 text-xs text-gray-600 sm:text-sm">
                     Comprehensive location evaluation with interactive filtering
                     and real-time data visualization
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Button
                     variant="outline"
                     onClick={async () => {
@@ -2785,7 +2812,7 @@ export default function LocationsTab() {
                       topMachinesLoading ||
                       metricsTotalsLoading
                     }
-                    className="flex items-center gap-2"
+                    className="flex w-full items-center justify-center gap-2 sm:w-auto"
                   >
                     <RefreshCw
                       className={`h-4 w-4 ${
@@ -2804,7 +2831,7 @@ export default function LocationsTab() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
-                        className="flex items-center gap-2"
+                        className="flex w-full items-center justify-center gap-2 sm:w-auto"
                       >
                         <Download className="h-4 w-4" />
                         Export
@@ -2845,7 +2872,7 @@ export default function LocationsTab() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <div>
+                    <div className="sm:col-span-2 lg:col-span-1">
                       <label className="mb-2 block text-sm font-medium text-gray-700">
                         Select SAS Locations (Max 3)
                       </label>
@@ -2885,7 +2912,7 @@ export default function LocationsTab() {
                           onSelectionChange={newSelection => {
                             // Limit to 3 selections for location-evaluation and location-revenue tabs
                             if (newSelection.length <= 3) {
-                              setCurrentSelectedLocations(newSelection);
+                              setCurrentSelectedLocations(newSelection, true);
                             } else {
                               toast.error(
                                 'Maximum 3 locations can be selected',
@@ -2898,17 +2925,17 @@ export default function LocationsTab() {
                         />
                       )}
                     </div>
-                    <div className="flex items-end">
+                    <div className="flex items-end sm:col-span-1">
                       <Button
                         variant="outline"
-                        onClick={() => setCurrentSelectedLocations([])}
+                        onClick={() => setCurrentSelectedLocations([], true)}
                         className="w-full"
                       >
                         Clear Selection
                       </Button>
                     </div>
-                    <div className="flex items-end">
-                      <div className="text-sm text-gray-600">
+                    <div className="flex items-end sm:col-span-2 lg:col-span-1">
+                      <div className="w-full text-sm text-gray-600">
                         {(activeTab === 'sas-evaluation'
                           ? selectedSasLocations
                           : selectedRevenueLocations
@@ -3189,7 +3216,7 @@ export default function LocationsTab() {
                           <>
                             {/* Granularity Toggle */}
                             {showGranularitySelector && (
-                              <div className="flex items-center justify-end gap-2">
+                              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-end">
                                 <label
                                   htmlFor="chart-granularity-location-evaluation"
                                   className="text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -3210,7 +3237,7 @@ export default function LocationsTab() {
                                     setLocationTrendLoading(true);
                                     // The useEffect will trigger fetchLocationTrendData when chartGranularity changes
                                   }}
-                                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:w-auto dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
                                 >
                                   <option value="minute">Minute</option>
                                   <option value="hourly">Hourly</option>
@@ -3227,10 +3254,20 @@ export default function LocationsTab() {
                                 dataKey="drop"
                                 locations={locationTrendData.locations}
                                 locationNames={locationTrendData.locationNames}
-                                colors={['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6']}
-                                formatter={value => `$${value.toLocaleString()}`}
+                                colors={[
+                                  '#3b82f6',
+                                  '#ef4444',
+                                  '#10b981',
+                                  '#f59e0b',
+                                  '#8b5cf6',
+                                ]}
+                                formatter={value =>
+                                  `$${value.toLocaleString()}`
+                                }
                                 isHourly={locationTrendData.isHourly}
-                                timePeriod={(activeMetricsFilter || 'Today') as TimePeriod}
+                                timePeriod={
+                                  (activeMetricsFilter || 'Today') as TimePeriod
+                                }
                                 granularity={chartGranularity}
                               />
 
@@ -3241,10 +3278,20 @@ export default function LocationsTab() {
                                 dataKey="gross"
                                 locations={locationTrendData.locations}
                                 locationNames={locationTrendData.locationNames}
-                                colors={['#10b981','#ef4444','#3b82f6','#f59e0b','#8b5cf6']}
-                                formatter={value => `$${value.toLocaleString()}`}
+                                colors={[
+                                  '#10b981',
+                                  '#ef4444',
+                                  '#3b82f6',
+                                  '#f59e0b',
+                                  '#8b5cf6',
+                                ]}
+                                formatter={value =>
+                                  `$${value.toLocaleString()}`
+                                }
                                 isHourly={locationTrendData.isHourly}
-                                timePeriod={(activeMetricsFilter || 'Today') as TimePeriod}
+                                timePeriod={
+                                  (activeMetricsFilter || 'Today') as TimePeriod
+                                }
                                 granularity={chartGranularity}
                               />
 
@@ -3255,10 +3302,20 @@ export default function LocationsTab() {
                                 dataKey="jackpot"
                                 locations={locationTrendData.locations}
                                 locationNames={locationTrendData.locationNames}
-                                colors={['#f59e0b','#ef4444','#10b981','#3b82f6','#8b5cf6']}
-                                formatter={value => `$${value.toLocaleString()}`}
+                                colors={[
+                                  '#f59e0b',
+                                  '#ef4444',
+                                  '#10b981',
+                                  '#3b82f6',
+                                  '#8b5cf6',
+                                ]}
+                                formatter={value =>
+                                  `$${value.toLocaleString()}`
+                                }
                                 isHourly={locationTrendData.isHourly}
-                                timePeriod={(activeMetricsFilter || 'Today') as TimePeriod}
+                                timePeriod={
+                                  (activeMetricsFilter || 'Today') as TimePeriod
+                                }
                                 granularity={chartGranularity}
                               />
 
@@ -3269,10 +3326,18 @@ export default function LocationsTab() {
                                 dataKey="plays"
                                 locations={locationTrendData.locations}
                                 locationNames={locationTrendData.locationNames}
-                                colors={['#8b5cf6','#ef4444','#10b981','#3b82f6','#f59e0b']}
+                                colors={[
+                                  '#8b5cf6',
+                                  '#ef4444',
+                                  '#10b981',
+                                  '#3b82f6',
+                                  '#f59e0b',
+                                ]}
                                 formatter={value => value.toLocaleString()}
                                 isHourly={locationTrendData.isHourly}
-                                timePeriod={(activeMetricsFilter || 'Today') as TimePeriod}
+                                timePeriod={
+                                  (activeMetricsFilter || 'Today') as TimePeriod
+                                }
                                 granularity={chartGranularity}
                               />
                             </div>
@@ -3809,17 +3874,17 @@ export default function LocationsTab() {
             {/* Enhanced Revenue Analysis Interface */}
             <div className="space-y-6">
               {/* Header with Export Buttons */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-gray-900 sm:text-2xl">
                     Revenue Analysis Dashboard
                   </h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="mt-1 text-xs text-gray-600 sm:text-sm">
                     Comprehensive revenue analysis with location name, machine
                     numbers, drop, cancelled credits, and gross revenue
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Button
                     variant="outline"
                     onClick={async () => {
@@ -3894,7 +3959,7 @@ export default function LocationsTab() {
                       topMachinesLoading ||
                       metricsTotalsLoading
                     }
-                    className="flex items-center gap-2"
+                    className="flex w-full items-center justify-center gap-2 sm:w-auto"
                   >
                     <RefreshCw
                       className={`h-4 w-4 ${
@@ -3913,7 +3978,7 @@ export default function LocationsTab() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
-                        className="flex items-center gap-2"
+                        className="flex w-full items-center justify-center gap-2 sm:w-auto"
                       >
                         <Download className="h-4 w-4" />
                         Export
@@ -3980,7 +4045,7 @@ export default function LocationsTab() {
                           onSelectionChange={newSelection => {
                             // Limit to 3 selections for location-evaluation and location-revenue tabs
                             if (newSelection.length <= 3) {
-                              setCurrentSelectedLocations(newSelection);
+                              setCurrentSelectedLocations(newSelection, true);
                             } else {
                               toast.error(
                                 'Maximum 3 locations can be selected',
@@ -3993,17 +4058,17 @@ export default function LocationsTab() {
                         />
                       )}
                     </div>
-                    <div className="flex items-end">
+                    <div className="flex items-end sm:col-span-1">
                       <Button
                         variant="outline"
-                        onClick={() => setCurrentSelectedLocations([])}
+                        onClick={() => setCurrentSelectedLocations([], true)}
                         className="w-full"
                       >
                         Clear Selection
                       </Button>
                     </div>
-                    <div className="flex items-end">
-                      <div className="text-sm text-gray-600">
+                    <div className="flex items-end sm:col-span-2 lg:col-span-1">
+                      <div className="w-full text-sm text-gray-600">
                         {(activeTab === 'sas-evaluation'
                           ? selectedSasLocations
                           : selectedRevenueLocations
@@ -4259,7 +4324,9 @@ export default function LocationsTab() {
                                   '#f59e0b',
                                   '#8b5cf6',
                                 ]}
-                                formatter={value => `$${value.toLocaleString()}`}
+                                formatter={value =>
+                                  `$${value.toLocaleString()}`
+                                }
                                 isHourly={locationTrendData.isHourly}
                                 timePeriod={
                                   (activeMetricsFilter || 'Today') as TimePeriod
@@ -4281,7 +4348,9 @@ export default function LocationsTab() {
                                   '#f59e0b',
                                   '#8b5cf6',
                                 ]}
-                                formatter={value => `$${value.toLocaleString()}`}
+                                formatter={value =>
+                                  `$${value.toLocaleString()}`
+                                }
                                 isHourly={locationTrendData.isHourly}
                                 timePeriod={
                                   (activeMetricsFilter || 'Today') as TimePeriod
@@ -4303,7 +4372,9 @@ export default function LocationsTab() {
                                   '#3b82f6',
                                   '#8b5cf6',
                                 ]}
-                                formatter={value => `$${value.toLocaleString()}`}
+                                formatter={value =>
+                                  `$${value.toLocaleString()}`
+                                }
                                 isHourly={locationTrendData.isHourly}
                                 timePeriod={
                                   (activeMetricsFilter || 'Today') as TimePeriod

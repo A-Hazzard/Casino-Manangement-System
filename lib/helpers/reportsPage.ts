@@ -172,7 +172,6 @@ export async function handleExportSASEvaluation(
       title: 'SAS Evaluation Report',
       subtitle: 'SAS machine evaluation and performance metrics',
       headers: [
-        'Location ID',
         'Location Name',
         'Money In',
         'Money Out',
@@ -186,7 +185,6 @@ export async function handleExportSASEvaluation(
         'Is Local Server',
       ],
       data: filteredData.map(loc => [
-        loc.location,
         loc.locationName,
         (loc.moneyIn || 0).toLocaleString(),
         (loc.moneyOut || 0).toLocaleString(),
@@ -416,7 +414,6 @@ export async function handleExportMeters(
           : activeMetricsFilter
       }`,
       headers: [
-        'Machine ID',
         'Machine Name',
         'Game Title',
         'Location',
@@ -432,8 +429,7 @@ export async function handleExportMeters(
         'SAS Enabled',
       ],
       data: machinesToExport.map((machine: MachineExportData) => [
-        machine.machineId,
-        machine.machineName,
+        `${machine.machineName} (${machine.machineId})`,
         machine.gameTitle,
         machine.locationName,
         machine.manufacturer,

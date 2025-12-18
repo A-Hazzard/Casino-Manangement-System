@@ -363,108 +363,108 @@ const getMachineStats = async (
 
   // Get total machines count (only machines with lastActivity field)
   const totalCountResult = await Machine.aggregate([
-      ...aggregationPipeline,
-      { $match: { lastActivity: { $exists: true } } },
-      { $count: 'total' },
+    ...aggregationPipeline,
+    { $match: { lastActivity: { $exists: true } } },
+    { $count: 'total' },
   ]).exec();
   const totalCount = totalCountResult[0]?.total || 0;
 
   // Get online machines count (machines with lastActivity >= 3 minutes ago)
   const onlineCountResult = await Machine.aggregate([
-      ...aggregationPipeline,
-      { $match: { lastActivity: { $exists: true, $gte: threeMinutesAgo } } },
-      { $count: 'total' },
+    ...aggregationPipeline,
+    { $match: { lastActivity: { $exists: true, $gte: threeMinutesAgo } } },
+    { $count: 'total' },
   ]).exec();
   const onlineCount = onlineCountResult[0]?.total || 0;
 
   // Calculate financial totals from meters collection within the date filter
   const financialTotals = await Machine.aggregate([
-      { $match: machineMatchStage },
-      {
-        $lookup: {
-          from: 'gaminglocations',
-          localField: 'gamingLocation',
-          foreignField: '_id',
-          as: 'locationDetails',
-        },
+    { $match: machineMatchStage },
+    {
+      $lookup: {
+        from: 'gaminglocations',
+        localField: 'gamingLocation',
+        foreignField: '_id',
+        as: 'locationDetails',
       },
-      {
-        $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
-      },
-      // Add location filter if licensee is specified
-      ...(locationMatchStage &&
-      typeof locationMatchStage === 'object' &&
-      'rel.licencee' in locationMatchStage
-        ? [
-            {
-              $match: {
-                'locationDetails.rel.licencee':
-                  locationMatchStage['rel.licencee'],
-              },
-            },
-          ]
-        : []),
-      // Add meters lookup with proper aggregation
-      {
-        $lookup: {
-          from: 'meters',
-          let: { machineId: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$machine', '$$machineId'] },
-                    // Only include meters within the date range if dates are provided
-                    ...(startDate && endDate
-                      ? [
-                          { $gte: ['$readAt', startDate] },
-                          { $lte: ['$readAt', endDate] },
-                        ]
-                      : []),
-                  ],
-                },
-              },
-            },
-            // Sum up the movement data
-            {
-              $group: {
-                _id: null,
-                drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-                moneyOut: {
-                  $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-                },
-                coinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
-                coinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
-              },
-            },
-          ],
-          as: 'meterData',
-        },
-      },
-      {
-        $unwind: {
-          path: '$meterData',
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalGross: {
-            $sum: {
-              $subtract: [
-                { $ifNull: ['$meterData.drop', 0] },
-                { $ifNull: ['$meterData.moneyOut', 0] },
-              ],
+    },
+    {
+      $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
+    },
+    // Add location filter if licensee is specified
+    ...(locationMatchStage &&
+    typeof locationMatchStage === 'object' &&
+    'rel.licencee' in locationMatchStage
+      ? [
+          {
+            $match: {
+              'locationDetails.rel.licencee':
+                locationMatchStage['rel.licencee'],
             },
           },
-          totalDrop: { $sum: { $ifNull: ['$meterData.drop', 0] } },
-          totalCancelledCredits: {
-            $sum: { $ifNull: ['$meterData.moneyOut', 0] },
+        ]
+      : []),
+    // Add meters lookup with proper aggregation
+    {
+      $lookup: {
+        from: 'meters',
+        let: { machineId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$machine', '$$machineId'] },
+                  // Only include meters within the date range if dates are provided
+                  ...(startDate && endDate
+                    ? [
+                        { $gte: ['$readAt', startDate] },
+                        { $lte: ['$readAt', endDate] },
+                      ]
+                    : []),
+                ],
+              },
+            },
+          },
+          // Sum up the movement data
+          {
+            $group: {
+              _id: null,
+              drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+              moneyOut: {
+                $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+              },
+              coinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
+              coinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
+            },
+          },
+        ],
+        as: 'meterData',
+      },
+    },
+    {
+      $unwind: {
+        path: '$meterData',
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalGross: {
+          $sum: {
+            $subtract: [
+              { $ifNull: ['$meterData.drop', 0] },
+              { $ifNull: ['$meterData.moneyOut', 0] },
+            ],
           },
         },
+        totalDrop: { $sum: { $ifNull: ['$meterData.drop', 0] } },
+        totalCancelledCredits: {
+          $sum: { $ifNull: ['$meterData.moneyOut', 0] },
+        },
       },
+    },
   ]).exec();
 
   const totals = financialTotals[0] || {
@@ -609,11 +609,15 @@ const getMachineStats = async (
       totalGrossUSD += convertToUSD(machine.gross || 0, nativeCurrency);
     });
 
-    // Convert from USD to display currency
+    // Convert from USD to display currency and round to 2 decimals
     convertedTotals = {
-      totalDrop: convertFromUSD(totalDropUSD, displayCurrency),
-      totalGross: convertFromUSD(totalGrossUSD, displayCurrency),
-      totalCancelledCredits: convertFromUSD(totalMoneyOutUSD, displayCurrency),
+      totalDrop:
+        Math.round(convertFromUSD(totalDropUSD, displayCurrency) * 100) / 100,
+      totalGross:
+        Math.round(convertFromUSD(totalGrossUSD, displayCurrency) * 100) / 100,
+      totalCancelledCredits:
+        Math.round(convertFromUSD(totalMoneyOutUSD, displayCurrency) * 100) /
+        100,
     };
   }
 
@@ -815,11 +819,12 @@ const getOverviewMachines = async (
         ),
         lastActivity: machine.lastActivity,
         isSasEnabled: machine.isSasMachine || false,
-        // Use the aggregated financial data
-        drop: machine.drop || 0,
-        totalCancelledCredits: machine.moneyOut || 0,
-        netWin: machine.netWin || 0,
-        gross: machine.gross || 0,
+        // Use the aggregated financial data, rounded to 2 decimals
+        drop: Math.round((Number(machine.drop) || 0) * 100) / 100,
+        totalCancelledCredits:
+          Math.round((Number(machine.moneyOut) || 0) * 100) / 100,
+        netWin: Math.round((Number(machine.netWin) || 0) * 100) / 100,
+        gross: Math.round((Number(machine.gross) || 0) * 100) / 100,
         theoreticalHold: (machine.gameConfig as Record<string, unknown>)
           ?.theoreticalRtp
           ? (1 -
@@ -829,14 +834,17 @@ const getOverviewMachines = async (
             100
           : 0,
         gamesPlayed: machine.gamesPlayed || 0,
-        jackpot: machine.jackpot || 0,
-        // Calculate derived fields properly
-        coinIn: machine.coinIn || 0, // Handle (betting activity)
-        coinOut: machine.coinOut || 0, // Automatic payouts
+        jackpot: Math.round((Number(machine.jackpot) || 0) * 100) / 100,
+        // Calculate derived fields properly, rounded to 2 decimals
+        coinIn: Math.round((Number(machine.coinIn) || 0) * 100) / 100, // Handle (betting activity)
+        coinOut: Math.round((Number(machine.coinOut) || 0) * 100) / 100, // Automatic payouts
         avgBet:
           ((machine.gamesPlayed as number) || 0) > 0
-            ? ((machine.coinIn as number) || 0) /
-              ((machine.gamesPlayed as number) || 1)
+            ? Math.round(
+                (Number(machine.coinIn || 0) /
+                  Number(machine.gamesPlayed || 1)) *
+                  100
+              ) / 100
             : 0,
         // Use calculated hold percentage from aggregation
         actualHold: machine.holdPct || 0,
@@ -1088,11 +1096,12 @@ const getAllMachines = async (
           ),
           lastActivity: machine.lastActivity,
           isSasEnabled: machine.isSasMachine || false,
-          // Use the aggregated financial data
-          drop: machine.drop || 0,
-          totalCancelledCredits: machine.moneyOut || 0,
-          netWin: machine.netWin || 0,
-          gross: machine.gross || 0,
+          // Use the aggregated financial data, rounded to 2 decimals
+          drop: Math.round((Number(machine.drop) || 0) * 100) / 100,
+          totalCancelledCredits:
+            Math.round((Number(machine.moneyOut) || 0) * 100) / 100,
+          netWin: Math.round((Number(machine.netWin) || 0) * 100) / 100,
+          gross: Math.round((Number(machine.gross) || 0) * 100) / 100,
           theoreticalHold: (machine.gameConfig as Record<string, unknown>)
             ?.theoreticalRtp
             ? (1 -
@@ -1153,26 +1162,37 @@ const getOfflineMachines = async (
     // Build machine filter for offline machines
     const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
     const machineMatchStage: Record<string, unknown> = {
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2025-01-01') } },
+      $and: [
+        {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
+          ],
+        },
+        {
+          lastActivity: { $exists: true, $lt: threeMinutesAgo },
+        },
       ],
-      lastActivity: { $exists: true, $lt: threeMinutesAgo },
     };
 
     // Add location filter if specified
     if (locationId && locationId !== 'all') {
-      machineMatchStage.gamingLocation = locationId;
+      (machineMatchStage.$and as Array<Record<string, unknown>>).push({
+        gamingLocation: locationId,
+      });
     }
 
     // Add search filter if specified
     if (searchTerm && searchTerm.trim()) {
-      machineMatchStage.$or = [
-        { serialNumber: { $regex: searchTerm, $options: 'i' } },
-        { game: { $regex: searchTerm, $options: 'i' } },
-        { manuf: { $regex: searchTerm, $options: 'i' } },
-        { 'custom.name': { $regex: searchTerm, $options: 'i' } },
-      ];
+      (machineMatchStage.$and as Array<Record<string, unknown>>).push({
+        $or: [
+          { serialNumber: { $regex: searchTerm, $options: 'i' } },
+          { origSerialNumber: { $regex: searchTerm, $options: 'i' } },
+          { game: { $regex: searchTerm, $options: 'i' } },
+          { manuf: { $regex: searchTerm, $options: 'i' } },
+          { 'custom.name': { $regex: searchTerm, $options: 'i' } },
+        ],
+      });
     }
 
     // Use aggregation to join machines with gaminglocations for licensee filtering
@@ -1358,11 +1378,12 @@ const getOfflineMachines = async (
           isOnline: false, // All machines in this query are offline
           lastActivity: machine.lastActivity,
           isSasEnabled: machine.isSasMachine || false,
-          // Use the aggregated financial data
-          drop: machine.drop || 0,
-          totalCancelledCredits: machine.moneyOut || 0,
-          netWin: machine.netWin || 0,
-          gross: machine.gross || 0,
+          // Use the aggregated financial data, rounded to 2 decimals
+          drop: Math.round((Number(machine.drop) || 0) * 100) / 100,
+          totalCancelledCredits:
+            Math.round((Number(machine.moneyOut) || 0) * 100) / 100,
+          netWin: Math.round((Number(machine.netWin) || 0) * 100) / 100,
+          gross: Math.round((Number(machine.gross) || 0) * 100) / 100,
           theoreticalHold: (machine.gameConfig as Record<string, unknown>)
             ?.theoreticalRtp
             ? (1 -

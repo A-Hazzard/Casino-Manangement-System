@@ -773,9 +773,9 @@ export async function GET(req: NextRequest) {
             location.membershipEnabled ||
               (location as { enableMembership?: boolean }).enableMembership
           ),
-          moneyIn: locationMetrics.moneyIn,
-          moneyOut: locationMetrics.moneyOut,
-          gross: gross,
+          moneyIn: Math.round(locationMetrics.moneyIn * 100) / 100,
+          moneyOut: Math.round(locationMetrics.moneyOut * 100) / 100,
+          gross: Math.round(gross * 100) / 100,
           coinIn: 0, // Default value - can be calculated if needed
           coinOut: 0, // Default value - can be calculated if needed
           jackpot: 0, // Default value - can be calculated if needed
@@ -949,9 +949,9 @@ export async function GET(req: NextRequest) {
                     (location as { enableMembership?: boolean })
                       .enableMembership
                 ),
-                moneyIn: locationMetrics.moneyIn,
-                moneyOut: locationMetrics.moneyOut,
-                gross: gross,
+                moneyIn: Math.round(locationMetrics.moneyIn * 100) / 100,
+                moneyOut: Math.round(locationMetrics.moneyOut * 100) / 100,
+                gross: Math.round(gross * 100) / 100,
                 totalMachines: totalMachines,
                 onlineMachines: onlineMachines,
                 sasMachines: sasMachines,
@@ -1277,26 +1277,23 @@ export async function GET(req: NextRequest) {
 
             if (typeof location.moneyIn === 'number') {
               const usdValue = convertToUSD(location.moneyIn, nativeCurrency);
-              convertedLocation.moneyIn = convertFromUSD(
-                usdValue,
-                displayCurrency
-              );
+              convertedLocation.moneyIn = Math.round(
+                convertFromUSD(usdValue, displayCurrency) * 100
+              ) / 100;
             }
 
             if (typeof location.moneyOut === 'number') {
               const usdValue = convertToUSD(location.moneyOut, nativeCurrency);
-              convertedLocation.moneyOut = convertFromUSD(
-                usdValue,
-                displayCurrency
-              );
+              convertedLocation.moneyOut = Math.round(
+                convertFromUSD(usdValue, displayCurrency) * 100
+              ) / 100;
             }
 
             if (typeof location.gross === 'number') {
               const usdValue = convertToUSD(location.gross, nativeCurrency);
-              convertedLocation.gross = convertFromUSD(
-                usdValue,
-                displayCurrency
-              );
+              convertedLocation.gross = Math.round(
+                convertFromUSD(usdValue, displayCurrency) * 100
+              ) / 100;
             }
 
             return convertedLocation;
