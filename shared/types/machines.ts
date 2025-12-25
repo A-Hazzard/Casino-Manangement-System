@@ -33,6 +33,7 @@ export type MachineData = {
   totalWonCredits?: number;
   currentCredits?: number;
   gamesWon?: number;
+  offlineDurationHours?: number; // Calculated from lastActivity for offline machines
 };
 
 // Machine statistics for dashboard cards

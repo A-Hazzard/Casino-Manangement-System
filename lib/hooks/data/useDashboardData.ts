@@ -1,6 +1,18 @@
 /**
- * Custom hook for managing dashboard data fetching and state
- * Handles loading, error states, and data management for dashboard page
+ * Dashboard Data Custom Hook
+ *
+ * Provides a custom hook for managing dashboard data fetching and state.
+ * It handles loading, error states, and data management for the dashboard page,
+ * including metrics, totals, top-performing data, and gaming locations.
+ *
+ * Features:
+ * - Dashboard data fetching
+ * - Loading state management
+ * - Error handling
+ * - Data refresh functionality
+ * - Gaming locations loading
+ * - Metrics and totals management
+ * - Top-performing data management
  */
 
 import { useState, useCallback, useEffect } from 'react';

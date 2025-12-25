@@ -777,6 +777,38 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     >
       <h2 className="mb-4 text-xl font-semibold">Accounting Details</h2>
 
+      {/* Mobile Tab Navigation - Shows above content on mobile */}
+      <div className="mb-4 flex overflow-x-auto lg:hidden">
+        <div className="flex min-w-max gap-2">
+          {[
+            'Metrics',
+            'Live Metrics',
+            'Bill Validator',
+            'Activity Log',
+            'Collection History',
+            'Collection Settings',
+            'Configurations',
+          ].map((menuItem) => (
+            <button
+              key={menuItem}
+              className={`whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                activeMetricsTabContent ===
+                (menuItem === 'Metrics' ? 'Range Metrics' : menuItem)
+                  ? 'bg-accent text-buttonActive'
+                  : 'bg-muted text-grayHighlight hover:bg-muted/80'
+              }`}
+              onClick={() =>
+                setActiveMetricsTabContent(
+                  menuItem === 'Metrics' ? 'Range Metrics' : menuItem
+                )
+              }
+            >
+              {menuItem}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="mt-4 flex flex-col md:flex-row">
         <motion.aside
           className="mb-4 hidden w-48 flex-shrink-0 lg:mb-0 lg:mr-6 lg:block"
@@ -862,7 +894,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         </h4>
                         <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getMoneyInColorClass(Number(cabinet?.moneyIn ?? cabinet?.sasMeters?.drop ?? 0))}`}>
+                          <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getMoneyInColorClass()}`}>
                             {formatAmount(
                               Number(
                                 cabinet?.moneyIn ??

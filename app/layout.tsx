@@ -1,3 +1,25 @@
+/**
+ * Root Layout Component
+ *
+ * This is the root layout for the entire Next.js application. It provides
+ * global providers, error boundaries, and shared UI components that wrap
+ * all pages. It sets up the application's metadata, fonts, and global styles.
+ *
+ * Features:
+ * - Global metadata and SEO configuration
+ * - Font configuration (Montserrat)
+ * - Global error boundary
+ * - Currency context provider
+ * - Query provider for React Query
+ * - Sidebar provider and layout
+ * - Profile validation gate
+ * - Toast notifications (Sonner)
+ * - Feedback button
+ * - Global CSS imports
+ *
+ * @module app/layout
+ */
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Montserrat } from 'next/font/google';

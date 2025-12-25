@@ -1,8 +1,17 @@
 /**
- * Collection Report Queries Helper
+ * Collection Report Queries Helper Functions
  *
- * This file contains helper functions for querying collection reports,
- * including fetching locations with machines and processing date ranges.
+ * Provides backend helper functions for querying collection reports and related
+ * data, including fetching locations with machines, processing date ranges, and
+ * applying role-based location filtering. It handles licensee filtering and
+ * user permission checks for secure data access.
+ *
+ * Features:
+ * - Fetches locations with machines for collection reports.
+ * - Applies role-based location filtering (admin, manager, collector, technician).
+ * - Processes date ranges for time period filtering.
+ * - Handles licensee filtering with support for both spellings.
+ * - Filters machines by deletion status and SMIB configuration.
  */
 
 import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';

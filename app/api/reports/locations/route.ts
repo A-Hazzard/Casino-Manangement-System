@@ -16,204 +16,111 @@
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
-  getUserLocationFilter,
+    getUserAccessibleLicenseesFromToken,
+    getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
+import {
+    applyLocationsCurrencyConversion,
+    handleSummaryMode,
+} from '@/app/api/lib/helpers/locationsReport';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
-import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
-import {
-  convertFromUSD,
-  convertToUSD,
-  getCountryCurrency,
-  getLicenseeCurrency,
-} from '@/lib/helpers/rates';
+import { getLicenseeCurrency } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
-import type {
-  AggregatedLocation,
-  GamingMachine,
-} from '@/shared/types/entities';
+import type { AggregatedLocation, GeoCoordinates } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main GET handler for fetching locations report
  *
  * Flow:
- * 1. Parse query parameters (timePeriod, licensee, currency, search, pagination)
- * 2. Connect to database
- * 3. Authenticate user and get permissions
- * 4. Determine display currency
- * 5. Get allowed location IDs using filter helper
- * 6. Build location match filter
- * 7. Fetch locations from database
- * 8. Calculate gaming day ranges for locations
- * 9. Aggregate financial metrics per location
- * 10. Apply currency conversion if needed
- * 11. Apply pagination
- * 12. Return paginated location report
+ * 1. Parse and validate request parameters
+ * 2. Connect to database and authenticate user
+ * 3. Determine accessible locations and display currency
+ * 4. Build location match filters
+ * 5. Fetch locations and calculate gaming day ranges
+ * 6. Aggregate financial metrics per location (optimized via cursor)
+ * 7. Apply post-aggregation filters and currency conversion
+ * 8. Return paginated results with performance breakdown
  */
 export async function GET(req: NextRequest) {
   const perfStart = Date.now();
-  const perfTimers: Record<string, number> = {};
 
   try {
     // ============================================================================
-    // STEP 1: Parse query parameters
+    // STEP 1: Parse and validate request parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
-    // Support both 'licensee' and 'licencee' spelling for backwards compatibility
     const licencee =
       searchParams.get('licensee') || searchParams.get('licencee') || undefined;
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;
     let displayCurrency: CurrencyCode = currencyParam || 'USD';
     const searchTerm = searchParams.get('search')?.trim() || '';
-
-    // Parse filters parameter (e.g., "MembershipOnly", "SMIBLocationsOnly", etc.)
-    const filtersParam = searchParams.get('filters');
-    const filters = filtersParam ? filtersParam.split(',') : [];
-
-    // Parse specific locations param (comma-separated IDs)
-    const specificLocationsParam = searchParams.get('locations');
-    const specificLocations = specificLocationsParam
-      ? specificLocationsParam.split(',').filter(Boolean)
-      : [];
-
+    const specificLocations =
+      searchParams.get('locations')?.split(',').filter(Boolean) || [];
     const showAllLocations = searchParams.get('showAllLocations') === 'true';
-
-    // Pagination parameters
     const page = parseInt(searchParams.get('page') || '1');
-    const requestedLimit = parseInt(searchParams.get('limit') || '50');
-
-    // When showAllLocations is true, return all locations for client-side pagination
-    // Otherwise, use server-side pagination with limit (default 50 items per batch)
-    const limit = showAllLocations ? 10000 : Math.min(requestedLimit, 50); // Cap at 50 for performance
+    const limit = showAllLocations
+      ? 10000
+      : Math.min(parseInt(searchParams.get('limit') || '50'), 50);
     const skip = showAllLocations ? 0 : (page - 1) * limit;
 
-    // Parse custom dates for Custom time period
     let customStartDate: Date | undefined, customEndDate: Date | undefined;
     if (timePeriod === 'Custom') {
-      const customStart = searchParams.get('startDate');
-      const customEnd = searchParams.get('endDate');
-      if (!customStart || !customEnd) {
-        return NextResponse.json(
-          { error: 'Missing startDate or endDate' },
-          { status: 400 }
-        );
-      }
-      customStartDate = new Date(customStart);
-      customEndDate = new Date(customEnd);
+      const start = searchParams.get('startDate');
+      const end = searchParams.get('endDate');
+      if (!start || !end)
+        return NextResponse.json({ error: 'Missing dates' }, { status: 400 });
+      customStartDate = new Date(start);
+      customEndDate = new Date(end);
     }
 
     // ============================================================================
-    // STEP 2: Connect to database
+    // STEP 2: Connect to database and authenticate user
     // ============================================================================
-    const dbConnectStart = Date.now();
     await connectDB();
-    perfTimers.dbConnect = Date.now() - dbConnectStart;
-
-    // ============================================================================
-    // STEP 3: Authenticate user and get permissions
-    // ============================================================================
-    const authStart = Date.now();
-    // DEV MODE: Allow bypassing auth for testing
-    const isDevMode = process.env.NODE_ENV === 'development';
-    const testUserId = searchParams.get('testUserId');
-
-    let userPayload;
-    let userRoles: string[] = [];
-    let userLocationPermissions: string[] = [];
-    let userAccessibleLicensees: string[] | 'all' = [];
-
-    if (isDevMode && testUserId) {
-      perfTimers.auth = Date.now() - authStart;
-      // Dev mode: Get user directly from DB for testing
-      const UserModel = (await import('../../lib/models/user')).default;
-      const testUserResult = await UserModel.findOne({
-        _id: testUserId,
-      }).lean();
-      if (testUserResult && !Array.isArray(testUserResult)) {
-        const testUser = testUserResult as {
-          roles?: string[];
-          assignedLocations?: string[];
-          assignedLicensees?: string[];
-        };
-        userRoles = (testUser.roles || []) as string[];
-        userLocationPermissions = Array.isArray(testUser.assignedLocations)
-          ? testUser.assignedLocations.map((id: string) => String(id))
-          : [];
-        userAccessibleLicensees = Array.isArray(testUser.assignedLicensees)
-          ? testUser.assignedLicensees.map((id: string) => String(id))
-          : [];
-      } else {
-        return NextResponse.json(
-          { error: 'Test user not found' },
-          { status: 404 }
-        );
-      }
-    } else {
-      // Normal mode: Get user from JWT
-      userPayload = await getUserFromServer();
-      perfTimers.auth = Date.now() - authStart;
-      if (!userPayload) {
+    const userPayload = await getUserFromServer();
+    if (!userPayload)
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
 
-      if (userPayload) {
-        userRoles = (userPayload.roles as string[]) || [];
-        // Extract assignedLocations from new field only
-        const assignedLocations = (
-          userPayload as { assignedLocations?: string[] }
-        )?.assignedLocations;
-        if (Array.isArray(assignedLocations) && assignedLocations.length > 0) {
-          userLocationPermissions = assignedLocations;
-        }
-      }
-
-      userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
-    }
-
-    // Check if user is admin or developer for currency conversion
+    const userRoles = (userPayload.roles as string[]) || [];
+    const userLocationPermissions =
+      (userPayload as { assignedLocations?: string[] })?.assignedLocations ||
+      [];
+    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
     const isAdminOrDev =
       userRoles.includes('admin') || userRoles.includes('developer');
 
     // ============================================================================
-    // STEP 4: Determine display currency
+    // STEP 3: Determine accessible locations and display currency
     // ============================================================================
     let resolvedLicensee =
       licencee && licencee !== 'all' ? licencee : undefined;
-    if (!resolvedLicensee && userAccessibleLicensees !== 'all') {
-      if (userAccessibleLicensees.length === 1) {
+    if (
+      !resolvedLicensee &&
+      userAccessibleLicensees !== 'all' &&
+      userAccessibleLicensees.length === 1
+    ) {
         resolvedLicensee = userAccessibleLicensees[0];
-      }
     }
 
-    // Default to the licensee's native currency when none is provided
     if (!currencyParam && resolvedLicensee) {
-      // Get licensee name from ID to properly resolve currency
-      try {
         const licenseeDoc = await Licencee.findOne(
           { _id: resolvedLicensee },
           { name: 1 }
         ).lean();
         if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
           displayCurrency = getLicenseeCurrency(licenseeDoc.name);
-        }
-      } catch {
-        // Failed to get licensee name for currency - use default USD
       }
     }
 
-    // ============================================================================
-    // STEP 5: Get allowed location IDs using filter helper
-    // ============================================================================
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,
       licencee || undefined,
@@ -222,7 +129,7 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 6: Build location match filter (with backend filtering for SMIB/Local Server/Membership)
+    // STEP 4: Build location match filters
     // ============================================================================
     const locationMatchStage: Record<string, unknown> = {
       $or: [
@@ -231,201 +138,43 @@ export async function GET(req: NextRequest) {
       ],
     };
 
-    // Apply user-based filtering using the standard helper
     if (allowedLocationIds !== 'all') {
-      if (allowedLocationIds.length === 0) {
-        // No accessible locations
-        return NextResponse.json({
-          data: [],
-          pagination: {
-            page,
-            limit,
-            totalCount: 0,
-            totalPages: 0,
-            hasNextPage: false,
-            hasPrevPage: false,
-          },
-          currency: displayCurrency,
-          converted: false,
-        });
-      }
-
-      // If specific locations requested, ensure they are within allowed permissions
+      if (allowedLocationIds.length === 0)
+        return createEmptyResponse(page, limit, displayCurrency);
+      let intersection = allowedLocationIds;
       if (specificLocations.length > 0) {
-        // Filter allowedLocationIds to include only requested locations
-        const intersection = allowedLocationIds.filter(id =>
+        intersection = allowedLocationIds.filter(id =>
           specificLocations.includes(String(id))
         );
-
-        if (intersection.length === 0) {
-          // Requested locations are not accessible
-          return NextResponse.json({
-            data: [],
-            pagination: {
-              page,
-              limit,
-              totalCount: 0,
-              totalPages: 0,
-              hasNextPage: false,
-              hasPrevPage: false,
-            },
-            currency: displayCurrency,
-            converted: false,
-          });
-        }
-        locationMatchStage['_id'] = { $in: intersection };
-      } else {
-        locationMatchStage['_id'] = { $in: allowedLocationIds };
+        if (intersection.length === 0)
+          return createEmptyResponse(page, limit, displayCurrency);
       }
-    } else {
-      // User has access to ALL locations (admin/dev)
-      // Check if specific locations requested
-      if (specificLocations.length > 0) {
-        locationMatchStage['_id'] = { $in: specificLocations };
+      locationMatchStage._id = { $in: intersection };
+    } else if (specificLocations.length > 0) {
+      locationMatchStage._id = { $in: specificLocations };
       }
 
       if (licencee && licencee !== 'all') {
-        // Admin with all access but specific licensee filter requested
-        // Resolve licensee name to ID if needed (getUserLocationFilter should handle this, but double-check)
-        let licenseeId = licencee;
-        try {
-          const licenseeDoc = await Licencee.findOne({
-            $or: [
-              { _id: licencee },
-              { name: { $regex: new RegExp(`^${licencee}$`, 'i') } },
-            ],
-          })
-            .select('_id')
-            .lean();
-          if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc._id) {
-            licenseeId = String(licenseeDoc._id);
-          }
-        } catch {
-          // Failed to resolve licensee - use as-is
-        }
-        // rel.licencee is stored as a String
-        locationMatchStage['rel.licencee'] = licenseeId;
-      }
+      locationMatchStage['rel.licencee'] = licencee;
     }
 
-    // Apply location type filters (SMIB, No SMIB, Local Server, Membership) at database level
-    // Coordinate filters are handled post-aggregation since they depend on geoCoords field
-    // Note: Location type filters use OR logic (if multiple selected, show locations matching any)
-    // Final accurate filtering is done post-aggregation based on calculated fields
-    const locationTypeFilters = filters.filter(
-      f =>
-        f === 'LocalServersOnly' ||
-        f === 'SMIBLocationsOnly' ||
-        f === 'NoSMIBLocation' ||
-        f === 'MembershipOnly'
-    );
-
-    if (locationTypeFilters.length > 0) {
-      const filterConditions: Record<string, unknown>[] = [];
-
-      locationTypeFilters.forEach(filter => {
-        switch (filter.trim()) {
-          case 'LocalServersOnly':
-            filterConditions.push({ isLocalServer: true });
-            break;
-          case 'SMIBLocationsOnly':
-            // Locations with SMIB machines - filter by noSMIBLocation flag
-            // Note: Final check based on sasMachines count will be done after aggregation
-            filterConditions.push({ noSMIBLocation: { $ne: true } });
-            break;
-          case 'NoSMIBLocation':
-            filterConditions.push({ noSMIBLocation: true });
-            break;
-          case 'MembershipOnly':
-            // Check both membershipEnabled and enableMembership fields for compatibility
-            filterConditions.push({
-              $or: [{ membershipEnabled: true }, { enableMembership: true }],
-            });
-            break;
-        }
-      });
-
-      // Apply location type filter logic - use OR logic (location matches if it matches any selected type)
-      if (filterConditions.length > 0) {
-        // Build $and array to combine deletedAt check with filter conditions
-        const andConditions: Array<Record<string, unknown>> = [
-          {
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          },
-        ];
-
-        // If only one location type filter is selected, use it directly; otherwise use OR logic
-        if (filterConditions.length === 1) {
-          // Single filter - apply directly
-          andConditions.push(filterConditions[0]);
-        } else {
-          // Multiple location type filters - location matches if it matches ANY selected type (OR logic)
-          andConditions.push({ $or: filterConditions });
-        }
-
-        // Add existing conditions (like _id, rel.licencee) to $and
-        Object.keys(locationMatchStage).forEach(key => {
-          if (key !== '$or' && key !== '$and') {
-            const condition: Record<string, unknown> = {};
-            condition[key] = locationMatchStage[key];
-            andConditions.push(condition);
-          }
-        });
-
-        // Replace locationMatchStage with $and structure
-        locationMatchStage['$and'] = andConditions;
-        delete locationMatchStage['$or'];
-      }
-    }
-
-    // Add search filter for location name or _id
     if (searchTerm) {
-      const searchCondition = {
+      const searchFilter = {
         $or: [
           { name: { $regex: searchTerm, $options: 'i' } },
-          { _id: searchTerm }, // Exact match for _id
+          { _id: searchTerm },
         ],
       };
-
-      // If $and already exists (from filters), add search condition to it
-      // Otherwise, create new $and array
-      if (locationMatchStage['$and']) {
-        (locationMatchStage['$and'] as Array<Record<string, unknown>>).push(
-          searchCondition
-        );
+      if (locationMatchStage.$and && Array.isArray(locationMatchStage.$and)) {
+        locationMatchStage.$and.push(searchFilter);
       } else {
-        // Build $and array with deletedAt check and search condition
-        const andConditions: Array<Record<string, unknown>> = [
-          {
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          },
-          searchCondition,
-        ];
-
-        // Add existing conditions (like _id, rel.licencee) to $and
-        Object.keys(locationMatchStage).forEach(key => {
-          if (key !== '$or' && key !== '$and') {
-            const condition: Record<string, unknown> = {};
-            condition[key] = locationMatchStage[key];
-            andConditions.push(condition);
-          }
-        });
-
-        locationMatchStage['$and'] = andConditions;
-        delete locationMatchStage['$or'];
+        locationMatchStage.$and = [searchFilter];
       }
     }
 
     // ============================================================================
-    // STEP 7: Fetch locations from database
+    // STEP 5: Fetch locations and calculate gaming day ranges
     // ============================================================================
-    const locationsStart = Date.now();
     const locations = await GamingLocations.find(locationMatchStage, {
       _id: 1,
       name: 1,
@@ -434,986 +183,242 @@ export async function GET(req: NextRequest) {
       rel: 1,
       country: 1,
       membershipEnabled: 1,
-      enableMembership: 1, // Include for compatibility with legacy data
-      noSMIBLocation: 1, // Include for SMIB filtering
-      geoCoords: 1, // Include geoCoords for coordinate filtering
+      enableMembership: 1,
+      noSMIBLocation: 1,
+      geoCoords: 1,
     }).lean();
-    perfTimers.fetchLocations = Date.now() - locationsStart;
 
-    // ============================================================================
-    // STEP 8: Calculate gaming day ranges for locations
-    // ============================================================================
-    const summaryMode = searchParams.get('summary') === 'true';
-
-    // 🚀 OPTIMIZATION: If summary mode is requested (for dropdowns), skip expensive financial calcs
-    if (summaryMode) {
-      // Get machine counts per location
-      const allLocationIds = locations.map(loc => String(loc._id));
-
-      // faster machine counting using aggregation
-      const machineCounts = await Machine.aggregate([
-        {
-          $match: {
-            gamingLocation: { $in: allLocationIds },
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          },
-        },
-        {
-          $group: {
-            _id: '$gamingLocation',
-            totalMachines: { $sum: 1 },
-            sasMachines: {
-              $sum: { $cond: [{ $eq: ['$isSasMachine', true] }, 1, 0] },
-            },
-            onlineMachines: {
-              $sum: {
-                $cond: [
-                  {
-                    $gt: [
-                      '$lastActivity',
-                      new Date(Date.now() - 24 * 60 * 60 * 1000),
-                    ],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
-          },
-        },
-      ]);
-
-      const countsMap = new Map();
-      machineCounts.forEach(count => {
-        countsMap.set(count._id, count);
-      });
-
-      const summaryResults = locations.map(location => {
-        const locId = String(location._id);
-        const counts = countsMap.get(locId) || {
-          totalMachines: 0,
-          sasMachines: 0,
-          onlineMachines: 0,
-        };
-
-        const sasMachines = counts.sasMachines || 0;
-        const totalMachines = counts.totalMachines || 0;
-        const nonSasMachines = totalMachines - sasMachines;
-
-        return {
-          _id: locId,
-          location: locId,
-          locationName: location.name,
-          totalMachines,
-          sasMachines,
-          nonSasMachines,
-          hasSasMachines: sasMachines > 0,
-          hasNonSasMachines: nonSasMachines > 0,
-          onlineMachines: counts.onlineMachines || 0,
-          // Zero out financial metrics
-          moneyIn: 0,
-          moneyOut: 0,
-          gross: 0,
-          // Include other necessary fields
-          rel: location.rel,
-          isLocalServer: location.isLocalServer,
-          membershipEnabled:
-            location.membershipEnabled ||
-            (location as { enableMembership?: boolean }).enableMembership ||
-            false,
-          geoCoords: (location as { geoCoords?: { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number } }).geoCoords, // Include geoCoords in summary response
-        };
-      });
-
-      // Apply filters if needed (e.g. sasEvaluationOnly which checks sasMachines > 0)
-      // The sasEvaluationOnly param is not standard in this route but usually handled by caller filtering.
-      // However, seeing Step 10 logic in original code, let's keep it simple.
-      // The caller (LocationsTab) likely filters the result.
-      // But wait, the previous code had 'sasEvaluationOnly' logic somewhere?
-      // Looking at the file, 'sasEvaluationOnly' wasn't explicitly in Step 1,
-      // but 'SMIBLocationsOnly' etc were.
-      // We'll return the full list and let the client filter or simple pagination apply.
-
-      const totalTime = Date.now() - perfStart;
-
-      return NextResponse.json({
-        data: summaryResults,
-        pagination: {
-          page: 1,
-          limit: locations.length,
-          totalCount: locations.length,
-          totalPages: 1,
-          hasNextPage: false,
-          hasPrevPage: false,
-        },
-        currency: displayCurrency,
-        converted: false,
-        performance: {
-          totalTime,
-          mode: 'summary',
-        },
-      });
+    if (searchParams.get('summary') === 'true') {
+      return await handleSummaryMode(
+        locations as unknown as Array<{
+          _id: unknown;
+          name: string;
+          rel?: Record<string, unknown>;
+          isLocalServer?: boolean;
+          geoCoords?: unknown;
+          membershipEnabled?: boolean;
+          enableMembership?: boolean;
+        }>,
+        displayCurrency,
+        perfStart
+      );
     }
 
-    const gamingDayStart = Date.now();
     const gamingDayRanges = getGamingDayRangesForLocations(
       locations.map(loc => ({
-        _id: (loc._id as { toString: () => string }).toString(),
-        gameDayOffset: loc.gameDayOffset ?? 8, // Default to 8 AM Trinidad time (Rule 1)
+        _id: String(loc._id),
+        gameDayOffset: loc.gameDayOffset ?? 8,
       })),
       timePeriod,
       customStartDate,
       customEndDate
     );
-    perfTimers.gamingDayRanges = Date.now() - gamingDayStart;
 
     // ============================================================================
-    // STEP 9: Aggregate financial metrics per location
+    // STEP 6: Aggregate financial metrics per location (optimized via cursor)
     // ============================================================================
-    const processingStart = Date.now();
     const locationResults: AggregatedLocation[] = [];
+    const allLocationIds = locations.map(loc => String(loc._id));
 
-    // 🚀 OPTIMIZED: Use single aggregation for 7d/30d/Quarterly periods (much faster)
-    // For shorter periods (Today/Yesterday/Custom), use batch processing
-    const useSingleAggregation =
-      timePeriod === '7d' ||
-      timePeriod === '30d' ||
-      timePeriod === 'Quarterly' ||
-      timePeriod === 'last7days' ||
-      timePeriod === 'last30days';
-
-    if (useSingleAggregation) {
-      // 🚀 SUPER OPTIMIZED: Single aggregation for ALL locations (much faster for 30d/7d)
-      // Get global date range (earliest start, latest end)
-      let globalStart = new Date();
-      let globalEnd = new Date(0);
-      gamingDayRanges.forEach(range => {
-        if (range.rangeStart < globalStart) globalStart = range.rangeStart;
-        if (range.rangeEnd > globalEnd) globalEnd = range.rangeEnd;
-      });
-
-      // Get all location IDs
-      const allLocationIds = locations.map((loc: { _id: unknown }) =>
-        String(loc._id)
-      );
-
-      // Single aggregation for all machines across all locations
-      const allMachinesData = await Machine.find({
+    // Get machines mapping
+    const allMachinesData = await Machine.find(
+      {
         gamingLocation: { $in: allLocationIds },
         $or: [
           { deletedAt: null },
           { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
-      }).lean();
+      },
+      {
+        _id: 1,
+        gamingLocation: 1,
+        lastActivity: 1,
+        isSasMachine: 1,
+        relayId: 1,
+        smibBoard: 1,
+        assetNumber: 1,
+        serialNumber: 1,
+      }
+    ).lean();
 
-      // Create machine-to-location map
-      const machineToLocation = new Map();
-      const locationToMachines = new Map();
-      allMachinesData.forEach(
-        (machine: { _id: unknown; gamingLocation?: string }) => {
-          const machineId = String(machine._id);
-          const locationId = machine.gamingLocation;
-          machineToLocation.set(machineId, locationId);
-          if (!locationToMachines.has(locationId)) {
-            locationToMachines.set(locationId, []);
-          }
-          locationToMachines.get(locationId).push(machine);
-        }
-      );
+    const locationToMachines = new Map<string, Record<string, unknown>[]>();
+    allMachinesData.forEach(m => {
+      const locId = m.gamingLocation!;
+      if (!locationToMachines.has(locId)) locationToMachines.set(locId, []);
+      locationToMachines
+        .get(locId)!
+        .push(m as unknown as Record<string, unknown>);
+    });
 
-      // 🚀 PERFORMANCE OPTIMIZATION: Use location field directly from meters
-      // Meters collection has a 'location' field, so we can skip the expensive machine-to-location mapping
-      // This dramatically improves performance for 7d/30d periods (10-20x faster)
-      // The index on { location: 1, readAt: 1 } makes this query very efficient
-      const locationMetricsMap = new Map<
-        string,
-        { moneyIn: number; moneyOut: number; meterCount: number }
-      >();
+    // Global date range for initial aggregation
+    let globalStart = new Date();
+    let globalEnd = new Date(0);
+    gamingDayRanges.forEach(range => {
+      if (range.rangeStart < globalStart) globalStart = range.rangeStart;
+      if (range.rangeEnd > globalEnd) globalEnd = range.rangeEnd;
+    });
 
-      // Use aggregation with location field directly (much faster than find + in-memory processing)
-      const metersAggregation: Array<{
-        _id: string;
-        totalDrop: number;
-        totalCancelledCredits: number;
-        meterCount: number;
-        minReadAt: Date;
-        maxReadAt: Date;
-      }> = [];
       const metersCursor = Meters.aggregate([
         {
           $match: {
-            location: { $in: allLocationIds }, // Filter by location directly (uses index)
-            readAt: {
-              $gte: globalStart,
-              $lte: globalEnd,
-            },
+          location: { $in: allLocationIds },
+          readAt: { $gte: globalStart, $lte: globalEnd },
           },
         },
         {
           $group: {
-            _id: '$location', // Group by location field directly (no lookup needed!)
+          _id: '$location',
             totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
             totalCancelledCredits: {
               $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
             },
-            meterCount: { $sum: 1 },
-            minReadAt: { $min: '$readAt' }, // For gaming day range filtering
-            maxReadAt: { $max: '$readAt' }, // For gaming day range filtering
+          minReadAt: { $min: '$readAt' },
+          maxReadAt: { $max: '$readAt' },
           },
         },
       ])
         .allowDiskUse(true)
         .cursor({ batchSize: 1000 });
 
+    const metricsMap = new Map<string, Record<string, unknown>>();
       for await (const doc of metersCursor) {
-        metersAggregation.push(doc as (typeof metersAggregation)[0]);
+      const locId = String(doc._id);
+      const range = gamingDayRanges.get(locId);
+      if (
+        range &&
+        (doc.minReadAt as Date) <= range.rangeEnd &&
+        (doc.maxReadAt as Date) >= range.rangeStart
+      ) {
+        metricsMap.set(locId, doc as unknown as Record<string, unknown>);
       }
+    }
 
-      // Filter by gaming day ranges in memory (post-processing)
-      for (const agg of metersAggregation) {
-        const locationId = String(agg._id);
-        const gamingDayRange = gamingDayRanges.get(locationId);
-        if (!gamingDayRange) continue;
+    // ============================================================================
+    // STEP 7: Apply post-aggregation filters and currency conversion
+    // ============================================================================
+    for (const loc of locations) {
+      const locId = String(loc._id);
+      const machines = locationToMachines.get(locId) || [];
+      const metrics = metricsMap.get(locId) || {
+        totalDrop: 0,
+        totalCancelledCredits: 0,
+      };
 
-        // Check if there's any overlap between the aggregated date range and the location's gaming day range
-        const minReadAt = new Date(agg.minReadAt);
-        const maxReadAt = new Date(agg.maxReadAt);
-        const hasOverlap =
-          minReadAt <= gamingDayRange.rangeEnd &&
-          maxReadAt >= gamingDayRange.rangeStart;
-
-        if (!hasOverlap) continue;
-
-        locationMetricsMap.set(locationId, {
-          moneyIn: agg.totalDrop || 0,
-          moneyOut: agg.totalCancelledCredits || 0,
-          meterCount: agg.meterCount || 0,
-        });
-      }
-
-      // Convert map to array format for consistency
-      const metricsAggregation = Array.from(locationMetricsMap.entries()).map(
-        ([locationId, metrics]) => ({
-          _id: locationId,
-          ...metrics,
-        })
-      );
-
-      // Create metrics map
-      const metricsMap = new Map();
-      metricsAggregation.forEach(metrics => {
-        metricsMap.set(metrics._id, metrics);
-      });
-
-      // Build location results
-      for (const location of locations) {
-        const locationId = String((location as { _id: unknown })._id);
-        const machines = locationToMachines.get(locationId) || [];
-        const metrics = metricsMap.get(locationId) || {
-          moneyIn: 0,
-          moneyOut: 0,
-          meterCount: 0,
-        };
-
-        const locationMetrics = {
-          moneyIn: metrics.moneyIn || 0,
-          moneyOut: metrics.moneyOut || 0,
-          meterCount: metrics.meterCount || 0,
-        };
-
-        const gross = locationMetrics.moneyIn - locationMetrics.moneyOut;
-
-        // Calculate machine status metrics
         const totalMachines = machines.length;
         const onlineMachines = machines.filter(
-          (m: GamingMachine) =>
+        m =>
             m.lastActivity &&
-            new Date(m.lastActivity) >
+          new Date(m.lastActivity as string) >
               new Date(Date.now() - 24 * 60 * 60 * 1000)
         ).length;
         const sasMachines = machines.filter(
-          (m: GamingMachine) => m.isSasMachine
+        m => m.isSasMachine as boolean
         ).length;
-        const nonSasMachines = totalMachines - sasMachines;
+      const hasSmib = machines.some(
+        m =>
+          (m.relayId as string | undefined)?.trim() ||
+          (m.smibBoard as string | undefined)?.trim()
+      );
 
-        // Check if location has SMIB machines by checking for relayId or smibBoard
-        const hasSmibMachines = machines.some(
-          (m: GamingMachine) =>
-            (m.relayId && m.relayId.trim() !== '') ||
-            (m.smibBoard && m.smibBoard.trim() !== '')
-        );
-
-        // Use dynamic check if machines are available, otherwise fall back to database flag
-        const hasSmib =
-          machines.length > 0 ? hasSmibMachines : location.hasSmib || false;
-        const noSMIBLocation =
-          machines.length > 0
-            ? !hasSmibMachines
-            : location.noSMIBLocation || false;
-
-        // Skip locations with no data if showAllLocations is false
         if (
           !showAllLocations &&
           totalMachines === 0 &&
-          locationMetrics.moneyIn === 0 &&
-          locationMetrics.moneyOut === 0
-        ) {
+        (metrics.totalDrop as number) === 0
+      )
           continue;
-        }
 
         locationResults.push({
-          _id: locationId,
-          location: locationId,
-          locationName: location.name,
-          isLocalServer: location.isLocalServer || false,
+        _id: locId,
+        location: locId,
+        locationName: loc.name,
+        isLocalServer: loc.isLocalServer || false,
           membershipEnabled: Boolean(
-            location.membershipEnabled ||
-              (location as { enableMembership?: boolean }).enableMembership
-          ),
-          moneyIn: Math.round(locationMetrics.moneyIn * 100) / 100,
-          moneyOut: Math.round(locationMetrics.moneyOut * 100) / 100,
-          gross: Math.round(gross * 100) / 100,
-          coinIn: 0, // Default value - can be calculated if needed
-          coinOut: 0, // Default value - can be calculated if needed
-          jackpot: 0, // Default value - can be calculated if needed
-          totalMachines: totalMachines,
-          onlineMachines: onlineMachines,
-          sasMachines: sasMachines,
-          nonSasMachines: nonSasMachines,
-          hasSasMachines: sasMachines > 0,
-          hasNonSasMachines: nonSasMachines > 0,
-          noSMIBLocation: noSMIBLocation,
-          hasSmib: hasSmib,
-          gamesPlayed: 0, // Default value - can be calculated if needed
-          rel: location.rel,
-          country: location.country,
-          geoCoords: (location as { geoCoords?: { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number } }).geoCoords, // Include geoCoords in response
-          machines: machines.map((m: GamingMachine) => ({
-            _id: m._id.toString(),
-            assetNumber: m.assetNumber,
-            serialNumber: m.serialNumber,
-            isSasMachine: m.isSasMachine,
-            lastActivity: m.lastActivity,
-          })),
-        });
-      }
-    } else {
-      // 🚀 OPTIMIZED: Use smaller batch size for shorter periods
-      // (Today/Yesterday/Custom/All Time) - these are already fast with smaller batches
-      const BATCH_SIZE = 20;
-
-      for (let i = 0; i < locations.length; i += BATCH_SIZE) {
-        const batch = locations.slice(i, i + BATCH_SIZE);
-
-        // Process batch in parallel
-        const batchResults = await Promise.all(
-          batch.map(async (location: { _id: unknown }) => {
-            const locationId = String(location._id);
-            const gamingDayRange = gamingDayRanges.get(locationId);
-
-            if (!gamingDayRange) {
-              return null;
-            }
-
-            try {
-              // 🚀 SUPER OPTIMIZED: Fetch machines ONCE, then aggregate meters
-              // Get machines with only essential fields (reduces data transfer)
-              const machines = await Machine.find(
-                {
-                  gamingLocation: locationId,
-                  $or: [
-                    { deletedAt: null },
-                    { deletedAt: { $lt: new Date('2025-01-01') } },
-                  ],
-                },
-                {
-                  _id: 1,
-                  assetNumber: 1,
-                  serialNumber: 1,
-                  isSasMachine: 1,
-                  lastActivity: 1,
-                  relayId: 1,
-                  smibBoard: 1,
-                }
-              ).lean();
-
-              let metrics;
-              if (machines.length === 0) {
-                metrics = [{ moneyIn: 0, moneyOut: 0, meterCount: 0 }];
-              } else {
-                // Aggregate meters with optimized projection (only fetch what we need)
-                const machineIds = machines.map((m: { _id: unknown }) =>
-                  String(m._id)
-                );
-                metrics = await Meters.aggregate([
-                  {
-                    $match: {
-                      machine: { $in: machineIds },
-                      readAt: {
-                        $gte: gamingDayRange.rangeStart,
-                        $lte: gamingDayRange.rangeEnd,
-                      },
-                    },
-                  },
-                  {
-                    $project: {
-                      drop: '$movement.drop',
-                      totalCancelledCredits: '$movement.totalCancelledCredits',
-                    },
-                  },
-                  {
-                    $group: {
-                      _id: null,
-                      moneyIn: { $sum: '$drop' },
-                      moneyOut: { $sum: '$totalCancelledCredits' },
-                      meterCount: { $sum: 1 },
-                    },
-                  },
-                ]);
-              }
-
-              const locationMetrics = metrics[0] || {
-                moneyIn: 0,
-                moneyOut: 0,
-                meterCount: 0,
-              };
-              const gross = locationMetrics.moneyIn - locationMetrics.moneyOut;
-
-              // Calculate machine status metrics
-              const totalMachines = machines.length;
-              const onlineMachines = machines.filter(m => {
-                if (!m.lastActivity) return false;
-                const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
-                return m.lastActivity > threeMinutesAgo;
-              }).length;
-
-              const sasMachines = machines.filter(
-                m => m.isSasMachine === true
-              ).length;
-              const nonSasMachines = totalMachines - sasMachines;
-
-              // Check if location has SMIB machines by checking for relayId or smibBoard
-              const hasSmibMachines = machines.some(m => {
-                const machine = m as {
-                  relayId?: string | unknown;
-                  smibBoard?: string | unknown;
-                };
-                const relayId = machine.relayId
-                  ? String(machine.relayId).trim()
-                  : '';
-                const smibBoard = machine.smibBoard
-                  ? String(machine.smibBoard).trim()
-                  : '';
-                return relayId !== '' || smibBoard !== '';
-              });
-
-              // Use dynamic check if machines are available, otherwise fall back to database flag
-              const hasSmib =
-                machines.length > 0
-                  ? hasSmibMachines
-                  : (location as { hasSmib?: boolean }).hasSmib || false;
-              const noSMIBLocation =
-                machines.length > 0
-                  ? !hasSmibMachines
-                  : (location as { noSMIBLocation?: boolean }).noSMIBLocation ||
-                    false;
-
-              // Apply showAllLocations filter
-              // If showAllLocations is false, skip locations with no data
-              if (
-                !showAllLocations &&
-                totalMachines === 0 &&
-                locationMetrics.moneyIn === 0 &&
-                locationMetrics.moneyOut === 0
-              ) {
-                return null;
-              }
-
-              return {
-                _id: locationId,
-                location: locationId,
-                locationName: (location as { name?: string }).name || '',
-                isLocalServer:
-                  (location as { isLocalServer?: boolean }).isLocalServer ||
-                  false,
-                membershipEnabled: Boolean(
-                  (
-                    location as {
-                      membershipEnabled?: boolean;
-                      enableMembership?: boolean;
-                    }
-                  ).membershipEnabled ||
-                    (location as { enableMembership?: boolean })
-                      .enableMembership
-                ),
-                moneyIn: Math.round(locationMetrics.moneyIn * 100) / 100,
-                moneyOut: Math.round(locationMetrics.moneyOut * 100) / 100,
-                gross: Math.round(gross * 100) / 100,
-                totalMachines: totalMachines,
-                onlineMachines: onlineMachines,
-                sasMachines: sasMachines,
-                nonSasMachines: nonSasMachines,
-                hasSasMachines: sasMachines > 0,
-                hasNonSasMachines: nonSasMachines > 0,
-                coinIn: 0, // Default value - can be calculated if needed
-                coinOut: 0, // Default value - can be calculated if needed
-                jackpot: 0, // Default value - can be calculated if needed
-                noSMIBLocation: noSMIBLocation,
-                hasSmib: hasSmib,
-                gamesPlayed: 0, // Default value - can be calculated if needed
-                rel: (location as { rel?: { licencee?: string } }).rel, // Include rel for licensee information
-                country: (location as { country?: string }).country, // Include country for currency mapping
-                geoCoords: (location as { geoCoords?: { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number } }).geoCoords, // Include geoCoords in response
-                machines: machines.map(
-                  (m: {
-                    _id: unknown;
-                    assetNumber?: string;
-                    serialNumber?: string;
-                    isSasMachine?: boolean;
-                    lastActivity?: Date;
-                  }) => ({
-                    _id: String(m._id),
-                    assetNumber: m.assetNumber,
-                    serialNumber: m.serialNumber,
-                    isSasMachine: m.isSasMachine,
-                    lastActivity: m.lastActivity,
-                  })
-                ),
-              };
-            } catch (error) {
-              console.error(
-                `❌ Error processing location ${locationId}:`,
-                error
-              );
-              return null;
-            }
-          })
-        );
-
-        // Filter out null results and add to main results
-        const validResults = batchResults.filter(r => r !== null);
-        locationResults.push(...validResults);
-      }
-    }
-
-    perfTimers.processing = Date.now() - processingStart;
-
-    // ============================================================================
-    // STEP 9.5: Add member counts for locations with membership enabled
-    // ============================================================================
-    const memberCountStart = Date.now();
-    const membershipEnabledLocations = locationResults
-      .filter(
-        loc =>
           loc.membershipEnabled ||
-          (loc as { enableMembership?: boolean }).enableMembership
-      )
-      .map(loc => loc._id);
-
-    if (membershipEnabledLocations.length > 0) {
-      const { Member } = await import('@/app/api/lib/models/members');
-
-      // Count members for each membership-enabled location
-      const memberCounts = await Member.aggregate([
-        {
-          $match: {
-            gamingLocation: { $in: membershipEnabledLocations },
-            deletedAt: { $lt: new Date('2025-01-01') }, // Exclude deleted members
-          },
-        },
-        {
-          $group: {
-            _id: '$gamingLocation',
-            count: { $sum: 1 },
-          },
-        },
-      ]);
-
-      // Create a map of location ID to member count
-      const memberCountMap = new Map<string, number>();
-      memberCounts.forEach((item: { _id: string; count: number }) => {
-        memberCountMap.set(item._id, item.count);
-      });
-
-      // Add member counts to locations
-      locationResults.forEach(loc => {
-        if (loc.membershipEnabled && loc._id) {
-          (loc as { memberCount?: number }).memberCount =
-            memberCountMap.get(loc._id) || 0;
-        }
-      });
-    }
-    perfTimers.memberCounts = Date.now() - memberCountStart;
-
-    // ============================================================================
-    // STEP 10: Apply additional SMIB filter check (based on sasMachines count)
-    // ============================================================================
-    // Note: Most filters are already applied at database level in STEP 6
-    // Apply post-aggregation filters that depend on calculated fields
-    // This ensures filters are accurate based on actual machine data, not just database flags
-    // Database-level filters are applied first for performance, but we verify here for accuracy
-    const filterStart = Date.now();
-    let filteredResults = locationResults;
-
-    // Apply post-aggregation filters that depend on calculated fields
-    // This ensures filters are accurate based on actual machine data, not just database flags
-    const smibOnlyFilter = filters.includes('SMIBLocationsOnly');
-    const noSmibFilter = filters.includes('NoSMIBLocation');
-    const localServerFilter = filters.includes('LocalServersOnly');
-    const membershipFilter = filters.includes('MembershipOnly');
-    const missingCoordinatesFilter = filters.includes('MissingCoordinates');
-    const hasCoordinatesFilter = filters.includes('HasCoordinates');
-
-    if (
-      smibOnlyFilter ||
-      noSmibFilter ||
-      localServerFilter ||
-      membershipFilter ||
-      missingCoordinatesFilter ||
-      hasCoordinatesFilter
-    ) {
-      filteredResults = locationResults.filter(loc => {
-        // Get location properties
-        const totalMachines = (loc as { totalMachines?: number }).totalMachines || 0;
-          const hasSmib = (loc as { hasSmib?: boolean }).hasSmib === true;
-        const isLocalServer = (loc as { isLocalServer?: boolean }).isLocalServer === true;
-        const membershipEnabled = (loc as { membershipEnabled?: boolean }).membershipEnabled === true;
-        const geoCoords = (loc as { geoCoords?: { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number } }).geoCoords;
-        
-        // Check coordinates
-        let hasValidCoords = false;
-        if (geoCoords) {
-          const hasLat = geoCoords.lat !== undefined && geoCoords.lat !== null;
-          const hasLng = geoCoords.lng !== undefined && geoCoords.lng !== null;
-          const hasLatitude = geoCoords.latitude !== undefined && geoCoords.latitude !== null;
-          const hasLongitude = geoCoords.longitude !== undefined && geoCoords.longitude !== null;
-          const hasLongtitude = geoCoords.longtitude !== undefined && geoCoords.longtitude !== null;
-          hasValidCoords = (hasLat && hasLng) || (hasLatitude && (hasLongitude || hasLongtitude));
-        }
-
-        // ============================================================================
-        // STEP 1: Location Type Filters (SMIB/No SMIB/Local Server) - EXCLUSIVE
-        // ============================================================================
-        // These filters determine which location types to show
-        // If any of these are selected, ONLY show locations matching those types
-        
-        let matchesLocationType = false;
-        
-        // Check if any location type filter is selected
-        const hasLocationTypeFilter = smibOnlyFilter || noSmibFilter || localServerFilter;
-        
-        if (hasLocationTypeFilter) {
-          // Location type filters are exclusive - location must match at least one selected type
-          if (smibOnlyFilter) {
-            if (totalMachines > 0 && hasSmib) {
-              matchesLocationType = true;
-            }
-          }
-          
-        if (noSmibFilter) {
-            const hasSmibCheck = hasSmib || ((loc as { sasMachines?: number }).sasMachines || 0) > 0;
-          const noSMIB = (loc as { noSMIBLocation?: boolean }).noSMIBLocation;
-            if (!hasSmibCheck && noSMIB !== false) {
-              matchesLocationType = true;
-            }
-        }
-
-        if (localServerFilter) {
-            if (isLocalServer) {
-              matchesLocationType = true;
-            }
-          }
-          
-          // If location type filter is selected but location doesn't match any selected type, exclude it
-          if (!matchesLocationType) {
-            return false;
-          }
-        }
-
-        // ============================================================================
-        // STEP 2: Additional Filters (Membership, Coordinates) - OR logic within type
-        // ============================================================================
-        // These filters are applied within the location type subset
-        // If multiple are selected, location matches if it matches ANY of them
-        
-        const additionalMatches: boolean[] = [];
-
-        // MembershipOnly: Must have membership enabled
-        if (membershipFilter) {
-          additionalMatches.push(membershipEnabled);
-        }
-
-        // MissingCoordinates: Must have missing coordinates
-        if (missingCoordinatesFilter) {
-          additionalMatches.push(!hasValidCoords);
-        }
-
-        // HasCoordinates: Must have coordinates
-        if (hasCoordinatesFilter) {
-          additionalMatches.push(hasValidCoords);
-        }
-
-        // If additional filters are selected, location must match at least one
-        if (additionalMatches.length > 0) {
-          const matchesAdditional = additionalMatches.some(match => match === true);
-          if (!matchesAdditional) {
-            return false; // Doesn't match any additional filter
-        }
-        }
-
-        // Location matches if:
-        // 1. It matches the location type filter (if any selected), AND
-        // 2. It matches at least one additional filter (if any selected)
-        return true;
+            (loc as { enableMembership?: boolean }).enableMembership
+        ),
+        moneyIn: Math.round((metrics.totalDrop as number) * 100) / 100,
+        moneyOut:
+          Math.round((metrics.totalCancelledCredits as number) * 100) / 100,
+        gross:
+          Math.round(
+            ((metrics.totalDrop as number) -
+              (metrics.totalCancelledCredits as number)) *
+              100
+          ) / 100,
+        totalMachines,
+        onlineMachines,
+        sasMachines,
+        nonSasMachines: totalMachines - sasMachines,
+          hasSasMachines: sasMachines > 0,
+        hasNonSasMachines: totalMachines - sasMachines > 0,
+        noSMIBLocation: loc.noSMIBLocation || !hasSmib,
+        hasSmib,
+        rel: loc.rel,
+        country: loc.country,
+        geoCoords: (loc as { geoCoords?: GeoCoordinates }).geoCoords,
+        machines: machines.map(m => ({
+          _id: (m._id as string).toString(),
+          assetNumber: m.assetNumber as string,
+          serialNumber: m.serialNumber as string,
+          isSasMachine: m.isSasMachine as boolean,
+          lastActivity: m.lastActivity
+            ? new Date(m.lastActivity as string)
+            : undefined,
+        })),
+        coinIn: 0,
+        coinOut: 0,
+        jackpot: 0,
+        gamesPlayed: 0,
       });
     }
-    perfTimers.filters = Date.now() - filterStart;
 
-    // 🔍 PERFORMANCE: Sort and paginate
-    const sortStart = Date.now();
-    filteredResults.sort((a, b) => b.gross - a.gross);
-    const totalCount = filteredResults.length;
-    const paginatedResults = filteredResults.slice(skip, skip + limit);
-    const totalPages = Math.ceil(totalCount / limit);
-    perfTimers.sortAndPaginate = Date.now() - sortStart;
-
-    const paginatedData = paginatedResults;
+    locationResults.sort((a, b) => b.gross - a.gross);
+    const paginated = locationResults.slice(skip, skip + limit);
+    const converted = await applyLocationsCurrencyConversion(
+      paginated,
+      licencee,
+      displayCurrency,
+      isAdminOrDev
+    );
 
     // ============================================================================
-    // STEP 10: Apply currency conversion if needed
+    // STEP 8: Return paginated results
     // ============================================================================
-    const conversionStart = Date.now();
-
-    // Apply currency conversion using the proper helper
-    // Data comes in native currency (TTD for TTG, GYD for Cabana, etc.)
-    // Need to convert to display currency
-    let convertedData = paginatedData;
-
-    // Currency conversion ONLY for Admin/Developer when viewing "All Licensees"
-    // Managers and other users ALWAYS see native currency (TTD for TTG, GYD for Cabana, etc.)
-    const shouldConvert =
-      isAdminOrDev && shouldApplyCurrencyConversion(licencee);
-
-    if (shouldConvert) {
-      try {
-        const db = await connectDB();
-        if (!db) {
-          console.error('❌ DB connection failed during currency conversion');
-          convertedData = paginatedData;
-        } else {
-          // Get licensee details for currency mapping
-          const licenseesData = await Licencee.find({
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          })
-            .select('_id name')
-            .lean();
-
-          // Create a map of licensee ID to name
-          const licenseeIdToName = new Map<string, string>();
-          licenseesData.forEach((lic: { _id: unknown; name?: string }) => {
-            if (!Array.isArray(lic) && lic._id && lic.name) {
-              licenseeIdToName.set(String(lic._id), lic.name);
-            }
-          });
-
-          // Get country details for currency mapping (for unassigned locations)
-          const countriesData = await Countries.find({}).lean();
-          const countryIdToName = new Map<string, string>();
-          countriesData.forEach(country => {
-            if (country._id && country.name) {
-              countryIdToName.set(String(country._id), country.name);
-            }
-          });
-
-          // Convert each location's financial data
-          convertedData = paginatedData.map(location => {
-            const locationLicenseeId = location.rel?.licencee as
-              | string
-              | undefined;
-
-            let nativeCurrency: CurrencyCode = 'USD';
-
-            if (!locationLicenseeId) {
-              // Unassigned locations - determine currency from country
-              const countryId = location.country as string | undefined;
-              const countryName = countryId
-                ? countryIdToName.get(countryId.toString())
-                : undefined;
-              nativeCurrency = countryName
-                ? getCountryCurrency(countryName)
-                : 'USD';
-            } else {
-              // Get licensee's native currency
-              const licenseeName =
-                licenseeIdToName.get(locationLicenseeId.toString()) ||
-                'Unknown';
-              if (!licenseeName || licenseeName === 'Unknown') {
-                // Fallback to country-based currency if licensee not found
-                const countryId = location.country as string | undefined;
-                const countryName = countryId
-                  ? countryIdToName.get(countryId.toString())
-                  : undefined;
-                nativeCurrency = countryName
-                  ? getCountryCurrency(countryName)
-                  : 'USD';
-              } else {
-                nativeCurrency = getLicenseeCurrency(licenseeName);
-              }
-            }
-
-            // If native currency matches display currency, no conversion needed
-            if (nativeCurrency === displayCurrency) {
-              return location;
-            }
-
-            // Convert financial fields: Native Currency → USD → Display Currency
-            const convertedLocation = { ...location };
-
-            if (typeof location.moneyIn === 'number') {
-              const usdValue = convertToUSD(location.moneyIn, nativeCurrency);
-              convertedLocation.moneyIn = Math.round(
-                convertFromUSD(usdValue, displayCurrency) * 100
-              ) / 100;
-            }
-
-            if (typeof location.moneyOut === 'number') {
-              const usdValue = convertToUSD(location.moneyOut, nativeCurrency);
-              convertedLocation.moneyOut = Math.round(
-                convertFromUSD(usdValue, displayCurrency) * 100
-              ) / 100;
-            }
-
-            if (typeof location.gross === 'number') {
-              const usdValue = convertToUSD(location.gross, nativeCurrency);
-              convertedLocation.gross = Math.round(
-                convertFromUSD(usdValue, displayCurrency) * 100
-              ) / 100;
-            }
-
-            return convertedLocation;
-          });
-        }
-      } catch (conversionError) {
-        console.error(`❌ Currency conversion failed:`, conversionError);
-        convertedData = paginatedData;
-      }
-    }
-
-    perfTimers.currencyConversion = Date.now() - conversionStart;
-
-    // 🔍 PERFORMANCE: Calculate total time
-    const totalTime = Date.now() - perfStart;
-    perfTimers.total = totalTime;
-
-    // Log only if slow response (>3 seconds)
-    if (totalTime > 3000) {
-      console.warn(
-        `[Locations Report API] Slow response: ${totalTime}ms for ${locations.length} locations`
-      );
-    }
-
-    const response = {
-      data: convertedData,
+    return NextResponse.json({
+      data: converted,
       pagination: {
         page,
         limit,
-        totalCount,
-        totalPages,
-        hasNextPage: page < totalPages,
+        totalCount: locationResults.length,
+        totalPages: Math.ceil(locationResults.length / limit),
+        hasNextPage: page < Math.ceil(locationResults.length / limit),
         hasPrevPage: page > 1,
       },
       currency: displayCurrency,
-      converted: shouldConvert,
-      performance: {
-        totalTime,
-        breakdown: perfTimers,
-        locationsProcessed: locations.length,
-        avgTimePerLocation: parseFloat(
-          (perfTimers.processing / locations.length).toFixed(2)
-        ),
-      },
-    };
-
-    return NextResponse.json(response);
-  } catch (err: unknown) {
-    console.error('Error in reports locations route:', err);
-    if (err instanceof Error) {
-      console.error('[Reports/Locations] Error stack:', err.stack);
-    }
-    console.error('[Reports/Locations] Full error:', err);
-
-    // Handle specific MongoDB connection errors
-    if (err instanceof Error) {
-      const errorMessage = err.message.toLowerCase();
-
-      // MongoDB connection timeout
-      if (
-        errorMessage.includes('mongonetworktimeouterror') ||
-        (errorMessage.includes('connection') &&
-          errorMessage.includes('timed out'))
-      ) {
+      converted: isAdminOrDev && (licencee === 'all' || !licencee),
+      performance: { totalTime: Date.now() - perfStart },
+    });
+  } catch (err) {
+    console.error('Reports Locations API Error:', err);
         return NextResponse.json(
-          {
-            error: 'Database connection timeout',
-            message:
-              'The database is currently experiencing high load. Please try again in a few moments.',
-            type: 'CONNECTION_TIMEOUT',
-            retryable: true,
-          },
-          { status: 503 }
-        );
-      }
-
-      // MongoDB server selection error
-      if (
-        errorMessage.includes('mongoserverselectionerror') ||
-        errorMessage.includes('server selection')
-      ) {
-        return NextResponse.json(
-          {
-            error: 'Database server unavailable',
-            message:
-              'Unable to connect to the database server. Please try again later.',
-            type: 'SERVER_UNAVAILABLE',
-            retryable: true,
-          },
-          { status: 503 }
-        );
-      }
-
-      // Generic MongoDB connection error
-      if (
-        errorMessage.includes('mongodb') ||
-        errorMessage.includes('connection')
-      ) {
-        return NextResponse.json(
-          {
-            error: 'Database connection failed',
-            message:
-              'Unable to establish connection to the database. Please try again.',
-            type: 'CONNECTION_ERROR',
-            retryable: true,
-          },
-          { status: 503 }
-        );
-      }
-    }
-
-    // Generic server error
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        message: 'An unexpected error occurred while processing your request.',
-        type: 'INTERNAL_ERROR',
-        retryable: false,
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
+}
+
+function createEmptyResponse(page: number, limit: number, currency: string) {
+  return NextResponse.json({
+    data: [],
+    pagination: {
+      page,
+      limit,
+      totalCount: 0,
+      totalPages: 0,
+      hasNextPage: false,
+      hasPrevPage: false,
+    },
+    currency,
+    converted: false,
+  });
 }

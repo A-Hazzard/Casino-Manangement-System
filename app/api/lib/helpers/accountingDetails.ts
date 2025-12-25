@@ -330,27 +330,36 @@ export async function getCollectionReportById(
     }));
 
   // Build a single aggregation to get all meter data grouped by machine
-  const allMeterData =
-    meterQueries.length > 0
-      ? await Meters.aggregate([
-          {
-            $match: {
-              $or: meterQueries.map(q => ({
-                machine: q.machineId,
-                readAt: { $gte: q.startTime, $lte: q.endTime },
-              })),
-            },
-          },
-          {
-            $group: {
-              _id: '$machine',
-              totalDrop: { $sum: '$movement.drop' },
-              totalCancelled: { $sum: '$movement.totalCancelledCredits' },
-              meterCount: { $sum: 1 },
-            },
-          },
-        ])
-      : [];
+  const allMeterData: Array<{
+    _id: string;
+    totalDrop: number;
+    totalCancelled: number;
+    meterCount: number;
+  }> = [];
+  if (meterQueries.length > 0) {
+    const cursor = Meters.aggregate([
+      {
+        $match: {
+          $or: meterQueries.map(q => ({
+            machine: q.machineId,
+            readAt: { $gte: q.startTime, $lte: q.endTime },
+          })),
+        },
+      },
+      {
+        $group: {
+          _id: '$machine',
+          totalDrop: { $sum: '$movement.drop' },
+          totalCancelled: { $sum: '$movement.totalCancelledCredits' },
+          meterCount: { $sum: 1 },
+        },
+      },
+    ]).cursor({ batchSize: 1000 });
+
+    for await (const doc of cursor) {
+      allMeterData.push(doc);
+    }
+  }
 
   // Create lookup map for O(1) access
   const meterDataMap = new Map(

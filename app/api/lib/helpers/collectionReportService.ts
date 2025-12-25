@@ -1,3 +1,20 @@
+/**
+ * Collection Report Service Helper Functions
+ *
+ * Provides backend helper functions for fetching and enriching collection reports
+ * with machine counts, financial metrics, and collector details. It uses optimized
+ * aggregation pipelines to batch process data efficiently and includes collector
+ * information from the users collection.
+ *
+ * Features:
+ * - Fetches all collection reports with licensee and date range filtering.
+ * - Enriches reports with machine counts (collected vs total machines).
+ * - Calculates financial metrics from actual collections (gross, SAS gross, variation).
+ * - Includes collector details (username, profile information) via lookup.
+ * - Uses batch aggregation queries for optimal performance.
+ * - Formats numbers with smart decimal handling.
+ */
+
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -22,10 +39,7 @@ const formatSmartDecimal = (value: number): string => {
 export async function getAllCollectionReportsWithMachineCounts(
   licenceeId?: string,
   startDate?: Date,
-  endDate?: Date,
-  _timePeriod?: string,
-  _customStartDate?: Date,
-  _customEndDate?: Date
+  endDate?: Date
 ): Promise<CollectionReportRow[]> {
   let rawReports: Array<Record<string, unknown>> = [];
 

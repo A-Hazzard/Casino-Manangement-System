@@ -680,6 +680,8 @@ export type SessionInfo = {
   _id: string;
   memberId: string;
   locationMembershipSettings?: LocationMembershipSettings;
+  memberFirstName?: string;
+  memberLastName?: string;
 };
 
 // Members UI types

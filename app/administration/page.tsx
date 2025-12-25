@@ -15,69 +15,27 @@
  */
 
 'use client';
-import DeleteUserModal from '@/components/administration/DeleteUserModal';
-import LicenseeCardSkeleton from '@/components/administration/LicenseeCardSkeleton';
-import LicenseeTableSkeleton from '@/components/administration/LicenseeTableSkeleton';
-import SearchFilterBar from '@/components/administration/SearchFilterBar';
-import UserCard from '@/components/administration/UserCard';
-import UserCardSkeleton from '@/components/administration/UserCardSkeleton';
-import UserTable from '@/components/administration/UserTable';
+
+import ActivityLogsTable from '@/components/administration/ActivityLogsTable';
+import AdministrationNavigation from '@/components/administration/AdministrationNavigation';
+import FeedbackManagement from '@/components/administration/FeedbackManagement';
+import AdministrationLicenseesSection from '@/components/administration/sections/AdministrationLicenseesSection';
+import AdministrationUsersSection from '@/components/administration/sections/AdministrationUsersSection';
 import UserTableSkeleton from '@/components/administration/UserTableSkeleton';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
-
-import AdministrationNavigation from '@/components/administration/AdministrationNavigation';
 import { Button } from '@/components/ui/button';
-import PaginationControls from '@/components/ui/PaginationControls';
-import type { AdministrationSection } from '@/lib/constants/administration';
 import { ADMINISTRATION_TABS_CONFIG } from '@/lib/constants/administration';
-// Activity logging removed - handled via API calls
-import ActivityLogsTable from '@/components/administration/ActivityLogsTable';
-import AddLicenseeModal from '@/components/administration/AddLicenseeModal';
-import AddUserModal from '@/components/administration/AddUserModal';
-import DeleteLicenseeModal from '@/components/administration/DeleteLicenseeModal';
-import EditLicenseeModal from '@/components/administration/EditLicenseeModal';
-import FeedbackManagement from '@/components/administration/FeedbackManagement';
-import LicenseeCard from '@/components/administration/LicenseeCard';
-import LicenseeSearchBar from '@/components/administration/LicenseeSearchBar';
-import LicenseeSuccessModal from '@/components/administration/LicenseeSuccessModal';
-import LicenseeTable from '@/components/administration/LicenseeTable';
-import PaymentHistoryModal from '@/components/administration/PaymentHistoryModal';
-import PaymentStatusConfirmModal from '@/components/administration/PaymentStatusConfirmModal';
-import UserModal from '@/components/administration/UserModal';
 import { IMAGES } from '@/lib/constants/images';
-import { fetchUsers, updateUser } from '@/lib/helpers/administration';
-import { administrationUtils } from '@/lib/helpers/administrationPage';
-import { fetchLicensees } from '@/lib/helpers/clientLicensees';
-import { fetchCountries } from '@/lib/helpers/countries';
+import { useAdministrationLicensees } from '@/lib/hooks/administration/useAdministrationLicensees';
+import { useAdministrationUsers } from '@/lib/hooks/administration/useAdministrationUsers';
 import { useAdministrationNavigation } from '@/lib/hooks/navigation';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
-import type { SortKey, User } from '@/lib/types/administration';
-import type { Country } from '@/lib/types/country';
-import type { Licensee } from '@/lib/types/licensee';
-import {
-  detectChanges,
-  filterMeaningfulChanges,
-  getChangesSummary,
-} from '@/lib/utils/changeDetection';
-import { getNext30Days } from '@/lib/utils/licensee';
+import { hasTabAccess } from '@/lib/utils/permissions';
 import { PlusCircle, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { toast } from 'sonner';
-// import { useUrlProtection } from '@/lib/hooks/useUrlProtection';
-
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import type { AddLicenseeForm, AddUserForm } from '@/lib/types/pages';
-import { hasTabAccess } from '@/lib/utils/permissions';
-import axios from 'axios';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 
 // ============================================================================
 // Page Components
@@ -95,157 +53,33 @@ function AdministrationPageContent() {
   const { activeSection, handleSectionChange } = useAdministrationNavigation();
 
   // ============================================================================
-  // Utility Functions
-  // ============================================================================
-  // Helper function to get proper user display name for activity logging
-  const getUserDisplayName = useCallback(() => {
-    if (!user) return 'Unknown User';
-
-    // Check if user has profile with firstName and lastName
-    if (user.profile?.firstName && user.profile?.lastName) {
-      return `${user.profile.firstName} ${user.profile.lastName}`;
-    }
-
-    // If only firstName exists, use it
-    if (user.profile?.firstName && !user.profile?.lastName) {
-      return user.profile.firstName;
-    }
-
-    // If only lastName exists, use it
-    if (!user.profile?.firstName && user.profile?.lastName) {
-      return user.profile.lastName;
-    }
-
-    // If neither firstName nor lastName exist, use username
-    if (user.username && user.username.trim() !== '') {
-      return user.username;
-    }
-
-    // If username doesn't exist or is blank, use email
-    if (user.emailAddress && user.emailAddress.trim() !== '') {
-      return user.emailAddress;
-    }
-
-    // Fallback
-    return 'Unknown User';
-  }, [user]);
-
-  // ============================================================================
   // State Management
   // ============================================================================
   // Prevent hydration mismatch by rendering content only on client
   const [mounted, setMounted] = useState(false);
 
-  // Users section state
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [allLoadedUsers, setAllLoadedUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Track which sections have been loaded
+  const [loadedSections, setLoadedSections] = useState<Set<string>>(new Set());
+
+  // Track refreshing state
   const [refreshing, setRefreshing] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
-  const [currentPage, setCurrentPage] = useState(0); // 0-indexed
-  const [searchValue, setSearchValue] = useState('');
-  const [debouncedSearchValue, setDebouncedSearchValue] = useState('');
-  const [selectedRole, setSelectedRole] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [usingBackendSearch, setUsingBackendSearch] = useState(false);
-  const [paginationMetadata, setPaginationMetadata] = useState<{
-    total: number;
-    totalPages: number;
-  } | null>(null);
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey;
-    direction: 'ascending' | 'descending';
-  } | null>(null);
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedUserToDelete, setSelectedUserToDelete] = useState<User | null>(
-    null
-  );
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [addUserForm, setAddUserForm] = useState<AddUserForm>({
-    roles: [],
-    allowedLocations: [],
-    licenseeIds: [],
+
+  // ============================================================================
+  // Custom Hooks
+  // ============================================================================
+  const usersHook = useAdministrationUsers({
+    selectedLicencee,
+    activeSection,
+    loadedSections,
+    setLoadedSections,
+    mounted,
   });
 
-  // Licensees section state
-  const [allLicensees, setAllLicensees] = useState<Licensee[]>([]);
-  const [isLicenseesLoading, setIsLicenseesLoading] = useState(true);
-  const [licenseesLoadedBatches, setLicenseesLoadedBatches] = useState<
-    Set<number>
-  >(new Set([1]));
-  const [licenseesCurrentPage, setLicenseesCurrentPage] = useState(0); // 0-indexed
-  const [isAddLicenseeModalOpen, setIsAddLicenseeModalOpen] = useState(false);
-  const [isEditLicenseeModalOpen, setIsEditLicenseeModalOpen] = useState(false);
-  const [isDeleteLicenseeModalOpen, setIsDeleteLicenseeModalOpen] =
-    useState(false);
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [isCountriesLoading, setIsCountriesLoading] = useState<boolean>(true);
-  const [selectedLicensee, setSelectedLicensee] = useState<Licensee | null>(
-    null
-  );
-  const [licenseeForm, setLicenseeForm] = useState<AddLicenseeForm>({});
-  const [licenseeSearchValue, setLicenseeSearchValue] = useState('');
-  const [isPaymentHistoryModalOpen, setIsPaymentHistoryModalOpen] =
-    useState(false);
-  const [selectedLicenseeForPayment, setSelectedLicenseeForPayment] =
-    useState<Licensee | null>(null);
-  const [createdLicensee, setCreatedLicensee] = useState<{
-    name: string;
-    licenseKey: string;
-  } | null>(null);
-  const [isLicenseeSuccessModalOpen, setIsLicenseeSuccessModalOpen] =
-    useState(false);
-  const [isPaymentConfirmModalOpen, setIsPaymentConfirmModalOpen] =
-    useState(false);
-  const [
-    selectedLicenseeForPaymentChange,
-    setSelectedLicenseeForPaymentChange,
-  ] = useState<Licensee | null>(null);
-
-  // Track which sections have been loaded
-  const [loadedSections, setLoadedSections] = useState<
-    Set<AdministrationSection>
-  >(new Set());
-
-  // ============================================================================
-  // Constants
-  // ============================================================================
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
-  const licenseesItemsPerPage = 10;
-  const licenseesItemsPerBatch = 50;
-  const licenseesPagesPerBatch = licenseesItemsPerBatch / licenseesItemsPerPage; // 5
-
-  // ============================================================================
-  // Computed Values
-  // ============================================================================
-  const countryNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    countries.forEach(country => {
-      map.set(country._id, country.name);
-    });
-    return map;
-  }, [countries]);
-
-  const getCountryNameById = useCallback(
-    (countryId?: string) => {
-      if (!countryId) return '';
-      return countryNameById.get(countryId) || countryId;
-    },
-    [countryNameById]
-  );
-
-  // Calculate which batch corresponds to the current page for licensees
-  const calculateLicenseesBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / licenseesPagesPerBatch) + 1;
-    },
-    [licenseesPagesPerBatch]
-  );
+  const licenseesHook = useAdministrationLicensees({
+    activeSection,
+    loadedSections,
+    setLoadedSections,
+  });
 
   // ============================================================================
   // Effects - Initialization
@@ -254,40 +88,6 @@ function AdministrationPageContent() {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadCountries = async () => {
-      if (isMounted) {
-        setIsCountriesLoading(true);
-      }
-      try {
-        const data = await fetchCountries();
-        if (isMounted) {
-          setCountries(data || []);
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to fetch countries:', error);
-        }
-        if (isMounted) {
-          setCountries([]);
-          toast.error('Failed to load countries');
-        }
-      } finally {
-        if (isMounted) {
-          setIsCountriesLoading(false);
-        }
-      }
-    };
-
-    void loadCountries();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [setCountries, setIsCountriesLoading]);
-
   // Initialize selectedLicencee if not set
   useEffect(() => {
     if (!selectedLicencee) {
@@ -295,1732 +95,12 @@ function AdministrationPageContent() {
     }
   }, [selectedLicencee, setSelectedLicencee]);
 
-  // Track tab transition loading state
-  const [isTabTransitioning, setIsTabTransitioning] = useState(false);
-
-  // Calculate which batch corresponds to the current page
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / pagesPerBatch) + 1;
-    },
-    [pagesPerBatch]
-  );
-
-  // Track if we've attempted backend search for role/status filter
-  const hasAttemptedBackendFilterRef = useRef(false);
-  const lastFilterKeyRef = useRef<string>('');
-
-  // Reset users data when licensee or status changes
-  useEffect(() => {
-    if (!mounted) return;
-
-    // Reset backend filter attempt tracking when filters change
-    const filterKey = `${selectedLicencee}-${selectedStatus}-${selectedRole}`;
-    if (lastFilterKeyRef.current !== filterKey) {
-      hasAttemptedBackendFilterRef.current = false;
-      lastFilterKeyRef.current = filterKey;
-    }
-
-    setAllUsers([]);
-    setAllLoadedUsers([]);
-    setLoadedBatches(new Set([1]));
-    setCurrentPage(0);
-    setLoadedSections(prev => {
-      if (!prev.has('users')) {
-        return prev;
-      }
-
-      const updated = new Set(prev);
-      updated.delete('users');
-      return updated;
-    });
-  }, [
-    selectedLicencee,
-    selectedStatus,
-    selectedRole,
-    mounted,
-    setAllUsers,
-    setAllLoadedUsers,
-    setLoadedBatches,
-    setCurrentPage,
-    setLoadedSections,
-  ]);
-
-  // Debounce search value
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchValue(searchValue);
-    }, 500); // 500ms debounce
-
-    return () => clearTimeout(timer);
-  }, [searchValue, setDebouncedSearchValue]);
-
-  // Reset backend search state when search is cleared
-  useEffect(() => {
-    if (!debouncedSearchValue || !debouncedSearchValue.trim()) {
-      setUsingBackendSearch(false);
-      setPaginationMetadata(null);
-      setIsSearching(false);
-      // Restore frontend data when search is cleared
-      setAllUsers(allLoadedUsers);
-      setCurrentPage(0);
-    }
-  }, [
-    debouncedSearchValue,
-    allLoadedUsers,
-    setUsingBackendSearch,
-    setPaginationMetadata,
-    setIsSearching,
-    setAllUsers,
-    setCurrentPage,
-  ]);
-
-  // Frontend search - search through loaded users first
-  useEffect(() => {
-    if (activeSection !== 'users') return;
-    if (!debouncedSearchValue || !debouncedSearchValue.trim()) {
-      setUsingBackendSearch(false);
-      return;
-    }
-
-    // Try frontend search first
-    const lowerSearchValue = debouncedSearchValue.toLowerCase().trim();
-    const frontendResults = allLoadedUsers.filter(user => {
-      // Search by username, email, and _id simultaneously
-      const username = (user.username || '').toLowerCase();
-      const email = (user.email || user.emailAddress || '').toLowerCase();
-      const userId = String(user._id || '').toLowerCase();
-
-      return (
-        username.includes(lowerSearchValue) ||
-        email.includes(lowerSearchValue) ||
-        userId.includes(lowerSearchValue)
-      );
-    });
-
-    if (frontendResults.length > 0) {
-      // Found results in frontend, use them
-      setAllUsers(frontendResults);
-      setUsingBackendSearch(false);
-      setPaginationMetadata(null);
-      setCurrentPage(0);
-    } else {
-      // No results in frontend, do backend search
-      setUsingBackendSearch(true);
-      setIsSearching(true);
-      const loadBackendSearch = async () => {
-        try {
-          const result = await fetchUsers(
-            selectedLicencee,
-            1,
-            itemsPerBatch,
-            debouncedSearchValue,
-            'all', // Search all fields
-            selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
-          );
-          setAllUsers(result.users || []);
-          setPaginationMetadata({
-            total: result.pagination.total,
-            totalPages: result.pagination.totalPages,
-          });
-          setCurrentPage(0);
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('Failed to fetch search results:', error);
-          }
-          setAllUsers([]);
-        } finally {
-          setIsSearching(false);
-        }
-      };
-      loadBackendSearch();
-    }
-  }, [
-    debouncedSearchValue,
-    allLoadedUsers,
-    activeSection,
-    selectedLicencee,
-    selectedStatus,
-    itemsPerBatch,
-    setAllUsers,
-    setCurrentPage,
-    setIsSearching,
-    setPaginationMetadata,
-    setUsingBackendSearch,
-  ]);
-
-  // Handle pagination for backend search results
-  useEffect(() => {
-    if (isLoading || activeSection !== 'users') return;
-    if (!usingBackendSearch) return;
-
-    // Only handle pagination if we're searching OR if we're using backend filter
-    const isSearching = debouncedSearchValue && debouncedSearchValue.trim();
-    const isFiltering =
-      (selectedRole !== 'all' || selectedStatus !== 'all') && !isSearching;
-
-    if (!isSearching && !isFiltering) return;
-
-    // When using backend search, fetch the current page from backend
-    const currentPage1Indexed = currentPage + 1;
-    const loadSearchPage = async () => {
-      setIsSearching(true);
-      try {
-        const result = await fetchUsers(
-          selectedLicencee,
-          currentPage1Indexed,
-          itemsPerBatch,
-          isSearching ? debouncedSearchValue : undefined,
-          isSearching ? 'all' : 'username', // Search all fields if searching, otherwise username
-          selectedStatus as 'all' | 'active' | 'disabled' | 'deleted',
-          selectedRole
-        );
-        setAllUsers(result.users || []);
-        setPaginationMetadata({
-          total: result.pagination.total,
-          totalPages: result.pagination.totalPages,
-        });
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to fetch search results:', error);
-        }
-        setAllUsers([]);
-      } finally {
-        setIsSearching(false);
-      }
-    };
-
-    loadSearchPage();
-  }, [
-    currentPage,
-    usingBackendSearch,
-    debouncedSearchValue,
-    selectedLicencee,
-    selectedStatus,
-    selectedRole,
-    itemsPerBatch,
-    isLoading,
-    activeSection,
-    setAllUsers,
-    setIsSearching,
-    setPaginationMetadata,
-  ]);
-
-  // Load users only when users tab is active and not already loaded (initial batch)
-  useEffect(() => {
-    if (activeSection === 'users' && !loadedSections.has('users')) {
-      const loadUsers = async () => {
-        setIsLoading(true);
-        try {
-          // Use backend search if searchValue is provided
-          const result = await fetchUsers(
-            selectedLicencee,
-            1,
-            itemsPerBatch,
-            undefined,
-            'username',
-            selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
-          );
-          setAllUsers(result.users || []);
-          setAllLoadedUsers(result.users || []);
-          setLoadedBatches(new Set([1]));
-          setLoadedSections(prev => new Set(prev).add('users'));
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('Failed to fetch users:', error);
-          }
-          setAllUsers([]);
-        }
-        setIsLoading(false);
-        setIsTabTransitioning(false);
-      };
-      loadUsers();
-    }
-  }, [
-    activeSection,
-    selectedLicencee,
-    selectedStatus,
-    loadedSections,
-    itemsPerBatch,
-    setAllUsers,
-    setAllLoadedUsers,
-    setIsLoading,
-    setLoadedBatches,
-    setLoadedSections,
-  ]);
-
-  // Fetch next batch when crossing batch boundaries
-  useEffect(() => {
-    if (isLoading || activeSection !== 'users') return;
-
-    // If searching, don't use batch loading - search results are already filtered on backend
-    if (debouncedSearchValue && debouncedSearchValue.trim()) {
-      return;
-    }
-
-    const currentBatch = calculateBatchNumber(currentPage);
-
-    // Check if we're on the last page of the current batch (page 4, 0-indexed = page 5, 1-indexed)
-    // We should fetch the next batch proactively so it's ready when user navigates
-    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
-    const nextBatch = currentBatch + 1;
-
-    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
-    // This ensures the next batch is ready when user navigates to page 6
-    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
-      setLoadedBatches(prev => new Set([...prev, nextBatch]));
-      fetchUsers(
-        selectedLicencee,
-        nextBatch,
-        itemsPerBatch,
-        undefined,
-        'username',
-        selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
-      )
-        .then(result => {
-          setAllUsers(prev => {
-            // Merge new data, avoiding duplicates
-            const existingIds = new Set(prev.map(item => item._id));
-            const newItems = result.users.filter(
-              item => !existingIds.has(item._id)
-            );
-            const updated = [...prev, ...newItems];
-            setAllLoadedUsers(updated);
-            return updated;
-          });
-        })
-        .catch(error => {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('Failed to fetch next batch:', error);
-          }
-        });
-    }
-
-    // Also ensure current batch is loaded
-    if (!loadedBatches.has(currentBatch)) {
-      setLoadedBatches(prev => new Set([...prev, currentBatch]));
-      fetchUsers(
-        selectedLicencee,
-        currentBatch,
-        itemsPerBatch,
-        undefined,
-        'username',
-        selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
-      )
-        .then(result => {
-          setAllUsers(prev => {
-            const existingIds = new Set(prev.map(item => item._id));
-            const newItems = result.users.filter(
-              item => !existingIds.has(item._id)
-            );
-            const updated = [...prev, ...newItems];
-            setAllLoadedUsers(updated);
-            return updated;
-          });
-        })
-        .catch(error => {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('Failed to fetch current batch:', error);
-          }
-        });
-    }
-  }, [
-    currentPage,
-    isLoading,
-    activeSection,
-    loadedBatches,
-    selectedLicencee,
-    selectedStatus,
-    itemsPerBatch,
-    pagesPerBatch,
-    calculateBatchNumber,
-    searchValue,
-    debouncedSearchValue,
-    setAllUsers,
-    setAllLoadedUsers,
-    setLoadedBatches,
-  ]);
-
-  // Load licensees only when licensees tab is active and not already loaded (initial batch)
-  useEffect(() => {
-    if (activeSection === 'licensees' && !loadedSections.has('licensees')) {
-      const loadLicensees = async () => {
-        setIsLicenseesLoading(true);
-        try {
-          const result = await fetchLicensees(1, licenseesItemsPerBatch);
-          // Ensure we always set an array
-          const licenseesArray = Array.isArray(result.licensees)
-            ? result.licensees
-            : [];
-          setAllLicensees(licenseesArray);
-          setLicenseesLoadedBatches(new Set([1]));
-          setLicenseesCurrentPage(0);
-          setLoadedSections(prev => new Set(prev).add('licensees'));
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('Failed to fetch licensees:', error);
-          }
-          setAllLicensees([]);
-        }
-        setIsLicenseesLoading(false);
-        setIsTabTransitioning(false);
-      };
-      loadLicensees();
-    }
-  }, [
-    activeSection,
-    selectedLicencee,
-    loadedSections,
-    licenseesItemsPerBatch,
-    setAllLicensees,
-    setIsLicenseesLoading,
-    setLicenseesCurrentPage,
-    setLicenseesLoadedBatches,
-    setLoadedSections,
-  ]);
-
-  // Fetch next batch for licensees when crossing batch boundaries
-  useEffect(() => {
-    if (isLicenseesLoading || activeSection !== 'licensees') return;
-
-    const currentBatch = calculateLicenseesBatchNumber(licenseesCurrentPage);
-
-    // Check if we're on the last page of the current batch
-    const isLastPageOfBatch =
-      (licenseesCurrentPage + 1) % licenseesPagesPerBatch === 0;
-    const nextBatch = currentBatch + 1;
-
-    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
-    if (isLastPageOfBatch && !licenseesLoadedBatches.has(nextBatch)) {
-      setLicenseesLoadedBatches(prev => new Set([...prev, nextBatch]));
-      fetchLicensees(nextBatch, licenseesItemsPerBatch)
-        .then(result => {
-          setAllLicensees(prev => {
-            // Ensure prev is an array
-            const prevArray = Array.isArray(prev) ? prev : [];
-            // Ensure result.licensees is an array
-            const newLicensees = Array.isArray(result.licensees)
-              ? result.licensees
-              : [];
-            // Merge new data, avoiding duplicates
-            const existingIds = new Set(prevArray.map(item => item._id));
-            const newItems = newLicensees.filter(
-              item => !existingIds.has(item._id)
-            );
-            return [...prevArray, ...newItems];
-          });
-        })
-        .catch(error => {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('Failed to fetch next licensees batch:', error);
-          }
-        });
-    }
-
-    // Also ensure current batch is loaded
-    if (!licenseesLoadedBatches.has(currentBatch)) {
-      setLicenseesLoadedBatches(prev => new Set([...prev, currentBatch]));
-      fetchLicensees(currentBatch, licenseesItemsPerBatch)
-        .then(result => {
-          setAllLicensees(prev => {
-            // Ensure prev is an array
-            const prevArray = Array.isArray(prev) ? prev : [];
-            // Ensure result.licensees is an array
-            const newLicensees = Array.isArray(result.licensees)
-              ? result.licensees
-              : [];
-            const existingIds = new Set(prevArray.map(item => item._id));
-            const newItems = newLicensees.filter(
-              item => !existingIds.has(item._id)
-            );
-            return [...prevArray, ...newItems];
-          });
-        })
-        .catch(error => {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('Failed to fetch current licensees batch:', error);
-          }
-        });
-    }
-  }, [
-    licenseesCurrentPage,
-    isLicenseesLoading,
-    activeSection,
-    licenseesLoadedBatches,
-    licenseesItemsPerBatch,
-    licenseesPagesPerBatch,
-    calculateLicenseesBatchNumber,
-    setAllLicensees,
-    setLicenseesLoadedBatches,
-  ]);
-
-  // Check if current user is a developer
-  const isDeveloper = useMemo(() => {
-    const userRoles = user?.roles || [];
-    return userRoles.some(
-      role => typeof role === 'string' && role.toLowerCase() === 'developer'
-    );
-  }, [user?.roles]);
-
-  // Apply role filter to all users first (before pagination)
-  const roleFilteredUsers = useMemo(() => {
-    if (selectedRole === 'all') {
-      return allUsers;
-    }
-    return allUsers.filter(user => {
-      const userRoles = user.roles || [];
-      return userRoles.some(
-        role =>
-          typeof role === 'string' &&
-          role.toLowerCase() === selectedRole.toLowerCase()
-      );
-    });
-  }, [allUsers, selectedRole]);
-
-  // Fallback to backend search when frontend filtering returns no results
-  useEffect(() => {
-    if (activeSection !== 'users' || !mounted) return;
-    if (isLoading || isSearching) return;
-    if (debouncedSearchValue && debouncedSearchValue.trim()) return; // Skip if searching
-    if (usingBackendSearch) return; // Already using backend search
-
-    // Only check if we have loaded users and filters are applied
-    const hasRoleFilter = selectedRole !== 'all';
-    const hasStatusFilter = selectedStatus !== 'all';
-
-    if (!hasRoleFilter && !hasStatusFilter) {
-      // No filters applied, no need for backend search
-      hasAttemptedBackendFilterRef.current = false;
-      return;
-    }
-
-    // Check if frontend filtering resulted in no results
-    if (roleFilteredUsers.length === 0 && allUsers.length > 0) {
-      // Frontend filtering found no results, but we have users loaded
-      // This means the filter doesn't match any loaded users
-      // Try backend search as fallback
-      if (!hasAttemptedBackendFilterRef.current) {
-        hasAttemptedBackendFilterRef.current = true;
-        setUsingBackendSearch(true);
-        setIsSearching(true);
-
-        const loadBackendFilter = async () => {
-          try {
-            const result = await fetchUsers(
-              selectedLicencee,
-              1,
-              itemsPerBatch,
-              undefined,
-              'username',
-              selectedStatus as 'all' | 'active' | 'disabled' | 'deleted',
-              selectedRole
-            );
-            setAllUsers(result.users || []);
-            setAllLoadedUsers(result.users || []);
-            setPaginationMetadata({
-              total: result.pagination.total,
-              totalPages: result.pagination.totalPages,
-            });
-            setCurrentPage(0);
-            setLoadedBatches(new Set([1]));
-          } catch (error) {
-            if (process.env.NODE_ENV === 'development') {
-              console.error('Failed to fetch filtered users:', error);
-            }
-            setAllUsers([]);
-            hasAttemptedBackendFilterRef.current = false;
-          } finally {
-            setIsSearching(false);
-          }
-        };
-
-        loadBackendFilter();
-      }
-    } else if (roleFilteredUsers.length > 0) {
-      // Frontend filtering found results, reset backend search flag
-      hasAttemptedBackendFilterRef.current = false;
-    }
-  }, [
-    activeSection,
-    mounted,
-    isLoading,
-    isSearching,
-    debouncedSearchValue,
-    usingBackendSearch,
-    selectedRole,
-    selectedStatus,
-    selectedLicencee,
-    roleFilteredUsers.length,
-    allUsers.length,
-    itemsPerBatch,
-    setAllUsers,
-    setAllLoadedUsers,
-    setCurrentPage,
-    setIsSearching,
-    setPaginationMetadata,
-    setUsingBackendSearch,
-    setLoadedBatches,
-  ]);
-
-  // Get items for current page from the role-filtered users
-  const paginatedUsers = useMemo(() => {
-    // Calculate position within current batch (0-4 for pages 0-4, 0-4 for pages 5-9, etc.)
-    const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
-    const startIndex = positionInBatch;
-    const endIndex = startIndex + itemsPerPage;
-
-    return roleFilteredUsers.slice(startIndex, endIndex);
-  }, [roleFilteredUsers, currentPage, itemsPerPage, pagesPerBatch]);
-
-  // Calculate total pages based on role-filtered users or search results
-  const totalPages = useMemo(() => {
-    // When using backend search, use pagination metadata from API
-    if (usingBackendSearch && paginationMetadata) {
-      return paginationMetadata.totalPages > 0
-        ? paginationMetadata.totalPages
-        : 1;
-    }
-
-    // Otherwise, calculate total pages from role-filtered users
-    const totalItems = roleFilteredUsers.length;
-    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
-
-    // If we have items, return the calculated pages (based on all loaded data)
-    // This will dynamically increase as more batches are loaded
-    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [
-    roleFilteredUsers.length,
-    itemsPerPage,
-    usingBackendSearch,
-    paginationMetadata,
-  ]);
-
-  const processedUsers = useMemo(() => {
-    // When using backend search, backend already filters, so we only need to sort and filter test users
-    // Pass empty searchValue to skip client-side search filtering
-    const effectiveSearchValue = usingBackendSearch ? '' : searchValue;
-    return administrationUtils.processUsers(
-      paginatedUsers,
-      effectiveSearchValue,
-      'username', // Not used when effectiveSearchValue is empty
-      sortConfig,
-      isDeveloper
-    );
-  }, [
-    paginatedUsers,
-    searchValue,
-    usingBackendSearch,
-    sortConfig,
-    isDeveloper,
-  ]);
-
-  const requestSort = administrationUtils.createSortHandler(
-    sortConfig,
-    setSortConfig
-  );
-
-  const handleEditUser = useCallback(
-    async (user: User) => {
-      // Set loading state and open modal first
-      setIsUserModalOpen(true);
-      setSelectedUser(null); // Set to null initially to trigger loading state
-
-      try {
-        // Fetch detailed user information
-        const response = await axios.get(`/api/users/${user._id}`);
-        if (response.data.success) {
-          setSelectedUser(response.data.user);
-        } else {
-          toast.error('Failed to load user details');
-          setIsUserModalOpen(false);
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to fetch user details:', error);
-        }
-        toast.error('Failed to load user details');
-        setIsUserModalOpen(false);
-      }
-    },
-    [setIsUserModalOpen, setSelectedUser]
-  );
-
-  const handleDeleteUser = useCallback(
-    (user: User) => {
-      setSelectedUserToDelete(user);
-      setIsDeleteModalOpen(true);
-    },
-    [setSelectedUserToDelete, setIsDeleteModalOpen]
-  );
-
-  const handleSaveUser = useCallback(
-    async (
-      updated: Partial<User> & {
-        password?: string;
-      }
-    ) => {
-      if (!selectedUser) return;
-
-      // Validate that we have at least one field to update
-      // Note: User type uses 'enabled' but backend uses 'isEnabled', so check both
-      const hasUpdates =
-        updated.username !== undefined ||
-        updated.email !== undefined ||
-        updated.emailAddress !== undefined ||
-        updated.roles !== undefined ||
-        updated.profile !== undefined ||
-        updated.profilePicture !== undefined ||
-        updated.password !== undefined ||
-        updated.assignedLocations !== undefined ||
-        updated.assignedLicensees !== undefined ||
-        (updated as { isEnabled?: boolean }).isEnabled !== undefined ||
-        (updated as { enabled?: boolean }).enabled !== undefined;
-
-      if (!hasUpdates) {
-        toast.error('No changes detected. Please update at least one field.');
-        return;
-      }
-
-      // ============================================================================
-      // STEP 1: Log original API data
-      // ============================================================================
-      console.log(
-        '[Administration] ============================================'
-      );
-      console.log('[Administration] STEP 1: Original API data (selectedUser):');
-      console.log('[Administration]   _id:', selectedUser._id);
-      console.log('[Administration]   username:', selectedUser.username);
-      console.log('[Administration]   email:', selectedUser.email);
-      console.log(
-        '[Administration]   emailAddress:',
-        selectedUser.emailAddress
-      );
-      console.log(
-        '[Administration]   roles:',
-        JSON.stringify(selectedUser.roles, null, 2)
-      );
-      console.log(
-        '[Administration]   profile:',
-        JSON.stringify(selectedUser.profile, null, 2)
-      );
-      console.log(
-        '[Administration]   profilePicture:',
-        selectedUser.profilePicture ? 'present' : 'null'
-      );
-      console.log(
-        '[Administration] ============================================'
-      );
-
-      // ============================================================================
-      // STEP 2: Log what's being sent from UserModal
-      // ============================================================================
-      console.log(
-        '[Administration] ============================================'
-      );
-      console.log(
-        '[Administration] STEP 2: Data received from UserModal (updated):'
-      );
-      console.log('[Administration]   _id:', updated._id);
-      console.log('[Administration]   username:', updated.username);
-      console.log('[Administration]   email:', updated.email);
-      console.log('[Administration]   emailAddress:', updated.emailAddress);
-      console.log(
-        '[Administration]   roles:',
-        JSON.stringify(updated.roles, null, 2)
-      );
-      console.log(
-        '[Administration]   profile:',
-        JSON.stringify(updated.profile, null, 2)
-      );
-      console.log(
-        '[Administration]   profilePicture:',
-        updated.profilePicture ? 'present' : 'null'
-      );
-      console.log(
-        '[Administration]   password:',
-        updated.password ? 'present' : 'not included'
-      );
-      console.log(
-        '[Administration] ============================================'
-      );
-
-      // ============================================================================
-      // STEP 3: Normalize email values for comparison
-      // ============================================================================
-      const normalizedOriginalEmail = (
-        selectedUser.email ||
-        selectedUser.emailAddress ||
-        ''
-      ).trim();
-      const normalizedUpdatedEmail = (
-        updated.email ||
-        updated.emailAddress ||
-        ''
-      ).trim();
-
-      // ============================================================================
-      // STEP 4: Build comparison objects - ONLY include fields that were actually sent from UserModal
-      // ============================================================================
-      // CRITICAL: Only compare fields that are present in the updated object
-      // This prevents false positives where undefined !== existingValue
-      console.log(
-        '[Administration] Fields present in updated object:',
-        Object.keys(updated)
-      );
-
-      const originalData: Record<string, unknown> = {};
-      const formDataComparison: Record<string, unknown> = {};
-
-      // Only compare fields that are present in the update
-      if (updated.username !== undefined) {
-        originalData.username = selectedUser.username;
-        formDataComparison.username = updated.username;
-      }
-
-      if (updated.email !== undefined || updated.emailAddress !== undefined) {
-        originalData.email = normalizedOriginalEmail;
-        formDataComparison.email = normalizedUpdatedEmail;
-        originalData.emailAddress = normalizedOriginalEmail;
-        formDataComparison.emailAddress = normalizedUpdatedEmail;
-      }
-
-      if (updated.roles !== undefined) {
-        originalData.roles = selectedUser.roles || [];
-        formDataComparison.roles = updated.roles || [];
-      }
-
-      if (updated.profile !== undefined) {
-        originalData.profile = selectedUser.profile;
-        formDataComparison.profile = updated.profile;
-      }
-
-      if (updated.profilePicture !== undefined) {
-        originalData.profilePicture = selectedUser.profilePicture;
-        formDataComparison.profilePicture = updated.profilePicture;
-      }
-
-      if (updated.assignedLocations !== undefined) {
-        originalData.assignedLocations = selectedUser.assignedLocations;
-        formDataComparison.assignedLocations = updated.assignedLocations;
-      }
-
-      if (updated.assignedLicensees !== undefined) {
-        originalData.assignedLicensees = selectedUser.assignedLicensees;
-        formDataComparison.assignedLicensees = updated.assignedLicensees;
-      }
-
-      if (updated.password !== undefined) {
-        formDataComparison.password = updated.password;
-      }
-
-      // ============================================================================
-      // STEP 5: Detect ALL differences between API data and what's being sent
-      // ============================================================================
-      console.log(
-        '[Administration] ============================================'
-      );
-      console.log('[Administration] STEP 3: Comparing original vs updated:');
-      console.log(
-        '[Administration]   Original assignedLocations:',
-        JSON.stringify(originalData.assignedLocations, null, 2)
-      );
-      console.log(
-        '[Administration]   Updated assignedLocations:',
-        JSON.stringify(formDataComparison.assignedLocations, null, 2)
-      );
-      console.log(
-        '[Administration]   Original assignedLicensees:',
-        JSON.stringify(originalData.assignedLicensees, null, 2)
-      );
-      console.log(
-        '[Administration]   Updated assignedLicensees:',
-        JSON.stringify(formDataComparison.assignedLicensees, null, 2)
-      );
-      console.log(
-        '[Administration]   Original roles:',
-        JSON.stringify(originalData.roles, null, 2)
-      );
-      console.log(
-        '[Administration]   Updated roles:',
-        JSON.stringify(formDataComparison.roles, null, 2)
-      );
-      console.log(
-        '[Administration] ============================================'
-      );
-
-      const changes = detectChanges(originalData, formDataComparison);
-      const meaningfulChanges = filterMeaningfulChanges(changes);
-
-      console.log(
-        '[Administration] ============================================'
-      );
-      console.log('[Administration] STEP 4: Detected changes:');
-      console.log(
-        '[Administration]   Total changes found:',
-        meaningfulChanges.length
-      );
-      meaningfulChanges.forEach((change, index) => {
-        console.log(`[Administration]   Change ${index + 1}:`);
-        console.log(`[Administration]     Path: ${change.path}`);
-        console.log(
-          `[Administration]     Old: ${JSON.stringify(change.oldValue)}`
-        );
-        console.log(
-          `[Administration]     New: ${JSON.stringify(change.newValue)}`
-        );
-      });
-      console.log(
-        '[Administration] ============================================'
-      );
-
-      // Only proceed if there are actual changes
-      if (meaningfulChanges.length === 0) {
-        console.error(
-          '[Administration] ❌ No changes detected - blocking save'
-        );
-        toast.info('No changes detected');
-        return;
-      }
-
-      console.log('[Administration] ✅ Changes detected, proceeding with save');
-
-      // ============================================================================
-      // STEP 6: Check if permission-related fields changed
-      // ============================================================================
-      const permissionFieldsChanged = meaningfulChanges.some(change => {
-        const fieldPath = change.path;
-        return (
-          fieldPath === 'roles' ||
-          fieldPath.startsWith('rel') ||
-          fieldPath === 'assignedLocations' ||
-          fieldPath === 'assignedLicensees'
-        );
-      });
-
-      console.log(
-        '[Administration] ============================================'
-      );
-      console.log('[Administration] STEP 5: Permission fields check:');
-      console.log(
-        '[Administration]   Permission fields changed:',
-        permissionFieldsChanged
-      );
-      console.log(
-        '[Administration] ============================================'
-      );
-
-      // ============================================================================
-      // STEP 7: Build update payload - include ALL differences
-      // ============================================================================
-      const updatePayload: Record<string, unknown> = { _id: selectedUser._id };
-
-      // First, include top-level fields directly from the updated object
-      // This ensures we send complete objects, not just changed nested paths
-      if (updated.username !== undefined) {
-        updatePayload.username = updated.username;
-      }
-      if (updated.email !== undefined || updated.emailAddress !== undefined) {
-        updatePayload.emailAddress = updated.emailAddress || updated.email;
-        updatePayload.email = updated.email || updated.emailAddress;
-      }
-      if (updated.roles !== undefined) {
-        updatePayload.roles = updated.roles;
-      }
-      if (updated.profile !== undefined) {
-        updatePayload.profile = updated.profile;
-      }
-      if (updated.profilePicture !== undefined) {
-        updatePayload.profilePicture = updated.profilePicture;
-      }
-      if (updated.password !== undefined) {
-        updatePayload.password = updated.password;
-      }
-      // Handle isEnabled/enabled - User type uses 'enabled' but API expects 'isEnabled'
-      if ('isEnabled' in updated && updated.isEnabled !== undefined) {
-        updatePayload.isEnabled = updated.isEnabled;
-      } else if ('enabled' in updated && updated.enabled !== undefined) {
-        updatePayload.isEnabled = updated.enabled;
-      }
-      // IMPORTANT: Always include assignedLocations and assignedLicensees if they exist in updated object
-      // Note: rel and resourcePermissions are no longer used - removed from payload
-      // This ensures the new fields are always sent
-      if (updated.assignedLocations !== undefined) {
-        updatePayload.assignedLocations = updated.assignedLocations;
-        console.log(
-          '[Administration]   Adding assignedLocations directly from updated object:',
-          updated.assignedLocations
-        );
-      }
-      if (updated.assignedLicensees !== undefined) {
-        updatePayload.assignedLicensees = updated.assignedLicensees;
-        console.log(
-          '[Administration]   Adding assignedLicensees directly from updated object:',
-          updated.assignedLicensees
-        );
-      }
-
-      // If permission-related fields changed, increment sessionVersion
-      if (permissionFieldsChanged) {
-        updatePayload.$inc = { sessionVersion: 1 };
-        console.log('[Administration]   Adding $inc: { sessionVersion: 1 }');
-      }
-
-      // ============================================================================
-      // STEP 8: Log final update payload
-      // ============================================================================
-      console.log(
-        '[Administration] ============================================'
-      );
-      console.log('[Administration] STEP 6: Final update payload:');
-      console.log(
-        '[Administration]   Complete payload:',
-        JSON.stringify(updatePayload, null, 2)
-      );
-      console.log(
-        '[Administration]   Payload keys:',
-        Object.keys(updatePayload)
-      );
-      console.log();
-      console.log(
-        '[Administration]   Has assignedLocations:',
-        'assignedLocations' in updatePayload,
-        updatePayload.assignedLocations
-      );
-      console.log(
-        '[Administration]   Has assignedLicensees:',
-        'assignedLicensees' in updatePayload,
-        updatePayload.assignedLicensees
-      );
-      console.log(
-        '[Administration] ============================================'
-      );
-
-      try {
-        const response = await updateUser(updatePayload as never);
-        const updatedUserData = response.data?.user;
-
-        // Log the update activity with proper change tracking
-        try {
-          const changesSummary = getChangesSummary(meaningfulChanges);
-          await fetch('/api/activity-logs', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              action: 'update',
-              resource: 'user',
-              resourceId: selectedUser._id,
-              resourceName: selectedUser.username,
-              details: `Updated user: ${changesSummary}`,
-              userId: user?._id || 'unknown',
-              username: getUserDisplayName(),
-              userRole: 'user',
-              previousData: originalData,
-              newData: updatePayload,
-              changes: meaningfulChanges.map(change => ({
-                field: change.field,
-                oldValue: change.oldValue,
-                newValue: change.newValue,
-              })),
-            }),
-          });
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('Failed to log activity:', error);
-          }
-        }
-
-        // Update the user in allUsers array if it exists there
-        if (updatedUserData) {
-          setAllUsers(prevUsers =>
-            prevUsers.map(u =>
-              u._id === updatedUserData._id ? updatedUserData : u
-            )
-          );
-          setAllLoadedUsers(prevUsers =>
-            prevUsers.map(u =>
-              u._id === updatedUserData._id ? updatedUserData : u
-            )
-          );
-        }
-
-        // Only close modal and refresh data on success
-        setIsUserModalOpen(false);
-        setSelectedUser(null);
-
-        // If location permissions were updated, warn user about JWT refresh
-        if (permissionFieldsChanged) {
-          const locationChanges = meaningfulChanges.filter(
-            c =>
-              c.path.startsWith('assignedLocations') ||
-              c.path === 'assignedLocations' ||
-              c.path === 'assignedLicensees'
-          );
-          if (locationChanges.length > 0) {
-            toast.success(
-              `User updated successfully. Note: The user may need to log out and log back in for location permission changes to take effect.`
-            );
-          } else {
-            toast.success(
-              `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
-            );
-          }
-        } else {
-          toast.success(
-            `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
-          );
-        }
-
-        // Refresh users with licensee filter
-        setRefreshing(true);
-        const result = await fetchUsers(
-          selectedLicencee,
-          1,
-          itemsPerBatch,
-          undefined,
-          'username',
-          selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
-        );
-        setAllUsers(result.users);
-        setLoadedBatches(new Set([1]));
-        setCurrentPage(0);
-        setRefreshing(false);
-      } catch (error) {
-        console.error('Failed to update user:', error);
-
-        // Extract detailed error message from axios error
-        let errorMessage = 'Failed to update user';
-
-        // Handle axios errors (from updateUser helper)
-        if (error && typeof error === 'object') {
-          const axiosError = error as {
-            response?: {
-              data?: { message?: string; error?: string };
-              status?: number;
-            };
-            message?: string;
-          };
-
-          // Prioritize server error message from response.data
-          if (axiosError.response?.data) {
-            errorMessage =
-              axiosError.response.data.message ||
-              axiosError.response.data.error ||
-              errorMessage;
-          } else if (axiosError.message) {
-            // Only use axios message if we don't have response data
-            errorMessage = axiosError.message;
-          }
-        } else if (error instanceof Error) {
-          errorMessage = error.message;
-        }
-
-        toast.error(errorMessage);
-        // Don't close modal on error - let user try again
-      }
-    },
-    [
-      selectedUser,
-      user,
-      getUserDisplayName,
-      selectedLicencee,
-      selectedStatus,
-      itemsPerBatch,
-      setRefreshing,
-      setAllUsers,
-      setLoadedBatches,
-      setCurrentPage,
-      setIsUserModalOpen,
-      setSelectedUser,
-    ]
-  );
-
-  // Add User modal handlers
-  const openAddUserModal = () => {
-    setAddUserForm({ roles: [], allowedLocations: [], licenseeIds: [] });
-    setIsAddUserModalOpen(true);
-  };
-  const closeAddUserModal = useCallback(async () => {
-    setIsAddUserModalOpen(false);
-    // Refresh users data when modal is closed
-    try {
-      const result = await fetchUsers(
-        selectedLicencee,
-        1,
-        itemsPerBatch,
-        undefined,
-        'username',
-        selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
-      );
-      setAllUsers(result.users);
-      setLoadedBatches(new Set([1]));
-      setCurrentPage(0);
-    } catch (error) {
-      console.error('Failed to refresh users data:', error);
-    }
-  }, [
-    selectedLicencee,
-    itemsPerBatch,
-    selectedStatus,
-    setIsAddUserModalOpen,
-    setAllUsers,
-    setLoadedBatches,
-    setCurrentPage,
-  ]);
-  const handleAddUserFormChange = useCallback(
-    (data: Partial<AddUserForm>) =>
-      setAddUserForm(prev => ({ ...prev, ...data })),
-    [setAddUserForm]
-  );
-  const handleSaveAddUser = useCallback(async () => {
-    await administrationUtils.userManagement.createNewUser(
-      addUserForm,
-      setIsAddUserModalOpen,
-      async () => {
-        const result = await fetchUsers(
-          selectedLicencee,
-          1,
-          itemsPerBatch,
-          undefined,
-          'username',
-          selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
-        );
-        setAllUsers(result.users);
-        setLoadedBatches(new Set([1]));
-        setCurrentPage(0);
-      }
-    );
-  }, [
-    addUserForm,
-    selectedLicencee,
-    selectedStatus,
-    itemsPerBatch,
-    setIsAddUserModalOpen,
-    setAllUsers,
-    setLoadedBatches,
-    setCurrentPage,
-  ]);
-
-  const handleOpenAddLicensee = () => {
-    setLicenseeForm({});
-    setIsAddLicenseeModalOpen(true);
-  };
-  const handleSaveAddLicensee = useCallback(async () => {
-    if (!licenseeForm.name || !licenseeForm.country) {
-      toast.error('Name and country are required');
-      return;
-    }
-
-    const licenseeData: {
-      name: string;
-      description?: string;
-      country: string;
-      startDate?: Date | string;
-      expiryDate?: Date | string;
-    } = {
-      name: licenseeForm.name,
-      country: licenseeForm.country,
-    };
-
-    // Only add optional fields if they have values
-    if (licenseeForm.description) {
-      licenseeData.description = licenseeForm.description;
-    }
-    if (licenseeForm.startDate) {
-      licenseeData.startDate = licenseeForm.startDate;
-    }
-    if (licenseeForm.expiryDate) {
-      licenseeData.expiryDate = licenseeForm.expiryDate;
-    }
-
-    try {
-      const response = await fetch('/api/licensees', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(licenseeData),
-      });
-
-      const createResult = await response.json();
-
-      if (!response.ok) {
-        throw new Error(createResult.message || 'Failed to create licensee');
-      }
-
-      // Log the creation activity
-      if (createResult.licensee) {
-        try {
-          await fetch('/api/activity-logs', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              action: 'create',
-              resource: 'licensee',
-              resourceId: createResult.licensee._id,
-              resourceName: createResult.licensee.name,
-              details: `Created new licensee: ${createResult.licensee.name} in ${getCountryNameById(licenseeForm.country)}`,
-              userId: user?._id || 'unknown',
-              username: getUserDisplayName(),
-              userRole: 'user',
-              previousData: null,
-              newData: createResult.licensee,
-              changes: [], // Will be calculated by the API
-            }),
-          });
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('Failed to log activity:', error);
-          }
-        }
-      }
-
-      // Show success modal with license key
-      if (createResult.licensee && createResult.licensee.licenseKey) {
-        setCreatedLicensee({
-          name: createResult.licensee.name,
-          licenseKey: createResult.licensee.licenseKey,
-        });
-        setIsLicenseeSuccessModalOpen(true);
-      }
-
-      setIsAddLicenseeModalOpen(false);
-      setLicenseeForm({});
-      setIsLicenseesLoading(true);
-      const licenseesResult = await fetchLicensees(1, licenseesItemsPerBatch);
-      setAllLicensees(
-        Array.isArray(licenseesResult.licensees)
-          ? licenseesResult.licensees
-          : []
-      );
-      setLicenseesLoadedBatches(new Set([1]));
-      setLicenseesCurrentPage(0);
-      setIsLicenseesLoading(false);
-      toast.success('Licensee created successfully');
-    } catch (err) {
-      const error = err as Error & {
-        response?: { data?: { message?: string } };
-      };
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Failed to add licensee'
-      );
-    }
-  }, [
-    licenseeForm,
-    user,
-    getUserDisplayName,
-    getCountryNameById,
-    licenseesItemsPerBatch,
-    setCreatedLicensee,
-    setIsLicenseeSuccessModalOpen,
-    setIsAddLicenseeModalOpen,
-    setLicenseeForm,
-    setIsLicenseesLoading,
-    setAllLicensees,
-    setLicenseesLoadedBatches,
-    setLicenseesCurrentPage,
-  ]);
-  const handleOpenEditLicensee = useCallback(
-    (licensee: Licensee) => {
-      setSelectedLicensee(licensee);
-      setLicenseeForm({
-        _id: licensee._id,
-        name: licensee.name,
-        description: licensee.description,
-        country: licensee.country,
-        startDate: licensee.startDate
-          ? new Date(licensee.startDate)
-          : undefined,
-        expiryDate: licensee.expiryDate
-          ? new Date(licensee.expiryDate)
-          : undefined,
-        prevStartDate: licensee.prevStartDate
-          ? new Date(licensee.prevStartDate)
-          : undefined,
-        prevExpiryDate: licensee.prevExpiryDate
-          ? new Date(licensee.prevExpiryDate)
-          : undefined,
-      });
-      setIsEditLicenseeModalOpen(true);
-    },
-    [setSelectedLicensee, setLicenseeForm, setIsEditLicenseeModalOpen]
-  );
-  const handleSaveEditLicensee = useCallback(async () => {
-    try {
-      if (!selectedLicensee) return;
-
-      // Build comparison objects with ONLY editable fields
-      const originalData = {
-        name: selectedLicensee.name,
-        description: selectedLicensee.description,
-        country: selectedLicensee.country,
-        startDate: selectedLicensee.startDate,
-        expiryDate: selectedLicensee.expiryDate,
-        prevStartDate: selectedLicensee.prevStartDate,
-        prevExpiryDate: selectedLicensee.prevExpiryDate,
-        isPaid: selectedLicensee.isPaid,
-      };
-
-      const formDataComparison = {
-        name: licenseeForm.name,
-        description: licenseeForm.description,
-        country: licenseeForm.country,
-        startDate: licenseeForm.startDate,
-        expiryDate: licenseeForm.expiryDate,
-        prevStartDate: licenseeForm.prevStartDate,
-        prevExpiryDate: licenseeForm.prevExpiryDate,
-        isPaid: selectedLicensee.isPaid, // Preserve current payment status
-      };
-
-      // Detect changes by comparing ONLY editable fields
-      const changes = detectChanges(originalData, formDataComparison);
-      const meaningfulChanges = filterMeaningfulChanges(changes);
-
-      // Only proceed if there are actual changes
-      if (meaningfulChanges.length === 0) {
-        toast.info('No changes detected');
-        return;
-      }
-
-      // Build update payload with only changed fields + required _id
-      const updatePayload: Record<string, unknown> = {
-        _id: selectedLicensee._id,
-      };
-      meaningfulChanges.forEach(change => {
-        const fieldPath = change.path; // Use full path for nested fields
-        updatePayload[fieldPath] = change.newValue;
-      });
-
-      const response = await fetch('/api/licensees', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatePayload),
-      });
-
-      const updateResult = await response.json();
-
-      if (!response.ok) {
-        throw new Error(updateResult.message || 'Failed to update licensee');
-      }
-
-      // Log the update activity with proper change tracking
-      try {
-        const changesSummary = getChangesSummary(meaningfulChanges);
-        await fetch('/api/activity-logs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'update',
-            resource: 'licensee',
-            resourceId: selectedLicensee._id,
-            resourceName: selectedLicensee.name,
-            details: `Updated licensee: ${changesSummary}`,
-            userId: user?._id || 'unknown',
-            username: getUserDisplayName(),
-            userRole: 'user',
-            previousData: originalData,
-            newData: updatePayload,
-            changes: meaningfulChanges.map(change => ({
-              field: change.field,
-              oldValue: change.oldValue,
-              newValue: change.newValue,
-            })),
-          }),
-        });
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to log activity:', error);
-        }
-      }
-
-      // Only close modal and refresh data on success
-      setIsEditLicenseeModalOpen(false);
-      setSelectedLicensee(null);
-      setLicenseeForm({});
-      setIsLicenseesLoading(true);
-      const result = await fetchLicensees(1, licenseesItemsPerBatch);
-      setAllLicensees(Array.isArray(result.licensees) ? result.licensees : []);
-      setLicenseesLoadedBatches(new Set([1]));
-      setLicenseesCurrentPage(0);
-      setIsLicenseesLoading(false);
-      toast.success(
-        `Licensee updated successfully: ${getChangesSummary(meaningfulChanges)}`
-      );
-    } catch (err) {
-      const error = err as Error & {
-        response?: { data?: { message?: string } };
-      };
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Failed to update licensee'
-      );
-      // Don't close modal on error - let user try again
-    }
-  }, [
-    selectedLicensee,
-    licenseeForm,
-    user,
-    getUserDisplayName,
-    licenseesItemsPerBatch,
-    setIsEditLicenseeModalOpen,
-    setSelectedLicensee,
-    setLicenseeForm,
-    setIsLicenseesLoading,
-    setAllLicensees,
-    setLicenseesLoadedBatches,
-    setLicenseesCurrentPage,
-  ]);
-  const handleOpenDeleteLicensee = useCallback(
-    (licensee: Licensee) => {
-      setSelectedLicensee(licensee);
-      setIsDeleteLicenseeModalOpen(true);
-    },
-    [setSelectedLicensee, setIsDeleteLicenseeModalOpen]
-  );
-  const handleDeleteLicensee = useCallback(async () => {
-    if (!selectedLicensee) return;
-
-    const licenseeData = { ...selectedLicensee };
-
-    try {
-      const response = await fetch('/api/licensees', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ _id: selectedLicensee._id }),
-      });
-
-      const deleteResult = await response.json();
-
-      if (!response.ok) {
-        throw new Error(deleteResult.message || 'Failed to delete licensee');
-      }
-
-      // Log the deletion activity
-      try {
-        await fetch('/api/activity-logs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'delete',
-            resource: 'licensee',
-            resourceId: selectedLicensee._id,
-            resourceName: selectedLicensee.name,
-            details: `Deleted licensee: ${selectedLicensee.name} from ${
-              selectedLicensee.countryName ||
-              getCountryNameById(selectedLicensee.country)
-            }`,
-            userId: user?._id || 'unknown',
-            username: getUserDisplayName(),
-            userRole: 'user',
-            previousData: licenseeData,
-            newData: null,
-            changes: [], // Will be calculated by the API
-          }),
-        });
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to log activity:', error);
-        }
-      }
-
-      setIsDeleteLicenseeModalOpen(false);
-      setSelectedLicensee(null);
-      setIsLicenseesLoading(true);
-      const deleteLicenseesResult = await fetchLicensees(
-        1,
-        licenseesItemsPerBatch
-      );
-      setAllLicensees(
-        Array.isArray(deleteLicenseesResult.licensees)
-          ? deleteLicenseesResult.licensees
-          : []
-      );
-      setLicenseesLoadedBatches(new Set([1]));
-      setLicenseesCurrentPage(0);
-      setIsLicenseesLoading(false);
-      toast.success('Licensee deleted successfully');
-    } catch (err) {
-      const error = err as Error & {
-        response?: { data?: { message?: string } };
-      };
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Failed to delete licensee'
-      );
-    }
-  }, [
-    selectedLicensee,
-    user,
-    getUserDisplayName,
-    getCountryNameById,
-    licenseesItemsPerBatch,
-    setIsDeleteLicenseeModalOpen,
-    setSelectedLicensee,
-    setIsLicenseesLoading,
-    setAllLicensees,
-    setLicenseesLoadedBatches,
-    setLicenseesCurrentPage,
-  ]);
-
-  const licenseesWithCountryNames = useMemo(() => {
-    // Safety check: ensure allLicensees is always an array
-    if (!Array.isArray(allLicensees)) {
-      console.warn('allLicensees is not an array:', allLicensees);
-      return [];
-    }
-    if (allLicensees.length === 0) return allLicensees;
-    return allLicensees.map(licensee => ({
-      ...licensee,
-      countryName:
-        licensee.countryName ||
-        getCountryNameById(licensee.country) ||
-        licensee.country,
-    }));
-  }, [allLicensees, getCountryNameById]);
-
-  const filteredLicensees = useMemo(() => {
-    if (!licenseeSearchValue) return licenseesWithCountryNames;
-    const search = licenseeSearchValue.toLowerCase();
-    return licenseesWithCountryNames.filter(licensee =>
-      (licensee.name || '').toLowerCase().includes(search)
-    );
-  }, [licenseesWithCountryNames, licenseeSearchValue]);
-
-  const handlePaymentHistory = useCallback(
-    (licensee: Licensee) => {
-      setSelectedLicenseeForPayment(licensee);
-      setIsPaymentHistoryModalOpen(true);
-    },
-    [setSelectedLicenseeForPayment, setIsPaymentHistoryModalOpen]
-  );
-
-  const handleTogglePaymentStatus = useCallback(
-    (licensee: Licensee) => {
-      setSelectedLicenseeForPaymentChange(licensee);
-      setIsPaymentConfirmModalOpen(true);
-    },
-    [setSelectedLicenseeForPaymentChange, setIsPaymentConfirmModalOpen]
-  );
-
-  const handleConfirmPaymentStatusChange = useCallback(async () => {
-    if (!selectedLicenseeForPaymentChange) return;
-
-    try {
-      // Determine current payment status
-      const currentIsPaid =
-        selectedLicenseeForPaymentChange.isPaid !== undefined
-          ? selectedLicenseeForPaymentChange.isPaid
-          : selectedLicenseeForPaymentChange.expiryDate
-            ? new Date(selectedLicenseeForPaymentChange.expiryDate) > new Date()
-            : false;
-
-      const newIsPaid = !currentIsPaid;
-
-      // Prepare update data
-      const updateData: {
-        _id: string;
-        isPaid: boolean;
-        expiryDate?: Date;
-        prevExpiryDate?: Date;
-      } = {
-        _id: selectedLicenseeForPaymentChange._id,
-        isPaid: newIsPaid,
-      };
-
-      // If changing from unpaid to paid, extend expiry date by 30 days
-      if (!currentIsPaid && newIsPaid) {
-        updateData.prevExpiryDate = selectedLicenseeForPaymentChange.expiryDate
-          ? new Date(selectedLicenseeForPaymentChange.expiryDate)
-          : undefined;
-        updateData.expiryDate = getNext30Days();
-      }
-
-      await axios.put('/api/licensees', updateData);
-
-      // Log the payment status change activity
-      try {
-        await fetch('/api/activity-logs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'update',
-            resource: 'licensee',
-            resourceId: selectedLicenseeForPaymentChange._id,
-            resourceName: selectedLicenseeForPaymentChange.name,
-            details: `Changed payment status for ${
-              selectedLicenseeForPaymentChange.name
-            } from ${currentIsPaid ? 'Paid' : 'Unpaid'} to ${
-              newIsPaid ? 'Paid' : 'Unpaid'
-            }`,
-            userId: user?._id || 'unknown',
-            username: getUserDisplayName(),
-            userRole: 'user',
-            previousData: selectedLicenseeForPaymentChange,
-            newData: updateData,
-            changes: [], // Will be calculated by the API
-          }),
-        });
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to log activity:', error);
-        }
-      }
-
-      // Refresh licensees list
-      setIsLicenseesLoading(true);
-      const paymentLicenseesResult = await fetchLicensees(
-        1,
-        licenseesItemsPerBatch
-      );
-      setAllLicensees(
-        Array.isArray(paymentLicenseesResult.licensees)
-          ? paymentLicenseesResult.licensees
-          : []
-      );
-      setLicenseesLoadedBatches(new Set([1]));
-      setLicenseesCurrentPage(0);
-      setIsLicenseesLoading(false);
-
-      // Close modal
-      setIsPaymentConfirmModalOpen(false);
-      setSelectedLicenseeForPaymentChange(null);
-      toast.success('Licensee payment status updated successfully');
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to update payment status:', error);
-      }
-      toast.error('Failed to update payment status');
-    }
-  }, [
-    selectedLicenseeForPaymentChange,
-    user,
-    getUserDisplayName,
-    licenseesItemsPerBatch,
-    setIsPaymentConfirmModalOpen,
-    setSelectedLicenseeForPaymentChange,
-    setIsLicenseesLoading,
-    setAllLicensees,
-    setLicenseesLoadedBatches,
-    setLicenseesCurrentPage,
-  ]);
-
+  // ============================================================================
+  // Render Section Content
+  // ============================================================================
+  // ============================================================================
+  // Render Section Content
+  // ============================================================================
   const renderSectionContent = useCallback(() => {
     const userRoles = user?.roles || [];
 
@@ -2079,148 +159,63 @@ function AdministrationPageContent() {
           </div>
         );
       }
-      if (isLicenseesLoading) {
-        return (
-          <>
-            <div className="block xl:hidden">
-              <LicenseeCardSkeleton />
-            </div>
-            <div className="hidden xl:block">
-              <LicenseeTableSkeleton />
-            </div>
-          </>
-        );
-      }
       return (
-        <>
-          <LicenseeSearchBar
-            searchValue={licenseeSearchValue}
-            setSearchValue={setLicenseeSearchValue}
-          />
-          {!isCountriesLoading && countries.length === 0 && (
-            <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              No countries are available. Please add countries first before
-              creating or updating licensees.
-            </p>
-          )}
-          <div className="block xl:hidden">
-            {filteredLicensees.length > 0 ? (
-              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                {filteredLicensees.map(licensee => (
-                  <LicenseeCard
-                    key={licensee._id}
-                    licensee={licensee}
-                    onEdit={handleOpenEditLicensee}
-                    onDelete={handleOpenDeleteLicensee}
-                    onPaymentHistory={handlePaymentHistory}
-                    onTogglePaymentStatus={handleTogglePaymentStatus}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="py-4 text-center text-gray-500">
-                No licensees found.
-              </p>
-            )}
-          </div>
-          <div className="hidden xl:block">
-            <LicenseeTable
-              licensees={filteredLicensees}
-              onEdit={handleOpenEditLicensee}
-              onDelete={handleOpenDeleteLicensee}
-              onPaymentHistory={handlePaymentHistory}
-              onTogglePaymentStatus={handleTogglePaymentStatus}
-            />
-          </div>
-          <AddLicenseeModal
-            open={isAddLicenseeModalOpen}
-            onClose={async () => {
-              setIsAddLicenseeModalOpen(false);
-              // Refresh licensees data when modal is closed
-              try {
-                const result = await fetchLicensees(1, licenseesItemsPerBatch);
-                setAllLicensees(
-                  Array.isArray(result.licensees) ? result.licensees : []
-                );
-                setLicenseesLoadedBatches(new Set([1]));
-                setLicenseesCurrentPage(0);
-              } catch (error) {
-                console.error('Failed to refresh licensees data:', error);
-              }
-            }}
-            onSave={handleSaveAddLicensee}
-            formState={licenseeForm}
-            setFormState={data =>
-              setLicenseeForm(prev => ({ ...prev, ...data }))
-            }
-            countries={countries}
-            countriesLoading={isCountriesLoading}
-          />
-          <EditLicenseeModal
-            open={isEditLicenseeModalOpen}
-            onClose={async () => {
-              setIsEditLicenseeModalOpen(false);
-              // Refresh licensees data when modal is closed
-              try {
-                const result = await fetchLicensees(1, licenseesItemsPerBatch);
-                setAllLicensees(
-                  Array.isArray(result.licensees) ? result.licensees : []
-                );
-                setLicenseesLoadedBatches(new Set([1]));
-                setLicenseesCurrentPage(0);
-              } catch (error) {
-                console.error('Failed to refresh licensees data:', error);
-              }
-            }}
-            onSave={handleSaveEditLicensee}
-            formState={licenseeForm}
-            setFormState={data =>
-              setLicenseeForm(prev => ({ ...prev, ...data }))
-            }
-            countries={countries}
-            countriesLoading={isCountriesLoading}
-          />
-          <DeleteLicenseeModal
-            open={isDeleteLicenseeModalOpen}
-            onClose={() => setIsDeleteLicenseeModalOpen(false)}
-            onDelete={handleDeleteLicensee}
-            licensee={selectedLicensee}
-          />
-          <PaymentHistoryModal
-            open={isPaymentHistoryModalOpen}
-            onClose={() => {
-              setIsPaymentHistoryModalOpen(false);
-              setSelectedLicenseeForPayment(null);
-            }}
-            licensee={selectedLicenseeForPayment}
-          />
-          <LicenseeSuccessModal
-            open={isLicenseeSuccessModalOpen}
-            onClose={() => {
-              setIsLicenseeSuccessModalOpen(false);
-              setCreatedLicensee(null);
-            }}
-            licensee={createdLicensee}
-          />
-          <PaymentStatusConfirmModal
-            open={isPaymentConfirmModalOpen}
-            onClose={() => {
-              setIsPaymentConfirmModalOpen(false);
-              setSelectedLicenseeForPaymentChange(null);
-            }}
-            onConfirm={handleConfirmPaymentStatusChange}
-            currentStatus={
-              selectedLicenseeForPaymentChange?.isPaid !== undefined
-                ? selectedLicenseeForPaymentChange.isPaid
-                : selectedLicenseeForPaymentChange?.expiryDate
-                  ? new Date(selectedLicenseeForPaymentChange.expiryDate) >
-                    new Date()
-                  : false
-            }
-            licenseeName={selectedLicenseeForPaymentChange?.name || ''}
-            currentExpiryDate={selectedLicenseeForPaymentChange?.expiryDate}
-          />
-        </>
+        <AdministrationLicenseesSection
+          isLicenseesLoading={licenseesHook.isLicenseesLoading}
+          filteredLicensees={licenseesHook.filteredLicensees}
+          licenseeSearchValue={licenseesHook.licenseeSearchValue}
+          isAddLicenseeModalOpen={licenseesHook.isAddLicenseeModalOpen}
+          isEditLicenseeModalOpen={licenseesHook.isEditLicenseeModalOpen}
+          isDeleteLicenseeModalOpen={licenseesHook.isDeleteLicenseeModalOpen}
+          isPaymentHistoryModalOpen={licenseesHook.isPaymentHistoryModalOpen}
+          isLicenseeSuccessModalOpen={licenseesHook.isLicenseeSuccessModalOpen}
+          isPaymentConfirmModalOpen={licenseesHook.isPaymentConfirmModalOpen}
+          countries={licenseesHook.countries}
+          isCountriesLoading={licenseesHook.isCountriesLoading}
+          selectedLicensee={licenseesHook.selectedLicensee}
+          licenseeForm={licenseesHook.licenseeForm}
+          selectedLicenseeForPayment={licenseesHook.selectedLicenseeForPayment}
+          selectedLicenseeForPaymentChange={
+            licenseesHook.selectedLicenseeForPaymentChange
+          }
+          createdLicensee={licenseesHook.createdLicensee}
+          setLicenseeSearchValue={licenseesHook.setLicenseeSearchValue}
+          setIsAddLicenseeModalOpen={licenseesHook.setIsAddLicenseeModalOpen}
+          setIsEditLicenseeModalOpen={licenseesHook.setIsEditLicenseeModalOpen}
+          setIsDeleteLicenseeModalOpen={
+            licenseesHook.setIsDeleteLicenseeModalOpen
+          }
+          setIsPaymentHistoryModalOpen={
+            licenseesHook.setIsPaymentHistoryModalOpen
+          }
+          setIsLicenseeSuccessModalOpen={
+            licenseesHook.setIsLicenseeSuccessModalOpen
+          }
+          setIsPaymentConfirmModalOpen={
+            licenseesHook.setIsPaymentConfirmModalOpen
+          }
+          setSelectedLicensee={licenseesHook.setSelectedLicensee}
+          setLicenseeForm={licenseesHook.setLicenseeForm}
+          setSelectedLicenseeForPayment={
+            licenseesHook.setSelectedLicenseeForPayment
+          }
+          setSelectedLicenseeForPaymentChange={
+            licenseesHook.setSelectedLicenseeForPaymentChange
+          }
+          setCreatedLicensee={licenseesHook.setCreatedLicensee}
+          handleOpenAddLicensee={licenseesHook.handleOpenAddLicensee}
+          handleSaveAddLicensee={licenseesHook.handleSaveAddLicensee}
+          handleOpenEditLicensee={licenseesHook.handleOpenEditLicensee}
+          handleSaveEditLicensee={licenseesHook.handleSaveEditLicensee}
+          handleOpenDeleteLicensee={licenseesHook.handleOpenDeleteLicensee}
+          handleDeleteLicensee={licenseesHook.handleDeleteLicensee}
+          handlePaymentHistory={licenseesHook.handlePaymentHistory}
+          handleTogglePaymentStatus={licenseesHook.handleTogglePaymentStatus}
+          handleConfirmPaymentStatusChange={
+            licenseesHook.handleConfirmPaymentStatusChange
+          }
+          refreshLicensees={licenseesHook.refreshLicensees}
+        />
       );
     }
 
@@ -2240,280 +235,54 @@ function AdministrationPageContent() {
         </div>
       );
     }
-
-    if (isLoading) {
-      return (
-        <>
-          <div className="block xl:hidden">
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <UserCardSkeleton />
-              <UserCardSkeleton />
-              <UserCardSkeleton />
-              <UserCardSkeleton />
-            </div>
-          </div>
-          <div className="hidden xl:block">
-            <UserTableSkeleton />
-          </div>
-        </>
-      );
-    }
-
     return (
-      <>
-        <SearchFilterBar
-          searchValue={searchValue}
-          setSearchValue={setSearchValue}
-          selectedRole={selectedRole}
-          setSelectedRole={setSelectedRole}
-          selectedStatus={selectedStatus}
-          setSelectedStatus={setSelectedStatus}
-        />
-        <div className="block md:block xl:hidden">
-          {isSearching ? (
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <UserCardSkeleton />
-              <UserCardSkeleton />
-              <UserCardSkeleton />
-              <UserCardSkeleton />
-            </div>
-          ) : processedUsers.length > 0 ? (
-            <>
-              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                {processedUsers.map(userItem => (
-                  <UserCard
-                    key={userItem.username}
-                    user={userItem}
-                    onEdit={handleEditUser}
-                    onDelete={handleDeleteUser}
-                    currentUser={user}
-                  />
-                ))}
-              </div>
-              {/* Pagination Controls */}
-              {!isLoading && totalPages > 1 && (
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  setCurrentPage={setCurrentPage}
-                />
-              )}
-            </>
-          ) : (
-            <p className="py-4 text-center text-gray-500">
-              No users found matching your criteria.
-            </p>
-          )}
-        </div>
-        <div className="hidden xl:block">
-          {isSearching ? (
-            <UserTableSkeleton />
-          ) : processedUsers.length > 0 ? (
-            <>
-              <UserTable
-                users={processedUsers}
-                sortConfig={sortConfig}
-                requestSort={requestSort}
-                onEdit={handleEditUser}
-                onDelete={handleDeleteUser}
-                currentUser={user}
-              />
-              {/* Pagination Controls */}
-              {!isLoading && totalPages > 1 && (
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  setCurrentPage={setCurrentPage}
-                />
-              )}
-            </>
-          ) : (
-            <p className="py-10 text-center text-gray-500">
-              No users found matching your criteria.
-            </p>
-          )}
-        </div>
-        <UserModal
-          open={isUserModalOpen}
-          user={selectedUser}
-          onClose={async () => {
-            setIsUserModalOpen(false);
-            setSelectedUser(null);
-            // Refresh users data when modal is closed
-            try {
-              const result = await fetchUsers(
-                selectedLicencee,
-                1,
-                itemsPerBatch,
-                undefined,
-                'username',
-                selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
-              );
-              setAllUsers(result.users);
-              setLoadedBatches(new Set([1]));
-              setCurrentPage(0);
-            } catch (error) {
-              console.error('Failed to refresh users data:', error);
-            }
-          }}
-          onSave={handleSaveUser}
-        />
-        <DeleteUserModal
-          open={isDeleteModalOpen}
-          user={selectedUserToDelete}
-          onClose={() => {
-            setIsDeleteModalOpen(false);
-            setSelectedUserToDelete(null);
-          }}
-          onDelete={async () => {
-            if (!selectedUserToDelete) return;
-
-            const userData = { ...selectedUserToDelete };
-
-            try {
-              await axios.delete('/api/users', {
-                data: { _id: selectedUserToDelete._id },
-              });
-
-              // Log the deletion activity
-              try {
-                await fetch('/api/activity-logs', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    action: 'delete',
-                    resource: 'user',
-                    resourceId: selectedUserToDelete._id,
-                    resourceName: selectedUserToDelete.username,
-                    details: `Deleted user: ${
-                      selectedUserToDelete.username
-                    } with roles: ${userData.roles?.join(', ') || 'N/A'}`,
-                    userId: user?._id || 'unknown',
-                    username: getUserDisplayName(),
-                    userRole: 'user',
-                    previousData: userData,
-                    newData: null,
-                    changes: [], // Will be calculated by the API
-                  }),
-                });
-              } catch (error) {
-                if (process.env.NODE_ENV === 'development') {
-                  console.error('Failed to log activity:', error);
-                }
+      <AdministrationUsersSection
+        isLoading={usersHook.isLoading}
+        isSearching={usersHook.isSearching}
+        processedUsers={usersHook.processedUsers}
+        totalPages={usersHook.totalPages}
+        currentPage={usersHook.currentPage}
+        searchValue={usersHook.searchValue}
+        selectedRole={usersHook.selectedRole}
+        selectedStatus={usersHook.selectedStatus}
+        sortConfig={
+          usersHook.sortConfig
+            ? {
+                key: usersHook.sortConfig.key || '',
+                direction: usersHook.sortConfig.direction,
               }
-
-              // Refresh users
-              const result = await fetchUsers(
-                selectedLicencee,
-                1,
-                itemsPerBatch,
-                undefined,
-                'username',
-                selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
-              );
-              setAllUsers(result.users);
-              setLoadedBatches(new Set([1]));
-              setCurrentPage(0);
-              toast.success('User deleted successfully');
-            } catch (error) {
-              if (process.env.NODE_ENV === 'development') {
-                console.error('Failed to delete user:', error);
-              }
-              toast.error('Failed to delete user');
-            }
-            setIsDeleteModalOpen(false);
-            setSelectedUserToDelete(null);
-          }}
-        />
-        <AddUserModal
-          open={isAddUserModalOpen}
-          onClose={closeAddUserModal}
-          onSave={handleSaveAddUser}
-          formState={addUserForm}
-          setFormState={handleAddUserFormChange}
-        />
-      </>
+            : null
+        }
+        isUserModalOpen={usersHook.isUserModalOpen}
+        isDeleteModalOpen={usersHook.isDeleteModalOpen}
+        isAddUserModalOpen={usersHook.isAddUserModalOpen}
+        selectedUser={usersHook.selectedUser}
+        selectedUserToDelete={usersHook.selectedUserToDelete}
+        currentUser={user}
+        setSearchValue={usersHook.setSearchValue}
+        setSelectedRole={usersHook.setSelectedRole}
+        setSelectedStatus={usersHook.setSelectedStatus}
+        setCurrentPage={usersHook.setCurrentPage}
+        setIsUserModalOpen={usersHook.setIsUserModalOpen}
+        setSelectedUser={usersHook.setSelectedUser}
+        setIsDeleteModalOpen={usersHook.setIsDeleteModalOpen}
+        setSelectedUserToDelete={usersHook.setSelectedUserToDelete}
+        setIsAddUserModalOpen={usersHook.setIsAddUserModalOpen}
+        handleEditUser={usersHook.handleEditUser}
+        handleDeleteUser={usersHook.handleDeleteUser}
+        handleSaveUser={usersHook.handleSaveUser}
+        handleDeleteUserConfirm={usersHook.handleDeleteUserConfirm}
+        closeAddUserModal={usersHook.closeAddUserModal}
+        requestSort={(key: string) => usersHook.requestSort(key as never)}
+        refreshUsers={usersHook.refreshUsers}
+      />
     );
-  }, [
-    activeSection,
-    isLicenseesLoading,
-    isLoading,
-    filteredLicensees,
-    processedUsers,
-    sortConfig,
-    licenseeSearchValue,
-    searchValue,
-    handleOpenEditLicensee,
-    handleOpenDeleteLicensee,
-    handlePaymentHistory,
-    handleTogglePaymentStatus,
-    handleEditUser,
-    handleDeleteUser,
-    requestSort,
-    isAddLicenseeModalOpen,
-    isEditLicenseeModalOpen,
-    isDeleteLicenseeModalOpen,
-    isPaymentHistoryModalOpen,
-    isPaymentConfirmModalOpen,
-    isLicenseeSuccessModalOpen,
-    licenseeForm,
-    setLicenseeForm,
-    handleSaveAddLicensee,
-    handleSaveEditLicensee,
-    handleDeleteLicensee,
-    handleConfirmPaymentStatusChange,
-    selectedLicensee,
-    selectedLicenseeForPayment,
-    selectedLicenseeForPaymentChange,
-    addUserForm,
-    closeAddUserModal,
-    countries,
-    createdLicensee,
-    currentPage,
-    getUserDisplayName,
-    handleAddUserFormChange,
-    handleSaveAddUser,
-    handleSaveUser,
-    isAddUserModalOpen,
-    isCountriesLoading,
-    isDeleteModalOpen,
-    isSearching,
-    isUserModalOpen,
-    selectedLicencee,
-    selectedRole,
-    selectedStatus,
-    selectedUser,
-    selectedUserToDelete,
-    setAllLicensees,
-    setAllUsers,
-    setCreatedLicensee,
-    setCurrentPage,
-    setIsAddLicenseeModalOpen,
-    setIsDeleteLicenseeModalOpen,
-    setIsDeleteModalOpen,
-    setIsEditLicenseeModalOpen,
-    setIsLicenseeSuccessModalOpen,
-    setIsPaymentConfirmModalOpen,
-    setIsPaymentHistoryModalOpen,
-    setIsUserModalOpen,
-    setLicenseeSearchValue,
-    setLicenseesCurrentPage,
-    setLicenseesLoadedBatches,
-    setLoadedBatches,
-    setSearchValue,
-    setSelectedLicenseeForPayment,
-    setSelectedLicenseeForPaymentChange,
-    setSelectedRole,
-    setSelectedStatus,
-    setSelectedUser,
-    setSelectedUserToDelete,
-    totalPages,
-    user,
-    licenseesItemsPerBatch,
-    itemsPerBatch,
-  ]);
+  }, [activeSection, user, usersHook, licenseesHook]);
+
+  // ============================================================================
+  // Early Returns
+  // ============================================================================
+  if (!mounted) return null;
 
   // ============================================================================
   // Early Returns
@@ -2548,30 +317,10 @@ function AdministrationPageContent() {
             onClick={async () => {
               setRefreshing(true);
               if (activeSection === 'users') {
-                setIsLoading(true);
-                const result = await fetchUsers(
-                  selectedLicencee,
-                  1,
-                  itemsPerBatch,
-                  undefined,
-                  'username',
-                  selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
-                );
-                setAllUsers(result.users);
-                setAllLoadedUsers(result.users);
-                setLoadedBatches(new Set([1]));
-                setCurrentPage(0);
-                setIsLoading(false);
+                await usersHook.refreshUsers();
               } else if (activeSection === 'licensees') {
-                const result = await fetchLicensees(1, licenseesItemsPerBatch);
-                setAllLicensees(
-                  Array.isArray(result.licensees) ? result.licensees : []
-                );
-                setLicenseesLoadedBatches(new Set([1]));
-                setLicenseesCurrentPage(0);
+                await licenseesHook.refreshLicensees();
               } else if (activeSection === 'feedback') {
-                // Feedback section refreshes itself via FeedbackManagement component
-                // Dispatch a custom event that FeedbackManagement can listen to
                 window.dispatchEvent(new CustomEvent('refreshFeedback'));
               }
               setRefreshing(false);
@@ -2593,30 +342,10 @@ function AdministrationPageContent() {
             onClick={async () => {
               setRefreshing(true);
               if (activeSection === 'users') {
-                setIsLoading(true);
-                const result = await fetchUsers(
-                  selectedLicencee,
-                  1,
-                  itemsPerBatch,
-                  undefined,
-                  'username',
-                  selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
-                );
-                setAllUsers(result.users);
-                setAllLoadedUsers(result.users);
-                setLoadedBatches(new Set([1]));
-                setCurrentPage(0);
-                setIsLoading(false);
+                await usersHook.refreshUsers();
               } else if (activeSection === 'licensees') {
-                const result = await fetchLicensees(1, licenseesItemsPerBatch);
-                setAllLicensees(
-                  Array.isArray(result.licensees) ? result.licensees : []
-                );
-                setLicenseesLoadedBatches(new Set([1]));
-                setLicenseesCurrentPage(0);
+                await licenseesHook.refreshLicensees();
               } else if (activeSection === 'feedback') {
-                // Feedback section refreshes itself via FeedbackManagement component
-                // Dispatch a custom event that FeedbackManagement can listen to
                 window.dispatchEvent(new CustomEvent('refreshFeedback'));
               }
               setRefreshing(false);
@@ -2631,7 +360,7 @@ function AdministrationPageContent() {
           </button>
           {activeSection === 'users' ? (
             <Button
-              onClick={openAddUserModal}
+              onClick={usersHook.openAddUserModal}
               className="flex items-center gap-2 rounded-md bg-button px-6 py-2 text-lg font-semibold text-white"
             >
               <PlusCircle className="h-4 w-4" />
@@ -2639,8 +368,11 @@ function AdministrationPageContent() {
             </Button>
           ) : activeSection === 'licensees' ? (
             <Button
-              onClick={handleOpenAddLicensee}
-              disabled={isCountriesLoading || countries.length === 0}
+              onClick={licenseesHook.handleOpenAddLicensee}
+              disabled={
+                licenseesHook.isCountriesLoading ||
+                licenseesHook.countries.length === 0
+              }
               className="flex items-center gap-2 rounded-md bg-button px-6 py-2 text-lg font-semibold text-white"
             >
               <PlusCircle className="h-4 w-4" />
@@ -2653,7 +385,7 @@ function AdministrationPageContent() {
         <div className="flex flex-shrink-0 items-center gap-2 md:hidden">
           {activeSection === 'users' ? (
             <button
-              onClick={openAddUserModal}
+              onClick={usersHook.openAddUserModal}
               disabled={refreshing}
               className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Add User"
@@ -2662,9 +394,11 @@ function AdministrationPageContent() {
             </button>
           ) : activeSection === 'licensees' ? (
             <button
-              onClick={handleOpenAddLicensee}
+              onClick={licenseesHook.handleOpenAddLicensee}
               disabled={
-                refreshing || isCountriesLoading || countries.length === 0
+                refreshing ||
+                licenseesHook.isCountriesLoading ||
+                licenseesHook.countries.length === 0
               }
               className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Add Licensee"
@@ -2681,7 +415,7 @@ function AdministrationPageContent() {
           tabs={ADMINISTRATION_TABS_CONFIG}
           activeSection={activeSection}
           onChange={handleSectionChange}
-          isLoading={isLoading || isLicenseesLoading || isTabTransitioning}
+          isLoading={usersHook.isLoading || licenseesHook.isLicenseesLoading}
         />
       </div>
 
@@ -2690,16 +424,7 @@ function AdministrationPageContent() {
         data-section-content
         className="transition-all duration-300 ease-in-out"
       >
-        {isTabTransitioning ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-button"></div>
-              <p className="text-gray-600">Loading {activeSection}...</p>
-            </div>
-          </div>
-        ) : (
-          renderSectionContent()
-        )}
+        {renderSectionContent()}
       </div>
     </PageLayout>
   );

@@ -17,7 +17,7 @@ export function CurrencyConversionDemo() {
   const { displayCurrency, isAllLicensee } = useCurrency();
   const [testAmount, setTestAmount] = useState(100);
   const [fromCurrency, setFromCurrency] = useState<CurrencyCode>('USD');
-  const [toCurrency, _setToCurrency] = useState<CurrencyCode>('TTD');
+  const [toCurrency] = useState<CurrencyCode>('TTD');
 
   const currencies: CurrencyCode[] = ['USD', 'TTD', 'GYD', 'BBD'];
 

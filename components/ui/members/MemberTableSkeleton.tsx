@@ -9,17 +9,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-export const MemberTableSkeleton: React.FC = () => (
+type MemberTableSkeletonProps = {
+  hideLocationColumn?: boolean;
+};
+
+export const MemberTableSkeleton: React.FC<MemberTableSkeletonProps> = ({
+  hideLocationColumn = false,
+}) => (
   <div className="overflow-x-auto rounded-lg bg-white shadow">
     <Table className="w-full table-fixed">
       <TableHeader>
         <TableRow className="bg-button hover:bg-button">
-          <TableHead
-            isFirstColumn={true}
-            className="relative cursor-pointer font-semibold text-white"
-          >
-            <span>LOCATION</span>
-          </TableHead>
           <TableHead
             isFirstColumn={true}
             centered
@@ -27,6 +27,13 @@ export const MemberTableSkeleton: React.FC = () => (
           >
             <span>FULL NAME</span>
           </TableHead>
+          {!hideLocationColumn && (
+            <TableHead
+              className="relative cursor-pointer font-semibold text-white"
+            >
+              <span>LOCATION</span>
+            </TableHead>
+          )}
           <TableHead
             centered
             className="relative cursor-pointer font-semibold text-white"
@@ -46,20 +53,19 @@ export const MemberTableSkeleton: React.FC = () => (
       </TableHeader>
       <TableBody>
         {Array.from({ length: 8 }).map((_, rowIndex) => (
-          <TableRow
-            key={rowIndex}
-            className="cursor-pointer hover:bg-muted"
-          >
-            <TableCell isFirstColumn={true}>
-              <Skeleton className="h-4 w-24" />
-            </TableCell>
-            <TableCell centered>
+          <TableRow key={rowIndex} className="cursor-pointer hover:bg-muted">
+            <TableCell isFirstColumn={true} centered>
               <Skeleton className="mb-1 h-4 w-32" />
               <div className="mt-1 flex gap-1">
                 <Skeleton className="h-3 w-16 rounded-full" />
                 <Skeleton className="h-3 w-12 rounded-full" />
               </div>
             </TableCell>
+            {!hideLocationColumn && (
+              <TableCell>
+                <Skeleton className="h-4 w-24" />
+              </TableCell>
+            )}
             <TableCell centered>
               <Skeleton className="mx-auto h-4 w-20" />
               <div className="mt-1 flex items-center justify-center gap-1 text-xs">

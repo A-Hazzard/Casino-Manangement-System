@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-**Last Updated:** November 28th, 2025
+**Last Updated:** December 22nd, 2025
 
 ## 📚 Essential Documentation References
 
@@ -714,27 +714,45 @@ The complete SMIB (Slot Machine Interface Board) management system has been impl
 
 ### Collection Report System - Major Refactoring ✅
 
-**Last Updated:** November 3rd, 2025
+**Last Updated:** December 22nd, 2025
 
-#### Mobile Modal Componentization
+#### Complete Component Refactoring
 
 **Code Reduction Achievement:**
 
-- `MobileCollectionModal`: 2,707 lines → 1,855 lines (31.5% reduction)
-- Total reduction: 852 lines of duplicate code eliminated
+- `NewCollectionModal`: 3,604 lines → ~495 lines (86% reduction)
+- `EditCollectionModal`: 2,877 lines → ~225 lines (92% reduction)
+- `MobileCollectionModal`: 2,163 lines → ~100 lines (95% reduction)
+- `MobileEditCollectionModal`: 3,795 lines → ~293 lines (92% reduction)
+- `LocationsTab`: 5,118 lines → ~548 lines (89% reduction)
+- `MetersTab`: 1,930 lines → ~403 lines (79% reduction)
 
 **New Reusable Components** (`components/collectionReport/forms/`):
 
-- `MachineInfoDisplay`: Machine name and SMIB ID display
-- `CollectionTimeInput`: Date/time picker for collections
-- `MachineMetersForm`: Meters In/Out with RAM clear validation
-- `MachineNotesInput`: Notes textarea with character limits
-- `SharedFinancialsForm`: Taxes and Advance inputs (first machine only)
-- `MachineDataEntryForm`: Master component combining all machine data inputs
-- `FinancialSummaryForm`: Complete financial summary section
-- `MachineListPanel`: Searchable machine selection list
-- `MobileFormPanel`: Complete form panel with fixed header/scrollable content/fixed footer
-- `MobileCollectedListPanel`: Collected machines list with financial summary
+- `NewCollectionLocationMachineSelection`: Location and machine selection for new reports
+- `NewCollectionFormFields`: Collection time, meter inputs, RAM clear, and notes
+- `NewCollectionFinancials`: Shared financial inputs (Taxes, Advance, Variance, etc.)
+- `NewCollectionCollectedMachines`: Display of collected machine entries
+- `EditCollectionLocationMachineSelection`: Location and machine selection for editing
+- `EditCollectionFormFields`: Collection time, meter inputs, RAM clear, and notes for editing
+- `EditCollectionFinancials`: Financial inputs for editing reports
+- `MobileLocationSelector`: Location selection for mobile modals
+- `MobileMachineList`: Machine listing and selection for mobile
+- `MobileEditLocationSelector`: Location selector for mobile edit modal
+- `MobileEditMachineList`: Machine list for mobile edit modal
+
+**New Custom Hooks** (`lib/hooks/collectionReport/`):
+
+- `useNewCollectionModal.ts`: All state and logic for new collection modal
+- `useEditCollectionModal.ts`: All state and logic for edit collection modal
+- `useMobileCollectionModal.ts`: All state and logic for mobile collection modal
+- `useMobileEditCollectionModal.ts`: All state and logic for mobile edit collection modal
+
+**New Helper Files** (`lib/helpers/collectionReport/`):
+
+- `newCollectionModalHelpers.ts`: Helper functions for new collection modal
+- `editCollectionModalHelpers.ts`: Helper functions for edit collection modal
+- `mobileEditCollectionModalHelpers.ts`: Helper functions for mobile edit collection modal
 
 **Benefits:**
 
@@ -744,15 +762,19 @@ The complete SMIB (Slot Machine Interface Board) management system has been impl
 - Easier testing and debugging
 - Proper scroll behavior (fixed headers/footers, scrollable content only)
 
-#### Desktop Modal Layout Improvements
+#### Reports Tab Refactoring
 
-**Width Distribution Optimization:**
+**LocationsTab Refactoring:**
 
-- Machine List: 25% → 20% (more compact)
-- **Form Panel: 50% → 60% (wider for better UX)**
-- Collected Machines: 25% → 20% (more compact)
+- Extracted `useLocationsTabData.ts` hook for all data fetching
+- Created sub-components: `LocationsOverviewTab`, `LocationsSASEvaluationTab`, `LocationsRevenueAnalysisTab`
+- Extracted helpers: `locationsTabHelpers.ts` for export functionality
 
-Result: Form fields have more space, reducing cramped UX issues.
+**MetersTab Refactoring:**
+
+- Extracted `useMetersTabData.ts` hook for all data fetching
+- Created sub-components: `MetersLocationSelection`, `MetersTable`
+- Extracted helpers: `metersTabHelpers.ts` for filtering and calculations
 
 #### Collection Report Details Page Enhancements
 
@@ -1124,16 +1146,18 @@ Native Currency (TTD $20)
 
 This context file provides a comprehensive overview of the Evolution One Casino Management System. Use this as reference when working on any part of the system to maintain consistency and understand the broader context of your changes.
 
-**Last Major Update:** December 2025 - Frontend Refactoring Complete, Infinite Loop Fixes, ESLint Compliance, Session Management Fix (Multi-Device Support), Machine Status Widgets, Currency Auto-Set for Single-Licensee Users
+**Last Major Update:** December 22nd, 2025 - Complete Frontend Refactoring (All components over 1000 lines refactored), Page Refactoring (All app/ pages refactored), Infinite Loop Fixes, ESLint Compliance, Session Management Fix (Multi-Device Support), Machine Status Widgets, Currency Auto-Set for Single-Licensee Users
 
 ### Recent Updates (December 2025)
 
 #### Frontend Refactoring & Code Quality Improvements ✅ (December 2025)
 
-**Last Updated:** December 2025
+**Last Updated:** December 22nd, 2025
 
 **Comprehensive Frontend Refactoring:**
 
+- **All Components Over 1000 Lines Refactored (16 files)**: Complete refactoring of large components (see details above)
+- **All App Pages Refactored (10 pages)**: Complete refactoring of all `page.tsx` files over 1000 lines (see details above)
 - **All Stores Refactored (16 files)**: Complete refactoring of all Zustand stores in `lib/store/` with:
   - File-level JSDoc documentation
   - Section comments for code organization

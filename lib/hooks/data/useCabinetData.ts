@@ -181,14 +181,7 @@ export const useCabinetData = ({
   ]);
 
   // Legacy filterCabinets function for backward compatibility (now just updates state)
-  const filterCabinets = useCallback(
-    (
-      _cabinets: Cabinet[],
-      _search: string,
-      _location: string,
-      _gameType: string,
-      _status: string
-    ) => {
+  const filterCabinets = useCallback(() => {
       // This function is now handled by the memoized filteredCabinets above
       // Keeping for backward compatibility but it's no longer needed
     },
@@ -441,12 +434,12 @@ export const useCabinetData = ({
 
     // Create a dependency key to detect actual changes
     const depsKey = `${activeMetricsFilter}-${selectedLicencee || 'all'}-${displayCurrency || 'default'}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}`;
-    
+
     // On initial mount, don't abort anything (there's nothing to abort)
     // Only abort if dependencies actually changed (not on initial mount)
     const isInitialMount = isInitialMountRef.current;
     const depsChanged = prevTotalsDepsRef.current !== depsKey;
-    
+
     if (isInitialMount) {
       isInitialMountRef.current = false;
       prevTotalsDepsRef.current = depsKey;

@@ -1,21 +1,21 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { useRouter } from 'next/navigation';
-import { formatCurrency } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
+import { CabinetCardProps } from '@/lib/types/cardProps';
+import { formatCurrency } from '@/lib/utils';
 import {
+  getGrossColorClass,
   getMoneyInColorClass,
   getMoneyOutColorClass,
-  getGrossColorClass,
 } from '@/lib/utils/financialColors';
-import { CabinetCardProps } from '@/lib/types/cardProps';
-import { motion } from 'framer-motion';
-import { Eye, Pencil, Trash2, ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
+import { motion } from 'framer-motion';
+import gsap from 'gsap';
+import { ExternalLink, Eye, Pencil, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 
 export default function CabinetCard(props: CabinetCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -88,7 +88,7 @@ export default function CabinetCard(props: CabinetCardProps) {
               e.stopPropagation();
               handleViewClick();
             }}
-            className="text-base font-semibold hover:text-blue-600 hover:underline cursor-pointer text-left truncate"
+            className="cursor-pointer truncate text-left text-base font-semibold hover:text-blue-600 hover:underline"
             title="Click to view cabinet details"
           >
             {formatMachineDisplayNameWithBold(props)}
@@ -112,7 +112,7 @@ export default function CabinetCard(props: CabinetCardProps) {
               copyToClipboard(smbId, 'SMIB');
             }
           }}
-          className={`mb-1 text-sm ${smbId ? 'text-green-600 hover:text-blue-600 hover:underline cursor-pointer' : 'text-gray-400'}`}
+          className={`mb-1 text-sm ${smbId ? 'cursor-pointer text-green-600 hover:text-blue-600 hover:underline' : 'text-gray-400'}`}
           title={smbId ? 'Click to copy SMIB' : 'No SMIB'}
           disabled={!smbId}
         >
@@ -127,7 +127,7 @@ export default function CabinetCard(props: CabinetCardProps) {
                   e.stopPropagation();
                   router.push(`/locations/${props.locationId}`);
                 }}
-                className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline cursor-pointer"
+                className="cursor-pointer text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline"
                 title="Click to view location details"
               >
                 {props.locationName || 'No Location'}
@@ -140,15 +140,13 @@ export default function CabinetCard(props: CabinetCardProps) {
                 className="flex-shrink-0"
                 title="View location details"
               >
-                <ExternalLink
-                  className="h-3 w-3 text-gray-500 hover:text-blue-600 cursor-pointer transition-transform hover:scale-110"
-                />
+                <ExternalLink className="h-3 w-3 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
               </button>
             </>
           ) : (
             <p className="text-sm font-medium text-gray-900">
-          {props.locationName || 'No Location'}
-        </p>
+              {props.locationName || 'No Location'}
+            </p>
           )}
         </div>
       </div>
@@ -159,7 +157,7 @@ export default function CabinetCard(props: CabinetCardProps) {
           <span className="text-gray-500">Money In</span>
           <CurrencyValueWithOverflow
             value={props.moneyIn || 0}
-            className={`font-medium ${getMoneyInColorClass(props.moneyIn)}`}
+            className={`font-medium ${getMoneyInColorClass()}`}
             formatCurrencyFn={formatCurrency}
           />
         </div>
@@ -195,7 +193,7 @@ export default function CabinetCard(props: CabinetCardProps) {
           onClick={handleViewClick}
           variant="outline"
           size="sm"
-          className="flex-1 flex items-center justify-center gap-1.5 text-xs"
+          className="flex flex-1 items-center justify-center gap-1.5 text-xs"
         >
           <Eye className="h-3.5 w-3.5" />
           <span>View</span>
@@ -205,7 +203,7 @@ export default function CabinetCard(props: CabinetCardProps) {
             onClick={() => props.onEdit?.(props)}
             variant="outline"
             size="sm"
-            className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
           >
             <Pencil className="h-3.5 w-3.5" />
             <span>Edit</span>
@@ -216,7 +214,7 @@ export default function CabinetCard(props: CabinetCardProps) {
             onClick={() => props.onDelete?.(props)}
             variant="outline"
             size="sm"
-            className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
           >
             <Trash2 className="h-3.5 w-3.5" />
             <span>Delete</span>

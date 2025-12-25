@@ -252,7 +252,7 @@ export const AccountingMetricsSection = ({
             <div>
               <p className="text-sm font-medium text-gray-600">Money In</p>
               <p
-                className={`text-2xl font-bold ${getMoneyInColorClass(financialMetrics.moneyIn)}`}
+                className={`text-2xl font-bold ${getMoneyInColorClass()}`}
               >
                 {shouldShowCurrency()
                   ? formatAmount(financialMetrics.moneyIn)

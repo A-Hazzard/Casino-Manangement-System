@@ -1,13 +1,12 @@
 'use client';
 
+import type { ReportTab, ReportView } from '@/lib/types/reports';
 import { motion } from 'framer-motion';
-import type { ReportView, ReportTab } from '@/lib/types/reports';
 
 type ReportsNavigationProps = {
   availableTabs: ReportTab[];
   activeView: ReportView;
   onTabChange: (tabId: ReportView) => void;
-  _isLoading: boolean;
 };
 
 /**
@@ -18,12 +17,11 @@ export default function ReportsNavigation({
   availableTabs,
   activeView,
   onTabChange,
-  _isLoading,
 }: ReportsNavigationProps) {
   const visibleTabs = availableTabs;
 
   return (
-    <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
+    <div className="mb-6 rounded-lg border-b border-gray-200 bg-white shadow-sm">
       {/* Desktop Navigation */}
       <nav className="hidden space-x-8 px-6 md:flex">
         {visibleTabs.map(tab => (
@@ -64,3 +62,5 @@ export default function ReportsNavigation({
     </div>
   );
 }
+
+

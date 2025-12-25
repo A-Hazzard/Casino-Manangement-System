@@ -15,17 +15,13 @@
  */
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { formatTime12Hour } from '@/shared/utils/dateFormat';
-import { Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     CartesianGrid,
     Line,
     LineChart,
-    ReferenceArea,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -49,13 +45,6 @@ export function MetersHourlyCharts({
   data,
   loading = false,
 }: MetersHourlyChartsProps) {
-  const [gamesSearch, setGamesSearch] = useState('');
-  const [coinInSearch, setCoinInSearch] = useState('');
-  const [coinOutSearch, setCoinOutSearch] = useState('');
-  const [gamesFocusedIndex, setGamesFocusedIndex] = useState<number | null>(null);
-  const [coinInFocusedIndex, setCoinInFocusedIndex] = useState<number | null>(null);
-  const [coinOutFocusedIndex, setCoinOutFocusedIndex] = useState<number | null>(null);
-
   const gamesScrollRef = useRef<HTMLDivElement>(null);
   const coinInScrollRef = useRef<HTMLDivElement>(null);
   const coinOutScrollRef = useRef<HTMLDivElement>(null);
@@ -173,37 +162,6 @@ export function MetersHourlyCharts({
     return '100%';
   }, [isMobile, chartData.length, chartWidthNumeric]);
 
-  const handleFocus = (
-    searchTerm: string,
-    scrollRef: React.RefObject<HTMLDivElement | null>,
-    targetData: typeof chartData
-  ) => {
-    if (!searchTerm || !scrollRef.current) return;
-
-    const index = targetData.findIndex(item =>
-      String(item.time).toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    if (index !== -1) {
-      if (scrollRef === gamesScrollRef) setGamesFocusedIndex(index);
-      else if (scrollRef === coinInScrollRef) setCoinInFocusedIndex(index);
-      else if (scrollRef === coinOutScrollRef) setCoinOutFocusedIndex(index);
-
-      const containerWidth = scrollRef.current.clientWidth;
-      const width = typeof chartWidth === 'number' ? chartWidth : chartWidthNumeric;
-      const slotWidth = width / targetData.length;
-      const targetScroll = (index + 0.5) * slotWidth - (containerWidth / 2);
-      
-      scrollRef.current.scrollTo({
-        left: Math.max(0, targetScroll),
-        behavior: 'smooth'
-      });
-    } else {
-      if (scrollRef === gamesScrollRef) setGamesFocusedIndex(null);
-      else if (scrollRef === coinInScrollRef) setCoinInFocusedIndex(null);
-      else if (scrollRef === coinOutScrollRef) setCoinOutFocusedIndex(null);
-    }
-  };
 
   // Format time for display - shorter on mobile, 12-hour format
   const formatTimeLabel = (timeStr: string) => {
@@ -309,34 +267,15 @@ export function MetersHourlyCharts({
     <div className="space-y-4">
       {/* Games Played Per Hour - Full Width */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardHeader className="pb-4">
           <CardTitle className="text-base font-semibold">
             Games Played Per Hour
           </CardTitle>
-          <div className="flex w-full max-w-sm items-center space-x-2">
-            <div className="relative w-full">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-              <Input
-                type="text"
-                placeholder="Search hour (MM-DD HH:00)..."
-                className="pl-9"
-                value={gamesSearch}
-                onChange={(e) => {
-                  setGamesSearch(e.target.value);
-                  setGamesFocusedIndex(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleFocus(gamesSearch, gamesScrollRef, chartData);
-                }}
-              />
-            </div>
-            <Button onClick={() => handleFocus(gamesSearch, gamesScrollRef, chartData)} variant="secondary">
-              Focus
-            </Button>
-          </div>
         </CardHeader>
         <CardContent>
-          {!hasGamesPlayedData || chartData.length === 0 ? (
+          {loading ? (
+            <div className="h-64 w-full animate-pulse rounded bg-gray-100"></div>
+          ) : !hasGamesPlayedData || chartData.length === 0 ? (
             <div className="flex h-64 flex-col items-center justify-center text-gray-500">
               <div className="mb-2 text-lg text-gray-500">
                 No Data to Display
@@ -378,17 +317,6 @@ export function MetersHourlyCharts({
                     formatter={(value: number) => value.toLocaleString()}
                     contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
                   />
-                  {gamesFocusedIndex !== null && chartData[gamesFocusedIndex] && (
-                    <ReferenceArea
-                      x1={chartData[gamesFocusedIndex].time}
-                      x2={chartData[gamesFocusedIndex].time}
-                      fill="#3b82f6"
-                      fillOpacity={0.15}
-                      stroke="#3b82f6"
-                      strokeDasharray="3 3"
-                      strokeOpacity={0.5}
-                    />
-                  )}
                   <Line
                     type="monotone"
                     dataKey="gamesPlayed"
@@ -409,34 +337,15 @@ export function MetersHourlyCharts({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Coin In (Meters In) Per Hour */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardHeader className="pb-4">
             <CardTitle className="text-base font-semibold">
               Coin In Per Hour
             </CardTitle>
-            <div className="flex w-full max-w-sm items-center space-x-2">
-              <div className="relative w-full">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                <Input
-                  type="text"
-                  placeholder="Search hour..."
-                  className="pl-9"
-                  value={coinInSearch}
-                  onChange={(e) => {
-                    setCoinInSearch(e.target.value);
-                    setCoinInFocusedIndex(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleFocus(coinInSearch, coinInScrollRef, chartData);
-                  }}
-                />
-              </div>
-              <Button onClick={() => handleFocus(coinInSearch, coinInScrollRef, chartData)} variant="secondary">
-                Focus
-              </Button>
-            </div>
           </CardHeader>
           <CardContent>
-            {!hasCoinInData || chartData.length === 0 ? (
+            {loading ? (
+              <div className="h-64 w-full animate-pulse rounded bg-gray-100"></div>
+            ) : !hasCoinInData || chartData.length === 0 ? (
               <div className="flex h-64 flex-col items-center justify-center text-gray-500">
                 <div className="mb-2 text-lg text-gray-500">
                   No Data to Display
@@ -483,17 +392,6 @@ export function MetersHourlyCharts({
                       }
                       contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
                     />
-                    {coinInFocusedIndex !== null && chartData[coinInFocusedIndex] && (
-                      <ReferenceArea
-                        x1={chartData[coinInFocusedIndex].time}
-                        x2={chartData[coinInFocusedIndex].time}
-                        fill="#10b981"
-                        fillOpacity={0.15}
-                        stroke="#10b981"
-                        strokeDasharray="3 3"
-                        strokeOpacity={0.5}
-                      />
-                    )}
                     <Line
                       type="monotone"
                       dataKey="coinIn"
@@ -512,34 +410,15 @@ export function MetersHourlyCharts({
 
         {/* Coin Out (Money Won) Per Hour */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardHeader className="pb-4">
             <CardTitle className="text-base font-semibold">
               Coin Out Per Hour
             </CardTitle>
-            <div className="flex w-full max-w-sm items-center space-x-2">
-              <div className="relative w-full">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                <Input
-                  type="text"
-                  placeholder="Search hour..."
-                  className="pl-9"
-                  value={coinOutSearch}
-                  onChange={(e) => {
-                    setCoinOutSearch(e.target.value);
-                    setCoinOutFocusedIndex(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleFocus(coinOutSearch, coinOutScrollRef, chartData);
-                  }}
-                />
-              </div>
-              <Button onClick={() => handleFocus(coinOutSearch, coinOutScrollRef, chartData)} variant="secondary">
-                Focus
-              </Button>
-            </div>
           </CardHeader>
           <CardContent>
-            {!hasCoinOutData || chartData.length === 0 ? (
+            {loading ? (
+              <div className="h-64 w-full animate-pulse rounded bg-gray-100"></div>
+            ) : !hasCoinOutData || chartData.length === 0 ? (
               <div className="flex h-64 flex-col items-center justify-center text-gray-500">
                 <div className="mb-2 text-lg text-gray-500">
                   No Data to Display
@@ -586,17 +465,6 @@ export function MetersHourlyCharts({
                       }
                       contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
                     />
-                    {coinOutFocusedIndex !== null && chartData[coinOutFocusedIndex] && (
-                      <ReferenceArea
-                        x1={chartData[coinOutFocusedIndex].time}
-                        x2={chartData[coinOutFocusedIndex].time}
-                        fill="#f59e0b"
-                        fillOpacity={0.15}
-                        stroke="#f59e0b"
-                        strokeDasharray="3 3"
-                        strokeOpacity={0.5}
-                      />
-                    )}
                     <Line
                       type="monotone"
                       dataKey="coinOut"

@@ -1,5 +1,18 @@
 /**
- * Collection Report Creation Helper
+ * Collection Report Creation Helper Functions
+ *
+ * Provides backend helper functions for creating and managing collection reports,
+ * including payload validation, sanitization, collection updates, and machine
+ * meter synchronization. It handles the complete lifecycle of collection report
+ * creation from validation to database persistence.
+ *
+ * Features:
+ * - Validates collection report payloads for required fields.
+ * - Sanitizes string fields in collection report payloads.
+ * - Updates collection documents with locationReportId.
+ * - Updates machine collection meters and history.
+ * - Calculates collection report totals from machine collections.
+ * - Handles transaction management for data consistency.
  */
 
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
@@ -338,7 +351,22 @@ export async function createCollectionReport(
 
     // Calculate totals on backend
     console.log('🔄 [createCollectionReport] Calculating totals...');
-    const calculated = await calculateCollectionReportTotals(body);
+    // Transform machines to CollectionReportMachineEntry format if needed
+    const payloadWithMachines: CreateCollectionReportPayload = body.machines
+      ? {
+          ...body,
+          machines: body.machines.map(m => ({
+            machineId: m.machineId,
+            metersIn: m.metersIn,
+            metersOut: m.metersOut,
+            prevMetersIn: (m as unknown as { prevMetersIn?: number }).prevMetersIn ?? 0,
+            prevMetersOut: (m as unknown as { prevMetersOut?: number }).prevMetersOut ?? 0,
+            timestamp: m.timestamp ?? body.timestamp,
+            locationReportId: m.locationReportId ?? body.locationReportId,
+          })),
+        }
+      : body;
+    const calculated = await calculateCollectionReportTotals(payloadWithMachines as CreateCollectionReportPayload & { machines?: never; collectionIds?: string[] });
     console.log('✅ [createCollectionReport] Totals calculated:', calculated);
 
     // Convert timestamp fields
@@ -401,7 +429,7 @@ export async function createCollectionReport(
         const normalizedMetersIn = Number(m.metersIn) || 0;
         const normalizedMetersOut = Number(m.metersOut) || 0;
         const collectionTimestamp = new Date(
-          m.collectionTime || body.timestamp
+          body.timestamp
         );
           // Use collection ID if available to ensure we update the correct document
           const collectionId = collectionIds[index] || undefined;

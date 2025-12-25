@@ -276,7 +276,7 @@ export default function CabinetTable({
                 </TableCell>
                 <TableCell>
                   <span
-                    className={`font-semibold ${getMoneyInColorClass(cab.moneyIn)}`}
+                    className={`font-semibold ${getMoneyInColorClass()}`}
                   >
                     {formatCurrency(cab.moneyIn)}
                   </span>

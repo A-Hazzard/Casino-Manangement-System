@@ -160,16 +160,6 @@ type UseSmibConfigurationReturn = {
     relayId: string,
     appData: Record<string, unknown>
   ) => Promise<void>;
-  _updateOtaConfig: (
-    relayId: string,
-    otaData: {
-      otaURL?: string;
-    }
-  ) => Promise<void>;
-  _updateAppConfig: (
-    relayId: string,
-    appData: Record<string, unknown>
-  ) => Promise<void>;
   fetchSmibConfiguration: (relayId: string) => Promise<void>;
 };
 
@@ -1346,8 +1336,6 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     updateComsConfig,
     updateOtaConfig,
     updateAppConfig,
-    _updateOtaConfig: updateOtaConfig,
-    _updateAppConfig: updateAppConfig,
     fetchSmibConfiguration,
   };
 }

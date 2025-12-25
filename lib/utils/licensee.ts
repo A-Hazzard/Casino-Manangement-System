@@ -1,11 +1,27 @@
+/**
+ * Licensee Utilities
+ *
+ * Utility functions for managing licensee data and payment status.
+ *
+ * Features:
+ * - Payment status checking
+ * - Payment status change eligibility
+ * - Date calculations (next 30 days)
+ * - Date formatting for display
+ */
+
 import type { Licensee } from '@/lib/types/licensee';
 import { formatFullDate } from '@/lib/utils/dateFormatting';
 
+// ============================================================================
+// Payment Status Functions
+// ============================================================================
 /**
  * Determines if a licensee is paid based on the isPaid field from the API.
  * The backend is the source of truth and already contains fallback logic for the expiry date.
+ *
  * @param licensee - The licensee object, which should have an `isPaid` boolean.
- * @returns boolean indicating if the licensee is paid.
+ * @returns Boolean indicating if the licensee is paid.
  */
 export function isLicenseePaid(licensee: Licensee): boolean {
   // The backend now provides a definitive isPaid boolean.
@@ -23,9 +39,13 @@ export function canChangePaymentStatus(licensee: Licensee): boolean {
   return new Date() > new Date(licensee.expiryDate);
 }
 
+// ============================================================================
+// Date Functions
+// ============================================================================
 /**
- * Gets the next 30 days from the current date
- * @returns Date object 30 days from now
+ * Gets the next 30 days from the current date.
+ *
+ * @returns Date object 30 days from now.
  */
 export function getNext30Days(): Date {
   const date = new Date();
@@ -34,9 +54,10 @@ export function getNext30Days(): Date {
 }
 
 /**
- * Formats a date for display
- * @param date - Date to format
- * @returns Formatted date string or "-" if no date
+ * Formats a date for display.
+ *
+ * @param date - Date to format.
+ * @returns Formatted date string or "-" if no date.
  */
 export function formatLicenseeDate(date: Date | string | undefined): string {
   return formatFullDate(date);

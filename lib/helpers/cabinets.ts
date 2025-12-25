@@ -1,3 +1,18 @@
+/**
+ * Cabinets Helper Functions
+ *
+ * Provides helper functions for fetching and managing cabinet/machine data from the API.
+ * It handles cabinet CRUD operations, location-based cabinet fetching, financial metrics,
+ * and cabinet totals aggregation.
+ *
+ * Features:
+ * - Fetches cabinets with filtering by licensee, time period, location, and search
+ * - Creates, updates, and deletes cabinets
+ * - Fetches cabinets for specific locations
+ * - Calculates cabinet financial totals
+ * - Handles cabinet locations and game types
+ */
+
 import type { GamingMachine } from '@/shared/types/entities';
 import axios from 'axios';
 type NewCabinetFormData = Partial<GamingMachine>;

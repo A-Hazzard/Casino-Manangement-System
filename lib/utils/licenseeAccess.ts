@@ -1,11 +1,32 @@
+/**
+ * Licensee Access Utilities
+ *
+ * Utility functions for managing user access to licensees and determining
+ * UI visibility for licensee-related features.
+ *
+ * Features:
+ * - Licensee filter visibility determination
+ * - Licensee access checking
+ * - Licensee option filtering
+ * - Default licensee selection
+ * - "No Licensee Assigned" message visibility
+ * - "No Role Assigned" message visibility
+ */
+
 import type { UserAuthPayload } from '@/shared/types/auth';
 
+// ============================================================================
+// Licensee Filter Visibility
+// ============================================================================
 /**
- * Determines if the licensee filter should be shown to the user
+ * Determines if the licensee filter should be shown to the user.
  * - Always show for admin/developer
  * - Show for non-admin users with multiple licensees (including location admins)
  * - Hide for non-admin users with single or no licensee
  * - Hide for location admins with single or no licensee
+ *
+ * @param user - The user object.
+ * @returns Boolean indicating if the licensee filter should be shown.
  */
 export function shouldShowLicenseeFilter(
   user: UserAuthPayload | null
@@ -33,8 +54,14 @@ export function shouldShowLicenseeFilter(
   return userLicensees.length > 1;
 }
 
+// ============================================================================
+// Licensee Access Functions
+// ============================================================================
 /**
- * Determines if user can access all licensees (admin only)
+ * Determines if user can access all licensees (admin only).
+ *
+ * @param user - The user object.
+ * @returns Boolean indicating if the user can access all licensees.
  */
 export function canAccessAllLicensees(user: UserAuthPayload | null): boolean {
   if (!user) return false;
@@ -43,9 +70,12 @@ export function canAccessAllLicensees(user: UserAuthPayload | null): boolean {
 }
 
 /**
- * Gets the list of licensees the user can access
+ * Gets the list of licensees the user can access.
  * - Returns 'all' for admins
  * - Returns user's assigned licensees for non-admins
+ *
+ * @param user - The user object.
+ * @returns Array of licensee IDs or 'all' for admins.
  */
 export function getUserAccessibleLicensees(
   user: UserAuthPayload | null
@@ -65,7 +95,11 @@ export function getUserAccessibleLicensees(
 }
 
 /**
- * Filters licensee options based on user permissions
+ * Filters licensee options based on user permissions.
+ *
+ * @param allLicensees - Array of all available licensees.
+ * @param user - The user object.
+ * @returns Filtered array of licensees the user can access.
  */
 export function getFilteredLicenseeOptions(
   allLicensees: Array<{ _id: string; name: string }>,
@@ -89,10 +123,13 @@ export function getFilteredLicenseeOptions(
 }
 
 /**
- * Gets the default selected licensee for a user
+ * Gets the default selected licensee for a user.
  * - Empty string for admins (show all by default)
  * - First assigned licensee for non-admins with single licensee
  * - Empty string for non-admins with multiple licensees (let them choose)
+ *
+ * @param user - The user object.
+ * @returns The default selected licensee ID or empty string.
  */
 export function getDefaultSelectedLicensee(
   user: UserAuthPayload | null
@@ -113,7 +150,11 @@ export function getDefaultSelectedLicensee(
 }
 
 /**
- * Checks if user can access a specific licensee
+ * Checks if user can access a specific licensee.
+ *
+ * @param user - The user object.
+ * @param licenseeId - The licensee ID to check.
+ * @returns Boolean indicating if the user can access the licensee.
  */
 export function canAccessLicensee(
   user: UserAuthPayload | null,
@@ -134,10 +175,16 @@ export function canAccessLicensee(
   return userLicensees.includes(licenseeId);
 }
 
+// ============================================================================
+// Message Visibility Functions
+// ============================================================================
 /**
- * Determines if "No Licensee Assigned" message should be shown
+ * Determines if "No Licensee Assigned" message should be shown.
  * - Never show for admins
  * - Show for non-admins with no licensees
+ *
+ * @param user - The user object.
+ * @returns Boolean indicating if the message should be shown.
  */
 export function shouldShowNoLicenseeMessage(
   user: UserAuthPayload | null
@@ -158,8 +205,11 @@ export function shouldShowNoLicenseeMessage(
 }
 
 /**
- * Determines if "No Role Assigned" message should be shown
+ * Determines if "No Role Assigned" message should be shown.
  * - Show for users with no roles
+ *
+ * @param user - The user object.
+ * @returns Boolean indicating if the message should be shown.
  */
 export function shouldShowNoRoleMessage(user: UserAuthPayload | null): boolean {
   if (!user) return false;

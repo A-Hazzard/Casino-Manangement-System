@@ -150,7 +150,7 @@ function CabinetCardMobile({
           <span className="text-xs text-gray-500">Money In:</span>
           <CurrencyValueWithOverflow
             value={cabinet.moneyIn || 0}
-            className={`text-xs font-medium ${getMoneyInColorClass(cabinet.moneyIn)}`}
+            className={`text-xs font-medium ${getMoneyInColorClass()}`}
             formatCurrencyFn={formatCurrency}
           />
         </div>

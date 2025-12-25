@@ -68,14 +68,14 @@ export function RestartSection({
 
   return (
     <>
-      <Card className="relative">
-        <CardHeader>
+      <Card className="relative w-full max-w-full min-w-0 overflow-x-hidden">
+        <CardHeader className="min-w-0">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-700">
             <RotateCw className="h-5 w-5" />
             SMIB Restart
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 min-w-0 overflow-x-hidden">
           <p className="text-sm text-gray-600">
             Restart the SMIB device to reboot and reinitialize the system. This
             action will temporarily disconnect the device.

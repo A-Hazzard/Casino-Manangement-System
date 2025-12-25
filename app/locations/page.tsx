@@ -2,1567 +2,184 @@
  * Locations Page
  *
  * Displays and manages gaming locations with filtering, sorting, and pagination.
- *
- * Features:
- * - Location listing with card (mobile) and table (desktop) views
- * - Search and filter by SMIB status
- * - Financial metrics overview
- * - Machine status widget
- * - Create, edit, and delete locations (role-based)
- * - Batch loading for performance
- * - Responsive design for mobile and desktop
  */
 
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
-import PageErrorBoundary from '@/components/ui/errors/PageErrorBoundary';
-import { FloatingRefreshButton } from '@/components/ui/FloatingRefreshButton';
-import { Input } from '@/components/ui/input';
-import CabinetTableSkeleton from '@/components/ui/locations/CabinetTableSkeleton';
-import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
-import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
-import { ActionButtonSkeleton } from '@/components/ui/skeletons/ButtonSkeletons';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useLocationActionsStore } from '@/lib/store/locationActionsStore';
-import { LocationFilter } from '@/lib/types/location';
-import { formatCurrency } from '@/lib/utils/number';
-import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
-import { Plus, PlusCircle, RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
 import PageLayout from '@/components/layout/PageLayout';
+import PageErrorBoundary from '@/components/ui/errors/PageErrorBoundary';
+import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
+import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
+import { useLocationsPageData } from '@/lib/hooks/locations/useLocationsPageData';
+import { useLocationActionsStore } from '@/lib/store/locationActionsStore';
 
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import ClientOnly from '@/components/ui/common/ClientOnly';
-import LocationMultiSelect from '@/components/ui/common/LocationMultiSelect';
-import { NetworkError } from '@/components/ui/errors';
+// UI Components
+import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
 import FinancialMetricsCards from '@/components/ui/FinancialMetricsCards';
-import { Label } from '@/components/ui/label';
+import LocationTable from '@/components/ui/locations/LocationTable';
+import LocationCard from '@/components/ui/locations/LocationCard';
+import PaginationControls from '@/components/ui/PaginationControls';
+import ClientOnly from '@/components/ui/common/ClientOnly';
+import CabinetTableSkeleton from '@/components/ui/locations/CabinetTableSkeleton';
+import LocationSkeleton from '@/components/ui/locations/LocationSkeleton';
 import DeleteLocationModal from '@/components/ui/locations/DeleteLocationModal';
 import EditLocationModal from '@/components/ui/locations/EditLocationModal';
-import LocationCard from '@/components/ui/locations/LocationCard';
-import LocationSkeleton from '@/components/ui/locations/LocationSkeleton';
-import LocationTable from '@/components/ui/locations/LocationTable';
 import NewLocationModal from '@/components/ui/locations/NewLocationModal';
-import PaginationControls from '@/components/ui/PaginationControls';
-import { IMAGES } from '@/lib/constants/images';
-import { fetchDashboardTotals } from '@/lib/helpers/dashboard';
-import {
-  useLocationData,
-  useLocationMachineStats,
-  useLocationMembershipStats,
-  useLocationModals,
-  useLocationSorting,
-} from '@/lib/hooks/data';
-import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
-import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useUserStore } from '@/lib/store/userStore';
-import { DashboardTotals } from '@/lib/types';
-import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
-import {
-  canAccessLicensee,
-  getDefaultSelectedLicensee,
-  shouldShowNoLicenseeMessage,
-} from '@/lib/utils/licenseeAccess';
-import { getLicenseeName } from '@/lib/utils/licenseeMapping';
-import { animateCards, animateTableRows } from '@/lib/utils/ui';
-import { AggregatedLocation } from '@/shared/types/common';
-import Image from 'next/image';
 
-/**
- * Locations Page Content Component
- * Handles all state management and data fetching for the locations page
- */
+// Sections
+import LocationsHeaderSection from '@/components/locations/details/LocationsHeaderSection';
+import LocationsFilterSection from '@/components/locations/details/LocationsFilterSection';
+
 function LocationsPageContent() {
-  // ============================================================================
-  // Hooks & Context
-  // ============================================================================
-  useGlobalErrorHandler();
-  const {
-    selectedLicencee,
-    setSelectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-  } = useDashBoardStore();
-  const user = useUserStore(state => state.user);
-  const { openEditModal } = useLocationActionsStore();
-  const { displayCurrency } = useCurrencyFormat();
+  const router = useRouter();
+  const { user } = useUserStore();
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { openEditModal, openDeleteModal, closeDeleteModal } = useLocationActionsStore();
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  
+  const hook = useLocationsPageData();
 
-  // ============================================================================
-  // State Management
-  // ============================================================================
-  const [selectedFilters, setSelectedFilters] = useState<LocationFilter[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [accumulatedLocations, setAccumulatedLocations] = useState<
-    AggregatedLocation[]
-  >([]);
-  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
-
-  // Separate state for metrics totals (from dedicated API call)
-  const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(
-    null
-  );
-  const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(true);
-
-  // Prevent premature data fetching - wait for filters to be initialized
-  const [filtersInitialized, setFiltersInitialized] = useState(false);
-  const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
-
-  // AbortController for metrics totals
-  const makeMetricsRequest = useAbortableRequest();
-
-  // ============================================================================
-  // Constants
-  // ============================================================================
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
-
-  // ============================================================================
-  // Custom Hooks - Data Management
-  // ============================================================================
-  const { locationData, loading, searchLoading, error, fetchData, fetchBatch } =
-    useLocationData({
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-    searchTerm,
-    selectedFilters,
-  });
-
-  // ============================================================================
-  // Refs
-  // ============================================================================
-  const tableRef = useRef<HTMLDivElement>(null);
-  const cardsRef = useRef<HTMLDivElement>(null);
-  const lastLocationDataRef = useRef<AggregatedLocation[]>([]);
-  const isResettingRef = useRef(false);
-
-  // ============================================================================
-  // Computed Values & Utilities
-  // ============================================================================
-  const licenseeName =
-    getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
-
-  // Calculate which batch we need based on current page (each batch covers 5 pages of 10 items)
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / (itemsPerBatch / itemsPerPage)) + 1;
-    },
-    [itemsPerBatch, itemsPerPage]
-  );
-
-  // Memoize selectedFilters string to avoid recreating on every render
-  const selectedFiltersKey = useMemo(() => {
-    return JSON.stringify(selectedFilters);
-  }, [selectedFilters]);
-
-  // Check if current user is a developer
-  const isDeveloper = useMemo(() => {
-    const userRoles = user?.roles || [];
-    return userRoles.some(
-      role => typeof role === 'string' && role.toLowerCase() === 'developer'
-    );
-  }, [user?.roles]);
-
-  // Only managers, admins, developers, and location admins can create/edit/delete locations
-  const canManageLocations = useMemo(() => {
-    if (!user || !user.roles) return false;
-    const userRoles = user.roles || [];
-    // Exclude collectors and technicians
-    if (userRoles.includes('collector') || userRoles.includes('technician')) {
-      return false;
+  // Handle location click navigation
+  const handleLocationClick = (locationId: string) => {
+    if (locationId) {
+      router.push(`/locations/${locationId}`);
     }
-    return ['developer', 'admin', 'manager', 'location admin'].some(role =>
-      userRoles.includes(role)
-    );
+  };
+  const {
+    loading, refreshing, filteredLocationData, financialTotals,
+    metricsTotals, metricsTotalsLoading, machineStats, machineStatsLoading,
+    membershipStats, membershipStatsLoading, selectedFilters, searchTerm,
+    currentPage, totalPages, handleRefresh, handleFilterChange,
+    setSearchTerm, setCurrentPage, fetchData
+  } = hook;
+
+  const canManageLocations = useMemo(() => {
+    const roles = user?.roles || [];
+    return ['developer', 'admin', 'manager', 'location admin'].some(r => roles.includes(r));
   }, [user]);
 
-  // Frontend filter: First try to filter from accumulated locations
-  const frontendFilteredLocations = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return accumulatedLocations;
-    }
-
-    const searchLower = searchTerm.toLowerCase().trim();
-    return accumulatedLocations.filter(location => {
-      const name = (location.name || '').toLowerCase();
-      const locationId = String(location._id || '').toLowerCase();
-      return name.includes(searchLower) || locationId.includes(searchLower);
-    });
-  }, [accumulatedLocations, searchTerm]);
-
-  // Determine if we need backend search:
-  // - If frontend filter has results, use those
-  // - If frontend filter has no results AND search term is not empty, trigger backend search
-  const shouldUseBackendSearch = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return false;
-    }
-    // If frontend filter found results, don't use backend
-    if (frontendFilteredLocations.length > 0) {
-      return false;
-    }
-    // Only use backend if frontend found nothing
-    return true;
-  }, [searchTerm, frontendFilteredLocations.length]);
-
-  // Use frontend filtered locations if available, otherwise use backend search results
-  const locationsForPagination = shouldUseBackendSearch
-    ? locationData
-    : frontendFilteredLocations;
-
-  // Filter out test locations (unless developer)
-  const filteredLocationData = useMemo(() => {
-    if (isDeveloper) {
-      return locationsForPagination; // Developers can see all locations including test ones
-    }
-    const testPattern = /^test/i;
-    return locationsForPagination.filter(location => {
-      const name = location.name?.trim() || '';
-      return !testPattern.test(name);
-    });
-  }, [locationsForPagination, isDeveloper]);
-
-  // ============================================================================
-  // Custom Hooks - Additional Functionality
-  // ============================================================================
-  // Convert selectedFilters array to comma-separated string for API
-  const machineTypeFilterString = useMemo(() => {
-    return selectedFilters.length > 0 ? selectedFilters.join(',') : null;
-  }, [selectedFilters]);
-
-  // ============================================================================
-  // Filter Change Handler with AbortController
-  // ============================================================================
-  /**
-   * Handles filter checkbox changes and aborts any in-flight requests
-   * This ensures that when a user rapidly changes filters, previous requests are cancelled
-   */
-  const handleFilterChange = useCallback(
-    (
-      filter: LocationFilter,
-      checked: boolean | 'indeterminate',
-      updateFn: (prev: LocationFilter[]) => LocationFilter[]
-    ) => {
-      // Only handle boolean values (ignore 'indeterminate')
-      if (typeof checked !== 'boolean') {
-        return;
-      }
-
-      // Calculate the new filter state
-      const newFilters = updateFn(selectedFilters);
-      const newFilterString = newFilters.length > 0 ? newFilters.join(',') : '';
-
-      // Immediately update the metrics request filter ref to invalidate any in-flight requests
-      // This ensures that if an old request completes, it will fail validation
-      currentMetricsRequestFiltersRef.current = newFilterString;
-
-      // Abort any in-flight requests by triggering new requests with same keys
-      // The useAbortableRequest hook will automatically abort previous requests
-      // when new ones are made with the same key ('locations' and 'metrics')
-
-      // Update the filter state - this will trigger useEffect hooks that will
-      // automatically abort previous requests and start new ones
-      setSelectedFilters(newFilters);
-    },
-    [selectedFilters]
-  );
-
-  const { machineStats, machineStatsLoading, refreshMachineStats } =
-    useLocationMachineStats(undefined, machineTypeFilterString);
-  const { membershipStats, membershipStatsLoading, refreshMembershipStats } =
-    useLocationMembershipStats(undefined, machineTypeFilterString);
-
-  const {
-    isNewLocationModalOpen,
-    openNewLocationModal,
-    closeNewLocationModal,
-    handleLocationClick,
-    handleTableAction,
-  } = useLocationModals();
-
-  const { sortOrder, sortOption, handleColumnSort, currentItems } =
-    useLocationSorting({
-      locationData: filteredLocationData,
-      currentPage,
-      // Don't pass totalCount - use batch pagination (max 5 pages per batch of 50 items)
-      // This matches the cabinets page behavior
-      itemsPerPage,
-    });
-
-  // Calculate total pages based on accumulated locations (allows pagination beyond first batch)
-  // This allows pagination to show more than 5 pages when multiple batches are loaded
-  const calculatedTotalPages = useMemo(() => {
-    const totalItems = accumulatedLocations.length;
-    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
-    // Return the actual number of pages based on accumulated data
-    // This allows pagination to show more than 5 pages when multiple batches are loaded
-    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [accumulatedLocations.length, itemsPerPage]);
-
-  // Calculate financial totals from location data (for backward compatibility, but metrics cards use metricsTotals)
-  const financialTotals = calculateLocationFinancialTotals(
-    accumulatedLocations.length > 0 ? accumulatedLocations : locationData
-  );
-
-  // Show loading state for search
-  const isLoading = loading || searchLoading;
-
-  // ============================================================================
-  // Event Handlers
-  // ============================================================================
-  // Handler for refresh button
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([
-      refreshMachineStats(),
-      refreshMembershipStats(),
-      fetchData(),
-    ]);
-    setRefreshing(false);
-  };
-
-  // ============================================================================
-  // Effects - Data Fetching
-  // ============================================================================
-  // Memoize date range timestamps to avoid complex expressions in dependency array
-  const startDateTimestamp = customDateRange?.startDate?.getTime();
-  const endDateTimestamp = customDateRange?.endDate?.getTime();
-
-  // Track if initial fetch has been done to prevent multiple fetches on mount
-  const hasInitialFetchRef = useRef(false);
-  const lastFetchParamsRef = useRef<string>('');
-
-  // Memoize fetchData call to avoid recreating on every render
-  const triggerFetchData = useCallback(async () => {
-    console.log('[LocationsPage] triggerFetchData called');
-    await fetchData(1, itemsPerBatch);
-  }, [fetchData, itemsPerBatch]);
-
-  // Detect when date filter is properly initialized (like location details page)
-  useEffect(() => {
-    if (activeMetricsFilter) {
-      console.log('[LocationsPage] 🔧 Setting dateFilterInitialized = true');
-      setDateFilterInitialized(true);
-    }
-  }, [activeMetricsFilter]);
-
-  // Initialize filters flag - set immediately when activeMetricsFilter is available
-  // This must be in a separate effect to ensure flags are set before other effects check them
-  // IMPORTANT: This effect must run BEFORE the main fetch effect
-  useEffect(() => {
-    if (activeMetricsFilter) {
-      if (!dateFilterInitialized) {
-        setDateFilterInitialized(true);
-      }
-      if (!filtersInitialized) {
-        console.log('[LocationsPage] ✅ Setting filtersInitialized = true');
-        setFiltersInitialized(true);
-      }
-    }
-  }, [activeMetricsFilter, dateFilterInitialized, filtersInitialized]);
-
-  // Initialize: fetch first batch on mount and when filters change
-  // Search is handled with frontend filtering first, backend only if needed
-  useEffect(() => {
-    console.log('[LocationsPage] Main fetch effect triggered:', {
-      user: !!user,
-      activeMetricsFilter,
-      filtersInitialized,
-      dateFilterInitialized,
-      selectedLicencee,
-      searchTerm,
-    });
-
-    const fetchLocations = async () => {
-      // Wait for user to be loaded before fetching
-      if (!user) {
-        console.log('[LocationsPage] ⏸️ Waiting for user to load...');
-        return;
-      }
-
-      // Only proceed if filters are initialized (like location details page)
-      // Check inside async function to avoid race conditions
-      if (
-        !activeMetricsFilter ||
-        !dateFilterInitialized ||
-        !filtersInitialized
-      ) {
-        console.log('[LocationsPage] ⏸️ Waiting for filters to initialize:', {
-          activeMetricsFilter: !!activeMetricsFilter,
-          filtersInitialized,
-          dateFilterInitialized,
-        });
-        return;
-      }
-
-      // Ensure we have a valid filter before fetching
-      const effectiveFilter = activeMetricsFilter || 'Today';
-
-      // Only fetch batch data when search is cleared or not active
-      if (!searchTerm.trim()) {
-        // Create a unique key for this fetch to prevent duplicate calls
-        // Use empty string for undefined/null values to ensure consistent keys
-        const fetchKey = `${selectedLicencee || ''}-${effectiveFilter}-${startDateTimestamp || ''}-${endDateTimestamp || ''}-${selectedFiltersKey}-${displayCurrency || ''}`;
-
-        // Skip if this exact fetch was already triggered
-        if (
-          lastFetchParamsRef.current === fetchKey &&
-          hasInitialFetchRef.current
-        ) {
-          console.log('[LocationsPage] ⏭️ Skipping duplicate fetch:', fetchKey);
-          return;
-        }
-
-        // Update the last fetch params BEFORE triggering to prevent race conditions
-        lastFetchParamsRef.current = fetchKey;
-
-        // Mark as fetched BEFORE triggering to prevent duplicate triggers
-        const wasInitialFetch = !hasInitialFetchRef.current;
-        hasInitialFetchRef.current = true;
-
-        // Reset accumulated data when filters change (but not on initial mount)
-        if (!wasInitialFetch) {
-          isResettingRef.current = true;
-          setAccumulatedLocations([]);
-          setLoadedBatches(new Set());
-          lastLocationDataRef.current = [];
-        }
-
-        console.log('[LocationsPage] ✅ Fetching locations data:', {
-          selectedLicencee,
-          activeMetricsFilter: effectiveFilter,
-          startDateTimestamp,
-          endDateTimestamp,
-          selectedFiltersKey,
-          displayCurrency,
-          isInitialFetch: wasInitialFetch,
-          userLoaded: !!user,
-          filtersInitialized,
-          dateFilterInitialized,
-          fetchKey,
-        });
-
-        // Trigger fetch - it will work even if selectedLicencee is empty (API handles it)
-        console.log('[LocationsPage] 🚀 Triggering fetchData...');
-        triggerFetchData();
-
-        // Reset flag after a short delay to allow state updates to complete
-        if (isResettingRef.current) {
-          setTimeout(() => {
-            isResettingRef.current = false;
-          }, 0);
-        }
-      } else {
-        console.log(
-          '[LocationsPage] ⏸️ Skipping fetch - search term is active:',
-          searchTerm
-        );
-      }
-    };
-
-    fetchLocations();
-  }, [
-    user,
-    selectedLicencee,
-    activeMetricsFilter,
-    startDateTimestamp,
-    endDateTimestamp,
-    selectedFiltersKey,
-    displayCurrency,
-    searchTerm,
-    triggerFetchData,
-    filtersInitialized,
-    dateFilterInitialized,
-  ]);
-
-  // Memoize backend search trigger
-  const triggerBackendSearch = useCallback(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Trigger backend search only if frontend filter found no results
-  useEffect(() => {
-    if (shouldUseBackendSearch) {
-      // Use debounced search term for backend query
-      const timeoutId = setTimeout(() => {
-        triggerBackendSearch();
-      }, 500); // Debounce backend search
-      return () => clearTimeout(timeoutId);
-    }
-    return undefined;
-  }, [shouldUseBackendSearch, triggerBackendSearch]);
-
-  // Update accumulated locations when new data arrives
-  useEffect(() => {
-    // Skip if we're in the middle of resetting
-    if (isResettingRef.current) {
-      return;
-    }
-
-    // Check if locationData actually changed by comparing IDs
-    const currentIds = new Set(locationData.map(loc => loc._id));
-    const lastIds = new Set(lastLocationDataRef.current.map(loc => loc._id));
-
-    // Check if sets are different
-    const dataChanged =
-      currentIds.size !== lastIds.size ||
-      Array.from(currentIds).some(id => !lastIds.has(id)) ||
-      Array.from(lastIds).some(id => !currentIds.has(id));
-
-    if (!dataChanged && locationData.length > 0) {
-      return;
-    }
-
-    // Only update accumulated locations when not searching (batch loading)
-    if (!searchTerm.trim() && locationData.length > 0) {
-      setAccumulatedLocations(prev => {
-        // Merge with existing, avoiding duplicates
-        const existingIds = new Set(prev.map(loc => loc._id));
-        const newLocations = locationData.filter(
-          loc => !existingIds.has(loc._id)
-        );
-        return [...prev, ...newLocations];
-      });
-    }
-
-    // Update ref with current data
-    lastLocationDataRef.current = locationData;
-  }, [locationData, searchTerm]);
-
-  // Initialize selectedLicencee based on user's assigned licensees
-  // Auto-select single licensee for non-admin users
-  const hasInitializedLicenseeRef = useRef(false);
-  const licenseeInitializedRef = useRef(false);
-
-  useEffect(() => {
-    if (!user) {
-      hasInitializedLicenseeRef.current = false;
-      licenseeInitializedRef.current = false;
-      return;
-    }
-
-    // Only initialize once when user is first loaded
-    if (hasInitializedLicenseeRef.current) {
-      // Validate that selected licensee is still accessible
-      if (
-        selectedLicencee &&
-        selectedLicencee !== '' &&
-        selectedLicencee !== 'all'
-      ) {
-        if (!canAccessLicensee(user, selectedLicencee)) {
-          // User can't access this licensee anymore, reset to default
-          const defaultLicensee = getDefaultSelectedLicensee(user);
-          setSelectedLicencee(defaultLicensee);
-          if (process.env.NODE_ENV === 'development') {
-            console.log(
-              `[LocationsPage] Reset selectedLicencee to default: ${defaultLicensee} (user can't access: ${selectedLicencee})`
-            );
-          }
-        }
-      }
-      return;
-    }
-
-    // Initialize on first load
-    const defaultLicensee = getDefaultSelectedLicensee(user);
-    const previousLicensee = selectedLicencee;
-
-    if (defaultLicensee && (!selectedLicencee || selectedLicencee === '')) {
-      setSelectedLicencee(defaultLicensee);
-      if (process.env.NODE_ENV === 'development') {
-        console.log(
-          `[LocationsPage] Auto-selected licensee for user: ${defaultLicensee}`
-        );
-      }
-    } else if (selectedLicencee && !canAccessLicensee(user, selectedLicencee)) {
-      // Selected licensee is not accessible, reset to default
-      setSelectedLicencee(defaultLicensee);
-      if (process.env.NODE_ENV === 'development') {
-        console.log(
-          `[LocationsPage] Reset selectedLicencee to default: ${defaultLicensee} (user can't access: ${selectedLicencee})`
-        );
-      }
-    }
-
-    hasInitializedLicenseeRef.current = true;
-
-    // Mark as initialized if licensee changed or was set
-    if (previousLicensee !== selectedLicencee || selectedLicencee) {
-      licenseeInitializedRef.current = true;
-    }
-  }, [user, selectedLicencee, setSelectedLicencee]);
-
-  // Reset page when search changes
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [searchTerm, selectedFilters, setCurrentPage]);
-
-  // Track metrics fetch to prevent duplicate calls
-  const lastMetricsFetchRef = useRef<string>('');
-  const metricsFetchInProgressRef = useRef(false);
-  // Track the current filter state for each metrics request to prevent stale updates
-  const currentMetricsRequestFiltersRef = useRef<string>('');
-
-  // Separate useEffect to fetch metrics totals independently (like dashboard does)
-  // This ensures metrics cards always show totals from all locations, separate from table pagination
-  useEffect(() => {
-    console.log('[LocationsPage] Metrics fetch effect triggered:', {
-      activeMetricsFilter,
-      filtersInitialized,
-      dateFilterInitialized,
-      selectedLicencee,
-      machineTypeFilterString,
-    });
-
-    const fetchMetrics = async () => {
-      // Only proceed if filters are initialized (like location details page)
-      if (
-        !activeMetricsFilter ||
-        !filtersInitialized ||
-        !dateFilterInitialized
-      ) {
-        console.log(
-          '[LocationsPage] ⏸️ Metrics: Waiting for filters to initialize:',
-          {
-            activeMetricsFilter: !!activeMetricsFilter,
-            filtersInitialized,
-            dateFilterInitialized,
-          }
-        );
-        setMetricsTotalsLoading(false);
-        return;
-      }
-
-      // Use default filter if none is set
-      const effectiveFilter = activeMetricsFilter || 'Today';
-
-      if (!effectiveFilter) {
-        console.log(
-          '🔍 [LocationsPage] ⏸️ Skipping metrics fetch - no activeMetricsFilter'
-        );
-        setMetricsTotalsLoading(false);
-        return;
-      }
-
-      // Get current filter state at the start of the request
-      const currentFilters = machineTypeFilterString || '';
-
-      // Create unique key for this fetch
-      // Use empty string for undefined/null values to ensure consistent keys
-      const metricsFetchKey = `${effectiveFilter}-${selectedLicencee || ''}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${displayCurrency || ''}-${currentFilters}`;
-
-      // Skip if this exact fetch was already completed (but allow if filters changed)
-      if (
-        lastMetricsFetchRef.current === metricsFetchKey &&
-        !metricsFetchInProgressRef.current
-      ) {
-        console.log(
-          '🔍 [LocationsPage] Metrics fetch already completed for:',
-          metricsFetchKey
-        );
-        return;
-      }
-
-      // If a different request is in progress, abort it by starting a new one
-      // The useAbortableRequest hook will automatically abort the previous request
-      // when a new one is made with the same key ('metrics')
-      if (
-        metricsFetchInProgressRef.current &&
-        lastMetricsFetchRef.current !== metricsFetchKey
-      ) {
-        console.log(
-          '🔍 [LocationsPage] Aborting previous metrics fetch and starting new one:',
-          {
-            previousKey: lastMetricsFetchRef.current,
-            newKey: metricsFetchKey,
-          }
-        );
-        // Reset the in-progress flag so the new request can start
-        // The abort will be handled by useAbortableRequest
-        metricsFetchInProgressRef.current = false;
-      }
-
-      // Mark as in progress and update key BEFORE triggering to prevent race conditions
-      metricsFetchInProgressRef.current = true;
-      lastMetricsFetchRef.current = metricsFetchKey;
-      currentMetricsRequestFiltersRef.current = currentFilters;
-
-      console.log('🔍 [LocationsPage] Starting metrics totals fetch:', {
-        activeMetricsFilter: effectiveFilter,
-        selectedLicencee,
-        displayCurrency,
-        machineTypeFilter: machineTypeFilterString,
-        customDateRange: customDateRange
-          ? {
-              startDate: customDateRange.startDate?.toISOString(),
-              endDate: customDateRange.endDate?.toISOString(),
-            }
-          : null,
-      });
-
-      setMetricsTotalsLoading(true);
-
-      try {
-        // Capture filter state at request start for validation
-        const filtersAtRequestStart = currentFilters;
-
-        // Create validation function that checks if filters changed
-        // This function will be called from fetchDashboardTotals before updating state
-        const validateFilters = () => {
-          const filtersNow = currentMetricsRequestFiltersRef.current;
-          const isValid = filtersAtRequestStart === filtersNow;
-          if (!isValid) {
-            console.log(
-              '🔍 [LocationsPage] Filter validation failed - filters changed',
-              {
-                filtersAtRequestStart,
-                filtersNow,
-                requestKey: metricsFetchKey,
-              }
-            );
-          }
-          return isValid;
-        };
-
-        const metricsResult = await makeMetricsRequest(async signal => {
-          await fetchDashboardTotals(
-            effectiveFilter,
-            customDateRange || {
-              startDate: new Date(),
-              endDate: new Date(),
-            },
-            selectedLicencee,
-            totals => {
-              // Note: Validation is already done in fetchDashboardTotals via validateFilters
-              // This callback will only be called if validation passes
-              console.log(
-                '🔍 [LocationsPage] fetchDashboardTotals callback received:',
-                {
-                  totals,
-                  moneyIn: totals?.moneyIn,
-                  moneyOut: totals?.moneyOut,
-                  gross: totals?.gross,
-                  filters: filtersAtRequestStart,
-                }
-              );
-              setMetricsTotals(totals);
-              console.log(
-                '🔍 [LocationsPage] setMetricsTotals called with:',
-                totals
-              );
-            },
-            displayCurrency,
-            signal,
-            currentFilters,
-            validateFilters
-          );
-        }, 'metrics'); // Use unique key to prevent cancellation from other requests
-
-        // makeMetricsRequest returns null if aborted, undefined if successful
-        // Only clear loading state if request completed (not aborted)
-        if (metricsResult !== null) {
-          // Double-check filters haven't changed before clearing loading state
-          const filtersNow = currentMetricsRequestFiltersRef.current;
-
-          if (filtersAtRequestStart === filtersNow) {
-            setMetricsTotalsLoading(false);
-            metricsFetchInProgressRef.current = false;
-            console.log('🔍 [LocationsPage] Metrics totals fetch completed');
-          } else {
-            console.log(
-              '🔍 [LocationsPage] Filters changed after metrics request - keeping loading state',
-              {
-                filtersAtRequestStart,
-                filtersNow,
-              }
-            );
-            // Don't clear loading - new request should be in progress
-            metricsFetchInProgressRef.current = false;
-          }
-        } else {
-          console.log(
-            '🔍 [LocationsPage] Metrics fetch aborted - keeping loading state'
-          );
-          // If aborted, keep loading state active so skeleton continues to show
-          // The next request will complete and update the loading state
-          metricsFetchInProgressRef.current = false;
-        }
-      } catch (error) {
-        // Handle real errors (not cancellations - those are handled by makeMetricsRequest)
-        console.error('🔍 [LocationsPage] Error fetching metrics:', error);
-        setMetricsTotalsLoading(false);
-        metricsFetchInProgressRef.current = false;
-      }
-    };
-
-    fetchMetrics();
-  }, [
-    activeMetricsFilter,
-    selectedLicencee,
-    customDateRange,
-    displayCurrency,
-    makeMetricsRequest,
-    filtersInitialized,
-    dateFilterInitialized,
-    machineTypeFilterString,
-  ]);
-
-  // Fetch new batch when crossing batch boundary
-  useEffect(() => {
-    if (searchTerm.trim() || loading) return; // Skip for search or while loading
-
-    const currentBatch = calculateBatchNumber(currentPage);
-    const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5 pages per batch
-
-    // Check if we're on the last page of the current batch
-    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
-    const nextBatch = currentBatch + 1;
-
-    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
-    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
-      setLoadedBatches(prev => {
-        const newSet = new Set(prev);
-        newSet.add(nextBatch);
-        return newSet;
-      });
-      fetchBatch(nextBatch, itemsPerBatch).then(result => {
-        if (result.data.length > 0) {
-          setAccumulatedLocations(prev => {
-            const existingIds = new Set(prev.map(loc => loc._id));
-            const newLocations = result.data.filter(
-              loc => !existingIds.has(loc._id)
-            );
-            return [...prev, ...newLocations];
-          });
-        }
-      });
-    }
-
-    // Also ensure current batch is loaded
-    if (!loadedBatches.has(currentBatch)) {
-      setLoadedBatches(prev => {
-        const newSet = new Set(prev);
-        newSet.add(currentBatch);
-        return newSet;
-      });
-      fetchBatch(currentBatch, itemsPerBatch).then(result => {
-        if (result.data.length > 0) {
-          setAccumulatedLocations(prev => {
-            const existingIds = new Set(prev.map(loc => loc._id));
-            const newLocations = result.data.filter(
-              loc => !existingIds.has(loc._id)
-            );
-            return [...prev, ...newLocations];
-          });
-        }
-      });
-    }
-  }, [
-    currentPage,
-    searchTerm,
-    loading,
-    loadedBatches,
-    itemsPerBatch,
-    itemsPerPage,
-    calculateBatchNumber,
-    fetchBatch,
-  ]);
-
-  // ============================================================================
-  // Effects - UI Animations
-  // ============================================================================
-  // Track previous items to prevent animation on initial load
-  const prevItemsRef = useRef<AggregatedLocation[]>([]);
-  const hasAnimatedRef = useRef(false);
-
-  // Animate when filtered data changes (filtering, sorting, search, pagination)
-  // Only animate if data actually changed (not just re-render) and not on initial load
-  useEffect(() => {
-    if (!isLoading && currentItems.length > 0) {
-      // Check if items actually changed (compare IDs)
-      const currentIds = currentItems
-        .map((item: AggregatedLocation) => item._id)
-        .join(',');
-      const prevIds = prevItemsRef.current
-        .map((item: AggregatedLocation) => item._id)
-        .join(',');
-
-      // Only animate if items changed AND we've already done initial render
-      if (currentIds !== prevIds && hasAnimatedRef.current) {
-        // Animate table rows for desktop view
-        if (tableRef.current) {
-          animateTableRows(tableRef);
-        }
-        // Animate cards for mobile view
-        if (cardsRef.current) {
-          animateCards(cardsRef);
-        }
-      }
-
-      // Update refs
-      prevItemsRef.current = currentItems;
-      if (!hasAnimatedRef.current && currentItems.length > 0) {
-        hasAnimatedRef.current = true;
-      }
-    }
-  }, [
-    currentItems,
-    selectedFilters,
-    searchTerm,
-    sortOption,
-    sortOrder,
-    isLoading,
-  ]);
-
-  // ============================================================================
-  // Early Returns
-  // ============================================================================
-  // Show "No Licensee Assigned" message for non-admin users without licensees
-  const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
-  if (showNoLicenseeMessage) {
+  if (shouldShowNoLicenseeMessage(user)) {
     return <NoLicenseeAssigned />;
   }
 
-  // ============================================================================
-  // Render
-  // ============================================================================
   return (
     <>
-      <PageLayout
-        headerProps={{
-          selectedLicencee,
-          setSelectedLicencee,
-        }}
-        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
-        showToaster={false}
-      >
-        {/* <MaintenanceBanner /> */}
-        {/* Header Section: Title, refresh button, and new location button */}
-        <div className="mt-4 flex w-full max-w-full items-center justify-between">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <h1 className="flex min-w-0 items-center gap-1 truncate text-lg font-bold text-gray-800 sm:text-2xl md:text-3xl">
-              Locations
-              <Image
-                src={IMAGES.locationIcon}
-                alt="Location Icon"
-                width={32}
-                height={32}
-                className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
-              />
-            </h1>
-            {/* Mobile: Refresh icon */}
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 md:hidden"
-              aria-label="Refresh"
-            >
-              <RefreshCw
-                className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`}
-              />
-            </button>
-            {/* Mobile: Create icon - Hidden for collectors */}
-            {!isLoading && canManageLocations && (
-              <button
-                onClick={openNewLocationModal}
-                disabled={isLoading}
-                className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 md:hidden"
-                aria-label="New Location"
-              >
-                <PlusCircle className="h-4 w-4 text-green-600 hover:text-green-700 sm:h-5 sm:w-5" />
-              </button>
-            )}
-          </div>
-          {/* Desktop: Refresh icon and Create button on far right */}
-          <div className="hidden flex-shrink-0 items-center gap-2 md:flex">
-            {/* Refresh icon */}
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex-shrink-0 p-2 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Refresh"
-            >
-              <RefreshCw
-                className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`}
-              />
-            </button>
-            {isLoading ? (
-              <ActionButtonSkeleton width="w-36" showIcon={true} />
-            ) : canManageLocations ? (
-              <Button
-                onClick={openNewLocationModal}
-                className="flex-shrink-0 items-center gap-2 rounded-md bg-button px-4 py-2 text-white hover:bg-buttonActive"
-              >
-                <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white">
-                  <Plus className="h-4 w-4 text-white" />
-                </div>
-                <span>New Location</span>
-              </Button>
-            ) : null}
-          </div>
-        </div>
+      <DeleteLocationModal onDelete={() => {
+        // Handle delete - will be implemented when delete functionality is added
+        closeDeleteModal();
+      }} />
+      <EditLocationModal />
+      <NewLocationModal isOpen={isNewModalOpen} onClose={() => setIsNewModalOpen(false)} />
 
-        {/* Financial Metrics Section: Total financial overview cards */}
+      <PageLayout
+        headerProps={{ selectedLicencee, setSelectedLicencee }}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+      >
+        <LocationsHeaderSection
+          loading={loading}
+          refreshing={refreshing}
+          canManage={canManageLocations}
+          onRefresh={handleRefresh}
+          onNew={() => setIsNewModalOpen(true)}
+        />
+
         <div className="mt-6">
           <FinancialMetricsCards
             totals={metricsTotals || financialTotals}
-            loading={isLoading || metricsTotalsLoading}
+            loading={loading || metricsTotalsLoading}
             title="Total for all Locations"
           />
         </div>
 
-        {/* Date Filters Section: Desktop/Tablet layout with date filters and machine status (md+) */}
-        <div className="mb-0 mt-4 hidden md:block">
-          <div className="mb-3">
-            <DashboardDateFilters
-              hideAllTime={true}
-              onCustomRangeGo={fetchData}
-              mode="desktop"
-              showIndicatorOnly={true}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 flex-1 items-center">
-              <DashboardDateFilters
-                hideAllTime={true}
-                onCustomRangeGo={fetchData}
-                mode="desktop"
-                hideIndicator={true}
-              />
-            </div>
-            <div className="flex w-auto flex-shrink-0 items-center">
-              <MachineStatusWidget
-                isLoading={machineStatsLoading || membershipStatsLoading}
-                onlineCount={machineStats?.onlineMachines || 0}
-                offlineCount={machineStats?.offlineMachines || 0}
-                totalCount={machineStats?.totalMachines}
-                showTotal={true}
-                membershipCount={membershipStats?.membershipCount || 0}
-                showMembership={true}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile: Date Filters and Machine Status stacked layout (< md) */}
-        <div className="mt-4 flex flex-col gap-4 md:hidden">
-          <div className="w-full">
-            <DashboardDateFilters
-              hideAllTime={true}
-              onCustomRangeGo={fetchData}
-              mode="mobile"
-            />
-          </div>
-          <div className="w-full">
+        <div className="mt-6 flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <DashboardDateFilters hideAllTime onCustomRangeGo={fetchData} />
             <MachineStatusWidget
               isLoading={machineStatsLoading || membershipStatsLoading}
               onlineCount={machineStats?.onlineMachines || 0}
               offlineCount={machineStats?.offlineMachines || 0}
               totalCount={machineStats?.totalMachines}
-              showTotal={true}
               membershipCount={membershipStats?.membershipCount || 0}
-              showMembership={true}
+              showTotal showMembership
             />
-          </div>
         </div>
 
-        {/* Mobile Search and Filters - Hidden on md+ */}
-        <div className="md:hidden">
-          <div className="relative w-full">
-            <Input
-              type="text"
-              placeholder="Search locations..."
-              className="h-11 w-full rounded-full border border-gray-300 bg-white px-4 pr-10 text-base text-gray-700 placeholder-gray-400 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-            <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-          </div>
-
-          {/* Mobile Filter Checkboxes */}
-          <div className="mt-4 flex w-full flex-wrap items-center justify-center gap-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="mobileSmibFilter"
-                checked={selectedFilters.includes('SMIBLocationsOnly')}
-                onCheckedChange={checked => {
-                  handleFilterChange(
-                    'SMIBLocationsOnly',
-                    checked as boolean,
-                    prev => {
-                      if (checked) {
-                        return [...prev, 'SMIBLocationsOnly'];
-                      } else {
-                        return prev.filter(f => f !== 'SMIBLocationsOnly');
-                      }
-                    }
-                  );
-                }}
-                className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
-              />
-              <Label
-                htmlFor="mobileSmibFilter"
-                className="text-sm font-medium text-gray-700"
-              >
-                SMIB
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="mobileNoSmibFilter"
-                checked={selectedFilters.includes('NoSMIBLocation')}
-                onCheckedChange={checked => {
-                  if (typeof checked === 'boolean') {
-                    handleFilterChange('NoSMIBLocation', checked, prev => {
-                      if (checked) {
-                        return [...prev, 'NoSMIBLocation'];
-                      } else {
-                        return prev.filter(f => f !== 'NoSMIBLocation');
-                      }
-                    });
-                  }
-                }}
-                className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
-              />
-              <Label
-                htmlFor="mobileNoSmibFilter"
-                className="text-sm font-medium text-gray-700"
-              >
-                No SMIB
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="mobileLocalServerFilter"
-                checked={selectedFilters.includes('LocalServersOnly')}
-                onCheckedChange={checked => {
-                  if (typeof checked === 'boolean') {
-                    handleFilterChange('LocalServersOnly', checked, prev => {
-                      if (checked) {
-                        return [...prev, 'LocalServersOnly'];
-                      } else {
-                        return prev.filter(f => f !== 'LocalServersOnly');
-                      }
-                    });
-                  }
-                }}
-                className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
-              />
-              <Label
-                htmlFor="mobileLocalServerFilter"
-                className="text-sm font-medium text-gray-700"
-              >
-                Local Server
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="mobileMembershipFilter"
-                checked={selectedFilters.includes('MembershipOnly')}
-                onCheckedChange={checked => {
-                  if (typeof checked === 'boolean') {
-                    handleFilterChange('MembershipOnly', checked, prev => {
-                      if (checked) {
-                        return [...prev, 'MembershipOnly'];
-                      } else {
-                        return prev.filter(f => f !== 'MembershipOnly');
-                      }
-                    });
-                  }
-                }}
-                className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
-              />
-              <Label
-                htmlFor="mobileMembershipFilter"
-                className="text-sm font-medium text-gray-700"
-              >
-                Membership
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="mobileMissingCoordinatesFilter"
-                checked={selectedFilters.includes('MissingCoordinates')}
-                onCheckedChange={checked => {
-                  if (typeof checked === 'boolean') {
-                    handleFilterChange('MissingCoordinates', checked, prev => {
-                      if (checked) {
-                        return [...prev, 'MissingCoordinates'];
-                      } else {
-                        return prev.filter(f => f !== 'MissingCoordinates');
-                      }
-                    });
-                  }
-                }}
-                className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
-              />
-              <Label
-                htmlFor="mobileMissingCoordinatesFilter"
-                className="text-sm font-medium text-gray-700"
-              >
-                Missing Coordinates
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="mobileHasCoordinatesFilter"
-                checked={selectedFilters.includes('HasCoordinates')}
-                onCheckedChange={checked => {
-                  if (typeof checked === 'boolean') {
-                    handleFilterChange('HasCoordinates', checked, prev => {
-                      if (checked) {
-                        return [...prev, 'HasCoordinates'];
-                      } else {
-                        return prev.filter(f => f !== 'HasCoordinates');
-                      }
-                    });
-                  }
-                }}
-                className="border-buttonActive text-grayHighlight focus:ring-buttonActive"
-              />
-              <Label
-                htmlFor="mobileHasCoordinatesFilter"
-                className="text-sm font-medium text-gray-700"
-              >
-                Has Coordinates
-              </Label>
-            </div>
-          </div>
+          <LocationsFilterSection
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            selectedFilters={selectedFilters}
+            onFilterChange={handleFilterChange}
+            onMultiFilterChange={() => {
+              // Handle bulk filter changes if needed
+            }}
+          />
         </div>
 
-        {/* Search and Filter Section: Desktop search bar with SMIB filters */}
-        <div className="mt-4 hidden items-center gap-4 bg-buttonActive p-4 md:flex">
-          <div className="relative min-w-[250px] flex-1">
-            <Input
-              type="text"
-              placeholder="Search locations..."
-              className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-            <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <div className="mt-6 flex-1">
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
+              <ClientOnly fallback={<CabinetTableSkeleton />}>
+                <div className="lg:hidden grid grid-cols-1 gap-4">
+                  {[...Array(3)].map((_, i) => <LocationSkeleton key={i} />)}
           </div>
-
-          {/* Filter Dropdown (Visible below XL) */}
-          <div className="flex-shrink-0 xl:hidden">
-            <LocationMultiSelect
-              locations={[
-                { id: 'SMIBLocationsOnly', name: 'SMIB' },
-                { id: 'NoSMIBLocation', name: 'No SMIB' },
-                { id: 'LocalServersOnly', name: 'Local Server' },
-                { id: 'MembershipOnly', name: 'Membership' },
-                { id: 'MissingCoordinates', name: 'Missing Coordinates' },
-                { id: 'HasCoordinates', name: 'Has Coordinates' },
-              ]}
-              selectedLocations={selectedFilters as string[]}
-              onSelectionChange={(ids) => setSelectedFilters(ids as LocationFilter[])}
-              placeholder="Location Status"
-              showSearch={false}
-              className="w-[200px]"
-            />
-          </div>
-
-          {/* SMIB Filter Checkboxes (Visible on XL+) */}
-          <div className="hidden flex-wrap items-center justify-end gap-3 px-2 xl:flex">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="smibFilter"
-                checked={selectedFilters.includes('SMIBLocationsOnly')}
-                onCheckedChange={checked => {
-                  if (typeof checked === 'boolean') {
-                    handleFilterChange('SMIBLocationsOnly', checked, prev => {
-                      if (checked) {
-                        return [...prev, 'SMIBLocationsOnly'];
-                      } else {
-                        return prev.filter(f => f !== 'SMIBLocationsOnly');
-                      }
-                    });
-                  }
-                }}
-                className="border-white text-white focus:ring-white"
-              />
-              <Label
-                htmlFor="smibFilter"
-                className="whitespace-nowrap text-sm font-medium text-white"
-              >
-                SMIB
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="noSmibFilter"
-                checked={selectedFilters.includes('NoSMIBLocation')}
-                onCheckedChange={checked => {
-                  if (typeof checked === 'boolean') {
-                    handleFilterChange('NoSMIBLocation', checked, prev => {
-                      if (checked) {
-                        return [...prev, 'NoSMIBLocation'];
-                      } else {
-                        return prev.filter(f => f !== 'NoSMIBLocation');
-                      }
-                    });
-                  }
-                }}
-                className="border-white text-white focus:ring-white"
-              />
-              <Label
-                htmlFor="noSmibFilter"
-                className="whitespace-nowrap text-sm font-medium text-white"
-              >
-                No SMIB
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="localServerFilter"
-                checked={selectedFilters.includes('LocalServersOnly')}
-                onCheckedChange={checked => {
-                  if (typeof checked === 'boolean') {
-                    handleFilterChange('LocalServersOnly', checked, prev => {
-                      if (checked) {
-                        return [...prev, 'LocalServersOnly'];
-                      } else {
-                        return prev.filter(f => f !== 'LocalServersOnly');
-                      }
-                    });
-                  }
-                }}
-                className="border-white text-white focus:ring-white"
-              />
-              <Label
-                htmlFor="localServerFilter"
-                className="whitespace-nowrap text-sm font-medium text-white"
-              >
-                Local Server
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="membershipFilter"
-                checked={selectedFilters.includes('MembershipOnly')}
-                onCheckedChange={checked => {
-                  if (typeof checked === 'boolean') {
-                    handleFilterChange('MembershipOnly', checked, prev => {
-                      if (checked) {
-                        return [...prev, 'MembershipOnly'];
-                      } else {
-                        return prev.filter(f => f !== 'MembershipOnly');
-                      }
-                    });
-                  }
-                }}
-                className="border-white text-white focus:ring-white"
-              />
-              <Label
-                htmlFor="membershipFilter"
-                className="whitespace-nowrap text-sm font-medium text-white"
-              >
-                Membership
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="missingCoordinatesFilter"
-                checked={selectedFilters.includes('MissingCoordinates')}
-                onCheckedChange={checked => {
-                  if (typeof checked === 'boolean') {
-                    handleFilterChange('MissingCoordinates', checked, prev => {
-                      if (checked) {
-                        return [...prev, 'MissingCoordinates'];
-                      } else {
-                        return prev.filter(f => f !== 'MissingCoordinates');
-                      }
-                    });
-                  }
-                }}
-                className="border-white text-white focus:ring-white"
-              />
-              <Label
-                htmlFor="missingCoordinatesFilter"
-                className="whitespace-nowrap text-sm font-medium text-white"
-              >
-                Missing Coordinates
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="hasCoordinatesFilter"
-                checked={selectedFilters.includes('HasCoordinates')}
-                onCheckedChange={checked => {
-                  if (typeof checked === 'boolean') {
-                    handleFilterChange('HasCoordinates', checked, prev => {
-                      if (checked) {
-                        return [...prev, 'HasCoordinates'];
-                      } else {
-                        return prev.filter(f => f !== 'HasCoordinates');
-                      }
-                    });
-                  }
-                }}
-                className="border-white text-white focus:ring-white"
-              />
-              <Label
-                htmlFor="hasCoordinatesFilter"
-                className="whitespace-nowrap text-sm font-medium text-white"
-              >
-                Has Coordinates
-              </Label>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Content Section: Main data display with responsive layouts */}
-        <div className="w-full flex-1">
-          {error ? (
-            <NetworkError
-              title="Failed to Load Locations"
-              message="Unable to load location data. Please check your connection and try again."
-              onRetry={fetchData}
-              isRetrying={refreshing}
-              errorDetails={error}
-            />
-          ) : isLoading ? (
-            <>
-              {/* Mobile: show 3 card skeletons */}
-              <div className="block md:hidden">
-                <ClientOnly
-                  fallback={
-                    <div className="grid grid-cols-1 gap-4">
-                      {[...Array(3)].map((_, i) => (
-                        <LocationSkeleton key={i} />
-                      ))}
-                    </div>
-                  }
-                >
-                  <div className="grid grid-cols-1 gap-4">
-                    {[...Array(3)].map((_, i) => (
-                      <LocationSkeleton key={i} />
-                    ))}
-                  </div>
-                </ClientOnly>
-              </div>
-              {/* Desktop: show 1 table skeleton */}
-              <div className="hidden md:block">
-                <ClientOnly fallback={<CabinetTableSkeleton />}>
+                <div className="hidden lg:block">
                   <CabinetTableSkeleton />
+                </div>
                 </ClientOnly>
               </div>
-            </>
-          ) : currentItems.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <span className="text-lg text-gray-500">
-                {searchTerm
-                  ? 'No locations found matching your search.'
-                  : `No locations found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}.`}
-              </span>
+          ) : filteredLocationData.length === 0 ? (
+            <div className="py-12 text-center text-gray-500">
+              No locations found matching your criteria.
             </div>
           ) : (
-            <>
-              {/* Mobile and Tablet: show cards */}
-              <div className="block lg:hidden">
-                <ClientOnly
-                  fallback={
-                    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      {[...Array(3)].map((_, i) => (
-                        <LocationSkeleton key={i} />
-                      ))}
-                    </div>
-                  }
-                >
-                  <div
-                    className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
-                    ref={cardsRef}
-                  >
-                    {!isLoading ? (
-                      currentItems.map(
-                        (location: AggregatedLocation, index: number) => (
+            <div className="space-y-6">
+              <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {filteredLocationData.map((loc) => (
                         <LocationCard
-                          key={`${location._id}-${index}`}
-                          location={location}
-                          onLocationClick={handleLocationClick}
-                          onEdit={() => openEditModal(location)}
-                          canManageLocations={canManageLocations}
-                          selectedFilters={selectedFilters}
-                        />
-                        )
-                      )
-                    ) : (
-                      <>
-                        {[...Array(3)].map((_, i) => (
-                          <LocationSkeleton key={i} />
-                        ))}
-                      </>
-                    )}
-                  </div>
-                </ClientOnly>
+                    key={String(loc._id)} 
+                    location={loc} 
+                    onLocationClick={handleLocationClick} 
+                    onEdit={(location) => openEditModal(location)}
+                  />
+                ))}
               </div>
-              {/* Desktop: show table */}
-              <div className="hidden lg:block" ref={tableRef}>
+              <div className="hidden lg:block overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
                 <LocationTable
-                  locations={currentItems}
-                  sortOption={sortOption}
-                  sortOrder={sortOrder}
-                  onSort={handleColumnSort}
+                  locations={filteredLocationData}
                   onLocationClick={handleLocationClick}
-                  onAction={handleTableAction}
-                  formatCurrency={formatCurrency}
-                  canManageLocations={canManageLocations}
-                  selectedFilters={selectedFilters}
+                  onAction={(action, loc) => {
+                    if (action === 'edit') openEditModal(loc);
+                    if (action === 'delete') openDeleteModal(loc);
+                  }}
+                  onSort={() => {}}
+                  sortOption="locationName"
+                  sortOrder="asc"
+                  formatCurrency={(amount) => `$${amount.toFixed(2)}`}
                 />
               </div>
-            </>
-          )}
-        </div>
-
-        {/* Pagination Controls */}
-        {!isLoading && currentItems.length > 0 && calculatedTotalPages > 1 && (
+              {totalPages > 1 && (
           <PaginationControls
             currentPage={currentPage}
-            totalPages={calculatedTotalPages}
+            totalPages={totalPages}
             setCurrentPage={setCurrentPage}
           />
         )}
+            </div>
+          )}
+        </div>
       </PageLayout>
-      <EditLocationModal onLocationUpdated={fetchData} />
-      <DeleteLocationModal onDelete={fetchData} />
-      <NewLocationModal
-        isOpen={isNewLocationModalOpen}
-        onClose={closeNewLocationModal}
-        onCreated={fetchData}
-      />
-
-      {/* Floating Refresh Button */}
-      <FloatingRefreshButton
-        show={false}
-        refreshing={refreshing}
-        onRefresh={handleRefresh}
-      />
     </>
   );
 }
 
-/**
- * Locations Page Component
- * Thin wrapper that handles routing and authentication
- */
+import { useMemo } from 'react';
+
 export default function LocationsPage() {
   return (
     <ProtectedRoute requiredPage="locations">

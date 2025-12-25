@@ -1,6 +1,18 @@
 /**
- * Custom hook for managing sessions filtering and search functionality
- * Handles search terms, sorting, and filter state management
+ * Sessions Filters Custom Hook
+ *
+ * Provides a custom hook for managing sessions filtering and search functionality.
+ * It handles search terms, sorting, filter state management, and provides
+ * utilities for filter operations.
+ *
+ * Features:
+ * - Search term management
+ * - Sort field and order management
+ * - Filter state tracking
+ * - Clear filters functionality
+ * - Active filter detection
+ * - Sort icon utilities
+ * - Filter change notifications
  */
 
 import { useState, useCallback, useMemo } from 'react';

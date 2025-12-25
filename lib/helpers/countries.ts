@@ -1,3 +1,18 @@
+/**
+ * Countries Helper Functions
+ *
+ * Provides helper functions for fetching and managing country data. It handles
+ * API communication for country operations and includes data normalization
+ * utilities for consistent country data formatting.
+ *
+ * Features:
+ * - Fetches all countries from the API
+ * - Creates new countries
+ * - Updates existing countries
+ * - Deletes countries
+ * - Normalizes country data format
+ */
+
 import axios from 'axios';
 
 import type { Country } from '@/lib/types/country';

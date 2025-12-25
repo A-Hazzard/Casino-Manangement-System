@@ -1,9 +1,7 @@
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
-import { Db } from 'mongodb';
 import { PipelineStage } from 'mongoose';
 import { CustomDate, QueryFilter } from '../../types';
-
 // NOTE: Old helper functions removed - replaced with optimized direct query approach
 // Backup available in aggregations.ts.bak if needed for reference
 
@@ -135,9 +133,7 @@ export function aggregateMetersWithoutLocationSession(
  * @returns Promise resolving to an array of aggregated trend data.
  */
 export async function getMetricsForLocations(
-  db: Db,
   timeframe: CustomDate,
-  _useAccountDenom = false,
   licencee?: string,
   timePeriod?: string
 ) {
@@ -349,9 +345,15 @@ export async function getMetricsForLocations(
   // The compound index (machine + readAt) is optimal for our queries
   const hint = machineIds ? { machine: 1, readAt: 1 } : { readAt: 1 };
 
-  return Meters.aggregate(aggregationPipeline, {
-      allowDiskUse: true,
-      maxTimeMS: 90000, // Increased to 90 seconds for 30d queries
-      hint, // Force MongoDB to use the optimal index
-  }).exec();
+  const result: Record<string, unknown>[] = [];
+  const cursor = Meters.aggregate(aggregationPipeline, {
+    allowDiskUse: true,
+    maxTimeMS: 90000,
+    hint,
+  }).cursor({ batchSize: 1000 });
+
+  for await (const doc of cursor) {
+    result.push(doc);
+  }
+  return result;
 }

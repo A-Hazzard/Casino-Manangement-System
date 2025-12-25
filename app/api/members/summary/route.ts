@@ -336,6 +336,7 @@ export async function GET(request: NextRequest) {
         },
       },
       {
+        // Sort by createdAt (most recent first) - default for summary report
         $sort: { createdAt: -1 },
       },
       { $skip: skip },

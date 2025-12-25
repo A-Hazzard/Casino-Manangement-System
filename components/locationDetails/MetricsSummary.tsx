@@ -11,14 +11,14 @@
  * @param location - Location information object
  * @param cabinets - Array of cabinet details for aggregation
  */
-import React from 'react';
+import type { ExtendedCabinetDetail, LocationInfo } from '@/lib/types/pages';
 import { formatCurrency } from '@/lib/utils';
 import {
+  getGrossColorClass,
   getMoneyInColorClass,
   getMoneyOutColorClass,
-  getGrossColorClass,
 } from '@/lib/utils/financialColors';
-import type { LocationInfo, ExtendedCabinetDetail } from '@/lib/types/pages';
+import React from 'react';
 
 type ExtendedMetricsSummaryProps = {
   location: LocationInfo | null;
@@ -58,13 +58,15 @@ const MetricsSummary: React.FC<ExtendedMetricsSummaryProps> = ({
             </div>
             <div className="rounded-lg bg-gray-50 p-3">
               <p className="text-sm text-gray-500">Money In</p>
-              <p className={`text-lg font-semibold ${getMoneyInColorClass(location.moneyIn)}`}>
+              <p className={`text-lg font-semibold ${getMoneyInColorClass()}`}>
                 {formatCurrency(location.moneyIn || 0)}
               </p>
             </div>
             <div className="rounded-lg bg-gray-50 p-3">
               <p className="text-sm text-gray-500">Money Out</p>
-              <p className={`text-lg font-semibold ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}>
+              <p
+                className={`text-lg font-semibold ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
+              >
                 {formatCurrency(location.moneyOut || 0)}
               </p>
             </div>
@@ -75,7 +77,9 @@ const MetricsSummary: React.FC<ExtendedMetricsSummaryProps> = ({
           <div className="grid grid-cols-1 gap-2">
             <div className="rounded-lg bg-gray-50 p-3">
               <p className="text-sm text-gray-500">Gross</p>
-              <p className={`text-lg font-semibold ${getGrossColorClass(location.gross)}`}>
+              <p
+                className={`text-lg font-semibold ${getGrossColorClass(location.gross)}`}
+              >
                 {formatCurrency(location.gross || 0)}
               </p>
             </div>

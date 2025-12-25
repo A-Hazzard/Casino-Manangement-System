@@ -1,18 +1,16 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { DashboardChartSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
 import type { dashboardData } from '@/lib/types';
 import { ChartProps } from '@/lib/types/componentProps';
 import { formatDisplayDate, formatTime } from '@/shared/utils/dateFormat';
-import { Search } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
     Area,
     AreaChart,
     CartesianGrid,
-    ReferenceArea,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -26,9 +24,12 @@ export default function Chart({
   activeMetricsFilter,
   totals,
 }: ChartProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // State for selected metrics (all selected by default)
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([
+    'Money In',
+    'Money Out',
+    'Gross',
+  ]);
   // Chart data received for rendering
 
   // Always show skeleton when loading
@@ -195,162 +196,58 @@ export default function Chart({
     finalChartData = sortedChartData;
   }
 
-  // Filter out $0 values (but keep cents like $0.30)
-  // For financial metrics (moneyIn, moneyOut, gross, jackpot), filter out $0 but keep cents >= $0.01
-  // EXCEPTION: For daily charts (7d, 30d, etc.), keep all days even if $0 to show the full time range
-  const isDailyChart = !isHourlyChart && !hasMinuteLevelData();
-  const isLongPeriod =
-    activeMetricsFilter === '7d' ||
-    activeMetricsFilter === '30d' ||
-    activeMetricsFilter === 'last7days' ||
-    activeMetricsFilter === 'last30days' ||
-    activeMetricsFilter === 'All Time';
+  // Filter out $0 values for both minute and hourly views
+  // For minute-level data: show ALL non-zero values (even if < $0.01) to show every minute with activity
+  // For hourly/daily data: use $0.01 threshold to filter out noise
+  const isMinuteLevelData = finalChartData.some(item => {
+    if (!item.time) return false;
+    const timeParts = item.time.split(':');
+    if (timeParts.length !== 2) return false;
+    const minutes = parseInt(timeParts[1], 10);
+    return !isNaN(minutes) && minutes !== 0; // Has non-zero minutes
+  });
 
-  let filteredChartData = finalChartData;
+  const filteredChartData = finalChartData.filter(item => {
+    const moneyIn = item.moneyIn || 0;
+    const moneyOut = item.moneyOut || 0;
+    const gross = item.gross || 0;
 
-  // Only filter $0 values if it's not a daily chart for long periods
-  // For daily charts with long periods, we want to show all days even if some have $0
-  if (!(isDailyChart && isLongPeriod)) {
-    filteredChartData = finalChartData.filter(item => {
-      const moneyIn = item.moneyIn || 0;
-      const moneyOut = item.moneyOut || 0;
-      const gross = item.gross || 0;
-      const jackpot = (item as { jackpot?: number }).jackpot || 0;
+    // For minute-level data: show any non-zero value (even tiny amounts)
+    // For hourly/daily: use $0.01 threshold
+    const threshold = isMinuteLevelData ? 0 : 0.01;
 
-      // Keep if any financial metric >= $0.01 (filters out $0 but keeps cents)
-      return (
-        moneyIn >= 0.01 || moneyOut >= 0.01 || gross >= 0.01 || jackpot >= 0.01
-      );
-    });
-  }
+    const hasMoneyIn = selectedMetrics.includes('Money In') && moneyIn > threshold;
+    const hasMoneyOut = selectedMetrics.includes('Money Out') && moneyOut > threshold;
+    const hasGross = selectedMetrics.includes('Gross') && gross > threshold;
 
-  // Track if we added a previous point for single data point scenario
-  let addedPreviousPointForSingle = false;
-
-  // If there's only 1 data point after filtering, include the previous point (even if 0)
-  if (filteredChartData.length === 1) {
-    const filteredPoint = filteredChartData[0];
-    let previousPointAdded = false;
-
-    // Try to find the previous point from original data
-    if (finalChartData.length > 1) {
-      const filteredIndex = finalChartData.findIndex(
-        item =>
-          item.day === filteredPoint.day && item.time === filteredPoint.time
-      );
-
-      if (filteredIndex > 0) {
-        // Get the previous data point from original data
-        const previousPoint = finalChartData[filteredIndex - 1];
-        // Create a copy with all financial values set to 0
-        const previousPointWithZeros: dashboardData = {
-          xValue:
-            previousPoint.xValue ||
-            (isHourlyChart ? previousPoint.time || '' : previousPoint.day),
-          day: previousPoint.day,
-          time: previousPoint.time || '',
-          moneyIn: 0,
-          moneyOut: 0,
-          gross: 0,
-          location: previousPoint.location,
-          geoCoords: previousPoint.geoCoords,
-        };
-
-        // Insert previous point at the beginning and sort to maintain chronological order
-        const result = [previousPointWithZeros, ...filteredChartData];
-        // Sort by day and time to ensure correct order
-        filteredChartData = result.sort((a, b) => {
-          const dayDiff = parseDay(a.day) - parseDay(b.day);
-          if (dayDiff !== 0) return dayDiff;
-          if (isHourlyChart) {
-            return parseTime(a.time, a.day) - parseTime(b.time, b.day);
-          }
-          return 0;
-        });
-        previousPointAdded = true;
-        addedPreviousPointForSingle = true;
-      }
-    }
-
-    // If we didn't add a previous point from original data, create a synthetic one
-    if (!previousPointAdded) {
-      // Create a previous point for the single data point
-      // For hourly charts, go back 1 hour; for daily charts, use the same day but earlier time
-      const singlePoint = filteredPoint;
-      let previousTime = '';
-      let previousDay = singlePoint.day;
-
-      if (isHourlyChart && singlePoint.time) {
-        // Parse the time and subtract 1 hour
-        const timeParts = singlePoint.time.split(':');
-        const hours = parseInt(timeParts[0] || '0', 10);
-        const minutes = timeParts[1] || '00';
-        const prevHours = hours > 0 ? hours - 1 : 23; // Handle midnight wrap-around
-        previousTime = `${prevHours.toString().padStart(2, '0')}:${minutes}`;
-        // If we wrapped around midnight, use previous day
-        if (hours === 0 && prevHours === 23) {
-          try {
-            const dayDate = new Date(singlePoint.day);
-            dayDate.setDate(dayDate.getDate() - 1);
-            previousDay = dayDate.toISOString().split('T')[0];
-          } catch {
-            // If date parsing fails, keep same day
-            previousDay = singlePoint.day;
-          }
-        }
-      } else {
-        // For daily charts, use same day but with an earlier time (e.g., start of day)
-        previousTime = '00:00';
-      }
-
-      const previousPointWithZeros: dashboardData = {
-        xValue: isHourlyChart ? previousTime : previousDay,
-        day: previousDay,
-        time: previousTime,
-        moneyIn: 0,
-        moneyOut: 0,
-        gross: 0,
-        location: singlePoint.location,
-        geoCoords: singlePoint.geoCoords,
-      };
-
-      // Insert previous point at the beginning
-      filteredChartData = [previousPointWithZeros, ...filteredChartData];
-      addedPreviousPointForSingle = true;
-    }
-  }
+    return hasMoneyIn || hasMoneyOut || hasGross;
+  });
 
   // Filter out leading and trailing zero-value entries to show only actual data range
-  // This removes empty lines before data starts and after data ends
-  // BUT: Skip trimming if we added a previous point for single data point scenario
   let trimmedChartData = filteredChartData;
-  if (filteredChartData.length > 0 && !addedPreviousPointForSingle) {
-    // Find first non-zero entry
+  if (filteredChartData.length > 0) {
+    // Find first non-zero entry based on selected metrics
     let firstNonZeroIndex = 0;
     for (let i = 0; i < filteredChartData.length; i++) {
       const item = filteredChartData[i];
-      const jackpot = (item as { jackpot?: number }).jackpot || 0;
       const hasData =
-        (item.moneyIn || 0) >= 0.01 ||
-        (item.moneyOut || 0) >= 0.01 ||
-        (item.gross || 0) >= 0.01 ||
-        jackpot >= 0.01;
+        (selectedMetrics.includes('Money In') && (item.moneyIn || 0) >= 0.01) ||
+        (selectedMetrics.includes('Money Out') && (item.moneyOut || 0) >= 0.01) ||
+        (selectedMetrics.includes('Gross') && (item.gross || 0) >= 0.01);
       if (hasData) {
         firstNonZeroIndex = i;
         break;
       }
     }
 
-    // Find last non-zero entry
+    // Find last non-zero entry based on selected metrics
     let lastNonZeroIndex = filteredChartData.length - 1;
     for (let i = filteredChartData.length - 1; i >= 0; i--) {
       const item = filteredChartData[i];
-      const jackpot = (item as { jackpot?: number }).jackpot || 0;
       const hasData =
-        (item.moneyIn || 0) >= 0.01 ||
-        (item.moneyOut || 0) >= 0.01 ||
-        (item.gross || 0) >= 0.01 ||
-        jackpot >= 0.01;
+        (selectedMetrics.includes('Money In') && (item.moneyIn || 0) >= 0.01) ||
+        (selectedMetrics.includes('Money Out') && (item.moneyOut || 0) >= 0.01) ||
+        (selectedMetrics.includes('Gross') && (item.gross || 0) >= 0.01);
       if (hasData) {
         lastNonZeroIndex = i;
         break;
@@ -364,11 +261,9 @@ export default function Chart({
     );
   }
 
-  // Filter out intermediate blank periods (where all metrics are zero or unchanged)
-  // This creates a continuous line that skips over inactive time periods
-  // BUT: Skip gap filtering if we added a previous point for single data point scenario
+  // Filter out intermediate blank periods (where all selected metrics are zero)
   let gapFilteredChartData = trimmedChartData;
-  if (trimmedChartData.length > 2 && !addedPreviousPointForSingle) {
+  if (trimmedChartData.length > 2) {
     gapFilteredChartData = [];
 
     for (let i = 0; i < trimmedChartData.length; i++) {
@@ -377,51 +272,34 @@ export default function Chart({
       const next =
         i < trimmedChartData.length - 1 ? trimmedChartData[i + 1] : null;
 
-      // Safely access jackpot property (may not be in type but exists at runtime)
-      const currentJackpot = (current as { jackpot?: number }).jackpot || 0;
-      const previousJackpot = previous
-        ? (previous as { jackpot?: number }).jackpot || 0
-        : 0;
-      const nextJackpot = next
-        ? (next as { jackpot?: number }).jackpot || 0
-        : 0;
-
-      // Check if current point has any activity (>= $0.01 for financial metrics)
+      // Check if current point has any activity for selected metrics
       const hasActivity =
-        (current.moneyIn || 0) >= 0.01 ||
-        (current.moneyOut || 0) >= 0.01 ||
-        (current.gross || 0) >= 0.01 ||
-        currentJackpot >= 0.01;
+        (selectedMetrics.includes('Money In') && (current.moneyIn || 0) >= 0.01) ||
+        (selectedMetrics.includes('Money Out') && (current.moneyOut || 0) >= 0.01) ||
+        (selectedMetrics.includes('Gross') && (current.gross || 0) >= 0.01);
 
-      // Check if previous point has activity (>= $0.01 for financial metrics)
+      // Check if previous point has activity
       const previousHasActivity = previous
-        ? (previous.moneyIn || 0) >= 0.01 ||
-          (previous.moneyOut || 0) >= 0.01 ||
-          (previous.gross || 0) >= 0.01 ||
-          previousJackpot >= 0.01
+        ? (selectedMetrics.includes('Money In') && (previous.moneyIn || 0) >= 0.01) ||
+          (selectedMetrics.includes('Money Out') && (previous.moneyOut || 0) >= 0.01) ||
+          (selectedMetrics.includes('Gross') && (previous.gross || 0) >= 0.01)
         : false;
 
-      // Check if next point has activity (>= $0.01 for financial metrics)
+      // Check if next point has activity
       const nextHasActivity = next
-        ? (next.moneyIn || 0) >= 0.01 ||
-          (next.moneyOut || 0) >= 0.01 ||
-          (next.gross || 0) >= 0.01 ||
-          nextJackpot >= 0.01
+        ? (selectedMetrics.includes('Money In') && (next.moneyIn || 0) >= 0.01) ||
+          (selectedMetrics.includes('Money Out') && (next.moneyOut || 0) >= 0.01) ||
+          (selectedMetrics.includes('Gross') && (next.gross || 0) >= 0.01)
         : false;
 
-      // Check if current point values differ from previous (indicates a change)
+      // Check if current point values differ from previous
       const valuesChanged = previous
         ? (current.moneyIn || 0) !== (previous.moneyIn || 0) ||
           (current.moneyOut || 0) !== (previous.moneyOut || 0) ||
-          (current.gross || 0) !== (previous.gross || 0) ||
-          currentJackpot !== previousJackpot
+          (current.gross || 0) !== (previous.gross || 0)
         : true;
 
-      // Keep the point if:
-      // 1. It's the first or last point (always keep boundaries), OR
-      // 2. It has activity, OR
-      // 3. It's a transition point (activity state changes), OR
-      // 4. Values changed (even if both are zero, indicates a transition)
+      // Keep the point if it's first/last, has activity, is a transition, or values changed
       const isFirstOrLast = i === 0 || i === trimmedChartData.length - 1;
       const isTransition =
         previousHasActivity !== hasActivity || nextHasActivity !== hasActivity;
@@ -432,14 +310,18 @@ export default function Chart({
     }
   }
 
-  // Calculate Y-axis domain from actual data to avoid showing negative values when data doesn't go negative
+  // Calculate Y-axis domain from actual data based on selected metrics
   const allValues: number[] = [];
   gapFilteredChartData.forEach(item => {
-    allValues.push(item.moneyIn || 0);
-    allValues.push(item.moneyOut || 0);
-    allValues.push(item.gross || 0);
-    const jackpot = (item as { jackpot?: number }).jackpot || 0;
-    allValues.push(jackpot);
+    if (selectedMetrics.includes('Money In')) {
+      allValues.push(item.moneyIn || 0);
+    }
+    if (selectedMetrics.includes('Money Out')) {
+      allValues.push(item.moneyOut || 0);
+    }
+    if (selectedMetrics.includes('Gross')) {
+      allValues.push(item.gross || 0);
+    }
   });
 
   let yAxisDomain: [number, number] | undefined = undefined;
@@ -458,81 +340,52 @@ export default function Chart({
 
   const minWidth = Math.max(600, gapFilteredChartData.length * 50);
 
-  const handleFocus = () => {
-    if (!searchTerm || !scrollRef.current) return;
-
-    const index = gapFilteredChartData.findIndex(item => {
-      const label = isHourlyChart ? item.time : item.day;
-      return String(label).toLowerCase().includes(searchTerm.toLowerCase());
-    });
-
-    if (index !== -1) {
-      setFocusedIndex(index);
-      const containerWidth = scrollRef.current.clientWidth;
-      const slotWidth = minWidth / gapFilteredChartData.length;
-      const targetScroll = (index + 0.5) * slotWidth - (containerWidth / 2);
-      
-      scrollRef.current.scrollTo({
-        left: Math.max(0, targetScroll),
-        behavior: 'smooth'
-      });
-    } else {
-      setFocusedIndex(null);
-    }
-  };
-
   const legendItems = [
     { label: 'Money In', color: '#a855f7' },
     { label: 'Money Out', color: '#3b82f6' },
-    { label: 'Jackpot', color: '#8A7FFF' },
     { label: 'Gross', color: '#f97316' },
   ];
 
   return (
     <div className="rounded-lg bg-container p-4 shadow-md">
-      {/* Header with Search */}
-      <div className="mb-6 flex flex-col items-center justify-between gap-4 border-b pb-4 sm:flex-row">
-        <h3 className="text-sm font-semibold text-gray-900">Revenue Trends</h3>
-        <div className="flex w-full max-w-sm items-center space-x-2">
-          <div className="relative w-full">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              type="text"
-              placeholder={isHourlyChart ? "Search time (HH:00)..." : "Search date (YYYY-MM-DD)..."}
-              className="pl-9"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setFocusedIndex(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleFocus();
-              }}
-            />
-          </div>
-          <Button onClick={handleFocus} variant="secondary">
-            Focus
-          </Button>
+      {/* Metric selection checkboxes */}
+      <div className="mb-6 overflow-x-auto border-b pb-4">
+        <div className="flex min-w-max flex-wrap items-center justify-center gap-x-6 gap-y-2">
+          {legendItems.map(item => (
+            <div key={item.label} className="flex items-center gap-2">
+              <Checkbox
+                id={`metric-${item.label}`}
+                checked={selectedMetrics.includes(item.label)}
+                onCheckedChange={checked => {
+                  if (checked) {
+                    setSelectedMetrics(prev => [...prev, item.label]);
+                  } else {
+                    setSelectedMetrics(prev =>
+                      prev.filter(m => m !== item.label)
+                    );
+                  }
+                }}
+                className="h-4 w-4 border-2"
+                style={{
+                  borderColor: item.color,
+                  backgroundColor: selectedMetrics.includes(item.label)
+                    ? item.color
+                    : 'transparent',
+                }}
+              />
+              <Label
+                htmlFor={`metric-${item.label}`}
+                className="cursor-pointer text-xs font-medium text-gray-700"
+              >
+                {item.label}
+              </Label>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Fixed Legend outside scroll container */}
-      <div className="mb-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-b pb-4">
-        {legendItems.map(item => (
-          <div key={item.label} className="flex items-center gap-2">
-            <div
-              className="h-3 w-3 rounded-sm opacity-80"
-              style={{ backgroundColor: item.color }}
-            />
-            <span className="text-xs font-medium text-gray-700">
-              {item.label}
-            </span>
-          </div>
-        ))}
-      </div>
-
       {/* Scrollable Container for both Mobile and Desktop */}
-      <div ref={scrollRef} className="touch-pan-x overflow-x-auto overflow-y-hidden">
+      <div className="touch-pan-x overflow-x-auto overflow-y-hidden">
         <div style={{ minWidth: `${minWidth}px`, width: '100%' }}>
           <ResponsiveContainer width="100%" height={320}>
             <AreaChart data={gapFilteredChartData}>
@@ -647,17 +500,6 @@ export default function Chart({
                   return String(label);
                 }}
               />
-              {focusedIndex !== null && gapFilteredChartData[focusedIndex] && (
-                <ReferenceArea
-                  x1={isHourlyChart ? gapFilteredChartData[focusedIndex].time : gapFilteredChartData[focusedIndex].day}
-                  x2={isHourlyChart ? gapFilteredChartData[focusedIndex].time : gapFilteredChartData[focusedIndex].day}
-                  fill="#3b82f6"
-                  fillOpacity={0.15}
-                  stroke="#3b82f6"
-                  strokeDasharray="3 3"
-                  strokeOpacity={0.5}
-                />
-              )}
               <defs>
                 <linearGradient id="colorMoneyIn" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8} />
@@ -667,47 +509,41 @@ export default function Chart({
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
                   <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
-                <linearGradient id="colorWager" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8A7FFF" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#8A7FFF" stopOpacity={0} />
-                </linearGradient>
                 <linearGradient id="colorGross" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#f97316" stopOpacity={0.8} />
                   <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <Area
-                type="monotone"
-                dataKey="moneyIn"
-                stroke="#a855f7"
-                strokeWidth={3}
-                fill="url(#colorMoneyIn)"
-                stackId="1"
-              />
-              <Area
-                type="monotone"
-                dataKey="moneyOut"
-                stroke="#3b82f6"
-                strokeWidth={3}
-                fill="url(#colorMoneyOut)"
-                stackId="2"
-              />
-              <Area
-                type="monotone"
-                dataKey="jackpot"
-                stroke="#8A7FFF"
-                strokeWidth={3}
-                fill="url(#colorWager)"
-                stackId="3"
-              />
-              <Area
-                type="monotone"
-                dataKey="gross"
-                stroke="#f97316"
-                strokeWidth={3}
-                fill="url(#colorGross)"
-                stackId="1"
-              />
+              {selectedMetrics.includes('Money In') && (
+                <Area
+                  type="monotone"
+                  dataKey="moneyIn"
+                  stroke="#a855f7"
+                  strokeWidth={3}
+                  fill="url(#colorMoneyIn)"
+                  stackId="1"
+                />
+              )}
+              {selectedMetrics.includes('Money Out') && (
+                <Area
+                  type="monotone"
+                  dataKey="moneyOut"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  fill="url(#colorMoneyOut)"
+                  stackId="2"
+                />
+              )}
+              {selectedMetrics.includes('Gross') && (
+                <Area
+                  type="monotone"
+                  dataKey="gross"
+                  stroke="#f97316"
+                  strokeWidth={3}
+                  fill="url(#colorGross)"
+                  stackId="1"
+                />
+              )}
             </AreaChart>
           </ResponsiveContainer>
         </div>

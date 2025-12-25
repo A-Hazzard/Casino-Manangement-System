@@ -1,3 +1,19 @@
+/**
+ * Administration Helper Functions
+ *
+ * Provides helper functions for user management operations including fetching,
+ * creating, updating, and filtering users. It handles API communication for
+ * administration features and includes utilities for user data processing.
+ *
+ * Features:
+ * - Fetches users with filtering, searching, and pagination
+ * - Creates new users
+ * - Updates existing users
+ * - Filters and sorts user data
+ * - Supports role and status filtering
+ * - Handles search across multiple fields
+ */
+
 import type {
   SortKey,
   User,

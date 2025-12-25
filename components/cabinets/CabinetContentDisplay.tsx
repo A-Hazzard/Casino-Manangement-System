@@ -10,6 +10,8 @@ import { CabinetTableSkeleton } from '@/components/ui/cabinets/CabinetSkeletonLo
 import CabinetTable from '@/components/ui/cabinets/CabinetTable';
 import ClientOnly from '@/components/ui/common/ClientOnly';
 import { NetworkError } from '@/components/ui/errors';
+import PaginationControls from '@/components/ui/PaginationControls';
+import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import type { CabinetSortOption } from '@/lib/hooks/data';
 import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
@@ -18,8 +20,6 @@ import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { animateCards, animateTableRows } from '@/lib/utils/ui';
 import type { GamingMachine as Machine } from '@/shared/types/entities';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { fetchLicensees } from '@/lib/helpers/clientLicensees';
-import PaginationControls from '@/components/ui/PaginationControls';
 
 type CabinetContentDisplayProps = {
   paginatedCabinets: Machine[];
@@ -34,8 +34,8 @@ type CabinetContentDisplayProps = {
   totalPages: number;
   onSort: (column: CabinetSortOption) => void;
   onPageChange: (page: number) => void;
-  onEdit: (machine: Machine) => void;
-  onDelete: (machine: Machine) => void;
+  onEdit?: (machine: Machine) => void;
+  onDelete?: (machine: Machine) => void;
   onRetry: () => void;
   transformCabinet: (cabinet: Machine) => Machine;
   selectedLicencee?: string;
@@ -63,8 +63,6 @@ export const CabinetContentDisplay = ({
   totalPages,
   onSort,
   onPageChange,
-  onEdit: _onEdit,
-  onDelete: _onDelete,
   onRetry,
   transformCabinet,
   selectedLicencee = 'all',
@@ -88,9 +86,13 @@ export const CabinetContentDisplay = ({
       return false;
     }
     // Technicians, managers, admins, developers, and location admins can edit
-    return ['developer', 'admin', 'manager', 'location admin', 'technician'].some(
-      role => userRoles.includes(role)
-    );
+    return [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
+    ].some(role => userRoles.includes(role));
   }, [user]);
 
   const canDeleteMachines = useMemo(() => {
@@ -105,24 +107,31 @@ export const CabinetContentDisplay = ({
       userRoles.includes(role)
     );
   }, [user]);
-  
+
   // Get user's assigned licensees for better empty state message
   const [licenseeNames, setLicenseeNames] = useState<string[]>([]);
-  
+
   useEffect(() => {
     const loadLicenseeNames = async () => {
       // Use only new field
       let userLicensees: string[] = [];
-      if (Array.isArray(user?.assignedLicensees) && user.assignedLicensees.length > 0) {
+      if (
+        Array.isArray(user?.assignedLicensees) &&
+        user.assignedLicensees.length > 0
+      ) {
         userLicensees = user.assignedLicensees;
       }
-      
+
       if (userLicensees.length > 0) {
         const result = await fetchLicensees();
-        const allLicensees = Array.isArray(result.licensees) ? result.licensees : [];
+        const allLicensees = Array.isArray(result.licensees)
+          ? result.licensees
+          : [];
         const names = userLicensees
           .map(id => {
-            const licensee = allLicensees.find(l => String(l._id) === String(id));
+            const licensee = allLicensees.find(
+              l => String(l._id) === String(id)
+            );
             return licensee?.name;
           })
           .filter((name): name is string => name !== undefined);
@@ -170,7 +179,6 @@ export const CabinetContentDisplay = ({
     }
   };
 
-
   // Render error state
   if (error) {
     return (
@@ -213,20 +221,24 @@ export const CabinetContentDisplay = ({
       loading,
       error,
     });
-    
+
     // Determine the appropriate message based on user's licensee assignments
     let emptyMessage = '';
-    const isAdmin = user?.roles?.includes('admin') || user?.roles?.includes('developer');
-    
+    const isAdmin =
+      user?.roles?.includes('admin') || user?.roles?.includes('developer');
+
     if (filteredCabinets.length === 0 && allCabinets.length > 0) {
       // User filtered and got no results
       emptyMessage = 'No machines match your search criteria.';
     } else if (allCabinets.length === 0) {
       // No cabinets at all
       if (isAdmin) {
-        emptyMessage = selectedLicencee && selectedLicencee !== 'all' && selectedLicencee !== ''
-          ? `No machines found for ${licenseeName}.`
-          : 'No machines found in the system.';
+        emptyMessage =
+          selectedLicencee &&
+          selectedLicencee !== 'all' &&
+          selectedLicencee !== ''
+            ? `No machines found for ${licenseeName}.`
+            : 'No machines found in the system.';
       } else if (licenseeNames.length > 0) {
         const licenseeList = licenseeNames.join(', ');
         emptyMessage = `No machines found in your allowed locations for ${licenseeList}.`;

@@ -306,7 +306,15 @@ export async function GET(request: NextRequest) {
     >();
 
     if (allMachineIds.length > 0) {
-      const metersAggregation = await Meters.aggregate([
+      // Use cursor for Meters aggregation (MANDATORY for performance)
+      const metersAggregation: Array<{
+        _id: string;
+        totalMoneyIn: number;
+        totalMoneyOut: number;
+        minReadAt: Date;
+        maxReadAt: Date;
+      }> = [];
+      const cursor = Meters.aggregate([
           {
             $match: {
             machine: { $in: allMachineIds },
@@ -348,7 +356,17 @@ export async function GET(request: NextRequest) {
             maxReadAt: { $max: '$readAt' },
             },
           },
-      ]).exec();
+      ]).cursor({ batchSize: 1000 });
+
+      for await (const doc of cursor) {
+        metersAggregation.push(doc as {
+          _id: string;
+          totalMoneyIn: number;
+          totalMoneyOut: number;
+          minReadAt: Date;
+          maxReadAt: Date;
+        });
+      }
 
       // Step 7: Filter by gaming day ranges in memory
       metersAggregation.forEach(agg => {

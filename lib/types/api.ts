@@ -12,7 +12,6 @@ import type {
   WithTimestamps,
 } from '@shared/types';
 import type { Document } from 'mongoose';
-import type { CollectionReportMachineEntry } from './collections';
 
 // Re-export shared types for convenience
 export type {
@@ -105,7 +104,15 @@ export type CreateCollectionReportPayload = {
   reasonShortagePayment?: string;
   balanceCorrection?: number;
   balanceCorrectionReas?: string;
-  machines: CollectionReportMachineEntry[];
+  machines: Array<{
+    machineId: string;
+    metersIn: number;
+    metersOut: number;
+    prevMetersIn: number;
+    prevMetersOut: number;
+    timestamp: Date | string;
+    locationReportId: string;
+  }>;
   collectionIds?: string[]; // Optional: collection _id array for faster lookup
 };
 

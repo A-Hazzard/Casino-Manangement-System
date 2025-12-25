@@ -239,7 +239,7 @@ export default function RevenueAnalysisTable({
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Drop</p>
             <p
-              className={`text-sm font-medium ${getMoneyInColorClass(location.moneyIn)}`}
+              className={`text-sm font-medium ${getMoneyInColorClass()}`}
             >
               ${location.moneyIn.toLocaleString()}
             </p>
@@ -416,7 +416,7 @@ export default function RevenueAnalysisTable({
                         </Badge>
                       </TableCell>
                       <TableCell
-                        className={`text-right font-mono ${getMoneyInColorClass(location.moneyIn)}`}
+                        className={`text-right font-mono ${getMoneyInColorClass()}`}
                       >
                         ${location.moneyIn.toLocaleString()}
                       </TableCell>

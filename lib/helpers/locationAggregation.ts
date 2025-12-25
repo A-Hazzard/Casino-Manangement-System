@@ -1,3 +1,21 @@
+/**
+ * Location Aggregation Helper Functions
+ *
+ * Provides helper functions for aggregating location metrics and data.
+ * It handles MongoDB aggregations to calculate location-level metrics,
+ * machine counts, online status, and financial data.
+ *
+ * Features:
+ * - Aggregates location metrics with machine counts
+ * - Calculates online/offline status
+ * - Supports licensee filtering
+ * - Pagination support
+ * - SAS evaluation filtering
+ * - Basic list mode for performance
+ * - Selected locations filtering
+ * - Optimized for performance with reduced data processing
+ */
+
 import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
 import { AggregatedLocation, LocationDateRange } from '@/lib/types/location';
 import { Db, Document } from 'mongodb';

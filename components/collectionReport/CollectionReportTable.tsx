@@ -347,7 +347,7 @@ export default function CollectionReportTable({
                       />
                     </Button>
                     {canEditDelete &&
-                      editableReportIds?.has(row?.locationReportId || '') && (
+                      (!editableReportIds || editableReportIds.size === 0 || editableReportIds.has(row?.locationReportId || '')) && (
                         <div className="flex gap-1">
                           {onEdit && (
                             <Button
@@ -355,7 +355,7 @@ export default function CollectionReportTable({
                               size="sm"
                               className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-100"
                               onClick={() =>
-                                onEdit(row?.locationReportId || '')
+                                onEdit(row?._id || '')
                               }
                               aria-label="Edit Report"
                             >

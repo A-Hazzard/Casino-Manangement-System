@@ -1,3 +1,18 @@
+/**
+ * Unauthorized Access Page
+ *
+ * Displays an access denied message when a user tries to access a page they
+ * don't have permission for. Provides role-based redirect options and
+ * automatic redirection after 5 seconds.
+ *
+ * Features:
+ * - Access denied message with user information
+ * - Role-based redirect options
+ * - Automatic redirect after 5 seconds
+ * - Manual navigation buttons
+ * - User role and name display
+ */
+
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -8,11 +23,6 @@ import {
   getDefaultRedirectPathFromRoles,
   getRedirectDestinationNameFromRoles,
 } from '@/lib/utils/roleBasedRedirect';
-
-/**
- * Unauthorized Access Page
- * Displayed when a user tries to access a page they don't have permission for
- */
 export default function UnauthorizedPage() {
   const router = useRouter();
   const { user } = useUserStore();

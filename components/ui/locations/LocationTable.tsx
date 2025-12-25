@@ -240,7 +240,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
                   </TableCell>
                   <TableCell>
                     <span
-                      className={`font-semibold ${getMoneyInColorClass(loc.moneyIn)}`}
+                      className={`font-semibold ${getMoneyInColorClass()}`}
                     >
                       {formatCurrency(loc.moneyIn || 0)}
                     </span>

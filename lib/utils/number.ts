@@ -1,4 +1,19 @@
 /**
+ * Number Formatting Utilities
+ *
+ * Utility functions for formatting numbers and currency values with smart decimal handling.
+ *
+ * Features:
+ * - Currency formatting with smart decimal handling (hides .00, shows .01+)
+ * - Number formatting with smart decimal handling
+ * - Legacy currency formatting for backwards compatibility
+ * - Locale-aware formatting (en-US)
+ */
+
+// ============================================================================
+// Currency Formatting
+// ============================================================================
+/**
  * Formats a number into a currency string with smart decimal handling.
  * Hides .00 decimals but shows .01 and above.
  * @param amount - The number to format.
@@ -26,9 +41,13 @@ export const formatCurrency = (
   }).format(amount);
 };
 
+// ============================================================================
+// Number Formatting
+// ============================================================================
 /**
  * Formats a number with smart decimal handling for non-currency values.
  * Hides .00 decimals but shows .01 and above.
+ *
  * @param value - The number to format.
  * @returns A formatted number string (e.g., "1,234" or "1,234.56").
  */
@@ -48,8 +67,12 @@ export const formatNumber = (value: number): string => {
   }).format(value);
 };
 
+// ============================================================================
+// Legacy Formatting
+// ============================================================================
 /**
  * Formats a number as currency with smart decimal handling (legacy function for compatibility).
+ *
  * @param amount - The number to format.
  * @param currency - The currency code (e.g., 'USD'). Defaults to 'USD'.
  * @returns A formatted currency string.

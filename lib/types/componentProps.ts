@@ -1,13 +1,13 @@
 import { buttonVariants } from '@/components/ui/button';
 import {
-    ActiveFilters,
-    ActiveTab,
-    dashboardData,
-    DashboardTotals,
-    dateRange,
-    locations,
-    TimeFrames,
-    TopPerformingData,
+  ActiveFilters,
+  ActiveTab,
+  dashboardData,
+  DashboardTotals,
+  dateRange,
+  locations,
+  TimeFrames,
+  TopPerformingData,
 } from '@/lib/types';
 import type { CollectorSchedule } from '@/lib/types/components';
 import { TimePeriod } from '@shared/types';
@@ -37,23 +37,23 @@ export type DashboardLayoutProps = {
   hasTopPerformingFetched?: boolean;
   refreshing: boolean;
   initialLoading?: boolean;
-  setLoadingChartData: (_state: boolean) => void;
-  setRefreshing: (_state: boolean) => void;
-  setActiveTab: (_state: ActiveTab) => void;
-  setActivePieChartFilter: (_state: TimePeriod | '') => void;
-  setActiveFilters: (_state: ActiveFilters) => void;
-  setActiveMetricsFilter: (_state: TimePeriod) => void;
-  setTotals: (_state: DashboardTotals | null) => void;
-  setChartData: (_state: dashboardData[]) => void;
-  setPieChartSortIsOpen: (_state: boolean) => void;
-  setTopPerformingData: (_state: TopPerformingData) => void;
+  setLoadingChartData: (state: boolean) => void;
+  setRefreshing: (state: boolean) => void;
+  setActiveTab: (state: ActiveTab) => void;
+  setActivePieChartFilter: (state: TimePeriod | '') => void;
+  setActiveFilters: (state: ActiveFilters) => void;
+  setActiveMetricsFilter: (state: TimePeriod) => void;
+  setTotals: (state: DashboardTotals | null) => void;
+  setChartData: (state: dashboardData[]) => void;
+  setPieChartSortIsOpen: (state: boolean) => void;
+  setTopPerformingData: (state: TopPerformingData) => void;
   onRefresh: () => void;
-  renderCustomizedLabel: (_props: CustomizedLabelProps) => JSX.Element;
+  renderCustomizedLabel: (props: CustomizedLabelProps) => JSX.Element;
   queryType?: 'user' | 'all';
   userId?: string | null;
   selectedLicencee: string;
   chartGranularity?: 'hourly' | 'minute';
-  setChartGranularity?: (_state: 'hourly' | 'minute') => void;
+  setChartGranularity?: (state: 'hourly' | 'minute') => void;
   showGranularitySelector?: boolean;
 };
 
@@ -76,12 +76,12 @@ export type MapPreviewProps = {
 
 export type DateRangeProps = {
   CustomDateRange: dateRange;
-  setCustomDateRange: (_state: dateRange) => void;
-  setTotals?: (_state: dashboardData | null) => void;
-  setChartData?: (_state: dashboardData[]) => void;
+  setCustomDateRange: (state: dateRange) => void;
+  setTotals?: (state: dashboardData | null) => void;
+  setChartData?: (state: dashboardData[]) => void;
   selectedLicencee?: string;
-  setActiveFilters: (_state: ActiveFilters) => void;
-  setShowDatePicker?: (_state: boolean) => void;
+  setActiveFilters: (state: ActiveFilters) => void;
+  setShowDatePicker?: (state: boolean) => void;
 };
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
@@ -96,8 +96,8 @@ export type DashboardCustomSelectProps = {
   isActive: boolean;
   timeFrames: TimeFrames[];
   activeFilters: ActiveFilters;
-  onSelect: (_value: TimePeriod) => void;
-  setShowDatePicker?: (_state: boolean) => void;
+  onSelect: (value: TimePeriod) => void;
+  setShowDatePicker?: (state: boolean) => void;
   disabled?: boolean;
 };
 
@@ -112,7 +112,7 @@ export type CustomizedLabelProps = {
 
 export type licenceeSelectProps = {
   selected: string;
-  onChange: (_value: string) => void;
+  onChange: (value: string) => void;
   disabled?: boolean;
   userLicenseeIds?: string[]; // If provided, only show these licensees (for non-admins)
 };
@@ -130,7 +130,7 @@ export type DashboardDateFiltersProps = {
 export type HeaderProps = {
   selectedLicencee?: string;
   pageTitle?: string;
-  setSelectedLicencee?: (_state: string) => void;
+  setSelectedLicencee?: (state: string) => void;
   hideOptions?: boolean;
   hideLicenceeFilter?: boolean;
   containerPaddingMobile?: string;
@@ -224,6 +224,7 @@ export type NewCollectionModalProps = {
   locations: CollectionReportLocationWithMachines[];
   onRefresh?: () => void;
   onRefreshLocations?: () => void;
+  onSuccess?: () => void;
 };
 
 // Collection Report UI Props Types
@@ -234,9 +235,9 @@ export type CollectionDesktopUIProps = {
   desktopTableRef: React.RefObject<HTMLDivElement | null>;
   locations: LocationSelectItem[];
   selectedLocation: string;
-  onLocationChange: (_value: string) => void;
+  onLocationChange: (value: string) => void;
   search: string;
-  onSearchChange: (_value: string) => void;
+  onSearchChange: (value: string) => void;
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
@@ -261,9 +262,9 @@ export type CollectionMobileUIProps = {
   disabled?: boolean;
   locations: LocationSelectItem[];
   selectedLocation: string;
-  onLocationChange: (_value: string) => void;
+  onLocationChange: (value: string) => void;
   search: string;
-  onSearchChange: (_value: string) => void;
+  onSearchChange: (value: string) => void;
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;

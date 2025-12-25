@@ -16,15 +16,14 @@
  */
 
 import type {
-  RealTimeMetrics,
+  DateRange,
+  LocationExportData,
   MachineEvaluationData,
   MachineExportData,
-  LocationExportData,
   TopLocationData,
-  DateRange,
 } from '@/lib/types';
-import type { MachineData } from '@/shared/types/machines';
 import type { ExtendedLegacyExportData } from '@/lib/utils/exportUtils';
+import type { MachineData } from '@/shared/types/machines';
 import type React from 'react';
 
 type MachineSortConfig = {
@@ -82,14 +81,9 @@ export function createTimeFilterButtons() {
 /**
  * Loads dashboard data from MongoDB
  * @param setLoading - Function to set loading state
- * @param updateRealTimeMetrics - Function to update real-time metrics
- * @param _selectedDateRange - Selected date range (unused parameter)
+ * @param setLoading - Function to set loading state
  */
-export function loadDashboardData(
-  setLoading: (loading: boolean) => void,
-  _updateRealTimeMetrics: (metrics: RealTimeMetrics) => void,
-  _selectedDateRange: unknown
-) {
+export function loadDashboardData(setLoading: (loading: boolean) => void) {
   setLoading(true);
 
   // TODO: Implement actual API call to fetch dashboard data from MongoDB
@@ -129,6 +123,280 @@ export function handleLocationSelectLocations(
         ? prev.filter(id => id !== locationId)
         : [...prev, locationId]
     );
+  }
+}
+
+/**
+ * Handles Machines Evaluation export
+ * @param manufacturerData - Manufacturer performance data
+ * @param gamesData - Games performance data
+ * @param topMachines - Top performing machines
+ * @param bottomMachines - Least performing machines
+ * @param summaryCalculations - Summary calculations
+ * @param selectedDateRange - Selected date range
+ * @param activeMetricsFilter - Active metrics filter
+ * @param format - Export format (pdf or excel)
+ * @param toast - Toast notification function
+ */
+export async function handleExportMachinesEvaluation(
+  manufacturerData: Array<{
+    manufacturer: string;
+    floorPositions: number;
+    totalHandle: number;
+    totalWin: number;
+    totalDrop: number;
+    totalCancelledCredits: number;
+    totalGross: number;
+    totalGamesPlayed: number;
+  }>,
+  gamesData: Array<{
+    gameName: string;
+    floorPositions: number;
+    totalHandle: number;
+    totalWin: number;
+    totalDrop: number;
+    totalCancelledCredits: number;
+    totalGross: number;
+    totalGamesPlayed: number;
+  }>,
+  topMachines: MachineEvaluationData[],
+  bottomMachines: MachineEvaluationData[],
+  summaryCalculations: {
+    handleStatement: string;
+    winStatement: string;
+    gamesPlayedStatement: string;
+  },
+  selectedDateRange: DateRange | null,
+  activeMetricsFilter: string,
+  format: 'pdf' | 'excel',
+  toast: {
+    success: (message: string) => void;
+    error: (message: string) => void;
+  }
+) {
+  try {
+    if (
+      manufacturerData.length === 0 &&
+      gamesData.length === 0 &&
+      topMachines.length === 0 &&
+      bottomMachines.length === 0
+    ) {
+      toast.error('No data available to export. Please wait for data to load.');
+      return;
+    }
+
+    const dateRangeText =
+      activeMetricsFilter === 'Custom' &&
+      selectedDateRange?.start &&
+      selectedDateRange?.end
+        ? `${selectedDateRange.start.toLocaleDateString()} - ${selectedDateRange.end.toLocaleDateString()}`
+        : activeMetricsFilter;
+
+    // Build comprehensive export data with multiple sections
+    const exportDataObj: ExtendedLegacyExportData = {
+      title: 'Machines Evaluation Report',
+      subtitle: `Machine performance evaluation - ${dateRangeText}`,
+      headers: [
+        'Category',
+        'Item Name',
+        'Floor Positions %',
+        'Total Handle %',
+        'Total Win %',
+        'Total Drop %',
+        'Total Canc. Cr. %',
+        'Total Gross %',
+        'Total Games Played %',
+        'Details',
+      ],
+      data: [
+        // Summary Section
+        [
+          'SUMMARY',
+          'Handle Statement',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          summaryCalculations.handleStatement,
+        ],
+        [
+          'SUMMARY',
+          'Win Statement',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          summaryCalculations.winStatement,
+        ],
+        [
+          'SUMMARY',
+          'Games Played Statement',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          summaryCalculations.gamesPlayedStatement,
+        ],
+        // Separator row
+        ['', '', '', '', '', '', '', '', '', ''],
+        // Manufacturers Performance Section Header
+        [
+          'MANUFACTURERS PERFORMANCE',
+          'All Metrics in Percentage',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+        ],
+        // Manufacturers Performance Data
+        ...manufacturerData.map(mfr => [
+          'Manufacturer',
+          mfr.manufacturer,
+          mfr.floorPositions.toFixed(2) + '%',
+          mfr.totalHandle.toFixed(2) + '%',
+          mfr.totalWin.toFixed(2) + '%',
+          mfr.totalDrop.toFixed(2) + '%',
+          mfr.totalCancelledCredits.toFixed(2) + '%',
+          mfr.totalGross.toFixed(2) + '%',
+          mfr.totalGamesPlayed.toFixed(2) + '%',
+          '',
+        ]),
+        // Separator row
+        ['', '', '', '', '', '', '', '', '', ''],
+        // Games Performance Section Header
+        [
+          'GAMES PERFORMANCE',
+          'All Metrics in Percentage',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+        ],
+        // Games Performance Data
+        ...gamesData.map(game => [
+          'Game',
+          game.gameName,
+          game.floorPositions.toFixed(2) + '%',
+          game.totalHandle.toFixed(2) + '%',
+          game.totalWin.toFixed(2) + '%',
+          game.totalDrop.toFixed(2) + '%',
+          game.totalCancelledCredits.toFixed(2) + '%',
+          game.totalGross.toFixed(2) + '%',
+          game.totalGamesPlayed.toFixed(2) + '%',
+          '',
+        ]),
+        // Separator row
+        ['', '', '', '', '', '', '', '', '', ''],
+        // Top Machines Section Header
+        [
+          'TOP PERFORMING MACHINES',
+          'Top 5 Machines by Selected Criteria',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+        ],
+        // Top Machines Data
+        ...topMachines.map(machine => [
+          'Machine',
+          `${machine.machineName} (${machine.machineId})`,
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          `Location: ${machine.locationName || 'N/A'} | Handle: $${(machine.coinIn || 0).toLocaleString()} | Net Win: $${(machine.netWin || 0).toLocaleString()} | Gross: $${(machine.gross || 0).toLocaleString()} | Hold: ${((machine.actualHold || 0) * 100).toFixed(1)}% | Games Played: ${(machine.gamesPlayed || 0).toLocaleString()}`,
+        ]),
+        // Separator row
+        ['', '', '', '', '', '', '', '', '', ''],
+        // Bottom Machines Section Header
+        [
+          'LEAST PERFORMING MACHINES',
+          'Bottom 5 Machines by Selected Criteria',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+        ],
+        // Bottom Machines Data
+        ...bottomMachines.map(machine => [
+          'Machine',
+          `${machine.machineName} (${machine.machineId})`,
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          `Location: ${machine.locationName || 'N/A'} | Handle: $${(machine.coinIn || 0).toLocaleString()} | Net Win: $${(machine.netWin || 0).toLocaleString()} | Gross: $${(machine.gross || 0).toLocaleString()} | Hold: ${((machine.actualHold || 0) * 100).toFixed(1)}% | Games Played: ${(machine.gamesPlayed || 0).toLocaleString()}`,
+        ]),
+      ],
+      summary: [
+        {
+          label: 'Total Manufacturers',
+          value: manufacturerData.length.toString(),
+        },
+        {
+          label: 'Total Games',
+          value: gamesData.length.toString(),
+        },
+        {
+          label: 'Top Machines',
+          value: topMachines.length.toString(),
+        },
+        {
+          label: 'Least Performing Machines',
+          value: bottomMachines.length.toString(),
+        },
+      ],
+      metadata: {
+        generatedBy: 'Reports System',
+        generatedAt: new Date().toISOString(),
+        dateRange: dateRangeText,
+        tab: 'Machines Evaluation',
+      },
+    };
+
+    const { ExportUtils } = await import('@/lib/utils/exportUtils');
+    if (format === 'pdf') {
+      await ExportUtils.exportToPDF(exportDataObj);
+    } else {
+      ExportUtils.exportToExcel(exportDataObj);
+    }
+    toast.success(
+      `Machines evaluation report exported successfully as ${format.toUpperCase()}`
+    );
+  } catch (error) {
+    console.error('Error exporting machines evaluation:', error);
+    toast.error('Failed to export machines evaluation report');
   }
 }
 
@@ -237,7 +505,9 @@ export async function handleExportSASEvaluation(
     } else {
       ExportUtils.exportToExcel(exportDataObj);
     }
-    toast.success(`SAS evaluation report exported successfully as ${format.toUpperCase()}`);
+    toast.success(
+      `SAS evaluation report exported successfully as ${format.toUpperCase()}`
+    );
   } catch (error) {
     console.error('Error exporting SAS evaluation:', error);
     toast.error('Failed to export SAS evaluation report');
@@ -500,7 +770,9 @@ export async function handleExportMeters(
     } else {
       ExportUtils.exportToExcel(metersData);
     }
-    toast.success(`Machine data exported successfully as ${format.toUpperCase()}`);
+    toast.success(
+      `Machine data exported successfully as ${format.toUpperCase()}`
+    );
   } catch (error) {
     console.error('Error exporting machine data:', error);
     toast.error('Failed to export machine data');

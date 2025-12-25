@@ -56,7 +56,6 @@ export default function Header({
   selectedLicencee,
   pageTitle,
   setSelectedLicencee,
-  hideOptions: _hideOptions,
   hideLicenceeFilter,
   containerPaddingMobile,
   disabled = false,
@@ -81,7 +80,6 @@ export default function Header({
     setLoadingChartData,
   } = useDashBoardStore();
   const {
-    isAllLicensee: _isAllLicensee,
     displayCurrency,
     setDisplayCurrency,
   } = useCurrency();

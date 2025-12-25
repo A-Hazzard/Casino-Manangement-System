@@ -1,6 +1,15 @@
 /**
- * Custom hook for managing sessions navigation and routing
- * Handles navigation to session events and related pages
+ * Sessions Navigation Custom Hook
+ *
+ * Provides a custom hook for managing sessions navigation and routing.
+ * It handles navigation to session events, session details, and provides
+ * back navigation functionality.
+ *
+ * Features:
+ * - Navigate to session events page
+ * - Navigate to session details page
+ * - Back navigation support
+ * - Navigation state checking
  */
 
 import { useCallback } from 'react';

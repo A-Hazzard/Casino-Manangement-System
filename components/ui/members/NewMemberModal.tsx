@@ -230,10 +230,10 @@ export default function NewMemberModal({
       // Only validate format/pattern errors if field has been touched (user typed something)
       // Required errors only show after submit attempt
       const shouldValidateFormat = (fieldName: string) => touched[fieldName];
-      const shouldValidateRequired = (_fieldName: string) => submitAttempted;
+      const shouldValidateRequired = () => submitAttempted;
 
       // First name validation
-      if (shouldValidateRequired('firstName') && !firstName) {
+      if (shouldValidateRequired() && !firstName) {
         newErrors.firstName = 'First name is required.';
       } else if (shouldValidateFormat('firstName') && firstName) {
         if (firstName.length < 2) {
@@ -245,7 +245,7 @@ export default function NewMemberModal({
       }
 
       // Last name validation
-      if (shouldValidateRequired('lastName') && !lastName) {
+      if (shouldValidateRequired() && !lastName) {
         newErrors.lastName = 'Last name is required.';
       } else if (shouldValidateFormat('lastName') && lastName) {
         if (lastName.length < 2) {
@@ -257,7 +257,7 @@ export default function NewMemberModal({
       }
 
       // Username validation
-      if (shouldValidateRequired('username') && !username) {
+      if (shouldValidateRequired() && !username) {
         newErrors.username = 'Username is required.';
       } else if (shouldValidateFormat('username') && username) {
         if (username.length < 3) {

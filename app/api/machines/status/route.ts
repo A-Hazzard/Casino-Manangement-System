@@ -59,6 +59,8 @@ export async function GET(req: NextRequest) {
           totalMachines: 0,
           onlineMachines: 0,
           offlineMachines: 0,
+          criticalOffline: 0,
+          recentOffline: 0,
         },
         { status: 500 }
       );
@@ -132,26 +134,60 @@ export async function GET(req: NextRequest) {
       },
     ];
 
+    // Apply licensee filter if specified (filter by location's licensee)
+    if (effectiveLicensee) {
+      aggregationPipeline.push({
+        $match: {
+          'locationDetails.rel.licencee': effectiveLicensee,
+        },
+      });
+    }
+
     // Apply location access filter
-    if (locationId) {
-      // Validate that user has access to this location
+    // Skip locationId filter if it's the same as the licensee ID (likely a mistake)
+    const isLocationIdSameAsLicensee =
+      locationId && effectiveLicensee && locationId === effectiveLicensee;
+
+    if (locationId && !isLocationIdSameAsLicensee) {
+      // Handle comma-separated location IDs (multiple locations)
+      const locationIds = locationId.split(',').filter(id => id.trim() !== '');
+
+      // Validate that user has access to all locations
       if (allowedLocationIds !== 'all') {
-        if (
-          !Array.isArray(allowedLocationIds) ||
-          !allowedLocationIds.includes(locationId)
-        ) {
-          // User doesn't have access to this location
+        if (!Array.isArray(allowedLocationIds)) {
           return NextResponse.json({
             totalMachines: 0,
             onlineMachines: 0,
             offlineMachines: 0,
+            criticalOffline: 0,
+            recentOffline: 0,
+          });
+        }
+        const hasAccess = locationIds.every(id =>
+          allowedLocationIds.includes(id)
+        );
+        if (!hasAccess) {
+          // User doesn't have access to one or more locations
+          return NextResponse.json({
+            totalMachines: 0,
+            onlineMachines: 0,
+            offlineMachines: 0,
+            criticalOffline: 0,
+            recentOffline: 0,
           });
         }
       }
-      aggregationPipeline.push({
-        $match: { gamingLocation: locationId },
-      });
-    } else if (allowedLocationIds !== 'all') {
+
+      // Filter by location(s)
+      if (locationIds.length > 0) {
+        aggregationPipeline.push({
+          $match: {
+            gamingLocation:
+              locationIds.length === 1 ? locationIds[0] : { $in: locationIds },
+          },
+        });
+      }
+    } else if (allowedLocationIds !== 'all' && !locationId) {
       // No specific location, filter by user's accessible locations
       if (
         !Array.isArray(allowedLocationIds) ||
@@ -231,7 +267,7 @@ export async function GET(req: NextRequest) {
       { $count: 'total' },
     ]).exec();
     const totalCount = totalCountResult[0]?.total || 0;
-    
+
     // Get online machines count (lastActivity exists AND within last 3 minutes)
     // Machines without lastActivity are considered offline
     // Single result aggregation - use exec() for efficiency
@@ -252,6 +288,43 @@ export async function GET(req: NextRequest) {
     // Offline = total - online (includes machines without lastActivity)
     const offlineCount = totalCount - onlineCount;
 
+    // Calculate critical offline (24+ hours) and recent offline (< 4 hours)
+    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Critical offline: machines offline for 24+ hours
+    // (lastActivity exists AND is older than 24 hours, OR lastActivity doesn't exist)
+    const criticalOfflineResult = await Machine.aggregate([
+      ...aggregationPipeline,
+      {
+        $match: {
+          $or: [
+            { lastActivity: { $exists: false } },
+            { lastActivity: { $lt: twentyFourHoursAgo } },
+          ],
+        },
+      },
+      { $count: 'total' },
+    ]).exec();
+    const criticalOffline = criticalOfflineResult[0]?.total || 0;
+
+    // Recent offline: machines offline for less than 4 hours
+    // (lastActivity exists AND is between 3 minutes and 4 hours ago)
+    const recentOfflineResult = await Machine.aggregate([
+      ...aggregationPipeline,
+      {
+        $match: {
+          lastActivity: {
+            $exists: true,
+            $gte: fourHoursAgo,
+            $lt: threeMinutesAgo,
+          },
+        },
+      },
+      { $count: 'total' },
+    ]).exec();
+    const recentOffline = recentOfflineResult[0]?.total || 0;
+
     // ============================================================================
     // STEP 6: Return machine status counts
     // ============================================================================
@@ -266,6 +339,8 @@ export async function GET(req: NextRequest) {
       totalMachines: totalCount,
       onlineMachines: onlineCount,
       offlineMachines: offlineCount,
+      criticalOffline,
+      recentOffline,
     });
   } catch (err) {
     const duration = Date.now() - startTime;
@@ -280,6 +355,8 @@ export async function GET(req: NextRequest) {
         totalMachines: 0,
         onlineMachines: 0,
         offlineMachines: 0,
+        criticalOffline: 0,
+        recentOffline: 0,
       },
       { status: 500 }
     );

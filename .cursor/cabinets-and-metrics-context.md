@@ -483,5 +483,5 @@ const machine = await Machine.findById(machineId);
 
 ---
 
-**Last Updated:** December 2024  
-**Maintained By:** AI Assistant Context System
+**Last Updated:** December 22nd, 2025  
+**Maintained By:** Evolution One CMS Development Team

@@ -1,3 +1,21 @@
+/**
+ * Sessions Data Custom Hook
+ *
+ * Provides a custom hook for managing sessions data fetching, state management,
+ * pagination, search, and sorting. It handles batch-based pagination for
+ * performance and includes proper cleanup and error handling.
+ *
+ * Features:
+ * - Fetches sessions with filtering and pagination
+ * - Batch-based pagination for performance
+ * - Search functionality with debouncing
+ * - Sorting capabilities
+ * - Date range filtering
+ * - Licensee filtering
+ * - Proper request cancellation
+ * - Error handling and notifications
+ */
+
 import { buildSessionsQueryParams } from '@/lib/helpers/sessions';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -6,11 +24,6 @@ import { useDebounce } from '@/lib/utils/hooks';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-
-/**
- * Custom hook for managing sessions data and state
- * Handles fetching, pagination, search, and sorting
- */
 export function useSessions() {
   const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,9 +49,12 @@ export function useSessions() {
 
   // Calculate which batch we need based on current page
   // pagesPerBatch is a constant (5) so adding it to deps is safe but unnecessary
-  const calculateBatchNumber = useCallback((page: number) => {
-    return Math.floor(page / pagesPerBatch) + 1;
-  }, [pagesPerBatch]);
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / pagesPerBatch) + 1;
+    },
+    [pagesPerBatch]
+  );
 
   /**
    * Fetch sessions from API
@@ -201,12 +217,10 @@ export function useSessions() {
     setCurrentPage(0);
     setTotalSessionsFromAPI(0); // Reset API total when filters change
     fetchSessions(1);
-    // Note: fetchSessions is a useCallback with all necessary dependencies
-    // We don't include fetchSessions in deps to avoid re-triggering when it's recreated
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     debouncedSearchTerm,
     sortBy,
+    fetchSessions,
     sortOrder,
     selectedLicencee,
     activeMetricsFilter,

@@ -36,7 +36,7 @@ export type UserDocumentWithPassword = UserDocument & {
   password?: string;
   permissions?: string[];
   sessionVersion?: number;
-  toObject: (_options?: Record<string, unknown>) => {
+  toObject: (options?: Record<string, unknown>) => {
     _id: string;
     emailAddress: string;
     isEnabled: boolean;

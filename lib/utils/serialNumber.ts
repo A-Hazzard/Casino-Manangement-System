@@ -1,9 +1,23 @@
 /**
- * Utility function to get the best available serial number identifier
- * Uses fallback order: serialNumber -> custom.name -> machineId
+ * Serial Number Utilities
  *
- * @param cabinet - Cabinet object with potential serial number fields
- * @returns The best available serial number identifier
+ * Utility functions for extracting serial number identifiers from cabinet objects.
+ *
+ * Features:
+ * - Fallback order: serialNumber -> custom.name -> machineId
+ * - Handles missing or empty values gracefully
+ * - Returns "N/A" if no identifier is available
+ */
+
+// ============================================================================
+// Serial Number Extraction
+// ============================================================================
+/**
+ * Gets the best available serial number identifier from a cabinet object.
+ * Uses fallback order: serialNumber -> custom.name -> machineId.
+ *
+ * @param cabinet - Cabinet object with potential serial number fields.
+ * @returns The best available serial number identifier, or "N/A" if none found.
  */
 export function getSerialNumberIdentifier(cabinet: {
   serialNumber?: string;

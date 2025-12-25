@@ -1,6 +1,17 @@
 /**
- * Custom hook for managing administration modal states and actions
- * Handles modal visibility and state management for administration page
+ * Administration Modals Custom Hook
+ *
+ * Provides a custom hook for managing administration modal states and actions.
+ * It handles modal visibility and state management for the administration page,
+ * including user modals, licensee modals, and activity log modals.
+ *
+ * Features:
+ * - User modal management (add, edit, delete, activity log)
+ * - Licensee modal management (add, edit, delete, success, payment status)
+ * - Activity log modal management
+ * - Selected data tracking for modals
+ * - Modal open/close handlers
+ * - State synchronization
  */
 
 import { useState, useCallback } from 'react';

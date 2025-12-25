@@ -271,13 +271,13 @@ export default function CollectionReportCards({
                     />
                   </Button>
                   {canEditDelete &&
-                    editableReportIds?.has(row?.locationReportId || '') && (
+                    (!editableReportIds || editableReportIds.size === 0 || editableReportIds.has(row?.locationReportId || '')) && (
                       <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
                         {onEdit && (
                           <Button
                             variant="outline"
                             className="flex w-full items-center justify-center gap-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white md:w-auto"
-                            onClick={() => onEdit(row?.locationReportId || '')}
+                            onClick={() => onEdit(row?._id || '')}
                             aria-label="Edit Report"
                           >
                             <Edit3 className="h-4 w-4" />

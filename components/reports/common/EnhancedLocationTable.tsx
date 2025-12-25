@@ -232,7 +232,7 @@ export default function EnhancedLocationTable({
             <div className="flex justify-between">
               <span className="text-gray-500">Drop (Money In):</span>
               <span
-                className={`font-medium ${getMoneyInColorClass(location.moneyIn)}`}
+                className={`font-medium ${getMoneyInColorClass()}`}
               >
                 {formatCurrency(location.moneyIn)}
               </span>
@@ -503,7 +503,7 @@ export default function EnhancedLocationTable({
                           {location.totalMachines}
                         </td>
                         <td
-                          className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getMoneyInColorClass(location.moneyIn)}`}
+                          className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getMoneyInColorClass()}`}
                         >
                           {formatCurrency(location.moneyIn)}
                         </td>

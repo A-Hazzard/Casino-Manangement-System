@@ -1,6 +1,16 @@
 /**
- * Custom hook for managing dashboard refresh functionality
- * Handles refresh logic, loading states, and error handling
+ * Dashboard Refresh Custom Hook
+ *
+ * Provides a custom hook for managing dashboard refresh functionality.
+ * It handles refresh logic, loading states, error handling, and coordinates
+ * data fetching for charts, totals, and top-performing data.
+ *
+ * Features:
+ * - Manages refresh state and loading indicators
+ * - Coordinates data fetching for multiple data sources
+ * - Handles currency conversion during refresh
+ * - Validates refresh conditions
+ * - Provides refresh handler with proper dependencies
  */
 
 import { handleDashboardRefresh } from '@/lib/helpers/dashboard';

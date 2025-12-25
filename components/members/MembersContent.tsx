@@ -66,7 +66,7 @@ function MembersContentInner() {
   // Tab content rendering
   const tabComponents: Record<MembersView, React.ReactElement> = {
     members: <MembersListTab />,
-    'summary-report': <MembersSummaryTab />,
+    'summary-report': <MembersSummaryTab selectedLicencee={selectedLicencee} />,
   };
 
   const { getTabAnimationProps, currentTabComponent } = useMembersTabContent({

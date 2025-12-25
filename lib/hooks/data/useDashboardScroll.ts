@@ -1,6 +1,16 @@
 /**
- * Custom hook for managing dashboard scroll behavior and floating refresh button
- * Handles scroll detection and floating button visibility
+ * Dashboard Scroll Custom Hook
+ *
+ * Provides a custom hook for managing dashboard scroll behavior and
+ * floating refresh button visibility. It detects scroll position and
+ * shows/hides the floating refresh button based on scroll threshold.
+ *
+ * Features:
+ * - Tracks scroll position
+ * - Controls floating refresh button visibility
+ * - Configurable scroll threshold
+ * - Proper cleanup of event listeners
+ * - Reset functionality
  */
 
 import { useState, useEffect, useCallback } from 'react';

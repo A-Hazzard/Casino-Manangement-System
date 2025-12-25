@@ -1,16 +1,26 @@
 /**
- * Role-based redirect utility
- * Determines the appropriate default redirect path based on user role
+ * Role-Based Redirect Utilities
+ *
+ * Utility functions for determining appropriate redirect paths based on user roles.
+ *
+ * Features:
+ * - Single role redirect path determination
+ * - Multiple roles redirect path determination (priority-based)
+ * - User-friendly destination name generation
+ * - Role priority handling (admin/developer/manager > technician > location admin > collector)
  */
 
 import type { UserRole } from './permissions';
 
+// ============================================================================
+// Redirect Path Functions
+// ============================================================================
 /**
- * Gets the default redirect path for a user based on their role
- * Maps each role to their first accessible page
+ * Gets the default redirect path for a user based on their role.
+ * Maps each role to their first accessible page.
  *
- * @param userRole - The user's primary role
- * @returns The appropriate redirect path
+ * @param userRole - The user's primary role.
+ * @returns The appropriate redirect path.
  */
 export function getDefaultRedirectPath(userRole: UserRole): string {
   const roleRedirectMap: Record<UserRole, string> = {
@@ -26,8 +36,8 @@ export function getDefaultRedirectPath(userRole: UserRole): string {
 }
 
 /**
- * Gets the default redirect path for multiple roles
- * Uses the highest priority role to determine redirect
+ * Gets the default redirect path for multiple roles.
+ * Uses the highest priority role to determine redirect.
  *
  * Priority order:
  * 1. admin, developer, manager, administration → dashboard (/)
@@ -35,8 +45,8 @@ export function getDefaultRedirectPath(userRole: UserRole): string {
  * 3. location admin → collection reports (/collection-report)
  * 4. collector → collection reports (/collection-report)
  *
- * @param userRoles - Array of user roles
- * @returns The appropriate redirect path
+ * @param userRoles - Array of user roles.
+ * @returns The appropriate redirect path.
  */
 export function getDefaultRedirectPathFromRoles(userRoles: string[]): string {
   if (!userRoles || userRoles.length === 0) {
@@ -72,12 +82,15 @@ export function getDefaultRedirectPathFromRoles(userRoles: string[]): string {
   return '/cabinets';
 }
 
+// ============================================================================
+// Destination Name Functions
+// ============================================================================
 /**
- * Gets a user-friendly redirect message based on role
- * Used for display purposes in UI
+ * Gets a user-friendly redirect message based on role.
+ * Used for display purposes in UI.
  *
- * @param userRole - The user's primary role
- * @returns Human-readable redirect destination
+ * @param userRole - The user's primary role.
+ * @returns Human-readable redirect destination.
  */
 export function getRedirectDestinationName(userRole: UserRole): string {
   const destinationNames: Record<UserRole, string> = {
@@ -93,11 +106,11 @@ export function getRedirectDestinationName(userRole: UserRole): string {
 }
 
 /**
- * Gets a user-friendly redirect message for multiple roles
- * Uses the same priority logic as getDefaultRedirectPathFromRoles
+ * Gets a user-friendly redirect message for multiple roles.
+ * Uses the same priority logic as getDefaultRedirectPathFromRoles.
  *
- * @param userRoles - Array of user roles
- * @returns Human-readable redirect destination
+ * @param userRoles - Array of user roles.
+ * @returns Human-readable redirect destination.
  */
 export function getRedirectDestinationNameFromRoles(
   userRoles: string[]

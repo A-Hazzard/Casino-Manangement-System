@@ -1,22 +1,18 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { ModernCalendar } from '@/components/ui/ModernCalendar';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+import EditCabinetBasicInfo from '@/components/ui/cabinets/EditCabinetModal/EditCabinetBasicInfo';
+import EditCabinetCollectionSettings from '@/components/ui/cabinets/EditCabinetModal/EditCabinetCollectionSettings';
+import EditCabinetLocationConfig from '@/components/ui/cabinets/EditCabinetModal/EditCabinetLocationConfig';
 import { fetchCabinetById, updateCabinet } from '@/lib/helpers/cabinets';
 import { fetchManufacturers } from '@/lib/helpers/manufacturers';
 import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
+import {
+  normalizeGameTypeValue,
+  normalizeStatusValue,
+} from '@/lib/utils/cabinetFormNormalization';
 import {
     detectChanges,
     filterMeaningfulChanges,
@@ -27,35 +23,9 @@ import type { GamingMachine } from '@/shared/types/entities';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import axios from 'axios';
 import { gsap } from 'gsap';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 type CabinetFormData = Partial<GamingMachine>;
-
-const normalizeStatusValue = (value?: string): 'functional' | 'non_functional' => {
-  if (!value) return 'functional';
-  const normalized = value.toLowerCase().replace(/\s+/g, '_');
-  return normalized === 'non_functional' ? 'non_functional' : 'functional';
-};
-
-const normalizeGameTypeValue = (value?: string): string => {
-  if (!value) return 'Slot';
-  const trimmed = value.trim();
-  const normalized = trimmed.toLowerCase();
-  const knownTypes: Record<string, string> = {
-    slot: 'Slot',
-    slots: 'Slot',
-    'video poker': 'Video Poker',
-    videopoker: 'Video Poker',
-    'table game': 'Table Game',
-    tablegame: 'Table Game',
-    roulette: 'Roulette',
-    blackjack: 'Blackjack',
-    poker: 'Poker',
-    baccarat: 'Baccarat',
-    other: 'Other',
-  };
-  return knownTypes[normalized] || trimmed;
-};
 
 export const EditCabinetModal = ({
   onCabinetUpdated,
@@ -375,12 +345,19 @@ export const EditCabinetModal = ({
       if (selectedCabinet._id && activeMetricsFilter) {
         // Skip if Custom filter is selected but date range is not available
         if (activeMetricsFilter === 'Custom') {
-          if (!customDateRange || !customDateRange.startDate || !customDateRange.endDate) {
-            console.warn('[EditCabinetModal] Skipping fetch: Custom filter selected but date range not available', {
+          if (
+            !customDateRange ||
+            !customDateRange.startDate ||
+            !customDateRange.endDate
+          ) {
+            console.warn(
+              '[EditCabinetModal] Skipping fetch: Custom filter selected but date range not available',
+              {
               hasCustomDateRange: !!customDateRange,
               hasStartDate: !!customDateRange?.startDate,
               hasEndDate: !!customDateRange?.endDate,
-            });
+              }
+            );
             setCabinetDataLoading(false);
             return;
           }
@@ -388,10 +365,15 @@ export const EditCabinetModal = ({
         
         setCabinetDataLoading(true);
         // Convert customDateRange to DateRange format expected by fetchCabinetById
-        const dateRangeForFetch = customDateRange?.startDate && customDateRange?.endDate
+        const dateRangeForFetch =
+          customDateRange?.startDate && customDateRange?.endDate
           ? { from: customDateRange.startDate, to: customDateRange.endDate }
           : undefined;
-        fetchCabinetById(selectedCabinet._id, activeMetricsFilter, dateRangeForFetch)
+        fetchCabinetById(
+          selectedCabinet._id,
+          activeMetricsFilter,
+          dateRangeForFetch
+        )
           .then(cabinetDetails => {
             if (cabinetDetails) {
               // console.log("Cabinet details gameType:", cabinetDetails.gameType);
@@ -423,7 +405,9 @@ export const EditCabinetModal = ({
                         cabinetDetails.gameType || prevData.gameType
                       ),
                   // Only update manufacturer if user hasn't modified it
-            manufacturer: userModifiedFieldsRef.current.has('manufacturer')
+                  manufacturer: userModifiedFieldsRef.current.has(
+                    'manufacturer'
+                  )
                     ? prevData.manufacturer
                     : cabinetDetails.manufacturer || prevData.manufacturer,
                   accountingDenomination: String(
@@ -715,25 +699,25 @@ export const EditCabinetModal = ({
               pendingCollectionSettings = {};
             }
             const key = child as keyof CollectionSettingsForm;
-            (pendingCollectionSettings as Partial<CollectionSettingsForm>)[key] =
-              formData.collectionSettings?.[key];
+            (pendingCollectionSettings as Partial<CollectionSettingsForm>)[
+              key
+            ] = formData.collectionSettings?.[key];
           } else {
             if (!updatePayload[parent]) {
               updatePayload[parent] = {};
             }
-            (updatePayload[parent] as Record<string, unknown>)[child] = change.newValue;
+            (updatePayload[parent] as Record<string, unknown>)[child] =
+              change.newValue;
           }
         } else {
-          updatePayload[fieldPath] = formData[fieldPath as keyof typeof formData];
+          updatePayload[fieldPath] =
+            formData[fieldPath as keyof typeof formData];
         }
       });
 
       if (pendingCollectionSettings) {
-        const {
-          lastCollectionTime,
-          lastMetersIn,
-          lastMetersOut,
-        } = pendingCollectionSettings;
+        const { lastCollectionTime, lastMetersIn, lastMetersOut } =
+          pendingCollectionSettings;
 
         if (lastCollectionTime) {
           updatePayload.collectionTime = lastCollectionTime;
@@ -757,10 +741,15 @@ export const EditCabinetModal = ({
 
       // Pass only the changed fields to reduce unnecessary updates and logging
       // Convert customDateRange to DateRange format expected by updateCabinet
-      const dateRangeForUpdate = customDateRange?.startDate && customDateRange?.endDate
+      const dateRangeForUpdate =
+        customDateRange?.startDate && customDateRange?.endDate
         ? { from: customDateRange.startDate, to: customDateRange.endDate }
         : undefined;
-      const success = await updateCabinet(updatePayload, activeMetricsFilter, dateRangeForUpdate);
+      const success = await updateCabinet(
+        updatePayload,
+        activeMetricsFilter,
+        dateRangeForUpdate
+      );
       if (success) {
         // Log the cabinet update activity with proper change tracking
         const changesSummary = getChangesSummary(meaningfulChanges);
@@ -826,10 +815,10 @@ export const EditCabinetModal = ({
       <div className="fixed inset-0 flex items-start justify-center overflow-y-auto p-2 md:items-center md:p-4">
         <div
           ref={modalRef}
-          className="flex flex-col w-full max-h-[95vh] md:max-w-2xl md:rounded-md bg-container shadow-lg md:shadow-lg"
+          className="flex max-h-[95vh] w-full flex-col bg-container shadow-lg md:max-w-2xl md:rounded-md md:shadow-lg"
           style={{ opacity: 0, transform: 'translateY(-20px)' }}
         >
-          <div className="flex items-center border-b border-border p-3 sm:p-4 flex-shrink-0">
+          <div className="flex flex-shrink-0 items-center border-b border-border p-3 sm:p-4">
             <h2 className="flex-1 text-center text-xl font-semibold">
               Edit {getDisplaySerialNumber(selectedCabinet)} Details
             </h2>
@@ -872,412 +861,122 @@ export const EditCabinetModal = ({
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="border-b border-border pb-2 text-sm font-medium text-buttonActive">
-                    Basic Information
-                  </h3>
-                {/* Serial Number & Installed Game */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                      Serial Number
-                    </label>
-                    {cabinetDataLoading ? (
-                      <Skeleton className="h-10 w-full" />
-                    ) : (
-                      <>
-                        <Input
-                          id="assetNumber"
-                          name="assetNumber"
-                          value={formData.assetNumber}
-                          onChange={handleChange}
-                          placeholder="Enter serial number"
-                          className={`border-border bg-container ${
-                            serialNumberError ? 'border-red-500' : ''
-                          }`}
-                        />
-                        {serialNumberError && (
-                          <p className="mt-1 text-xs text-red-500">
-                            {serialNumberError}
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                      Installed Game
-                    </label>
-                    {cabinetDataLoading ? (
-                      <Skeleton className="h-10 w-full" />
-                    ) : (
-                      <>
-                        <Input
-                          id="installedGame"
-                          name="installedGame"
-                          value={formData.installedGame}
-                          onChange={handleChange}
-                          placeholder="Enter installed game name"
-                          className={`border-border bg-container ${
-                            installedGameError ? 'border-red-500' : ''
-                          }`}
-                        />
-                        {installedGameError && (
-                          <p className="mt-1 text-xs text-red-500">
-                            {installedGameError}
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Game Type */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                    Game Type
-                  </label>
-                  {cabinetDataLoading ? (
-                    <Skeleton className="h-10 w-full" />
-                  ) : (
-                    <Select
-                      value={formData.gameType}
-                      onValueChange={value => {
-                        // console.log("GameType changed to:", value);
-                        setUserModifiedFields(
-                          prev => new Set([...prev, 'gameType'])
-                        );
-                        setFormData(prev => {
-                          const newData = { ...prev, gameType: value };
-                          // console.log("New form data:", newData);
-                          return newData;
-                        });
-                      }}
-                    >
-                      <SelectTrigger className="border-border bg-container">
-                        <SelectValue placeholder="Select Game Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Slot">Slot</SelectItem>
-                        <SelectItem value="Video Poker">Video Poker</SelectItem>
-                        <SelectItem value="Table Game">Table Game</SelectItem>
-                        <SelectItem value="Roulette">Roulette</SelectItem>
-                        <SelectItem value="Blackjack">Blackjack</SelectItem>
-                        <SelectItem value="Poker">Poker</SelectItem>
-                        <SelectItem value="Baccarat">Baccarat</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-
-                {/* Manufacturer */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                    Manufacturer
-                  </label>
-                  {manufacturersLoading ? (
-                    <Skeleton className="h-10 w-full" />
-                  ) : (
-                    <Select
-                      value={formData.manufacturer}
-                      onValueChange={value => {
-                        // Prevent setting the disabled "no-manufacturers" value
-                        if (value !== 'no-manufacturers') {
-                          setUserModifiedFields(
-                            prev => new Set([...prev, 'manufacturer'])
-                          );
-                          setFormData(prev => ({
-                            ...prev,
-                            manufacturer: value,
-                          }));
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-10 border-border bg-container">
-                        <SelectValue placeholder="Select Manufacturer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {manufacturers.length > 0 ? (
-                          manufacturers.map(manufacturer => (
-                            <SelectItem key={manufacturer} value={manufacturer}>
-                              {manufacturer}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="no-manufacturers" disabled>
-                            No manufacturers found
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                      Cabinet Type
-                    </label>
-                    <Select
-                      value={formData.cabinetType as string}
-                      onValueChange={value =>
-                        setFormData(prev => ({
-                          ...prev,
-                          cabinetType: value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="border-border bg-container">
-                        <SelectValue placeholder="Select Cabinet Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Standing">Standing</SelectItem>
-                        <SelectItem value="Slant Top">Slant Top</SelectItem>
-                        <SelectItem value="Bar Top">Bar Top</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="isCronosMachine"
-                      checked={Boolean(formData.isCronosMachine)}
-                      onCheckedChange={checked =>
-                        setFormData(prev => ({
-                          ...prev,
-                          isCronosMachine: Boolean(checked),
-                        }))
-                      }
-                    />
-                    <label
-                      htmlFor="isCronosMachine"
-                      className="text-sm font-medium text-grayHighlight"
-                    >
-                      Cronos Machine
-                    </label>
-                  </div>
-                </div>
-
-                {formData.isCronosMachine && (
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                      Accounting Denomination (Cronos Only)
-                    </label>
-                    <Input
-                      id="accountingDenominationCronos"
-                      name="accountingDenomination"
-                      value={formData.accountingDenomination}
-                      onChange={handleChange}
-                      placeholder="Enter denomination"
-                      className="border-border bg-container"
-                    />
-                  </div>
-                )}
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="border-b border-border pb-2 text-sm font-medium text-buttonActive">
-                    Location & Configuration
-                  </h3>
-                {/* Accounting Denomination */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                    Accounting Denomination
-                  </label>
-                  {cabinetDataLoading ? (
-                    <Skeleton className="h-10 w-full" />
-                  ) : (
-                    <>
-                      <Input
-                        id="accountingDenomination"
-                        name="accountingDenomination"
-                        value={formData.accountingDenomination}
-                        onChange={handleChange}
-                        placeholder="Enter denomination"
-                        className={`border-border bg-container ${
-                          accountingDenominationError ? 'border-red-500' : ''
-                        }`}
-                      />
-                      {accountingDenominationError && (
-                        <p className="mt-1 text-xs text-red-500">
-                          {accountingDenominationError}
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Location & SMIB Board */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                      Location
-                    </label>
-                    {locationsLoading || cabinetDataLoading ? (
-                      <Skeleton className="h-10 w-full" />
-                    ) : (
-                      <Select
-                        value={formData.locationId || undefined}
-                        onValueChange={locationId => {
-                          setLocationError('');
-                          setFormData(prev => ({
-                            ...prev,
-                            locationId: locationId,
-                          }));
-                        }}
-                      >
-                        <SelectTrigger
-                          className={`w-full border-border bg-container ${
-                            locationError ? 'border-red-500' : ''
-                          }`}
-                        >
-                          <SelectValue placeholder="Select location" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {locations
-                            .filter(
-                              location =>
-                                location.id && location.id.trim() !== ''
-                            )
-                            .map(location => (
-                              <SelectItem key={location.id} value={location.id}>
-                                {location.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                      SMIB Board
-                    </label>
-                    {cabinetDataLoading ? (
-                      <Skeleton className="h-10 w-full" />
-                    ) : (
-                      <>
-                        <Input
-                          id="smbId"
-                          name="smbId"
-                          value={formData.smbId}
-                          onChange={handleChange}
-                          placeholder="Enter SMIB Board"
-                          className={`border-border bg-container ${
-                            relayIdError ? 'border-red-500' : ''
-                          }`}
-                          maxLength={12}
-                        />
-                        {relayIdError && (
-                          <p className="mt-1 text-xs text-red-500">
-                            {relayIdError}
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Status Field */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                    Status
-                  </label>
-                  <Select
-                    value={formData.status as string}
-                    onValueChange={value =>
-                      setFormData(prev => ({ ...prev, status: value }))
+                <EditCabinetBasicInfo
+                  formData={{
+                    assetNumber: formData.assetNumber || '',
+                    installedGame: formData.installedGame || '',
+                    gameType: formData.gameType || '',
+                    manufacturer: formData.manufacturer || '',
+                    cabinetType: formData.cabinetType || 'Standing',
+                    isCronosMachine: formData.isCronosMachine || false,
+                    accountingDenomination: String(
+                      formData.accountingDenomination || ''
+                    ),
+                  }}
+                  cabinetDataLoading={cabinetDataLoading}
+                  manufacturersLoading={manufacturersLoading}
+                  manufacturers={manufacturers}
+                  serialNumberError={serialNumberError}
+                  installedGameError={installedGameError}
+                  onFormDataChange={updates => {
+                    if ('assetNumber' in updates) {
+                      handleChange({
+                        target: {
+                          name: 'assetNumber',
+                          value: updates.assetNumber,
+                        },
+                      } as React.ChangeEvent<HTMLInputElement>);
+                    } else if ('installedGame' in updates) {
+                      handleChange({
+                        target: {
+                          name: 'installedGame',
+                          value: updates.installedGame,
+                        },
+                      } as React.ChangeEvent<HTMLInputElement>);
+                    } else if ('accountingDenomination' in updates) {
+                      handleChange({
+                        target: {
+                          name: 'accountingDenomination',
+                          value: updates.accountingDenomination,
+                        },
+                      } as React.ChangeEvent<HTMLInputElement>);
+                    } else {
+                      setFormData(prev => ({ ...prev, ...updates }));
                     }
-                  >
-                    <SelectTrigger className="border-border bg-container">
-                      <SelectValue placeholder="Select Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="functional">Functional</SelectItem>
-                      <SelectItem value="non_functional">
-                        Non Functional
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                </div>
+                  }}
+                  onUserModifiedFieldsChange={field =>
+                    setUserModifiedFields(prev => new Set([...prev, field]))
+                  }
+                />
 
-                {/* Custom Name Field - Only show if no valid serial number */}
-                {!hasValidSerialNumber(selectedCabinet) && (
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                      Custom Name <span className="text-red-500">*</span>
-                    </label>
-                    {cabinetDataLoading ? (
-                      <Skeleton className="h-10 w-full" />
-                    ) : (
-                      <Input
-                        id="customName"
-                        name="customName"
-                        value={formData.custom?.name || ''}
-                        onChange={e => {
-                          setFormData(prev => ({
-                            ...prev,
-                            custom: {
-                              ...prev.custom,
-                              name: e.target.value,
-                            },
-                          }));
-                        }}
-                        placeholder="Enter custom name for this machine"
-                        className="border-border bg-container"
-                      />
-                    )}
-                    <p className="mt-1 text-xs text-gray-500">
-                      Since this machine doesn&apos;t have a valid serial
-                      number, you can set a custom name to identify it.
-                    </p>
-                  </div>
-                )}
-                <div className="mt-4 space-y-4 border-t border-border pt-4">
-                  <h3 className="text-sm font-medium text-buttonActive">
-                    Collection Settings
-                  </h3>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                        Collection Report Multiplier
-                      </label>
-                      <>
-                        <Input
-                          value={formData.collectionSettings?.multiplier || ''}
-                          onChange={e => {
-                            setCollectionMultiplierError('');
+                <EditCabinetLocationConfig
+                  formData={{
+                    accountingDenomination: String(
+                      formData.accountingDenomination || ''
+                    ),
+                    locationId: formData.locationId || '',
+                    smbId: formData.smbId || '',
+                    status: formData.status || 'functional',
+                    custom: formData.custom,
+                  }}
+                  locations={locations}
+                  cabinetDataLoading={cabinetDataLoading}
+                  locationsLoading={locationsLoading}
+                  accountingDenominationError={accountingDenominationError}
+                  locationError={locationError}
+                  relayIdError={relayIdError}
+                  hasValidSerialNumber={hasValidSerialNumber(selectedCabinet)}
+                  onFormDataChange={updates => {
+                    if ('accountingDenomination' in updates) {
+                      handleChange({
+                        target: {
+                          name: 'accountingDenomination',
+                          value: updates.accountingDenomination,
+                        },
+                      } as React.ChangeEvent<HTMLInputElement>);
+                    } else if ('smbId' in updates) {
+                      handleChange({
+                        target: { name: 'smbId', value: updates.smbId },
+                      } as React.ChangeEvent<HTMLInputElement>);
+                    } else {
+                      setFormData(prev => {
+                        const updated: ExtendedCabinetFormData = { ...prev };
+                        // Handle custom field updates
+                        if ('custom' in updates) {
+                          if (updates.custom) {
+                            updated.custom = {
+                              name:
+                                updates.custom.name || prev.custom?.name || '',
+                            };
+                          } else {
+                            updated.custom = undefined;
+                          }
+                        }
+                        // Handle other field updates
+                        if ('locationId' in updates) {
+                          updated.locationId = updates.locationId;
+                        }
+                        if ('status' in updates) {
+                          updated.status = updates.status;
+                        }
+                        return updated;
+                      });
+                    }
+                  }}
+                  onLocationErrorChange={setLocationError}
+                />
 
-                            setFormData(prev => ({
-                              ...prev,
-                              collectionMultiplier: e.target.value,
-                              collectionSettings: {
-                                ...prev.collectionSettings,
-                                multiplier: e.target.value,
-                              },
-                            }));
-                          }}
-                          placeholder="Enter multiplier"
-                          className={`border-border bg-container ${
-                            collectionMultiplierError ? 'border-red-500' : ''
-                          }`}
-                        />
-                        {collectionMultiplierError && (
-                          <p className="mt-1 text-xs text-red-500">
-                            {collectionMultiplierError}
-                          </p>
-                        )}
-                      </>
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                        Last Collection Time
-                      </label>
-                      <ModernCalendar
-                        date={{ from: collectionTime, to: collectionTime }}
-                        onSelect={(range: { from?: Date; to?: Date } | undefined) => {
-                          const date = range?.from;
-                          if (!date) return;
+                <EditCabinetCollectionSettings
+                  formData={{
+                    collectionSettings: formData.collectionSettings,
+                    collectionMultiplier: formData.collectionMultiplier,
+                  }}
+                  collectionTime={collectionTime}
+                  collectionMultiplierError={collectionMultiplierError}
+                  onFormDataChange={updates => {
+                    setFormData(prev => ({ ...prev, ...updates }));
+                  }}
+                  onCollectionTimeChange={date => {
                           setCollectionTime(date);
                           setFormData(prev => ({
                             ...prev,
@@ -1287,55 +986,15 @@ export const EditCabinetModal = ({
                             },
                           }));
                         }}
-                        enableTimeInputs={true}
-                        mode="single"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                        Last Meters In
-                      </label>
-                      <Input
-                        value={formData.collectionSettings?.lastMetersIn || ''}
-                        onChange={e =>
-                          setFormData(prev => ({
-                            ...prev,
-                            collectionSettings: {
-                              ...prev.collectionSettings,
-                              lastMetersIn: e.target.value,
-                            },
-                          }))
-                        }
-                        placeholder="Enter last meters in"
-                        className="border-border bg-container"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                        Last Meters Out
-                      </label>
-                      <Input
-                        value={formData.collectionSettings?.lastMetersOut || ''}
-                        onChange={e =>
-                          setFormData(prev => ({
-                            ...prev,
-                            collectionSettings: {
-                              ...prev.collectionSettings,
-                              lastMetersOut: e.target.value,
-                            },
-                          }))
-                        }
-                        placeholder="Enter last meters out"
-                        className="border-border bg-container"
-                      />
-                    </div>
-                  </div>
-                </div>
+                  onCollectionMultiplierErrorChange={
+                    setCollectionMultiplierError
+                  }
+                />
               </div>
             </div>
 
             {/* Footer */}
-            <div className="mt-6 flex flex-row justify-center gap-3 sm:gap-4 flex-shrink-0 pb-4">
+            <div className="mt-6 flex flex-shrink-0 flex-row justify-center gap-3 pb-4 sm:gap-4">
               <Button
                 onClick={handleSubmit}
                 disabled={loading}

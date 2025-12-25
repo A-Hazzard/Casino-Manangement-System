@@ -124,22 +124,8 @@ const MemberTable: React.FC<MemberTableProps> = ({
         <Table ref={tableRef} className="w-full table-fixed">
           <TableHeader>
             <TableRow className="bg-button hover:bg-button">
-              {!hideLocationColumn && (
-                <TableHead
-                  isFirstColumn={true}
-                  className="relative cursor-pointer font-semibold text-white"
-                  onClick={() => onSort('locationName')}
-                >
-                  <span>LOCATION</span>
-                  {sortOption === 'locationName' && (
-                    <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
-                      {sortOrder === 'desc' ? '▼' : '▲'}
-                    </span>
-                  )}
-                </TableHead>
-              )}
               <TableHead
-                isFirstColumn={!hideLocationColumn}
+                isFirstColumn={true}
                 centered
                 className="relative cursor-pointer font-semibold text-white"
                 onClick={() => onSort('name')}
@@ -151,6 +137,19 @@ const MemberTable: React.FC<MemberTableProps> = ({
                   </span>
                 )}
               </TableHead>
+              {!hideLocationColumn && (
+                <TableHead
+                  className="relative cursor-pointer font-semibold text-white"
+                  onClick={() => onSort('locationName')}
+                >
+                  <span>LOCATION</span>
+                  {sortOption === 'locationName' && (
+                    <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                      {sortOrder === 'desc' ? '▼' : '▲'}
+                    </span>
+                  )}
+                </TableHead>
+              )}
               <TableHead
                 centered
                 className="relative cursor-pointer font-semibold text-white"
@@ -191,8 +190,25 @@ const MemberTable: React.FC<MemberTableProps> = ({
                   }
                 }}
               >
+                <TableCell isFirstColumn={true} centered>
+                  <div>{`${member.profile.firstName} ${member.profile.lastName}`}</div>
+                  <div className="mt-1 inline-flex text-[10px] leading-tight text-primary-foreground">
+                    <Badge
+                      variant="secondary"
+                      className="rounded-l-full rounded-r-none bg-blueHighlight px-1 py-0.5 text-white"
+                    >
+                      {member.profile.occupation || 'Not Specified'}
+                    </Badge>
+                    <Badge
+                      variant="secondary"
+                      className="rounded-l-none rounded-r-full bg-button px-1 py-0.5 text-white"
+                    >
+                      {member.points} POINTS
+                    </Badge>
+                  </div>
+                </TableCell>
                 {!hideLocationColumn && (
-                  <TableCell isFirstColumn={true}>
+                  <TableCell>
                     <button
                       type="button"
                       onClick={e => {
@@ -210,23 +226,6 @@ const MemberTable: React.FC<MemberTableProps> = ({
                     </button>
                   </TableCell>
                 )}
-                <TableCell centered>
-                  <div>{`${member.profile.firstName} ${member.profile.lastName}`}</div>
-                  <div className="mt-1 inline-flex text-[10px] leading-tight text-primary-foreground">
-                    <Badge
-                      variant="secondary"
-                      className="rounded-l-full rounded-r-none bg-blueHighlight px-1 py-0.5 text-white"
-                    >
-                      {member.profile.occupation || 'Not Specified'}
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="rounded-l-none rounded-r-full bg-button px-1 py-0.5 text-white"
-                    >
-                      {member.points} POINTS
-                    </Badge>
-                  </div>
-                </TableCell>
                 <TableCell centered>
                   <div
                     className={`font-medium ${

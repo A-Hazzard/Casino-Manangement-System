@@ -10,14 +10,14 @@
  */
 
 import {
-  clearCache,
-  getCacheKey,
-  getCachedData,
-  setCachedData,
+    clearCache,
+    getCacheKey,
+    getCachedData,
+    setCachedData,
 } from '@/app/api/lib/helpers/cacheUtils';
 import {
-  getUserAccessibleLicenseesFromToken,
-  getUserLocationFilter,
+    getUserAccessibleLicenseesFromToken,
+    getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getLocationsWithMetrics } from '@/app/api/lib/helpers/locationAggregation';
 import { convertLocationCurrency } from '@/app/api/lib/helpers/locationCurrencyConversion';

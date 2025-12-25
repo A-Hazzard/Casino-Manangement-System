@@ -23,6 +23,7 @@ export { useLocationMembershipStats } from './useLocationMembershipStats';
 export { useLocationModals } from './useLocationModals';
 export { useLocationPagination } from './useLocationPagination';
 export { useLocationSorting } from './useLocationSorting';
+export { useMachinesTabData } from './useMachinesTabData';
 export { useMembersTabContent } from './useMembersTabContent';
 export { useReportsTabContent } from './useReportsTabContent';
 export { useSessions } from './useSessions';

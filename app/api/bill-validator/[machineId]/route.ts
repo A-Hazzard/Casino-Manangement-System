@@ -404,13 +404,9 @@ function processV1Data(
 
   // console.warn(`[BILL VALIDATOR] Processing ${bills.length} V1 bills`);
 
-  bills.forEach((bill: BillDocument, _index: number) => {
+  bills.forEach((bill: BillDocument) => {
     // Convert Mongoose document to plain object
     const billObj = bill.toObject ? bill.toObject() : bill;
-
-    // if (_index < 5) { // Log first 5 bills for debugging
-    //   console.warn(`[BILL VALIDATOR] V1 Bill ${_index}:`, JSON.stringify(billObj, null, 2));
-    // }
 
     if (billObj.value !== undefined) {
       const value = Number(billObj.value);
@@ -483,13 +479,9 @@ function processV2Data(
 
   // console.warn(`[BILL VALIDATOR] Processing ${bills.length} V2 bills`);
 
-  bills.forEach((bill: BillDocument, _index: number) => {
+  bills.forEach((bill: BillDocument) => {
     // Convert Mongoose document to plain object
     const billObj = bill.toObject ? bill.toObject() : bill;
-
-    // if (_index < 3) { // Log first 3 bills for debugging
-    //   console.warn(`[BILL VALIDATOR] V2 Bill ${_index}:`, JSON.stringify(billObj, null, 2));
-    // }
 
     if (billObj.movement) {
       const denominationMap = [

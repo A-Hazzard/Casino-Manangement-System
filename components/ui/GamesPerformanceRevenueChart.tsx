@@ -4,20 +4,28 @@
  *
  * Features:
  * - Games revenue data visualization
- * - Multiple metrics (Floor Positions %, Handle %, Win %, Drop %, Cancelled Credits %, Gross %)
+ * - Metrics: Total Drop %, Total Cancelled Credits %, Total Gross %
  * - Recharts bar chart
  * - Responsive design
- * - Empty state handling
- *
- * @param data - Array of games performance data
  */
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { type MachineEvaluationData } from '@/lib/types';
 import { Search } from 'lucide-react';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -28,8 +36,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { GameMultiSelect } from './GamesPerformanceRevenueChart/GameMultiSelect';
+import { GamesRevenueTooltip } from './GamesPerformanceRevenueChart/GamesRevenueTooltip';
+import { useGamesRevenueData } from './GamesPerformanceRevenueChart/useGamesRevenueData';
 
-type GamesPerformanceData = {
+export type GamesPerformanceData = {
   gameName: string;
   floorPositions: number;
   totalHandle: number;
@@ -37,6 +48,7 @@ type GamesPerformanceData = {
   totalDrop: number;
   totalCancelledCredits: number;
   totalGross: number;
+  totalGamesPlayed: number;
   // Verification data
   rawTotals?: {
     coinIn: number;
@@ -60,10 +72,12 @@ type GamesPerformanceData = {
 
 type GamesPerformanceRevenueChartProps = {
   data: GamesPerformanceData[];
+  allMachines?: MachineEvaluationData[];
 };
 
 export function GamesPerformanceRevenueChart({
-  data,
+  data: initialData,
+  allMachines = [],
 }: GamesPerformanceRevenueChartProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
@@ -72,52 +86,134 @@ export function GamesPerformanceRevenueChart({
   const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Calculate width based on data length to ensure bars have enough space
-  // 60px per game gives enough room for labels and bars
-  const minWidth = Math.max(600, data.length * 60);
+  // Filter and aggregation state
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([
+    'all-games',
+  ]);
+  const [selectedGames, setSelectedGames] = useState<string[]>([]);
 
-  // Transform data for the chart - each game becomes a data point
-  const chartData = data.map(item => {
-    const maxLength = 15; // Maximum characters before truncation
-    const displayName =
-      item.gameName.length > maxLength
-        ? `${item.gameName.substring(0, maxLength)}...`
-        : item.gameName;
+  // Metric selection state - revenue charts only show 3 metrics by default
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([
+    'Total Drop %',
+    'Total Canc. Cr. %',
+    'Total Gross %',
+  ]);
 
-    return {
-      gameName: displayName,
-      fullGameName: item.gameName, // Keep full name for tooltip
-      'Total Drop %': item.totalDrop,
-      'Total Canc. Cr. %': item.totalCancelledCredits,
-      'Total Gross %': item.totalGross,
-      // Include verification data
-      rawTotals: item.rawTotals,
-      totalMetrics: item.totalMetrics,
-      machineCount: item.machineCount,
-      totalMachinesCount: item.totalMachinesCount,
-    };
-  });
+  // Initialize selected games only on initial data load
+  const hasInitialized = useRef(false);
+  useEffect(() => {
+    if (
+      initialData.length > 0 &&
+      !hasInitialized.current &&
+      selectedGames.length === 0
+    ) {
+      setSelectedGames(initialData.map(d => d.gameName));
+      hasInitialized.current = true;
+    }
+  }, [initialData, selectedGames.length]);
 
-  // Filter games based on search term
+  // Handle filter button toggles
+  const handleFilterToggle = (filter: string) => {
+    setSelectedFilters(prev => {
+      if (filter === 'all-games') {
+        return ['all-games'];
+      }
+
+      const newFilters = prev.filter(f => f !== 'all-games');
+      if (newFilters.includes(filter)) {
+        const filtered = newFilters.filter(f => f !== filter);
+        return filtered.length === 0 ? ['all-games'] : filtered;
+      } else {
+        return [...newFilters, filter];
+      }
+    });
+  };
+
+  // Use custom hook for data processing
+  const { aggregatedData, filteredData, chartData, minWidth } =
+    useGamesRevenueData({
+      initialData,
+      allMachines,
+      selectedFilters,
+      selectedGames,
+    });
+
+  // Track previous filter state to detect filter changes
+  const prevFiltersRef = useRef<string[]>(selectedFilters);
+
+  // Sync selected games when filters change
+  useEffect(() => {
+    if (aggregatedData.length === 0) return;
+
+    const availableGames = aggregatedData.map(d => d.gameName);
+
+    // Remove selected items that are no longer in the filtered list
+    const validSelections = selectedGames.filter(g =>
+      availableGames.includes(g)
+    );
+
+    // Check if filter actually changed (not just a re-render)
+    const filterChanged =
+      prevFiltersRef.current.join(',') !== selectedFilters.join(',');
+    const switchedToFilter =
+      filterChanged && !selectedFilters.includes('all-games');
+
+    // Update previous filters
+    prevFiltersRef.current = selectedFilters;
+
+    // If filter changed to a specific filter (Top 5, Bottom 5) and nothing is selected, auto-select
+    // This handles: All → Top 5, All → Bottom 5, Top 5 → Bottom 5, etc.
+    if (switchedToFilter && validSelections.length === 0) {
+      setSelectedGames(availableGames);
+    } else if (validSelections.length !== selectedGames.length) {
+      // Update selections to only include valid ones (cleanup invalid selections)
+      setSelectedGames(validSelections);
+    }
+
+  }, [aggregatedData, selectedFilters, selectedGames]);
+
+  // Search suggestions - only from filtered data
   const gameSuggestions = useMemo(() => {
     if (!searchTerm.trim()) return [];
     const searchLower = searchTerm.toLowerCase().trim();
-    return data
+    return filteredData
       .map((item, index) => ({
         gameName: item.gameName,
         index,
       }))
       .filter(item => item.gameName.toLowerCase().includes(searchLower))
-      .slice(0, 10); // Limit to 10 suggestions
-  }, [data, searchTerm]);
+      .slice(0, 10);
+  }, [filteredData, searchTerm]);
+
+  const handleSelectAll = () => {
+    const allSelected =
+      selectedGames.length === aggregatedData.length &&
+      aggregatedData.length > 0;
+    if (allSelected) {
+      setSelectedGames([]);
+    } else {
+      setSelectedGames(aggregatedData.map(d => d.gameName));
+    }
+  };
+
+  const handleGameToggle = (gameName: string) => {
+    setSelectedGames(prev =>
+      prev.includes(gameName)
+        ? prev.filter(g => g !== gameName)
+        : [...prev, gameName]
+    );
+  };
 
   // Handle focus - find game and scroll to it
   const handleFocus = () => {
-    if (!searchTerm || !scrollRef.current) return;
+    if (!searchTerm || !scrollRef.current || chartData.length === 0) return;
 
-    const index = chartData.findIndex(item =>
-      item.fullGameName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const searchLower = searchTerm.toLowerCase().trim();
+    const index = chartData.findIndex(item => {
+      const fullName = item.fullGameName?.toLowerCase() || '';
+      const displayName = item.gameName?.toLowerCase() || '';
+      return fullName.includes(searchLower) || displayName.includes(searchLower);
+    });
 
     if (index !== -1) {
       setFocusedIndex(index);
@@ -155,209 +251,30 @@ export function GamesPerformanceRevenueChart({
     };
   }, [showSuggestions]);
 
-  if (!data || data.length === 0) {
+  if (!initialData || initialData.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Games Performance Revenue</CardTitle>
+          <CardTitle>Games&apos; Performance Revenue</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex h-64 items-center justify-center text-gray-500">
-            No games revenue data available
+            No games performance data available
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  const CustomTooltip = ({
-    active,
-    payload,
-    label,
-    coordinate,
-  }: {
-    active?: boolean;
-    payload?: Array<{
-      dataKey: string;
-      value: number;
-      color: string;
-      payload?: {
-        fullGameName?: string;
-        rawTotals?: GamesPerformanceData['rawTotals'];
-        totalMetrics?: GamesPerformanceData['totalMetrics'];
-        machineCount?: number;
-        totalMachinesCount?: number;
-      };
-    }>;
-    label?: string;
-    coordinate?: { x?: number; y?: number };
-  }) => {
-    if (active && payload && payload.length) {
-      // Get full game name and verification data from payload
-      const fullGameName = payload[0]?.payload?.fullGameName || label;
-      const rawTotals = payload[0]?.payload?.rawTotals;
-      const totalMetrics = payload[0]?.payload?.totalMetrics;
-      const machineCount = payload[0]?.payload?.machineCount;
-
-      // Helper to format currency
-      const formatCurrency = (value: number) =>
-        new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }).format(value);
-
-      // Helper to get raw value for a metric
-      const getRawValue = (dataKey: string): number | null => {
-        if (!rawTotals) return null;
-
-        const keyMap: Record<string, keyof typeof rawTotals> = {
-          'Total Drop %': 'drop',
-          'Total Canc. Cr. %': 'cancelledCredits',
-          'Total Gross %': 'gross',
-        };
-
-        const rawKey = keyMap[dataKey];
-        return rawKey ? rawTotals[rawKey] : null;
-      };
-
-      // Helper to get total value for a metric
-      const getTotalValue = (dataKey: string): number | null => {
-        if (!totalMetrics) return null;
-
-        const keyMap: Record<string, keyof typeof totalMetrics> = {
-          'Total Drop %': 'drop',
-          'Total Canc. Cr. %': 'cancelledCredits',
-          'Total Gross %': 'gross',
-        };
-
-        const totalKey = keyMap[dataKey];
-        return totalKey ? totalMetrics[totalKey] : null;
-      };
-
-      // Calculate tooltip position to stay within viewport
-      const tooltipWidth = 384; // max-w-sm = 384px
-      const tooltipHeight = 300; // approximate height
-      const viewportWidth =
-        typeof window !== 'undefined' ? window.innerWidth : 0;
-      const viewportHeight =
-        typeof window !== 'undefined' ? window.innerHeight : 0;
-
-      const tooltipStyle: React.CSSProperties = {
-        position: 'fixed',
-        zIndex: 9999,
-        pointerEvents: 'none',
-      };
-
-      if (coordinate?.x !== undefined && coordinate?.y !== undefined) {
-        // Use the container ref for accurate positioning relative to the viewport
-        const chartContainerRect =
-          containerRef.current?.getBoundingClientRect();
-
-        let x = coordinate.x;
-        let y = coordinate.y;
-
-        if (chartContainerRect) {
-          x = chartContainerRect.left + coordinate.x;
-          y = chartContainerRect.top + coordinate.y;
-        }
-
-        // Adjust x to prevent going off right edge
-        if (x + tooltipWidth > viewportWidth) {
-          x = viewportWidth - tooltipWidth - 10;
-        }
-        if (x < 10) {
-          x = 10;
-        }
-
-        // Smart vertical positioning: check if there's enough space below
-        const spaceBelow = viewportHeight - y;
-        const spaceAbove = y;
-
-        // If there's not enough space below but enough space above, position tooltip above
-        if (
-          spaceBelow < tooltipHeight + 20 &&
-          spaceAbove > tooltipHeight + 20
-        ) {
-          y = y - 10;
-          tooltipStyle.transform = 'translateY(-100%)';
-        } else {
-          // Default: position tooltip below (with some offset)
-          y = y + 20;
-        }
-
-        // Final bounds checking to ensure tooltip stays within viewport
-        if (y < 10) {
-          y = 10;
-          delete tooltipStyle.transform;
-        } else if (
-          y + tooltipHeight > viewportHeight &&
-          !tooltipStyle.transform
-        ) {
-          y = viewportHeight - tooltipHeight - 10;
-        }
-
-        tooltipStyle.left = `${x}px`;
-        tooltipStyle.top = `${y}px`;
-      }
-
-      return (
-        <div
-          className="z-[9999] w-80 rounded-xl border border-gray-200 bg-white/95 p-4 shadow-2xl backdrop-blur-sm"
-          style={tooltipStyle}
-        >
-          <p className="mb-4 truncate border-b pb-2 text-sm font-bold text-gray-900">
-            {fullGameName}
-          </p>
-          <div className="space-y-2">
-            {payload.map((entry, index) => {
-              const rawValue = getRawValue(entry.dataKey);
-              const totalValue = getTotalValue(entry.dataKey);
-
-              return (
-                <div
-                  key={index}
-                  className="border-b border-gray-100 pb-2 last:border-0"
-                >
-                  <p
-                    className="text-sm font-medium"
-                    style={{ color: entry.color }}
-                  >
-                    {entry.dataKey}: {entry.value.toFixed(2)}%
-                  </p>
-                  {rawValue !== null && totalValue !== null && (
-                    <div className="ml-2 mt-1 space-y-1 text-xs text-gray-600">
-                      <p className="whitespace-nowrap">
-                        • {formatCurrency(rawValue)} of{' '}
-                        {formatCurrency(totalValue)} total
-                      </p>
-                      {machineCount !== undefined && (
-                        <p>
-                          • {machineCount} machine
-                          {machineCount !== 1 ? 's' : ''} contributing
-                        </p>
-                      )}
-                      <p className="text-[10px] text-gray-400">
-                        ({formatCurrency(rawValue)} /{' '}
-                        {formatCurrency(totalValue)}) × 100
-                      </p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
-
   const colors = [
+    '#3b82f6', // Blue
+    '#10b981', // Green
+    '#f59e0b', // Yellow
     '#ef4444', // Red
     '#8b5cf6', // Purple
     '#06b6d4', // Cyan
+    '#84cc16', // Lime
+    '#f97316', // Orange
   ];
 
   const legendItems = [
@@ -370,7 +287,7 @@ export function GamesPerformanceRevenueChart({
     <Card>
       <CardHeader>
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Games Performance Revenue</CardTitle>
+          <CardTitle>Games&apos; Performance Revenue</CardTitle>
           <div className="flex w-full max-w-sm items-center space-x-2">
             <div className="relative w-full" ref={searchRef}>
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -398,7 +315,27 @@ export function GamesPerformanceRevenueChart({
                       onClick={() => {
                         setSearchTerm(item.gameName);
                         setShowSuggestions(false);
-                        setTimeout(() => handleFocus(), 0);
+                        // Find index in chartData directly
+                        const chartIndex = chartData.findIndex(
+                          chartItem =>
+                            chartItem.fullGameName?.toLowerCase() ===
+                              item.gameName.toLowerCase() ||
+                            chartItem.gameName?.toLowerCase() ===
+                              item.gameName.toLowerCase()
+                        );
+                        if (chartIndex !== -1 && scrollRef.current) {
+                          setFocusedIndex(chartIndex);
+                          const containerWidth = scrollRef.current.clientWidth;
+                          const slotWidth = minWidth / chartData.length;
+                          const targetScroll =
+                            (chartIndex + 0.5) * slotWidth - containerWidth / 2;
+                          scrollRef.current.scrollTo({
+                            left: Math.max(0, targetScroll),
+                            behavior: 'smooth',
+                          });
+                        } else {
+                          setTimeout(() => handleFocus(), 0);
+                        }
                       }}
                     >
                       {item.gameName}
@@ -413,89 +350,284 @@ export function GamesPerformanceRevenueChart({
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        {/* Fixed Legend outside scroll container */}
-        <div className="mb-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-b pb-4">
-          {legendItems.map(item => (
-            <div key={item.label} className="flex items-center gap-2">
+      <CardContent className="p-6 pb-0 pt-0">
+        {/* Metric selection checkboxes */}
+        <div className="mb-4 overflow-x-auto border-b pb-3 md:mb-6 md:pb-4">
+          <div className="flex min-w-max flex-wrap items-center justify-center gap-x-4 gap-y-2 md:gap-x-6">
+            {legendItems.map(item => (
               <div
-                className="h-3 w-3 rounded-sm"
-                style={{ backgroundColor: item.color }}
-              />
-              <span className="text-xs font-medium text-gray-700">
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Scrollable Container for both Mobile and Desktop */}
-        <div
-          ref={scrollRef}
-          className="relative touch-pan-x overflow-x-auto overflow-y-hidden"
-        >
-          <div
-            ref={containerRef}
-            style={{ minWidth: `${minWidth}px`, width: '100%' }}
-          >
-            <ResponsiveContainer width="100%" height={450}>
-              <BarChart
-                data={chartData}
-                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                key={item.label}
+                className="flex items-center gap-1.5 md:gap-2"
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis
-                  dataKey="gameName"
-                  tick={{ fontSize: 11, fill: '#666' }}
-                  axisLine={{ stroke: '#e0e0e0' }}
-                  tickLine={{ stroke: '#e0e0e0' }}
-                  angle={-45}
-                  textAnchor="end"
-                  height={120}
-                  interval={0} // Show all labels since we have scrolling
-                />
-                <YAxis
-                  tick={{ fontSize: 12, fill: '#666' }}
-                  axisLine={{ stroke: '#e0e0e0' }}
-                  tickLine={{ stroke: '#e0e0e0' }}
-                  label={{
-                    value: 'Percentage %',
-                    angle: -90,
-                    position: 'insideLeft',
+                <Checkbox
+                  id={`metric-revenue-${item.label}`}
+                  checked={selectedMetrics.includes(item.label)}
+                  onCheckedChange={checked => {
+                    if (checked) {
+                      setSelectedMetrics(prev => [...prev, item.label]);
+                    } else {
+                      setSelectedMetrics(prev =>
+                        prev.filter(m => m !== item.label)
+                      );
+                    }
+                  }}
+                  className="h-3.5 w-3.5 border-2 md:h-4 md:w-4"
+                  style={{
+                    borderColor: item.color,
+                    backgroundColor: selectedMetrics.includes(item.label)
+                      ? item.color
+                      : 'transparent',
                   }}
                 />
-                <Tooltip
-                  content={<CustomTooltip />}
-                  wrapperStyle={{ zIndex: 9999 }}
-                />
-                {focusedIndex !== null && chartData[focusedIndex] && (
-                  <ReferenceArea
-                    x1={chartData[focusedIndex].gameName}
-                    x2={chartData[focusedIndex].gameName}
-                    fill="#3b82f6"
-                    fillOpacity={0.15}
-                    stroke="#3b82f6"
-                    strokeDasharray="3 3"
-                    strokeOpacity={0.5}
+                <Label
+                  htmlFor={`metric-revenue-${item.label}`}
+                  className="cursor-pointer text-[10px] font-medium text-gray-700 md:text-xs"
+                >
+                  {item.label}
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile Filters - Visible on mobile */}
+        <div className="mb-4 space-y-3 lg:hidden">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">
+              Filter Options
+            </Label>
+            <Select
+              value={
+                selectedFilters.includes('all-games')
+                  ? 'all-games'
+                  : selectedFilters.includes('top-5-games')
+                    ? 'top-5-games'
+                    : selectedFilters.includes('bottom-5-games')
+                      ? 'bottom-5-games'
+                      : 'all-games'
+              }
+              onValueChange={value => {
+                if (value === 'all-games') {
+                  setSelectedFilters(['all-games']);
+                } else {
+                  setSelectedFilters([value]);
+                }
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select filter..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all-games">All Games</SelectItem>
+                <SelectItem value="top-5-games">Top 5 Games</SelectItem>
+                <SelectItem value="bottom-5-games">Bottom 5 Games</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">
+              Select Games
+            </Label>
+            <GameMultiSelect
+              games={aggregatedData.map(d => ({
+                id: d.gameName,
+                name: d.gameName,
+              }))}
+              selectedGames={selectedGames}
+              onSelectionChange={setSelectedGames}
+              placeholder="Select games..."
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+          <div className="hidden w-full shrink-0 space-y-4 lg:block lg:w-64 lg:space-y-6">
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold text-gray-900">
+                Game Filters
+              </h4>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="all-games-revenue"
+                    checked={selectedFilters.includes('all-games')}
+                    onCheckedChange={() => handleFilterToggle('all-games')}
                   />
-                )}
-                <Bar
-                  dataKey="Total Drop %"
-                  fill={colors[0]}
-                  name="Total Drop %"
-                />
-                <Bar
-                  dataKey="Total Canc. Cr. %"
-                  fill={colors[1]}
-                  name="Total Canc. Cr. %"
-                />
-                <Bar
-                  dataKey="Total Gross %"
-                  fill={colors[2]}
-                  name="Total Gross %"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+                  <Label
+                    htmlFor="all-games-revenue"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    All Games
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="top-5-games-revenue"
+                    checked={selectedFilters.includes('top-5-games')}
+                    onCheckedChange={() => handleFilterToggle('top-5-games')}
+                  />
+                  <Label
+                    htmlFor="top-5-games-revenue"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Top 5 Games
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="bottom-5-games-revenue"
+                    checked={selectedFilters.includes('bottom-5-games')}
+                    onCheckedChange={() => handleFilterToggle('bottom-5-games')}
+                  />
+                  <Label
+                    htmlFor="bottom-5-games-revenue"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Bottom 5 Games
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-900">Games</h4>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="select-all-revenue"
+                    checked={
+                      selectedGames.length === aggregatedData.length &&
+                      aggregatedData.length > 0
+                    }
+                    onCheckedChange={() => handleSelectAll()}
+                  />
+                  <Label
+                    htmlFor="select-all-revenue"
+                    className="text-xs font-medium text-gray-500"
+                  >
+                    Select All
+                  </Label>
+                </div>
+              </div>
+              <div className="flex max-h-[450px] flex-col gap-3 overflow-y-auto pr-2 text-xs">
+                {aggregatedData.map(item => (
+                  <div
+                    key={item.gameName}
+                    className="flex items-center space-x-2"
+                  >
+                    <Checkbox
+                      id={`game-revenue-${item.gameName}`}
+                      checked={selectedGames.includes(item.gameName)}
+                      onCheckedChange={() => handleGameToggle(item.gameName)}
+                    />
+                    <Label
+                      htmlFor={`game-revenue-${item.gameName}`}
+                      className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {item.gameName}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div
+              ref={scrollRef}
+              className="relative touch-pan-x overflow-x-auto"
+            >
+              <div
+                ref={containerRef}
+                style={{ minWidth: `${minWidth}px`, width: '100%' }}
+              >
+                <ResponsiveContainer width="100%" height={600}>
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#f0f0f0"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="gameName"
+                      tick={{ fontSize: 11, fill: '#666' }}
+                      axisLine={{ stroke: '#e0e0e0' }}
+                      tickLine={{ stroke: '#e0e0e0' }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                      interval={0}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: '#666' }}
+                      axisLine={{ stroke: '#e0e0e0' }}
+                      tickLine={{ stroke: '#e0e0e0' }}
+                      width={40}
+                      label={{
+                        value: 'Percentage %',
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 10,
+                        style: {
+                          textAnchor: 'middle',
+                          fontSize: 11,
+                          fill: '#666',
+                        },
+                      }}
+                    />
+                    <Tooltip
+                      content={
+                        <GamesRevenueTooltip chartContainerRef={containerRef} />
+                      }
+                      wrapperStyle={{ zIndex: 9999 }}
+                      cursor={{ fill: '#f4f4f5', opacity: 0.4 }}
+                    />
+                    {focusedIndex !== null &&
+                      focusedIndex >= 0 &&
+                      focusedIndex < chartData.length &&
+                      chartData[focusedIndex] && (
+                        <ReferenceArea
+                          x1={chartData[focusedIndex].gameName}
+                          x2={chartData[focusedIndex].gameName}
+                          fill="#FFA203"
+                          fillOpacity={0.2}
+                          stroke="#FFA203"
+                          strokeWidth={2}
+                          strokeDasharray="3 3"
+                          strokeOpacity={0.8}
+                        />
+                      )}
+                    <Bar
+                      dataKey="Total Drop %"
+                      fill={colors[0]}
+                      name="Total Drop %"
+                      hide={!selectedMetrics.includes('Total Drop %')}
+                      style={{ transition: 'opacity 0.3s ease-in-out' }}
+                    />
+                    <Bar
+                      dataKey="Total Canc. Cr. %"
+                      fill={colors[1]}
+                      name="Total Canc. Cr. %"
+                      hide={!selectedMetrics.includes('Total Canc. Cr. %')}
+                      style={{ transition: 'opacity 0.3s ease-in-out' }}
+                    />
+                    <Bar
+                      dataKey="Total Gross %"
+                      fill={colors[2]}
+                      name="Total Gross %"
+                      hide={!selectedMetrics.includes('Total Gross %')}
+                      style={{ transition: 'opacity 0.3s ease-in-out' }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
         </div>
       </CardContent>

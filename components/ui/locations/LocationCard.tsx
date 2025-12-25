@@ -20,7 +20,6 @@ import {
   Server,
 } from 'lucide-react';
 import { useRef } from 'react';
-import { toast } from 'sonner';
 
 export default function LocationCard({
   location,
@@ -37,16 +36,6 @@ export default function LocationCard({
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Copy to clipboard function
-  const copyToClipboard = async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(`${label} copied to clipboard`);
-    } catch {
-      toast.error(`Failed to copy ${label}`);
-    }
-  };
-
   return (
     <div
       ref={cardRef}
@@ -57,12 +46,13 @@ export default function LocationCard({
         <button
           onClick={e => {
             e.stopPropagation();
-            const locationName = (location as Record<string, unknown>)
-              .locationName as string;
-            copyToClipboard(locationName, 'Location Name');
+            const locationId = (location.location as string) || location._id;
+            if (locationId) {
+              onLocationClick(locationId);
+            }
           }}
           className="inline-flex cursor-pointer items-start gap-1.5 text-left text-base font-semibold hover:text-blue-600 hover:underline"
-          title="Click to copy location name"
+          title="Click to view location details"
         >
           <span className="break-words">
             {(location as Record<string, unknown>).locationName as string}
@@ -183,7 +173,7 @@ export default function LocationCard({
           <span className="font-medium">Money In</span>
           <CurrencyValueWithOverflow
             value={location.moneyIn ?? 0}
-            className={`break-words text-right font-semibold ${getMoneyInColorClass(location.moneyIn)}`}
+            className={`break-words text-right font-semibold ${getMoneyInColorClass()}`}
             formatCurrencyFn={formatCurrency}
           />
         </div>

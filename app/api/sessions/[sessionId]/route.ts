@@ -12,6 +12,7 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
+import { Member } from '@/app/api/lib/models/members';
 import type { LocationMembershipSettings } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -42,7 +43,7 @@ export async function GET(
 
   try {
     // ============================================================================
-    // STEP 1: Parse route parameters
+    // STEP 1: Parse route parameters and query parameters
     // ============================================================================
     const { sessionId } = await params;
 
@@ -69,7 +70,7 @@ export async function GET(
       .lean<MachineSessionDocument | null>();
 
     // ============================================================================
-    // STEP 4: Return session info with membership settings
+    // STEP 4: Fetch member information
     // ============================================================================
     if (!sessionDocument) {
       return NextResponse.json(
@@ -79,6 +80,26 @@ export async function GET(
         },
         { status: 404 }
       );
+    }
+
+    // Fetch member information
+    let memberFirstName: string | undefined;
+    let memberLastName: string | undefined;
+    
+    if (sessionDocument.memberId) {
+      try {
+        const member = await Member.findOne({ _id: sessionDocument.memberId })
+          .select({ 'profile.firstName': 1, 'profile.lastName': 1 })
+          .lean<{ profile?: { firstName?: string; lastName?: string } } | null>();
+        
+        if (member?.profile) {
+          memberFirstName = member.profile.firstName;
+          memberLastName = member.profile.lastName;
+        }
+      } catch (error) {
+        console.warn('Failed to fetch member information:', error);
+        // Continue without member info
+      }
     }
 
     const duration = Date.now() - startTime;
@@ -96,6 +117,8 @@ export async function GET(
         startTime: sessionDocument.startTime,
         endTime: sessionDocument.endTime,
         status: sessionDocument.status,
+        memberFirstName,
+        memberLastName,
       },
     });
   } catch (error) {

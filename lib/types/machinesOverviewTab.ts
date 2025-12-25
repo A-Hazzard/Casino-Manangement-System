@@ -41,6 +41,11 @@ export type MachinesOverviewTabProps = {
   }>;
   locations: { id: string; name: string; sasEnabled: boolean }[];
 
+  // Filter values
+  searchTerm: string;
+  selectedLocation: string;
+  onlineStatusFilter: string;
+
   // Loading states
   overviewLoading: boolean;
   manufacturerLoading: boolean;
@@ -64,10 +69,13 @@ export type MachinesOverviewTabProps = {
   };
 
   // Actions
+  onSearchChange: (value: string) => void;
+  onLocationChange: (value: string) => void;
+  onStatusChange: (value: string) => void;
   onSort: (key: keyof MachineData) => void;
   onPageChange: (page: number) => void;
   onRefresh: () => void;
-  onExport: () => void;
+  onExport: (format: 'pdf' | 'excel') => void;
   onEdit: (machine: MachineData) => void;
   onDelete: (machine: MachineData) => void;
 };

@@ -180,7 +180,14 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 7: Fetch and filter collection reports
+    // STEP 7: Parse pagination parameters
+    // ============================================================================
+    const page = parseInt(searchParams.get('page') || '1');
+    const requestedLimit = parseInt(searchParams.get('limit') || '50');
+    const limit = Math.min(requestedLimit, 100); // Cap at 100 for performance
+
+    // ============================================================================
+    // STEP 8: Fetch and filter collection reports
     // ============================================================================
     const reports = await getAllCollectionReportsWithMachineCounts(
       licencee,
@@ -201,53 +208,23 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 7.5: Apply search filter if provided
+    // STEP 9: Apply pagination
     // ============================================================================
-    const searchTerm = searchParams.get('search');
-    if (searchTerm && searchTerm.trim()) {
-      const search = searchTerm.trim().toLowerCase();
-      filteredReports = filteredReports.filter(report => {
-        // Search across multiple fields in priority order:
-        // 1. collector (user ID - primary)
-        // 2. locationReportId (report ID)
-        // 3. _id (document ID)
-        // 4. collectorFullName (LAST FALLBACK - display only, for legacy data)
-        const collector = (report.collector || '').toLowerCase();
-        const locationReportId = (report.locationReportId || '').toLowerCase();
-        const reportId = (report._id || '').toLowerCase();
-        const collectorFullName = (
-          report.collectorFullName || ''
-        ).toLowerCase(); // DEPRECATED: Display only
-        
-        return (
-          collector.includes(search) ||
-          locationReportId.includes(search) ||
-          reportId.includes(search) ||
-          collectorFullName.includes(search) // LAST fallback for legacy data
-        );
-      });
-    }
-
-    // ============================================================================
-    // STEP 8: Apply pagination
-    // ============================================================================
-    const page = parseInt(searchParams.get('page') || '1');
-    const requestedLimit = parseInt(searchParams.get('limit') || '50');
-    const limit = Math.min(requestedLimit, 100); // Cap at 100 for performance
+    const total = filteredReports.length;
     const skip = (page - 1) * limit;
-    const totalCount = filteredReports.length;
     const paginatedReports = filteredReports.slice(skip, skip + limit);
+    const totalPages = Math.ceil(total / limit);
 
     // ============================================================================
-    // STEP 9: Return paginated results
+    // STEP 10: Return paginated results
     // ============================================================================
     return NextResponse.json({
       data: paginatedReports,
       pagination: {
         page,
         limit,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limit),
+        total,
+        totalPages,
       },
     });
   } catch (error: unknown) {

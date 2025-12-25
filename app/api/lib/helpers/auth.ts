@@ -1,3 +1,20 @@
+/**
+ * Authentication Helper Functions
+ *
+ * Provides backend helper functions for user authentication, including credential
+ * validation, JWT token generation, password reset, and session management. It handles
+ * user login, token refresh, and password reset email functionality with comprehensive
+ * security features and profile validation.
+ *
+ * Features:
+ * - Validates user credentials (email/username and password).
+ * - Generates JWT access and refresh tokens.
+ * - Handles profile validation and password strength checks.
+ * - Manages user session versioning and login tracking.
+ * - Sends password reset emails.
+ * - Logs authentication activities for security auditing.
+ */
+
 import {
   generateAccessToken,
   generateRefreshToken,

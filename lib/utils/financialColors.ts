@@ -17,12 +17,9 @@
 
 /**
  * Get color class for Money In (always green)
- * @param value - The Money In value (unused, but kept for consistency)
  * @returns CSS class for text color (always green)
  */
-export function getMoneyInColorClass(
-  _value: number | null | undefined
-): string {
+export function getMoneyInColorClass(): string {
   return 'text-green-600'; // Always green for Money In
 }
 

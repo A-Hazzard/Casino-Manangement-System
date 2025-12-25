@@ -280,9 +280,11 @@ export async function getManufacturerPerformance(
     licencee
   );
 
-  const manufacturerData = (await Meters.aggregate(
-    pipeline
-  ).exec()) as ManufacturerDataItem[];
+  const manufacturerData: ManufacturerDataItem[] = [];
+  const cursor = Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
+  for await (const doc of cursor) {
+    manufacturerData.push(doc as ManufacturerDataItem);
+  }
 
   const totals = calculateManufacturerTotals(manufacturerData);
   return calculateManufacturerPercentages(manufacturerData, totals);

@@ -46,7 +46,12 @@ export async function getTopPerformingMetrics(
       ? aggregateMetersForTop5Machines(filter, licensee)
       : aggregateMetersForTop5Locations(filter, licensee);
 
-  return Meters.aggregate(aggregationQuery);
+  const result: Record<string, unknown>[] = [];
+  const cursor = Meters.aggregate(aggregationQuery).cursor({ batchSize: 1000 });
+  for await (const doc of cursor) {
+    result.push(doc);
+  }
+  return result;
 }
 
 /**

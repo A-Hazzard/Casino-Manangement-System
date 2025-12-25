@@ -1,3 +1,20 @@
+/**
+ * Login API Route
+ *
+ * This route handles user authentication and login functionality.
+ * It supports:
+ * - Email or username-based login
+ * - Password validation
+ * - Remember me functionality
+ * - JWT token generation
+ * - Session management
+ * - Profile validation requirements
+ * - Password update requirements
+ * - Secure cookie management
+ *
+ * @module app/api/auth/login/route
+ */
+
 import { authenticateUser } from '@/app/api/lib/helpers/auth';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import {
@@ -12,14 +29,36 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
 
+/**
+ * Main POST handler for user login
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse and validate request body
+ * 3. Validate identifier format (email or username)
+ * 4. Extract client IP and user agent
+ * 5. Authenticate user with credentials
+ * 6. Generate JWT tokens
+ * 7. Set secure authentication cookies
+ * 8. Return user data and validation requirements
+ */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Parse and validate request body
+    // ============================================================================
     const { identifier, password, rememberMe } = await request.json();
 
+    // ============================================================================
+    // STEP 3: Validate identifier format (email or username)
+    // ============================================================================
     if (!identifier || !password) {
       return createBadRequestResponse(
         'Email/username and password are required.'
@@ -34,9 +73,15 @@ export async function POST(request: NextRequest) {
       return createBadRequestResponse('Invalid identifier format.');
     }
 
+    // ============================================================================
+    // STEP 4: Extract client IP and user agent
+    // ============================================================================
     const ipAddress = getClientIP(request) || 'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
+    // ============================================================================
+    // STEP 5: Authenticate user with credentials
+    // ============================================================================
     const result = await authenticateUser(
       identifier,
       password,
@@ -59,7 +104,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create response first
+    // ============================================================================
+    // STEP 6: Generate JWT tokens and create response
+    // ============================================================================
     const response = createSuccessResponse(
       {
         user: result.user,
@@ -72,6 +119,9 @@ export async function POST(request: NextRequest) {
       'Login successful'
     );
 
+    // ============================================================================
+    // STEP 7: Set secure authentication cookies
+    // ============================================================================
     // Clear any existing authentication cookies before setting new ones
     // This ensures old tokens from previous database connections don't persist
     response.cookies.set('token', '', {

@@ -23,7 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Check, ChevronDown, Search, X } from 'lucide-react';
+import { Check, ChevronDown, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import type { LocationMultiSelectProps } from '@/lib/types/components';
@@ -94,12 +94,16 @@ export default function LocationMultiSelect({
   const selectedOptions = locations.filter(option =>
     selectedLocations.includes(option.id)
   );
+
+  // Show "All Locations Selected" when all locations are selected
   const displayText =
-    selectedOptions.length > 0
-      ? `${selectedOptions.length} location${
-          selectedOptions.length > 1 ? 's' : ''
-        } selected`
-      : placeholder;
+    allSelected && locations.length > 0
+      ? 'All Locations Selected'
+      : selectedOptions.length > 0
+        ? `${selectedOptions.length} location${
+            selectedOptions.length > 1 ? 's' : ''
+          } selected`
+        : placeholder;
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
@@ -232,28 +236,8 @@ export default function LocationMultiSelect({
         </div>
       )}
 
-      {/* Selected items display */}
-      {selectedOptions.length > 0 && (
-        <div className="mt-2">
-          <div className="max-h-[320px] overflow-y-auto rounded-md border border-gray-200 bg-gray-50 p-2">
-            <div className="flex flex-wrap gap-1">
-              {selectedOptions.map(option => (
-                <Badge
-                  key={option.id}
-                  variant="secondary"
-                  className="flex items-center gap-1 bg-blue-100 text-blue-700 hover:bg-blue-200"
-                >
-                  <span className="max-w-32 truncate">{option.name}</span>
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => handleToggleLocation(option.id)}
-                  />
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Selected items display - Removed to improve UI presentation */}
+      {/* Selection count is already shown in the button text */}
     </div>
   );
 }

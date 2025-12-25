@@ -1,3 +1,21 @@
+/**
+ * Collection Report Helper Functions
+ *
+ * Provides helper functions for fetching, creating, updating, and managing
+ * collection reports. It handles CRUD operations, data formatting, and
+ * aggregation for collection report data.
+ *
+ * Features:
+ * - Fetches all collection reports with optional filtering
+ * - Creates new collection reports
+ * - Updates existing collection reports
+ * - Deletes collection reports (soft delete)
+ * - Fetches collection report details with machines
+ * - Aggregates location and machine metrics
+ * - Formats data for frontend consumption
+ * - Supports licensee and date range filtering
+ */
+
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import type {

@@ -184,7 +184,7 @@ const SessionCard = ({ session }: { session: MemberSession }) => {
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">Money In</span>
-            <span className={`font-semibold ${getMoneyInColorClass(session.moneyIn)}`}>
+            <span className={`font-semibold ${getMoneyInColorClass()}`}>
               {shouldShowCurrency()
                 ? formatAmount(session.moneyIn || 0)
                 : formatCurrency(session.moneyIn || 0)}
@@ -355,7 +355,7 @@ export default function PlayerSessionTable({
         return session.sessionLength || 'N/A';
       case 'Money In':
         return (
-          <span className={getMoneyInColorClass(session.moneyIn)}>
+          <span className={getMoneyInColorClass()}>
             {shouldShowCurrency()
               ? formatAmount(session.moneyIn || 0)
               : formatCurrency(session.moneyIn || 0)}

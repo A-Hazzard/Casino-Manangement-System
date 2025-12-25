@@ -1,3 +1,18 @@
+/**
+ * Client-Side Authentication Helper Functions
+ *
+ * Provides client-side helper functions for authentication operations,
+ * including login, logout, and session management. It handles API calls
+ * and state management for user authentication.
+ *
+ * Features:
+ * - User login with credentials
+ * - Logout functionality
+ * - Session management
+ * - Error handling and user feedback
+ * - Token management
+ */
+
 import { useAuthSessionStore } from '@/lib/store/authSessionStore';
 import type { AuthResult } from '@/shared/types/auth';
 

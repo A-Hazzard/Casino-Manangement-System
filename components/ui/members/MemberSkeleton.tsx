@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function MemberSkeleton() {
   return (
-    <div className="relative mx-auto w-full rounded-lg border border-border bg-container p-4 shadow-sm transition-shadow">
+    <div className="relative mx-auto w-full rounded-lg border border-border bg-card p-4 shadow-sm transition-all">
       {/* Member Name and Location */}
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -22,19 +22,23 @@ export default function MemberSkeleton() {
         </div>
       </div>
 
-      {/* Financial Metrics */}
-      <div className="mb-2 flex flex-col space-y-2 text-sm">
-        <div className="flex items-center justify-between gap-2">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-4 w-32" />
+      {/* Grid: Member ID, Occupation, Joined, Win/Loss */}
+      <div className="mb-4 grid grid-cols-2 gap-x-4 gap-y-2">
+        <div className="flex flex-col gap-0.5">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-3 w-20" />
         </div>
-        <div className="flex items-center justify-between gap-2">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-4 w-24" />
+        <div className="flex flex-col gap-0.5">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-24" />
         </div>
-        <div className="flex items-center justify-between gap-2">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-4 w-12" />
+        <div className="flex flex-col gap-0.5">
+          <Skeleton className="h-3 w-14" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-3 w-20" />
         </div>
       </div>
 

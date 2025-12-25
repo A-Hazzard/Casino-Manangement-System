@@ -83,6 +83,7 @@ export default function MembersListTab({
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
+  // Default: Sort by joined date (createdAt) - most recent first
   const [sortOption, setSortOption] = useState<MemberSortOption>('lastSession');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(0);
@@ -692,7 +693,7 @@ export default function MembersListTab({
         {/* Desktop View */}
         <div className="hidden lg:block">
           {loading ? (
-            <MemberTableSkeleton />
+            <MemberTableSkeleton hideLocationColumn={!!forcedLocationId} />
           ) : paginatedMembers.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <span className="text-lg text-gray-500">No members found.</span>

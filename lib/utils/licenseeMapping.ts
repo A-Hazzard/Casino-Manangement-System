@@ -1,6 +1,21 @@
 /**
- * Licensee name to ObjectId mapping
- * This mapping is used to convert licensee names to ObjectIds for API calls
+ * Licensee Mapping Utilities
+ *
+ * Utility functions for converting between licensee names and ObjectIds.
+ *
+ * Features:
+ * - Licensee name to ObjectId conversion
+ * - ObjectId to licensee name conversion (reverse lookup)
+ * - Handles special cases (ObjectId format, "all" keyword)
+ * - Static mapping for known licensees
+ */
+
+// ============================================================================
+// Licensee Mapping Constants
+// ============================================================================
+/**
+ * Licensee name to ObjectId mapping.
+ * This mapping is used to convert licensee names to ObjectIds for API calls.
  */
 export const LICENSEE_MAPPING: Record<string, string> = {
   TTG: '9a5db2cb29ffd2d962fd1d91',
@@ -10,10 +25,14 @@ export const LICENSEE_MAPPING: Record<string, string> = {
   test: '6851b3b6636e1e8021884f75',
 };
 
+// ============================================================================
+// Licensee Conversion Functions
+// ============================================================================
 /**
- * Converts a licensee name to its corresponding ObjectId
- * @param licenseeName - The licensee name (e.g., "Cabana")
- * @returns The corresponding ObjectId or the original string if no mapping found
+ * Converts a licensee name to its corresponding ObjectId.
+ *
+ * @param licenseeName - The licensee name (e.g., "Cabana").
+ * @returns The corresponding ObjectId or the original string if no mapping found.
  */
 export function getLicenseeObjectId(
   licenseeName: string | undefined

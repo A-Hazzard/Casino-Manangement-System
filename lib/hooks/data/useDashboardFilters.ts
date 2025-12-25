@@ -1,6 +1,17 @@
 /**
- * Custom hook for managing dashboard filter state and logic
- * Handles filter initialization, validation, and state management
+ * Dashboard Filters Custom Hook
+ *
+ * Provides a custom hook for managing dashboard filter state and logic.
+ * It handles filter initialization, validation, state management, and
+ * provides memoized setters to prevent unnecessary re-renders.
+ *
+ * Features:
+ * - Manages active metrics filter state
+ * - Manages pie chart filter state
+ * - Handles custom date range selection
+ * - Validates filter configurations
+ * - Provides reset functionality
+ * - Memoized setters for performance
  */
 
 import { useDashBoardStore } from '@/lib/store/dashboardStore';

@@ -218,7 +218,7 @@ function CabinetsPageContent() {
   // Event Handlers
   // ============================================================================
   // Sort change handler
-  const handleSortChange = (_option: string, _order: 'asc' | 'desc') => {
+  const handleSortChange = () => {
     // This will be handled by the useCabinetSorting hook
     // Sort logic is managed by the hook
   };
@@ -359,12 +359,6 @@ function CabinetsPageContent() {
             totalPages={totalPages}
             onSort={handleColumnSort}
             onPageChange={setCurrentPage}
-            onEdit={_cabinet => {
-              // Edit functionality is handled by the CabinetActions component
-            }}
-            onDelete={_cabinet => {
-              // Delete functionality is handled by the CabinetActions component
-            }}
             onRetry={loadCabinets}
             transformCabinet={transformCabinet}
             selectedLicencee={selectedLicencee}

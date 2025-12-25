@@ -127,9 +127,9 @@ function MachinesWithDataModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-lg bg-blue-50 p-3 text-sm">
-            <p className="font-medium text-blue-900">Calculation Summary:</p>
-            <ul className="mt-1 list-inside list-disc space-y-0.5 text-blue-800">
+          <div className="rounded-lg border border-orangeHighlight/30 bg-orangeHighlight/15 p-3 text-sm">
+            <p className="font-semibold text-orangeHighlight">Calculation Summary:</p>
+            <ul className="mt-1 list-inside list-disc space-y-0.5 text-gray-800">
               <li>
                 Total machines in view: {details.totalMachines}
               </li>
@@ -219,8 +219,10 @@ function MachinesWithDataModal({
                     return (
                       <tr
                         key={machine.machineId}
-                        className={`border-b border-gray-200 ${
-                          isInTopMachines ? 'bg-blue-50' : 'bg-white'
+                        className={`border-b ${
+                          isInTopMachines
+                            ? 'border-orangeHighlight/40 bg-orangeHighlight/20'
+                            : 'border-gray-200 bg-white'
                         }`}
                       >
                         <td className="p-3">
@@ -230,10 +232,10 @@ function MachinesWithDataModal({
                             }}
                             className="group flex items-center gap-1.5 text-left font-medium text-gray-900 transition-opacity hover:opacity-80"
                           >
-                            <span className="underline decoration-blue-600 decoration-dotted decoration-2 underline-offset-2">
+                            <span className="underline decoration-blueHighlight decoration-dotted decoration-2 underline-offset-2">
                               {machine.machineName}
                             </span>
-                            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blueHighlight group-hover:text-blueHighlight/80" />
                           </button>
                         </td>
                         <td className="p-3 text-sm text-gray-700">
@@ -244,10 +246,10 @@ function MachinesWithDataModal({
                               }}
                               className="group flex items-center gap-1.5 text-left transition-opacity hover:opacity-80"
                             >
-                              <span className="underline decoration-blue-600 decoration-dotted decoration-2 underline-offset-2">
+                              <span className="underline decoration-blueHighlight decoration-dotted decoration-2 underline-offset-2">
                                 {machine.locationName}
                               </span>
-                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blueHighlight group-hover:text-blueHighlight/80" />
                             </button>
                           ) : (
                             <span className="text-gray-500">Unknown</span>
@@ -394,7 +396,7 @@ function MachinesWithDataModal({
                     key={machine.machineId}
                     className={`rounded-lg border p-4 ${
                       isInTopMachines
-                        ? 'border-blue-300 bg-blue-50'
+                        ? 'border-orangeHighlight/50 bg-orangeHighlight/20 shadow-sm'
                         : 'border-gray-200 bg-white'
                     }`}
                   >
@@ -406,10 +408,10 @@ function MachinesWithDataModal({
                           }}
                           className="group flex items-center gap-1.5 text-left"
                         >
-                          <span className="text-sm font-semibold text-gray-900 underline decoration-blue-600 decoration-dotted decoration-2 underline-offset-2">
+                          <span className="text-sm font-semibold text-gray-900 underline decoration-blueHighlight decoration-dotted decoration-2 underline-offset-2">
                             {machine.machineName}
                           </span>
-                          <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                          <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blueHighlight group-hover:text-blueHighlight/80" />
                         </button>
                       </div>
                       <div className="flex flex-wrap gap-2 text-xs text-gray-600">
@@ -420,10 +422,10 @@ function MachinesWithDataModal({
                             }}
                             className="group flex items-center gap-1 transition-opacity hover:opacity-80"
                           >
-                            <span className="underline decoration-blue-600 decoration-dotted decoration-2 underline-offset-2">
+                            <span className="underline decoration-blueHighlight decoration-dotted decoration-2 underline-offset-2">
                               {machine.locationName}
                             </span>
-                            <ExternalLink className="h-3 w-3 flex-shrink-0 text-blue-600" />
+                            <ExternalLink className="h-3 w-3 flex-shrink-0 text-blueHighlight" />
                           </button>
                         ) : (
                           <span className="text-gray-500">Unknown Location</span>
@@ -544,7 +546,7 @@ function MachinesWithDataModal({
             <p className="font-medium text-gray-900">Notes:</p>
             <ul className="mt-1 list-inside list-disc space-y-0.5">
               <li>
-                Machines highlighted in <span className="bg-blue-50 px-1">blue</span> are
+                Machines highlighted in <span className="border border-orangeHighlight/40 bg-orangeHighlight/20 px-1.5 py-0.5 text-orangeHighlight font-medium rounded">orange</span> are
                 part of the top {details.topMachines.length} machines that
                 contribute {details.metricPercentage}% of the total{' '}
                 {details.metricName.toLowerCase()}.
@@ -609,7 +611,7 @@ function VerificationDetailsSection({
                 Total machines: {details.totalMachines} (
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="group inline-flex items-center gap-1 text-blue-600 underline decoration-dotted decoration-2 underline-offset-2 transition-opacity hover:opacity-80"
+                  className="group inline-flex items-center gap-1 text-blueHighlight underline decoration-dotted decoration-2 underline-offset-2 transition-opacity hover:opacity-80"
                   title={`View all ${details.machinesWithData} machines with ${details.metricName.toLowerCase()} activity`}
                 >
                   <span>
@@ -667,16 +669,16 @@ function VerificationDetailsSection({
                     return (
                       <tr
                         key={machine.machineId}
-                        className={`border-b border-gray-200 ${
+                        className={`border-b ${
                           isThresholdReached
-                            ? 'bg-blue-50 font-medium'
-                            : 'bg-white'
+                            ? 'border-orangeHighlight/40 bg-orangeHighlight/20 font-medium'
+                            : 'border-gray-200 bg-white'
                         }`}
                       >
                         <td className="p-2 text-gray-900">
                           {machine.machineName}
                           {isThresholdReached && (
-                            <span className="ml-1 text-blue-600">✓</span>
+                            <span className="ml-1 text-greenHighlight">✓</span>
                           )}
                         </td>
                         <td className="p-2 text-right text-gray-700">

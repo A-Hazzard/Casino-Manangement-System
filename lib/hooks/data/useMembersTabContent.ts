@@ -1,6 +1,15 @@
 /**
- * Custom hook for managing members tab content rendering and state
- * Handles tab switching, content rendering, and animation states
+ * Members Tab Content Custom Hook
+ *
+ * Provides a custom hook for managing members tab content rendering and state.
+ * It handles tab switching, content rendering, animation states, and provides
+ * utilities for tab management.
+ *
+ * Features:
+ * - Tab animation management
+ * - Tab component selection
+ * - Transition state tracking
+ * - Animation props generation
  */
 
 import { useCallback, useMemo } from 'react';

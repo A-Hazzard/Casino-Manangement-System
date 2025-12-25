@@ -1,23 +1,30 @@
 /**
  * Manufacturer Performance Chart Component
- * Bar chart component displaying manufacturer performance metrics.
  *
- * Features:
- * - Manufacturer performance data visualization
- * - Multiple metrics (Floor Positions %, Handle %, Win %, Drop %, Cancelled Credits %, Gross %)
- * - Recharts bar chart
- * - Responsive design
- * - Empty state handling
+ * Displays manufacturer-based performance metrics using Recharts.
+ * Features sidebar filters, search, and focus functionality.
  *
- * @param data - Array of manufacturer performance data
+ * @module components/ui/ManufacturerPerformanceChart
  */
+
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { type MachineEvaluationData } from '@/lib/types';
 import { Search } from 'lucide-react';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -28,6 +35,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import ManufacturerPerformanceTooltip from './charts/ManufacturerPerformanceTooltip';
+import { ManufacturerMultiSelect } from './ManufacturerPerformanceChart/ManufacturerMultiSelect';
+import { useManufacturerPerformanceData } from './ManufacturerPerformanceChart/useManufacturerPerformanceData';
 
 type ManufacturerPerformanceData = {
   manufacturer: string;
@@ -38,7 +48,6 @@ type ManufacturerPerformanceData = {
   totalCancelledCredits: number;
   totalGross: number;
   totalGamesPlayed: number;
-  // Verification data
   rawTotals?: {
     coinIn: number;
     netWin: number;
@@ -61,10 +70,12 @@ type ManufacturerPerformanceData = {
 
 type ManufacturerPerformanceChartProps = {
   data: ManufacturerPerformanceData[];
+  allMachines?: MachineEvaluationData[];
 };
 
-export function ManufacturerPerformanceChart({
-  data,
+export default function ManufacturerPerformanceChart({
+  data: initialData,
+  allMachines = [],
 }: ManufacturerPerformanceChartProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
@@ -73,56 +84,129 @@ export function ManufacturerPerformanceChart({
   const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Calculate width based on data length to ensure bars have enough space
-  // 60px per manufacturer gives enough room for labels and bars
-  const minWidth = Math.max(600, data.length * 60);
+  // Filter and aggregation state
+  const [selectedFilters, setSelectedFilters] = useState<string[]>(['all-manufacturers']);
+  const [selectedManufacturers, setSelectedManufacturers] = useState<string[]>([]);
 
-  // Transform data for the chart - each manufacturer becomes a data point
-  // Truncate long manufacturer names for display (keep full name in tooltip)
-  const chartData = data.map(item => {
-    const maxLength = 15; // Maximum characters before truncation
-    const displayName =
-      item.manufacturer.length > maxLength
-        ? `${item.manufacturer.substring(0, maxLength)}...`
-        : item.manufacturer;
+  // Metric selection state - performance charts show all metrics by default
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([
+    'Floor Positions %',
+    'Total Handle %',
+    'Total Win %',
+    'Total Drop %',
+    'Total Canc. Cr. %',
+    'Total Gross %',
+    'Total Games Played %',
+  ]);
 
-    return {
-      manufacturer: displayName,
-      fullManufacturer: item.manufacturer, // Keep full name for tooltip
-      'Floor Positions %': item.floorPositions,
-      'Total Handle %': item.totalHandle,
-      'Total Win %': item.totalWin,
-      'Total Drop %': item.totalDrop,
-      'Total Canc. Cr. %': item.totalCancelledCredits,
-      'Total Gross %': item.totalGross,
-      'Total Games Played %': item.totalGamesPlayed,
-      // Include verification data
-      rawTotals: item.rawTotals,
-      totalMetrics: item.totalMetrics,
-      machineCount: item.machineCount,
-      totalMachinesCount: item.totalMachinesCount,
-    };
-  });
+  // Initialize selected manufacturers only on initial data load
+  const hasInitialized = useRef(false);
+  useEffect(() => {
+    if (initialData.length > 0 && !hasInitialized.current && selectedManufacturers.length === 0) {
+      setSelectedManufacturers(initialData.map(d => d.manufacturer));
+      hasInitialized.current = true;
+    }
+  }, [initialData, selectedManufacturers.length]);
 
-  // Filter manufacturers based on search term
+  // Handle filter button toggles
+  const handleFilterToggle = (filter: string) => {
+    setSelectedFilters(prev => {
+      if (filter === 'all-manufacturers') {
+        return ['all-manufacturers'];
+      }
+
+      const newFilters = prev.filter(f => f !== 'all-manufacturers');
+      if (newFilters.includes(filter)) {
+        const filtered = newFilters.filter(f => f !== filter);
+        return filtered.length === 0 ? ['all-manufacturers'] : filtered;
+      } else {
+        return [...newFilters, filter];
+      }
+    });
+  };
+
+  // Use custom hook for data processing
+  const { aggregatedData, filteredData, chartData, minWidth } =
+    useManufacturerPerformanceData({
+      initialData,
+      allMachines,
+      selectedFilters,
+      selectedManufacturers,
+    });
+
+  // Track previous filter state to detect filter changes
+  const prevFiltersRef = useRef<string[]>(selectedFilters);
+  
+  // Sync selected manufacturers when filters change
+  useEffect(() => {
+    if (aggregatedData.length === 0) return;
+
+    const availableManufacturers = aggregatedData.map(d => d.manufacturer);
+    
+    // Remove selected items that are no longer in the filtered list
+    const validSelections = selectedManufacturers.filter(m => 
+      availableManufacturers.includes(m)
+    );
+
+    // Check if filter actually changed (not just a re-render)
+    const filterChanged = 
+      prevFiltersRef.current.join(',') !== selectedFilters.join(',');
+    const switchedToFilter = 
+      filterChanged && 
+      !selectedFilters.includes('all-manufacturers');
+    
+    // Update previous filters
+    prevFiltersRef.current = selectedFilters;
+
+    // If filter changed to a specific filter (Top 5, Bottom 5) and nothing is selected, auto-select
+    // This handles: All → Top 5, All → Bottom 5, Top 5 → Bottom 5, etc.
+    if (switchedToFilter && validSelections.length === 0) {
+      setSelectedManufacturers(availableManufacturers);
+    } else if (validSelections.length !== selectedManufacturers.length) {
+      // Update selections to only include valid ones (cleanup invalid selections)
+      setSelectedManufacturers(validSelections);
+    }
+
+  }, [aggregatedData, selectedFilters, selectedManufacturers]);
+
+  // Search suggestions - only from filtered data
   const manufacturerSuggestions = useMemo(() => {
     if (!searchTerm.trim()) return [];
     const searchLower = searchTerm.toLowerCase().trim();
-    return data
+    return filteredData
       .map((item, index) => ({
         manufacturer: item.manufacturer,
         index,
       }))
       .filter(item => item.manufacturer.toLowerCase().includes(searchLower))
-      .slice(0, 10); // Limit to 10 suggestions
-  }, [data, searchTerm]);
+      .slice(0, 10);
+  }, [filteredData, searchTerm]);
+
+  const handleSelectAll = () => {
+    const allSelected =
+      selectedManufacturers.length === aggregatedData.length &&
+      aggregatedData.length > 0;
+    if (allSelected) {
+      setSelectedManufacturers([]);
+    } else {
+      setSelectedManufacturers(aggregatedData.map(d => d.manufacturer));
+    }
+  };
+
+  const handleManufacturerToggle = (manufacturer: string) => {
+    setSelectedManufacturers(prev =>
+      prev.includes(manufacturer)
+        ? prev.filter(m => m !== manufacturer)
+        : [...prev, manufacturer]
+    );
+  };
 
   // Handle focus - find manufacturer and scroll to it
   const handleFocus = () => {
     if (!searchTerm || !scrollRef.current) return;
 
     const index = chartData.findIndex(item =>
-      item.fullManufacturer.toLowerCase().includes(searchTerm.toLowerCase())
+      item.fullManufacturerName?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (index !== -1) {
@@ -161,11 +245,11 @@ export function ManufacturerPerformanceChart({
     };
   }, [showSuggestions]);
 
-  if (!data || data.length === 0) {
+  if (!initialData || initialData.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Manufacturers Performance</CardTitle>
+          <CardTitle>Manufacturers&apos; Performance</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex h-64 items-center justify-center text-gray-500">
@@ -175,244 +259,6 @@ export function ManufacturerPerformanceChart({
       </Card>
     );
   }
-
-  const CustomTooltip = ({
-    active,
-    payload,
-    label,
-    coordinate,
-  }: {
-    active?: boolean;
-    payload?: Array<{
-      dataKey: string;
-      value: number;
-      color: string;
-      payload?: {
-        fullManufacturer?: string;
-        rawTotals?: ManufacturerPerformanceData['rawTotals'];
-        totalMetrics?: ManufacturerPerformanceData['totalMetrics'];
-        machineCount?: number;
-        totalMachinesCount?: number;
-      };
-    }>;
-    label?: string;
-    coordinate?: { x?: number; y?: number };
-  }) => {
-    if (active && payload && payload.length) {
-      // Get full manufacturer name and verification data from payload
-      const fullName = payload[0]?.payload?.fullManufacturer || label;
-      const rawTotals = payload[0]?.payload?.rawTotals;
-      const totalMetrics = payload[0]?.payload?.totalMetrics;
-      const machineCount = payload[0]?.payload?.machineCount;
-      const totalMachinesCount = payload[0]?.payload?.totalMachinesCount;
-
-      // Helper to format currency
-      const formatCurrency = (value: number) =>
-        new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }).format(value);
-
-      // Helper to get raw value for a metric
-      const getRawValue = (dataKey: string): number | null => {
-        if (dataKey === 'Floor Positions %') {
-          // For floor positions, return machine count
-          return machineCount !== undefined ? machineCount : null;
-        }
-
-        if (!rawTotals) return null;
-
-        const keyMap: Record<string, keyof typeof rawTotals> = {
-          'Total Handle %': 'coinIn',
-          'Total Win %': 'netWin',
-          'Total Drop %': 'drop',
-          'Total Canc. Cr. %': 'cancelledCredits',
-          'Total Gross %': 'gross',
-          'Total Games Played %': 'gamesPlayed',
-        };
-
-        const rawKey = keyMap[dataKey];
-        return rawKey ? rawTotals[rawKey] : null;
-      };
-
-      // Helper to get total value for a metric
-      const getTotalValue = (dataKey: string): number | null => {
-        if (dataKey === 'Floor Positions %') {
-          // For floor positions, return total machines count
-          return totalMachinesCount !== undefined ? totalMachinesCount : null;
-        }
-
-        if (!totalMetrics) return null;
-
-        const keyMap: Record<string, keyof typeof totalMetrics> = {
-          'Total Handle %': 'coinIn',
-          'Total Win %': 'netWin',
-          'Total Drop %': 'drop',
-          'Total Canc. Cr. %': 'cancelledCredits',
-          'Total Gross %': 'gross',
-          'Total Games Played %': 'gamesPlayed',
-        };
-
-        const totalKey = keyMap[dataKey];
-        return totalKey ? totalMetrics[totalKey] : null;
-      };
-
-      // Helper to check if metric is currency-based
-      const isCurrencyMetric = (dataKey: string) => {
-        return (
-          !dataKey.includes('Games Played') &&
-          !dataKey.includes('Floor Positions')
-        );
-      };
-
-      // Calculate tooltip position to stay within viewport
-      const tooltipWidth = 384; // max-w-sm = 384px
-      const tooltipHeight = 300; // approximate height
-      const viewportWidth =
-        typeof window !== 'undefined' ? window.innerWidth : 0;
-      const viewportHeight =
-        typeof window !== 'undefined' ? window.innerHeight : 0;
-
-      const tooltipStyle: React.CSSProperties = {
-        position: 'fixed',
-        zIndex: 9999,
-        pointerEvents: 'none',
-      };
-
-      if (coordinate?.x !== undefined && coordinate?.y !== undefined) {
-        // Use the container ref for accurate positioning relative to the viewport
-        const chartContainerRect =
-          containerRef.current?.getBoundingClientRect();
-
-        let x = coordinate.x;
-        let y = coordinate.y;
-
-        if (chartContainerRect) {
-          x = chartContainerRect.left + coordinate.x;
-          y = chartContainerRect.top + coordinate.y;
-        }
-
-        // Adjust x to prevent going off right edge
-        if (x + tooltipWidth > viewportWidth) {
-          x = viewportWidth - tooltipWidth - 10;
-        }
-        if (x < 10) {
-          x = 10;
-        }
-
-        // Smart vertical positioning: check if there's enough space below
-        const spaceBelow = viewportHeight - y;
-        const spaceAbove = y;
-
-        // If there's not enough space below but enough space above, position tooltip above
-        if (
-          spaceBelow < tooltipHeight + 20 &&
-          spaceAbove > tooltipHeight + 20
-        ) {
-          y = y - 10;
-          tooltipStyle.transform = 'translateY(-100%)';
-        } else {
-          // Default: position tooltip below (with some offset)
-          y = y + 20;
-        }
-
-        // Final bounds checking to ensure tooltip stays within viewport
-        if (y < 10) {
-          y = 10;
-          delete tooltipStyle.transform;
-        } else if (
-          y + tooltipHeight > viewportHeight &&
-          !tooltipStyle.transform
-        ) {
-          y = viewportHeight - tooltipHeight - 10;
-        }
-
-        tooltipStyle.left = `${x}px`;
-        tooltipStyle.top = `${y}px`;
-      }
-
-      return (
-        <div
-          className="z-[9999] w-80 rounded-xl border border-gray-200 bg-white/95 p-4 shadow-2xl backdrop-blur-sm"
-          style={tooltipStyle}
-        >
-          <p className="mb-4 truncate border-b pb-2 text-sm font-bold text-gray-900">
-            {fullName}
-          </p>
-          <div className="space-y-2">
-            {payload.map((entry, index) => {
-              const rawValue = getRawValue(entry.dataKey);
-              const totalValue = getTotalValue(entry.dataKey);
-              const isCurrency = isCurrencyMetric(entry.dataKey);
-              const isFloorPositions = entry.dataKey === 'Floor Positions %';
-
-              return (
-                <div
-                  key={index}
-                  className="border-b border-gray-100 pb-2 last:border-0"
-                >
-                  <p
-                    className="text-sm font-medium"
-                    style={{ color: entry.color }}
-                  >
-                    {entry.dataKey}: {entry.value.toFixed(2)}%
-                  </p>
-                  {rawValue !== null && totalValue !== null && (
-                    <div className="ml-2 mt-1 space-y-1 text-xs text-gray-600">
-                      {isFloorPositions ? (
-                        <>
-                          <p className="whitespace-nowrap">
-                            • {machineCount || 0} machines of {totalValue} total
-                          </p>
-                          <p className="text-[10px] text-gray-400">
-                            ({machineCount || 0} / {totalValue}) × 100
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="whitespace-nowrap">
-                            •{' '}
-                            {isCurrency
-                              ? formatCurrency(rawValue)
-                              : rawValue.toLocaleString()}{' '}
-                            of{' '}
-                            {isCurrency
-                              ? formatCurrency(totalValue)
-                              : totalValue.toLocaleString()}{' '}
-                            total
-                          </p>
-                          {machineCount !== undefined && (
-                            <p>
-                              • {machineCount} machine
-                              {machineCount !== 1 ? 's' : ''} contributing
-                            </p>
-                          )}
-                          <p className="text-[10px] text-gray-400">
-                            (
-                            {isCurrency
-                              ? formatCurrency(rawValue)
-                              : rawValue.toLocaleString()}{' '}
-                            /{' '}
-                            {isCurrency
-                              ? formatCurrency(totalValue)
-                              : totalValue.toLocaleString()}
-                            ) × 100
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
 
   const colors = [
     '#3b82f6', // Blue
@@ -439,7 +285,7 @@ export function ManufacturerPerformanceChart({
     <Card>
       <CardHeader>
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Manufacturers Performance</CardTitle>
+          <CardTitle>Manufacturers&apos; Performance</CardTitle>
           <div className="flex w-full max-w-sm items-center space-x-2">
             <div className="relative w-full" ref={searchRef}>
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -482,109 +328,302 @@ export function ManufacturerPerformanceChart({
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        {/* Fixed Legend outside scroll container */}
-        <div className="mb-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-b pb-4">
-          {legendItems.map(item => (
-            <div key={item.label} className="flex items-center gap-2">
-              <div
-                className="h-3 w-3 rounded-sm"
-                style={{ backgroundColor: item.color }}
-              />
-              <span className="text-xs font-medium text-gray-700">
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Scrollable Container for both Mobile and Desktop */}
-        <div
-          ref={scrollRef}
-          className="relative touch-pan-x overflow-x-auto overflow-y-hidden"
-        >
-          <div
-            ref={containerRef}
-            style={{ minWidth: `${minWidth}px`, width: '100%' }}
-          >
-            <ResponsiveContainer width="100%" height={450}>
-              <BarChart
-                data={chartData}
-                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis
-                  dataKey="manufacturer"
-                  tick={{ fontSize: 11, fill: '#666' }}
-                  axisLine={{ stroke: '#e0e0e0' }}
-                  tickLine={{ stroke: '#e0e0e0' }}
-                  angle={-45}
-                  textAnchor="end"
-                  height={120}
-                  interval={0} // Show all labels since we have scrolling
-                />
-                <YAxis
-                  tick={{ fontSize: 12, fill: '#666' }}
-                  axisLine={{ stroke: '#e0e0e0' }}
-                  tickLine={{ stroke: '#e0e0e0' }}
-                  label={{
-                    value: 'Percentage %',
-                    angle: -90,
-                    position: 'insideLeft',
+      <CardContent className="p-6 pt-0 pb-0">
+        {/* Metric selection checkboxes */}
+        <div className="mb-4 overflow-x-auto border-b pb-3 md:mb-6 md:pb-4">
+          <div className="flex min-w-max flex-wrap items-center justify-center gap-x-4 gap-y-2 md:gap-x-6">
+            {legendItems.map(item => (
+              <div key={item.label} className="flex items-center gap-1.5 md:gap-2">
+                <Checkbox
+                  id={`metric-manufacturer-${item.label}`}
+                  checked={selectedMetrics.includes(item.label)}
+                  onCheckedChange={checked => {
+                    if (checked) {
+                      setSelectedMetrics(prev => [...prev, item.label]);
+                    } else {
+                      setSelectedMetrics(prev =>
+                        prev.filter(m => m !== item.label)
+                      );
+                    }
+                  }}
+                  className="h-3.5 w-3.5 border-2 md:h-4 md:w-4"
+                  style={{
+                    borderColor: item.color,
+                    backgroundColor: selectedMetrics.includes(item.label)
+                      ? item.color
+                      : 'transparent',
                   }}
                 />
-                <Tooltip
-                  content={<CustomTooltip />}
-                  wrapperStyle={{ zIndex: 9999 }}
-                />
-                {focusedIndex !== null && chartData[focusedIndex] && (
-                  <ReferenceArea
-                    x1={chartData[focusedIndex].manufacturer}
-                    x2={chartData[focusedIndex].manufacturer}
-                    fill="#3b82f6"
-                    fillOpacity={0.15}
-                    stroke="#3b82f6"
-                    strokeDasharray="3 3"
-                    strokeOpacity={0.5}
+                <Label
+                  htmlFor={`metric-manufacturer-${item.label}`}
+                  className="text-[10px] font-medium text-gray-700 cursor-pointer md:text-xs"
+                >
+                  {item.label}
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile Filters - Visible on mobile */}
+        <div className="mb-4 space-y-3 lg:hidden">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">
+              Filter Options
+            </Label>
+            <Select
+              value={
+                selectedFilters.includes('all-manufacturers')
+                  ? 'all-manufacturers'
+                  : selectedFilters.includes('top-5-manufacturers')
+                    ? 'top-5-manufacturers'
+                    : selectedFilters.includes('bottom-5-manufacturers')
+                      ? 'bottom-5-manufacturers'
+                      : 'all-manufacturers'
+              }
+              onValueChange={value => {
+                if (value === 'all-manufacturers') {
+                  setSelectedFilters(['all-manufacturers']);
+                } else {
+                  setSelectedFilters([value]);
+                }
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select filter..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all-manufacturers">All Manufacturers</SelectItem>
+                <SelectItem value="top-5-manufacturers">Top 5 Manufacturers</SelectItem>
+                <SelectItem value="bottom-5-manufacturers">Bottom 5 Manufacturers</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">
+              Select Manufacturers
+            </Label>
+            <ManufacturerMultiSelect
+              manufacturers={aggregatedData.map(d => ({
+                id: d.manufacturer,
+                name: d.manufacturer,
+              }))}
+              selectedManufacturers={selectedManufacturers}
+              onSelectionChange={setSelectedManufacturers}
+              placeholder="Select manufacturers..."
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+          <div className="hidden w-full shrink-0 space-y-4 lg:block lg:w-64 lg:space-y-6">
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold text-gray-900">Manufacturer Filters</h4>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="all-manufacturers-performance"
+                    checked={selectedFilters.includes('all-manufacturers')}
+                    onCheckedChange={() => handleFilterToggle('all-manufacturers')}
                   />
-                )}
-                <Bar
-                  dataKey="Floor Positions %"
-                  fill={colors[0]}
-                  name="Floor Positions %"
-                />
-                <Bar
-                  dataKey="Total Handle %"
-                  fill={colors[1]}
-                  name="Total Handle %"
-                />
-                <Bar
-                  dataKey="Total Win %"
-                  fill={colors[2]}
-                  name="Total Win %"
-                />
-                <Bar
-                  dataKey="Total Drop %"
-                  fill={colors[3]}
-                  name="Total Drop %"
-                />
-                <Bar
-                  dataKey="Total Canc. Cr. %"
-                  fill={colors[4]}
-                  name="Total Canc. Cr. %"
-                />
-                <Bar
-                  dataKey="Total Gross %"
-                  fill={colors[5]}
-                  name="Total Gross %"
-                />
-                <Bar
-                  dataKey="Total Games Played %"
-                  fill={colors[6]}
-                  name="Total Games Played %"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+                  <Label
+                    htmlFor="all-manufacturers-performance"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    All Manufacturers
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="top-5-manufacturers-performance"
+                    checked={selectedFilters.includes('top-5-manufacturers')}
+                    onCheckedChange={() => handleFilterToggle('top-5-manufacturers')}
+                  />
+                  <Label
+                    htmlFor="top-5-manufacturers-performance"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Top 5 Manufacturers
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="bottom-5-manufacturers-performance"
+                    checked={selectedFilters.includes('bottom-5-manufacturers')}
+                    onCheckedChange={() => handleFilterToggle('bottom-5-manufacturers')}
+                  />
+                  <Label
+                    htmlFor="bottom-5-manufacturers-performance"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Bottom 5 Manufacturers
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-900">Manufacturers</h4>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="select-all-manufacturers-performance"
+                    checked={
+                      selectedManufacturers.length === aggregatedData.length &&
+                      aggregatedData.length > 0
+                    }
+                    onCheckedChange={() => handleSelectAll()}
+                  />
+                  <Label
+                    htmlFor="select-all-manufacturers-performance"
+                    className="text-xs font-medium text-gray-500"
+                  >
+                    Select All
+                  </Label>
+                </div>
+              </div>
+              <div className="flex max-h-[450px] flex-col gap-3 overflow-y-auto pr-2 text-xs">
+                {aggregatedData.map(item => (
+                  <div key={item.manufacturer} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`manufacturer-performance-${item.manufacturer}`}
+                      checked={selectedManufacturers.includes(item.manufacturer)}
+                      onCheckedChange={() => handleManufacturerToggle(item.manufacturer)}
+                    />
+                    <Label
+                      htmlFor={`manufacturer-performance-${item.manufacturer}`}
+                      className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {item.manufacturer}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div
+              ref={scrollRef}
+              className="relative touch-pan-x overflow-x-auto overflow-y-hidden"
+            >
+              <div
+                ref={containerRef}
+                style={{ minWidth: `${minWidth}px`, width: '100%' }}
+              >
+                <ResponsiveContainer width="100%" height={600}>
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#f0f0f0"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="manufacturerName"
+                      tick={{ fontSize: 11, fill: '#666' }}
+                      axisLine={{ stroke: '#e0e0e0' }}
+                      tickLine={{ stroke: '#e0e0e0' }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                      interval={0}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: '#666' }}
+                      axisLine={{ stroke: '#e0e0e0' }}
+                      tickLine={{ stroke: '#e0e0e0' }}
+                      width={40}
+                      label={{
+                        value: 'Percentage %',
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 10,
+                        style: { textAnchor: 'middle', fontSize: 11, fill: '#666' },
+                      }}
+                    />
+                    <Tooltip
+                      content={
+                        <ManufacturerPerformanceTooltip
+                          chartContainerRef={containerRef}
+                        />
+                      }
+                      wrapperStyle={{ zIndex: 9999 }}
+                      cursor={{ fill: '#f4f4f5', opacity: 0.4 }}
+                    />
+                    {focusedIndex !== null &&
+                      focusedIndex >= 0 &&
+                      focusedIndex < chartData.length &&
+                      chartData[focusedIndex] && (
+                        <ReferenceArea
+                          x1={chartData[focusedIndex].manufacturerName}
+                          x2={chartData[focusedIndex].manufacturerName}
+                          fill="#FFA203"
+                          fillOpacity={0.2}
+                          stroke="#FFA203"
+                          strokeWidth={2}
+                          strokeDasharray="3 3"
+                          strokeOpacity={0.8}
+                        />
+                      )}
+                    <Bar
+                      dataKey="Floor Positions %"
+                      fill={colors[0]}
+                      name="Floor Positions %"
+                      hide={!selectedMetrics.includes('Floor Positions %')}
+                      style={{ transition: 'opacity 0.3s ease-in-out' }}
+                    />
+                    <Bar
+                      dataKey="Total Handle %"
+                      fill={colors[1]}
+                      name="Total Handle %"
+                      hide={!selectedMetrics.includes('Total Handle %')}
+                      style={{ transition: 'opacity 0.3s ease-in-out' }}
+                    />
+                    <Bar
+                      dataKey="Total Win %"
+                      fill={colors[2]}
+                      name="Total Win %"
+                      hide={!selectedMetrics.includes('Total Win %')}
+                      style={{ transition: 'opacity 0.3s ease-in-out' }}
+                    />
+                    <Bar
+                      dataKey="Total Drop %"
+                      fill={colors[3]}
+                      name="Total Drop %"
+                      hide={!selectedMetrics.includes('Total Drop %')}
+                      style={{ transition: 'opacity 0.3s ease-in-out' }}
+                    />
+                    <Bar
+                      dataKey="Total Canc. Cr. %"
+                      fill={colors[4]}
+                      name="Total Canc. Cr. %"
+                      hide={!selectedMetrics.includes('Total Canc. Cr. %')}
+                      style={{ transition: 'opacity 0.3s ease-in-out' }}
+                    />
+                    <Bar
+                      dataKey="Total Gross %"
+                      fill={colors[5]}
+                      name="Total Gross %"
+                      hide={!selectedMetrics.includes('Total Gross %')}
+                      style={{ transition: 'opacity 0.3s ease-in-out' }}
+                    />
+                    <Bar
+                      dataKey="Total Games Played %"
+                      fill={colors[6]}
+                      name="Total Games Played %"
+                      hide={!selectedMetrics.includes('Total Games Played %')}
+                      style={{ transition: 'opacity 0.3s ease-in-out' }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
         </div>
       </CardContent>

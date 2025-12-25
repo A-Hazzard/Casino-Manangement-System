@@ -1,6 +1,16 @@
 /**
- * Membership Statistics Helper
- * Helper functions for fetching member counts (not location counts)
+ * Membership Statistics Helper Functions
+ *
+ * Provides helper functions for fetching membership statistics and member counts.
+ * It handles API calls to retrieve member count data with optional filtering
+ * by licensee, location, and machine type.
+ *
+ * Features:
+ * - Fetches member count from API
+ * - Supports licensee filtering
+ * - Supports location filtering
+ * - Supports machine type filtering (SMIB/No SMIB/Local Server/Membership)
+ * - Abort signal support for request cancellation
  */
 
 import axios from 'axios';

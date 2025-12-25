@@ -6,16 +6,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 // Layout components
 import PageLayout from '@/components/layout/PageLayout';
-
-// Store
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
-
-// Hooks
 import { useReportsTabContent } from '@/lib/hooks/data';
 import { useReportsNavigation } from '@/lib/hooks/navigation';
-
-// Components
 import ReportsDateFilters from '@/components/reports/common/ReportsDateFilters';
 import {
   AccessDeniedState,
@@ -25,19 +19,13 @@ import {
 import ReportsNavigation from '@/components/reports/common/ReportsNavigation';
 import { IMAGES } from '@/lib/constants/images';
 import Image from 'next/image';
-
-// Tab components
 import LocationsTabWithErrorHandling from '@/components/reports/tabs/LocationsTabWithErrorHandling';
 import MachinesTab from '@/components/reports/tabs/MachinesTab';
 import MetersTab from '@/components/reports/tabs/MetersTab';
-
-// Constants
 import {
   REPORTS_ANIMATIONS,
   REPORTS_TABS_CONFIG,
 } from '@/lib/constants/reports';
-
-// Types
 import type { ReportView } from '@/lib/types/reports';
 
 /**
@@ -156,7 +144,7 @@ export default function ReportsContent() {
       toasterRichColors={true}
     >
       {/* Title and Icon */}
-      <div className="flex items-center gap-3">
+      <div className="mb-6 flex items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">
           Reports
         </h1>
@@ -177,7 +165,6 @@ export default function ReportsContent() {
         availableTabs={availableTabs}
         activeView={activeView}
         onTabChange={handleTabChange}
-        _isLoading={isLoading}
       />
 
       {/* Loading Overlay */}

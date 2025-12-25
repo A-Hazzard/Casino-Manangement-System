@@ -856,11 +856,18 @@ When creating a page that displays licensee/location/machine data:
 
 ### Page Implementations
 
+**Note:** All pages have been refactored (December 2025) to use custom hooks and section components. The core licensee filtering logic remains the same.
+
 - `app/page.tsx` (Dashboard) - ✅ Uses `shouldShowNoLicenseeMessage`, includes `selectedLicencee` in dependencies
+  - **Refactored:** Uses custom hooks for data fetching
 - `app/locations/page.tsx` - ✅ Uses `shouldShowNoLicenseeMessage`, includes `selectedLicencee` in dependencies
+  - **Refactored:** Uses `useLocationsPageData` hook and `LocationsHeaderSection`, `LocationsFilterSection` components
 - `app/cabinets/page.tsx` - ✅ Uses `shouldShowNoLicenseeMessage`, includes `selectedLicencee` in dependencies
+  - **Refactored:** Uses `useCabinetsPageData` hook
 - `app/collection-report/page.tsx` - ✅ Uses `shouldShowNoLicenseeMessage`, auto-selects single licensee, includes `selectedLicencee` in dependencies
+  - **Refactored:** Uses `useCollectionReportPageData` and `useCollectionReportFilters` hooks, `CollectionReportHeader`, `CollectionReportModals` components
 - `app/administration/page.tsx` - ✅ Shows all users (no licensee filtering), increments `sessionVersion` on permission changes
+  - **Refactored:** Uses `useAdministrationUsers` and `useAdministrationLicensees` hooks, `AdministrationUsersSection`, `AdministrationLicenseesSection` components
 
 ### Types
 
@@ -1077,4 +1084,4 @@ node -e "require('dotenv').config(); const mongoose = require('mongoose'); mongo
 
 **Remember:** When in doubt, check the comprehensive guide at `Documentation/licensee-location-filtering.md`
 
-**Last Updated:** November 9, 2025
+**Last Updated:** December 22nd, 2025

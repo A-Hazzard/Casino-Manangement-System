@@ -389,14 +389,14 @@ export function MeterDataSection({
 
   return (
     <>
-      <Card>
-        <CardHeader>
+      <Card className="w-full max-w-full min-w-0 overflow-x-hidden">
+        <CardHeader className="min-w-0">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-700">
             <BarChart3 className="h-5 w-5" />
             Meter Data
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 min-w-0 overflow-x-hidden">
           <p className="text-sm text-gray-600">
             Request current meter data from the SMIB to verify machine
             communication and retrieve accounting information.

@@ -1,7 +1,7 @@
 # Collection Reports System - Critical Guidelines for Cursor AI
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** December 10th, 2025  
+**Last Updated:** December 22nd, 2025  
 **Version:** 2.2.0
 
 ---
@@ -37,6 +37,7 @@ This document provides critical guidelines for understanding, debugging, and mod
 When filtering by membership-enabled locations in API endpoints, the system checks both `membershipEnabled` and `enableMembership` fields for backward compatibility. This ensures locations are included if either field is set to `true`, supporting both legacy and current data formats.
 
 **Affected Endpoints:**
+
 - `/api/locations/membership-count`
 - `/api/machines/status` (with `machineTypeFilter=MembershipOnly`)
 - `/api/reports/locations` (with `machineTypeFilter=MembershipOnly`)
@@ -44,12 +45,10 @@ When filtering by membership-enabled locations in API endpoints, the system chec
 - `/api/lib/helpers/locationAggregation.ts`
 
 **MongoDB Query Pattern:**
+
 ```typescript
 {
-  $or: [
-    { membershipEnabled: true },
-    { enableMembership: true }
-  ]
+  $or: [{ membershipEnabled: true }, { enableMembership: true }];
 }
 ```
 
@@ -537,32 +536,43 @@ if (!previousCollection) {
 **Component Hierarchy:**
 
 ```
-NewCollectionModal.tsx (Create)
-├── Uses: addMachineCollection() helper
+NewCollectionModal.tsx (Create - Desktop)
+├── Uses: useNewCollectionModal hook
+├── Components: NewCollectionLocationMachineSelection, NewCollectionFormFields, NewCollectionFinancials, NewCollectionCollectedMachines
+├── Helpers: newCollectionModalHelpers.ts (getUserDisplayName, logActivity)
 ├── Creates: Collections with locationReportId: ""
 └── Finalizes: POST /api/collectionReport
 
 EditCollectionModal.tsx (Edit - Desktop)
-├── Uses: confirmAddOrUpdateEntry() for adding/editing
+├── Uses: useEditCollectionModal hook
+├── Components: EditCollectionLocationMachineSelection, EditCollectionFormFields, EditCollectionFinancials
+├── Helpers: editCollectionModalHelpers.ts (fetchCollectionReportById, calculateAmountToCollect, etc.)
 ├── Creates: Collections with locationReportId: reportId
 ├── Updates: PATCH /api/collection-reports/[reportId]/update-history
 └── Tracks: originalCollections for change detection
 
 MobileCollectionModal.tsx (Create - Mobile)
-├── Uses: MobileFormPanel, MobileCollectedListPanel
+├── Uses: useMobileCollectionModal hook
+├── Components: MobileLocationSelector, MobileMachineList
 ├── Two-step: PATCH collections → POST collectionReport
 └── Same result as desktop
 
 MobileEditCollectionModal.tsx (Edit - Mobile)
-├── Uses: Slide-up panels for navigation
+├── Uses: useMobileEditCollectionModal hook
+├── Components: MobileEditLocationSelector, MobileEditMachineList
+├── Helpers: mobileEditCollectionModalHelpers.ts (sortMachinesAlphabetically)
 ├── Uses: modalState.originalCollections for change detection
 └── Same logic as desktop
 ```
 
 **Critical State Tracking:**
 
-- `collectedMachineEntries` (Desktop) / `modalState.collectedMachines` (Mobile): Current state
-- `originalCollections` (Desktop) / `modalState.originalCollections` (Mobile): Baseline for change detection
+- **Desktop Modals**: State managed in custom hooks (`useNewCollectionModal`, `useEditCollectionModal`)
+  - `collectedMachineEntries`: Current state
+  - `originalCollections`: Baseline for change detection
+- **Mobile Modals**: State managed in custom hooks (`useMobileCollectionModal`, `useMobileEditCollectionModal`)
+  - `modalState.collectedMachines`: Current state
+  - `modalState.originalCollections`: Baseline for change detection
 - **MUST** keep both synchronized, especially when deleting!
 
 ### Backend Files:

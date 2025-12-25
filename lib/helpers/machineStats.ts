@@ -23,6 +23,8 @@ export type MachineStats = {
   totalMachines: number;
   onlineMachines: number;
   offlineMachines: number;
+  criticalOffline?: number;
+  recentOffline?: number;
 };
 
 // ============================================================================
@@ -67,6 +69,8 @@ export async function fetchMachineStats(
       totalMachines: data.totalMachines || 0,
       onlineMachines: data.onlineMachines || 0,
       offlineMachines: data.offlineMachines || 0,
+      criticalOffline: data.criticalOffline || 0,
+      recentOffline: data.recentOffline || 0,
     };
   } catch (error) {
     // Check if this is a cancellation error (expected behavior, don't log or handle)
@@ -98,6 +102,8 @@ export async function fetchMachineStats(
       totalMachines: 0,
       onlineMachines: 0,
       offlineMachines: 0,
+      criticalOffline: 0,
+      recentOffline: 0,
     };
   }
 }

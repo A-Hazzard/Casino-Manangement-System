@@ -1,6 +1,17 @@
 /**
- * Custom hook for managing location sorting and filtering logic
- * Extracts complex sorting logic from the Locations page
+ * Location Sorting Custom Hook
+ *
+ * Provides a custom hook for managing location sorting and filtering logic.
+ * It extracts complex sorting logic from the Locations page and provides
+ * pagination, sorting, and filtering capabilities.
+ *
+ * Features:
+ * - Location data sorting by various options
+ * - Ascending/descending sort order
+ * - Pagination support
+ * - Batch-based pagination (50 items per batch)
+ * - Memoized filtering and sorting for performance
+ * - Column-based sorting handlers
  */
 
 import { LocationSortOption } from '@/lib/types/location';

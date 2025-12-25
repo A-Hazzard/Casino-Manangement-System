@@ -1,3 +1,20 @@
+/**
+ * Current User Query Custom Hook
+ *
+ * Provides a React Query hook for fetching and managing the current authenticated
+ * user's data. It handles caching, deduplication, synchronization with Zustand
+ * store, and automatic error handling.
+ *
+ * Features:
+ * - Fetches current user data from API
+ * - Automatic caching with React Query
+ * - Synchronizes with Zustand user store
+ * - Handles authentication errors (401)
+ * - Retry logic with smart error handling
+ * - Cache management and TTL
+ * - User data transformation
+ */
+
 import { useUserStore } from '@/lib/store/userStore';
 import {
   CACHE_KEYS,

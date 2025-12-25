@@ -1,3 +1,20 @@
+/**
+ * Date Utilities for API Routes
+ *
+ * Provides utility functions for calculating date ranges based on time periods.
+ * Handles timezone-aware date calculations for Trinidad time (UTC-4) and
+ * supports various time period options.
+ *
+ * Features:
+ * - Time period to date range conversion
+ * - Timezone-aware date calculations
+ * - Support for Today, Yesterday, 7d, 30d, All Time, Custom periods
+ * - Local timezone handling
+ * - UTC conversion for database queries
+ *
+ * @module app/api/lib/utils/dates
+ */
+
 import { CustomDate, TimePeriod } from '@/app/api/lib/types';
 
 /**

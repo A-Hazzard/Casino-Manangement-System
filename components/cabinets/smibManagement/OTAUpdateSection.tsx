@@ -74,8 +74,8 @@ export function OTAUpdateSection({
 
   return (
     <>
-      <Card>
-        <CardHeader>
+      <Card className="w-full max-w-full min-w-0 overflow-x-hidden">
+        <CardHeader className="min-w-0">
           <div className="flex flex-col gap-1">
             <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-700">
               <Download className="h-5 w-5" />
@@ -86,7 +86,7 @@ export function OTAUpdateSection({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 min-w-0 overflow-x-hidden">
           <p className="text-sm text-gray-600">
             Deploy over-the-air firmware updates to the SMIB device. Select a
             firmware version and initiate the update.

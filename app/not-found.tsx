@@ -1,3 +1,18 @@
+/**
+ * Global Not Found Page
+ *
+ * Displays a 404 error page when a user navigates to a non-existent route.
+ * Handles client-side mounting to prevent hydration issues and provides
+ * navigation options back to the dashboard.
+ *
+ * Features:
+ * - 404 error display
+ * - Client-side mounting handling
+ * - Navigation back to dashboard
+ * - Consistent layout with header
+ * - Hydration-safe rendering
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';

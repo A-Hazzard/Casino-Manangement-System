@@ -195,9 +195,15 @@ export async function GET(request: NextRequest) {
       },
     ];
 
-    const locations = await Meters.aggregate<
+    // Use cursor for performance (MANDATORY for Meters aggregations)
+    const locations: Array<LocationResponse & { moneyIn?: number; moneyOut?: number }> = [];
+    const cursor = Meters.aggregate<
       LocationResponse & { moneyIn?: number; moneyOut?: number }
-    >(aggregationPipeline).exec();
+    >(aggregationPipeline).cursor({ batchSize: 1000 });
+
+    for await (const doc of cursor) {
+      locations.push(doc as LocationResponse & { moneyIn?: number; moneyOut?: number });
+    }
 
     // ============================================================================
     // STEP 7: Return search results

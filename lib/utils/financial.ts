@@ -1,5 +1,13 @@
 /**
- * Financial calculation utilities for aggregating totals across locations and cabinets
+ * Financial Calculation Utilities
+ *
+ * Utility functions for aggregating financial totals across locations and cabinets.
+ *
+ * Features:
+ * - Calculate financial totals from location data
+ * - Calculate financial totals from cabinet data
+ * - Aggregate money in, money out, and gross revenue
+ * - Handle null/empty data gracefully
  */
 
 import type { AggregatedLocation } from '@/shared/types/entities';

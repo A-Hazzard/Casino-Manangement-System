@@ -1,3 +1,21 @@
+/**
+ * Dashboard Helper Functions
+ *
+ * Provides helper functions for fetching and managing dashboard data, including
+ * metrics, totals, top-performing locations/cabinets, and gaming locations.
+ * It supports filtering by time period, licensee, currency conversion, and
+ * includes comprehensive error handling and performance optimizations.
+ *
+ * Features:
+ * - Fetches dashboard totals and metrics data
+ * - Loads gaming locations with filtering
+ * - Fetches top-performing data
+ * - Handles currency conversion
+ * - Error handling and notifications
+ * - Request deduplication for performance
+ * - Date range calculations
+ */
+
 import {
   ActiveFilters,
   ActiveTab,

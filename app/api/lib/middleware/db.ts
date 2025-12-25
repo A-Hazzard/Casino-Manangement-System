@@ -1,3 +1,20 @@
+/**
+ * Database Middleware
+ *
+ * Provides MongoDB connection management with caching and automatic reconnection.
+ * Handles connection string changes and ensures efficient connection reuse across
+ * API routes.
+ *
+ * Features:
+ * - Connection caching to prevent multiple connections
+ * - Automatic reconnection on connection string changes
+ * - Server-side only execution
+ * - Connection state management
+ * - Error handling and cleanup
+ *
+ * @module app/api/lib/middleware/db
+ */
+
 import mongoose from 'mongoose';
 
 const mongooseCache: {

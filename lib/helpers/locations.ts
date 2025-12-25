@@ -1,3 +1,17 @@
+/**
+ * Locations Helper Functions
+ *
+ * Provides helper functions for fetching and managing location data from the API.
+ * It handles location retrieval, cabinet fetching, search functionality, and
+ * location aggregation with financial metrics.
+ *
+ * Features:
+ * - Fetches location details and associated cabinets
+ * - Searches locations by name or ID
+ * - Fetches aggregated location data with financial metrics
+ * - Handles location filtering by licensee and time period
+ */
+
 import { locations } from '@/lib/types';
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';

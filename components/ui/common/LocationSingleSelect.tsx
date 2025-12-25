@@ -121,7 +121,7 @@ export default function LocationSingleSelect({
     option.name.length > longest.length ? option.name : longest, 
     displayText
   );
-  // Estimate width: ~8-10px per character + padding (60px for icons/padding)
+  // Estimate width: ~8-10px per character + padding (80px for icons/padding)
   const estimatedWidth = Math.max(longestName.length * 9 + 80, 250);
 
   return (
@@ -129,11 +129,11 @@ export default function LocationSingleSelect({
       <Button
         variant="outline"
         onClick={() => setIsOpen(!isOpen)}
-        className={`${buttonWidthClass} justify-between text-left font-normal whitespace-nowrap`}
+        className={`${buttonWidthClass} justify-between text-left font-normal whitespace-nowrap px-3`}
       >
-        <div className="flex items-center gap-2">
-          {showFilterIcon && <Filter className="h-4 w-4 text-gray-400" />}
-          <span>{displayText}</span>
+        <div className="flex items-center gap-2 min-w-0">
+          {showFilterIcon && <Filter className="h-4 w-4 text-gray-400 flex-shrink-0" />}
+          <span className="truncate">{displayText}</span>
         </div>
         <ChevronDown
           className={`h-4 w-4 transition-transform flex-shrink-0 ml-2 ${

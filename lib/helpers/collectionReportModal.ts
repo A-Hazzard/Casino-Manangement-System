@@ -18,7 +18,6 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import type {
   CollectionDocument,
-  CollectionReportMachineEntry,
 } from '@/lib/types/collections';
 import type {
   CollectionReportMachineSummary,
@@ -312,11 +311,7 @@ export function createCollectionReportPayload(
   userEmail: string,
   selectedLocationName: string,
   selectedLocationId: string
-): CreateCollectionReportPayload & {
-  machines: Array<
-    Omit<CollectionReportMachineEntry, 'internalId' | 'serialNumber'>
-  >;
-} {
+): CreateCollectionReportPayload {
   const machineEntry = {
     machineId: entry.machineId,
     machineName: entry.machineName,
@@ -365,7 +360,15 @@ export function createCollectionReportPayload(
     reasonShortagePayment: financials.reasonForShortagePayment,
     balanceCorrection: Number(financials.balanceCorrection) || 0,
     balanceCorrectionReas: financials.balanceCorrectionReason,
-    machines: [machineEntry],
+    machines: [
+      {
+        ...machineEntry,
+        prevMetersIn: 0,
+        prevMetersOut: 0,
+        timestamp: entry.timestamp,
+        locationReportId: selectedLocationId || '',
+      },
+    ],
   };
 }
 

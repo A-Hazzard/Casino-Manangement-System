@@ -5,27 +5,64 @@
  * Defines props for evaluation tab including machine data, locations,
  * loading states, sorting configuration, and action handlers.
  */
-import type { MachineData as SharedMachineData } from '@/shared/types/machines';
-
-// Use the shared MachineData type for consistency
-export type MachineData = SharedMachineData;
+import type { MachineEvaluationData } from '@/lib/types';
+import type { TopMachinesCriteria } from '@/components/ui/TopMachinesCriteriaSelector';
+import type { VerificationDetails } from '@/lib/helpers/machinesTab';
 
 export type MachinesEvaluationTabProps = {
   // Data props
-  evaluationData: MachineData[];
+  evaluationData: MachineEvaluationData[];
+  allMachines: MachineEvaluationData[];
+  manufacturerData: Array<{
+    manufacturer: string;
+    floorPositions: number;
+    totalHandle: number;
+    totalWin: number;
+    totalDrop: number;
+    totalCancelledCredits: number;
+    totalGross: number;
+    totalGamesPlayed: number;
+  }>;
+  gamesData: Array<{
+    gameName: string;
+    floorPositions: number;
+    totalHandle: number;
+    totalWin: number;
+    totalDrop: number;
+    totalCancelledCredits: number;
+    totalGross: number;
+    totalGamesPlayed: number;
+  }>;
   locations: { id: string; name: string; sasEnabled: boolean }[];
+  selectedLocationIds: string[];
 
   // Loading states
   evaluationLoading: boolean;
 
   // Sorting
-  sortConfig: {
-    key: keyof MachineData;
-    direction: 'asc' | 'desc';
+  topMachinesSortKey: TopMachinesCriteria;
+  topMachinesSortDirection: 'asc' | 'desc';
+  bottomMachinesSortKey: TopMachinesCriteria;
+  bottomMachinesSortDirection: 'asc' | 'desc';
+
+  // Summary
+  summaryCalculations: {
+    handleStatement: string;
+    winStatement: string;
+    gamesPlayedStatement: string;
+    handleDetails: VerificationDetails | undefined;
+    winDetails: VerificationDetails | undefined;
+    gamesPlayedDetails: VerificationDetails | undefined;
   };
 
+  // Top/Bottom Machines
+  topMachines: MachineEvaluationData[];
+  bottomMachines: MachineEvaluationData[];
+
   // Actions
-  onSort: (key: keyof MachineData) => void;
+  onLocationChange: (locationIds: string[]) => void;
+  onTopMachinesSort: (key: TopMachinesCriteria) => void;
+  onBottomMachinesSort: (key: TopMachinesCriteria) => void;
   onRefresh: () => void;
-  onExport: () => void;
+  onExport: (format: 'pdf' | 'excel') => void;
 };

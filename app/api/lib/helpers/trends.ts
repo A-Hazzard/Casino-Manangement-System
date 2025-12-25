@@ -268,7 +268,13 @@ export async function getPlaysTrends(
     locationIds
   );
 
-  return (await Meters.aggregate(pipeline).exec()) as PlaysTrendItem[];
+  // Use cursor for Meters aggregation
+  const results: PlaysTrendItem[] = [];
+  const cursor = Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
+  for await (const doc of cursor) {
+    results.push(doc as PlaysTrendItem);
+  }
+  return results;
 }
 
 /**
