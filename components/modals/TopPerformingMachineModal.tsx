@@ -76,9 +76,9 @@ export default function TopPerformingMachineModal({
     activeMetricsFilter || activePieChartFilter || 'Today';
 
   // Chart granularity state - initialize after store values are available
-  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
-    'hourly'
-  );
+  const [chartGranularity, setChartGranularity] = useState<
+    'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+  >('hourly');
 
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   // Never show for 7d and 30d - they always use daily format
@@ -194,7 +194,7 @@ export default function TopPerformingMachineModal({
             : 'hourly'
           : undefined;
 
-        const [metrics, chart] = await Promise.all([
+        const [metrics, chartResult] = await Promise.all([
           getMachineMetrics(
             machineId,
             timePeriod,
@@ -214,7 +214,7 @@ export default function TopPerformingMachineModal({
         ]);
 
         setMachineData(metrics);
-        setChartData(chart);
+        setChartData(chartResult.data);
       } catch (error) {
         console.error('Error fetching machine data:', error);
       } finally {

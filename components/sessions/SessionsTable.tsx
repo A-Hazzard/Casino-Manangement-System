@@ -27,6 +27,7 @@ export default function SessionsTable({
 }: SessionsTableProps) {
   const router = useRouter();
 
+  // Show empty state if no sessions found
   if (sessions.length === 0) {
     return (
       <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
@@ -113,6 +114,7 @@ export default function SessionsTable({
                         <span className="break-all text-xs text-gray-600">
                           ID: {session.machineId || 'N/A'}
                         </span>
+                        {/* Show external link icon only if machine ID exists */}
                         {session.machineId && (
                           <button
                             type="button"

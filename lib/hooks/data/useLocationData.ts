@@ -5,8 +5,8 @@
 
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import {
-  fetchAggregatedLocationsData,
-  searchAllLocations,
+    fetchAggregatedLocationsData,
+    searchAllLocations,
 } from '@/lib/helpers/locations';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { LocationFilter } from '@/lib/types/location';
@@ -142,8 +142,8 @@ export function useLocationData({
   const fetchData = useCallback(
     async (page?: number, limit?: number) => {
       // Get current filter state at the start of the request
-      const currentFilters = selectedFiltersRef.current.length
-        ? selectedFiltersRef.current.join(',')
+      const currentFilters = selectedFilters.length
+        ? selectedFilters.join(',')
         : '';
 
       // Create unique key for this fetch - include filters in the key
@@ -201,8 +201,8 @@ export function useLocationData({
         const result = await fetchAggregatedLocationsData(
           (activeMetricsFilter || 'Today') as TimePeriod,
           selectedLicencee || '',
-          selectedFiltersRef.current.length
-            ? selectedFiltersRef.current.join(',')
+          selectedFilters.length
+            ? selectedFilters.join(',')
             : '',
           dateRangeForFetch,
           displayCurrency,
@@ -219,8 +219,8 @@ export function useLocationData({
       if (result) {
         // Check if filters changed during the request - if so, ignore this response
         const filtersAtRequestStart = currentRequestFiltersRef.current;
-        const filtersNow = selectedFiltersRef.current.length
-          ? selectedFiltersRef.current.join(',')
+        const filtersNow = selectedFilters.length
+          ? selectedFilters.join(',')
           : '';
 
         if (filtersAtRequestStart !== filtersNow) {
@@ -268,6 +268,7 @@ export function useLocationData({
       activeMetricsFilter,
       dateRangeForFetch,
       makeRequest,
+      selectedFilters,
     ]
   );
 

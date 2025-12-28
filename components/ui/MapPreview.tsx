@@ -243,7 +243,8 @@ export default function MapPreview(props: MapPreviewProps) {
   const [userDefaultCenter, setUserDefaultCenter] = useState<[number, number]>([
     10.6599, -61.5199,
   ]); // Trinidad center as initial map center (dynamically updated based on licensee)
-  const mapRef = useRef<Record<string, unknown> | null>(null);
+  const previewMapRef = useRef<Record<string, unknown> | null>(null);
+  const modalMapRef = useRef<Record<string, unknown> | null>(null);
   const router = useRouter();
 
   // Get Zustand state for reactivity
@@ -509,7 +510,10 @@ export default function MapPreview(props: MapPreviewProps) {
 
   // Zoom to location
   const zoomToLocation = (location: Location) => {
-    if (!mapRef.current) return;
+    // Use preview map ref if modal is not open, otherwise use modal map ref
+    const activeMapRef = isModalOpen ? modalMapRef : previewMapRef;
+    
+    if (!activeMapRef.current) return;
 
     // Check if location has valid coordinates
     if (!location.geoCoords) {
@@ -523,7 +527,7 @@ export default function MapPreview(props: MapPreviewProps) {
 
     if (lat && lon && lat !== 0 && lon !== 0) {
       (
-        mapRef.current as {
+        activeMapRef.current as {
           setView: (coords: [number, number], zoom: number) => void;
         }
       ).setView([lat, lon], 15);
@@ -535,10 +539,19 @@ export default function MapPreview(props: MapPreviewProps) {
     }
   };
 
-  // Handle map instance
-  const handleMapCreated = (map: unknown) => {
+  // Handle preview map instance
+  const handlePreviewMapCreated = (map: unknown) => {
     if (map) {
-      mapRef.current = map as {
+      previewMapRef.current = map as {
+        setView: (coords: [number, number], zoom: number) => void;
+      };
+    }
+  };
+
+  // Handle modal map instance
+  const handleModalMapCreated = (map: unknown) => {
+    if (map) {
+      modalMapRef.current = map as {
         setView: (coords: [number, number], zoom: number) => void;
       };
     }
@@ -618,29 +631,100 @@ export default function MapPreview(props: MapPreviewProps) {
           </div>
         )}
 
-        <MapContainer
-          center={userDefaultCenter} // Always use licensee-based center
-          zoom={10}
-          className="z-0 mt-2 h-48 w-full rounded-lg sm:h-56"
-        >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          />
+        <div className="relative mt-2 h-48 w-full rounded-lg sm:h-56">
+          {/* Search Bar Overlay - Top Left */}
+          <div className="absolute left-2 top-2 z-[1000] w-[calc(100%-1rem)] max-w-xs sm:left-3 sm:top-3">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 transform text-gray-400 sm:left-3 sm:h-4 sm:w-4" />
+              <input
+                type="text"
+                placeholder="Search locations..."
+                value={searchQuery}
+                onChange={e => handleSearch(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white/95 py-1.5 pl-8 pr-3 text-xs shadow-lg backdrop-blur-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:py-2 sm:pl-10 sm:pr-4 sm:text-sm"
+                onClick={e => e.stopPropagation()}
+              />
+              {/* Search Results Dropdown */}
+              {showSearchResults && (
+                <div className="absolute top-full z-[1001] mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg sm:max-h-60">
+                  {searchResults.length > 0 ? (
+                    searchResults.map(location => {
+                      const locationName =
+                        location.name ||
+                        location.locationName ||
+                        'Unknown Location';
+                      const hasValidCoords =
+                        location.geoCoords &&
+                        location.geoCoords.latitude !== 0 &&
+                        getValidLongitude(location.geoCoords) !== undefined &&
+                        getValidLongitude(location.geoCoords) !== 0;
 
-          {/* Render valid markers */}
-          {filteredLocations.map(location => {
-            const locationName =
-              location.name || location.locationName || 'Unknown Location';
-            return renderMarker(
-              location.geoCoords!.latitude!,
-              location.geoCoords!,
-              locationName,
-              location._id,
-              location
-            );
-          })}
-        </MapContainer>
+                      return (
+                        <button
+                          key={location._id}
+                          onClick={e => {
+                            e.stopPropagation();
+                            zoomToLocation(location);
+                          }}
+                          className="flex w-full items-center gap-2 border-b border-gray-200 px-3 py-2 text-left text-xs last:border-b-0 hover:bg-gray-100 sm:px-4 sm:text-sm"
+                        >
+                          <MapPin
+                            className={`h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4 ${
+                              hasValidCoords
+                                ? 'text-gray-400'
+                                : 'text-yellow-500'
+                            }`}
+                          />
+                          <span
+                            className={`truncate ${
+                              hasValidCoords ? '' : 'text-yellow-600'
+                            }`}
+                          >
+                            {locationName}
+                          </span>
+                          {!hasValidCoords && (
+                            <span className="ml-auto flex-shrink-0 rounded bg-yellow-100 px-1 text-xs text-yellow-600">
+                              No map
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="p-3 text-center text-xs text-gray-500 sm:p-4 sm:text-sm">
+                      No locations found matching &quot;{searchQuery}&quot;
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <MapContainer
+            center={userDefaultCenter} // Always use licensee-based center
+            zoom={10}
+            className="z-0 h-full w-full rounded-lg"
+            ref={handlePreviewMapCreated}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            />
+
+            {/* Render valid markers */}
+            {filteredLocations.map(location => {
+              const locationName =
+                location.name || location.locationName || 'Unknown Location';
+              return renderMarker(
+                location.geoCoords!.latitude!,
+                location.geoCoords!,
+                locationName,
+                location._id,
+                location
+              );
+            })}
+          </MapContainer>
+        </div>
       </div>
 
       {/* Modal for Expanded Map */}
@@ -688,117 +772,117 @@ export default function MapPreview(props: MapPreviewProps) {
                 )}
               </div>
             )}
-            {/* Flex row on desktop, column on mobile: sidebar + map */}
-            <div className="flex flex-col gap-3 sm:gap-4 md:flex-row">
-              {/* Sidebar */}
-              <div className="flex w-full flex-col md:w-72">
-                <div className="relative mb-3 sm:mb-4">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 transform text-gray-400 sm:left-3 sm:h-4 sm:w-4" />
-                    <input
-                      type="text"
-                      placeholder="Search locations..."
-                      value={searchQuery}
-                      onChange={e => handleSearch(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 py-1.5 pl-8 pr-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 sm:py-2 sm:pl-10 sm:pr-4 sm:text-base"
-                    />
-                  </div>
-                </div>
-                {/* Dropdown always below input */}
-                {showSearchResults && (
-                  <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg sm:max-h-60">
-                    {searchResults.length > 0 ? (
-                      searchResults.map(location => {
-                        const locationName =
-                          location.name ||
-                          location.locationName ||
-                          'Unknown Location';
-                        const hasValidCoords =
-                          location.geoCoords &&
-                          location.geoCoords.latitude !== 0 &&
-                          getValidLongitude(location.geoCoords) !== undefined &&
-                          getValidLongitude(location.geoCoords) !== 0;
-
-                        return (
-                          <button
-                            key={location._id}
-                            onClick={() => zoomToLocation(location)}
-                            className="flex w-full items-center gap-2 border-b border-gray-200 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-gray-100 sm:px-4 sm:text-base"
-                          >
-                            <MapPin
-                              className={`h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4 ${
-                                hasValidCoords
-                                  ? 'text-gray-400'
-                                  : 'text-yellow-500'
-                              }`}
-                            />
-                            <span
-                              className={`truncate ${
-                                hasValidCoords ? '' : 'text-yellow-600'
-                              }`}
-                            >
-                              {locationName}
-                            </span>
-                            {!hasValidCoords && (
-                              <span className="ml-auto flex-shrink-0 rounded bg-yellow-100 px-1 text-xs text-yellow-600">
-                                No map
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })
-                    ) : (
-                      <div className="p-3 text-center text-sm text-gray-500 sm:p-4 sm:text-base">
-                        No locations found matching &quot;{searchQuery}&quot;
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              {/* Map */}
-              <div className="relative z-0 min-h-[300px] flex-1 sm:min-h-[400px]">
-                <MapContainer
-                  center={userDefaultCenter} // Always use licensee-based center
-                  zoom={10}
-                  className="h-[50vh] w-full rounded-lg sm:h-[60vh] md:h-[70vh]"
-                  ref={handleMapCreated}
-                >
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            {/* Map - Full Width with Search Overlay */}
+            <div className="relative z-0 min-h-[300px] w-full sm:min-h-[400px]">
+              {/* Search Bar Overlay - Top Left */}
+              <div className="absolute left-3 top-3 z-[1000] w-[calc(100%-1.5rem)] max-w-xs sm:left-4 sm:top-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search locations..."
+                    value={searchQuery}
+                    onChange={e => handleSearch(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 bg-white/95 py-2 pl-10 pr-4 text-sm shadow-lg backdrop-blur-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:py-2.5 sm:text-base"
+                    onClick={e => e.stopPropagation()}
                   />
-                  {filteredLocations.map(location => {
-                    const locationName =
-                      location.name ||
-                      location.locationName ||
-                      'Unknown Location';
-                    return renderMarker(
-                      location.geoCoords!.latitude!,
-                      location.geoCoords!,
-                      locationName,
-                      `modal-${location._id}`,
-                      location
-                    );
-                  })}
-                </MapContainer>
-                {/* Map Legend */}
-                <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground sm:mt-4 sm:gap-4">
-                  <div className="flex items-center gap-1">
-                    <div className="h-2 w-2 rounded-full bg-green-500 sm:h-3 sm:w-3"></div>
-                    <span className="text-xs">Excellent</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="h-2 w-2 rounded-full bg-blue-500 sm:h-3 sm:w-3"></div>
-                    <span className="text-xs">Good</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="h-2 w-2 rounded-full bg-yellow-500 sm:h-3 sm:w-3"></div>
-                    <span className="text-xs">Average</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="h-2 w-2 rounded-full bg-red-500 sm:h-3 sm:w-3"></div>
-                    <span className="text-xs">Poor</span>
-                  </div>
+                  {/* Search Results Dropdown */}
+                  {showSearchResults && (
+                    <div className="absolute top-full z-[1001] mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
+                      {searchResults.length > 0 ? (
+                        searchResults.map(location => {
+                          const locationName =
+                            location.name ||
+                            location.locationName ||
+                            'Unknown Location';
+                          const hasValidCoords =
+                            location.geoCoords &&
+                            location.geoCoords.latitude !== 0 &&
+                            getValidLongitude(location.geoCoords) !== undefined &&
+                            getValidLongitude(location.geoCoords) !== 0;
+
+                          return (
+                            <button
+                              key={location._id}
+                              onClick={e => {
+                                e.stopPropagation();
+                                zoomToLocation(location);
+                              }}
+                              className="flex w-full items-center gap-2 border-b border-gray-200 px-4 py-2 text-left text-sm last:border-b-0 hover:bg-gray-100 sm:text-base"
+                            >
+                              <MapPin
+                                className={`h-4 w-4 flex-shrink-0 ${
+                                  hasValidCoords
+                                    ? 'text-gray-400'
+                                    : 'text-yellow-500'
+                                }`}
+                              />
+                              <span
+                                className={`truncate ${
+                                  hasValidCoords ? '' : 'text-yellow-600'
+                                }`}
+                              >
+                                {locationName}
+                              </span>
+                              {!hasValidCoords && (
+                                <span className="ml-auto flex-shrink-0 rounded bg-yellow-100 px-1 text-xs text-yellow-600">
+                                  No map
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="p-4 text-center text-sm text-gray-500 sm:text-base">
+                          No locations found matching &quot;{searchQuery}&quot;
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <MapContainer
+                center={userDefaultCenter} // Always use licensee-based center
+                zoom={10}
+                className="h-[50vh] w-full rounded-lg sm:h-[60vh] md:h-[70vh]"
+                ref={handleModalMapCreated}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                />
+                {filteredLocations.map(location => {
+                  const locationName =
+                    location.name ||
+                    location.locationName ||
+                    'Unknown Location';
+                  return renderMarker(
+                    location.geoCoords!.latitude!,
+                    location.geoCoords!,
+                    locationName,
+                    `modal-${location._id}`,
+                    location
+                  );
+                })}
+              </MapContainer>
+              {/* Map Legend */}
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground sm:mt-4 sm:gap-4">
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-green-500 sm:h-3 sm:w-3"></div>
+                  <span className="text-xs">Excellent</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-blue-500 sm:h-3 sm:w-3"></div>
+                  <span className="text-xs">Good</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-yellow-500 sm:h-3 sm:w-3"></div>
+                  <span className="text-xs">Average</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-red-500 sm:h-3 sm:w-3"></div>
+                  <span className="text-xs">Poor</span>
                 </div>
               </div>
             </div>

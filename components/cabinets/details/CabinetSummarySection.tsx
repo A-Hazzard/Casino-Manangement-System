@@ -96,6 +96,7 @@ export default function CabinetSummarySection({
               >
                 <Copy className="h-4 w-4 text-gray-500 hover:text-blue-600" />
               </button>
+              {/* Show edit button only if user can edit machines */}
               {canEditMachines && cabinet && (
                 <motion.button
                   className="ml-2 rounded-full p-2 transition-colors hover:bg-gray-100"
@@ -108,6 +109,7 @@ export default function CabinetSummarySection({
               )}
             </h1>
 
+            {/* Show deleted status badge if cabinet has been deleted */}
             {cabinet?.deletedAt && new Date(cabinet.deletedAt).getFullYear() > 2020 && (
               <div className="mt-2">
                 <span className="inline-flex items-center rounded-full border border-red-200 bg-red-100 px-3 py-1 text-sm font-medium text-red-800">
@@ -125,6 +127,7 @@ export default function CabinetSummarySection({
             </p>
             <p className="mt-1 flex items-center gap-2">
               <span className="text-button">
+                {/* Show location name with appropriate styling based on location status */}
                 {locationName === 'Location Not Found' ? (
                   <span className="text-orange-600">Location Not Found</span>
                 ) : locationName === 'No Location Assigned' ? (
@@ -139,6 +142,7 @@ export default function CabinetSummarySection({
                   </button>
                 )}
               </span>
+              {/* Show external link icon if location is valid and assigned */}
               {cabinet?.gamingLocation && !['Location Not Found', 'No Location Assigned'].includes(locationName) && (
                 <button onClick={() => onLocationClick(cabinet.gamingLocation!)}>
                   <ExternalLink className="h-4 w-4 text-gray-500 hover:text-blue-600" />

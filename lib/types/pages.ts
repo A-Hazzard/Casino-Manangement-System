@@ -44,6 +44,7 @@ export type AddUserForm = {
   firstName?: string;
   lastName?: string;
   gender?: string;
+  phoneNumber?: string;
   profilePicture?: string | null;
   allowedLocations: string[];
   licenseeIds?: string[];

@@ -10,7 +10,7 @@ import {
   TopPerformingData,
 } from '@/lib/types';
 import type { CollectorSchedule } from '@/lib/types/components';
-import { TimePeriod } from '@shared/types';
+import { TimePeriod, type ChartGranularity } from '@shared/types';
 import { VariantProps } from 'class-variance-authority';
 import { LatLng } from 'leaflet';
 import { JSX } from 'react';
@@ -52,8 +52,8 @@ export type DashboardLayoutProps = {
   queryType?: 'user' | 'all';
   userId?: string | null;
   selectedLicencee: string;
-  chartGranularity?: 'hourly' | 'minute';
-  setChartGranularity?: (state: 'hourly' | 'minute') => void;
+  chartGranularity?: ChartGranularity;
+  setChartGranularity?: (state: ChartGranularity) => void;
   showGranularitySelector?: boolean;
 };
 

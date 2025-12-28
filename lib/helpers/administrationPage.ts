@@ -163,6 +163,9 @@ export const userManagement = {
     if (firstName) profile.firstName = firstName.trim();
     if (lastName) profile.lastName = lastName.trim();
     if (gender) profile.gender = gender.trim().toLowerCase();
+    if (addUserForm.phoneNumber) {
+      profile.phoneNumber = addUserForm.phoneNumber.trim();
+    }
 
     // Build address object
     const address: Record<string, unknown> = {};

@@ -75,7 +75,7 @@ function MembersContentInner() {
     tabComponents,
   });
 
-  // Access denied if not authenticated or no available tabs
+  // Show access denied message if user doesn't have access
   if (!hasAccess) {
     return (
       <>
@@ -116,6 +116,7 @@ function MembersContentInner() {
         <motion.div key={key} {...restProps}>
           <Suspense
             fallback={
+              /* Show appropriate skeleton based on active tab */
               activeTab === 'members' ? (
                 <MembersListTabSkeleton />
               ) : (

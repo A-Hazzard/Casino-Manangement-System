@@ -1,3 +1,16 @@
+/**
+ * LocationTable Component
+ *
+ * Displays locations in a table format for desktop screens.
+ *
+ * Features:
+ * - Sortable columns (Location Name, Money In, Money Out, Gross)
+ * - Location name with status icons (SMIB, Local Server, Membership, etc.)
+ * - Machine status badges (online/offline counts)
+ * - Financial metrics display with color coding
+ * - Action buttons (View, Edit, Delete)
+ * - Conditional rendering based on location properties and user permissions
+ */
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -20,6 +33,7 @@ import {
   BadgeCheck,
   Eye,
   FileWarning,
+  HelpCircle,
   Home,
   MapPinOff,
   Server,
@@ -39,14 +53,14 @@ const LocationTable: React.FC<LocationTableProps> = ({
   onLocationClick,
   onAction,
   formatCurrency,
-  canManageLocations = true, // Default to true for backward compatibility
-  selectedFilters = [], // Add selectedFilters prop
+  canManageLocations = true,
+  selectedFilters = [],
 }) => {
   const tableRef = useRef<HTMLTableElement>(null);
 
   return (
     <>
-      <div className="overflow-x-auto bg-white shadow">
+      <div className="overflow-x-auto rounded-b-lg bg-white shadow">
         <Table ref={tableRef} className="w-full table-fixed">
           <TableHeader>
             <TableRow className="bg-[#00b517] hover:bg-[#00b517]">
@@ -110,11 +124,12 @@ const LocationTable: React.FC<LocationTableProps> = ({
                 >
                   <TableCell isFirstColumn={true}>
                     <div className="flex flex-col gap-1.5">
-                      {/* Row 1: Location name with membership icon */}
+                      {/* Row 1: Location name with status icons */}
                       <button
                         onClick={e => {
                           e.stopPropagation();
                           const locationId = location.location as string;
+                          // Navigate to location details page when clicked
                           if (locationId) {
                             onLocationClick(locationId);
                           }
@@ -138,7 +153,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
                             </div>
                           </div>
                         )}
-                        {/* Local Server Icon */}
+                        {/* Local Server Icon - Show if location uses local server */}
                         {Boolean(
                           (location as { isLocalServer?: boolean })
                             .isLocalServer
@@ -150,6 +165,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
                             </div>
                           </div>
                         )}
+                        {/* Membership Icon - Show if location has membership enabled */}
                         {Boolean(
                           (location as { membershipEnabled?: boolean })
                             .membershipEnabled
@@ -161,6 +177,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
                             </div>
                           </div>
                         )}
+                        {/* Warning Icon - Show if location has no recent collection report and NoSMIBLocation filter is active */}
                         {selectedFilters.some(f => f === 'NoSMIBLocation') &&
                           Boolean(
                             (
@@ -182,13 +199,50 @@ const LocationTable: React.FC<LocationTableProps> = ({
                             <MapPinOff className="h-4 w-4 text-red-600" />
                             <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                               This location&apos;s coordinates have not been set
+                            </div>
+                          </div>
+                        )}
+                        {/* Unknown Type Icon - Show if location doesn't match any known type */}
+                        {(() => {
+                          const hasSmib = Boolean(
+                            (location as { hasSmib?: boolean }).hasSmib ||
+                              !(location as { noSMIBLocation?: boolean })
+                                .noSMIBLocation
+                          );
+                          const isLocalServer = Boolean(
+                            (location as { isLocalServer?: boolean })
+                              .isLocalServer
+                          );
+                          const hasMembership = Boolean(
+                            (
+                              location as {
+                                membershipEnabled?: boolean;
+                              }
+                            ).membershipEnabled
+                          );
+                          const hasMissingCoords = hasMissingCoordinates(loc);
+
+                          // Show unknown icon if location doesn't match any known type (no SMIB, no local server, no membership, no missing coords)
+                          const isUnknownType =
+                            !hasSmib &&
+                            !isLocalServer &&
+                            !hasMembership &&
+                            !hasMissingCoords;
+
+                          return isUnknownType ? (
+                            <div className="group relative inline-flex flex-shrink-0">
+                              <HelpCircle className="h-4 w-4 text-gray-500" />
+                              <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                Unknown location type
                               </div>
                             </div>
-                          )}
+                          ) : null;
+                        })()}
                       </button>
 
                       {/* Row 2: Status badges - machine online/offline and member count */}
                       <div className="flex flex-wrap items-center gap-1.5">
+                        {/* Show machine status badge if location has machine counts */}
                         {typeof location.onlineMachines === 'number' &&
                           typeof location.totalMachines === 'number' &&
                           (() => {
@@ -202,19 +256,24 @@ const LocationTable: React.FC<LocationTableProps> = ({
                               'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset';
                             let dotClass = 'h-1.5 w-1.5 rounded-full';
 
+                            // Determine badge styling based on machine status
                             if (!hasMachines) {
+                              // Gray badge if no machines
                               badgeClass +=
                                 ' bg-gray-50 text-gray-600 ring-gray-200';
                               dotClass += ' bg-gray-400';
                             } else if (isAllOffline) {
+                              // Red badge if all machines are offline
                               badgeClass +=
                                 ' bg-red-50 text-red-700 ring-red-600/20';
                               dotClass += ' bg-red-500';
                             } else if (isAllOnline) {
+                              // Green badge if all machines are online
                               badgeClass +=
                                 ' bg-green-50 text-green-700 ring-green-600/20';
                               dotClass += ' bg-green-500';
                             } else {
+                              // Yellow badge if some machines are online/offline
                               badgeClass +=
                                 ' bg-yellow-50 text-yellow-700 ring-yellow-600/20';
                               dotClass += ' bg-yellow-500';
@@ -227,6 +286,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
                               </span>
                             );
                           })()}
+                        {/* Membership Count Badge - Show if location has member count */}
                         {typeof (location as { memberCount?: number })
                           .memberCount === 'number' && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
@@ -239,9 +299,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span
-                      className={`font-semibold ${getMoneyInColorClass()}`}
-                    >
+                    <span className={`font-semibold ${getMoneyInColorClass()}`}>
                       {formatCurrency(loc.moneyIn || 0)}
                     </span>
                   </TableCell>
@@ -273,6 +331,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
+                      {/* Show Edit and Delete buttons only if user can manage locations */}
                       {canManageLocations && (
                         <>
                           <Button

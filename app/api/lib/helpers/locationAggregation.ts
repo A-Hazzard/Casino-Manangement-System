@@ -94,51 +94,31 @@ export const getLocationsWithMetrics = async (
           });
           break;
         case 'MissingCoordinates':
-          // Filter for locations missing coordinates
-          // Check if geoCoords doesn't exist, is null, or doesn't have valid latitude/longitude
           filterConditions.push({
             $or: [
               { geoCoords: { $exists: false } },
               { geoCoords: null },
               { 'geoCoords.latitude': { $exists: false } },
               { 'geoCoords.latitude': null },
-              { 'geoCoords.longitude': { $exists: false } },
-              { 'geoCoords.longitude': null },
-              { 'geoCoords.longtitude': { $exists: false } },
-              { 'geoCoords.longtitude': null },
+              {
+                $and: [
+                  { 'geoCoords.longitude': { $exists: false } },
+                  { 'geoCoords.longitude': null },
+                  { 'geoCoords.longtitude': { $exists: false } },
+                  { 'geoCoords.longtitude': null },
+                ],
+              },
             ],
           });
           break;
         case 'HasCoordinates':
-          // Filter for locations that have coordinates
           filterConditions.push({
             $and: [
-              { geoCoords: { $exists: true } },
-              { geoCoords: { $ne: null } },
+              { 'geoCoords.latitude': { $exists: true, $ne: null } },
               {
                 $or: [
-                  {
-                    $and: [
-                      { 'geoCoords.latitude': { $exists: true } },
-                      { 'geoCoords.latitude': { $ne: null } },
-                      {
-                        $or: [
-                          {
-                            $and: [
-                              { 'geoCoords.longitude': { $exists: true } },
-                              { 'geoCoords.longitude': { $ne: null } },
-                            ],
-                          },
-                          {
-                            $and: [
-                              { 'geoCoords.longtitude': { $exists: true } },
-                              { 'geoCoords.longtitude': { $ne: null } },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
+                  { 'geoCoords.longitude': { $exists: true, $ne: null } },
+                  { 'geoCoords.longtitude': { $exists: true, $ne: null } },
                 ],
               },
             ],
@@ -147,10 +127,10 @@ export const getLocationsWithMetrics = async (
       }
     });
 
-    // Apply OR logic - location must match ANY of the selected filters
-    // This allows users to see locations that match any combination of filters
+    // Apply AND logic - location must match ALL of the selected filters
+    // This allows users to narrow down locations by combining multiple criteria
     if (filterConditions.length > 0) {
-      basePipeline.push({ $match: { $or: filterConditions } });
+      basePipeline.push({ $match: { $and: filterConditions } });
     }
   }
 

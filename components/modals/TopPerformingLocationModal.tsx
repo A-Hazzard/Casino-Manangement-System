@@ -83,9 +83,9 @@ export default function TopPerformingLocationModal({
     activeMetricsFilter || activePieChartFilter || 'Today';
 
   // Chart granularity state - initialize after store values are available
-  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
-    'hourly'
-  );
+  const [chartGranularity, setChartGranularity] = useState<
+    'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+  >('hourly');
 
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   // Never show for 7d and 30d - they always use daily format

@@ -206,6 +206,29 @@ export function getGamingDayRangeForPeriod(
         timezoneOffset
       );
 
+    case 'Quarterly':
+      // 🔧 FIX: Base calculation on current gaming day
+      const currentHourQ = nowLocal.getUTCHours();
+      const todayQ =
+        currentHourQ < gameDayStartHour
+          ? new Date(today.getTime() - 24 * 60 * 60 * 1000)
+          : today;
+      const ninetyDaysAgo = new Date(todayQ);
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89); // -89 because today is day 1
+      return getGamingDayRangeMultiDay(
+        ninetyDaysAgo,
+        todayQ,
+        gameDayStartHour,
+        timezoneOffset
+      );
+
+    case 'All Time':
+      // For All Time, return a very wide range to include all records
+      return {
+        rangeStart: new Date(0),
+        rangeEnd: new Date('2100-01-01T23:59:59.999Z'),
+      };
+
     case 'Custom':
       if (!customStartDate || !customEndDate) {
         throw new Error(

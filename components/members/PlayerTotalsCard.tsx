@@ -75,6 +75,7 @@ export default function PlayerTotalsCard({
       >
         <div className="flex flex-col">
           <h2 className="text-xl font-bold">Player&apos;s Totals</h2>
+          {/* Show summary stats when totals are collapsed */}
           {!showTotals && (
             <div className="mt-2 flex flex-wrap gap-4">
               <p className="text-sm">
@@ -98,6 +99,7 @@ export default function PlayerTotalsCard({
         </div>
       </div>
 
+      {/* Show detailed stats when totals are expanded */}
       {showTotals && (
         <div className="mt-4">
           <div className="mb-6 flex flex-wrap gap-4">

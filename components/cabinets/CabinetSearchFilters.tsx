@@ -1,6 +1,16 @@
 /**
  * Cabinet Search and Filters Component
- * Handles search input, location filtering, and sorting controls
+ *
+ * Provides search input and filter controls for the cabinets list.
+ * Renders differently on mobile (scrollable horizontal filters) vs desktop (purple bar).
+ *
+ * Features:
+ * - Text search input with magnifying glass icon
+ * - Location filter dropdown
+ * - Game type filter dropdown
+ * - Status filter (All/Online/Offline)
+ * - Sort options dropdown
+ * - Responsive design (mobile vs desktop layouts)
  */
 
 import { CustomSelect } from '@/components/ui/custom-select';
@@ -27,12 +37,10 @@ export const CabinetSearchFilters = ({
   onSortChange,
   activeSection,
 }: CabinetSearchFiltersProps) => {
-  // Only show filters for cabinets section
   if (activeSection !== 'cabinets') {
     return null;
   }
 
-  // Sort options configuration
   const sortOptions = [
     { value: 'moneyIn-desc', label: 'Money In (Highest First)' },
     { value: 'moneyIn-asc', label: 'Money In (Lowest First)' },
@@ -53,7 +61,6 @@ export const CabinetSearchFilters = ({
   const locationSelectItems = locations.map(location => ({
     id: String(location._id),
     name: location.name,
-    // Leave sasEnabled undefined to avoid badge display
   }));
 
   const gameTypeSelectItems = gameTypes.map(gameType => ({
@@ -61,31 +68,26 @@ export const CabinetSearchFilters = ({
     name: gameType,
   }));
 
-  // Handle sort change
   const handleSortChange = (value: string) => {
     const [option, order] = value.split('-');
     onSortChange(option as CabinetSortOption, order as 'asc' | 'desc');
   };
 
-  // Handle location change
   const handleLocationChange = (value: string) => {
     onLocationChange(value);
   };
 
-  // Handle game type change
   const handleGameTypeChange = (value: string) => {
     onGameTypeChange(value);
   };
 
-  // Handle search change
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newSearchTerm = event.target.value;
-    onSearchChange(newSearchTerm);
+    onSearchChange(event.target.value);
   };
 
   return (
     <>
-      {/* Mobile: Horizontal scrollable filters */}
+      {/* Mobile View: Horizontal scrollable filters */}
       <div className="mt-4 md:hidden">
         <div className="relative mb-3 w-full">
           <Input
@@ -163,11 +165,10 @@ export const CabinetSearchFilters = ({
         </div>
       </div>
 
-      {/* Desktop: Search Row - Purple box */}
+      {/* Desktop View: Purple search bar with filters */}
       <div className="mt-4 hidden rounded-b-none rounded-t-lg bg-buttonActive p-4 md:flex">
-        {/* Search Input and Filters on same row */}
         <div className="flex w-full flex-wrap items-center gap-4">
-          {/* Search Input - Takes available space */}
+          {/* Search Input */}
           <div className="relative min-w-0 flex-1">
             <Input
               type="text"
@@ -179,7 +180,7 @@ export const CabinetSearchFilters = ({
             <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           </div>
 
-          {/* Filter Buttons - On the right, wrap when needed */}
+          {/* Filter Dropdowns */}
           <div className="flex items-center gap-4 flex-wrap">
             {showLocationFilter && (
               <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
@@ -214,7 +215,7 @@ export const CabinetSearchFilters = ({
               />
             </div>
 
-            {/* Status Filter with Search */}
+            {/* Status Filter */}
             <div className="w-auto min-w-[120px] max-w-[150px] flex-shrink-0">
               <CustomSelect
                 value={selectedStatus}

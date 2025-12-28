@@ -28,6 +28,15 @@ export type TimePeriod =
   | 'All Time'
   | 'Custom';
 
+// Chart granularity type for time-based chart aggregation
+export type ChartGranularity =
+  | 'minute'
+  | 'hourly'
+  | 'daily'
+  | 'weekly'
+  | 'monthly'
+  | 'yearly';
+
 // MongoDB related types
 export type MongooseId = string | Types.ObjectId;
 

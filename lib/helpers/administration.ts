@@ -126,6 +126,25 @@ export const filterAndSortUsers = (
   if (sortConfig !== null && sortConfig.key) {
     const { key, direction } = sortConfig;
     processedUsers.sort((a, b) => {
+      // Handle name field - sort by firstName first, then lastName
+      if (key === 'name') {
+        const firstNameA = (a.profile?.firstName || '').toLowerCase().trim();
+        const firstNameB = (b.profile?.firstName || '').toLowerCase().trim();
+        const lastNameA = (a.profile?.lastName || '').toLowerCase().trim();
+        const lastNameB = (b.profile?.lastName || '').toLowerCase().trim();
+
+        // First compare by firstName
+        if (firstNameA < firstNameB) return direction === 'ascending' ? -1 : 1;
+        if (firstNameA > firstNameB) return direction === 'ascending' ? 1 : -1;
+
+        // If firstNames are equal, compare by lastName
+        if (lastNameA < lastNameB) return direction === 'ascending' ? -1 : 1;
+        if (lastNameA > lastNameB) return direction === 'ascending' ? 1 : -1;
+
+        // If both are equal, maintain order
+        return 0;
+      }
+
       let valA: unknown = a[key!];
       let valB: unknown = b[key!];
 

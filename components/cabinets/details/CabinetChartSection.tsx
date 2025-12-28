@@ -20,8 +20,14 @@ type CabinetChartSectionProps = {
   chartData: dashboardData[];
   loadingChart: boolean;
   activeMetricsFilter: string | null;
-  chartGranularity: 'hourly' | 'minute';
-  onGranularityChange: (value: 'hourly' | 'minute') => void;
+  chartGranularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
+  onGranularityChange: (
+    value: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+  ) => void;
+  showGranularitySelector?: boolean;
+  availableGranularityOptions?: Array<
+    'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+  >;
 };
 
 export default function CabinetChartSection({
@@ -30,6 +36,8 @@ export default function CabinetChartSection({
   activeMetricsFilter,
   chartGranularity,
   onGranularityChange,
+  showGranularitySelector = true,
+  availableGranularityOptions = [],
 }: CabinetChartSectionProps) {
   return (
     <motion.div
@@ -39,26 +47,56 @@ export default function CabinetChartSection({
       transition={{ duration: 0.5, delay: 0.2 }}
     >
       <div className="flex flex-col space-y-4">
-        {/* Granularity Selector - Always visible like on meters tab and dashboard */}
-        <div className="flex items-center justify-end gap-2">
-          <label
-            htmlFor="chart-granularity"
-            className="text-sm font-medium text-gray-700 dark:text-gray-300"
-          >
-            Granularity:
-          </label>
-          <select
-            id="chart-granularity"
-            value={chartGranularity}
-            onChange={e =>
-              onGranularityChange(e.target.value as 'hourly' | 'minute')
-            }
-            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
-          >
-            <option value="minute">Minute</option>
-            <option value="hourly">Hourly</option>
-          </select>
-        </div>
+        {/* Granularity Selector - Show for Today/Yesterday or Quarterly/All Time with available options */}
+        {showGranularitySelector && (
+          <div className="flex items-center justify-end gap-2">
+            <label
+              htmlFor="chart-granularity"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Granularity:
+            </label>
+            <select
+              id="chart-granularity"
+              value={chartGranularity}
+              onChange={e =>
+                onGranularityChange(
+                  e.target.value as
+                    | 'hourly'
+                    | 'minute'
+                    | 'daily'
+                    | 'weekly'
+                    | 'monthly'
+                )
+              }
+              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+            >
+              {/* Show hourly/minute options for Today/Yesterday periods */}
+              {(activeMetricsFilter === 'Today' ||
+                activeMetricsFilter === 'Yesterday') && (
+                <>
+                  <option value="minute">Minute</option>
+                  <option value="hourly">Hourly</option>
+                </>
+              )}
+              {/* Show monthly/weekly options for longer time periods with sufficient data */}
+              {availableGranularityOptions.includes('monthly') && (
+                <>
+                  <option value="monthly">Monthly</option>
+                  <option value="weekly">Weekly</option>
+                </>
+              )}
+              i{/* Show daily/weekly options for medium time periods */}
+              {availableGranularityOptions.includes('daily') &&
+                !availableGranularityOptions.includes('monthly') && (
+                  <>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                  </>
+                )}
+            </select>
+          </div>
+        )}
 
         {/* Scrollable Chart Container for Mobile */}
         <div className="w-full touch-pan-x overflow-x-auto overflow-y-hidden">

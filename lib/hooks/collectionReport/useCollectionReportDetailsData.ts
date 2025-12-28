@@ -16,13 +16,16 @@
 import { fetchCollectionReportById } from '@/lib/helpers/collectionReport';
 import { checkSasTimeIssues } from '@/lib/helpers/collectionReportDetailPageData';
 import { fetchCollectionsByLocationReportId } from '@/lib/helpers/collections';
-import { validateCollectionReportData } from '@/lib/utils/validation';
 import type { CollectionReportData, MachineMetric } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collections';
-import type { CollectionIssue, CollectionIssueDetails } from '@/shared/types/entities';
+import { validateCollectionReportData } from '@/lib/utils/validation';
+import type {
+  CollectionIssue,
+  CollectionIssueDetails,
+} from '@/shared/types/entities';
 import axios from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type TabType = 'Machine Metrics' | 'Location Metrics' | 'SAS Metrics Compare';
@@ -36,19 +39,28 @@ export function useCollectionReportDetailsData() {
   // ============================================================================
   // State Management
   // ============================================================================
-  const [reportData, setReportData] = useState<CollectionReportData | null>(null);
+  const [reportData, setReportData] = useState<CollectionReportData | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [collections, setCollections] = useState<CollectionDocument[]>([]);
   const [machinePage, setMachinePage] = useState(1);
-  const [showFixReportConfirmation, setShowFixReportConfirmation] = useState(false);
+  const [showFixReportConfirmation, setShowFixReportConfirmation] =
+    useState(false);
   const [isFixingReport, setIsFixingReport] = useState(false);
   const [hasSasTimeIssues, setHasSasTimeIssues] = useState(false);
-  const [hasCollectionHistoryIssues, setHasCollectionHistoryIssues] = useState(false);
-  const [collectionHistoryMachines, setCollectionHistoryMachines] = useState<string[]>([]);
+  const [hasCollectionHistoryIssues, setHasCollectionHistoryIssues] =
+    useState(false);
+  const [collectionHistoryMachines, setCollectionHistoryMachines] = useState<
+    string[]
+  >([]);
   const [sasTimeIssues, setSasTimeIssues] = useState<CollectionIssue[]>([]);
-  const [showCollectionIssueModal, setShowCollectionIssueModal] = useState(false);
-  const [selectedIssue, setSelectedIssue] = useState<CollectionIssue | null>(null);
+  const [showCollectionIssueModal, setShowCollectionIssueModal] =
+    useState(false);
+  const [selectedIssue, setSelectedIssue] = useState<CollectionIssue | null>(
+    null
+  );
   const [sortField, setSortField] = useState<keyof MachineMetric>('sasGross');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [searchTerm, setSearchTerm] = useState('');
@@ -77,32 +89,35 @@ export function useCollectionReportDetailsData() {
   // ============================================================================
   // Helper Functions
   // ============================================================================
-  const sortMachinesAlphabetically = useCallback((machines: MachineMetric[]) => {
-    return machines.sort((a, b) => {
-      const nameA = (a.machineId || '').toString();
-      const nameB = (b.machineId || '').toString();
+  const sortMachinesAlphabetically = useCallback(
+    (machines: MachineMetric[]) => {
+      return machines.sort((a, b) => {
+        const nameA = (a.machineId || '').toString();
+        const nameB = (b.machineId || '').toString();
 
-      const matchA = nameA.match(/^(.+?)(\d+)?$/);
-      const matchB = nameB.match(/^(.+?)(\d+)?$/);
+        const matchA = nameA.match(/^(.+?)(\d+)?$/);
+        const matchB = nameB.match(/^(.+?)(\d+)?$/);
 
-      if (!matchA || !matchB) {
-        return nameA.localeCompare(nameB);
-      }
+        if (!matchA || !matchB) {
+          return nameA.localeCompare(nameB);
+        }
 
-      const [, baseA, numA] = matchA;
-      const [, baseB, numB] = matchB;
+        const [, baseA, numA] = matchA;
+        const [, baseB, numB] = matchB;
 
-      const baseCompare = baseA.localeCompare(baseB);
-      if (baseCompare !== 0) {
-        return baseCompare;
-      }
+        const baseCompare = baseA.localeCompare(baseB);
+        if (baseCompare !== 0) {
+          return baseCompare;
+        }
 
-      const numAInt = numA ? parseInt(numA, 10) : 0;
-      const numBInt = numB ? parseInt(numB, 10) : 0;
+        const numAInt = numA ? parseInt(numA, 10) : 0;
+        const numBInt = numB ? parseInt(numB, 10) : 0;
 
-      return numAInt - numBInt;
-    });
-  }, []);
+        return numAInt - numBInt;
+      });
+    },
+    []
+  );
 
   const checkForSasTimeIssues = useCallback(async (id: string) => {
     try {
@@ -126,9 +141,12 @@ export function useCollectionReportDetailsData() {
       setSasTimeIssues(issueDetails.issues);
 
       try {
-        const issuesResponse = await axios.get('/api/collection-reports/check-all-issues', {
-          params: { reportId: id },
-        });
+        const issuesResponse = await axios.get(
+          '/api/collection-reports/check-all-issues',
+          {
+            params: { reportId: id },
+          }
+        );
 
         const reportIssues = issuesResponse.data.reportIssues || {};
         const reportKeys = Object.keys(reportIssues);
@@ -137,7 +155,11 @@ export function useCollectionReportDetailsData() {
           const reportKey = reportKeys[0];
           const reportIssueData = reportIssues[reportKey];
 
-          if (reportIssueData && reportIssueData.hasIssues && reportIssueData.issueCount > 0) {
+          if (
+            reportIssueData &&
+            reportIssueData.hasIssues &&
+            reportIssueData.issueCount > 0
+          ) {
             setHasCollectionHistoryIssues(true);
             setCollectionHistoryMachines(reportIssueData.machines || []);
           } else {
@@ -188,7 +210,12 @@ export function useCollectionReportDetailsData() {
     }
 
     return sorted;
-  }, [reportData?.machineMetrics, sortField, sortDirection, sortMachinesAlphabetically]);
+  }, [
+    reportData?.machineMetrics,
+    sortField,
+    sortDirection,
+    sortMachinesAlphabetically,
+  ]);
 
   const filteredSortedAndSearchedData = useMemo(() => {
     let data = filteredAndSortedData;
@@ -210,7 +237,9 @@ export function useCollectionReportDetailsData() {
   }, [filteredAndSortedData, searchTerm]);
 
   const machineTotalPages = useMemo(() => {
-    const total = Math.ceil(filteredSortedAndSearchedData.length / ITEMS_PER_PAGE);
+    const total = Math.ceil(
+      filteredSortedAndSearchedData.length / ITEMS_PER_PAGE
+    );
     return total > 0 ? total : 1;
   }, [filteredSortedAndSearchedData.length]);
 
@@ -249,8 +278,10 @@ export function useCollectionReportDetailsData() {
 
   const handleIssueClick = (issue: CollectionIssue) => {
     setActiveTab('Machine Metrics');
-    const machineCollection = collections.find(c => c._id === issue.collectionId);
-    
+    const machineCollection = collections.find(
+      c => c._id === issue.collectionId
+    );
+
     if (machineCollection) {
       const machineIndex = filteredAndSortedData.findIndex(
         m => m.machineId === machineCollection.machineId
@@ -261,12 +292,18 @@ export function useCollectionReportDetailsData() {
         setMachinePage(pageNumber);
 
         setTimeout(() => {
-          const machineRow = document.querySelector(`[data-machine-id="${machineCollection.machineId}"]`);
+          const machineRow = document.querySelector(
+            `[data-machine-id="${machineCollection.machineId}"]`
+          );
           if (machineRow) {
             machineRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
             machineRow.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50');
             setTimeout(() => {
-              machineRow.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50');
+              machineRow.classList.remove(
+                'ring-2',
+                'ring-blue-500',
+                'bg-blue-50'
+              );
             }, 3000);
           }
         }, 100);
@@ -282,7 +319,9 @@ export function useCollectionReportDetailsData() {
     setIsFixingReport(true);
     setError(null);
     try {
-      const response = await axios.post(`/api/collection-reports/fix-report`, { reportId });
+      const response = await axios.post(`/api/collection-reports/fix-report`, {
+        reportId,
+      });
 
       if (response.data.success) {
         const { results } = response.data;
@@ -293,14 +332,17 @@ export function useCollectionReportDetailsData() {
           results.issuesFixed.historyEntriesFixed +
           results.issuesFixed.machineHistoryFixed;
 
-        toast.success(`Fixed ${issuesFixed} issues in ${results.collectionsProcessed} collections`);
+        toast.success(
+          `Fixed ${issuesFixed} issues in ${results.collectionsProcessed} collections`
+        );
 
         const data = await fetchCollectionReportById(reportId);
         if (data) {
           setReportData(data);
           checkForSasTimeIssues(reportId);
         }
-        const collectionsData = await fetchCollectionsByLocationReportId(reportId);
+        const collectionsData =
+          await fetchCollectionsByLocationReportId(reportId);
         setCollections(collectionsData);
       } else {
         toast.error(response.data.error || 'Failed to fix report');
@@ -331,7 +373,10 @@ export function useCollectionReportDetailsData() {
         }
       })
       .catch(err => {
-        if (err?.response?.status === 403 || err?.message?.includes('Unauthorized')) {
+        if (
+          err?.response?.status === 403 ||
+          err?.message?.includes('Unauthorized')
+        ) {
           setError('UNAUTHORIZED');
         } else {
           setError('Failed to fetch report data. Please try again.');
@@ -352,6 +397,20 @@ export function useCollectionReportDetailsData() {
     }
   }, [reportData?.isEditing, reportId, router]);
 
+  // Keep state in sync with URL changes (for browser back/forward)
+  useEffect(() => {
+    const section = searchParams?.get('section');
+    if (section === 'location' && activeTab !== 'Location Metrics') {
+      setActiveTab('Location Metrics');
+    } else if (section === 'sas' && activeTab !== 'SAS Metrics Compare') {
+      setActiveTab('SAS Metrics Compare');
+    } else if (section === 'machine' && activeTab !== 'Machine Metrics') {
+      setActiveTab('Machine Metrics');
+    } else if (!section && activeTab !== 'Machine Metrics') {
+      setActiveTab('Machine Metrics');
+    }
+  }, [searchParams, activeTab]);
+
   // Auto-fix effect
   useEffect(() => {
     if (
@@ -365,12 +424,16 @@ export function useCollectionReportDetailsData() {
       const autoFix = async () => {
         setIsFixingReport(true);
         try {
-          const response = await axios.post(`/api/collection-reports/fix-report`, { reportId });
+          const response = await axios.post(
+            `/api/collection-reports/fix-report`,
+            { reportId }
+          );
           if (response.data.success) {
             const data = await fetchCollectionReportById(reportId);
             if (data) setReportData(data);
             await checkForSasTimeIssues(reportId);
-            const collectionsData = await fetchCollectionsByLocationReportId(reportId);
+            const collectionsData =
+              await fetchCollectionsByLocationReportId(reportId);
             setCollections(collectionsData);
             toast.success('Collection history automatically synchronized');
           }
@@ -382,7 +445,15 @@ export function useCollectionReportDetailsData() {
       };
       autoFix();
     }
-  }, [hasSasTimeIssues, hasCollectionHistoryIssues, isFixingReport, loading, reportId, reportData, checkForSasTimeIssues]);
+  }, [
+    hasSasTimeIssues,
+    hasCollectionHistoryIssues,
+    isFixingReport,
+    loading,
+    reportId,
+    reportData,
+    checkForSasTimeIssues,
+  ]);
 
   return {
     // State
@@ -420,6 +491,3 @@ export function useCollectionReportDetailsData() {
     handleFixReportClick: () => setShowFixReportConfirmation(true),
   };
 }
-
-
-

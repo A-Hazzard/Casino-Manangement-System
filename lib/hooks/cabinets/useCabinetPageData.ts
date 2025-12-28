@@ -20,11 +20,11 @@ import { useCabinetDetailsData, useSmibConfiguration } from '@/lib/hooks/data';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
+import type { dashboardData } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import type { dashboardData } from '@/lib/types';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 export function useCabinetPageData() {
@@ -33,11 +33,8 @@ export function useCabinetPageData() {
   const searchParams = useSearchParams();
   const slug = pathname.split('/').pop() || '';
   const { user } = useUserStore();
-  const {
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-  } = useDashBoardStore();
+  const { selectedLicencee, activeMetricsFilter, customDateRange } =
+    useDashBoardStore();
   const { displayCurrency } = useCurrency();
 
   // ============================================================================
@@ -67,15 +64,22 @@ export function useCabinetPageData() {
   // Chart State
   // ============================================================================
   const [chartData, setChartData] = useState<dashboardData[]>([]);
-  const [loadingChart, setLoadingChart] = useState(false);
-  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
-    () =>
-      getDefaultChartGranularity(
-        activeMetricsFilter || 'Today',
-        customDateRange?.startDate,
-        customDateRange?.endDate
-      )
+  const [loadingChart, setLoadingChart] = useState(true);
+  const [chartGranularity, setChartGranularity] = useState<
+    'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+  >(() =>
+    getDefaultChartGranularity(
+      activeMetricsFilter || 'Today',
+      customDateRange?.startDate,
+      customDateRange?.endDate
+    )
   );
+  const [availableGranularityOptions, setAvailableGranularityOptions] =
+    useState<Array<'daily' | 'weekly' | 'monthly'>>([]);
+  const [dataSpan, setDataSpan] = useState<{
+    minDate: string;
+    maxDate: string;
+  } | null>(null);
   const hasManuallySetGranularityRef = useRef(false);
   const makeChartRequest = useAbortableRequest();
 
@@ -100,12 +104,26 @@ export function useCabinetPageData() {
   // Computed Values
   // ============================================================================
   const canAccessSmibConfig = useMemo(() => {
-    return user?.roles?.some(role => ['technician', 'admin', 'developer'].includes(role)) ?? false;
+    return (
+      user?.roles?.some(role =>
+        ['technician', 'admin', 'developer'].includes(role)
+      ) ?? false
+    );
   }, [user]);
 
   const canEditMachines = useMemo(() => {
     if (user?.roles?.includes('collector')) return false;
-    return user?.roles?.some(role => ['developer', 'admin', 'manager', 'location admin', 'technician'].includes(role)) ?? false;
+    return (
+      user?.roles?.some(role =>
+        [
+          'developer',
+          'admin',
+          'manager',
+          'location admin',
+          'technician',
+        ].includes(role)
+      ) ?? false
+    );
   }, [user]);
 
   const showGranularitySelector = useMemo(() => {
@@ -140,13 +158,22 @@ export function useCabinetPageData() {
         return false;
       }
     }
+    // For Quarterly and All Time, show selector if we have available options (data span >= 1 week)
+    if (
+      (activeMetricsFilter === 'Quarterly' ||
+        activeMetricsFilter === 'All Time') &&
+      availableGranularityOptions.length > 0
+    ) {
+      return true;
+    }
     return false;
-  }, [activeMetricsFilter, customDateRange]);
+  }, [activeMetricsFilter, customDateRange, availableGranularityOptions]);
 
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleTabChange = useCallback((tab: string) => {
+  const handleTabChange = useCallback(
+    (tab: string) => {
     setActiveTab(tab);
     const sectionMap: Record<string, string> = {
       'Range Metrics': '',
@@ -155,7 +182,7 @@ export function useCabinetPageData() {
       'Activity Log': 'activity-log',
       'Collection History': 'collection-history',
       'Collection Settings': 'collection-settings',
-      'Configurations': 'configurations',
+        Configurations: 'configurations',
     };
 
     const params = new URLSearchParams(searchParams?.toString() || '');
@@ -164,7 +191,9 @@ export function useCabinetPageData() {
     else params.delete('section');
 
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [pathname, router, searchParams]);
+    },
+    [pathname, router, searchParams]
+  );
 
   const copyToClipboard = async (text: string, label: string) => {
     if (!text || text === 'N/A') {
@@ -231,17 +260,79 @@ export function useCabinetPageData() {
     customDateRange?.endDate,
   ]);
 
+  // Update granularity based on data span
+  useEffect(() => {
+    if (
+      activeMetricsFilter !== 'Quarterly' &&
+      activeMetricsFilter !== 'All Time'
+    ) {
+      setAvailableGranularityOptions([]);
+      return;
+    }
+
+    if (!dataSpan || !dataSpan.minDate || !dataSpan.maxDate) {
+      setAvailableGranularityOptions([]);
+      return;
+    }
+
+    const minDate = new Date(dataSpan.minDate);
+    const maxDate = new Date(dataSpan.maxDate);
+    const diffTime = Math.abs(maxDate.getTime() - minDate.getTime());
+    const daysDiff = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    const newOptions: Array<'daily' | 'weekly' | 'monthly'> =
+      daysDiff < 7
+        ? []
+        : daysDiff < 60
+          ? ['daily', 'weekly']
+          : ['monthly', 'weekly'];
+
+    setAvailableGranularityOptions(prev => {
+      if (JSON.stringify(prev) === JSON.stringify(newOptions)) return prev;
+      return newOptions;
+    });
+
+    if (!hasManuallySetGranularityRef.current) {
+    if (daysDiff < 7) {
+        setChartGranularity(prev => (prev !== 'daily' ? 'daily' : prev));
+    } else if (daysDiff < 60) {
+        setChartGranularity(prev =>
+          !['daily', 'weekly'].includes(prev) ? 'daily' : prev
+        );
+    } else {
+        setChartGranularity(prev =>
+          !['monthly', 'weekly'].includes(prev) ? 'monthly' : prev
+        );
+      }
+    }
+  }, [activeMetricsFilter, dataSpan]);
+
+  // Memoize effective granularity - only changes when granularity matters (short periods)
+  // For long periods, granularity is handled client-side and shouldn't trigger refetch
+  const effectiveGranularity = useMemo(() => {
+    const isShortPeriod =
+      activeMetricsFilter === 'Today' || activeMetricsFilter === 'Yesterday';
+    return isShortPeriod ? chartGranularity : null;
+  }, [activeMetricsFilter, chartGranularity]);
+
   // Fetch chart data
   useEffect(() => {
-    if (!cabinet?._id || !activeMetricsFilter) return;
+    if (!cabinet?._id || !activeMetricsFilter) {
+      setLoadingChart(false);
+      return;
+    }
 
     makeChartRequest(async signal => {
       setLoadingChart(true);
       try {
-        const isLongPeriod = ['7d', '30d', 'last7days', 'last30days'].includes(activeMetricsFilter);
-        const granularity = (showGranularitySelector && !isLongPeriod) ? chartGranularity : undefined;
+        // Only pass granularity to API for Today/Yesterday where it affects the response
+        // For Quarterly/All Time, granularity is handled client-side and shouldn't trigger refetch
+        const isShortPeriod =
+          activeMetricsFilter === 'Today' ||
+          activeMetricsFilter === 'Yesterday';
+        const granularity = isShortPeriod ? chartGranularity : undefined;
         
-        const data = await getMachineChartData(
+        const result = await getMachineChartData(
           String(cabinet._id),
           activeMetricsFilter,
           customDateRange.startDate,
@@ -251,14 +342,29 @@ export function useCabinetPageData() {
           granularity,
           signal
         );
-        if (data) setChartData(data);
+        if (result.data) {
+          setChartData(result.data);
+          
+          // Store data span for granularity calculation
+          setDataSpan(result.dataSpan || null);
+        }
       } catch {
         setChartData([]);
       } finally {
         setLoadingChart(false);
       }
     });
-  }, [cabinet?._id, activeMetricsFilter, customDateRange, displayCurrency, selectedLicencee, chartGranularity, showGranularitySelector, makeChartRequest]);
+  }, [
+    cabinet?._id,
+    activeMetricsFilter,
+    customDateRange?.startDate,
+    customDateRange?.endDate,
+    displayCurrency,
+    selectedLicencee,
+    effectiveGranularity,
+    makeChartRequest,
+    chartGranularity,
+  ]);
 
   // SMIB Config Coordination
   useEffect(() => {
@@ -289,6 +395,7 @@ export function useCabinetPageData() {
     loadingChart,
     chartGranularity,
     showGranularitySelector,
+    availableGranularityOptions,
     activeMetricsFilter,
     canAccessSmibConfig,
     canEditMachines,
@@ -297,7 +404,9 @@ export function useCabinetPageData() {
     smibHook,
     // Setters
     setEditingSection,
-    setChartGranularity: (value: 'hourly' | 'minute') => {
+    setChartGranularity: (
+      value: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+    ) => {
       hasManuallySetGranularityRef.current = true;
       setChartGranularity(value);
     },
@@ -310,5 +419,3 @@ export function useCabinetPageData() {
     onLocationClick: (id: string) => router.push(`/locations/${id}`),
   };
 }
-
-

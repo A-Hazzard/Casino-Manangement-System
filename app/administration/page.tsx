@@ -24,6 +24,7 @@ import AdministrationUsersSection from '@/components/administration/sections/Adm
 import UserTableSkeleton from '@/components/administration/UserTableSkeleton';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
+import { AccessRestricted } from '@/components/ui/AccessRestricted';
 import { Button } from '@/components/ui/button';
 import { ADMINISTRATION_TABS_CONFIG } from '@/lib/constants/administration';
 import { IMAGES } from '@/lib/constants/images';
@@ -37,36 +38,20 @@ import { PlusCircle, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 
-// ============================================================================
-// Page Components
-// ============================================================================
 /**
  * Administration Page Content Component
- * Handles all state management and data fetching for the administration page
+ *
+ * Handles all state management and data fetching for the administration page.
+ * Manages users, licensees, activity logs, and feedback sections.
  */
 function AdministrationPageContent() {
-  // ============================================================================
-  // Hooks & Context
-  // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { user } = useUserStore();
   const { activeSection, handleSectionChange } = useAdministrationNavigation();
 
-  // ============================================================================
-  // State Management
-  // ============================================================================
-  // Prevent hydration mismatch by rendering content only on client
   const [mounted, setMounted] = useState(false);
-
-  // Track which sections have been loaded
   const [loadedSections, setLoadedSections] = useState<Set<string>>(new Set());
-
-  // Track refreshing state
   const [refreshing, setRefreshing] = useState(false);
-
-  // ============================================================================
-  // Custom Hooks
-  // ============================================================================
   const usersHook = useAdministrationUsers({
     selectedLicencee,
     activeSection,
@@ -81,83 +66,45 @@ function AdministrationPageContent() {
     setLoadedSections,
   });
 
-  // ============================================================================
-  // Effects - Initialization
-  // ============================================================================
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Initialize selectedLicencee if not set
   useEffect(() => {
     if (!selectedLicencee) {
       setSelectedLicencee('');
     }
   }, [selectedLicencee, setSelectedLicencee]);
 
-  // ============================================================================
-  // Render Section Content
-  // ============================================================================
-  // ============================================================================
-  // Render Section Content
-  // ============================================================================
+  /**
+   * Renders the content for the currently active administration section.
+   * Handles permission checks and returns appropriate content or access denied message.
+   */
   const renderSectionContent = useCallback(() => {
     const userRoles = user?.roles || [];
 
-    // Check access for each section
+    // Check if user is trying to access the Activity Logs section
     if (activeSection === 'activity-logs') {
       if (!hasTabAccess(userRoles, 'administration', 'activity-logs')) {
-        return (
-          <div className="flex min-h-[400px] items-center justify-center">
-            <div className="text-center">
-              <h2 className="mb-2 text-xl font-semibold text-gray-900">
-                Access Restricted
-              </h2>
-              <p className="text-gray-600">
-                You don&apos;t have permission to access Activity Logs. Please
-                contact your administrator for access.
-              </p>
-            </div>
-          </div>
-        );
+        return <AccessRestricted sectionName="Activity Logs" />;
       }
+      // User has access, show the Activity Logs table
       return <ActivityLogsTable />;
     }
 
+    // Check if user is trying to access the Feedback section
     if (activeSection === 'feedback') {
       if (!hasTabAccess(userRoles, 'administration', 'feedback')) {
-        return (
-          <div className="flex min-h-[400px] items-center justify-center">
-            <div className="text-center">
-              <h2 className="mb-2 text-xl font-semibold text-gray-900">
-                Access Restricted
-              </h2>
-              <p className="text-gray-600">
-                You don&apos;t have permission to access Feedback. Please
-                contact your administrator for access.
-              </p>
-            </div>
-          </div>
-        );
+        return <AccessRestricted sectionName="Feedback" />;
       }
+      // User has access, show the Feedback Management component
       return <FeedbackManagement />;
     }
 
+    // Check if user is trying to access the Licensees section
     if (activeSection === 'licensees') {
       if (!hasTabAccess(userRoles, 'administration', 'licensees')) {
-        return (
-          <div className="flex min-h-[400px] items-center justify-center">
-            <div className="text-center">
-              <h2 className="mb-2 text-xl font-semibold text-gray-900">
-                Access Restricted
-              </h2>
-              <p className="text-gray-600">
-                You don&apos;t have permission to access Licensees. Please
-                contact your administrator for access.
-              </p>
-            </div>
-          </div>
-        );
+        return <AccessRestricted sectionName="Licensees" />;
       }
       return (
         <AdministrationLicenseesSection
@@ -219,24 +166,15 @@ function AdministrationPageContent() {
       );
     }
 
-    // Default to users section
+    // Default to Users section - check if user has access
     if (!hasTabAccess(userRoles, 'administration', 'users')) {
-      return (
-        <div className="flex min-h-[400px] items-center justify-center">
-          <div className="text-center">
-            <h2 className="mb-2 text-xl font-semibold text-gray-900">
-              Access Restricted
-            </h2>
-            <p className="text-gray-600">
-              You don&apos;t have permission to access Users. Please contact
-              your administrator for access.
-            </p>
-          </div>
-        </div>
-      );
+      // If user doesn't have access to Users, show restricted message
+      return <AccessRestricted sectionName="Users" />;
     }
+    // User has access, show the Users section with all user management functionality
     return (
       <AdministrationUsersSection
+        selectedLicencee={selectedLicencee}
         isLoading={usersHook.isLoading}
         isSearching={usersHook.isSearching}
         processedUsers={usersHook.processedUsers}
@@ -277,29 +215,18 @@ function AdministrationPageContent() {
         refreshUsers={usersHook.refreshUsers}
       />
     );
-  }, [activeSection, user, usersHook, licenseesHook]);
+  }, [activeSection, user, usersHook, licenseesHook, selectedLicencee]);
 
-  // ============================================================================
-  // Early Returns
-  // ============================================================================
+  // Wait for component to mount on client to prevent hydration mismatch
   if (!mounted) return null;
 
-  // ============================================================================
-  // Early Returns
-  // ============================================================================
-  if (!mounted) return null;
-
-  // ============================================================================
-  // Render
-  // ============================================================================
   return (
     <PageLayout
       mainClassName="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full"
       showToaster={false}
       hideCurrencyFilter
     >
-      {/* <MaintenanceBanner /> */}
-      {/* Header Section: Admin icon, title, refresh icon, and action buttons */}
+      {/* Page Header */}
       <div className="mt-4 flex w-full max-w-full items-center justify-between md:mt-6">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800 sm:text-2xl md:text-3xl">
@@ -312,10 +239,11 @@ function AdministrationPageContent() {
               className="h-5 w-5 flex-shrink-0 sm:h-6 sm:w-6 md:h-8 md:w-8"
             />
           </h1>
-          {/* Mobile: Refresh icon */}
+          {/* Mobile: Refresh Button */}
           <button
             onClick={async () => {
               setRefreshing(true);
+              // Refresh data based on which section is currently active
               if (activeSection === 'users') {
                 await usersHook.refreshUsers();
               } else if (activeSection === 'licensees') {
@@ -335,12 +263,12 @@ function AdministrationPageContent() {
           </button>
         </div>
 
-        {/* Desktop: Refresh icon and Create button - Desktop full button, Mobile icon only */}
+        {/* Desktop: Refresh and Create Buttons */}
         <div className="hidden flex-shrink-0 items-center gap-2 md:flex">
-          {/* Refresh icon */}
           <button
             onClick={async () => {
               setRefreshing(true);
+              // Refresh data based on which section is currently active
               if (activeSection === 'users') {
                 await usersHook.refreshUsers();
               } else if (activeSection === 'licensees') {
@@ -358,6 +286,7 @@ function AdministrationPageContent() {
               className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`}
             />
           </button>
+          {/* Show "Add User" button only when Users section is active */}
           {activeSection === 'users' ? (
             <Button
               onClick={usersHook.openAddUserModal}
@@ -366,7 +295,8 @@ function AdministrationPageContent() {
               <PlusCircle className="h-4 w-4" />
               Add User
             </Button>
-          ) : activeSection === 'licensees' ? (
+          ) : /* Show "Add Licensee" button only when Licensees section is active */
+          activeSection === 'licensees' ? (
             <Button
               onClick={licenseesHook.handleOpenAddLicensee}
               disabled={
@@ -381,7 +311,7 @@ function AdministrationPageContent() {
           ) : null}
         </div>
 
-        {/* Mobile: Create button - Icon only */}
+        {/* Mobile: Create Button */}
         <div className="flex flex-shrink-0 items-center gap-2 md:hidden">
           {activeSection === 'users' ? (
             <button
@@ -409,7 +339,7 @@ function AdministrationPageContent() {
         </div>
       </div>
 
-      {/* Navigation Section: Tab navigation for different administration sections */}
+      {/* Tab Navigation */}
       <div className="mb-6 mt-8">
         <AdministrationNavigation
           tabs={ADMINISTRATION_TABS_CONFIG}
@@ -419,7 +349,7 @@ function AdministrationPageContent() {
         />
       </div>
 
-      {/* Content Section: Main administration content with smooth transitions */}
+      {/* Main Content */}
       <div
         data-section-content
         className="transition-all duration-300 ease-in-out"

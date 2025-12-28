@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  HelpCircle,
   Home,
   Search,
   Server,
@@ -205,6 +206,41 @@ export default function EnhancedLocationTable({
                   </div>
                 </div>
               )}
+              {/* Unknown Type Icon - Show if location doesn't match any known type */}
+              {(() => {
+                const hasSmib = Boolean(
+                  (location as { hasSmib?: boolean }).hasSmib ||
+                    !(location as { noSMIBLocation?: boolean }).noSMIBLocation
+                );
+                const isLocalServer = Boolean(
+                  (location as { isLocalServer?: boolean }).isLocalServer
+                );
+                const hasMembership = Boolean(
+                  (
+                    location as {
+                      membershipEnabled?: boolean;
+                    }
+                  ).membershipEnabled ||
+                    (
+                      location as {
+                        enableMembership?: boolean;
+                      }
+                    ).enableMembership
+                );
+
+                // Show unknown icon if location doesn't match any known type
+                const isUnknownType =
+                  !hasSmib && !isLocalServer && !hasMembership;
+
+                return isUnknownType ? (
+                  <div className="group relative inline-flex flex-shrink-0">
+                    <HelpCircle className="h-4 w-4 text-gray-500" />
+                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      Unknown location type
+                    </div>
+                  </div>
+                ) : null;
+              })()}
             </div>
             <Badge
               variant={location.hasSasMachines ? 'default' : 'secondary'}
@@ -231,9 +267,7 @@ export default function EnhancedLocationTable({
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-500">Drop (Money In):</span>
-              <span
-                className={`font-medium ${getMoneyInColorClass()}`}
-              >
+              <span className={`font-medium ${getMoneyInColorClass()}`}>
                 {formatCurrency(location.moneyIn)}
               </span>
             </div>
@@ -332,7 +366,7 @@ export default function EnhancedLocationTable({
                 <thead className="border-b border-gray-200 bg-gray-50">
                   <tr>
                     <th
-                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                       onClick={() => handleSort('locationName')}
                     >
                       <div className="flex items-center gap-1">
@@ -341,7 +375,7 @@ export default function EnhancedLocationTable({
                       </div>
                     </th>
                     <th
-                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                       onClick={() => handleSort('sasStatus')}
                     >
                       <div className="flex items-center gap-1">
@@ -350,7 +384,7 @@ export default function EnhancedLocationTable({
                       </div>
                     </th>
                     <th
-                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                       onClick={() => handleSort('totalMachines')}
                     >
                       <div className="flex items-center gap-1">
@@ -359,7 +393,7 @@ export default function EnhancedLocationTable({
                       </div>
                     </th>
                     <th
-                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                       onClick={() => handleSort('moneyIn')}
                     >
                       <div className="flex items-center gap-1">
@@ -368,7 +402,7 @@ export default function EnhancedLocationTable({
                       </div>
                     </th>
                     <th
-                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                       onClick={() => handleSort('moneyOut')}
                     >
                       <div className="flex items-center gap-1">
@@ -377,7 +411,7 @@ export default function EnhancedLocationTable({
                       </div>
                     </th>
                     <th
-                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                       onClick={() => handleSort('gross')}
                     >
                       <div className="flex items-center gap-1">
@@ -386,17 +420,17 @@ export default function EnhancedLocationTable({
                       </div>
                     </th>
                     <th
-                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                       onClick={() => handleSort('holdPercentage')}
                     >
                       <div className="flex items-center gap-1">
                         Hold %{getSortIcon('holdPercentage')}
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                       Games Played
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                       Avg. Wager per Game
                     </th>
                   </tr>
@@ -420,14 +454,14 @@ export default function EnhancedLocationTable({
                         }`}
                         onClick={() => onLocationClick?.(location.location)}
                       >
-                        <td className="whitespace-nowrap px-4 py-3 text-center">
+                        <td className="whitespace-nowrap px-4 py-3 text-left">
                           {location.location ? (
                             <button
                               onClick={e => {
                                 e.stopPropagation();
                                 window.location.href = `/locations/${location.location}`;
                               }}
-                              className="group mx-auto flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
+                              className="group flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
                             >
                               <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
                                 {location.locationName}
@@ -458,9 +492,46 @@ export default function EnhancedLocationTable({
                                   </div>
                                 </div>
                               )}
+                              {/* Unknown Type Icon - Show if location doesn't match any known type */}
+                              {(() => {
+                                const hasSmib = Boolean(
+                                  (location as { hasSmib?: boolean }).hasSmib ||
+                                    !(location as { noSMIBLocation?: boolean })
+                                      .noSMIBLocation
+                                );
+                                const isLocalServer = Boolean(
+                                  (location as { isLocalServer?: boolean })
+                                    .isLocalServer
+                                );
+                                const hasMembership = Boolean(
+                                  (
+                                    location as {
+                                      membershipEnabled?: boolean;
+                                    }
+                                  ).membershipEnabled ||
+                                    (
+                                      location as {
+                                        enableMembership?: boolean;
+                                      }
+                                    ).enableMembership
+                                );
+
+                                // Show unknown icon if location doesn't match any known type
+                                const isUnknownType =
+                                  !hasSmib && !isLocalServer && !hasMembership;
+
+                                return isUnknownType ? (
+                                  <div className="group relative inline-flex flex-shrink-0">
+                                    <HelpCircle className="h-4 w-4 text-gray-500" />
+                                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                      Unknown location type
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
                             </button>
                           ) : (
-                            <div className="flex items-center justify-center gap-1.5 text-sm font-medium text-gray-900">
+                            <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
                               <span>{location.locationName}</span>
                               {/* SMIB Icon - Show if location has SMIB machines */}
                               {Boolean(
@@ -487,10 +558,47 @@ export default function EnhancedLocationTable({
                                   </div>
                                 </div>
                               )}
+                              {/* Unknown Type Icon - Show if location doesn't match any known type */}
+                              {(() => {
+                                const hasSmib = Boolean(
+                                  (location as { hasSmib?: boolean }).hasSmib ||
+                                    !(location as { noSMIBLocation?: boolean })
+                                      .noSMIBLocation
+                                );
+                                const isLocalServer = Boolean(
+                                  (location as { isLocalServer?: boolean })
+                                    .isLocalServer
+                                );
+                                const hasMembership = Boolean(
+                                  (
+                                    location as {
+                                      membershipEnabled?: boolean;
+                                    }
+                                  ).membershipEnabled ||
+                                    (
+                                      location as {
+                                        enableMembership?: boolean;
+                                      }
+                                    ).enableMembership
+                                );
+
+                                // Show unknown icon if location doesn't match any known type
+                                const isUnknownType =
+                                  !hasSmib && !isLocalServer && !hasMembership;
+
+                                return isUnknownType ? (
+                                  <div className="group relative inline-flex flex-shrink-0">
+                                    <HelpCircle className="h-4 w-4 text-gray-500" />
+                                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                      Unknown location type
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
                             </div>
                           )}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3">
+                        <td className="whitespace-nowrap px-4 py-3 text-left">
                           <Badge
                             variant={
                               location.hasSasMachines ? 'default' : 'secondary'
@@ -499,31 +607,31 @@ export default function EnhancedLocationTable({
                             {location.hasSasMachines ? 'SAS' : 'Non-SAS'}
                           </Badge>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-center text-sm font-medium text-gray-900">
+                        <td className="whitespace-nowrap px-4 py-3 text-left text-sm font-medium text-gray-900">
                           {location.totalMachines}
                         </td>
                         <td
-                          className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getMoneyInColorClass()}`}
+                          className={`whitespace-nowrap px-4 py-3 text-left text-sm font-medium ${getMoneyInColorClass()}`}
                         >
                           {formatCurrency(location.moneyIn)}
                         </td>
                         <td
-                          className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
+                          className={`whitespace-nowrap px-4 py-3 text-left text-sm font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
                         >
                           {formatCurrency(location.moneyOut)}
                         </td>
                         <td
-                          className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getGrossColorClass(location.gross)}`}
+                          className={`whitespace-nowrap px-4 py-3 text-left text-sm font-medium ${getGrossColorClass(location.gross)}`}
                         >
                           {formatCurrency(location.gross)}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                        <td className="whitespace-nowrap px-4 py-3 text-left text-sm text-gray-900">
                           {holdPercentage.toFixed(2)}%
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                        <td className="whitespace-nowrap px-4 py-3 text-left text-sm text-gray-900">
                           {formatNumber(location.gamesPlayed)}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                        <td className="whitespace-nowrap px-4 py-3 text-left text-sm text-gray-900">
                           {formatCurrency(avgWagerPerGame)}
                         </td>
                       </tr>

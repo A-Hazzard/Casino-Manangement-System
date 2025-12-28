@@ -13,8 +13,8 @@
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
-  getUserLocationFilter,
+    getUserAccessibleLicenseesFromToken,
+    getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -143,12 +143,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Apply location access filter
-    // Skip locationId filter if it's the same as the licensee ID (likely a mistake)
-    const isLocationIdSameAsLicensee =
-      locationId && effectiveLicensee && locationId === effectiveLicensee;
-
-    if (locationId && !isLocationIdSameAsLicensee) {
+    if (locationId) {
       // Handle comma-separated location IDs (multiple locations)
       const locationIds = locationId.split(',').filter(id => id.trim() !== '');
 

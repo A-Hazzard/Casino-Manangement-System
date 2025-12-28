@@ -23,7 +23,7 @@
  */
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatTrinidadTime } from '@/lib/utils/timezone';
-import { TimePeriod } from '@/shared/types/common';
+import { TimePeriod, type ChartGranularity } from '@/shared/types/common';
 import {
     formatDate,
     formatDisplayDate,
@@ -65,7 +65,7 @@ type LocationTrendChartProps = {
   formatter: (value: number) => string;
   isHourly?: boolean;
   timePeriod?: TimePeriod;
-  granularity?: 'hourly' | 'minute';
+  granularity?: ChartGranularity;
 };
 
 export function LocationTrendChart({

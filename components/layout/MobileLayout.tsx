@@ -40,9 +40,6 @@ import { useEffect, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 export default function MobileLayout(props: MobileLayoutProps) {
-  // ============================================================================
-  // Hooks
-  // ============================================================================
   const router = useRouter();
   const [selectedMachine, setSelectedMachine] = useState<{
     machineId?: string;
@@ -59,17 +56,11 @@ export default function MobileLayout(props: MobileLayoutProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
-  // ============================================================================
-  // Computed Values
-  // ============================================================================
   const licenseeName =
     getLicenseeName(props.selectedLicencee) ||
     props.selectedLicencee ||
     'any licensee';
 
-  // ============================================================================
-  // Helper Components
-  // ============================================================================
   const NoDataMessage = ({ message }: { message: string }) => (
     <div
       className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md"
@@ -80,10 +71,6 @@ export default function MobileLayout(props: MobileLayoutProps) {
     </div>
   );
 
-  // ============================================================================
-  // State - Machine Stats
-  // ============================================================================
-  // Use online/offline counts from props if provided, otherwise fetch from API
   const [machineStats, setMachineStats] = useState<{
     totalMachines: number;
     onlineMachines: number;
@@ -91,22 +78,23 @@ export default function MobileLayout(props: MobileLayoutProps) {
   } | null>(null);
   const [machineStatsLoading, setMachineStatsLoading] = useState(true);
 
-  // ============================================================================
-  // Effects - Fetch Machine Stats
-  // ============================================================================
-  // Fetch machine stats for online/offline counts (similar to reports tab)
+  /**
+   * Fetches machine stats for online/offline counts.
+   * Used to display machine status widget on mobile dashboard.
+   */
   useEffect(() => {
     let aborted = false;
     const fetchMachineStats = async () => {
       setMachineStatsLoading(true);
       try {
         const params = new URLSearchParams();
-        params.append('licensee', 'all'); // Get all machines
+        params.append('licensee', 'all');
 
         const res = await axios.get(
           `/api/analytics/machines/stats?${params.toString()}`
         );
         const data = res.data;
+        // Only update state if request wasn't aborted
         if (!aborted) {
           setMachineStats({
             totalMachines: data.totalMachines || 0,
@@ -115,6 +103,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
           });
         }
       } catch {
+        // On error, set zero counts if request wasn't aborted
         if (!aborted) {
           setMachineStats({
             totalMachines: 0,
@@ -132,16 +121,9 @@ export default function MobileLayout(props: MobileLayoutProps) {
     };
   }, []);
 
-  // ============================================================================
-  // Computed Values - Machine Counts
-  // ============================================================================
-  // Use machine stats for online/offline counts
   const onlineCount = machineStats?.onlineMachines || 0;
   const offlineCount = machineStats?.offlineMachines || 0;
 
-  // ============================================================================
-  // Render - Mobile Dashboard Layout
-  // ============================================================================
   return (
     <div className="space-y-6 xl:hidden">
       {/* Date Filter Controls (mobile) */}
@@ -158,8 +140,9 @@ export default function MobileLayout(props: MobileLayoutProps) {
         />
       </div>
 
-      {/* Refresh button below Machine Status on mobile */}
+      {/* Refresh Button */}
       <div className="flex justify-end">
+        {/* Show skeleton while loading, otherwise show refresh button */}
         {props.loadingChartData ? (
           <RefreshButtonSkeleton />
         ) : (
@@ -170,6 +153,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                 : 'hover:bg-buttonActive/90'
             }`}
             onClick={() => {
+              // Only trigger refresh if not already loading or refreshing
               if (!(props.loadingChartData || props.refreshing))
                 props.onRefresh();
             }}
@@ -186,18 +170,20 @@ export default function MobileLayout(props: MobileLayoutProps) {
         )}
       </div>
 
-      {/* Metrics Cards - Mobile uses new design */}
+      {/* Financial Metrics Cards */}
       <FinancialMetricsCards
         totals={props.totals}
         loading={props.loadingChartData}
         title="Total for all Locations and Machines"
       />
 
+      {/* Chart Section */}
+      {/* Show skeleton while loading, otherwise show chart with optional granularity selector */}
       {props.loadingChartData ? (
         <DashboardChartSkeleton />
       ) : (
         <>
-          {/* Granularity Selector - Only show for Today/Yesterday/Custom */}
+          {/* Granularity Selector - Only shown for Today/Yesterday/Custom periods */}
           {props.showGranularitySelector && (
             <div className="mb-3 flex items-center justify-end gap-2">
               <label
@@ -230,6 +216,8 @@ export default function MobileLayout(props: MobileLayoutProps) {
         </>
       )}
 
+      {/* Map Preview Section */}
+      {/* Show skeleton while loading, otherwise show map preview */}
       {props.loadingChartData ? (
         <div className="relative w-full rounded-lg bg-container p-4 shadow-md">
           <div className="skeleton-bg mt-2 h-48 w-full animate-pulse rounded-lg"></div>
@@ -239,6 +227,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
       )}
 
       {/* Top Performing Section */}
+      {/* Show skeleton if loading or data hasn't been fetched yet */}
       {props.loadingTopPerforming ||
       (!props.hasTopPerformingFetched &&
         props.topPerformingData.length === 0) ? (
@@ -307,6 +296,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                     : ''
                 }`}
                 onClick={() => {
+                  // Don't switch tabs if already loading data for other tab
                   if (
                     props.activeTab !== 'locations' &&
                     props.loadingTopPerforming
@@ -328,6 +318,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                     : ''
                 }`}
                 onClick={() => {
+                  // Don't switch tabs if already loading data for other tab
                   if (
                     props.activeTab !== 'Cabinets' &&
                     props.loadingTopPerforming
@@ -341,6 +332,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
             </div>
 
             <div className="mb-0 rounded-lg rounded-tl-none rounded-tr-3xl bg-container p-6 shadow-sm">
+              {/* Show skeleton if loading or not fetched yet, empty message if no data, otherwise show top performing list */}
               {props.loadingTopPerforming ||
               (!props.hasTopPerformingFetched &&
                 props.topPerformingData.length === 0) ? (
@@ -368,6 +360,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                               className="h-4 w-4 flex-shrink-0 rounded-full"
                               style={{ backgroundColor: item.color }}
                             ></div>
+                            {/* Show machine preview link if viewing cabinets tab and item has machineId */}
                             {props.activeTab === 'Cabinets' &&
                             item.machineId ? (
                               <>
@@ -375,6 +368,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                                 <button
                                   onClick={e => {
                                     e.stopPropagation();
+                                    // Open machine preview modal when link is clicked
                                     if (item.machineId) {
                                       setSelectedMachine({
                                         machineId: item.machineId,
@@ -393,12 +387,14 @@ export default function MobileLayout(props: MobileLayoutProps) {
                                   <ExternalLink className="h-3.5 w-3.5 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
                                 </button>
                               </>
-                            ) : props.activeTab === 'locations' &&
+                            ) : /* Show location preview link if viewing locations tab and item has locationId */
+                            props.activeTab === 'locations' &&
                               item.locationId ? (
                               <>
                                 <button
                                   onClick={e => {
                                     e.stopPropagation();
+                                    // Open location preview modal when link is clicked
                                     if (item.locationId) {
                                       setSelectedLocation({
                                         locationId: item.locationId,
@@ -436,27 +432,27 @@ export default function MobileLayout(props: MobileLayoutProps) {
                         )
                       )}
                     </ul>
-                    <div className="h-40 w-40 min-w-[160px] min-h-[160px]">
+                    <div className="h-40 min-h-[160px] w-40 min-w-[160px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                        <Pie
-                          data={props.topPerformingData}
-                          dataKey="totalDrop"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={70}
-                          labelLine={false}
-                          label={props.renderCustomizedLabel}
-                        >
-                          {props.topPerformingData.map(
-                            (entry: TopPerformingItem, index: number) => (
-                              <Cell key={index} fill={entry.color} />
-                            )
-                          )}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
+                          <Pie
+                            data={props.topPerformingData}
+                            dataKey="totalDrop"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={70}
+                            labelLine={false}
+                            label={props.renderCustomizedLabel}
+                          >
+                            {props.topPerformingData.map(
+                              (entry: TopPerformingItem, index: number) => (
+                                <Cell key={index} fill={entry.color} />
+                              )
+                            )}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
                   </div>
                 </>
@@ -466,7 +462,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
         </div>
       )}
 
-      {/* Machine Preview Modal */}
+      {/* Machine Preview Modal - Show only when machine is selected and not a location */}
       {selectedMachine &&
         selectedMachine.machineId &&
         !selectedMachine.isLocation && (
@@ -489,7 +485,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
           />
         )}
 
-      {/* Location Preview Modal */}
+      {/* Location Preview Modal - Show only when location is selected */}
       {selectedLocation && selectedLocation.locationId && (
         <TopPerformingLocationModal
           open={isLocationModalOpen}

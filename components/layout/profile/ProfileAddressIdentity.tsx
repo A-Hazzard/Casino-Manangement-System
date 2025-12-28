@@ -18,6 +18,10 @@ type ProfileAddressIdentityProps = {
   countries: Country[];
   countriesLoading: boolean;
   onInputChange: (field: string, value: string, section?: 'address' | 'identification') => void;
+  validationErrors: Record<string, string>;
+  setValidationErrors: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
 };
 
 export default function ProfileAddressIdentity({
@@ -25,7 +29,26 @@ export default function ProfileAddressIdentity({
   isEditMode,
   countries,
   onInputChange,
+  validationErrors,
+  setValidationErrors,
 }: ProfileAddressIdentityProps) {
+  const handleInputChangeWithValidation = (
+    field: string,
+    value: string,
+    section?: 'address' | 'identification'
+  ) => {
+    onInputChange(field, value, section);
+    // Clear error when user starts typing
+    const errorKey = section ? `${section}.${field}` : field;
+    if (validationErrors[errorKey] || validationErrors[field]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
   return (
     <>
       <Card>
@@ -46,33 +69,80 @@ export default function ProfileAddressIdentity({
             <div>
               <Label>Town</Label>
               {isEditMode ? (
-                <Input value={formData?.address?.town || ''} onChange={e => onInputChange('town', e.target.value, 'address')} className="mt-2" />
+                <>
+                  <Input
+                    value={formData?.address?.town || ''}
+                    onChange={e =>
+                      handleInputChangeWithValidation('town', e.target.value, 'address')
+                    }
+                    className={`mt-2 ${validationErrors.town ? 'border-red-500' : ''}`}
+                  />
+                  {validationErrors.town && (
+                    <p className="mt-1.5 text-sm text-red-600">
+                      {validationErrors.town}
+                    </p>
+                  )}
+                </>
               ) : (
-                <p className="mt-2 text-sm text-gray-900">{formData?.address?.town || '-'}</p>
+                <p className="mt-2 text-sm text-gray-900">
+                  {formData?.address?.town || '-'}
+                </p>
               )}
             </div>
             <div>
               <Label>Region</Label>
               {isEditMode ? (
-                <Input value={formData?.address?.region || ''} onChange={e => onInputChange('region', e.target.value, 'address')} className="mt-2" />
+                <>
+                  <Input
+                    value={formData?.address?.region || ''}
+                    onChange={e =>
+                      handleInputChangeWithValidation('region', e.target.value, 'address')
+                    }
+                    className={`mt-2 ${validationErrors.region ? 'border-red-500' : ''}`}
+                  />
+                  {validationErrors.region && (
+                    <p className="mt-1.5 text-sm text-red-600">
+                      {validationErrors.region}
+                    </p>
+                  )}
+                </>
               ) : (
-                <p className="mt-2 text-sm text-gray-900">{formData?.address?.region || '-'}</p>
+                <p className="mt-2 text-sm text-gray-900">
+                  {formData?.address?.region || '-'}
+                </p>
               )}
             </div>
             <div>
               <Label>Country</Label>
               {isEditMode ? (
-                <select
-                  className="mt-2 h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                  value={formData?.address?.country || ''}
-                  onChange={e => onInputChange('country', e.target.value, 'address')}
-                >
-                  <option value="">Select country</option>
-                  {countries.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-                </select>
+                <>
+                  <select
+                    className={`mt-2 h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ${
+                      validationErrors.country ? 'border-red-500' : ''
+                    }`}
+                    value={formData?.address?.country || ''}
+                    onChange={e =>
+                      handleInputChangeWithValidation('country', e.target.value, 'address')
+                    }
+                  >
+                    <option value="">Select country</option>
+                    {countries.map(c => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  {validationErrors.country && (
+                    <p className="mt-1.5 text-sm text-red-600">
+                      {validationErrors.country}
+                    </p>
+                  )}
+                </>
               ) : (
                 <p className="mt-2 text-sm text-gray-900">
-                  {countries.find(c => c._id === formData?.address?.country)?.name || formData?.address?.country || '-'}
+                  {countries.find(c => c._id === formData?.address?.country)?.name ||
+                    formData?.address?.country ||
+                    '-'}
                 </p>
               )}
             </div>
@@ -90,36 +160,96 @@ export default function ProfileAddressIdentity({
             <div>
               <Label>Date of Birth</Label>
               {isEditMode ? (
-                <Input type="date" value={formData?.identification?.dateOfBirth?.split('T')[0] || ''} onChange={e => onInputChange('dateOfBirth', e.target.value, 'identification')} className="mt-2" />
+                <>
+                  <Input
+                    type="date"
+                    value={
+                      formData?.identification?.dateOfBirth?.split('T')[0] || ''
+                    }
+                    onChange={e =>
+                      handleInputChangeWithValidation(
+                        'dateOfBirth',
+                        e.target.value,
+                        'identification'
+                      )
+                    }
+                    max={new Date().toISOString().split('T')[0]}
+                    className={`mt-2 ${
+                      validationErrors.dateOfBirth ? 'border-red-500' : ''
+                    }`}
+                  />
+                  {validationErrors.dateOfBirth && (
+                    <p className="mt-1.5 text-sm text-red-600">
+                      {validationErrors.dateOfBirth}
+                    </p>
+                  )}
+                </>
               ) : (
                 <p className="mt-2 text-sm text-gray-900">
-                  {formData?.identification?.dateOfBirth ? new Date(formData.identification.dateOfBirth).toLocaleDateString() : '-'}
+                  {formData?.identification?.dateOfBirth
+                    ? new Date(formData.identification.dateOfBirth).toLocaleDateString()
+                    : '-'}
                 </p>
               )}
             </div>
             <div>
               <Label>ID Type</Label>
               {isEditMode ? (
-                <select
-                  className="mt-2 h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                  value={formData?.identification?.idType || ''}
-                  onChange={e => onInputChange('idType', e.target.value, 'identification')}
-                >
-                  <option value="">Select ID Type</option>
-                  <option value="national">National ID</option>
-                  <option value="passport">Passport</option>
-                  <option value="driver">Driver&apos;s License</option>
-                </select>
+                <>
+                  <Input
+                    value={formData?.identification?.idType || ''}
+                    onChange={e =>
+                      handleInputChangeWithValidation(
+                        'idType',
+                        e.target.value,
+                        'identification'
+                      )
+                    }
+                    placeholder="Enter ID type (e.g., National ID, Passport)"
+                    className={`mt-2 ${
+                      validationErrors.idType ? 'border-red-500' : ''
+                    }`}
+                  />
+                  {validationErrors.idType && (
+                    <p className="mt-1.5 text-sm text-red-600">
+                      {validationErrors.idType}
+                    </p>
+                  )}
+                </>
               ) : (
-                <p className="mt-2 text-sm text-gray-900 capitalize">{formData?.identification?.idType || '-'}</p>
+                <p className="mt-2 text-sm text-gray-900 capitalize">
+                  {formData?.identification?.idType || '-'}
+                </p>
               )}
             </div>
             <div>
               <Label>ID Number</Label>
               {isEditMode ? (
-                <Input value={formData?.identification?.idNumber || ''} onChange={e => onInputChange('idNumber', e.target.value, 'identification')} className="mt-2" />
+                <>
+                  <Input
+                    value={formData?.identification?.idNumber || ''}
+                    onChange={e =>
+                      handleInputChangeWithValidation(
+                        'idNumber',
+                        e.target.value,
+                        'identification'
+                      )
+                    }
+                    placeholder="Enter ID number"
+                    className={`mt-2 ${
+                      validationErrors.idNumber ? 'border-red-500' : ''
+                    }`}
+                  />
+                  {validationErrors.idNumber && (
+                    <p className="mt-1.5 text-sm text-red-600">
+                      {validationErrors.idNumber}
+                    </p>
+                  )}
+                </>
               ) : (
-                <p className="mt-2 text-sm text-gray-900">{formData?.identification?.idNumber || '-'}</p>
+                <p className="mt-2 text-sm text-gray-900">
+                  {formData?.identification?.idNumber || '-'}
+                </p>
               )}
             </div>
           </div>

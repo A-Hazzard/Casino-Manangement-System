@@ -69,7 +69,12 @@ function CabinetCardMobile({
   copyToClipboard: (text: string, label: string) => void;
 }) {
   const statusRef = useRef<HTMLSpanElement>(null);
+  /**
+   * Animates online status indicator with pulsing effect.
+   * Only animates when cabinet is online.
+   */
   useEffect(() => {
+    // Only animate if cabinet is online and ref is available
     if (cabinet.isOnline && statusRef.current) {
       const tl = gsap.timeline({ repeat: -1, yoyo: true });
       tl.to(statusRef.current, {
@@ -108,6 +113,7 @@ function CabinetCardMobile({
       </div>
       <p className="mb-1 text-sm text-gray-600">
         Game:{' '}
+        {/* Show game name or placeholder if not provided */}
         {cabinet.game || cabinet.installedGame ? (
           cabinet.game || cabinet.installedGame
         ) : (
@@ -121,6 +127,7 @@ function CabinetCardMobile({
             e.stopPropagation();
             const smibId =
               cabinet.relayId || cabinet.smibBoard || cabinet.smbId;
+            // Copy SMIB ID to clipboard when clicked
             if (smibId) {
               copyToClipboard(smibId, 'SMIB');
             }
@@ -140,6 +147,7 @@ function CabinetCardMobile({
           <span>
             {cabinet.relayId || cabinet.smibBoard || cabinet.smbId || 'N/A'}
           </span>
+          {/* Show copy icon only if SMIB ID exists */}
           {(cabinet.relayId || cabinet.smibBoard || cabinet.smbId) && (
             <Copy className="h-3 w-3 flex-shrink-0" />
           )}
@@ -183,6 +191,7 @@ function CabinetCardMobile({
           <Eye className="h-3.5 w-3.5" />
           <span>View</span>
         </Button>
+        {/* Show Edit button only if user can edit machines */}
         {canEditMachines && (
           <Button
             onClick={() => onEdit(cabinet)}
@@ -194,6 +203,7 @@ function CabinetCardMobile({
             <span>Edit</span>
           </Button>
         )}
+        {/* Show Delete button only if user can delete machines */}
         {canDeleteMachines && (
           <Button
             onClick={() => onDelete(cabinet)}
@@ -233,8 +243,12 @@ export default function CabinetGrid({
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
   const user = useUserStore(state => state.user);
 
-  // Copy to clipboard function
+  /**
+   * Copies text to clipboard with fallback for older browsers.
+   * Shows toast notifications for success/error states.
+   */
   const copyToClipboard = async (text: string, label: string) => {
+    // Don't copy if text is empty or N/A
     if (!text || text.trim() === '' || text === 'N/A') {
       toast.error(`No ${label} value to copy`);
       return;
@@ -243,7 +257,7 @@ export default function CabinetGrid({
       await navigator.clipboard.writeText(text.trim());
       toast.success(`${label} copied to clipboard`);
     } catch {
-      // Fallback for older browsers or when clipboard API is not available
+      // Use fallback method for older browsers that don't support clipboard API
       try {
         const textArea = document.createElement('textarea');
         textArea.value = text.trim();
@@ -267,8 +281,10 @@ export default function CabinetGrid({
     }
   };
 
-  // Check if user can edit/delete machines
-  // Technicians can edit but not delete, collectors cannot edit or delete
+  /**
+   * Determines if user can edit machines.
+   * Collectors cannot edit, but technicians, managers, admins, developers, and location admins can.
+   */
   const canEditMachines = useMemo(() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles || [];
@@ -276,7 +292,7 @@ export default function CabinetGrid({
     if (userRoles.includes('collector')) {
       return false;
     }
-    // Technicians, managers, admins, developers, and location admins can edit
+    // Check if user has a role that allows editing
     return [
       'developer',
       'admin',
@@ -286,6 +302,10 @@ export default function CabinetGrid({
     ].some(role => userRoles.includes(role));
   }, [user]);
 
+  /**
+   * Determines if user can delete machines.
+   * Collectors and technicians cannot delete, only managers, admins, developers, and location admins can.
+   */
   const canDeleteMachines = useMemo(() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles || [];
@@ -293,21 +313,26 @@ export default function CabinetGrid({
     if (userRoles.includes('collector') || userRoles.includes('technician')) {
       return false;
     }
-    // Only managers, admins, developers, and location admins can delete
+    // Check if user has a role that allows deletion
     return ['developer', 'admin', 'manager', 'location admin'].some(role =>
       userRoles.includes(role)
     );
   }, [user]);
 
+  /**
+   * Handles column sorting with toggle behavior.
+   * Uses external handler if provided, otherwise manages internal state.
+   */
   const handleColumnSort = (column: CabinetSortOption) => {
     if (onSortChange) {
-      // If external sort handler provided, use it
+      // Use external sort handler if provided
       const newOrder =
         sortOption === column ? (sortOrder === 'asc' ? 'desc' : 'asc') : 'desc';
       onSortChange(column, newOrder);
     } else {
-      // Otherwise use internal state
+      // Use internal state management if no external handler
       if (sortOption === column) {
+        // Toggle order if clicking same column
         setInternalSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
       } else {
         setInternalSortOption(column);
@@ -316,11 +341,16 @@ export default function CabinetGrid({
     }
   };
 
-  // Handle cabinet actions using store
+  /**
+   * Opens edit modal for a cabinet using the cabinet actions store.
+   */
   const handleEdit = (cabinet: ExtendedCabinetDetail) => {
     openEditModal(cabinet as Cabinet);
   };
 
+  /**
+   * Opens delete modal for a cabinet using the cabinet actions store.
+   */
   const handleDelete = (cabinet: ExtendedCabinetDetail) => {
     openDeleteModal(cabinet as Cabinet);
   };
@@ -371,6 +401,7 @@ export default function CabinetGrid({
         </div>
       </div>
 
+      {/* Show empty state if no cabinets found */}
       {filteredCabinets.length === 0 && (
         <div className="rounded-lg border border-gray-200 bg-white p-6 text-center">
           <Image

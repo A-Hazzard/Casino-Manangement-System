@@ -42,18 +42,15 @@ export default function Chart({
     chartData && Array.isArray(chartData) && chartData.length > 0;
 
   // If we have no valid data, check if we're in initial state
-  // Show skeleton if totals is null (initial state) OR if we're loading
-  // This prevents showing "No Metrics Data" before the first fetch completes
+  // Show skeleton if totals is null (initial state) - this prevents showing "No Metrics Data"
+  // before the first fetch completes or when filters change and new data is being fetched
   if (!hasValidData) {
-    // If totals is null/undefined, we're in initial state before any fetch completes
-    // OR if loadingChartData was just set to false but data hasn't propagated yet
-    // Show skeleton to indicate we're still loading
-    if (!totals) {
+    // If totals is null, we're still in initial state - show skeleton
+    if (totals === null || totals === undefined) {
       return <DashboardChartSkeleton />;
     }
-
-    // We have totals but no chart data - this means we loaded but got no chart data
-    // Only show "no data" message if we've actually completed a fetch (have totals)
+    
+    // Show no data message only if we have totals but no chart data (legitimate empty state)
     return (
       <div className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md">
         <div className="mb-2 text-lg text-gray-500">No Metrics Data</div>
@@ -123,6 +120,7 @@ export default function Chart({
 
   const isHourlyChart = shouldUseHourlyFormat();
   const isMinuteLevel = hasMinuteLevelData();
+
 
   // For hourly charts, filter to only the most common day
   // BUT: For minute-level data, don't filter by day - show all data points

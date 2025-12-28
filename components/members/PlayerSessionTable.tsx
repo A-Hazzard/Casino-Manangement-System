@@ -335,16 +335,16 @@ export default function PlayerSessionTable({
 
     switch (header) {
       case 'Login Time':
-        // For grouped data, show the date as the group key
+        // Show date for grouped data, formatted time for individual sessions
         if (session.sessionId && session.sessionId !== session._id) {
-          // This is grouped data, show the date
+          /* Show date as group key for grouped data */
           return (
             <div className="font-semibold text-gray-900">
               {session.sessionId}
             </div>
           );
         } else {
-          // This is individual session data, show formatted time
+          /* Show formatted time for individual session data */
           return (
             <div className="whitespace-pre-line">
               {formatLoginTime(session.time)}
@@ -396,10 +396,12 @@ export default function PlayerSessionTable({
           ? formatAmount(session.coinOut || 0)
           : formatCurrency(session.coinOut || 0);
       case 'Actions':
-        // For grouped data, don't show actions since there's no single session
+        // Don't show actions for grouped data, only for individual sessions
         if (session.sessionId && session.sessionId !== session._id) {
+          /* No actions available for grouped data */
           return <span className="text-gray-400">-</span>;
         } else {
+          /* Show view events button for individual sessions */
           return (
             <Link
               href={`/sessions/${session.sessionId || session._id}/${

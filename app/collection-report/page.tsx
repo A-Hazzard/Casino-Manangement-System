@@ -14,8 +14,8 @@ import { COLLECTION_TABS_CONFIG } from '@/lib/constants/collection';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import {
-    shouldShowLicenseeFilter,
-    shouldShowNoLicenseeMessage,
+  shouldShowLicenseeFilter,
+  shouldShowNoLicenseeMessage,
 } from '@/lib/utils/licenseeAccess';
 import dynamic from 'next/dynamic';
 import { Suspense, useRef, useState } from 'react';
@@ -24,21 +24,46 @@ import { Suspense, useRef, useState } from 'react';
 import { useCollectionReportPageData } from '@/lib/hooks/collectionReport/useCollectionReportPageData';
 
 // Components
+import CollectionDesktopUI from '@/components/collectionReport/CollectionDesktopUI';
+import CollectionMobileUI from '@/components/collectionReport/CollectionMobileUI';
 import CollectionNavigation from '@/components/collectionReport/CollectionNavigation';
 import CollectionReportHeader from '@/components/collectionReport/CollectionReportHeader';
 import CollectionReportModals from '@/components/collectionReport/CollectionReportModals';
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import PaginationControls from '@/components/ui/PaginationControls';
+import { FloatingActionButtons } from '@/components/ui/FloatingActionButtons';
+import { useDashboardScroll } from '@/lib/hooks/data';
 
-// Dynamic UI Imports
-const CollectionDesktopUI = dynamic(
-  () => import('@/components/collectionReport/CollectionDesktopUI'),
+// Additional Tab UIs
+const MonthlyDesktopUI = dynamic(
+  () => import('@/components/collectionReport/MonthlyDesktopUI'),
   { ssr: false }
 );
-const CollectionMobileUI = dynamic(
-  () => import('@/components/collectionReport/CollectionMobileUI'),
+const MonthlyMobileUI = dynamic(
+  () => import('@/components/collectionReport/MonthlyMobileUI'),
   { ssr: false }
 );
+const CollectorDesktopUI = dynamic(
+  () => import('@/components/collectionReport/CollectorDesktopUI'),
+  { ssr: false }
+);
+const CollectorMobileUI = dynamic(
+  () => import('@/components/collectionReport/CollectorMobileUI'),
+  { ssr: false }
+);
+const ManagerDesktopUI = dynamic(
+  () => import('@/components/collectionReport/ManagerDesktopUI'),
+  { ssr: false }
+);
+const ManagerMobileUI = dynamic(
+  () => import('@/components/collectionReport/ManagerMobileUI'),
+  { ssr: false }
+);
+
+// Hooks
+import { useCollectorScheduleData } from '@/lib/hooks/collectionReport/useCollectorScheduleData';
+import { useManagerScheduleData } from '@/lib/hooks/collectionReport/useManagerScheduleData';
+import { useMonthlyReportData } from '@/lib/hooks/collectionReport/useMonthlyReportData';
 
 const MotionDiv = dynamic(
   () => import('framer-motion').then(mod => mod.motion.div),
@@ -59,6 +84,7 @@ function CollectionReportContent() {
   const desktopTableRef = useRef<HTMLDivElement | null>(null);
   const mobileCardsRef = useRef<HTMLDivElement | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const { showFloatingRefresh } = useDashboardScroll();
 
   const {
     activeTab,
@@ -88,6 +114,16 @@ function CollectionReportContent() {
     onRefreshLocations,
   } = hook;
 
+  // Initialize specialized hooks for other tabs
+  const monthlyHook = useMonthlyReportData(selectedLicencee);
+  const collectorHook = useCollectorScheduleData(selectedLicencee, locations);
+  const managerHook = useManagerScheduleData(
+    selectedLicencee,
+    locations,
+    collectorHook.collectors
+  );
+
+  // Show "No Licensee Assigned" message for non-admin users without licensees
   if (shouldShowNoLicenseeMessage(user)) {
     return (
       <PageLayout
@@ -131,7 +167,8 @@ function CollectionReportContent() {
           />
         </div>
 
-        {activeTab !== 'monthly' && (
+        {/* Show date filters for all tabs except monthly */}
+        {activeTab === 'collection' && (
           <div className="mb-6">
             <DashboardDateFilters
               hideAllTime={false}
@@ -217,6 +254,7 @@ function CollectionReportContent() {
                     />
                   </div>
 
+                  {/* Show pagination only if there are reports to display */}
                   {!loading &&
                     (hook.paginatedReports?.length > 0 ||
                       filters.filteredReports.length > 0) && (
@@ -228,7 +266,33 @@ function CollectionReportContent() {
                     )}
                 </div>
               )}
-              {/* Other tabs follow similar pattern - keeping it lean for initial refactor */}
+
+              {activeTab === 'monthly' && (
+                <div className="tab-content-wrapper">
+                  <MonthlyDesktopUI {...monthlyHook} />
+                  <div className="lg:hidden">
+                    <MonthlyMobileUI {...monthlyHook} />
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'collector' && (
+                <div className="tab-content-wrapper">
+                  <CollectorDesktopUI {...collectorHook} />
+                  <div className="lg:hidden">
+                    <CollectorMobileUI {...collectorHook} />
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'manager' && (
+                <div className="tab-content-wrapper">
+                  <ManagerDesktopUI {...managerHook} />
+                  <div className="lg:hidden">
+                    <ManagerMobileUI {...managerHook} />
+                  </div>
+                </div>
+              )}
             </MotionDiv>
           </AnimatePresence>
         </div>
@@ -253,6 +317,13 @@ function CollectionReportContent() {
         onConfirmDelete={confirmDelete}
         onRefresh={handleRefresh}
         onRefreshLocations={onRefreshLocations}
+      />
+
+      {/* Floating Action Buttons */}
+      <FloatingActionButtons
+        showRefresh={showFloatingRefresh}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
       />
     </>
   );

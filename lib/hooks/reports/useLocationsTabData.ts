@@ -38,7 +38,7 @@ type UseLocationsTabDataProps = {
   itemsPerPage: number;
   itemsPerBatch: number;
   pagesPerBatch: number;
-  chartGranularity?: 'hourly' | 'minute';
+  chartGranularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
 };
 
 /**
@@ -141,6 +141,12 @@ export function useLocationsTabData({
   const makeTrendDataRequest = useAbortableRequest();
   const makeGamingLocationsRequest = useAbortableRequest();
   const makeLocationAggregationRequest = useAbortableRequest();
+
+  // Ref to track latest metricsTotals for use in other callbacks without causing loops
+  const metricsTotalsRef = useRef<DashboardTotals | null>(null);
+  useEffect(() => {
+    metricsTotalsRef.current = metricsTotals;
+  }, [metricsTotals]);
 
   // ============================================================================
   // Helper Functions
@@ -600,8 +606,8 @@ export function useLocationsTabData({
 
         if (currentSelectedLocations.length === 0) {
           // No locations selected - use dashboard totals for overview
-          // Use current metricsTotals state value (read directly, not from closure)
-          const currentMetricsTotals = metricsTotals;
+          // Use latest value from ref to avoid dependency loop
+          const currentMetricsTotals = metricsTotalsRef.current;
           const dashboardTotals: DashboardTotals = currentMetricsTotals || {
             moneyIn: 0,
             moneyOut: 0,
@@ -764,7 +770,6 @@ export function useLocationsTabData({
       itemsPerBatch,
       itemsPerPage,
       makeLocationDataRequest,
-      metricsTotals,
       buildTimePeriodParams,
     ]
   );
@@ -1014,21 +1019,6 @@ export function useLocationsTabData({
   }, [accumulatedLocations, currentPage, itemsPerPage]);
 
   // ============================================================================
-  // Initial Data Fetch on Mount
-  // ============================================================================
-  const initialFetchDone = useRef(false);
-
-  useEffect(() => {
-    if (!initialFetchDone.current) {
-      initialFetchDone.current = true;
-      // Fetch location data and metrics totals on initial mount
-      void fetchLocationDataAsync();
-      void fetchMetricsTotals();
-      void fetchLocationAggregationAsync(); // Fetch location aggregation for map
-    }
-  }, [fetchLocationDataAsync, fetchMetricsTotals, fetchLocationAggregationAsync]); // Only run once on mount
-
-  // ============================================================================
   // Create stable date range key to prevent infinite loops
   // ============================================================================
   const dateRangeKey = useMemo(() => {
@@ -1041,13 +1031,12 @@ export function useLocationsTabData({
   // ============================================================================
   // Refetch when filters change
   // ============================================================================
+  // Track previous filter values to prevent infinite loops when callbacks change
+  // Fetch location data and metrics totals when filters change
   useEffect(() => {
-    if (initialFetchDone.current) {
-      // Only refetch after initial load when filters change
-      void fetchLocationDataAsync();
-      void fetchMetricsTotals();
-      void fetchLocationAggregationAsync(); // Fetch location aggregation for map
-    }
+    void fetchLocationDataAsync();
+    void fetchMetricsTotals();
+    void fetchLocationAggregationAsync(); // Fetch location aggregation for map
   }, [
     activeMetricsFilter,
     dateRangeKey,
@@ -1056,7 +1045,7 @@ export function useLocationsTabData({
     fetchLocationDataAsync,
     fetchMetricsTotals,
     fetchLocationAggregationAsync,
-  ]); // Use stable dateRangeKey instead of customDateRange object
+  ]);
 
   return {
     // State

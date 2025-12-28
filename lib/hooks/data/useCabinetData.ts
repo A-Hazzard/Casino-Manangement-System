@@ -182,11 +182,9 @@ export const useCabinetData = ({
 
   // Legacy filterCabinets function for backward compatibility (now just updates state)
   const filterCabinets = useCallback(() => {
-      // This function is now handled by the memoized filteredCabinets above
-      // Keeping for backward compatibility but it's no longer needed
-    },
-    []
-  );
+    // This function is now handled by the memoized filteredCabinets above
+    // Keeping for backward compatibility but it's no longer needed
+  }, []);
 
   // Load cabinets with proper error handling and logging
   const loadCabinets = useCallback(

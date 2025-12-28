@@ -137,11 +137,16 @@ function CabinetsPageContent() {
     displayCurrency,
   });
 
-  // Filter out test cabinets (unless developer)
+  /**
+   * Filters out test cabinets unless user is a developer.
+   * Developers can see all cabinets including test ones.
+   */
   const filteredCabinets = useMemo(() => {
+    // Developers can see all cabinets including test ones
     if (isDeveloper) {
-      return rawFilteredCabinets; // Developers can see all cabinets including test ones
+      return rawFilteredCabinets;
     }
+    // Filter out cabinets with names or serial numbers starting with "test"
     const testPattern = /^test/i;
     return rawFilteredCabinets.filter(cabinet => {
       const name = cabinet.custom?.name?.trim() || '';
@@ -183,23 +188,34 @@ function CabinetsPageContent() {
 
   // Note: Upload modal handler is now managed by useCabinetModals hook
 
+  /**
+   * Handles movement request submission and refreshes appropriate sections.
+   * Only refreshes cabinets data if on cabinets or movement section.
+   */
   const handleMovementRequestSubmit = () => {
-    // Only refresh if on cabinets or movement section
+    // Refresh cabinets data only if on cabinets or movement section
     if (activeSection === 'cabinets' || activeSection === 'movement') {
       loadCabinets();
     }
     closeNewMovementRequestModal();
   };
 
-  // Context-aware refresh handler based on active section
+  /**
+   * Context-aware refresh handler that refreshes data based on active section.
+   * Each section has its own refresh trigger to avoid unnecessary re-renders.
+   */
   const handleRefresh = useCallback(async () => {
+    // Refresh cabinets section data
     if (activeSection === 'cabinets') {
       await loadCabinets();
     } else if (activeSection === 'movement') {
+      // Trigger refresh for movement requests section
       setMovementRefreshTrigger(prev => prev + 1);
     } else if (activeSection === 'smib') {
+      // Trigger refresh for SMIB management section
       setSmibRefreshTrigger(prev => prev + 1);
     } else if (activeSection === 'firmware') {
+      // Trigger refresh for firmware section
       setFirmwareRefreshTrigger(prev => prev + 1);
     }
   }, [activeSection, loadCabinets]);
@@ -299,7 +315,7 @@ function CabinetsPageContent() {
           />
         </div>
 
-        {/* Financial Metrics Cards - Only show on cabinets section */}
+        {/* Show financial metrics cards only on cabinets section */}
         {activeSection === 'cabinets' && (
           <FinancialMetricsCards
             totals={financialTotals}
@@ -309,7 +325,7 @@ function CabinetsPageContent() {
           />
         )}
 
-        {/* Date Filters - Only show on cabinets section */}
+        {/* Show date filters only on cabinets section */}
         {activeSection === 'cabinets' && (
           <div className="mb-0 mt-4 flex items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
@@ -323,7 +339,7 @@ function CabinetsPageContent() {
           </div>
         )}
 
-        {/* Search and Filters - Only show on cabinets section */}
+        {/* Show search and filters only on cabinets section */}
         {activeSection === 'cabinets' && (
           <CabinetSearchFilters
             searchTerm={searchTerm}
@@ -344,7 +360,7 @@ function CabinetsPageContent() {
           />
         )}
 
-        {/* Section Content */}
+        {/* Render section content based on active section */}
         {activeSection === 'cabinets' ? (
           <CabinetContentDisplay
             paginatedCabinets={paginatedCabinets}

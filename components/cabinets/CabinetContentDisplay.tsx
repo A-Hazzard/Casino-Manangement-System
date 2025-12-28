@@ -1,6 +1,18 @@
 /**
- * Machine Content Display Component
- * Handles the main content display for machines section including table and card views
+ * Cabinet Content Display Component
+ *
+ * Main component for displaying the list of cabinets/machines.
+ * Handles both desktop table view and mobile card view with proper
+ * loading states, error handling, and pagination.
+ *
+ * Features:
+ * - Responsive design (table on desktop, cards on mobile)
+ * - Loading skeletons for both views
+ * - Error state with retry functionality
+ * - Empty state with contextual messages
+ * - Pagination controls
+ * - Edit/delete actions with permission checks
+ * - Row/card animations on data changes
  */
 
 import { Button } from '@/components/ui/button';
@@ -76,8 +88,10 @@ export const CabinetContentDisplay = ({
   const licenseeName =
     getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
 
-  // Check if user can edit/delete machines
-  // Technicians can edit but not delete, collectors cannot edit or delete
+  /**
+   * Determines if the user can edit machines.
+   * Technicians can edit but not delete, collectors cannot edit or delete.
+   */
   const canEditMachines = useMemo(() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles || [];
@@ -95,6 +109,11 @@ export const CabinetContentDisplay = ({
     ].some(role => userRoles.includes(role));
   }, [user]);
 
+  /**
+   * Determines if the user can delete machines.
+   * Only managers, admins, developers, and location admins can delete.
+   * Technicians and collectors cannot delete.
+   */
   const canDeleteMachines = useMemo(() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles || [];
@@ -108,9 +127,11 @@ export const CabinetContentDisplay = ({
     );
   }, [user]);
 
-  // Get user's assigned licensees for better empty state message
   const [licenseeNames, setLicenseeNames] = useState<string[]>([]);
 
+  /**
+   * Fetches licensee names for better empty state messaging
+   */
   useEffect(() => {
     const loadLicenseeNames = async () => {
       // Use only new field
@@ -141,7 +162,10 @@ export const CabinetContentDisplay = ({
     loadLicenseeNames();
   }, [user]);
 
-  // Animate when filtered data changes (filtering, sorting, pagination)
+  /**
+   * Animates table rows and cards when data changes
+   * Triggers on filtering, sorting, or pagination
+   */
   useEffect(() => {
     if (!loading && !initialLoading && paginatedCabinets.length > 0) {
       // Animate table rows for desktop view
@@ -155,7 +179,6 @@ export const CabinetContentDisplay = ({
     }
   }, [paginatedCabinets, loading, initialLoading]);
 
-  // No data message component
   const NoDataMessage = ({ message }: { message: string }) => (
     <div className="flex flex-col items-center justify-center rounded-lg bg-white p-8 shadow-md">
       <div className="mb-2 text-lg text-gray-500">No Data Available</div>
@@ -163,7 +186,6 @@ export const CabinetContentDisplay = ({
     </div>
   );
 
-  // Handle edit action with proper machine lookup
   const handleEdit = (machineProps: Machine) => {
     const machine = paginatedCabinets.find(c => c._id === machineProps._id);
     if (machine) {
@@ -171,7 +193,6 @@ export const CabinetContentDisplay = ({
     }
   };
 
-  // Handle delete action with proper machine lookup
   const handleDelete = (machineProps: Machine) => {
     const machine = paginatedCabinets.find(c => c._id === machineProps._id);
     if (machine) {
@@ -179,7 +200,6 @@ export const CabinetContentDisplay = ({
     }
   };
 
-  // Render error state
   if (error) {
     return (
       <NetworkError
@@ -192,18 +212,17 @@ export const CabinetContentDisplay = ({
     );
   }
 
-  // Render loading state
   if (initialLoading || loading) {
     return (
       <>
-        {/* Table Skeleton for large screens */}
+        {/* Desktop: Table Skeleton */}
         <div className="hidden lg:block">
           <ClientOnly fallback={<CabinetTableSkeleton />}>
             <CabinetTableSkeleton />
           </ClientOnly>
         </div>
 
-        {/* Card Skeleton for small and medium screens */}
+        {/* Mobile: Card Skeleton */}
         <div className="block lg:hidden">
           <ClientOnly fallback={<CabinetCardSkeleton />}>
             <CabinetCardSkeleton />
@@ -213,7 +232,6 @@ export const CabinetContentDisplay = ({
     );
   }
 
-  // Render no data state
   if (filteredCabinets.length === 0) {
     console.warn('[CABINET DISPLAY] No data to display', {
       filteredCabinetsLength: filteredCabinets.length,
@@ -222,16 +240,13 @@ export const CabinetContentDisplay = ({
       error,
     });
 
-    // Determine the appropriate message based on user's licensee assignments
     let emptyMessage = '';
     const isAdmin =
       user?.roles?.includes('admin') || user?.roles?.includes('developer');
 
     if (filteredCabinets.length === 0 && allCabinets.length > 0) {
-      // User filtered and got no results
       emptyMessage = 'No machines match your search criteria.';
     } else if (allCabinets.length === 0) {
-      // No cabinets at all
       if (isAdmin) {
         emptyMessage =
           selectedLicencee &&
@@ -246,7 +261,6 @@ export const CabinetContentDisplay = ({
         emptyMessage = 'No machines found in your allowed locations.';
       }
     } else {
-      // Default fallback
       emptyMessage = `No machines found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}.`;
     }
 
@@ -264,10 +278,9 @@ export const CabinetContentDisplay = ({
     );
   }
 
-  // Render main content
   return (
     <>
-      {/* Desktop Table View */}
+      {/* Desktop: Table View */}
       <div className="hidden lg:block" ref={tableRef}>
         <CabinetTable
           data={paginatedCabinets.map(transformCabinet)}
@@ -283,7 +296,7 @@ export const CabinetContentDisplay = ({
         />
       </div>
 
-      {/* Mobile and Tablet Card View - 2x2 Grid */}
+      {/* Mobile/Tablet: Card View */}
       <div className="mt-4 block lg:hidden" ref={cardsRef}>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <ClientOnly fallback={<CabinetTableSkeleton />}>
@@ -322,7 +335,7 @@ export const CabinetContentDisplay = ({
         </div>
       </div>
 
-      {/* Pagination Controls */}
+      {/* Pagination */}
       {!loading && paginatedCabinets.length > 0 && totalPages > 1 && (
         <PaginationControls
           currentPage={currentPage}

@@ -32,9 +32,9 @@ export function useSessionEventsData(sessionId: string, machineId: string) {
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(true);
 
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
-  const pagesPerBatch = 5;
+  const itemsPerPage = 20;
+  const itemsPerBatch = 100;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
   // ============================================================================
   // Handlers
@@ -123,7 +123,7 @@ export function useSessionEventsData(sessionId: string, machineId: string) {
       setLoadedBatches(prev => new Set([...prev, nextBatch]));
       fetchEvents(nextBatch);
     }
-  }, [currentPage, loading, loadedBatches, fetchEvents]);
+  }, [currentPage, loading, loadedBatches, fetchEvents, pagesPerBatch]);
 
   // ============================================================================
   // Computed
@@ -131,7 +131,7 @@ export function useSessionEventsData(sessionId: string, machineId: string) {
   const paginatedEvents = useMemo(() => {
     const start = (currentPage % pagesPerBatch) * itemsPerPage;
     return allEvents.slice(start, start + itemsPerPage);
-  }, [allEvents, currentPage]);
+  }, [allEvents, currentPage, pagesPerBatch, itemsPerPage]);
 
   const totalPages = useMemo(() => {
     const total = totalEventsFromAPI || allEvents.length;

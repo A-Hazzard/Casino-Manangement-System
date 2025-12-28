@@ -101,6 +101,25 @@ export default function LocationsOverviewTab({
 }: LocationsOverviewTabProps) {
   const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
 
+  // Calculate online machines totals - use locationAggregates if available, otherwise fallback to allLocationsForDropdown
+  const onlineMachinesData = useMemo(() => {
+    const dataSource = (locationAggregates as AggregatedLocation[]).length > 0 
+      ? (locationAggregates as AggregatedLocation[])
+      : allLocationsForDropdown;
+    
+    const online = dataSource.reduce(
+      (sum: number, loc: AggregatedLocation) =>
+        sum + (loc.onlineMachines || 0),
+      0
+    );
+    const total = dataSource.reduce(
+      (sum: number, loc: AggregatedLocation) =>
+        sum + (loc.totalMachines || 0),
+      0
+    );
+    return { online, total, percentage: total > 0 ? (online / total) * 100 : 0 };
+  }, [locationAggregates, allLocationsForDropdown]);
+
   return (
     <div className="space-y-6">
       {/* Metrics Overview */}
@@ -125,13 +144,13 @@ export default function LocationsOverviewTab({
               </CardHeader>
               <CardContent>
                 <div
-                  className={`text-2xl font-bold ${getGrossColorClass(metricsTotals.gross || 0)}`}
+                  className={`truncate text-xl font-bold md:text-2xl ${getGrossColorClass(metricsTotals.gross || 0)}`}
                 >
                   {shouldShowCurrency()
                     ? formatAmount(metricsTotals.gross || 0)
                     : `$${(metricsTotals.gross || 0).toLocaleString()}`}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="truncate text-xs text-muted-foreground">
                   Gross revenue this period
                 </p>
               </CardContent>
@@ -141,12 +160,12 @@ export default function LocationsOverviewTab({
                 <CardTitle className="text-sm font-medium">Money In</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${getMoneyInColorClass()}`}>
+                <div className={`truncate text-xl font-bold md:text-2xl ${getMoneyInColorClass()}`}>
                   {shouldShowCurrency()
                     ? formatAmount(metricsTotals.moneyIn || 0)
                     : `$${(metricsTotals.moneyIn || 0).toLocaleString()}`}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="truncate text-xs text-muted-foreground">
                   Total money in this period
                 </p>
               </CardContent>
@@ -157,49 +176,27 @@ export default function LocationsOverviewTab({
               </CardHeader>
               <CardContent>
                 <div
-                  className={`text-2xl font-bold ${getMoneyOutColorClass(metricsTotals.moneyOut || 0, metricsTotals.moneyIn || 0)}`}
+                  className={`truncate text-xl font-bold md:text-2xl ${getMoneyOutColorClass(metricsTotals.moneyOut || 0, metricsTotals.moneyIn || 0)}`}
                 >
                   {shouldShowCurrency()
                     ? formatAmount(metricsTotals.moneyOut || 0)
                     : `$${(metricsTotals.moneyOut || 0).toLocaleString()}`}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="truncate text-xs text-muted-foreground">
                   Total money out this period
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <div className="break-words text-lg font-bold text-blue-600 sm:text-xl lg:text-2xl">
-                  {allLocationsForDropdown.reduce(
-                    (sum: number, loc: AggregatedLocation) =>
-                      sum + (loc.onlineMachines || 0),
-                    0
-                  )}
-                  /
-                  {allLocationsForDropdown.reduce(
-                    (sum: number, loc: AggregatedLocation) =>
-                      sum + (loc.totalMachines || 0),
-                    0
-                  )}
+                <div className="truncate text-lg font-bold text-blue-600 sm:text-xl lg:text-2xl">
+                  {`${onlineMachinesData.online}/${onlineMachinesData.total}`}
                 </div>
-                <p className="break-words text-xs text-muted-foreground sm:text-sm">
+                <p className="truncate text-xs text-muted-foreground sm:text-sm">
                   Online Machines
                 </p>
                 <Progress
-                  value={
-                    (allLocationsForDropdown.reduce(
-                      (sum: number, loc: AggregatedLocation) =>
-                        sum + (loc.onlineMachines || 0),
-                      0
-                    ) /
-                      (allLocationsForDropdown.reduce(
-                        (sum: number, loc: AggregatedLocation) =>
-                          sum + (loc.totalMachines || 0),
-                        0
-                      ) || 1)) *
-                    100
-                  }
+                  value={onlineMachinesData.percentage}
                   className="mt-2"
                 />
               </CardContent>
@@ -214,7 +211,7 @@ export default function LocationsOverviewTab({
 
       {/* Interactive Map */}
         <LocationMap
-        key={`map-overview-${gamingLocations.length}-${locationAggregates.length}-${locationAggregatesLoading}`}
+        key={`map-overview-${gamingLocations.length}-${locationAggregates.length}`}
         locations={useMemo(() => {
           // Map all gaming locations to LocationData format
           // Use locationAggregation data (same as dashboard) for financial metrics
@@ -326,6 +323,7 @@ export default function LocationsOverviewTab({
             .filter((loc): loc is NonNullable<typeof loc> => loc !== null);
         }, [gamingLocations, locationAggregates])}
         financialDataLoading={metricsLoading || locationsLoading || gamingLocationsLoading || locationAggregatesLoading}
+        loading={locationsLoading || gamingLocationsLoading || locationAggregatesLoading}
       />
 
       {/* Location Table */}
@@ -377,7 +375,7 @@ export default function LocationsOverviewTab({
           </div>
         </CardHeader>
         <CardContent>
-          {paginationLoading || locationsLoading ? (
+          {paginationLoading || locationsLoading || gamingLocationsLoading || locationAggregatesLoading ? (
             <TopMachinesTableSkeleton />
           ) : paginatedLocations.length === 0 ? (
             <div className="py-8 text-center text-gray-500">

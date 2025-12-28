@@ -36,6 +36,7 @@ function LoginPageContent() {
     handlePasswordUpdate, handleProfileUpdate
   } = hook;
 
+  // Show loading skeleton while checking authentication status
   if (authLoading) return <LoginPageSkeleton />;
 
   return (

@@ -3,6 +3,7 @@ import type {
   ApiParamsType,
   CustomDate,
   TimePeriod,
+  ChartGranularity,
   ApiResponse,
   DateRange,
   MongooseId,
@@ -31,7 +32,7 @@ import type {
 export type { QueryFilter };
 export type { ApiParamsType as ParamsType };
 export type { CustomDate };
-export type { TimePeriod };
+export type { TimePeriod, ChartGranularity };
 export type { ApiResponse };
 export type { DateRange };
 export type { MongooseId };

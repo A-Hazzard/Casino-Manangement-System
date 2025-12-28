@@ -63,25 +63,99 @@ function determineAggregationGranularity(
   endDate?: Date,
   startDateParam?: string | null,
   endDateParam?: string | null,
-  manualGranularity?: 'hourly' | 'minute'
-): { useHourly: boolean; useMinute: boolean } {
+  manualGranularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+): {
+  useHourly: boolean;
+  useMinute: boolean;
+  useMonthly: boolean;
+  useYearly: boolean;
+  useWeekly: boolean;
+  useDaily: boolean;
+} {
   // If granularity is manually specified, use it
   if (manualGranularity) {
     if (manualGranularity === 'minute') {
-      return { useHourly: false, useMinute: true };
+      return {
+        useHourly: false,
+        useMinute: true,
+        useMonthly: false,
+        useYearly: false,
+        useWeekly: false,
+        useDaily: false,
+      };
     } else if (manualGranularity === 'hourly') {
-      return { useHourly: true, useMinute: false };
+      return {
+        useHourly: true,
+        useMinute: false,
+        useMonthly: false,
+        useYearly: false,
+        useWeekly: false,
+        useDaily: false,
+      };
+    } else if (manualGranularity === 'daily') {
+      return {
+        useHourly: false,
+        useMinute: false,
+        useMonthly: false,
+        useYearly: false,
+        useWeekly: false,
+        useDaily: true,
+      };
+    } else if (manualGranularity === 'weekly') {
+      return {
+        useHourly: false,
+        useMinute: false,
+        useMonthly: false,
+        useYearly: false,
+        useWeekly: true,
+        useDaily: false,
+      };
+    } else if (manualGranularity === 'monthly') {
+      return {
+        useHourly: false,
+        useMinute: false,
+        useMonthly: true,
+        useYearly: false,
+        useWeekly: false,
+        useDaily: false,
+      };
     }
   }
 
   if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
     // Default to hourly for Today/Yesterday (can be overridden by manualGranularity)
-    return { useHourly: true, useMinute: false };
+    return {
+      useHourly: true,
+      useMinute: false,
+      useMonthly: false,
+      useYearly: false,
+      useWeekly: false,
+      useDaily: false,
+    };
   }
 
   if (timePeriod === 'Quarterly') {
-    // Quarterly is 90 days, so use daily aggregation
-    return { useHourly: false, useMinute: false };
+    // Quarterly defaults to daily aggregation (can be overridden by manualGranularity)
+    return {
+      useHourly: false,
+      useMinute: false,
+      useMonthly: false,
+      useYearly: false,
+      useWeekly: false,
+      useDaily: true,
+    };
+  }
+
+  if (timePeriod === 'All Time') {
+    // All Time defaults to daily aggregation (can be overridden by manualGranularity)
+    return {
+      useHourly: false,
+      useMinute: false,
+      useMonthly: false,
+      useYearly: false,
+      useWeekly: false,
+      useDaily: true,
+    };
   }
 
   if (timePeriod === 'Custom' && startDate && endDate) {
@@ -100,7 +174,14 @@ function determineAggregationGranularity(
       // - Default to hourly for all ranges <= 1 day
       // - Use daily if > 1 day
       if (diffInDays <= 1) {
-        return { useHourly: true, useMinute: false };
+        return {
+          useHourly: true,
+          useMinute: false,
+          useMonthly: false,
+          useYearly: false,
+          useWeekly: false,
+          useDaily: false,
+        };
       }
       // For ranges > 1 day, return daily (default)
     } else {
@@ -109,12 +190,26 @@ function determineAggregationGranularity(
         (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
       );
       if (diffInDays <= 1) {
-        return { useHourly: true, useMinute: false };
+        return {
+          useHourly: true,
+          useMinute: false,
+          useMonthly: false,
+          useYearly: false,
+          useWeekly: false,
+          useDaily: false,
+        };
       }
     }
   }
 
-  return { useHourly: false, useMinute: false };
+  return {
+    useHourly: false,
+    useMinute: false,
+    useMonthly: false,
+    useYearly: false,
+    useWeekly: false,
+    useDaily: true,
+  };
 }
 
 /**
@@ -126,7 +221,11 @@ function buildLocationTrendsPipeline(
   queryEndDate: Date,
   licencee: string | null,
   shouldUseHourly: boolean,
-  shouldUseMinute?: boolean
+  shouldUseMinute?: boolean,
+  shouldUseMonthly?: boolean,
+  shouldUseYearly?: boolean,
+  shouldUseWeekly?: boolean,
+  shouldUseDaily?: boolean
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [
     {
@@ -158,17 +257,70 @@ function buildLocationTrendsPipeline(
 
   const groupId: Record<string, unknown> = {
     location: '$location',
-    day: {
+  };
+
+  if (shouldUseYearly) {
+    // Yearly aggregation: format as YYYY
+    groupId.day = {
+      $dateToString: {
+        format: '%Y',
+        date: '$readAt',
+        timezone: 'UTC',
+      },
+    };
+  } else if (shouldUseMonthly) {
+    // Monthly aggregation: format as YYYY-MM
+    groupId.day = {
+      $dateToString: {
+        format: '%Y-%m',
+        date: '$readAt',
+        timezone: 'UTC',
+      },
+    };
+  } else if (shouldUseWeekly) {
+    // Weekly aggregation: group by week start (Monday)
+    // Calculate the start of the week (Monday) for each date
+    groupId.day = {
+      $dateToString: {
+        format: '%Y-%m-%d',
+        date: {
+          $dateSubtract: {
+            startDate: '$readAt',
+            unit: 'day',
+            amount: {
+              $subtract: [
+                {
+                  $dayOfWeek: {
+                    date: '$readAt',
+                    timezone: 'UTC',
+                  },
+                },
+                1, // Monday is day 1, so subtract 1 to get days to subtract
+              ],
+            },
+          },
+        },
+        timezone: 'UTC',
+      },
+    };
+  } else if (shouldUseDaily || (!shouldUseHourly && !shouldUseMinute)) {
+    // Daily aggregation: format as YYYY-MM-DD (default if no other granularity specified)
+    groupId.day = {
       $dateToString: {
         format: '%Y-%m-%d',
         date: '$readAt',
         timezone: 'UTC',
       },
-    },
-  };
-
-  if (shouldUseMinute) {
-    // Minute-level: format as HH:MM in UTC
+    };
+  } else if (shouldUseMinute) {
+    // Minute-level: format day as YYYY-MM-DD and time as HH:MM
+    groupId.day = {
+      $dateToString: {
+        format: '%Y-%m-%d',
+        date: '$readAt',
+        timezone: 'UTC',
+      },
+    };
     groupId.time = {
       $dateToString: {
         format: '%H:%M',
@@ -177,10 +329,26 @@ function buildLocationTrendsPipeline(
       },
     };
   } else if (shouldUseHourly) {
-    // Hourly: format as HH:00 in UTC
+    // Hourly: format day as YYYY-MM-DD and time as HH:00
+    groupId.day = {
+      $dateToString: {
+        format: '%Y-%m-%d',
+        date: '$readAt',
+        timezone: 'UTC',
+      },
+    };
     groupId.time = {
       $dateToString: {
         format: '%H:00',
+        date: '$readAt',
+        timezone: 'UTC',
+      },
+    };
+  } else {
+    // Daily: format as YYYY-MM-DD
+    groupId.day = {
+      $dateToString: {
+        format: '%Y-%m-%d',
         date: '$readAt',
         timezone: 'UTC',
       },
@@ -528,7 +696,7 @@ export async function getLocationTrends(
   startDateParam: string | null,
   endDateParam: string | null,
   displayCurrency: CurrencyCode,
-  granularity?: 'hourly' | 'minute'
+  granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
 ): Promise<{
   locationIds: string[];
   timePeriod: TimePeriod;
@@ -551,6 +719,10 @@ export async function getLocationTrends(
   currency: CurrencyCode;
   converted: boolean;
   isHourly: boolean;
+  dataSpan?: {
+    minDate: string;
+    maxDate: string;
+  };
 }> {
   const targetLocations = locationIds.split(',').map(id => id.trim());
 
@@ -621,18 +793,60 @@ export async function getLocationTrends(
   );
 
   const firstLocationRange = gamingDayRanges.get(targetLocations[0]);
-  const queryStartDate = firstLocationRange?.rangeStart || startDate;
-  const queryEndDate = firstLocationRange?.rangeEnd || endDate;
+  let queryStartDate: Date = firstLocationRange?.rangeStart || startDate!;
+  let queryEndDate: Date = firstLocationRange?.rangeEnd || endDate!;
 
-  // Determine aggregation granularity (hourly, minute, or daily)
-  const { useHourly, useMinute } = determineAggregationGranularity(
-    timePeriod,
-    startDate,
-    endDate,
-    startDateParam,
-    endDateParam,
-    granularity
-  );
+  // For Quarterly and All Time, detect actual data span from Meters collection
+  let actualDataSpan: { minDate: Date | null; maxDate: Date | null } | null =
+    null;
+  if (timePeriod === 'Quarterly' || timePeriod === 'All Time') {
+    const matchStage: Record<string, unknown> = { location: { $in: validLocationIds } };
+    
+    // For Quarterly, only look for data within the 90-day range
+    if (timePeriod === 'Quarterly') {
+      matchStage.readAt = { $gte: queryStartDate, $lte: queryEndDate };
+    }
+
+    const dateRangeResult = await Meters.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: null,
+          minDate: { $min: '$readAt' },
+          maxDate: { $max: '$readAt' },
+        },
+      },
+    ]).exec();
+
+    if (
+      dateRangeResult.length > 0 &&
+      dateRangeResult[0].minDate &&
+      dateRangeResult[0].maxDate
+    ) {
+      const minDate = dateRangeResult[0].minDate as Date;
+      const maxDate = dateRangeResult[0].maxDate as Date;
+      actualDataSpan = {
+        minDate,
+        maxDate,
+      };
+      // Update query dates ONLY for All Time to show full range
+      if (timePeriod === 'All Time') {
+        queryStartDate = minDate;
+        queryEndDate = maxDate;
+      }
+    }
+  }
+
+  // Determine aggregation granularity (hourly, minute, monthly, yearly, weekly, or daily)
+  const { useHourly, useMinute, useMonthly, useYearly, useWeekly, useDaily } =
+    determineAggregationGranularity(
+      timePeriod,
+      startDate,
+      endDate,
+      startDateParam,
+      endDateParam,
+      granularity
+    );
 
   // Build and execute pipeline
   const pipeline = buildLocationTrendsPipeline(
@@ -641,7 +855,11 @@ export async function getLocationTrends(
     queryEndDate,
     licencee,
     useHourly,
-    useMinute
+    useMinute,
+    useMonthly,
+    useYearly,
+    useWeekly,
+    useDaily
   );
 
   // Use cursor for Meters aggregation (even though grouped, still use cursor for consistency)
@@ -703,5 +921,12 @@ export async function getLocationTrends(
     currency: displayCurrency,
     converted: shouldApplyCurrencyConversion(licencee),
     isHourly: useHourly,
+    dataSpan:
+      actualDataSpan && actualDataSpan.minDate && actualDataSpan.maxDate
+        ? {
+            minDate: actualDataSpan.minDate.toISOString(),
+            maxDate: actualDataSpan.maxDate.toISOString(),
+          }
+        : undefined,
   };
 }

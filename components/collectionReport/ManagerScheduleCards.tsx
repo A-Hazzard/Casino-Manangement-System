@@ -37,36 +37,19 @@ export default function ManagerScheduleCards({ data, loading }: Props) {
   }
 
   return (
-    <div className="mt-4 grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
+    <div className="mt-4 space-y-3 lg:hidden">
       {data.map(row => (
         <div
           key={row.id}
-          className="card-item overflow-hidden rounded-lg bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
+          className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
         >
-          <div className="rounded-t-lg bg-button px-4 py-2 text-sm font-semibold text-white">
-            {row.location}
-          </div>
-          <div className="flex flex-col gap-2 p-4">
-            <div className="flex justify-between">
-              <span className="font-medium text-gray-700">Collector</span>
-              <span className="font-semibold">{row.collector}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="font-medium text-gray-700">Manager</span>
-              <span className="font-semibold">{row.creator}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="font-medium text-gray-700">Visit Time</span>
-              <span className="font-semibold">{row.visitTime}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="font-medium text-gray-700">Created At</span>
-              <span className="font-semibold">{row.createdAt}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="font-medium text-gray-700">Status</span>
+          <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900">
+                {row.location}
+              </h3>
               <span
-                className={`rounded-full px-2 py-1 text-xs font-semibold capitalize ${
+                className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
                   row.status === 'pending'
                     ? 'bg-yellow-100 text-yellow-800'
                     : row.status === 'completed'
@@ -76,6 +59,30 @@ export default function ManagerScheduleCards({ data, loading }: Props) {
               >
                 {row.status}
               </span>
+            </div>
+          </div>
+          <div className="px-4 py-4">
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs font-medium text-gray-500">Collector</div>
+                <div className="mt-1 text-sm font-medium text-gray-900">
+                  {row.collector}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-500">Manager</div>
+                <div className="mt-1 text-sm font-medium text-gray-900">
+                  {row.creator}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-500">Visit Time</div>
+                <div className="mt-1 text-sm text-gray-900">{row.visitTime}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-500">Created At</div>
+                <div className="mt-1 text-sm text-gray-900">{row.createdAt}</div>
+              </div>
             </div>
           </div>
         </div>

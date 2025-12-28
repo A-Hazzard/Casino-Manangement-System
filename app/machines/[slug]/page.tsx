@@ -48,6 +48,7 @@ function MachineDetailPageContent() {
     onLocationClick,
   } = hook;
 
+  // Show "No Licensee Assigned" message for non-admin users without licensees
   if (shouldShowNoLicenseeMessage(user)) {
     return (
       <PageLayout headerProps={{ selectedLicencee, setSelectedLicencee }} pageTitle="Machine Details" hideOptions hideLicenceeFilter mainClassName="flex flex-col flex-1 p-4 md:p-6" showToaster>
@@ -56,10 +57,12 @@ function MachineDetailPageContent() {
     );
   }
 
+  // Show loading state while fetching cabinet data
   if (!cabinet && !error) {
     return <CabinetDetailsLoadingState selectedLicencee={selectedLicencee} setSelectedLicencee={setSelectedLicencee} error={error} />;
   }
 
+  // Don't render if there's an error or no cabinet data
   if (error || !cabinet) return null;
 
   return (

@@ -79,37 +79,41 @@ export const LocationDetailsHeader = ({
 }: LocationDetailsHeaderProps) => {
   const [showLocationDetails, setShowLocationDetails] = useState(false);
 
-  // Handle back navigation
   const handleBack = () => {
     onBack();
   };
 
-  // Handle refresh action
   const handleRefresh = () => {
     onRefresh();
   };
 
-  // Toggle location details visibility
   const toggleLocationDetails = () => {
     setShowLocationDetails(!showLocationDetails);
   };
 
-  // Get status badge color
+  /**
+   * Returns the CSS classes for the status badge based on location status.
+   */
   const getStatusBadgeColor = () => {
     if (!locationInfo) return 'bg-gray-100 text-gray-800 border-gray-200';
 
     const isActive = locationInfo?.status === 'active';
+    // Return green for active, red for inactive
     return isActive
       ? 'bg-green-100 text-green-800 border-green-200'
       : 'bg-red-100 text-red-800 border-red-200';
   };
 
-  // Get status text
+  /**
+   * Returns the display text for the location status.
+   */
   const getStatusText = () => {
     if (!locationInfo) return 'Unknown';
+    // Return Active for active status, Inactive otherwise
     return locationInfo?.status === 'active' ? 'Active' : 'Inactive';
   };
 
+  // Show loading skeleton while data is being fetched
   if (loading) {
     return (
       <div className="space-y-6">
@@ -131,6 +135,7 @@ export const LocationDetailsHeader = ({
     );
   }
 
+  // Show error message if location data is not available
   if (!locationInfo) {
     return (
       <div className="py-8 text-center">
@@ -244,7 +249,7 @@ export const LocationDetailsHeader = ({
               <h3 className="text-lg font-semibold text-gray-900">
                 Location Details
               </h3>
-              {/* Missing Coordinates Icon */}
+              {/* Missing Coordinates Icon - Show if location coordinates are not set */}
               {(!locationInfo?.geoCoords ||
                 hasMissingCoordinates(
                   locationInfo as AggregatedLocation
@@ -330,7 +335,7 @@ export const LocationDetailsHeader = ({
                   </div>
                 </div>
 
-                {/* Contact Information */}
+                {/* Contact Information - Show only if phone or email is available */}
                 {(locationInfo?.phone || locationInfo?.email) && (
                   <div className="border-t pt-4">
                     <h4 className="text-md mb-3 font-semibold text-gray-900">
@@ -361,7 +366,7 @@ export const LocationDetailsHeader = ({
                   </div>
                 )}
 
-                {/* License Information */}
+                {/* License Information - Show only if license number is available */}
                 {locationInfo?.licenseNumber && (
                   <div className="border-t pt-4">
                     <h4 className="text-md mb-3 font-semibold text-gray-900">

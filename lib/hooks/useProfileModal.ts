@@ -18,6 +18,8 @@ import axios from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+const EMAIL_REGEX = /\S+@\S+\.\S+/;
+
 // Extended User type for profile-specific fields
 type User = AdminUser & {
   rel?: {
@@ -89,6 +91,9 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       special: false,
     },
   });
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -203,15 +208,143 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     setIsCropOpen(false);
   };
 
+  // Validation function
+  const validateFormData = (): boolean => {
+    const errors: Record<string, string> = {};
+    const firstName = (formData?.firstName || '').trim();
+    const lastName = (formData?.lastName || '').trim();
+    const town = (formData?.address?.town || '').trim();
+    const region = (formData?.address?.region || '').trim();
+    const country = (formData?.address?.country || '').trim();
+    const idType = (formData?.identification?.idType || '').trim();
+    const idNumber = (formData?.identification?.idNumber || '').trim();
+
+    // First name validation
+    if (firstName && firstName.length > 0) {
+      if (firstName.length < 3) {
+        errors.firstName = 'First name must be at least 3 characters.';
+      } else if (EMAIL_REGEX.test(firstName)) {
+        errors.firstName = 'First name cannot look like an email address.';
+      } else if (!/^[A-Za-z\s]+$/.test(firstName)) {
+        errors.firstName = 'First name may only contain letters and spaces.';
+      }
+    }
+
+    // Last name validation
+    if (lastName && lastName.length > 0) {
+      if (lastName.length < 3) {
+        errors.lastName = 'Last name must be at least 3 characters.';
+      } else if (EMAIL_REGEX.test(lastName)) {
+        errors.lastName = 'Last name cannot look like an email address.';
+      } else if (!/^[A-Za-z\s]+$/.test(lastName)) {
+        errors.lastName = 'Last name may only contain letters and spaces.';
+      }
+    }
+
+    // Town validation
+    if (town && town.length > 0) {
+      if (town.length < 3) {
+        errors.town =
+          'Town must be at least 3 characters and may only contain letters, numbers, spaces, commas, and full stops.';
+      } else if (!/^[A-Za-z0-9\s,\.]+$/.test(town)) {
+        errors.town =
+          'Town may only contain letters, numbers, spaces, commas, and full stops.';
+      }
+    }
+
+    // Region validation
+    if (region && region.length > 0) {
+      if (region.length < 3) {
+        errors.region =
+          'Region must be at least 3 characters and may only contain letters, numbers, spaces, commas, and full stops.';
+      } else if (!/^[A-Za-z0-9\s,\.]+$/.test(region)) {
+        errors.region =
+          'Region may only contain letters, numbers, spaces, commas, and full stops.';
+      }
+    }
+
+    // Country validation (check if it's a country name, not ID)
+    if (country && country.length > 0) {
+      // Check if it's a country ID (MongoDB ObjectId-like) or name
+      const isCountryId = /^[0-9a-fA-F]{24}$/.test(country);
+      const countryName = isCountryId
+        ? countries.find(c => c._id === country)?.name || ''
+        : country;
+
+      if (countryName && countryName.length > 0) {
+        if (countryName.length < 3) {
+          errors.country =
+            'Country must be at least 3 characters and may only contain letters and spaces.';
+        } else if (!/^[A-Za-z\s]+$/.test(countryName)) {
+          errors.country = 'Country may only contain letters and spaces.';
+        }
+      }
+    }
+
+    // ID Type validation
+    if (idType && idType.length > 0) {
+      if (idType.length < 3) {
+        errors.idType =
+          'ID type must be at least 3 characters and may only contain letters and spaces.';
+      } else if (!/^[A-Za-z\s]+$/.test(idType)) {
+        errors.idType = 'ID type may only contain letters and spaces.';
+      }
+    }
+
+    // ID Number validation
+    if (idNumber && idNumber.length > 0) {
+      if (idNumber.length < 3) {
+        errors.idNumber = 'ID number must be at least 3 characters.';
+      }
+    }
+
+    // Date of birth validation
+    if (formData?.identification?.dateOfBirth) {
+      const dob = new Date(formData.identification.dateOfBirth);
+      if (isNaN(dob.getTime()) || dob > new Date()) {
+        errors.dateOfBirth =
+          'Date of birth must be a valid date and cannot be in the future.';
+      }
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   // Handle profile save
   const handleSave = async () => {
     if (!userData || !authUser?._id) return;
 
+    // Validate before saving
+    if (!validateFormData()) {
+      toast.error('Please fix the validation errors before saving.');
+      return;
+    }
+
     setIsLoading(true);
     try {
+      // Convert country ID to country name if needed
+      let countryName = formData?.address?.country || '';
+      if (countryName && /^[0-9a-fA-F]{24}$/.test(countryName)) {
+        const country = countries.find(c => c._id === countryName);
+        if (country) {
+          countryName = country.name;
+        }
+      }
+
       const updatedUser = {
         ...userData,
-        profile: formData,
+        profile: formData
+          ? {
+              ...formData,
+              address: formData.address
+                ? {
+                    ...formData.address,
+                    country: countryName,
+                  }
+                : undefined,
+            }
+          : {},
         profilePicture,
         roles: selectedRoles,
         rel: {
@@ -228,10 +361,12 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       };
 
       const res = await axios.put(`/api/users/${authUser._id}`, updatedUser);
+      
       if (res.data.success) {
         toast.success('Profile updated successfully!');
         setUserData(res.data.user);
         setIsEditMode(false);
+        setValidationErrors({});
       }
     } catch {
       toast.error('Failed to update profile.');
@@ -310,5 +445,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     handleSave,
     handlePasswordChange,
     passwordStrength,
+    validationErrors,
+    setValidationErrors,
   };
 }

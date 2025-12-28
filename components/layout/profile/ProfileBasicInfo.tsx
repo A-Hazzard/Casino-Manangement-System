@@ -30,6 +30,10 @@ type ProfileBasicInfoProps = {
   onRemoveProfilePicture: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  validationErrors: Record<string, string>;
+  setValidationErrors: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
 };
 
 export default function ProfileBasicInfo({
@@ -42,7 +46,23 @@ export default function ProfileBasicInfo({
   onRemoveProfilePicture,
   fileInputRef,
   onFileSelect,
+  validationErrors,
+  setValidationErrors,
 }: ProfileBasicInfoProps) {
+  const handleInputChangeWithValidation = (
+    field: string,
+    value: string
+  ) => {
+    onInputChange(field, value);
+    // Clear error when user starts typing
+    if (validationErrors[field]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
   return (
     <Card>
       <CardHeader>
@@ -122,7 +142,9 @@ export default function ProfileBasicInfo({
                   <Input
                     type="tel"
                     value={formData?.phoneNumber || ''}
-                    onChange={e => onInputChange('phoneNumber', e.target.value)}
+                    onChange={e =>
+                      handleInputChangeWithValidation('phoneNumber', e.target.value)
+                    }
                     placeholder="Enter phone number"
                     className="mt-2"
                   />
@@ -138,7 +160,9 @@ export default function ProfileBasicInfo({
                   <select
                     className="mt-2 h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
                     value={formData?.gender || ''}
-                    onChange={e => onInputChange('gender', e.target.value)}
+                    onChange={e =>
+                      handleInputChangeWithValidation('gender', e.target.value)
+                    }
                   >
                     <option value="">Select gender</option>
                     <option value="male">Male</option>
@@ -154,12 +178,23 @@ export default function ProfileBasicInfo({
               <div>
                 <Label>First Name</Label>
                 {isEditMode ? (
-                  <Input
-                    value={formData?.firstName || ''}
-                    onChange={e => onInputChange('firstName', e.target.value)}
-                    placeholder="Enter first name"
-                    className="mt-2"
-                  />
+                  <>
+                    <Input
+                      value={formData?.firstName || ''}
+                      onChange={e =>
+                        handleInputChangeWithValidation('firstName', e.target.value)
+                      }
+                      placeholder="Enter first name"
+                      className={`mt-2 ${
+                        validationErrors.firstName ? 'border-red-500' : ''
+                      }`}
+                    />
+                    {validationErrors.firstName && (
+                      <p className="mt-1.5 text-sm text-red-600">
+                        {validationErrors.firstName}
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <p className="mt-2 text-sm text-gray-900">
                     {formData?.firstName || '-'}
@@ -169,12 +204,23 @@ export default function ProfileBasicInfo({
               <div>
                 <Label>Last Name</Label>
                 {isEditMode ? (
-                  <Input
-                    value={formData?.lastName || ''}
-                    onChange={e => onInputChange('lastName', e.target.value)}
-                    placeholder="Enter last name"
-                    className="mt-2"
-                  />
+                  <>
+                    <Input
+                      value={formData?.lastName || ''}
+                      onChange={e =>
+                        handleInputChangeWithValidation('lastName', e.target.value)
+                      }
+                      placeholder="Enter last name"
+                      className={`mt-2 ${
+                        validationErrors.lastName ? 'border-red-500' : ''
+                      }`}
+                    />
+                    {validationErrors.lastName && (
+                      <p className="mt-1.5 text-sm text-red-600">
+                        {validationErrors.lastName}
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <p className="mt-2 text-sm text-gray-900">
                     {formData?.lastName || '-'}

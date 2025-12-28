@@ -21,7 +21,7 @@ export function getDefaultChartGranularity(
   timePeriod: TimePeriod,
   startDate?: Date | string,
   endDate?: Date | string
-): 'minute' | 'hourly' {
+): 'minute' | 'hourly' | 'daily' | 'weekly' | 'monthly' {
   const HOURS_THRESHOLD = 5;
 
   // For predefined periods, calculate the actual time range
@@ -45,9 +45,22 @@ export function getDefaultChartGranularity(
     return 'hourly';
   }
 
+  if (timePeriod === '7d' || timePeriod === 'last7days') {
+    return 'daily';
+  }
+
+  if (timePeriod === '30d' || timePeriod === 'last30days') {
+    return 'daily';
+  }
+
   if (timePeriod === 'Quarterly') {
-    // Quarterly is 90 days, so use hourly
-    return 'hourly';
+    // Quarterly is 90 days, defaults to monthly
+    return 'monthly';
+  }
+
+  if (timePeriod === 'All Time') {
+    // All Time defaults to monthly
+    return 'monthly';
   }
 
   // For Custom time period, use provided dates
@@ -57,18 +70,21 @@ export function getDefaultChartGranularity(
 
     // Check for invalid dates
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      console.warn('Invalid dates provided for chart granularity calculation', {
-        startDate,
-        endDate,
-      });
       return 'hourly';
     }
 
-    const hoursDiff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    return hoursDiff <= HOURS_THRESHOLD ? 'minute' : 'hourly';
+    const diffMs = end.getTime() - start.getTime();
+    const hoursDiff = diffMs / (1000 * 60 * 60);
+    const daysDiff = diffMs / (1000 * 60 * 60 * 24);
+
+    if (hoursDiff <= HOURS_THRESHOLD) return 'minute';
+    if (daysDiff <= 1) return 'hourly';
+    if (daysDiff <= 31) return 'daily';
+    if (daysDiff <= 90) return 'weekly';
+    return 'monthly';
   }
 
-  // For other periods (7d, 30d, All Time), default to hourly
+  // Default to hourly
   return 'hourly';
 }
 

@@ -165,17 +165,17 @@ function SessionsPageContent() {
             onSortChange={handleSort}
           />
 
-          {/* Loading State Section: Skeleton loader while data is fetching */}
+          {/* Show loading skeleton while data is fetching */}
           {loading && <SessionsPageSkeleton />}
 
-          {/* Error State Section: Error display for failed requests */}
+          {/* Show error message if request failed */}
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-4">
               <p className="text-red-600">{error}</p>
             </div>
           )}
 
-          {/* Sessions Table Section: Main data display with table and pagination */}
+          {/* Show sessions table when data is loaded successfully */}
           {!loading && !error && (
             <>
               <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
@@ -185,7 +185,7 @@ function SessionsPageContent() {
                 />
               </div>
 
-              {/* Pagination Section: Navigation controls for session pages */}
+              {/* Show pagination only if there are multiple pages */}
               {pagination && pagination.totalPages > 1 && (
                 <PaginationControls
                   currentPage={currentPage}

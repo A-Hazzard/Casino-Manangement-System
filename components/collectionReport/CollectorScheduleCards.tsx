@@ -38,7 +38,7 @@ export default function CollectorScheduleCards({
   }
 
   return (
-    <div className="mt-4 grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
+    <div className="mt-4 space-y-3 lg:hidden">
       {data.map((schedule, index) => {
         const startTime = new Date(schedule.startTime);
         const endTime = new Date(schedule.endTime);
@@ -50,38 +50,15 @@ export default function CollectorScheduleCards({
         return (
           <div
             key={schedule._id || index}
-            className="card-item overflow-hidden rounded-lg bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
+            className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
           >
-            <div className="rounded-t-lg bg-button px-4 py-2 text-sm font-semibold text-white">
-              {schedule.location || schedule.locationName}
-            </div>
-            <div className="flex flex-col gap-2 p-4">
-              <div className="flex justify-between">
-                <span className="font-medium text-gray-700">Collector</span>
-                <span className="font-semibold">
-                  {schedule.collector || 'Unknown'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium text-gray-700">Start Time</span>
-                <span className="font-semibold">
-                  {formatDateString(schedule.startTime)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium text-gray-700">End Time</span>
-                <span className="font-semibold">
-                  {formatDateString(schedule.endTime)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium text-gray-700">Duration</span>
-                <span className="font-semibold">{duration} hours</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium text-gray-700">Status</span>
+            <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-gray-900">
+                  {schedule.location || schedule.locationName}
+                </h3>
                 <span
-                  className={`rounded-full px-2 py-1 text-xs font-semibold capitalize ${
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
                     schedule.status === 'scheduled' ||
                     schedule.status === 'in-progress'
                       ? 'bg-yellow-100 text-yellow-800'
@@ -92,6 +69,38 @@ export default function CollectorScheduleCards({
                 >
                   {schedule.status}
                 </span>
+              </div>
+            </div>
+            <div className="px-4 py-4">
+              <div className="space-y-3">
+                <div>
+                  <div className="text-xs font-medium text-gray-500">
+                    Collector
+                  </div>
+                  <div className="mt-1 text-sm font-medium text-gray-900">
+                    {schedule.collector || 'Unknown'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-gray-500">
+                    Start Time
+                  </div>
+                  <div className="mt-1 text-sm text-gray-900">
+                    {formatDateString(schedule.startTime)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-gray-500">End Time</div>
+                  <div className="mt-1 text-sm text-gray-900">
+                    {formatDateString(schedule.endTime)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-gray-500">Duration</div>
+                  <div className="mt-1 text-sm text-gray-900">
+                    {duration} hours
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -1,3 +1,16 @@
+/**
+ * Cabinets Navigation Component
+ *
+ * Tab navigation component for switching between different sections of the cabinets page.
+ * Displays tabs horizontally on desktop and as a dropdown on mobile.
+ *
+ * Features:
+ * - Desktop: Horizontal tab buttons with icons and labels
+ * - Mobile: Dropdown select for space efficiency
+ * - Active tab highlighting with animations
+ * - Smooth transitions and hover effects
+ */
+
 'use client';
 
 import { motion } from 'framer-motion';
@@ -23,7 +36,7 @@ export default function CabinetsNavigation({
 }: Props) {
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
-      {/* Desktop - md: and above */}
+      {/* Desktop: Horizontal Tab Navigation */}
       <nav className="hidden space-x-2 px-4 md:flex lg:space-x-4">
         {tabs.map(tab => (
           <motion.button
@@ -44,7 +57,7 @@ export default function CabinetsNavigation({
         ))}
       </nav>
 
-      {/* Mobile - below md: */}
+      {/* Mobile: Dropdown Navigation */}
       <div className="px-4 py-2 md:hidden">
         <select
           value={activeSection}

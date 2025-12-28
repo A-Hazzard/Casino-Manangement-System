@@ -13,15 +13,15 @@
 
 'use client';
 
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useUserStore } from '@/lib/store/userStore';
+import { fetchDashboardTotals } from '@/lib/helpers/dashboard';
 import { useLocationData, useLocationMachineStats, useLocationMembershipStats } from '@/lib/hooks/data';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { fetchDashboardTotals } from '@/lib/helpers/dashboard';
-import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
 import type { DashboardTotals } from '@/lib/types';
 import type { LocationFilter } from '@/lib/types/location';
+import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
 import type { AggregatedLocation } from '@/shared/types/common';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -67,17 +67,30 @@ export function useLocationsPageData() {
   // Computed Values
   // ============================================================================
   const filteredLocationData = useMemo(() => {
-    const data = searchTerm.trim() ? locationData : accumulatedLocations;
+    // When filters are active, always use locationData from API (which is already filtered)
+    // When no filters and no search, use accumulatedLocations
+    const data = selectedFilters.length > 0
+      ? locationData
+      : (searchTerm.trim() ? locationData : accumulatedLocations);
+
     const isDeveloper = user?.roles?.includes('developer') ?? false;
     if (isDeveloper) return data;
     return data.filter(loc => !/^test/i.test(loc.name || ''));
-  }, [locationData, accumulatedLocations, searchTerm, user]);
+  }, [locationData, accumulatedLocations, searchTerm, selectedFilters, user]);
 
   const financialTotals = useMemo(() => calculateLocationFinancialTotals(
     accumulatedLocations.length > 0 ? accumulatedLocations : locationData
   ), [accumulatedLocations, locationData]);
 
-  const totalPages = useMemo(() => Math.ceil(accumulatedLocations.length / 10) || 1, [accumulatedLocations]);
+  const itemsPerPage = 20;
+  const totalPages = useMemo(() => Math.ceil(filteredLocationData.length / itemsPerPage) || 1, [filteredLocationData.length]);
+  
+  // Paginate filteredLocationData
+  const paginatedLocationData = useMemo(() => {
+    const startIndex = currentPage * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredLocationData.slice(startIndex, endIndex);
+  }, [filteredLocationData, currentPage, itemsPerPage]);
 
   // ============================================================================
   // Handlers
@@ -103,6 +116,11 @@ export function useLocationsPageData() {
 
   // Batch accumulation logic
   useEffect(() => {
+    // Don't accumulate if filters are active - API already filtered
+    if (selectedFilters.length > 0) {
+      return;
+    }
+
     if (!searchTerm.trim() && locationData.length > 0) {
       setAccumulatedLocations(prev => {
         const existingIds = new Set(prev.map(loc => loc._id));
@@ -110,7 +128,14 @@ export function useLocationsPageData() {
         return [...prev, ...newLocations];
       });
     }
-  }, [locationData, searchTerm]);
+  }, [locationData, searchTerm, selectedFilters]);
+
+  // Clear accumulated locations when filters change
+  useEffect(() => {
+    if (selectedFilters.length > 0) {
+      setAccumulatedLocations([]);
+    }
+  }, [selectedFilters]);
 
   // Initial data fetch on mount
   useEffect(() => {
@@ -118,6 +143,13 @@ export function useLocationsPageData() {
       void fetchData();
     }
   }, [activeMetricsFilter, filtersInitialized, fetchData]);
+
+  // Refetch location data when filters change
+  useEffect(() => {
+    if (filtersInitialized) {
+      void fetchData();
+    }
+  }, [selectedFilters, filtersInitialized, fetchData]);
 
   // Metrics totals fetch
   useEffect(() => {
@@ -145,7 +177,7 @@ export function useLocationsPageData() {
     loading: loading || searchLoading,
     refreshing,
     error,
-    filteredLocationData,
+    filteredLocationData: paginatedLocationData,
     financialTotals,
     metricsTotals,
     metricsTotalsLoading,

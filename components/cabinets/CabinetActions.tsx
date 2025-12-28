@@ -1,13 +1,22 @@
 /**
  * Cabinet Actions Component
- * Handles cabinet CRUD operations and modal management
+ *
+ * Displays action buttons in the page header for creating new cabinets
+ * and movement requests. Shows different actions based on the active tab.
+ *
+ * Features:
+ * - New Cabinet button (for cabinets tab)
+ * - New Movement Request button (for movement tab)
+ * - Responsive design (full buttons on desktop, icons on mobile)
+ * - Loading state with skeleton buttons
  */
 
-import { useCallback } from "react";
-import { PlusCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
-import { ActionButtonSkeleton } from "@/components/ui/skeletons/ButtonSkeletons";
+import { useCallback } from 'react';
+import { PlusCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
+import { ActionButtonSkeleton } from '@/components/ui/skeletons/ButtonSkeletons';
+
 type CabinetActionsProps = {
   activeSection: string;
   selectedLocation: string;
@@ -27,21 +36,22 @@ export const CabinetActions = ({
 }: CabinetActionsProps) => {
   const { openCabinetModal } = useNewCabinetStore();
 
-  // Handle new cabinet creation
   const handleNewCabinet = useCallback(() => {
     const locationId =
-      selectedLocation !== "all" ? selectedLocation : undefined;
+      selectedLocation !== 'all' ? selectedLocation : undefined;
     openCabinetModal(locationId);
   }, [selectedLocation, openCabinetModal]);
 
-  // Handle movement request creation
   const handleNewMovementRequest = useCallback(() => {
     onMovementRequestClick();
   }, [onMovementRequestClick]);
 
-  // Render desktop header action buttons
+  /**
+   * Renders action buttons for desktop view
+   * Shows full button text with icons
+   */
   const renderDesktopActions = () => {
-    if (activeSection === "cabinets") {
+    if (activeSection === 'cabinets') {
       return (
         <div className="hidden md:flex items-center gap-3 flex-shrink-0">
           {loading ? (
@@ -60,7 +70,7 @@ export const CabinetActions = ({
       );
     }
 
-    if (activeSection === "movement") {
+    if (activeSection === 'movement') {
       return (
         <div className="hidden md:flex items-center gap-3 flex-shrink-0">
           {loading ? (
@@ -81,9 +91,12 @@ export const CabinetActions = ({
     return null;
   };
 
-  // Render mobile action buttons - icons only
+  /**
+   * Renders action buttons for mobile view
+   * Shows icon-only buttons to save space
+   */
   const renderMobileActions = () => {
-    if (activeSection === "cabinets") {
+    if (activeSection === 'cabinets') {
       return (
         <div className="md:hidden">
           {loading ? (
@@ -102,7 +115,7 @@ export const CabinetActions = ({
       );
     }
 
-    if (activeSection === "movement") {
+    if (activeSection === 'movement') {
       return (
         <div className="md:hidden">
           {loading ? (
@@ -126,10 +139,7 @@ export const CabinetActions = ({
 
   return (
     <>
-      {/* Desktop Actions */}
       {renderDesktopActions()}
-
-      {/* Mobile Actions */}
       {renderMobileActions()}
     </>
   );

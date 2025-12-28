@@ -39,7 +39,7 @@ const ManagerDesktopUI: React.FC<ManagerDesktopUIProps> = ({
   loadingSchedulers,
 }) => {
   return (
-    <div className="hidden rounded-lg bg-white shadow-md md:block">
+    <div className="hidden space-y-4 md:block">
       <ManagerScheduleFilters
         locations={locations}
         collectors={collectors}
@@ -50,12 +50,12 @@ const ManagerDesktopUI: React.FC<ManagerDesktopUIProps> = ({
         selectedStatus={selectedStatus}
         onStatusChange={onStatusChange}
         onReset={onResetSchedulerFilters}
-        loading={loadingSchedulers} // Pass loading state to filters if it has loading indicators
+        loading={loadingSchedulers}
       />
-      <div className="mt-4 space-y-4 px-4 pb-4">
-        <ManagerScheduleTable data={schedulers} loading={loadingSchedulers} />
-        {/* ManagerScheduleCards was also here, but typically desktop uses table primarily */}
-        {/* If cards are also needed on desktop, they can be added back here */}
+      <div className="rounded-lg bg-white shadow-md">
+        <div className="px-4 py-4">
+          <ManagerScheduleTable data={schedulers} loading={loadingSchedulers} />
+        </div>
       </div>
     </div>
   );

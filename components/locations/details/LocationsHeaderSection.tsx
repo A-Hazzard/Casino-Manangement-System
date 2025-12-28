@@ -29,6 +29,7 @@ export default function LocationsHeaderSection({
 }: LocationsHeaderSectionProps) {
   return (
     <div className="mt-4 flex w-full max-w-full items-center justify-between">
+      {/* Title and Mobile Actions */}
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <h1 className="flex min-w-0 items-center gap-1 truncate text-lg font-bold text-gray-800 sm:text-2xl md:text-3xl">
           Locations
@@ -41,7 +42,7 @@ export default function LocationsHeaderSection({
           />
         </h1>
         
-        {/* Mobile Refresh */}
+        {/* Mobile Refresh Button */}
         <button
           onClick={onRefresh}
           disabled={refreshing}
@@ -50,13 +51,13 @@ export default function LocationsHeaderSection({
           <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`} />
         </button>
 
-        {/* Mobile Create */}
+        {/* Mobile Create Button - Show only if not loading and user can manage locations */}
         {!loading && canManage && (
           <button
             onClick={onNew}
             className="flex-shrink-0 p-1.5 md:hidden"
           >
-            <PlusCircle className="h-4 w-4 text-green-600 sm:h-5 sm:w-5" />
+            <PlusCircle className="h-4 w-4 text-button sm:h-5 sm:w-5" />
           </button>
         )}
       </div>
@@ -71,6 +72,7 @@ export default function LocationsHeaderSection({
           <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
         </button>
         
+        {/* Show skeleton while loading, button if user can manage, otherwise nothing */}
         {loading ? (
           <ActionButtonSkeleton width="w-36" showIcon={true} />
         ) : canManage ? (

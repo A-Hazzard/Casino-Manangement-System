@@ -727,7 +727,8 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
 
           // ANY message from SMIB indicates it's alive (rsp, err, exp, etc.)
           // If we previously had real data and went offline, mark as back online
-          if (!isConnectedToMqtt && hasReceivedRealSmibData) {
+          // Use refs to avoid dependency on state values that would recreate the callback
+          if (!isConnectedToMqttRef.current && hasReceivedRealSmibDataRef.current) {
             setIsConnectedToMqtt(true);
           }
 
@@ -947,7 +948,7 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
       console.error('❌ [HOOK] EventSource error:', error);
       setIsConnectedToMqtt(false);
     };
-  }, [setFormData, setIsConnectedToMqtt, setHasReceivedRealSmibData, setCommunicationMode, setIsSSEConnected, lastHeartbeatRef, messageSubscribersRef, hasReceivedRealSmibData, isConnectedToMqtt]);
+  }, [setFormData, setIsConnectedToMqtt, setHasReceivedRealSmibData, setCommunicationMode, setIsSSEConnected, lastHeartbeatRef, messageSubscribersRef]);
 
   // Subscribe to SSE messages - allows multiple components to listen
   const subscribeToMessages = useCallback(

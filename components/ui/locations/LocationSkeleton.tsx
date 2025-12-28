@@ -76,53 +76,46 @@ export default function LocationSkeleton() {
         </div>
       </div>
 
-      {/* Mobile skeleton (cards) - matches LocationCard */}
-      <div className="mt-4 block lg:hidden">
-        {Array.from({ length: 5 }).map((_, idx) => (
-          <div
-            key={idx}
-            className="relative mb-4 w-full rounded-lg border border-border bg-container p-4 shadow-sm"
-          >
-            {/* Location Name with Icons */}
-            <div className="mb-3 flex flex-col gap-2">
-              <div className="inline-flex items-start gap-1.5">
-                <Skeleton className="h-5 w-3/4" />
-                {/* Icon placeholders */}
-                <Skeleton className="h-4 w-4 rounded-full flex-shrink-0 mt-0.5" />
-              </div>
-
-              {/* Status Badges Below Name */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Skeleton className="h-6 w-24 rounded-full" />
-                <Skeleton className="h-6 w-20 rounded-full" />
-              </div>
-            </div>
-
-            {/* Financial Metrics */}
-            <div className="mb-2 flex flex-col space-y-2 text-sm">
-              <div className="flex justify-between">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-              <div className="flex justify-between">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-            </div>
-
-            {/* Gross (separate row) */}
-            <div className="mb-3 mt-1 flex justify-between">
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-4 w-24" />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
-              <Skeleton className="h-8 flex-1 rounded" />
-              <Skeleton className="h-8 w-16 rounded" />
-            </div>
+      {/* Mobile skeleton (card) - matches LocationCard - single card per skeleton */}
+      <div className="relative mx-auto w-full rounded-lg border border-border bg-container p-4 shadow-sm">
+        {/* Location Name with Icons */}
+        <div className="mb-3 flex flex-col gap-2">
+          <div className="inline-flex items-start gap-1.5">
+            <Skeleton className="h-5 w-3/4" />
+            {/* Icon placeholders */}
+            <Skeleton className="h-4 w-4 rounded-full flex-shrink-0 mt-0.5" />
           </div>
-        ))}
+
+          {/* Status Badges Below Name */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Skeleton className="h-6 w-24 rounded-full" />
+            <Skeleton className="h-6 w-20 rounded-full" />
+          </div>
+        </div>
+
+        {/* Financial Metrics */}
+        <div className="mb-2 flex flex-col space-y-2 text-sm">
+          <div className="flex justify-between">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+          <div className="flex justify-between">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </div>
+
+        {/* Gross (separate row) */}
+        <div className="mb-3 mt-1 flex justify-between">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+          <Skeleton className="h-8 flex-1 rounded" />
+          <Skeleton className="h-8 w-16 rounded" />
+        </div>
       </div>
     </>
   );

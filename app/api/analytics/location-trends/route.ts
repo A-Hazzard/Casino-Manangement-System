@@ -58,6 +58,9 @@ export async function GET(req: NextRequest) {
     const granularity = searchParams.get('granularity') as
       | 'hourly'
       | 'minute'
+      | 'daily'
+      | 'weekly'
+      | 'monthly'
       | null;
 
     if (!locationIds) {
@@ -78,7 +81,7 @@ export async function GET(req: NextRequest) {
       startDateParam,
       endDateParam,
       displayCurrency,
-      granularity || undefined
+      (granularity as 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly' | undefined) || undefined
     );
 
     // ============================================================================

@@ -23,10 +23,11 @@
  * @param onTimePeriodChange - Callback to change time period
  * @param gameDayOffset - Game day offset for date calculations
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency } from '@/lib/utils';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -91,6 +92,15 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
   >(undefined);
   const [showCustomPicker, setShowCustomPicker] = useState(false);
 
+  // Abort controller for canceling previous requests
+  const makeBillValidatorRequest = useAbortableRequest();
+
+  // Ref to store current customDateRange for use in callbacks
+  const customDateRangeRef = useRef(customDateRange);
+  useEffect(() => {
+    customDateRangeRef.current = customDateRange;
+  }, [customDateRange]);
+
   // Wrapper to update both local state and Zustand store
   const setCustomDateRange = useCallback(
     (dateRange: DateRange | undefined) => {
@@ -129,43 +139,77 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
     if (!machineId) return;
 
     setLoading(true);
-    try {
+    const result = await makeBillValidatorRequest(async signal => {
       const params = new URLSearchParams();
       params.append('timePeriod', timePeriod);
 
+      // Use ref to access current customDateRange value (ref is updated via useEffect)
+      const currentDateRange = customDateRangeRef.current;
       if (
         timePeriod === 'Custom' &&
-        customDateRange?.from &&
-        customDateRange?.to
+        currentDateRange?.from &&
+        currentDateRange?.to
       ) {
         // Send the full ISO string with time components to preserve the exact date/time
-        const startDate = customDateRange.from.toISOString();
-        const endDate = customDateRange.to.toISOString();
+        const startDate = currentDateRange.from.toISOString();
+        const endDate = currentDateRange.to.toISOString();
         params.append('startDate', startDate);
         params.append('endDate', endDate);
       }
 
-      const response = await axios.get(
-        `/api/bill-validator/${machineId}?${params.toString()}`
-      );
+      try {
+        const response = await axios.get(
+          `/api/bill-validator/${machineId}?${params.toString()}`,
+          { signal }
+        );
 
-      if (response.data.success) {
-        setData(response.data.data);
-      } else {
-        throw new Error('Failed to fetch bill validator data');
+        if (response.data.success) {
+          setData(response.data.data);
+          return response.data.data;
+        } else {
+          throw new Error('Failed to fetch bill validator data');
+        }
+      } catch (error) {
+        // Re-throw abort errors so useAbortableRequest can handle them
+        const axiosInstance = (await import('axios')).default;
+        if (axiosInstance.isCancel(error)) {
+          throw error;
+        }
+        if (
+          error instanceof Error &&
+          (error.name === 'AbortError' ||
+            error.message === 'canceled' ||
+            error.message === 'The user aborted a request.')
+        ) {
+          throw error;
+        }
+        if (
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED')
+        ) {
+          throw error;
+        }
+
+        // Handle non-abort errors
+        console.error('Error fetching bill validator data:', error);
+        toast.error('Failed to load bill validator data');
+        setData(null);
+        throw error;
       }
-    } catch (error) {
-      console.error('Error fetching bill validator data:', error);
-      toast.error('Failed to load bill validator data');
-      setData(null);
-    } finally {
+    }, 'bill-validator');
+
+    // Only set loading to false if request completed (result is not null)
+    // If result is null, the request was aborted and the next request will handle loading state
+    if (result !== null) {
       setLoading(false);
     }
-  }, [machineId, timePeriod, customDateRange]);
+  }, [machineId, timePeriod, makeBillValidatorRequest]);
 
   useEffect(() => {
     fetchBillValidatorData();
-  }, [machineId, timePeriod, customDateRange, fetchBillValidatorData]);
+  }, [fetchBillValidatorData]);
 
   const handleApplyCustomRange = () => {
     if (pendingCustomDateRange?.from && pendingCustomDateRange?.to) {
@@ -242,77 +286,24 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
     fetchBillValidatorData();
   };
 
-  if (loading && !data) {
+  // Show skeleton loader only on initial load (when no data exists)
+  const isInitialLoad = loading && !data;
+
+  if (isInitialLoad) {
     return <BillValidatorSkeleton />;
-  }
-
-  if (!data || data.version === 'none') {
-    return (
-      <div className="mx-auto w-full max-w-4xl">
-        <div className="mb-6 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Bill Validator</h3>
-          <Button
-            onClick={handleRefresh}
-            disabled={loading}
-            variant="outline"
-            size="sm"
-          >
-            <RefreshCw
-              className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
-            />
-            Refresh
-          </Button>
-        </div>
-
-        {/* Filter Buttons - Always visible */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          {timeFrames.map(frame => (
-            <Button
-              key={frame.value}
-              variant={timePeriod === frame.value ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleTimePeriodChange(frame.value)}
-            >
-              {frame.time}
-            </Button>
-          ))}
-        </div>
-
-        {/* Custom Date Picker */}
-        {showCustomPicker && (
-          <div className="mt-4 w-full">
-            <ModernDateRangePicker
-              value={pendingCustomDateRange}
-              onChange={setPendingCustomDateRange}
-              onGo={handleApplyCustomRange}
-              onCancel={handleCancelCustomRange}
-              onSetLastMonth={handleSetLastMonth}
-              enableTimeInputs={true}
-            />
-          </div>
-        )}
-
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-          <Banknote className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-          <h3 className="mb-2 text-lg font-medium">No Bill Data Found</h3>
-          <p className="text-muted-foreground">
-            No bill validator data was found for the selected time period. Try
-            selecting a different date range.
-          </p>
-        </div>
-      </div>
-    );
   }
 
   return (
     <div className="mx-auto w-full max-w-4xl">
-      {/* Header with filters */}
+      {/* Header with filters - Always visible */}
       <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div className="flex items-center gap-4">
           <h3 className="text-lg font-semibold">Bill Validator</h3>
-          <span className="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800">
-            {data.version.toUpperCase()}
-          </span>
+          {data && data.version !== 'none' && (
+            <span className="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800">
+              {data.version.toUpperCase()}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -330,7 +321,7 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
         </div>
       </div>
 
-      {/* Filter Buttons */}
+      {/* Filter Buttons - Always visible */}
       <div className="mb-6 flex flex-wrap gap-2">
         {timeFrames.map(frame => (
           <Button
@@ -349,9 +340,9 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
         ))}
       </div>
 
-      {/* Custom Date Picker */}
+      {/* Custom Date Picker - Always visible when needed */}
       {showCustomPicker && (
-        <div className="mt-4 w-full">
+        <div className="mb-4 w-full">
           <ModernDateRangePicker
             value={pendingCustomDateRange}
             onChange={setPendingCustomDateRange}
@@ -363,8 +354,18 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
         </div>
       )}
 
-      {/* Loading State */}
-      {loading && (
+      {/* No Data State */}
+      {!data || data.version === 'none' ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+          <Banknote className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+          <h3 className="mb-2 text-lg font-medium">No Bill Data Found</h3>
+          <p className="text-muted-foreground">
+            No bill validator data was found for the selected time period. Try
+            selecting a different date range.
+          </p>
+        </div>
+      ) : loading ? (
+        /* Loading State - Show skeleton when loading with existing data */
         <div className="space-y-6">
           {/* Bill Validator Table Skeleton */}
           <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -444,28 +445,11 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
             </div>
           </div>
         </div>
-      )}
-
-      {/* Data Display */}
-      {!loading && data && (
+      ) : (
+        /* Data Display */
         <div className="space-y-6">
           {/* Summary Cards */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {/* Current Balance Card - HIDDEN */}
-            {/* <motion.div
-              className="bg-blue-50 border border-blue-200 rounded-lg p-4"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="text-center">
-                <p className="text-sm text-blue-600 mb-1">Current Balance</p>
-                <p className="text-2xl font-bold text-blue-800">
-                  {formatCurrency(data.currentBalance)}
-                </p>
-              </div>
-            </motion.div> */}
-
             {/* Show unknown bills for V1 data */}
             {data.unknownBills > 0 && (
               <motion.div
@@ -637,7 +621,9 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
                     </div>
                     <div className="text-right">
                       <p className="font-semibold">
-                        {formatCurrency(item.subtotal)}
+                        {shouldShowCurrency()
+                          ? formatAmount(item.subtotal)
+                          : formatCurrency(item.subtotal)}
                       </p>
                     </div>
                   </div>
@@ -658,7 +644,9 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
                       {data.totalQuantity.toLocaleString()} bills
                     </p>
                     <p className="font-bold text-gray-700">
-                      {formatCurrency(data.totalAmount)}
+                      {shouldShowCurrency()
+                        ? formatAmount(data.totalAmount)
+                        : formatCurrency(data.totalAmount)}
                     </p>
                   </div>
                 </div>

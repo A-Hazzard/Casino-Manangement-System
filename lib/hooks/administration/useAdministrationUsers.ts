@@ -24,8 +24,8 @@ type UseAdministrationUsersProps = {
   mounted: boolean;
 };
 
-const itemsPerPage = 10;
-const itemsPerBatch = 50;
+const itemsPerPage = 20;
+const itemsPerBatch = 100;
 const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
 export function useAdministrationUsers({

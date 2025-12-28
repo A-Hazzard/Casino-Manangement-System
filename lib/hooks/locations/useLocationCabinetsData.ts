@@ -19,14 +19,14 @@ import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useDebounce } from '@/lib/utils/hooks';
+import { getAuthHeaders } from '@/lib/utils/auth';
 import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
+import { useDebounce } from '@/lib/utils/hooks';
 import { filterAndSortCabinets } from '@/lib/utils/ui';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { getAuthHeaders } from '@/lib/utils/auth';
 import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type CabinetSortOption =
   | 'assetNumber'
@@ -109,8 +109,8 @@ export function useLocationCabinetsData({
   // ============================================================================
   // Constants
   // ============================================================================
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
+  const itemsPerPage = 20;
+  const itemsPerBatch = 100;
   const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
   // ============================================================================
@@ -360,6 +360,10 @@ export function useLocationCabinetsData({
 
       // Prevent duplicate requests
       if (prevCabinetsFetchKey.current === fetchKey) {
+        if (!cabinetsRequestInProgress.current) {
+          setLoading(false);
+          setCabinetsLoading(false);
+        }
         return;
       }
 

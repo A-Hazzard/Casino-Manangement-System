@@ -18,10 +18,10 @@ import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import {
-    convertFromUSD,
-    convertToUSD,
-    getCountryCurrency,
-    getLicenseeCurrency,
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+  getLicenseeCurrency,
 } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -64,6 +64,9 @@ export async function GET(
     const granularity = searchParams.get('granularity') as
       | 'hourly'
       | 'minute'
+      | 'daily'
+      | 'weekly'
+      | 'monthly'
       | null;
 
     // ============================================================================
@@ -205,25 +208,80 @@ export async function GET(
     // ============================================================================
     // STEP 8: Aggregate meter data by hour/day for chart
     // ============================================================================
+    // For Quarterly and All Time, detect actual data span from Meters collection
+    // Note: For Quarterly, we limit the query to the last 90 days, but detect the actual
+    // data span WITHIN that 90-day range for granularity calculation.
+    // For All Time, we use the full data span.
+    let actualDataSpan: { minDate: Date | null; maxDate: Date | null } | null =
+      null;
+    if (timePeriod === 'Quarterly' || timePeriod === 'All Time') {
+      // For Quarterly, query within the 90-day range
+      // For All Time, query all data
+      const matchStage: Record<string, unknown> = { machine: machineId };
+      if (timePeriod === 'Quarterly' && startDate && endDate) {
+        // Limit to the 90-day range for Quarterly
+        matchStage.readAt = { $gte: startDate, $lte: endDate };
+      }
+
+      const dateRangeResult = await Meters.aggregate([
+        { $match: matchStage },
+        {
+          $group: {
+            _id: null,
+            minDate: { $min: '$readAt' },
+            maxDate: { $max: '$readAt' },
+          },
+        },
+      ]).exec();
+
+      if (
+        dateRangeResult.length > 0 &&
+        dateRangeResult[0].minDate &&
+        dateRangeResult[0].maxDate
+      ) {
+        const minDate = dateRangeResult[0].minDate as Date;
+        const maxDate = dateRangeResult[0].maxDate as Date;
+        actualDataSpan = {
+          minDate,
+          maxDate,
+        };
+
+        // For All Time, use the full data span
+        // For Quarterly, keep the 90-day limit (startDate/endDate already set above)
+        if (timePeriod === 'All Time') {
+          startDate = minDate;
+          endDate = maxDate;
+        }
+        // For Quarterly, startDate and endDate are already set to 90 days above, so we don't overwrite them
+      }
+    }
+
     // Determine aggregation granularity based on time range and manual granularity
     let useHourly = false;
     let useMinute = false;
-    
+    let useMonthly = false;
+    const useYearly = false;
+    let useWeekly = false;
+    let useDaily = false;
+
     // If granularity is manually specified, use it
     if (granularity) {
       if (granularity === 'minute') {
-        useHourly = false;
         useMinute = true;
       } else if (granularity === 'hourly') {
         useHourly = true;
-        useMinute = false;
+      } else if (granularity === 'daily') {
+        useDaily = true;
+      } else if (granularity === 'weekly') {
+        useWeekly = true;
+      } else if (granularity === 'monthly') {
+        useMonthly = true;
       }
     } else {
       // Auto-detect granularity
-      const shouldUseHourly =
-        timePeriod === 'Today' || timePeriod === 'Yesterday';
-
-    if (timePeriod === 'Custom' && startDate && endDate) {
+      if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
+        useHourly = true;
+      } else if (timePeriod === 'Custom' && startDate && endDate) {
         // Check if date strings have time components (not date-only)
         const hasTimeComponents =
           startDateParam &&
@@ -231,27 +289,33 @@ export async function GET(
           (startDateParam.includes('T') || endDateParam.includes('T'));
 
         if (hasTimeComponents) {
-      const diffInMs = endDate.getTime() - startDate.getTime();
-      const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
-      
+          const diffInMs = endDate.getTime() - startDate.getTime();
+          const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+
           // For custom ranges with time inputs:
           // - Default to hourly for all ranges <= 1 day
           // - Use daily if > 1 day
           if (diffInDays <= 1) {
             useHourly = true;
+          } else {
+            useDaily = true;
           }
-          // For ranges > 1 day, use daily (default)
         } else {
           // Date-only custom range: use hourly if <= 1 day
           const diffInMs = endDate.getTime() - startDate.getTime();
           const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
           if (diffInDays <= 1) {
-        useHourly = true;
+            useHourly = true;
+          } else {
+            useDaily = true;
           }
-      }
-    } else {
-        // For Today/Yesterday, default to hourly (unless granularity is specified)
-      useHourly = shouldUseHourly;
+        }
+      } else if (timePeriod === 'Quarterly' || timePeriod === 'All Time') {
+        // For Quarterly and All Time, default to daily aggregation if no manual granularity
+        useDaily = true;
+      } else {
+        // For other periods (7d, 30d), default to daily
+        useDaily = true;
       }
     }
 
@@ -265,43 +329,155 @@ export async function GET(
     }
     pipeline.push({ $match: matchStage });
 
-    // Add fields for day and time
-    pipeline.push({
-      $addFields: {
-        day: {
+    // Add fields for day and time based on granularity
+    const groupId: Record<string, unknown> = {};
+
+    if (useYearly) {
+      groupId.year = {
+        $dateToString: {
+          date: '$readAt',
+          format: '%Y',
+          timezone: 'UTC',
+        },
+      };
+    } else if (useMonthly) {
+      groupId.month = {
+        $dateToString: {
+          date: '$readAt',
+          format: '%Y-%m',
+          timezone: 'UTC',
+        },
+      };
+    } else if (useWeekly) {
+      // Group by week - use start of week (Monday)
+      // $dayOfWeek returns 1 (Sunday) to 7 (Saturday)
+      // We want Monday (2) to be day 0, so subtract (dayOfWeek - 2) days
+      // For Sunday (1), we need to subtract 6 days to get previous Monday
+      groupId.day = {
+        $dateToString: {
+          date: {
+            $subtract: [
+              '$readAt',
+              {
+                $multiply: [
+                  {
+                    $cond: {
+                      if: { $eq: [{ $dayOfWeek: '$readAt' }, 1] },
+                      then: 6, // Sunday: subtract 6 days to get previous Monday
+                      else: {
+                        $subtract: [{ $dayOfWeek: '$readAt' }, 2],
+                      }, // Monday-Saturday: subtract (dayOfWeek - 2) days
+                    },
+                  },
+                  24 * 60 * 60 * 1000,
+                ],
+              },
+            ],
+          },
+          format: '%Y-%m-%d',
+          timezone: 'UTC',
+        },
+      };
+      groupId.week = { $week: '$readAt' };
+    } else if (useDaily) {
+      groupId.day = {
+        $dateToString: {
+          date: '$readAt',
+          format: '%Y-%m-%d',
+          timezone: 'UTC',
+        },
+      };
+    }
+
+    // Add fields based on granularity
+    if (useMinute || useHourly) {
+      pipeline.push({
+        $addFields: {
+          day: {
+            $dateToString: {
+              date: '$readAt',
+              format: '%Y-%m-%d',
+              timezone: 'UTC',
+            },
+          },
+          time: useMinute
+            ? {
+                $dateToString: {
+                  date: '$readAt',
+                  format: '%H:%M',
+                  timezone: 'UTC',
+                },
+              }
+            : {
+                $dateToString: {
+                  date: '$readAt',
+                  format: '%H:00',
+                  timezone: 'UTC',
+                },
+              },
+        },
+      });
+    } else {
+      // For daily/weekly/monthly/yearly, add appropriate fields
+      const addFieldsStage: Record<string, unknown> = {
+        time: '00:00',
+      };
+
+      if (useYearly && groupId.year) {
+        addFieldsStage.year = groupId.year;
+        addFieldsStage.day = {
+          $dateToString: {
+            date: '$readAt',
+            format: '%Y-01-01',
+            timezone: 'UTC',
+          },
+        };
+      } else if (useMonthly && groupId.month) {
+        addFieldsStage.month = groupId.month;
+        addFieldsStage.day = {
+          $dateToString: {
+            date: '$readAt',
+            format: '%Y-%m-01',
+            timezone: 'UTC',
+          },
+        };
+      } else if (useWeekly && groupId.day) {
+        addFieldsStage.day = groupId.day;
+        addFieldsStage.week = groupId.week;
+      } else if (useDaily && groupId.day) {
+        addFieldsStage.day = groupId.day;
+      } else {
+        // Fallback to daily
+        addFieldsStage.day = {
           $dateToString: {
             date: '$readAt',
             format: '%Y-%m-%d',
             timezone: 'UTC',
           },
-        },
-        time: useMinute
-          ? {
-              $dateToString: {
-                date: '$readAt',
-                format: '%H:%M',
-                timezone: 'UTC',
-              },
-            }
-          : useHourly
-          ? {
-              $dateToString: {
-                date: '$readAt',
-                format: '%H:00',
-                timezone: 'UTC',
-              },
-            }
-          : '00:00',
-      },
-    });
+        };
+      }
 
-    // Group by day and time, summing movement fields
+      pipeline.push({ $addFields: addFieldsStage });
+    }
+
+    // Group by appropriate fields, summing movement fields
+    const groupStageId: Record<string, unknown> = {
+      day: '$day',
+      time: '$time',
+    };
+
+    // Add additional grouping fields if needed
+    if (useYearly && groupId.year) {
+      groupStageId.year = '$year';
+    } else if (useMonthly && groupId.month) {
+      groupStageId.month = '$month';
+    } else if (useWeekly && groupId.week) {
+      groupStageId.week = '$week';
+    }
+
     pipeline.push({
       $group: {
-        _id: {
-          day: '$day',
-          time: '$time',
-        },
+        _id: groupStageId,
         drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
         totalCancelledCredits: {
           $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
@@ -311,20 +487,27 @@ export async function GET(
     });
 
     // Project final format
-    pipeline.push({
-      $project: {
-        _id: 0,
-        day: '$_id.day',
-        time: '$_id.time',
-        drop: 1,
-        totalCancelledCredits: 1,
-        gross: {
-          $subtract: [
-            { $subtract: ['$drop', '$jackpot'] },
-            '$totalCancelledCredits',
-          ],
-        },
+    const projectStage: Record<string, unknown> = {
+      _id: 0,
+      day: '$_id.day',
+      time: '$_id.time',
+      drop: 1,
+      totalCancelledCredits: 1,
+      gross: {
+        $subtract: [
+          { $subtract: ['$drop', '$jackpot'] },
+          '$totalCancelledCredits',
+        ],
       },
+    };
+
+    // Include month field for monthly aggregation to ensure proper grouping
+    if (useMonthly && groupId.month) {
+      projectStage.month = '$_id.month';
+    }
+
+    pipeline.push({
+      $project: projectStage,
     });
 
     // Sort by day and time
@@ -432,6 +615,13 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: transformedData,
+      dataSpan:
+        actualDataSpan && actualDataSpan.minDate && actualDataSpan.maxDate
+          ? {
+              minDate: actualDataSpan.minDate.toISOString(),
+              maxDate: actualDataSpan.maxDate.toISOString(),
+            }
+          : undefined,
     });
   } catch (error) {
     const duration = Date.now() - startTime;

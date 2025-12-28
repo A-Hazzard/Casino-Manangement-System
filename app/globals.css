@@ -339,3 +339,9 @@ input[type='checkbox'] {
   background-color: #6a11cb !important;
   color: white !important;
 }
+
+/* Move zoom controls to bottom left */
+.leaflet-top.leaflet-left {
+  top: auto !important;
+  bottom: 10px !important;
+}

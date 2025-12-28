@@ -13,13 +13,16 @@ import SearchFilterBar from '@/components/administration/SearchFilterBar';
 import UserCard from '@/components/administration/UserCard';
 import UserCardSkeleton from '@/components/administration/UserCardSkeleton';
 import UserModal from '@/components/administration/UserModal';
+import UserSummaryCards from '@/components/administration/UserSummaryCards';
 import UserTable from '@/components/administration/UserTable';
 import UserTableSkeleton from '@/components/administration/UserTableSkeleton';
 import PaginationControls from '@/components/ui/PaginationControls';
+import { useAdministrationUserCounts } from '@/lib/hooks/administration/useAdministrationUserCounts';
 import type { SortKey, User } from '@/lib/types/administration';
 import type { UserAuthPayload } from '@/shared/types/auth';
 
 type AdministrationUsersSectionProps = {
+  selectedLicencee: string | null;
   isLoading: boolean;
   isSearching: boolean;
   processedUsers: User[];
@@ -58,6 +61,7 @@ type AdministrationUsersSectionProps = {
 };
 
 export default function AdministrationUsersSection({
+  selectedLicencee,
   isLoading,
   isSearching,
   processedUsers,
@@ -89,8 +93,18 @@ export default function AdministrationUsersSection({
   requestSort,
   refreshUsers,
 }: AdministrationUsersSectionProps) {
+  // ============================================================================
+  // Data Fetching - User Counts
+  // ============================================================================
+  const { counts, isLoading: countsLoading } =
+    useAdministrationUserCounts(selectedLicencee);
+
   return (
     <>
+      {/* Summary Cards */}
+      <UserSummaryCards counts={counts} isLoading={countsLoading} />
+
+      {/* Search Filter Bar */}
       <SearchFilterBar
         searchValue={searchValue}
         setSearchValue={setSearchValue}
@@ -99,7 +113,7 @@ export default function AdministrationUsersSection({
         selectedStatus={selectedStatus}
         setSelectedStatus={setSelectedStatus}
       />
-      <div className="block md:block xl:hidden">
+      <div className="block lg:hidden">
         {isSearching ? (
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             <UserCardSkeleton />
@@ -120,7 +134,7 @@ export default function AdministrationUsersSection({
                 />
               ))}
             </div>
-            {!isLoading && totalPages > 1 && (
+            {!isLoading && (
               <PaginationControls
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -134,7 +148,7 @@ export default function AdministrationUsersSection({
           </p>
         )}
       </div>
-      <div className="hidden xl:block">
+      <div className="hidden lg:block">
         {isSearching ? (
           <UserTableSkeleton />
         ) : processedUsers.length > 0 ? (
@@ -154,7 +168,7 @@ export default function AdministrationUsersSection({
               onDelete={(user: User) => handleDeleteUser(user)}
               currentUser={currentUser as UserAuthPayload}
             />
-            {!isLoading && totalPages > 1 && (
+            {!isLoading && (
               <PaginationControls
                 currentPage={currentPage}
                 totalPages={totalPages}

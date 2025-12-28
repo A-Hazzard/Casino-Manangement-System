@@ -54,22 +54,28 @@ const SessionEventsTable: React.FC<SessionEventsTableProps> = ({ data }) => {
     return games.filter(Boolean).sort();
   }, [data]);
 
-  // Filter and sort data
+  /**
+   * Filters events based on event type, description, and game name.
+   * Applies all active filters sequentially.
+   */
   const filtered = useMemo(() => {
     let filteredData = data;
 
+    // Filter by event type if filter is set
     if (eventTypeFilter) {
       filteredData = filteredData.filter(item =>
         item.eventType?.toLowerCase().includes(eventTypeFilter.toLowerCase())
       );
     }
 
+    // Filter by event description if filter is set
     if (eventFilter) {
       filteredData = filteredData.filter(item =>
         item.description?.toLowerCase().includes(eventFilter.toLowerCase())
       );
     }
 
+    // Filter by game name if filter is set
     if (gameFilter) {
       filteredData = filteredData.filter(item =>
         item.gameName?.toLowerCase().includes(gameFilter.toLowerCase())
@@ -97,8 +103,13 @@ const SessionEventsTable: React.FC<SessionEventsTableProps> = ({ data }) => {
     });
   };
 
+  /**
+   * Toggles the expansion state of an event's sequence details.
+   * If expanded, collapses it; if collapsed, expands it.
+   */
   const toggleSequence = (eventId: string) => {
     const newExpanded = new Set(expandedSequences);
+    // Remove event if already expanded, otherwise add it
     if (newExpanded.has(eventId)) {
       newExpanded.delete(eventId);
     } else {
@@ -205,11 +216,13 @@ const SessionEventsTable: React.FC<SessionEventsTableProps> = ({ data }) => {
                   <td className="border border-border p-3 text-left">
                     <div className="flex items-center justify-between">
                       <span>{row.description || 'No activity'}</span>
+                      {/* Show expand/collapse button only if sequence exists */}
                       {row.sequence && row.sequence.length > 0 && (
                         <button
                           onClick={() => toggleSequence(row._id)}
                           className="rounded p-1 transition-colors hover:bg-gray-100"
                         >
+                          {/* Show minus icon if expanded, plus icon if collapsed */}
                           {expandedSequences.has(row._id) ? (
                             <MinusIcon className="h-4 w-4 text-green-500 hover:text-green-600" />
                           ) : (
@@ -218,7 +231,7 @@ const SessionEventsTable: React.FC<SessionEventsTableProps> = ({ data }) => {
                         </button>
                       )}
                     </div>
-                    {/* Sequence Dropdown within the same cell */}
+                    {/* Show sequence details when event is expanded */}
                     {expandedSequences.has(row._id) &&
                       row.sequence &&
                       row.sequence.length > 0 && (
@@ -291,11 +304,13 @@ const SessionEventsTable: React.FC<SessionEventsTableProps> = ({ data }) => {
                   <span className="ml-2 break-all text-right">
                     {row.description || 'No activity'}
                   </span>
+                  {/* Show expand/collapse button only if sequence exists */}
                   {row.sequence && row.sequence.length > 0 && (
                     <button
                       onClick={() => toggleSequence(row._id)}
                       className="rounded p-1 transition-colors hover:bg-gray-100"
                     >
+                      {/* Show minus icon if expanded, plus icon if collapsed */}
                       {expandedSequences.has(row._id) ? (
                         <MinusIcon className="h-4 w-4 flex-shrink-0 text-green-500" />
                       ) : (
@@ -324,7 +339,7 @@ const SessionEventsTable: React.FC<SessionEventsTableProps> = ({ data }) => {
                 </span>
               </div>
 
-              {/* Mobile Sequence Dropdown */}
+              {/* Show sequence details when event is expanded on mobile */}
               {expandedSequences.has(row._id) &&
                 row.sequence &&
                 row.sequence.length > 0 && (
@@ -362,7 +377,7 @@ const SessionEventsTable: React.FC<SessionEventsTableProps> = ({ data }) => {
         ))}
       </div>
 
-      {/* Pagination controls */}
+      {/* Show pagination controls only if there are multiple pages */}
       {totalPages > 1 && (
         <div className="mt-6 flex items-center justify-center gap-2">
           <button

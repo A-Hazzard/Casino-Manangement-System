@@ -37,8 +37,8 @@ export function useSessions() {
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
   const [totalSessionsFromAPI, setTotalSessionsFromAPI] = useState<number>(0);
 
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
+  const itemsPerPage = 20;
+  const itemsPerBatch = 100;
   const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
   const { selectedLicencee, activeMetricsFilter, customDateRange } =

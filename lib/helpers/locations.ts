@@ -543,7 +543,7 @@ export const searchAllLocations = async (
 export async function fetchAggregatedLocationsData(
   timePeriod: TimePeriod,
   licensee?: string,
-  filterString?: string,
+  machineTypeFilter?: string,
   dateRange?: { from: Date; to: Date },
   displayCurrency?: string,
   page?: number,
@@ -569,8 +569,8 @@ export async function fetchAggregatedLocationsData(
     if (licensee) queryParams.push(`licensee=${encodeURIComponent(licensee)}`);
     if (timePeriod)
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
-    if (filterString)
-      queryParams.push(`filters=${encodeURIComponent(filterString)}`);
+    if (machineTypeFilter)
+      queryParams.push(`machineTypeFilter=${encodeURIComponent(machineTypeFilter)}`);
     if (displayCurrency)
       queryParams.push(`currency=${encodeURIComponent(displayCurrency)}`);
       

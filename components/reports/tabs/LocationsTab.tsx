@@ -72,13 +72,15 @@ export default function LocationsTab() {
   // ============================================================================
   // Chart Granularity State
   // ============================================================================
-  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
+  const [chartGranularity, setChartGranularity] = useState<
+    'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+  >(
     () =>
       getDefaultChartGranularity(
         activeMetricsFilter || 'Today',
         customDateRange?.startDate,
         customDateRange?.endDate
-      )
+      ) as 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
   );
   const hasManuallySetGranularityRef = useRef(false);
 
@@ -150,8 +152,8 @@ export default function LocationsTab() {
   // ============================================================================
   // Pagination Constants
   // ============================================================================
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
+  const itemsPerPage = 20;
+  const itemsPerBatch = 100;
   const pagesPerBatch = itemsPerBatch / itemsPerPage;
 
   // ============================================================================
@@ -530,7 +532,7 @@ export default function LocationsTab() {
   // Granularity Change Handler
   // ============================================================================
   const handleGranularityChange = useCallback(
-    (granularity: 'hourly' | 'minute') => {
+    (granularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly') => {
       setChartGranularity(granularity);
       hasManuallySetGranularityRef.current = true;
       setLocationTrendData(null);

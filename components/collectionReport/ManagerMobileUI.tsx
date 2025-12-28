@@ -39,9 +39,8 @@ const ManagerMobileUI: React.FC<ManagerMobileUIProps> = ({
   loadingSchedulers,
 }) => {
   return (
-    // Mobile container for Manager Schedule, adjust styling as needed for card appearance
-    <div className="w-full px-4 md:hidden">
-      <div className="mx-auto max-w-xl space-y-4 rounded-lg bg-white p-4 shadow-md">
+    <div className="w-full md:hidden">
+      <div className="space-y-4">
         <ManagerScheduleFilters
           locations={locations}
           collectors={collectors}
@@ -52,7 +51,7 @@ const ManagerMobileUI: React.FC<ManagerMobileUIProps> = ({
           selectedStatus={selectedStatus}
           onStatusChange={onStatusChange}
           onReset={onResetSchedulerFilters}
-          loading={loadingSchedulers} // Pass loading state to filters if it has loading indicators
+          loading={loadingSchedulers}
         />
         <ManagerScheduleCards data={schedulers} loading={loadingSchedulers} />
       </div>

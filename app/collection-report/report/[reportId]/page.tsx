@@ -16,47 +16,41 @@
 'use client';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-
-// Layout components
-import PageLayout from '@/components/layout/PageLayout';
-
-// Skeleton components
-import {
-    CollectionReportSkeleton,
-} from '@/components/ui/skeletons/CollectionReportDetailSkeletons';
-
-// Hooks
-import { useCollectionReportDetailsData } from '@/lib/hooks/collectionReport/useCollectionReportDetailsData';
-
-// Components
 import { CollectionIssueModal } from '@/components/collectionReport/CollectionIssueModal';
-import LocationReportSummarySection from '@/components/collectionReport/details/LocationReportSummarySection';
 import LocationReportCollectionsTable from '@/components/collectionReport/details/LocationReportCollectionsTable';
-import LocationReportIssuesSection from '@/components/collectionReport/details/LocationReportIssuesSection';
 import LocationReportLocationMetricsTab from '@/components/collectionReport/details/LocationReportLocationMetricsTab';
 import LocationReportSasCompareTab from '@/components/collectionReport/details/LocationReportSasCompareTab';
+import PageLayout from '@/components/layout/PageLayout';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { CollectionReportSkeleton } from '@/components/ui/skeletons/CollectionReportDetailSkeletons';
+import {
+  animateDesktopTabTransition,
+  calculateLocationTotal,
+} from '@/lib/helpers/collectionReportDetailPage';
+import { useCollectionReportDetailsData } from '@/lib/hooks/collectionReport/useCollectionReportDetailsData';
+import { useUserStore } from '@/lib/store/userStore';
+import { formatCurrency } from '@/lib/utils/currency';
+import { ArrowLeft, RefreshCw, Zap } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect } from 'react';
 
-// ============================================================================
-// Page Components
-// ============================================================================
 /**
  * Collection Report Detail Page Content Component
  * Handles all state management and data fetching for the collection report detail page
  */
 function CollectionReportPageContent() {
   const hook = useCollectionReportDetailsData();
+  const { user } = useUserStore();
 
   const {
-    reportId,
     reportData,
     loading,
     activeTab,
@@ -75,6 +69,7 @@ function CollectionReportPageContent() {
     machineTotalPages,
     machinePage,
     tabContentRef,
+    collections,
     setMachinePage,
     setSearchTerm,
     setShowFixReportConfirmation,
@@ -83,12 +78,51 @@ function CollectionReportPageContent() {
     handleTabChange,
     handleFixReportConfirm,
     handleFixReportClick,
+    handleIssueClick,
   } = hook;
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
+  // Animate tab transitions on desktop
+  useEffect(() => {
+    animateDesktopTabTransition(tabContentRef);
+  }, [activeTab, tabContentRef]);
+
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
+  const isDeveloper = (user?.roles || []).includes('developer');
+
+  const locationTotal = reportData ? calculateLocationTotal(collections) : 0;
+  const textColorClass = locationTotal < 0 ? 'text-red-600' : 'text-green-600';
+
+  // Group SAS issues by machine name
+  const sasIssuesByMachine = sasTimeIssues.reduce(
+    (acc, issue) => {
+      const machineName = issue.machineName || 'Unknown';
+      if (!acc[machineName]) {
+        acc[machineName] = [];
+      }
+      acc[machineName].push(issue);
+      return acc;
+    },
+    {} as Record<string, typeof sasTimeIssues>
+  );
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
+  // Animate tab transitions on desktop
+  useEffect(() => {
+    animateDesktopTabTransition(tabContentRef);
+  }, [activeTab, tabContentRef]);
 
   // ============================================================================
   // Render Logic
   // ============================================================================
   if (loading) return <CollectionReportSkeleton />;
+  if (!reportData) return null;
 
   const TabButton = ({
     label,
@@ -108,83 +142,268 @@ function CollectionReportPageContent() {
     </button>
   );
 
-  if (!reportData) return null;
-
-    return (
-      <PageLayout
-        headerProps={{
-          containerPaddingMobile: 'px-4 py-8 lg:px-0 lg:py-0',
+  return (
+    <PageLayout
+      headerProps={{
+        containerPaddingMobile: 'px-4 py-8 lg:px-0 lg:py-0',
         disabled: loading,
-        }}
-        pageTitle=""
-        hideOptions={true}
-        hideLicenceeFilter={true}
-        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
-        showToaster={false}
-      >
-      <div className="flex w-full flex-col gap-6">
-        {/* Summary Section */}
-        <LocationReportSummarySection
-          reportData={reportData}
-          reportId={reportId}
-          hasSasTimeIssues={hasSasTimeIssues}
-          hasCollectionHistoryIssues={hasCollectionHistoryIssues}
-          isFixingReport={isFixingReport}
-          onFixReportClick={handleFixReportClick}
-        />
+      }}
+      pageTitle=""
+      hideOptions={true}
+      hideLicenceeFilter={true}
+      mainClassName="flex flex-col flex-1 w-full max-w-full"
+      showToaster={false}
+    >
+      {/* Header Section (Desktop Only): Back button, title, and Fix Report button */}
+      <div className="hidden px-2 pt-6 lg:block lg:px-6">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/collection-report">
+              <Button
+                variant="ghost"
+                className="rounded-full border border-gray-200 p-2 hover:bg-gray-100"
+              >
+                <ArrowLeft size={18} className="h-5 w-5" />
+              </Button>
+            </Link>
+            <h1 className="text-2xl font-bold">Collection Report Details</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Fix Report Button - Developer Only */}
+            {isDeveloper &&
+              (hasSasTimeIssues || hasCollectionHistoryIssues) && (
+                <Button
+                  onClick={handleFixReportClick}
+                  disabled={loading || isFixingReport}
+                  variant="outline"
+                  className="flex items-center gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
+                >
+                  {isFixingReport ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Fixing Report...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4" />
+                      Fix Report
+                    </>
+                  )}
+                </Button>
+              )}
+          </div>
+        </div>
+      </div>
 
-        {/* Issues Alert Section */}
-        <LocationReportIssuesSection
-          hasSasTimeIssues={hasSasTimeIssues}
-          hasCollectionHistoryIssues={hasCollectionHistoryIssues}
-          sasTimeIssuesCount={sasTimeIssues.length}
-          collectionHistoryMachinesCount={collectionHistoryMachines.length}
-          onFixIssuesClick={handleFixReportClick}
-        />
+      {/* Report Header Section: Location name, report ID, and financial summary */}
+      <div className="px-2 pb-6 pt-2 lg:px-6 lg:pt-4">
+        <div className="rounded-lg bg-white py-4 shadow lg:border-t-4 lg:border-lighterBlueHighlight lg:bg-container lg:py-8">
+          <div className="px-4 py-2 text-center lg:py-4">
+            <div className="mb-2 text-xs text-gray-500 lg:hidden">
+              COLLECTION REPORT
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-gray-800 lg:text-4xl">
+              {reportData.locationName}
+            </h1>
+            <p className="mb-4 text-sm text-gray-600 lg:text-base">
+              Report ID: {reportData.reportId}
+            </p>
+            <p className={`text-lg font-semibold`}>
+              Collection Report Machine Total Gross:{' '}
+              <span className={textColorClass}>
+                {formatCurrency(locationTotal)}
+              </span>
+            </p>
+          </div>
 
-        <div className="flex flex-col gap-6 lg:flex-row">
-          {/* Tabs Sidebar */}
-          <div className="w-full shrink-0 lg:w-64">
-            <div className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
+          {/* Mobile Fix Report Button */}
+          {isDeveloper && (hasSasTimeIssues || hasCollectionHistoryIssues) && (
+            <div className="mt-4 flex justify-center px-4 lg:hidden">
+              <Button
+                onClick={handleFixReportClick}
+                disabled={loading || isFixingReport}
+                variant="outline"
+                className="flex items-center gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
+              >
+                {isFixingReport ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Fixing Report...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    Fix Report
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Warning Banner: Issue detection display (Developer Only) */}
+      {isDeveloper && (hasSasTimeIssues || hasCollectionHistoryIssues) && (
+        <div className="mx-2 mb-6 lg:mx-6">
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-yellow-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-sm font-medium text-yellow-800">
+                  {hasSasTimeIssues && hasCollectionHistoryIssues
+                    ? 'Multiple Issues Detected'
+                    : hasSasTimeIssues
+                      ? 'SAS Time Issues Detected'
+                      : 'Collection History Issues Detected'}
+                </h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  {hasSasTimeIssues && (
+                    <div className="mb-2">
+                      <p className="font-medium">SAS Time Issues:</p>
+                      <ul className="ml-4 mt-1 list-disc space-y-1">
+                        {Object.entries(sasIssuesByMachine).map(
+                          ([machineName, issues]) => (
+                            <li key={machineName}>
+                              <button
+                                onClick={() => handleIssueClick(issues[0])}
+                                className="text-left text-yellow-800 underline hover:text-yellow-900"
+                              >
+                                {machineName} ({issues.length} issue
+                                {issues.length > 1 ? 's' : ''})
+                              </button>
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                  {hasCollectionHistoryIssues && (
+                    <div>
+                      <p className="font-medium">Collection History Issues:</p>
+                      <ul className="ml-4 mt-1 list-disc space-y-1">
+                        {collectionHistoryMachines.map(machineName => (
+                          <li key={machineName}>{machineName}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <p className="mt-3 text-xs">
+                    Use the &quot;Fix Report&quot; button above to automatically
+                    resolve these issues.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Content Section: Sidebar navigation (1/4 width) and main content (3/4 width) */}
+      <div className="hidden px-2 pb-6 lg:flex lg:flex-row lg:space-x-6 lg:px-6">
+        <div className="mb-6 lg:mb-0 lg:w-1/4">
+          <div className="space-y-2 rounded-lg bg-white p-3 shadow">
+            <h3 className="mb-4 text-lg font-semibold text-gray-800">
+              Report Sections
+            </h3>
+            <div className="space-y-2">
               <TabButton label="Machine Metrics" />
               <TabButton label="Location Metrics" />
               <TabButton label="SAS Metrics Compare" />
             </div>
+          </div>
         </div>
-
-          {/* Tab Content */}
-          <div className="min-w-0 flex-1" ref={tabContentRef}>
-            {activeTab === 'Machine Metrics' && (
-              <LocationReportCollectionsTable
-                metrics={reportData.machineMetrics || []}
-                paginatedMetrics={paginatedMetricsData}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                sortField={sortField}
-                sortDirection={sortDirection}
-                onSort={handleSort}
-                currentPage={machinePage}
-                totalPages={machineTotalPages}
-                onPageChange={setMachinePage}
-              />
-            )}
+        <div className="lg:w-3/4" ref={tabContentRef}>
+          {activeTab === 'Machine Metrics' && (
+            <LocationReportCollectionsTable
+              metrics={reportData.machineMetrics || []}
+              paginatedMetrics={paginatedMetricsData}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              currentPage={machinePage}
+              totalPages={machineTotalPages}
+              onPageChange={setMachinePage}
+            />
+          )}
 
           {activeTab === 'Location Metrics' && (
-              <LocationReportLocationMetricsTab reportData={reportData} />
+            <LocationReportLocationMetricsTab reportData={reportData} />
           )}
 
           {activeTab === 'SAS Metrics Compare' && (
-              <LocationReportSasCompareTab
-                metrics={reportData.machineMetrics || []}
-                paginatedMetrics={paginatedMetricsData}
-                currentPage={machinePage}
-                totalPages={machineTotalPages}
-                onPageChange={setMachinePage}
-              />
+            <LocationReportSasCompareTab
+              metrics={reportData.machineMetrics || []}
+              paginatedMetrics={paginatedMetricsData}
+              currentPage={machinePage}
+              totalPages={machineTotalPages}
+              onPageChange={setMachinePage}
+            />
           )}
         </div>
       </div>
-              </div>
+
+      {/* Mobile Content Section: Select dropdown and content */}
+      <div className="px-2 pb-6 lg:hidden">
+        {/* Mobile Navigation Select */}
+        <div className="mb-6">
+          <select
+            value={activeTab}
+            onChange={e => handleTabChange(e.target.value as typeof activeTab)}
+            className="w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
+            disabled={loading}
+          >
+            <option value="Machine Metrics">Machine Metrics</option>
+            <option value="Location Metrics">Location Metrics</option>
+            <option value="SAS Metrics Compare">SAS Metrics Compare</option>
+          </select>
+        </div>
+
+        {/* Mobile Content */}
+        <div className="space-y-4">
+          {activeTab === 'Machine Metrics' && (
+            <LocationReportCollectionsTable
+              metrics={reportData.machineMetrics || []}
+              paginatedMetrics={paginatedMetricsData}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              currentPage={machinePage}
+              totalPages={machineTotalPages}
+              onPageChange={setMachinePage}
+            />
+          )}
+
+          {activeTab === 'Location Metrics' && (
+            <LocationReportLocationMetricsTab reportData={reportData} />
+          )}
+
+          {activeTab === 'SAS Metrics Compare' && (
+            <LocationReportSasCompareTab
+              metrics={reportData.machineMetrics || []}
+              paginatedMetrics={paginatedMetricsData}
+              currentPage={machinePage}
+              totalPages={machineTotalPages}
+              onPageChange={setMachinePage}
+            />
+          )}
+        </div>
+      </div>
 
       {/* Modals */}
       <Dialog
@@ -195,11 +414,15 @@ function CollectionReportPageContent() {
           <DialogHeader>
             <DialogTitle>Resolve Report Issues?</DialogTitle>
             <DialogDescription>
-              This action will automatically synchronize collection history and SAS times to match the collection documents.
+              This action will automatically synchronize collection history and
+              SAS times to match the collection documents.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowFixReportConfirmation(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowFixReportConfirmation(false)}
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleFixReportConfirm}>

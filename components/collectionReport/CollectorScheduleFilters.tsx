@@ -36,15 +36,15 @@ export default function CollectorScheduleFilters({
   loading,
 }: CollectorScheduleFiltersProps) {
   return (
-    <div className="flex w-full flex-col gap-y-3 rounded-b-none rounded-t-lg bg-buttonActive p-4 md:flex-row md:items-center md:justify-between md:gap-x-4">
-      <div className="flex flex-1 flex-col md:flex-row md:gap-x-4">
+    <div className="flex w-full flex-col gap-3 rounded-t-lg bg-buttonActive p-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
         <select
-          className="mb-1 w-full min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-4 py-2 text-base text-black focus:ring-2 focus:ring-buttonActive"
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-buttonActive focus:outline-none focus:ring-2 focus:ring-buttonActive/20 md:w-auto md:min-w-[160px]"
           value={selectedLocation}
           onChange={e => onLocationChange(e.target.value)}
           disabled={loading}
         >
-          <option value="all">Select Location</option>
+          <option value="all">All Locations</option>
           {locations.map(loc => (
             <option key={loc._id} value={loc._id}>
               {loc.name}
@@ -52,12 +52,12 @@ export default function CollectorScheduleFilters({
           ))}
         </select>
         <select
-          className="mb-1 w-full min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-4 py-2 text-base text-black focus:ring-2 focus:ring-buttonActive"
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-buttonActive focus:outline-none focus:ring-2 focus:ring-buttonActive/20 md:w-auto md:min-w-[160px]"
           value={selectedCollector}
           onChange={e => onCollectorChange(e.target.value)}
           disabled={loading}
         >
-          <option value="all">Select Collector</option>
+          <option value="all">All Collectors</option>
           {collectors.map(collector => (
             <option key={collector} value={collector}>
               {collector}
@@ -65,12 +65,12 @@ export default function CollectorScheduleFilters({
           ))}
         </select>
         <select
-          className="w-full min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-4 py-2 text-base text-black focus:ring-2 focus:ring-buttonActive"
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-buttonActive focus:outline-none focus:ring-2 focus:ring-buttonActive/20 md:w-auto md:min-w-[160px]"
           value={selectedStatus}
           onChange={e => onStatusChange(e.target.value)}
           disabled={loading}
         >
-          <option value="all">Select Status</option>
+          <option value="all">All Status</option>
           <option value="scheduled">Scheduled</option>
           <option value="in-progress">In Progress</option>
           <option value="completed">Completed</option>
@@ -78,11 +78,11 @@ export default function CollectorScheduleFilters({
         </select>
       </div>
       <button
-        className="mt-3 w-full rounded-md bg-button px-4 py-2 text-base font-semibold text-white md:ml-auto md:mt-0 md:w-auto"
+        className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 md:w-auto"
         onClick={onResetFilters}
         disabled={loading}
       >
-        Reset Filter
+        Reset
       </button>
     </div>
   );

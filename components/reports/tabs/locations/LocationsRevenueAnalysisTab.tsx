@@ -113,8 +113,8 @@ type LocationsRevenueAnalysisTabProps = {
   onSelectionChange: (selectedIds: string[]) => void;
   onClearSelection: () => void;
   // Chart settings
-  chartGranularity: 'hourly' | 'minute';
-  onGranularityChange: (granularity: 'hourly' | 'minute') => void;
+  chartGranularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
+  onGranularityChange: (granularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly') => void;
   showGranularitySelector: boolean;
 };
 

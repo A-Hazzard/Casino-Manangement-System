@@ -15,8 +15,8 @@
 
 'use client';
 
-import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import AccountingDetails from '@/components/cabinetDetails/AccountingDetails';
+import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 
 type CabinetAccountingSectionProps = {
@@ -37,7 +37,11 @@ export default function CabinetAccountingSection({
       {/* Date Filters */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between min-w-0">
         <div className="min-w-0 flex-1 w-full">
-          <DashboardDateFilters hideAllTime={false} onCustomRangeGo={onRefresh} />
+          <DashboardDateFilters
+            hideAllTime={false}
+            onCustomRangeGo={onRefresh}
+            showQuarterly={true}
+          />
         </div>
       </div>
 

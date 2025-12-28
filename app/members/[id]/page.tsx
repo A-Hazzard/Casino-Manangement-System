@@ -104,7 +104,7 @@ function MemberDetailsPageContent() {
       const sessionsResponse = await axios.get(
         `/api/members/${memberId}/sessions?filter=${filter}&page=${
           currentPage + 1
-        }&limit=10`
+        }&limit=20`
       );
       const sessionsData = sessionsResponse.data;
 
@@ -183,13 +183,15 @@ function MemberDetailsPageContent() {
 
       const data = response.data;
 
+      // Check if export was successful
       if (!data.success) {
         throw new Error(data.error || 'Failed to export sessions');
       }
 
-      // Convert data to CSV
+      // Generate CSV format export
       if (format === 'csv') {
         const sessions = data.data.sessions;
+        // Show warning if no sessions to export
         if (sessions.length === 0) {
           toast.warning('No session data to export', {
             duration: 3000,
@@ -261,6 +263,7 @@ function MemberDetailsPageContent() {
         });
       }
     } catch (error) {
+      // Log error in development mode only
       if (process.env.NODE_ENV === 'development') {
         console.error('Export error:', error);
       }
@@ -276,6 +279,7 @@ function MemberDetailsPageContent() {
   // Render Helper Functions
   // ============================================================================
   const renderContent = () => {
+    // Show loading skeleton while fetching member data
     if (loading && !member) {
       return (
         <>
@@ -300,6 +304,7 @@ function MemberDetailsPageContent() {
       );
     }
 
+    // Show error message if member not found or error occurred
     if (error || !member) {
       return (
         <NotFoundError

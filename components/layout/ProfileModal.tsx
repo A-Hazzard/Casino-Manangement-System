@@ -65,6 +65,8 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
     handleSave,
     handlePasswordChange,
     passwordStrength,
+    validationErrors,
+    setValidationErrors,
   } = useProfileModal({ open, onClose });
 
   const handleInputChange = (
@@ -115,6 +117,8 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
                   }}
                   fileInputRef={fileInputRef}
                   onFileSelect={handleFileSelect}
+                  validationErrors={validationErrors}
+                  setValidationErrors={setValidationErrors}
                 />
 
                 <ProfileAssignments
@@ -146,6 +150,8 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
                   countries={countries}
                   countriesLoading={countriesLoading}
                   onInputChange={handleInputChange}
+                  validationErrors={validationErrors}
+                  setValidationErrors={setValidationErrors}
                 />
 
                     {isEditMode && (

@@ -13,6 +13,7 @@
 
 import type { dashboardData } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
+import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
 import {
   formatISODate,
   formatLocalDateTimeString,
@@ -131,6 +132,7 @@ export async function getMachineMetrics(
 
 /**
  * Fetches chart data for a single machine
+ * Uses deduplication to prevent duplicate requests
  *
  * @param machineId - The machine ID to fetch chart data for
  * @param timePeriod - The time period to fetch metrics for
@@ -146,9 +148,15 @@ export async function getMachineChartData(
   endDate?: Date | string,
   displayCurrency?: string,
   selectedLicencee?: string | null,
-  granularity?: 'hourly' | 'minute',
+  granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly',
   signal?: AbortSignal
-): Promise<dashboardData[]> {
+): Promise<{
+  data: dashboardData[];
+  dataSpan?: {
+    minDate: string;
+    maxDate: string;
+  };
+}> {
   try {
     // Build URL for machine chart API
     let url = `/api/machines/${machineId}/chart?timePeriod=${timePeriod}`;
@@ -189,27 +197,36 @@ export async function getMachineChartData(
       url += `&granularity=${granularity}`;
     }
 
-    const response = await axios.get<{
-      success: boolean;
-      data: Array<{
-        day: string;
-        time?: string;
-        drop: number;
-        totalCancelledCredits: number;
-        gross: number;
-      }>;
-    }>(url, {
-      headers: {
-        'Cache-Control': 'no-cache',
-      },
-      signal,
+    // Use deduplication to prevent duplicate requests for the same machine chart
+    const response = await deduplicateRequest(url, async abortSignal => {
+      return axios.get<{
+        success: boolean;
+        data: Array<{
+          day: string;
+          time?: string;
+          drop: number;
+          totalCancelledCredits: number;
+          gross: number;
+        }>;
+        dataSpan?: {
+          minDate: string;
+          maxDate: string;
+        };
+      }>(url, {
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+        signal: abortSignal || signal,
+      });
     });
 
-    if (!response.data.success || !Array.isArray(response.data.data)) {
-      return [];
+    const responseData = response.data;
+
+    if (!responseData.success || !Array.isArray(responseData.data)) {
+      return { data: [] };
     }
 
-    const rawData = response.data.data;
+    const rawData = responseData.data;
 
     // Check if API response contains minute-level data (time format is "HH:MM" with non-zero minutes)
     const hasMinuteLevelData = rawData.some(item => {
@@ -249,26 +266,26 @@ export async function getMachineChartData(
         useHourly = false;
         useMinute = false;
       } else {
-      const defaultGranularity = getDefaultChartGranularity(
-        timePeriod,
-        startDate,
-        endDate
-      );
+        const defaultGranularity = getDefaultChartGranularity(
+          timePeriod,
+          startDate,
+          endDate
+        );
 
-      // Use the default granularity, but also check if API returned minute-level data
-      if (defaultGranularity === 'minute') {
-        useMinute = true;
-        useHourly = false;
-      } else {
-        // Default is hourly, but check if API returned minute data
-        if (hasMinuteLevelData) {
-          // API has minute data, but we default to hourly grouping
-          // User can manually select minute granularity to see minute-level data
-          useMinute = false;
-          useHourly = true;
+        // Use the default granularity, but also check if API returned minute-level data
+        if (defaultGranularity === 'minute') {
+          useMinute = true;
+          useHourly = false;
         } else {
-          useMinute = false;
-          useHourly = true;
+          // Default is hourly, but check if API returned minute data
+          if (hasMinuteLevelData) {
+            // API has minute data, but we default to hourly grouping
+            // User can manually select minute granularity to see minute-level data
+            useMinute = false;
+            useHourly = true;
+          } else {
+            useMinute = false;
+            useHourly = true;
           }
         }
       }
@@ -293,7 +310,8 @@ export async function getMachineChartData(
         }
       }
 
-      // xValue: use time for hourly/minute charts, day for daily charts
+      // xValue: use time for hourly/minute charts, day for daily/weekly/monthly charts
+      // For monthly charts, day is already in format "YYYY-MM-01" (first of month)
       const xValue = useHourly || useMinute ? time : day;
 
       return {
@@ -340,7 +358,7 @@ export async function getMachineChartData(
     });
 
     // Fill missing intervals
-    return fillMissingIntervals(
+    const filledData = fillMissingIntervals(
       sortedData,
       timePeriod,
       startDate instanceof Date
@@ -356,6 +374,11 @@ export async function getMachineChartData(
       useHourly,
       useMinute
     );
+
+    return {
+      data: filledData,
+      dataSpan: responseData.dataSpan,
+    };
   } catch (error: unknown) {
     // Handle cancelled/aborted requests first - these are expected when user changes filters
     if (
@@ -365,18 +388,18 @@ export async function getMachineChartData(
       (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED')
     ) {
       // Silently handle cancelled requests - this is expected when user changes filters
-      return [];
+      return { data: [] };
     }
 
     // Check for axios.isCancel() to properly detect cancelled requests
     const axios = (await import('axios')).default;
     if (axios.isCancel && axios.isCancel(error)) {
       // Silently handle cancelled requests
-      return [];
+      return { data: [] };
     }
 
     console.error('Failed to fetch machine chart data:', error);
-    return [];
+    return { data: [] };
   }
 }
 

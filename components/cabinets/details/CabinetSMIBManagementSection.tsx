@@ -119,6 +119,7 @@ export default function CabinetSMIBManagementSection({
   onResetFormData,
   onSaveAll,
 }: CabinetSMIBManagementSectionProps) {
+  // Don't render if user doesn't have access to SMIB configuration
   if (!canAccessSmibConfig) return null;
 
   return (
@@ -135,15 +136,16 @@ export default function CabinetSMIBManagementSection({
             SMIB Configuration
           </h2>
           
-          {/* Connection Status */}
+          {/* Connection Status - Show only after config has been fetched */}
           {hasConfigBeenFetched && (
             <>
+              {/* Show loading skeleton while fetching config */}
               {isManuallyFetching ? (
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-20 animate-pulse rounded bg-gray-200"></div>
                 </div>
               ) : (
-            <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
                   <div className={`h-2.5 w-2.5 rounded-full ${
                     isConnectedToMqtt
                       ? 'animate-pulse bg-green-500'
@@ -153,13 +155,13 @@ export default function CabinetSMIBManagementSection({
                     isConnectedToMqtt ? 'text-green-600' : 'text-red-600'
                   }`}>
                     {isConnectedToMqtt ? 'SMIB Online' : 'SMIB Offline'}
-              </span>
-            </div>
+                  </span>
+                </div>
               )}
             </>
           )}
           
-          {/* Edit Mode Buttons */}
+          {/* Edit Mode Buttons - Show only when section is expanded and in edit mode */}
           {smibConfigExpanded && isEditMode && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -188,6 +190,7 @@ export default function CabinetSMIBManagementSection({
         </div>
 
         {/* Right Side: Get Config Button or Toggle */}
+        {/* Show toggle chevron if config has been fetched, otherwise show Get Config button */}
         <div className="flex w-full items-center justify-end sm:w-auto">
           {hasConfigBeenFetched ? (
             <motion.div

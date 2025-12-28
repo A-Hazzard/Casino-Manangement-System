@@ -210,8 +210,6 @@ export default function LocationPage() {
     selectedLicencee,
     activeMetricsFilter: activeMetricsFilter || null,
     customDateRange,
-    dateFilterInitialized,
-    filtersInitialized,
     activeView,
   });
 
@@ -579,6 +577,7 @@ export default function LocationPage() {
             refreshing={cabinetsData.refreshing}
             showGranularitySelector={chartDataHook.showGranularitySelector}
             chartGranularity={chartDataHook.chartGranularity}
+            availableGranularityOptions={chartDataHook.availableGranularityOptions}
             activeMetricsFilter={activeMetricsFilter}
             searchTerm={cabinetsData.searchTerm}
             selectedStatus={cabinetsData.selectedStatus}

@@ -39,7 +39,7 @@ const CollectorDesktopUI: React.FC<CollectorScheduleDesktopUIProps> = ({
   loadingCollectorSchedules,
 }) => {
   return (
-    <div className="hidden rounded-lg bg-white shadow-md md:block">
+    <div className="hidden space-y-4 md:block">
       <CollectorScheduleFilters
         selectedLocation={selectedLocation}
         onLocationChange={onLocationChange}
@@ -52,11 +52,13 @@ const CollectorDesktopUI: React.FC<CollectorScheduleDesktopUIProps> = ({
         onResetFilters={onResetFilters}
         loading={loadingCollectorSchedules}
       />
-      <div className="mt-4 space-y-4 px-4 pb-4">
-        <CollectorScheduleTable
-          data={collectorSchedules}
-          loading={loadingCollectorSchedules}
-        />
+      <div className="rounded-lg bg-white shadow-md">
+        <div className="px-4 py-4">
+          <CollectorScheduleTable
+            data={collectorSchedules}
+            loading={loadingCollectorSchedules}
+          />
+        </div>
       </div>
     </div>
   );

@@ -7,12 +7,12 @@
  */
 
 import {
-  fetchMembershipStats,
-  type MembershipStats,
+    fetchMembershipStats,
+    type MembershipStats,
 } from '@/lib/helpers/membershipStats';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export type UseLocationMembershipStatsReturn = {
   membershipStats: MembershipStats | null;
@@ -63,53 +63,38 @@ export function useLocationMembershipStats(
     await fetchMembershipStatsData();
   }, [fetchMembershipStatsData]);
 
-  // Track if this is the initial mount to prevent aborting on first load
-  const isInitialMountRef = useRef(true);
-  const prevDepsRef = useRef<string>('');
-
   // Load membership stats on mount and when selectedLicencee, locationId, or machineTypeFilter changes
   useEffect(() => {
-    // Create a dependency key to detect actual changes
-    const depsKey = `${selectedLicencee || 'all'}-${locationId || 'none'}-${machineTypeFilter || 'none'}`;
-    
-    // On initial mount, don't abort anything (there's nothing to abort)
-    // Only abort if dependencies actually changed (not on initial mount)
-    const isInitialMount = isInitialMountRef.current;
-    const depsChanged = prevDepsRef.current !== depsKey;
-    
-    if (isInitialMount) {
-      isInitialMountRef.current = false;
-      prevDepsRef.current = depsKey;
-    } else if (!depsChanged) {
-      // Dependencies haven't changed, skip fetching
-      return;
-    } else {
-      // Dependencies changed, update the ref
-      prevDepsRef.current = depsKey;
-    }
-
     const loadMembershipStats = async () => {
       setMembershipStatsLoading(true);
       setError(null);
 
-      const result = await makeRequest(async signal => {
-        const licensee = selectedLicencee || 'all';
-        const stats = await fetchMembershipStats(
-          licensee,
-          locationId,
-          machineTypeFilter,
-          signal
-        );
-        return stats;
-      }, 'membership-stats');
+      try {
+        const result = await makeRequest(async signal => {
+          const licensee = selectedLicencee || 'all';
+          const stats = await fetchMembershipStats(
+            licensee,
+            locationId,
+            machineTypeFilter,
+            signal
+          );
+          return stats;
+        }, 'membership-stats');
 
-      // Only update state if request wasn't aborted
-      if (result !== null) {
-        setMembershipStats(result);
+        // Only update state if request wasn't aborted
+        if (result !== null) {
+          setMembershipStats(result);
+          setMembershipStatsLoading(false);
+        }
+      } catch (error) {
+        // Handle any errors
+        const errorMessage =
+          error instanceof Error ? error.message : 'Failed to fetch membership stats';
+        setError(errorMessage);
+        setMembershipStats({
+          membershipCount: 0,
+        });
         setMembershipStatsLoading(false);
-      } else {
-        // If aborted, keep loading state active so skeleton continues to show
-        // The next request will complete and update the loading state
       }
     };
 

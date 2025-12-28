@@ -95,34 +95,34 @@ export default function MetersTable({
           <table className="w-full min-w-[800px]">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Machine ID
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Location
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Meters In
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Money Won
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Jackpot
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Bill In
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Voucher Out
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Hand Paid Cancelled Credits
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Games Played
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Date
                 </th>
               </tr>
@@ -132,7 +132,7 @@ export default function MetersTable({
                 const formatted = formatMachineIdForDisplay(item);
                 return (
                   <tr key={index} className="hover:bg-gray-50">
-                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <td className="whitespace-nowrap px-4 py-3 text-left">
                       {formatted.hasLink && formatted.machineDocumentId ? (
                         <button
                           onClick={() => {
@@ -140,7 +140,7 @@ export default function MetersTable({
                               `/cabinets/${formatted.machineDocumentId}`
                             );
                           }}
-                          className="group mx-auto flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                          className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
                         >
                           <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
                             {formatted.mainIdentifier} (
@@ -175,59 +175,59 @@ export default function MetersTable({
                         </div>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <td className="whitespace-nowrap px-4 py-3 text-left">
                       <div className="text-sm font-medium text-gray-900">
                         {item.location}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <td className="whitespace-nowrap px-4 py-3 text-left">
                       <div
                         className={`text-sm ${getFinancialColorClass(item.metersIn)}`}
                       >
                         {item.metersIn.toLocaleString()}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <td className="whitespace-nowrap px-4 py-3 text-left">
                       <div
                         className={`text-sm ${getFinancialColorClass(item.metersOut)}`}
                       >
                         {item.metersOut.toLocaleString()}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <td className="whitespace-nowrap px-4 py-3 text-left">
                       <div
                         className={`text-sm ${getFinancialColorClass(item.jackpot)}`}
                       >
                         {item.jackpot.toLocaleString()}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <td className="whitespace-nowrap px-4 py-3 text-left">
                       <div
                         className={`text-sm ${getFinancialColorClass(item.billIn)}`}
                       >
                         {item.billIn.toLocaleString()}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <td className="whitespace-nowrap px-4 py-3 text-left">
                       <div
                         className={`text-sm ${getFinancialColorClass(item.voucherOut)}`}
                       >
                         {item.voucherOut.toLocaleString()}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <td className="whitespace-nowrap px-4 py-3 text-left">
                       <div
                         className={`text-sm ${getFinancialColorClass(item.attPaidCredits)}`}
                       >
                         {item.attPaidCredits.toLocaleString()}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <td className="whitespace-nowrap px-4 py-3 text-left">
                       <div className="text-sm text-gray-900">
                         {item.gamesPlayed.toLocaleString()}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <td className="whitespace-nowrap px-4 py-3 text-left">
                       <div className="text-sm text-gray-900">
                         {new Date(item.createdAt).toLocaleDateString()}
                       </div>

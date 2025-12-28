@@ -417,7 +417,7 @@ export const NewCabinetModal = ({
 
   // Desktop View
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-[101]">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50 opacity-0"
@@ -426,7 +426,7 @@ export const NewCabinetModal = ({
       <div className="fixed inset-0 flex items-start justify-center overflow-y-auto p-2 md:items-center md:p-4">
         <div
           ref={modalRef}
-          className="flex flex-col h-full w-full md:max-h-[90vh] md:max-w-2xl md:rounded-md bg-container shadow-lg md:shadow-lg"
+          className="flex flex-col w-full md:max-h-[90vh] md:max-w-2xl md:rounded-md bg-container shadow-lg md:shadow-lg"
           style={{ opacity: 0, transform: 'translateY(-20px)' }}
         >
           {/* Header */}
@@ -789,25 +789,25 @@ export const NewCabinetModal = ({
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Footer */}
-            <div className="mt-8 flex justify-center space-x-3 flex-shrink-0 pb-4">
-              <Button
-                onClick={handleSubmit}
-                className="bg-button px-8 text-container hover:bg-button/90"
-                disabled={loading}
-              >
-                {loading ? 'Creating...' : 'Save'}
-              </Button>
-              <Button
-                onClick={handleClose}
-                variant="outline"
-                disabled={loading}
-                className="px-8"
-              >
-                Cancel
-              </Button>
-            </div>
+          {/* Footer */}
+          <div className="flex justify-center space-x-3 flex-shrink-0 border-t border-border pt-4 px-4 md:px-6 pb-4">
+            <Button
+              onClick={handleSubmit}
+              className="bg-button px-8 text-container hover:bg-button/90"
+              disabled={loading}
+            >
+              {loading ? 'Creating...' : 'Save'}
+            </Button>
+            <Button
+              onClick={handleClose}
+              variant="outline"
+              disabled={loading}
+              className="px-8"
+            >
+              Cancel
+            </Button>
           </div>
         </div>
       </div>

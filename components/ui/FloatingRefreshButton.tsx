@@ -14,7 +14,7 @@
  * @param refreshing - Whether refresh is in progress
  * @param onRefresh - Callback when refresh is clicked
  */
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
 
 type FloatingRefreshButtonProps = {
@@ -30,6 +30,7 @@ export const FloatingRefreshButton = ({
 }: FloatingRefreshButtonProps) => {
   return (
     <AnimatePresence>
+      {/* Only render button if show prop is true */}
       {show && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8, y: 20 }}

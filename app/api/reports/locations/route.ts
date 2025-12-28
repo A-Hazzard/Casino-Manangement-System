@@ -63,6 +63,7 @@ export async function GET(req: NextRequest) {
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;
     let displayCurrency: CurrencyCode = currencyParam || 'USD';
     const searchTerm = searchParams.get('search')?.trim() || '';
+    const machineTypeFilter = searchParams.get('machineTypeFilter');
     const specificLocations =
       searchParams.get('locations')?.split(',').filter(Boolean) || [];
     const showAllLocations = searchParams.get('showAllLocations') === 'true';
@@ -169,6 +170,71 @@ export async function GET(req: NextRequest) {
         locationMatchStage.$and.push(searchFilter);
       } else {
         locationMatchStage.$and = [searchFilter];
+      }
+    }
+
+    // Apply machine type filters (SMIB, No SMIB, Local Server, Membership, Coordinates)
+    if (machineTypeFilter) {
+      const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
+      const filterConditions: Record<string, unknown>[] = [];
+
+      filters.forEach(filter => {
+        switch (filter.trim()) {
+          case 'LocalServersOnly':
+            filterConditions.push({ isLocalServer: true });
+            break;
+          case 'SMIBLocationsOnly':
+            filterConditions.push({ noSMIBLocation: { $ne: true } });
+            break;
+          case 'NoSMIBLocation':
+            filterConditions.push({ noSMIBLocation: true });
+            break;
+          case 'MembershipOnly':
+            filterConditions.push({
+              $or: [{ membershipEnabled: true }, { enableMembership: true }],
+            });
+            break;
+          case 'MissingCoordinates':
+            filterConditions.push({
+              $or: [
+                { geoCoords: { $exists: false } },
+                { geoCoords: null },
+                { 'geoCoords.latitude': { $exists: false } },
+                { 'geoCoords.latitude': null },
+                {
+                  $and: [
+                    { 'geoCoords.longitude': { $exists: false } },
+                    { 'geoCoords.longitude': null },
+                    { 'geoCoords.longtitude': { $exists: false } },
+                    { 'geoCoords.longtitude': null },
+                  ],
+                },
+              ],
+            });
+            break;
+          case 'HasCoordinates':
+            filterConditions.push({
+              $and: [
+                { 'geoCoords.latitude': { $exists: true, $ne: null } },
+                {
+                  $or: [
+                    { 'geoCoords.longitude': { $exists: true, $ne: null } },
+                    { 'geoCoords.longtitude': { $exists: true, $ne: null } },
+                  ],
+                },
+              ],
+            });
+            break;
+        }
+      });
+
+      if (filterConditions.length > 0) {
+        const machineFilter = { $and: filterConditions };
+        if (locationMatchStage.$and && Array.isArray(locationMatchStage.$and)) {
+          locationMatchStage.$and.push(machineFilter);
+        } else {
+          locationMatchStage.$and = [machineFilter];
+        }
       }
     }
 

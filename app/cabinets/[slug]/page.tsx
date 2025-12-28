@@ -15,6 +15,8 @@ import { CabinetDetailsLoadingState } from '@/components/ui/skeletons/CabinetDet
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
+import { FloatingActionButtons } from '@/components/ui/FloatingActionButtons';
+import { useDashboardScroll } from '@/lib/hooks/data';
 
 // Custom Hooks
 import { useCabinetPageData } from '@/lib/hooks/cabinets/useCabinetPageData';
@@ -32,6 +34,7 @@ function CabinetDetailPageContent() {
   const hook = useCabinetPageData();
   const { user } = useUserStore();
   const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
+  const { showFloatingRefresh } = useDashboardScroll();
 
   const {
     cabinet,
@@ -101,7 +104,7 @@ function CabinetDetailPageContent() {
         hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
       >
-        <div className="flex flex-col gap-6 w-full max-w-full min-w-0">
+        <div className="flex w-full min-w-0 max-w-full flex-col gap-6">
           {/* Header & Summary */}
           <CabinetSummarySection
             cabinet={cabinet}
@@ -147,10 +150,15 @@ function CabinetDetailPageContent() {
               
               // Handle machine control commands
               if (cmd) {
-                const success = await smibHook.saveConfiguration(cabinet._id, cmd);
+                const success = await smibHook.saveConfiguration(
+                  cabinet._id,
+                  cmd
+                );
                 if (success) {
                   const { toast } = await import('sonner');
-                  toast.success(`Machine control command "${cmd}" sent successfully!`);
+                  toast.success(
+                    `Machine control command "${cmd}" sent successfully!`
+                  );
                 }
                 return;
               }
@@ -161,13 +169,16 @@ function CabinetDetailPageContent() {
               if (editingSection === 'network') {
                 try {
                   const networkData = {
-                    netStaSSID: smibHook.formData.networkSSID !== 'No Value Provided'
+                    netStaSSID:
+                      smibHook.formData.networkSSID !== 'No Value Provided'
                       ? smibHook.formData.networkSSID
                       : undefined,
-                    netStaPwd: smibHook.formData.networkPassword !== 'No Value Provided'
+                    netStaPwd:
+                      smibHook.formData.networkPassword !== 'No Value Provided'
                       ? smibHook.formData.networkPassword
                       : undefined,
-                    netStaChan: smibHook.formData.networkChannel !== 'No Value Provided'
+                    netStaChan:
+                      smibHook.formData.networkChannel !== 'No Value Provided'
                       ? parseInt(smibHook.formData.networkChannel)
                       : undefined,
                   };
@@ -223,6 +234,8 @@ function CabinetDetailPageContent() {
             activeMetricsFilter={activeMetricsFilter || null}
             chartGranularity={chartGranularity}
             onGranularityChange={setChartGranularity}
+            showGranularitySelector={hook.showGranularitySelector}
+            availableGranularityOptions={hook.availableGranularityOptions}
           />
 
           {/* Accounting & Tabs */}
@@ -234,6 +247,13 @@ function CabinetDetailPageContent() {
           />
               </div>
       </PageLayout>
+
+      {/* Floating Action Buttons */}
+      <FloatingActionButtons
+        showRefresh={showFloatingRefresh}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+      />
     </>
   );
 }

@@ -61,7 +61,7 @@ export function useCabinetsPageData() {
     paginatedCabinets, transformCabinet,
   } = useCabinetSorting({
     filteredCabinets: searchTerm.trim() ? filteredCabinets : accumulatedCabinets,
-    itemsPerPage: 10,
+    itemsPerPage: 20,
     useBatchPagination: true,
   });
 

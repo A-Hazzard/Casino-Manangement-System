@@ -106,10 +106,10 @@ export default function AdministrationLicenseesSection({
   if (isLicenseesLoading) {
     return (
       <>
-        <div className="block xl:hidden">
+        <div className="block lg:hidden">
           <LicenseeCardSkeleton />
         </div>
-        <div className="hidden xl:block">
+        <div className="hidden lg:block">
           <LicenseeTableSkeleton />
         </div>
       </>
@@ -128,7 +128,7 @@ export default function AdministrationLicenseesSection({
           or updating licensees.
         </p>
       )}
-      <div className="block xl:hidden">
+      <div className="block lg:hidden">
         {filteredLicensees.length > 0 ? (
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
             {filteredLicensees.map(licensee => (
@@ -148,7 +148,7 @@ export default function AdministrationLicenseesSection({
           </p>
         )}
       </div>
-      <div className="hidden xl:block">
+      <div className="hidden lg:block">
         <LicenseeTable
           licensees={filteredLicensees}
           onEdit={handleOpenEditLicensee}

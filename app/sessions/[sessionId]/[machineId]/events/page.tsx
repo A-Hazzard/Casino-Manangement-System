@@ -86,7 +86,7 @@ function SessionEventsContent() {
       ? `${sessionInfo.memberFirstName} ${sessionInfo.memberLastName}`
       : sessionInfo?.memberId || 'Unknown Member';
 
-  // Only show full page skeleton on initial load (no sessionInfo and no events)
+  // Show full page skeleton only on initial load when no data exists
   const isInitialLoad = loading && !sessionInfo && !paginatedEvents.length;
 
   if (isInitialLoad) {
@@ -135,7 +135,7 @@ function SessionEventsContent() {
         />
       </div>
 
-      {/* Location Membership Settings Card */}
+      {/* Show settings skeleton while loading, or settings card if available */}
       {loadingSettings && !sessionInfo?.locationMembershipSettings ? (
         <div className="mb-6 rounded-lg border border-gray-200 bg-white shadow-sm">
           <div className="flex flex-row items-center justify-between border-b border-gray-200 p-4 pb-2">
@@ -153,7 +153,7 @@ function SessionEventsContent() {
             </div>
           </div>
         </div>
-      ) : sessionInfo?.locationMembershipSettings ? (
+      ) : sessionInfo?.locationMembershipSettings ? /* Show settings card if settings exist */ (
         <Card className="mb-6">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg">
@@ -167,9 +167,11 @@ function SessionEventsContent() {
               {isSettingsExpanded ? <ChevronUp /> : <ChevronDown />}
             </Button>
           </CardHeader>
+          {/* Show settings details when expanded */}
           {isSettingsExpanded && (
             <CardContent>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {/* Show location limit if defined */}
                 {sessionInfo.locationMembershipSettings.locationLimit !==
                   undefined && (
                   <div className="flex flex-col">
@@ -302,8 +304,8 @@ function SessionEventsContent() {
 
       {/* Desktop Table View */}
       <div className="hidden lg:block">
+        {/* Show table skeleton while loading events */}
         {loading && paginatedEvents.length === 0 && sessionInfo ? (
-          // Table skeleton for desktop
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -394,6 +396,7 @@ function SessionEventsContent() {
                 ))}
               </TableBody>
             </Table>
+            {/* Show expanded event details if any events are expanded */}
             {paginatedEvents.some(event => expandedEvents.has(event._id)) && (
               <div className="border-t bg-gray-50 p-4">
                 {paginatedEvents
@@ -413,8 +416,8 @@ function SessionEventsContent() {
 
       {/* Mobile Card View */}
       <div className="space-y-4 lg:hidden">
+        {/* Show card skeleton while loading events on mobile */}
         {loading && paginatedEvents.length === 0 && sessionInfo ? (
-          // Card skeleton for mobile
           Array.from({ length: 5 }).map((_, i) => (
             <Card key={i} className="overflow-hidden">
               <div className="flex items-center justify-between p-4">
@@ -464,6 +467,7 @@ function SessionEventsContent() {
                   <ChevronDown />
                 )}
               </div>
+              {/* Show expanded event details when event is expanded */}
               {expandedEvents.has(event._id) && (
                 <CardContent className="border-t bg-gray-50 p-4">
                   <pre className="whitespace-pre-wrap text-xs">
@@ -476,6 +480,7 @@ function SessionEventsContent() {
         )}
       </div>
 
+      {/* Show pagination only if there are multiple pages */}
       {totalPages > 1 && (
         <div className="mt-8">
           <PaginationControls

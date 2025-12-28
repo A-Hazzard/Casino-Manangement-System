@@ -42,9 +42,6 @@ import { useEffect, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 export default function PcLayout(props: PcLayoutProps) {
-  // ============================================================================
-  // Hooks & State
-  // ============================================================================
   const router = useRouter();
   const [selectedMachine, setSelectedMachine] = useState<{
     machineId?: string;
@@ -65,9 +62,6 @@ export default function PcLayout(props: PcLayoutProps) {
   const licenseeName =
     getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
 
-  // ============================================================================
-  // Helper Components
-  // ============================================================================
   const NoDataMessage = ({ message }: { message: string }) => (
     <div className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md">
       <div className="mb-2 text-lg text-gray-500">No Data Available</div>
@@ -75,20 +69,19 @@ export default function PcLayout(props: PcLayoutProps) {
     </div>
   );
 
-  // ============================================================================
-  // State - Location Aggregates
-  // ============================================================================
-  // State for aggregated location data
   const [locationAggregates, setLocationAggregates] = useState<
     Record<string, unknown>[]
   >([]);
   const [aggLoading, setAggLoading] = useState(true);
 
-  // Only fetch locationAggregation for MapPreview when needed
+  /**
+   * Fetches location aggregation data for the MapPreview component.
+   * Only fetches when activeMetricsFilter is available and updates when filters change.
+   */
   useEffect(() => {
     let aborted = false;
     const fetchAgg = async () => {
-      // Only fetch if we have a valid activeMetricsFilter - no fallback
+      // Don't fetch if there's no active metrics filter
       if (!activeMetricsFilter) {
         if (process.env.NODE_ENV === 'development') {
           console.warn(
@@ -100,11 +93,10 @@ export default function PcLayout(props: PcLayoutProps) {
         return;
       }
 
-      // Create unique key for this fetch (used for deduplication)
       const params = new URLSearchParams();
       params.append('timePeriod', activeMetricsFilter);
 
-      // Add custom date range if applicable
+      // Add custom date range parameters if using Custom filter
       if (activeMetricsFilter === 'Custom' && customDateRange) {
         if (customDateRange.startDate && customDateRange.endDate) {
           const sd =
@@ -120,7 +112,7 @@ export default function PcLayout(props: PcLayoutProps) {
         }
       }
 
-      // Add licensee filter if applicable
+      // Add licensee filter if a specific licensee is selected
       if (selectedLicencee && selectedLicencee !== 'all') {
         params.append('licencee', selectedLicencee);
       }
@@ -129,15 +121,15 @@ export default function PcLayout(props: PcLayoutProps) {
 
       setAggLoading(true);
       try {
-        // Use deduplication to prevent duplicate requests
         const json = await deduplicateRequest(requestKey, async signal => {
           const res = await axios.get(requestKey, { signal });
           return res.data;
         });
 
+        // Only update state if request wasn't aborted
         if (!aborted) setLocationAggregates(json.data || []);
       } catch (error) {
-        // Ignore abort errors (request was cancelled)
+        // Ignore abort errors (request was cancelled), but clear data on other errors
         if (!aborted && !axios.isCancel(error)) {
           setLocationAggregates([]);
         }
@@ -153,9 +145,6 @@ export default function PcLayout(props: PcLayoutProps) {
     };
   }, [activeMetricsFilter, customDateRange, selectedLicencee]);
 
-  // ============================================================================
-  // Render - Desktop Dashboard Layout
-  // ============================================================================
   return (
     <div className="hidden md:block">
       <div className="grid grid-cols-5 gap-6">
@@ -181,6 +170,7 @@ export default function PcLayout(props: PcLayoutProps) {
                     : 'hover:bg-buttonActive/90'
                 }`}
                 onClick={() => {
+                  // Only trigger refresh if not already loading or refreshing
                   if (!(props.loadingChartData || props.refreshing))
                     props.onRefresh();
                 }}
@@ -204,12 +194,13 @@ export default function PcLayout(props: PcLayoutProps) {
             title="Total for all Locations and Machines"
           />
 
-          {/* Trend Chart Section */}
+          {/* Chart Section */}
+          {/* Show skeleton while loading, otherwise show chart with optional granularity selector */}
           {props.loadingChartData ? (
             <DashboardChartSkeleton />
           ) : (
             <div className="rounded-lg bg-container p-6 shadow-md">
-              {/* Granularity Selector - Only show for Today/Yesterday/Custom */}
+              {/* Granularity Selector - Only shown for Today/Yesterday/Custom periods */}
               {props.showGranularitySelector && (
                 <div className="mb-3 flex items-center justify-end gap-2">
                   <label
@@ -257,6 +248,7 @@ export default function PcLayout(props: PcLayoutProps) {
               )}
             </div>
 
+            {/* Show skeleton while loading location aggregates, otherwise show map */}
             {aggLoading ? (
               <div className="relative w-full rounded-lg bg-container p-4 shadow-md">
                 <div className="skeleton-bg mt-2 h-48 w-full animate-pulse rounded-lg"></div>
@@ -271,6 +263,7 @@ export default function PcLayout(props: PcLayoutProps) {
           </div>
 
           {/* Top Performing Section */}
+          {/* Show skeleton if loading or data hasn't been fetched yet */}
           <div className="rounded-lg bg-container p-6 shadow-md">
             {props.loadingTopPerforming ||
             (!props.hasTopPerformingFetched &&
@@ -304,6 +297,7 @@ export default function PcLayout(props: PcLayoutProps) {
                           : ''
                       }`}
                       onClick={() => {
+                        // Don't switch tabs if already loading data for other tab
                         if (
                           props.activeTab !== 'locations' &&
                           props.loadingTopPerforming
@@ -326,6 +320,7 @@ export default function PcLayout(props: PcLayoutProps) {
                           : ''
                       }`}
                       onClick={() => {
+                        // Don't switch tabs if already loading data for other tab
                         if (
                           props.activeTab !== 'Cabinets' &&
                           props.loadingTopPerforming
@@ -338,7 +333,8 @@ export default function PcLayout(props: PcLayoutProps) {
                     </button>
                   </div>
 
-                  {/* Content area */}
+                  {/* Content Area */}
+                  {/* Show skeleton if loading or not fetched yet, empty message if no data, otherwise show top performing list */}
                   <div className="mb-0 rounded-lg rounded-tl-none rounded-tr-3xl bg-container p-6 shadow-sm">
                     {props.loadingTopPerforming ||
                     (!props.hasTopPerformingFetched &&
@@ -353,7 +349,7 @@ export default function PcLayout(props: PcLayoutProps) {
                         <ul className="flex-1 space-y-2 xl:min-w-0">
                           {props.topPerformingData.map(
                             (item: TopPerformingItem, index: number) => {
-                              // Debug: Log location data to verify locationId is present
+                              // Log location data in development mode for debugging
                               if (
                                 props.activeTab === 'locations' &&
                                 process.env.NODE_ENV === 'development'
@@ -374,6 +370,7 @@ export default function PcLayout(props: PcLayoutProps) {
                                     className="h-4 w-4 flex-shrink-0 rounded-full"
                                     style={{ backgroundColor: item.color }}
                                   ></div>
+                                  {/* Show machine preview link if viewing cabinets tab and item has machineId */}
                                   {props.activeTab === 'Cabinets' &&
                                   item.machineId ? (
                                     <>
@@ -383,6 +380,7 @@ export default function PcLayout(props: PcLayoutProps) {
                                       <button
                                         onClick={e => {
                                           e.stopPropagation();
+                                          // Open machine preview modal when link is clicked
                                           if (item.machineId) {
                                             setSelectedMachine({
                                               machineId: item.machineId,
@@ -401,12 +399,14 @@ export default function PcLayout(props: PcLayoutProps) {
                                         <ExternalLink className="h-3.5 w-3.5 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
                                       </button>
                                     </>
-                                  ) : props.activeTab === 'locations' &&
+                                  ) : /* Show location preview link if viewing locations tab and item has locationId */
+                                  props.activeTab === 'locations' &&
                                     item.locationId ? (
                                     <>
                                       <button
                                         onClick={e => {
                                           e.stopPropagation();
+                                          // Open location preview modal when link is clicked
                                           if (item.locationId) {
                                             setSelectedLocation({
                                               locationId: item.locationId,
@@ -479,7 +479,7 @@ export default function PcLayout(props: PcLayoutProps) {
         </div>
       </div>
 
-      {/* Machine Preview Modal */}
+      {/* Machine Preview Modal - Show only when machine is selected and not a location */}
       {selectedMachine &&
         selectedMachine.machineId &&
         !selectedMachine.isLocation && (
@@ -502,7 +502,7 @@ export default function PcLayout(props: PcLayoutProps) {
           />
         )}
 
-      {/* Location Preview Modal */}
+      {/* Location Preview Modal - Show only when location is selected */}
       {selectedLocation && selectedLocation.locationId && (
         <TopPerformingLocationModal
           open={isLocationModalOpen}

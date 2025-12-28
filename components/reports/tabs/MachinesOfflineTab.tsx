@@ -75,10 +75,10 @@ const SortableHeader = ({
 
   return (
     <th
-      className="cursor-pointer select-none p-3 text-center font-medium text-gray-700 transition-colors hover:bg-gray-100"
+      className="cursor-pointer select-none p-3 text-left font-medium text-gray-700 transition-colors hover:bg-gray-100"
       onClick={() => onSort(sortKey)}
     >
-      <div className="flex items-center justify-center gap-1">
+      <div className="flex items-center justify-start gap-1">
         {children}
         {isActive ? (
           currentSort.direction === 'asc' ? (
@@ -437,12 +437,12 @@ export const MachinesOfflineTab = ({
                         key={machine.machineId}
                         className="border-b hover:bg-gray-50"
                       >
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-left">
                           <button
                             onClick={() => {
                               router.push(`/cabinets/${machine.machineId}`);
                             }}
-                            className="group mx-auto flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                            className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
                           >
                             <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
                               {formatMachineDisplayNameWithBold({
@@ -455,15 +455,15 @@ export const MachinesOfflineTab = ({
                             <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
                           </button>
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-left">
                           {machine.gameTitle || <span className="text-red-600">(game name not provided)</span>}
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-left">
                           <button
                             onClick={() => {
                               router.push(`/locations/${machine.locationId}`);
                             }}
-                            className="group mx-auto flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
+                            className="group flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
                           >
                             <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
                               {machine.locationName || 'N/A'}
@@ -471,10 +471,10 @@ export const MachinesOfflineTab = ({
                             <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
                           </button>
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-left">
                           {lastOnlineDate ? lastOnlineDate.toLocaleString() : 'Never'}
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-left">
                           <Badge
                             variant="outline"
                             className={
@@ -496,12 +496,12 @@ export const MachinesOfflineTab = ({
                                   : 'Just now'}
                           </Badge>
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-left">
                           <span className={getFinancialColorClass(machine.coinIn)}>
                             ${machine.coinIn.toLocaleString()}
                           </span>
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-left">
                           <span className={getFinancialColorClass(machine.netWin)}>
                             ${machine.netWin.toLocaleString()}
                           </span>

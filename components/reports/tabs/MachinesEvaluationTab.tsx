@@ -359,7 +359,7 @@ export const MachinesEvaluationTab = ({
                     key={machine.machineId}
                     className="border-b hover:bg-gray-50"
                   >
-                    <td className="p-3">
+                    <td className="p-3 text-left">
                       <button
                         onClick={() =>
                           router.push(`/locations/${machine.locationId}`)
@@ -372,7 +372,7 @@ export const MachinesEvaluationTab = ({
                         <ExternalLink className="h-3 w-3" />
                       </button>
                     </td>
-                    <td className="p-3">
+                    <td className="p-3 text-left">
                       <button
                         onClick={() =>
                           router.push(`/cabinets/${machine.machineId}`)
@@ -389,22 +389,22 @@ export const MachinesEvaluationTab = ({
                         <ExternalLink className="h-3 w-3 text-blue-600" />
                       </button>
                     </td>
-                    <td className="p-3 text-sm">
+                    <td className="p-3 text-left text-sm">
                       <span className={getFinancialColorClass(machine.coinIn)}>
                         ${machine.coinIn.toLocaleString()}
                       </span>
                     </td>
-                    <td className="p-3 text-sm">
+                    <td className="p-3 text-left text-sm">
                       <span className={getFinancialColorClass(machine.netWin)}>
                         ${machine.netWin.toLocaleString()}
                       </span>
                     </td>
-                    <td className="p-3 text-sm">
+                    <td className="p-3 text-left text-sm">
                       <span className={getFinancialColorClass(machine.gross)}>
                         ${machine.gross.toLocaleString()}
                       </span>
                     </td>
-                    <td className="p-3 text-sm font-medium">
+                    <td className="p-3 text-left text-sm font-medium">
                       {((machine.actualHold ?? 0) * 100).toFixed(1)}%
                     </td>
                   </tr>
@@ -495,7 +495,7 @@ export const MachinesEvaluationTab = ({
                     key={machine.machineId}
                     className="border-b hover:bg-gray-50"
                   >
-                    <td className="p-3">
+                    <td className="p-3 text-left">
                       <button
                         onClick={() =>
                           router.push(`/locations/${machine.locationId}`)
@@ -508,7 +508,7 @@ export const MachinesEvaluationTab = ({
                         <ExternalLink className="h-3 w-3" />
                       </button>
                     </td>
-                    <td className="p-3">
+                    <td className="p-3 text-left">
                       <button
                         onClick={() =>
                           router.push(`/cabinets/${machine.machineId}`)
@@ -525,22 +525,22 @@ export const MachinesEvaluationTab = ({
                         <ExternalLink className="h-3 w-3 text-blue-600" />
                       </button>
                     </td>
-                    <td className="p-3 text-sm">
+                    <td className="p-3 text-left text-sm">
                       <span className={getFinancialColorClass(machine.coinIn)}>
                         ${machine.coinIn.toLocaleString()}
                       </span>
                     </td>
-                    <td className="p-3 text-sm">
+                    <td className="p-3 text-left text-sm">
                       <span className={getFinancialColorClass(machine.netWin)}>
                         ${machine.netWin.toLocaleString()}
                       </span>
                     </td>
-                    <td className="p-3 text-sm">
+                    <td className="p-3 text-left text-sm">
                       <span className={getFinancialColorClass(machine.gross)}>
                         ${machine.gross.toLocaleString()}
                       </span>
                     </td>
-                    <td className="p-3 text-sm font-medium">
+                    <td className="p-3 text-left text-sm font-medium">
                       {((machine.actualHold ?? 0) * 100).toFixed(1)}%
                     </td>
                   </tr>

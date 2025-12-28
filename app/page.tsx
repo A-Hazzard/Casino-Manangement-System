@@ -22,11 +22,11 @@ import PcLayout from '@/components/layout/PcLayout';
 import PageErrorBoundary from '@/components/ui/errors/PageErrorBoundary';
 import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 
-import { FloatingRefreshButton } from '@/components/ui/FloatingRefreshButton';
+import { FloatingActionButtons } from '@/components/ui/FloatingActionButtons';
 import { PieChartLabelRenderer } from '@/components/ui/PieChartLabelRenderer';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { TimePeriod } from '@/shared/types/common';
+import { TimePeriod, type ChartGranularity } from '@/shared/types/common';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -66,29 +66,21 @@ export default function Home() {
 
 /**
  * Dashboard Content Component
- * Client-side component that manages dashboard state and data fetching
- * Uses Zustand store for state management and responsive layouts
+ *
+ * Client-side component that manages dashboard state and data fetching.
+ * Uses Zustand store for state management and responsive layouts.
  */
 function DashboardContent() {
-  // ============================================================================
-  // Hooks & Context
-  // ============================================================================
   const { handleApiCallWithRetry } = useGlobalErrorHandler();
   const { displayCurrency } = useCurrency();
   const user = useUserStore(state => state.user);
 
-  // AbortController for metrics and top performing queries
   const makeMetricsRequest = useAbortableRequest();
   const makeTopPerformingRequest = useAbortableRequest();
 
-  // Create a stable reference to prevent infinite loops
   const stableHandleApiCallWithRetry = useCallback(handleApiCallWithRetry, [
     handleApiCallWithRetry,
   ]);
-
-  // ============================================================================
-  // State Management (Zustand Store)
-  // ============================================================================
   const {
     loadingChartData,
     setLoadingChartData,
@@ -112,25 +104,12 @@ function DashboardContent() {
     setPieChartSortIsOpen,
   } = useDashBoardStore();
 
-  // ============================================================================
-  // Refs
-  // ============================================================================
-  // To compare new totals with previous ones.
   const prevTotals = useRef<DashboardTotals | null>(null);
-  // Track previous fetch parameters to prevent duplicate API calls
   const prevFetchParams = useRef<string>('');
-  // Track if we've done an initial fetch to distinguish between "no data loaded" and "loaded but empty"
   const hasInitialFetchRef = useRef(false);
-  // Track if top-performing data has been fetched
   const hasTopPerformingFetchedRef = useRef(false);
-  // Track previous top performing fetch key to prevent duplicates
   const prevTopPerformingKeyRef = useRef<string>('');
-  // Track if we've started a fetch to distinguish between initial state and loading state
   const fetchInProgressRef = useRef(false);
-
-  // ============================================================================
-  // Custom Hooks
-  // ============================================================================
   const {
     activeMetricsFilter,
     customDateRange,
@@ -138,19 +117,19 @@ function DashboardContent() {
     setShowDatePicker,
   } = useDashboardFilters({ selectedLicencee });
 
-  // ============================================================================
-  // State - Chart Granularity
-  // ============================================================================
-  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
+  const [chartGranularity, setChartGranularity] = useState<ChartGranularity>(
     () =>
       getDefaultChartGranularity(
         activeMetricsFilter || 'Today',
         customDateRange?.startDate,
         customDateRange?.endDate
-      )
+      ) as ChartGranularity
   );
 
-  // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
+  /**
+   * Determines whether to show the granularity selector.
+   * Shown for Today/Yesterday periods, or Custom periods spanning ≤ 1 gaming day.
+   */
   const showGranularitySelector = useMemo(() => {
     if (
       activeMetricsFilter === 'Today' ||
@@ -167,7 +146,7 @@ function DashboardContent() {
       try {
         const range = getGamingDayRangeForPeriod(
           'Custom',
-          8, // Default gaming day start hour
+          8,
           customDateRange.startDate instanceof Date
             ? customDateRange.startDate
             : new Date(customDateRange.startDate),
@@ -178,17 +157,21 @@ function DashboardContent() {
         const hoursDiff =
           (range.rangeEnd.getTime() - range.rangeStart.getTime()) /
           (1000 * 60 * 60);
-        return hoursDiff <= 24; // Show toggle only if ≤ 24 hours
+        // Only show granularity selector if the custom range is ≤ 24 hours
+        return hoursDiff <= 24;
       } catch (error) {
         console.error('Error calculating gaming day range:', error);
         return false;
       }
     }
+    // Don't show granularity selector for other filter types
     return false;
   }, [activeMetricsFilter, customDateRange]);
 
-  // Recalculate default granularity when date filters change
-  // For "Today", also recalculate periodically as time passes
+  /**
+   * Recalculates default chart granularity when date filters change.
+   * For "Today" filter, recalculates periodically as time passes.
+   */
   useEffect(() => {
     if (!activeMetricsFilter) return undefined;
 
@@ -201,13 +184,10 @@ function DashboardContent() {
       setChartGranularity(defaultGranularity);
     };
 
-    // Update immediately
     updateGranularity();
 
-    // For "Today" filter, set up interval to recalculate every minute
-    // This ensures granularity switches from 'minute' to 'hourly' when 5 hours pass
     if (activeMetricsFilter === 'Today') {
-      const interval = setInterval(updateGranularity, 60000); // Every minute
+      const interval = setInterval(updateGranularity, 60000);
       return () => clearInterval(interval);
     }
 
@@ -223,23 +203,16 @@ function DashboardContent() {
   const { refreshing, handleRefresh } = useDashboardRefresh({
     selectedLicencee,
     activeMetricsFilter,
-    activePieChartFilter: activeMetricsFilter, // Sync with activeMetricsFilter
+    activePieChartFilter: activeMetricsFilter,
     customDateRange,
     activeTab,
-    displayCurrency, // ✅ ADDED: Pass currency to refresh hook
+    displayCurrency,
   });
 
-  // Initialize selected licensee on component mount - removed to prevent infinite loop
-  // The selectedLicencee is already initialized in the store
-
-  // ============================================================================
-  // Computed Values
-  // ============================================================================
   const isAdminUser = Boolean(
     user?.roles?.some(role => role === 'admin' || role === 'developer')
   );
 
-  // Create a stable default date range to avoid creating new objects on every render
   const defaultDateRange = useMemo(
     () => ({
       startDate: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -248,64 +221,47 @@ function DashboardContent() {
     []
   );
 
-  // Create a stable string representation of the date range for dependency comparison
-  // This prevents re-renders when object reference changes but dates are the same
+  /**
+   * Creates a stable string representation of the date range for dependency comparison.
+   * Prevents re-renders when object reference changes but dates are the same.
+   */
   const dateRangeKey = useMemo(() => {
     const range = customDateRange || defaultDateRange;
     if (!range?.startDate || !range?.endDate) return '';
     return `${range.startDate.getTime()}-${range.endDate.getTime()}`;
   }, [customDateRange, defaultDateRange]);
 
-  // Memoize the effective date range - only recalculate when dates actually change
   const effectiveDateRange = useMemo(() => {
     return customDateRange || defaultDateRange;
   }, [customDateRange, defaultDateRange]);
 
-  // ============================================================================
-  // Effects - Data Fetching
-  // ============================================================================
-
-  // Fetch metrics and locations data when filters change
+  /**
+   * Fetches metrics data (totals, chart) and gaming locations when filters change.
+   * Handles loading states and prevents duplicate API calls using fetch key tracking.
+   */
   useEffect(() => {
-    // Skip if no active filter
     if (!activeMetricsFilter) {
       return;
     }
 
-    // Create a unique key for this fetch to prevent duplicate calls
-    // Use dateRangeKey (string) for comparison, but effectiveDateRange is in dependencies
-    // Include chartGranularity to trigger refetch when it changes
-    // NOTE: activeTab is NOT included - charts/cards should NOT refetch on tab change
     const currentDateRangeKey = dateRangeKey;
     const fetchKey = `${activeMetricsFilter}-${selectedLicencee}-${currentDateRangeKey}-${displayCurrency}-${isAdminUser}-${chartGranularity}`;
 
-    // Set loading to true IMMEDIATELY when filters change to show skeleton
-    // This must happen BEFORE the early return check to ensure skeleton shows even if fetch is skipped
-    // Note: We DON'T clear totals/chartData here - let the Chart component handle showing skeleton
-    // while loadingChartData is true. This prevents the "No Metrics Data" flash that happens
-    // when totals is set before chartData, or when we clear data unnecessarily.
     setLoadingChartData(true);
     fetchInProgressRef.current = true;
 
-    // Skip if this exact fetch was already triggered and completed
-    // Note: We still set loading above so skeleton shows, but we won't refetch
+    // If we've already fetched data with these exact parameters, skip the fetch
     if (prevFetchParams.current === fetchKey) {
-      // If we already have data for this fetch key, clear loading immediately
-      // Otherwise, keep loading true until data arrives (handled by useEffect below)
-      // Use a small timeout to check after state has propagated
       setTimeout(() => {
-        const currentTotals = useDashBoardStore.getState().totals;
-        const currentChartData = useDashBoardStore.getState().chartData;
-        if (currentTotals && Array.isArray(currentChartData)) {
-          useDashBoardStore.getState().setLoadingChartData(false);
-        }
+        // Always clear loading state if we've already fetched with these parameters
+        // Chart component will check totals to determine if skeleton should be shown
+        useDashBoardStore.getState().setLoadingChartData(false);
       }, 0);
       return;
     }
 
     const fetchMetrics = async () => {
       try {
-        // Wrap API calls with error handling
         await stableHandleApiCallWithRetry(
           () =>
             loadGamingLocations(setGamingLocations, selectedLicencee, {
@@ -314,7 +270,6 @@ function DashboardContent() {
           'Dashboard Locations'
         );
 
-        // Fetch metrics data (charts and cards) - NOT top performing data
         const metricsResult = await makeMetricsRequest(async signal => {
           await fetchMetricsData(
             activeMetricsFilter as TimePeriod,
@@ -330,31 +285,21 @@ function DashboardContent() {
           );
         });
 
-        // If request was aborted, don't update state
+        // If the request was aborted (e.g., user changed filters quickly), don't update state
         if (metricsResult === null) {
           fetchInProgressRef.current = false;
           setLoadingChartData(false);
           return;
         }
 
-        // Only update previous fetch params AFTER successful fetch
-        // This ensures that if filters change while fetch is in progress, we can fetch again
         prevFetchParams.current = fetchKey;
-        hasInitialFetchRef.current = true; // Mark that we've done at least one fetch
-        fetchInProgressRef.current = false; // Mark fetch as complete
-
-        // The useEffect below was causing a bug where loading state would be cleared immediately
-        // because it saw stale data from the previous fetch.
-        // Now we explicitly clear loading state here, after we know the new data has been fetched.
+        hasInitialFetchRef.current = true;
+        fetchInProgressRef.current = false;
         setLoadingChartData(false);
-
-        // Store timeout ID for cleanup if needed (though this is in an async function, so cleanup is handled by component unmount)
       } catch (error) {
-        // On error, reset fetch key so we can retry
         prevFetchParams.current = '';
-        hasInitialFetchRef.current = true; // Still mark as fetched even on error
-        fetchInProgressRef.current = false; // Mark fetch as complete (even on error)
-        // Set loading to false on error immediately
+        hasInitialFetchRef.current = true;
+        fetchInProgressRef.current = false;
         setLoadingChartData(false);
         setLoadingTopPerforming(false);
         throw error;
@@ -364,7 +309,6 @@ function DashboardContent() {
     fetchMetrics();
   }, [
     activeMetricsFilter,
-    // activeTab removed - charts/cards should NOT refetch on tab change
     selectedLicencee,
     dateRangeKey,
     effectiveDateRange,
@@ -372,7 +316,6 @@ function DashboardContent() {
     isAdminUser,
     stableHandleApiCallWithRetry,
     makeMetricsRequest,
-    // makeTopPerformingRequest removed - top performing has separate useEffect
     chartGranularity,
     setGamingLocations,
     setTotals,
@@ -381,13 +324,14 @@ function DashboardContent() {
     setActiveFilters,
     setShowDatePicker,
     setLoadingChartData,
-    // setLoadingTopPerforming removed - top performing has separate useEffect
-    // setTopPerformingData removed - top performing has separate useEffect
   ]);
 
-  // Separate useEffect for top performing data - refetches when tab OR filters change
+  /**
+   * Fetches top performing data when tab or filters change.
+   * Separate from metrics data to allow independent loading states.
+   */
   useEffect(() => {
-    // Skip if no active filter
+    // Don't fetch if there's no active metrics filter selected
     if (!activeMetricsFilter) {
       return;
     }
@@ -395,7 +339,7 @@ function DashboardContent() {
     const effectiveTab = activeTab || 'Cabinets';
     const topPerformingKey = `top-performing-${effectiveTab}-${activeMetricsFilter}-${selectedLicencee}-${dateRangeKey}-${displayCurrency}`;
 
-    // Skip if this exact fetch was already triggered and completed
+    // If we've already fetched top performing data with these exact parameters, skip the fetch
     if (prevTopPerformingKeyRef.current === topPerformingKey) {
       return;
     }
@@ -438,8 +382,12 @@ function DashboardContent() {
     setLoadingTopPerforming,
   ]);
 
-  // Update previous totals reference when new data arrives
+  /**
+   * Updates previous totals reference when new data arrives.
+   * Used to detect when totals have actually changed.
+   */
   useEffect(() => {
+    // Only update prevTotals if we have new totals and they're different from previous
     if (
       totals &&
       (!prevTotals.current ||
@@ -451,26 +399,19 @@ function DashboardContent() {
     }
   }, [totals]);
 
-  // ============================================================================
-  // Event Handlers & Computed Functions
-  // ============================================================================
-  // Render function for pie chart labels
+  /**
+   * Custom renderer for pie chart labels.
+   * Wraps the PieChartLabelRenderer component.
+   */
   const renderCustomizedLabel = (props: CustomizedLabelProps) => {
     return <PieChartLabelRenderer props={props} />;
   };
 
-  // ============================================================================
-  // Early Returns
-  // ============================================================================
-  // Show "No Licensee Assigned" message for non-admin users without licensees
-  const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
-  if (showNoLicenseeMessage) {
+  // If user has no licensee assigned, show the "No Licensee Assigned" message
+  if (shouldShowNoLicenseeMessage(user)) {
     return <NoLicenseeAssigned />;
   }
 
-  // ============================================================================
-  // Render
-  // ============================================================================
   return (
     <PageLayout
       headerProps={{
@@ -484,8 +425,7 @@ function DashboardContent() {
       mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
       showToaster={true}
     >
-      {/* <MaintenanceBanner /> */}
-      {/* Mobile Layout Section: Responsive layout for small screens */}
+      {/* Mobile Layout - Show mobile layout on screens smaller than md breakpoint */}
       <div className="block md:hidden">
         <MobileLayout
           activeFilters={activeFilters}
@@ -523,7 +463,7 @@ function DashboardContent() {
         />
       </div>
 
-      {/* Desktop/Tablet Layout Section: md+ */}
+      {/* Desktop/Tablet Layout - Show desktop layout on md breakpoint and larger */}
       <div className="hidden md:block">
         <PcLayout
           activeFilters={activeFilters}
@@ -560,9 +500,9 @@ function DashboardContent() {
         />
       </div>
 
-      {/* Floating Action Button Section: Scroll-triggered refresh button */}
-      <FloatingRefreshButton
-        show={showFloatingRefresh}
+      {/* Floating Action Buttons */}
+      <FloatingActionButtons
+        showRefresh={showFloatingRefresh}
         refreshing={refreshing}
         onRefresh={handleRefresh}
       />

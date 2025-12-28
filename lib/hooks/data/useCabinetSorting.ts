@@ -46,7 +46,7 @@ type UseCabinetSortingReturn = {
 
 export const useCabinetSorting = ({
   filteredCabinets,
-  itemsPerPage = 10,
+  itemsPerPage = 20,
   useBatchPagination = true,
 }: UseCabinetSortingProps): UseCabinetSortingReturn => {
   // Sort state management
@@ -101,11 +101,12 @@ export const useCabinetSorting = ({
     return sorted;
   }, [filteredCabinets, sortOption, sortOrder]);
 
-  // Paginate sorted cabinets - slice from the current batch (50 items)
+  // Paginate sorted cabinets - slice from the current batch (100 items)
   const paginatedCabinets = useMemo(() => {
     if (useBatchPagination) {
-      // Batch mode: 50-item batches, 5 pages per batch (used by cabinets page)
-      const positionInBatch = (currentPage % 5) * itemsPerPage;
+      // Batch mode: 100-item batches, 5 pages per batch (used by cabinets page)
+      const pagesPerBatch = 5; // 100 items / 20 items per page = 5 pages
+      const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
       const startIndex = positionInBatch;
       const endIndex = startIndex + itemsPerPage;
       const paginated = sortedCabinets.slice(startIndex, endIndex);
@@ -143,10 +144,11 @@ export const useCabinetSorting = ({
   // Calculate total pages
   const totalPages = useMemo(() => {
     if (useBatchPagination) {
-      // Batched mode: each batch can show up to 5 pages (50 items / 10 per page)
+      // Batched mode: each batch can show up to 5 pages (100 items / 20 per page)
       // If we have fewer than a full batch, clamp to the actual number of pages
+      const pagesPerBatch = 5; // 100 items / 20 items per page = 5 pages
       const pagesInCurrentBatch = Math.min(
-        5,
+        pagesPerBatch,
         Math.ceil(sortedCabinets.length / itemsPerPage)
       );
       const total = pagesInCurrentBatch > 0 ? pagesInCurrentBatch : 1;

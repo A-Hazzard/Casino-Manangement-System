@@ -27,8 +27,12 @@ export default function UnauthorizedPage() {
   const router = useRouter();
   const { user } = useUserStore();
 
+  /**
+   * Auto-redirects user to their default page after 5 seconds.
+   * Redirect path is determined by user's roles.
+   */
   useEffect(() => {
-    // Auto-redirect after 5 seconds based on user role
+    // Redirect after 5 seconds based on user role
     const timer = setTimeout(() => {
       const redirectPath = getDefaultRedirectPathFromRoles(user?.roles || []);
       router.push(redirectPath);

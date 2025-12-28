@@ -15,29 +15,28 @@
 
 'use client';
 
-import CabinetGrid from '@/components/locationDetails/CabinetGrid';
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
-import FinancialMetricsCards from '@/components/ui/FinancialMetricsCards';
-import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
-import Chart from '@/components/ui/dashboard/Chart';
+import CabinetGrid from '@/components/locationDetails/CabinetGrid';
+import LocationChartSection from '@/components/locations/sections/LocationChartSection';
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import { CustomSelect } from '@/components/ui/custom-select';
 import NotFoundError from '@/components/ui/errors/NotFoundError';
 import UnauthorizedError from '@/components/ui/errors/UnauthorizedError';
+import FinancialMetricsCards from '@/components/ui/FinancialMetricsCards';
 import { Input } from '@/components/ui/input';
 import CabinetCardsSkeleton from '@/components/ui/locations/CabinetCardsSkeleton';
 import CabinetTableSkeleton from '@/components/ui/locations/CabinetTableSkeleton';
+import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
 import PaginationControls from '@/components/ui/PaginationControls';
-import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
-import type { ExtendedCabinetDetail } from '@/lib/types/pages';
-import type { GamingMachine as Cabinet } from '@/shared/types/entities';
-import type { TimePeriod } from '@/shared/types/common';
 import type { dashboardData } from '@/lib/types';
+import type { ExtendedCabinetDetail } from '@/lib/types/pages';
+import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import gsap from 'gsap';
 import { Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useEffect } from 'react';
-import gsap from 'gsap';
+import { useEffect, useRef } from 'react';
 
 type CabinetSortOption =
   | 'assetNumber'
@@ -77,7 +76,8 @@ type LocationCabinetsSectionProps = {
   refreshing: boolean;
   // Chart
   showGranularitySelector: boolean;
-  chartGranularity: 'hourly' | 'minute';
+  chartGranularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
+  availableGranularityOptions?: Array<'daily' | 'weekly' | 'monthly'>;
   activeMetricsFilter: string | null;
   // Filters
   searchTerm: string;
@@ -105,7 +105,9 @@ type LocationCabinetsSectionProps = {
   setSortOption: (option: CabinetSortOption) => void;
   setSortOrder: (order: 'asc' | 'desc') => void;
   setCurrentPage: (page: number) => void;
-  setChartGranularity: (granularity: 'hourly' | 'minute') => void;
+  setChartGranularity: (
+    granularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+  ) => void;
   setSelectedLocationId: (id: string) => void;
   // Handlers
   handleRefresh: () => Promise<void>;
@@ -131,6 +133,7 @@ export default function LocationCabinetsSection({
   refreshing,
   showGranularitySelector,
   chartGranularity,
+  availableGranularityOptions,
   activeMetricsFilter,
   searchTerm,
   selectedStatus,
@@ -154,7 +157,7 @@ export default function LocationCabinetsSection({
 }: LocationCabinetsSectionProps) {
   const router = useRouter();
   const tableRef = useRef<HTMLDivElement>(null);
-  const itemsPerPage = 10;
+  const itemsPerPage = 20;
 
   const showLocationSelect = locations.length > 1;
   const locationSelectOptions = locations.map(loc => ({
@@ -162,9 +165,10 @@ export default function LocationCabinetsSection({
     name: loc.name,
   }));
 
-  // ============================================================================
-  // Effects - Animation
-  // ============================================================================
+  /**
+   * Animates table rows and cards when cabinets data changes.
+   * Uses GSAP for smooth animations on data load/filter changes.
+   */
   useEffect(() => {
     if (!loading && !cabinetsLoading && filteredCabinets.length > 0) {
       const timeoutId = setTimeout(() => {
@@ -219,14 +223,16 @@ export default function LocationCabinetsSection({
     cabinetsLoading,
   ]);
 
-  // ============================================================================
-  // Event Handlers
-  // ============================================================================
+  /**
+   * Handles search input changes and provides visual feedback.
+   * Prevents updates while data is loading or refreshing.
+   */
   const handleSearchChange = (value: string) => {
+    // Don't process search if data is loading or refreshing
     if (loading || cabinetsLoading || refreshing) return;
     setSearchTerm(value);
 
-    // Highlight matched items when searching
+    // Highlight table when user is searching
     if (tableRef.current && value.trim() !== '') {
       gsap.to(tableRef.current, {
         backgroundColor: 'rgba(59, 130, 246, 0.05)',
@@ -241,11 +247,9 @@ export default function LocationCabinetsSection({
     }
   };
 
-  // ============================================================================
-  // Render
-  // ============================================================================
-  // Error Display
+  // Show error message if user is unauthorized or location not found
   if (error === 'UNAUTHORIZED' || error === 'Location not found') {
+    // Show unauthorized error if user doesn't have access
     return error === 'UNAUTHORIZED' ? (
       <UnauthorizedError
         title="Access Denied"
@@ -283,35 +287,17 @@ export default function LocationCabinetsSection({
       </div>
 
       {/* Chart Section: Location-specific metrics chart */}
-      <div className="mt-4">
-        {/* Granularity Selector - Only show for Today/Yesterday */}
-        {showGranularitySelector && (
-          <div className="mb-3 flex items-center justify-end gap-2">
-            <label
-              htmlFor="chart-granularity-location"
-              className="text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
-              Granularity:
-            </label>
-            <select
-              id="chart-granularity-location"
-              value={chartGranularity}
-              onChange={e =>
-                setChartGranularity(e.target.value as 'hourly' | 'minute')
-              }
-              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
-            >
-              <option value="minute">Minute</option>
-              <option value="hourly">Hourly</option>
-            </select>
-          </div>
-        )}
-        <Chart
-          loadingChartData={loadingChartData}
-          chartData={chartData}
-          activeMetricsFilter={activeMetricsFilter as TimePeriod}
-        />
-      </div>
+      <LocationChartSection
+        chartData={chartData}
+        loadingChartData={loadingChartData}
+        activeMetricsFilter={activeMetricsFilter}
+        chartGranularity={chartGranularity}
+        onGranularityChange={setChartGranularity}
+        showGranularitySelector={showGranularitySelector}
+        availableGranularityOptions={availableGranularityOptions}
+        financialTotals={financialTotals}
+        loading={loading || cabinetsLoading}
+      />
 
       {/* Date Filters and Machine Status Section: Responsive layout for filters and status */}
       <div className="mt-4">
@@ -327,7 +313,7 @@ export default function LocationCabinetsSection({
           </div>
           <div className="ml-4 w-auto flex-shrink-0">
             <MachineStatusWidget
-              isLoading={machineStatsLoading || membershipStatsLoading}
+              isLoading={machineStatsLoading || membershipStatsLoading || machineStats === null || machineStats === undefined}
               onlineCount={machineStats?.onlineMachines || 0}
               offlineCount={machineStats?.offlineMachines || 0}
               totalCount={machineStats?.totalMachines}
@@ -350,7 +336,7 @@ export default function LocationCabinetsSection({
           </div>
           <div className="w-full">
             <MachineStatusWidget
-              isLoading={machineStatsLoading || membershipStatsLoading}
+              isLoading={machineStatsLoading || membershipStatsLoading || machineStats === null || machineStats === undefined}
               onlineCount={machineStats?.onlineMachines || 0}
               offlineCount={machineStats?.offlineMachines || 0}
               totalCount={machineStats?.totalMachines}
@@ -599,12 +585,14 @@ export default function LocationCabinetsSection({
               <CabinetCardsSkeleton />
             </div>
           </>
-        ) : filteredCabinets.length === 0 ? (
+        ) : /* Show empty state if no cabinets match filters */ filteredCabinets.length ===
+          0 ? (
           <div className="mt-10 text-center text-gray-500">
             No cabinets found
             {debouncedSearchTerm ? ' matching your search' : ''}.
           </div>
-        ) : filteredCabinets == null ? (
+        ) : /* Show loading message if cabinets data is null */ filteredCabinets ==
+          null ? (
           <div className="mt-10 text-center text-gray-500">
             Loading cabinets...
           </div>
@@ -614,9 +602,7 @@ export default function LocationCabinetsSection({
               <CabinetGrid
                 filteredCabinets={
                   filteredCabinets
-                    .filter(
-                      cab => getSerialNumberIdentifier(cab) !== 'N/A'
-                    )
+                    .filter(cab => getSerialNumberIdentifier(cab) !== 'N/A')
                     .map(cab => ({
                       ...cab,
                       isOnline: cab.online,
@@ -634,6 +620,7 @@ export default function LocationCabinetsSection({
               />
             </div>
 
+            {/* Show pagination only if there are multiple pages */}
             {!loading && effectiveTotalPages > 1 && (
               <PaginationControls
                 currentPage={currentPage}
@@ -647,4 +634,3 @@ export default function LocationCabinetsSection({
     </>
   );
 }
-

@@ -24,12 +24,15 @@ export default function NotFound() {
   // Add client-side initialization
   const [isMounted, setIsMounted] = useState(false);
 
-  // Set mounted state on client-side only
+  /**
+   * Sets mounted state to prevent hydration mismatches.
+   * Client-side only to ensure consistent rendering.
+   */
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // If not mounted yet (server-side), render a minimal version
+  // Render minimal version during server-side rendering to prevent hydration issues
   if (!isMounted) {
     return (
       <div className="flex min-h-screen items-center justify-center">
