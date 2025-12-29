@@ -17,7 +17,7 @@
  * Licensee name to ObjectId mapping.
  * This mapping is used to convert licensee names to ObjectIds for API calls.
  */
-export const LICENSEE_MAPPING: Record<string, string> = {
+const LICENSEE_MAPPING: Record<string, string> = {
   TTG: '9a5db2cb29ffd2d962fd1d91',
   Cabana: 'c03b094083226f216b3fc39c',
   Barbados: '732b094083226f216b3fc11a',

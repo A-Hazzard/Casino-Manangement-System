@@ -9,8 +9,6 @@
  * - Geolocation fallbacks
  */
 
-import axios from 'axios';
-
 // ============================================================================
 // Constants
 // ============================================================================
@@ -84,43 +82,6 @@ const REGION_CENTERS: Record<string, [number, number]> = {
 
   // Default fallback - Trinidad center (most common)
   DEFAULT: [10.6599, -61.5199], // Trinidad center as global fallback
-};
-
-/**
- * Get user's country code from IP address using a free geolocation service
- */
-export const getUserCountryCode = async (): Promise<string> => {
-  try {
-    // Use ipapi.co for free IP geolocation (no API key required)
-    const response = await axios.get('https://ipapi.co/json/');
-    const data = response.data;
-    return data.country_code || 'DEFAULT';
-  } catch (error) {
-    console.warn('Failed to get user location, using default:', error);
-    return 'DEFAULT';
-  }
-};
-
-/**
- * Get default map center coordinates based on user's country
- */
-export const getDefaultMapCenter = async (): Promise<[number, number]> => {
-  try {
-    const countryCode = await getUserCountryCode();
-    const center = REGION_CENTERS[countryCode] || REGION_CENTERS.DEFAULT;
-    return center;
-  } catch (error) {
-    console.warn('Failed to get default map center, using US center:', error);
-    return REGION_CENTERS.DEFAULT;
-  }
-};
-
-/**
- * Get default map center coordinates based on user's country (synchronous version)
- * This can be used when you want to avoid async operations
- */
-export const getDefaultMapCenterSync = (): [number, number] => {
-  return REGION_CENTERS.DEFAULT;
 };
 
 /**

@@ -1,8 +1,5 @@
-import { FlatCompat } from '@eslint/eslintrc';
-
-const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-});
+import tseslint from '@typescript-eslint/eslint-plugin';
+import tsparser from '@typescript-eslint/parser';
 
 const eslintConfig = [
   // Ignore patterns for build and script folders
@@ -17,16 +14,25 @@ const eslintConfig = [
       'build/**',
     ],
   },
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  // Configuration for TypeScript and JavaScript files
   {
+    files: ['**/*.{js,mjs,cjs,ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parser: tsparser,
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+    },
     rules: {
-      // Prefer const assertions and proper typing
-      'prefer-const': 'error',
-
-      // Allow all console methods
-      'no-console': 'off',
-
-      // Catch unused variables
+      // Basic rules to prevent major issues
+      'no-unused-vars': 'off', // Let TypeScript handle this
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -34,6 +40,8 @@ const eslintConfig = [
           varsIgnorePattern: '^_',
         },
       ],
+      'prefer-const': 'error',
+      'no-console': 'off',
     },
   },
 ];

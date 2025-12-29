@@ -4,120 +4,122 @@
 
 - [Overview](#overview)
 - [Documentation Structure](#documentation-structure)
-- [Core API Documentation](#core-api-documentation)
-- [Authentication & Authorization](#authentication--authorization)
-- [Data Models](#data-models)
-- [Error Handling](#error-handling)
-- [Performance Guidelines](#performance-guidelines)
-- [Security Standards](#security-standards)
-- [Testing Requirements](#testing-requirements)
-- [Deployment Guidelines](#deployment-guidelines)
+- [API Categories](#api-categories)
+- [Quick Start](#quick-start)
+- [Security & Authentication](#security--authentication)
+- [Common Patterns](#common-patterns)
+- [Development Guidelines](#development-guidelines)
 
 ## Overview
 
-This directory contains comprehensive documentation for all backend API routes in the Evolution One CMS system. The documentation is organized by functionality and provides detailed information about endpoints, request/response formats, and usage patterns.
+This directory contains comprehensive documentation for all backend API routes in the Evolution One CMS system. The documentation has been restructured into logical categories for improved navigation and maintainability.
 
-**Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 28th, 2025  
-**Version:** 2.3.0
+**Author:** Aaron Hazzard - Senior Software Engineer
+**Last Updated:** December 29, 2025
+**Version:** 2.5.0 - Documentation Synchronization
 
 ## Documentation Structure
 
-### Core API Documentation
+### 📁 Directory Organization
 
-- **[API Overview](api-overview.md)** - Comprehensive overview of all API routes
-- **[Reports API](reports-api.md)** - Backend reporting and aggregation endpoints
-- **[Meters Report API](meters-report-api.md)** - Machine-level meter readings and performance data
-- **[Analytics API](analytics-api.md)** - Dashboard analytics and metrics endpoints
-- **[Collections API](collection-report.md)** - Collection reports and financial data management
-- **[Collection Report Details](collection-report-details.md)** - Detailed collection report implementation
-- **[Members API](members-api.md)** - Member management and session tracking
-- **[Sessions API](sessions-api.md)** - Gaming session management and analytics
-- **[Locations API](locations-api.md)** - Gaming location management
-- **[Machines API](machines-api.md)** - Machine/cabinet management
-- **[Cabinets API](cabinets-api.md)** - Cabinet details and SMIB configuration
-- **[Authentication API](auth-api.md)** - User authentication and security endpoints
-- **[Administration API](administration-api.md)** - User management and system administration
-- **[Operations API](operations-api.md)** - Operations management and metrics tracking
+```
+Documentation/backend/
+├── README.md                          # This overview file
+├── GUIDELINES.md                      # Backend development guidelines
+├── api-overview.md                    # API ecosystem overview
+├──
+├── core-apis/                         # Core business logic APIs
+│   ├── auth-api.md                    # Authentication & authorization
+│   ├── administration-api.md          # User & system administration
+│   └── system-config-api.md           # System configuration
+│
+├── business-apis/                     # Business domain APIs
+│   ├── locations-api.md               # Location management
+│   ├── cabinets-api.md                # Machine/cabinet management
+│   ├── machines-api.md                # Machine operations
+│   ├── members-api.md                 # Member management
+│   ├── collections-api.md             # Collection operations
+│   ├── collection-report.md           # Collection reporting
+│   ├── collection-report-details.md   # Report details implementation
+│   └── sessions-api.md                # Gaming sessions
+│
+├── analytics-apis/                    # Analytics & reporting
+│   ├── analytics-api.md               # General analytics
+│   ├── reports-api.md                 # Report generation
+│   ├── meters-report-api.md           # Meter-based reporting
+│   └── operations-api.md              # Operational analytics
+│
+├── specialized-apis/                  # Specialized functionality
+│   ├── sync-meters-api.md             # Meter synchronization
+│   └── locations-machines-api.md      # Location-machine relationships
+│
+├── calculation-systems/               # Business logic systems
+│   ├── bill-validator-system.md       # Bill validator calculations
+│   └── sas-gross-system.md            # SAS gross calculations
+│
+├── real-time-systems/                 # Real-time communication
+│   ├── mqtt-architecture.md           # MQTT system architecture
+│   ├── mqtt-implementation.md         # MQTT implementation details
+│   └── mqtt-protocols.md              # MQTT protocols & messaging
+│
+└── _archive/                          # Archived tracker files
+    ├── API_LOGGING_REFACTOR_TRACKER.md
+    └── DB_COLLECTION_REFACTOR_TRACKER.md
+```
 
-### MQTT & Real-Time Communication
+## API Categories
 
-- **[MQTT Architecture](mqtt-architecture.md)** - MQTT system architecture and design patterns
-- **[MQTT Implementation](mqtt-implementation.md)** - Detailed MQTT implementation with API endpoints
-- **[MQTT Protocols](mqtt-protocols.md)** - Protocol specifications and message formats
+### 🔐 Core APIs - Foundation Services
 
-### System Documentation
+Essential APIs that provide the foundation for the entire system:
 
-- **[Gaming Day Offset System](gaming-day-offset-system.md)** - Gaming day calculation and filtering
-- **[SAS GROSS Calculation](sas-gross-calculation-system.md)** - SAS metrics calculation
-- **[Bill Validator System](bill-validator-calculation-system.md)** - Bill validator data processing
+- **[Authentication API](core-apis/auth-api.md)** - User login, token management, security
+- **[Administration API](core-apis/administration-api.md)** - User management, roles, activity logs
+- **[System Config API](core-apis/system-config-api.md)** - System settings, licensee configuration
 
-### API Categories
+### 🏢 Business APIs - Domain Operations
 
-#### 1. Authentication & Security
+APIs that handle the core business logic and data management:
 
-- User login/logout
-- Token management
-- Password reset
-- Security features
+- **[Locations API](business-apis/locations-api.md)** - Gaming location management
+- **[Machines API](business-apis/machines-api.md)** - Machine/cabinet operations
+- **[Cabinets API](business-apis/cabinets-api.md)** - Cabinet details and SMIB configuration
+- **[Members API](business-apis/members-api.md)** - Member profiles and analytics
+- **[Collections API](business-apis/collections-api.md)** - Collection operations and management
+- **[Collection Report](business-apis/collection-report.md)** - Collection reporting system
+- **[Collection Details](business-apis/collection-report-details.md)** - Report implementation details
+- **[Sessions API](business-apis/sessions-api.md)** - Gaming session management
 
-#### 2. User Management & Administration
+### 📊 Analytics APIs - Reporting & Insights
 
-- User CRUD operations
-- Role-based access control
-- Activity logging
-- System administration
+APIs that provide data analysis, reporting, and business intelligence:
 
-#### 3. Member Management
+- **[Analytics API](analytics-apis/analytics-api.md)** - Dashboard metrics and KPIs
+- **[Reports API](analytics-apis/reports-api.md)** - Custom report generation
+- **[Meters Report API](analytics-apis/meters-report-api.md)** - Machine-level meter data
+- **[Operations API](analytics-apis/operations-api.md)** - Operational analytics and metrics
 
-- Member profiles
-- Session history
-- Gaming statistics
-- Member analytics
+### ⚙️ Specialized APIs - Advanced Features
 
-#### 4. Session Management
+APIs that handle specialized functionality and integrations:
 
-- Gaming sessions
-- Session events
-- Performance tracking
-- Real-time monitoring
+- **[Sync Meters API](specialized-apis/sync-meters-api.md)** - Meter data synchronization
+- **[Locations Machines API](specialized-apis/locations-machines-api.md)** - Location-machine relationships
 
-#### 5. Location & Machine Management
+### 🧮 Calculation Systems - Business Logic
 
-- Gaming locations
-- Machine configuration
-- Performance metrics
-- Geographic data
+Specialized systems that handle complex business calculations:
 
-#### 6. Analytics & Reporting
+- **[Bill Validator System](calculation-systems/bill-validator-system.md)** - Bill processing calculations
+- **[SAS Gross System](calculation-systems/sas-gross-system.md)** - SAS metrics calculations
 
-- Dashboard metrics and KPIs
-- Location aggregation and performance analysis
-- Machine-level meter readings and calculations
-- Trend analysis and data visualization
-- Comprehensive financial calculations with mathematical formulas
+### 📡 Real-Time Systems - Live Communication
 
-#### 7. Collections & Financial
+Systems that handle real-time communication and live updates:
 
-- Collection reports with SAS vs meters comparison
-- Meter data synchronization and validation
-- Financial reporting with variance analysis
-- Revenue sharing calculations
-- Collector management and tracking
-
-#### 8. System Configuration
-
-- Country and regional settings
-- Firmware management
-- Licensee information
-- Gaming location configuration
-
-#### 9. Operations & Metrics
-
-- Real-time metrics tracking
-- Performance monitoring
-- Scheduled operations
-- Machine movement management
+- **[MQTT Architecture](real-time-systems/mqtt-architecture.md)** - System architecture and design
+- **[MQTT Implementation](real-time-systems/mqtt-implementation.md)** - Implementation details and API endpoints
+- **[MQTT Protocols](real-time-systems/mqtt-protocols.md)** - Message protocols and specifications
 
 ## Quick Start
 
@@ -127,148 +129,100 @@ All API endpoints require JWT authentication via HTTP-only cookies:
 
 ```javascript
 // Login example
-const response = await axios.post(
-  '/api/auth/login',
-  {
-    emailAddress: 'user@example.com',
+const response = await fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include', // Important for cookies
+  body: JSON.stringify({
+    identifier: 'email@example.com', // or username
     password: 'password123',
-  },
-  {
-    withCredentials: true,
-  }
-);
+  }),
+});
 ```
 
 ### Common Response Format
 
+**Success Response:**
+
 ```json
 {
   "success": true,
-  "data": { ... },
-  "message": "Optional message"
+  "data": {
+    /* response data */
+  },
+  "message": "Optional success message"
 }
 ```
 
-### Error Handling
+**Error Response:**
 
 ```json
 {
   "success": false,
   "message": "Human-readable error message",
-  "error": "Technical error details"
+  "error": "Technical error details",
+  "code": "ERROR_CODE"
 }
 ```
 
-## API Endpoints Summary
-
-### Authentication
-
-- `POST /api/auth/login` - User authentication
-- `POST /api/auth/logout` - User logout
-- `GET /api/auth/token` - Token validation
-
-### Reports & Analytics
-
-- `GET /api/locationAggregation` - Location aggregation with financial metrics
-- `GET /api/reports/meters` - Machine-level meter readings
-- `GET /api/reports/machines` - Machine evaluation and performance reports
-- `GET /api/analytics/dashboard` - Dashboard metrics and KPIs
-- `POST /api/analytics/reports` - Generate custom reports
-- `GET /api/analytics/charts` - Chart data for visualizations
-
-### Members & Sessions
-
-- `GET /api/members` - List members with win/loss calculations
-- `GET /api/members/summary` - Member summary with financial data
-- `POST /api/members` - Create member
-- `GET /api/members/[id]` - Get member details
-- `GET /api/members/[id]/sessions` - Member session history
-- `GET /api/sessions` - List gaming sessions
-- `GET /api/sessions/[sessionId]/[machineId]/events` - Session events
-
-### Locations & Machines
-
-- `GET /api/locations` - List gaming locations
-- `POST /api/locations` - Create location
-- `GET /api/machines` - Get machine details with meter data
-- `POST /api/machines` - Create machine
-- `GET /api/machines/aggregation` - Aggregated machine data
-
-### Collections & Financial
-
-- `GET /api/collection-report` - Collection reports
-- `GET /api/collection-report/[reportId]` - Specific report details
-- `POST /api/admin/repair-sas-times` - Maintenance utility that recalculates SAS windows directly against the database; configured as a forced-dynamic Node.js route (no static caching).
-- `GET /api/collectionReport` - Collection report data
-- `GET /api/collections` - Collection management
-
-### Administration & System
-
-- `GET /api/users` - List users
-- `POST /api/users` - Create user
-- `GET /api/activity-logs` - Activity logs
-- `GET /api/licensees` - List licensees
-- `GET /api/collectors` - List collectors
-
-## Common Query Parameters
-
 ### Pagination
+
+Most list endpoints support pagination:
+
+```javascript
+const response = await fetch('/api/locations?page=1&limit=20');
+```
+
+## Security & Authentication
+
+### JWT Token Management
+
+- **Storage:** HTTP-only cookies (prevents XSS attacks)
+- **Expiration:** 48-hour token lifetime
+- **Refresh:** Automatic token refresh for active sessions
+- **Security:** Secure flag in production environments
+
+### Role-Based Access Control
+
+The system implements comprehensive RBAC:
+
+- **Developer:** Full system access
+- **Admin:** User and system administration
+- **Manager:** Licensee-level access and reporting
+- **Collector:** Collection operations and location access
+- **Location Admin:** Specific location management
+- **Technician:** Machine maintenance and configuration
+
+### Data Protection
+
+- **Input Validation:** Comprehensive request validation
+- **SQL Injection Prevention:** Parameterized queries
+- **XSS Protection:** Input sanitization and encoding
+- **CSRF Protection:** Token-based request validation
+
+## Common Patterns
+
+### Query Parameters
+
+#### Pagination
 
 - `page` (number) - Page number (default: 1)
 - `limit` (number) - Items per page (default: 10-50)
 
-### Filtering
+#### Filtering
 
-- `search` (string) - Text search
-- `sortBy` (string) - Sort field
-- `sortOrder` (string) - Sort direction (asc/desc)
-- `licensee` (string) - Filter by licensee
+- `search` (string) - Text search across relevant fields
+- `licensee` (string) - Filter by licensee ID
+- `sortBy` (string) - Sort field name
+- `sortOrder` (string) - Sort direction: 'asc' | 'desc'
 
-### Date Filtering
+#### Date Filtering
 
-- `startDate` (string) - Start date (ISO format)
-- `endDate` (string) - End date (ISO format)
-- `timePeriod` (string) - Predefined periods
+- `startDate` (string) - ISO 8601 date string
+- `endDate` (string) - ISO 8601 date string
+- `timePeriod` (string) - Predefined periods: 'today', 'yesterday', '7d', '30d', 'custom'
 
-## Security Features
-
-### Authentication
-
-- JWT tokens in HTTP-only cookies
-- 48-hour token expiration
-- Secure flag in production
-- Automatic token refresh
-
-### Authorization
-
-- Role-based access control (RBAC)
-- Resource-level permissions
-- Granular permission system
-
-### Data Protection
-
-- Input validation and sanitization
-- SQL injection prevention
-- XSS protection
-- CSRF protection
-
-## Performance Considerations
-
-### Database Optimization
-
-- Proper indexing on frequently queried fields
-- Aggregation pipelines for complex queries
-- Connection pooling
-- Query optimization
-
-### Caching Strategy
-
-- Redis caching for frequently accessed data
-- Browser caching for static resources
-- API response caching
-- Session caching
-
-## Error Codes
+### Error Codes
 
 | Status Code | Description           |
 | ----------- | --------------------- |
@@ -279,54 +233,118 @@ const response = await axios.post(
 | 403         | Forbidden             |
 | 404         | Not Found             |
 | 409         | Conflict              |
+| 422         | Unprocessable Entity  |
 | 500         | Internal Server Error |
+
+### Rate Limiting
+
+- **Authenticated Requests:** 1000 requests per hour per user
+- **Anonymous Requests:** 100 requests per hour per IP
+- **Headers:** Rate limit status included in response headers
 
 ## Development Guidelines
 
 ### API Design Principles
 
-- RESTful design patterns
-- Consistent naming conventions
-- Proper HTTP method usage
-- Standardized response formats
+1. **RESTful Design:** Follow REST conventions with proper HTTP methods
+2. **Consistent Naming:** Use kebab-case for endpoints, camelCase for fields
+3. **Versioning:** API versioning through URL paths when needed
+4. **Idempotency:** POST operations should be idempotent where possible
 
 ### Documentation Standards
 
-- Comprehensive endpoint documentation
-- Request/response examples
-- Error code documentation
-- Usage patterns and examples
+1. **Complete Coverage:** Every endpoint must be documented
+2. **Request/Response Examples:** Include realistic examples
+3. **Error Scenarios:** Document common error conditions
+4. **TypeScript Interfaces:** Define data models with TypeScript
+5. **Cross-References:** Link related APIs and frontend usage
 
-## MQTT Integration Overview
+### Performance Guidelines
 
-The system includes comprehensive MQTT integration for real-time SMIB device communication:
+1. **Database Optimization:**
+   - Use proper indexes on frequently queried fields
+   - Implement aggregation pipelines for complex queries
+   - Avoid N+1 query patterns
 
-- **Publish-Subscribe Model**: Uses MQTT pub/sub for device communication
-- **Server-Sent Events**: SSE for frontend live updates
-- **Callback Routing**: Message routing by relayId for targeted delivery
-- **Multi-Client Support**: Multiple clients can subscribe to same device
-- **Configuration Management**: Live SMIB configuration updates
-- **Machine Control**: Remote machine control commands (RESTART, LOCK, UNLOCK)
+2. **Caching Strategy:**
+   - Redis caching for expensive operations
+   - API response caching for static data
+   - Browser caching for public resources
 
-**Key Files:**
-- `app/api/lib/services/mqttService.ts` - Singleton MQTT service
-- `app/api/mqtt/config/subscribe/route.ts` - SSE endpoint
-- `app/api/mqtt/config/request/route.ts` - Config request endpoint
-- `app/api/mqtt/config/publish/route.ts` - Config publish endpoint
-- `app/api/cabinets/[cabinetId]/smib-config/route.ts` - SMIB config update
+3. **Query Optimization:**
+   - Use cursor-based pagination for large datasets
+   - Implement proper field projection
+   - Avoid deep population in list endpoints
+
+### Testing Requirements
+
+1. **Unit Tests:** All business logic functions
+2. **Integration Tests:** API endpoint testing
+3. **Load Tests:** Performance validation
+4. **Security Tests:** Authentication and authorization
+
+## API Endpoint Quick Reference
+
+### Core Operations
+
+- `POST /api/auth/login` - User authentication
+- `GET /api/users` - List users (admin)
+- `GET /api/locations` - List locations
+- `GET /api/machines` - List machines
+
+### Business Operations
+
+- `GET /api/members` - Member management
+- `GET /api/sessions` - Session tracking
+- `GET /api/collections` - Collection operations
+- `GET /api/collection-report` - Collection reports
+
+### Analytics & Reporting
+
+- `GET /api/analytics/dashboard` - Dashboard metrics
+- `GET /api/reports/meters` - Meter reports
+- `GET /api/analytics/charts` - Chart data
+
+### Real-Time Features
+
+- `GET /api/mqtt/config/subscribe` - SSE subscription
+- `POST /api/mqtt/config/publish` - Message publishing
+- `GET /api/cabinets/[id]/smib-config` - SMIB configuration
 
 ## Related Documentation
 
-- [Frontend Documentation](../frontend/) - Frontend page documentation
-- [Frontend MQTT Integration](../frontend/mqtt-integration.md) - Frontend SSE and MQTT usage
-- [Type Safety Rules](../typescript-type-safety-rules.md) - TypeScript guidelines
-- [Engineering Guidelines](../ENGINEERING_GUIDELINES.md) - Development standards
+### Frontend Integration
 
-## Support
+- **[Frontend Documentation](../frontend/)** - Complete frontend page documentation
+- **[Frontend MQTT](../frontend/mqtt-integration.md)** - Frontend real-time integration
 
-For questions about the API documentation or implementation details, please refer to:
+### System Documentation
 
-- Individual API documentation files for specific endpoints
-- [API Overview](api-overview.md) for general architecture
-- Frontend documentation for integration examples
-- [MQTT Architecture](mqtt-architecture.md) for real-time communication
+- **[Project Guide](../../PROJECT_GUIDE.md)** - Overall project documentation
+- **[Database Models](../../database-models.md)** - Database schema reference
+- **[Performance Guide](../../PERFORMANCE_OPTIMIZATION_GUIDE.md)** - Performance optimization
+
+### Development Resources
+
+- **[TypeScript Types](../../typescript-type-safety-rules.md)** - TypeScript guidelines
+- **[Engineering Guidelines](../../ENGINEERING_GUIDELINES.md)** - Development standards
+
+## Support & Maintenance
+
+### Documentation Updates
+
+- **API Changes:** Update documentation when endpoints change
+- **New Features:** Add documentation for new functionality
+- **Bug Fixes:** Update examples and error handling as needed
+- **Reviews:** Regular documentation reviews for accuracy
+
+### Getting Help
+
+1. **Check Individual API Docs:** Detailed endpoint information
+2. **Review API Overview:** High-level architecture understanding
+3. **Check Frontend Integration:** How frontend consumes APIs
+4. **Review Code Examples:** Working implementation examples
+
+---
+
+**Note:** This documentation is undergoing a comprehensive restructuring to improve organization and maintainability. Individual API documentation files will be updated to follow standardized formats with complete endpoint documentation, TypeScript interfaces, and usage examples.

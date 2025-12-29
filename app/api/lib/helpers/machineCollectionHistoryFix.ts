@@ -334,7 +334,7 @@ export async function fixMachineCollectionHistory(
  * @param currentHistory - Current collection history entries
  * @returns Object with hasIssues flag and array of issue descriptions
  */
-export function analyzeCollectionHistory(
+function analyzeCollectionHistory(
   actualCollections: Array<CollectionRecord>,
   currentHistory: Array<HistoryEntry>
 ): {
@@ -466,7 +466,7 @@ export function analyzeCollectionHistory(
  * @param actualCollections - Array of actual collection documents
  * @returns Array of duplicate groups with timestamp, duplicates to remove, and entry to keep
  */
-export function findDuplicateCollections(
+function findDuplicateCollections(
   actualCollections: Array<CollectionRecord>
 ): Array<{
   timestamp: string;
@@ -550,7 +550,7 @@ export function findDuplicateCollections(
  * @param actualCollections - Array of actual collection documents (already sorted chronologically)
  * @returns Array of history entries with correct previous meter values
  */
-export function rebuildHistoryFromCollections(
+function rebuildHistoryFromCollections(
   actualCollections: Array<CollectionRecord>
 ): Array<HistoryEntry> {
   return actualCollections.map((collection, index) => {

@@ -91,25 +91,3 @@ class APILogger {
 }
 
 export const apiLogger = new APILogger();
-
-// Decorator-style function for API endpoints
-export function withLogging<R>(
-  fn: (request: NextRequest) => Promise<R>,
-  endpointName: string
-) {
-  return async (request: NextRequest): Promise<R> => {
-    const context = apiLogger.createContext(request, endpointName);
-    apiLogger.startLogging();
-
-    try {
-      const result = await fn(request);
-      apiLogger.logSuccess(context, 'Operation completed successfully');
-      return result;
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      apiLogger.logError(context, 'Operation failed', errorMessage);
-      throw error;
-    }
-  };
-}

@@ -6,12 +6,14 @@
  * date ranges, and currency display preferences.
  */
 
+import { ActiveTab, dateRange } from './index';
+
 export type UseDashboardRefreshProps = {
   selectedLicencee: string;
   activeMetricsFilter: string | null;
   activePieChartFilter: string | null;
-  customDateRange: { startDate: Date; endDate: Date } | null;
-  activeTab: string;
+  customDateRange?: dateRange;
+  activeTab: ActiveTab | string;
   displayCurrency?: string; //  ADDED: Currency parameter for refresh
 };
 

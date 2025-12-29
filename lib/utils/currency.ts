@@ -72,53 +72,7 @@ export function formatCurrencyWithCode(
   });
 }
 
-/**
- * Format currency for specific locale (bypasses user settings)
- */
-export function formatCurrencyWithLocale(
-  value: number | null | undefined,
-  locale: string = 'en-US',
-  currencyCode: string = 'USD'
-): string {
-  const amount = value ?? 0;
-
-  // Check if the amount has meaningful decimal places
-  const hasDecimals = amount % 1 !== 0;
-  const decimalPart = amount % 1;
-  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
-
-  return amount.toLocaleString(locale, {
-    style: 'currency',
-    currency: currencyCode,
-    minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
-    maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
-  });
-}
 
 // ============================================================================
 // Plain Number Formatting
 // ============================================================================
-/**
- * Format currency as a plain number with currency symbol
- */
-export function formatCurrencyPlain(
-  value: number | null | undefined,
-  symbol: string = '$',
-  position: 'before' | 'after' = 'before'
-): string {
-  const amount = value ?? 0;
-
-  // Check if the amount has meaningful decimal places
-  const hasDecimals = amount % 1 !== 0;
-  const decimalPart = amount % 1;
-  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
-
-  const formattedAmount = amount.toLocaleString('en-US', {
-    minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
-    maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
-  });
-
-  return position === 'before'
-    ? `${symbol}${formattedAmount}`
-    : `${formattedAmount}${symbol}`;
-}

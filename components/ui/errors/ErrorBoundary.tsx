@@ -1,7 +1,5 @@
 'use client';
 
-import React, { Component, ErrorInfo } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -10,6 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { Component, ErrorInfo } from 'react';
 
 import type {
   ErrorBoundaryProps,
@@ -155,27 +155,4 @@ export default class ErrorBoundary extends Component<
 
     return children;
   }
-}
-
-/**
- * Hook version of ErrorBoundary for functional components
- */
-export function useErrorHandler() {
-  const [error, setError] = React.useState<Error | null>(null);
-
-  const resetError = React.useCallback(() => {
-    setError(null);
-  }, []);
-
-  const captureError = React.useCallback((error: Error) => {
-    setError(error);
-  }, []);
-
-  React.useEffect(() => {
-    if (error) {
-      throw error;
-    }
-  }, [error]);
-
-  return { captureError, resetError };
 }

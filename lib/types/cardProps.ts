@@ -31,19 +31,3 @@ export type CabinetCardProps = {
   canDeleteMachines?: boolean; // If false, hide delete button
 };
 
-/**
- * Type definition for Location Card Props used in the LocationCard component
- */
-export type LocationCardProps = {
-  _id: string;
-  name: string;
-  moneyIn: number;
-  moneyOut: number;
-  gross: number;
-  totalMachines: number;
-  onlineMachines: number;
-  hasSmib: boolean;
-  onEdit: (_locationId: string) => void;
-  onDelete: (_locationId: string) => void;
-  online?: boolean;
-};

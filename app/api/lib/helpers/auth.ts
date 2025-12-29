@@ -22,7 +22,7 @@ import {
 } from '@/lib/utils/auth';
 import type { AuthResult } from '@/shared/types';
 import { UserAuthPayload } from '@/shared/types';
-import type { UserDocumentWithPassword } from '@/shared/types/users';
+import type { LeanUserDocument } from '@/shared/types/auth';
 import { sendEmail } from '../../lib/utils/email';
 import UserModel from '../models/user';
 import { comparePassword } from '../utils/validation';
@@ -32,6 +32,15 @@ import {
   hasInvalidProfileFields,
 } from './profileValidation';
 import { getUserByEmail, getUserByUsername } from './users';
+
+// Type for lean user object from database (includes all fields that exist on actual DB object)
+type LeanUserObject = LeanUserDocument & {
+  roles?: string[];
+  sessionVersion?: number;
+  assignedLocations?: string[];
+  assignedLicensees?: string[];
+  passwordUpdatedAt?: Date | string | null;
+};
 
 /**
  * Validates user credentials and generates JWT tokens on success.
@@ -77,16 +86,19 @@ export async function authenticateUser(
       user = await getUserByUsername(identifier);
     }
 
+    // Type assertion for user object
+    const typedUser = user as LeanUserDocument | null;
+
     // Enhanced logging for debugging
     if (process.env.NODE_ENV === 'development') {
       console.log('[authenticateUser] Login attempt:', {
         identifier,
         looksLikeEmail,
         userFound: !!user,
-        userId: user?._id,
-        username: user?.username,
-        email: user?.emailAddress,
-        isEnabled: user?.isEnabled,
+        userId: typedUser?._id ? String(typedUser._id) : undefined,
+        username: typedUser?.username,
+        email: typedUser?.emailAddress,
+        isEnabled: typedUser?.isEnabled,
       });
     }
 
@@ -107,12 +119,12 @@ export async function authenticateUser(
     // Users without deletedAt or with deletedAt < 2025 can still login
     // Note: getUserByEmail/getUserByUsername no longer filter soft-deleted users,
     // so we check here to prevent login and show appropriate error message
-    if (user.deletedAt) {
+    if (typedUser?.deletedAt) {
       const year2025Start = new Date('2025-01-01T00:00:00.000Z');
       const deletedAtDate =
-        user.deletedAt instanceof Date
-          ? user.deletedAt
-          : new Date(user.deletedAt);
+        typedUser.deletedAt instanceof Date
+          ? typedUser.deletedAt
+          : new Date(typedUser.deletedAt);
 
       // Only block login if deletedAt is >= 2025
       if (deletedAtDate >= year2025Start) {
@@ -121,9 +133,9 @@ export async function authenticateUser(
             '[authenticateUser] User account is soft-deleted (2025+):',
             {
               identifier,
-              userId: user._id,
-              username: user.username,
-              deletedAt: user.deletedAt,
+              userId: typedUser?._id ? String(typedUser._id) : undefined,
+              username: typedUser?.username,
+              deletedAt: typedUser?.deletedAt,
             }
           );
         }
@@ -132,8 +144,8 @@ export async function authenticateUser(
           details: `Soft-deleted user (2025+) attempted login: ${identifier}`,
           ipAddress,
           userAgent,
-          userId: user._id,
-          username: user.username,
+          userId: typedUser?._id ? String(typedUser._id) : undefined,
+          username: typedUser?.username,
         });
         // Show generic error message based on identifier format to avoid revealing account status
         const errorMessage = looksLikeEmail
@@ -147,12 +159,12 @@ export async function authenticateUser(
     }
 
     // Check if user is enabled
-    if (!user.isEnabled) {
+    if (!typedUser?.isEnabled) {
       if (process.env.NODE_ENV === 'development') {
         console.warn('[authenticateUser] User account is disabled:', {
           identifier,
-          userId: user._id,
-          username: user.username,
+          userId: typedUser?._id ? String(typedUser._id) : undefined,
+          username: typedUser?.username,
         });
       }
       await logActivity({
@@ -160,8 +172,8 @@ export async function authenticateUser(
         details: `Disabled user attempted login: ${identifier}`,
         ipAddress,
         userAgent,
-        userId: user._id,
-        username: user.username,
+        userId: typedUser?._id ? String(typedUser._id) : undefined,
+        username: typedUser?.username,
       });
       return {
         success: false,
@@ -170,23 +182,23 @@ export async function authenticateUser(
     }
 
     // Verify password
-    const hasPassword = !!user.password;
+    const hasPassword = !!typedUser?.password;
     if (process.env.NODE_ENV === 'development') {
       console.log('[authenticateUser] Password check:', {
         identifier,
-        userId: user._id,
+        userId: typedUser?._id ? String(typedUser._id) : undefined,
         hasPassword,
-        passwordLength: user.password?.length || 0,
+        passwordLength: typedUser?.password?.length || 0,
       });
     }
 
-    const isMatch = await comparePassword(password, user.password || '');
+    const isMatch = await comparePassword(password, typedUser?.password || '');
     if (!isMatch) {
       if (process.env.NODE_ENV === 'development') {
         console.warn('[authenticateUser] Password mismatch:', {
           identifier,
-          userId: user._id,
-          username: user.username,
+          userId: typedUser?._id ? String(typedUser._id) : undefined,
+          username: typedUser?.username,
         });
       }
       await logActivity({
@@ -194,8 +206,8 @@ export async function authenticateUser(
         details: `Invalid password for: ${identifier}`,
         ipAddress,
         userAgent,
-        userId: user._id,
-        username: user.username,
+        userId: typedUser._id,
+        username: typedUser.username,
       });
 
       return { success: false, message: 'Invalid email/username or password.' };
@@ -205,9 +217,9 @@ export async function authenticateUser(
     // NOTE: sessionVersion should NOT be incremented on login - only when permissions change
     // Incrementing sessionVersion on login would invalidate all other active sessions
     const now = new Date();
-    const currentSessionVersion = Number(user.sessionVersion) || 0;
+    const currentSessionVersion = Number(typedUser.sessionVersion) || 0;
     await UserModel.findOneAndUpdate(
-      { _id: user._id },
+      { _id: typedUser._id },
       {
         $set: {
           lastLoginAt: now,
@@ -218,19 +230,20 @@ export async function authenticateUser(
       }
     );
     // Keep local in-sync values for token payload
-    user.sessionVersion = currentSessionVersion; // Keep existing sessionVersion
-    user.lastLoginAt = now;
-    user.loginCount = (Number(user.loginCount) || 0) + 1;
+    typedUser.sessionVersion = currentSessionVersion; // Keep existing sessionVersion
+    typedUser.lastLoginAt = now;
+    typedUser.loginCount = (Number(typedUser.loginCount) || 0) + 1;
 
     const {
       invalidFields,
       reasons: invalidReasons,
       passwordConfirmedStrong,
-    } = getInvalidProfileFields(user as never, { rawPassword: password });
+    } = getInvalidProfileFields(typedUser as never, { rawPassword: password });
 
-    if (!user.toObject().passwordUpdatedAt && passwordConfirmedStrong) {
+    const leanUser = typedUser as LeanUserObject;
+    if (!leanUser.passwordUpdatedAt && passwordConfirmedStrong) {
       await UserModel.updateOne(
-        { _id: user._id },
+        { _id: typedUser._id },
         { $set: { passwordUpdatedAt: new Date() } }
       );
     }
@@ -243,7 +256,9 @@ export async function authenticateUser(
     const profileInvalid = hasInvalidProfileFields(invalidFields);
     if (profileInvalid) {
       // Return success but with a flag to prompt profile update
-      const userObject = (user as UserDocumentWithPassword).toJSON();
+      // Note: typedUser is already a plain object from .lean(), so no need for .toJSON()
+      // typedUser is guaranteed to exist at this point due to earlier null checks
+      const userObject = typedUser;
 
       const sessionId = userObject._id.toString();
       // Don't include assignedLocations/assignedLicensees in token to prevent cookie size issues
@@ -298,8 +313,8 @@ export async function authenticateUser(
         details: `Successful login with invalid profile fields: ${identifier}`,
         ipAddress,
         userAgent,
-        userId: user._id,
-        username: user.username,
+        userId: typedUser._id,
+        username: typedUser.username,
       });
 
       const expiresAt = new Date(
@@ -319,8 +334,9 @@ export async function authenticateUser(
       };
     }
 
-    // Use toJSON() which properly serializes Mongoose Maps
-    const userObject = (user as UserDocumentWithPassword).toJSON();
+    // Note: typedUser is already a plain object from .lean(), so no need for .toJSON()
+    // typedUser is guaranteed to exist at this point due to earlier null checks
+    const userObject = typedUser;
 
     // Generate tokens
     const sessionId = userObject._id.toString(); // Use user ID as session ID
@@ -332,13 +348,13 @@ export async function authenticateUser(
     const accessToken = await generateAccessToken({
       _id: userObject._id.toString(),
       emailAddress: userObject.emailAddress,
-      username: String(userObject.username || ''),
+      username: userObject.username || '',
       isEnabled: userObject.isEnabled,
       roles: userObject.roles || [],
       // Removed assignedLocations and assignedLicensees to keep token small enough for cookies
       // Full data is in userPayload (localStorage) and can be fetched from DB when needed
       sessionId: sessionId,
-      sessionVersion: Number(userObject.sessionVersion) || 1,
+      sessionVersion: userObject.sessionVersion || 1,
       dbContext: {
         connectionString: getCurrentDbConnectionString(),
         timestamp: Date.now(),
@@ -376,8 +392,8 @@ export async function authenticateUser(
       details: `Successful login: ${identifier}`,
       ipAddress,
       userAgent,
-      userId: user._id,
-      username: user.username,
+      userId: typedUser._id,
+      username: typedUser.username,
     });
 
     const expiresAt = new Date(
@@ -407,8 +423,8 @@ export async function authenticateUser(
         ? await getUserByEmail(identifier)
         : await getUserByUsername(identifier);
       if (user) {
-        userIdForLog = user._id;
-        usernameForLog = user.username;
+        userIdForLog = (user as LeanUserDocument)._id;
+        usernameForLog = (user as LeanUserDocument).username;
       }
     } catch {
       // Ignore errors when trying to get user for logging
@@ -453,7 +469,9 @@ export async function refreshAccessToken(
     }
 
     // Generate new access token
-    const userObject = (user as UserDocumentWithPassword).toJSON();
+    // Note: user is already a plain object from .lean(), so no need for .toJSON()
+    // user is guaranteed to exist at this point due to earlier null check
+    const userObject = user;
 
     const sessionId = userObject._id.toString();
 
@@ -468,18 +486,18 @@ export async function refreshAccessToken(
     const accessToken = await generateAccessToken({
       _id: userObject._id.toString(),
       emailAddress: userObject.emailAddress,
-      username: String(userObject.username || ''),
+      username: userObject.username || '',
       isEnabled: userObject.isEnabled,
       roles: userObject.roles || [],
       assignedLocations,
       assignedLicensees,
       sessionId: sessionId,
-      sessionVersion: Number(userObject.sessionVersion) || 1,
+      sessionVersion: userObject.sessionVersion || 1,
       dbContext: {
         connectionString: getCurrentDbConnectionString(),
         timestamp: Date.now(),
       },
-    } as never);
+    });
 
     return { success: true, token: accessToken };
   } catch (error) {
@@ -509,7 +527,7 @@ export async function sendPasswordResetEmail(
       Math.random().toString(36).substring(2, 15);
 
     // Store reset token in user record (you'd want to add this field to your user model)
-    // await user.updateOne({ resetToken, resetTokenExpires: new Date(Date.now() + 60 * 60 * 1000) });
+    // await typedUser.updateOne({ resetToken, resetTokenExpires: new Date(Date.now() + 60 * 60 * 1000) });
 
     const resetUrl = `${
       process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'

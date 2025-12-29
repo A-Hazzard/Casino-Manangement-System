@@ -72,7 +72,7 @@ export const CollectionReportSkeleton = () => (
 /**
  * Skeleton component for tab content loading state
  */
-export const TabContentSkeleton = () => (
+const TabContentSkeleton = () => (
   <div className="rounded-lg bg-white shadow-md">
     <div className="skeleton-bg mb-4 h-12 w-full rounded-t-lg"></div>
     <div className="space-y-4 p-6">
@@ -96,7 +96,7 @@ export const TabContentSkeleton = () => (
 /**
  * Skeleton component for mobile section loading state
  */
-export const MobileSectionSkeleton = () => (
+const MobileSectionSkeleton = () => (
   <div className="rounded-lg bg-white shadow-md">
     <div className="skeleton-bg mb-4 h-12 w-full rounded-t-lg"></div>
     <div className="space-y-4 p-4">
@@ -109,108 +109,6 @@ export const MobileSectionSkeleton = () => (
           </div>
         ))}
       </div>
-    </div>
-  </div>
-);
-
-/**
- * Skeleton component for table loading state
- */
-export const TableSkeleton = () => (
-  <div className="animate-pulse overflow-x-auto rounded-lg bg-white shadow-md">
-    <table className="w-full text-sm">
-      <thead className="bg-button text-white">
-        <tr>
-          {[...Array(6)].map((_, i) => (
-            <th
-              key={i}
-              className="whitespace-nowrap p-3 text-left font-semibold"
-            >
-              <div className="h-4 w-full rounded bg-gray-300"></div>
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {[...Array(5)].map((_, i) => (
-          <tr key={i} className="border-b border-gray-200">
-            {[...Array(6)].map((_, j) => (
-              <td key={j} className="whitespace-nowrap p-3">
-                <div className="h-4 w-full rounded bg-gray-200"></div>
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
-
-/**
- * Skeleton component for card loading state
- */
-export const CardSkeleton = () => (
-  <div className="animate-pulse space-y-4">
-    {[...Array(3)].map((_, i) => (
-      <div key={i} className="overflow-hidden rounded-lg bg-white shadow-md">
-        <div className="h-12 w-full bg-gray-200"></div>
-        <div className="space-y-3 p-4">
-          {[...Array(4)].map((_, j) => (
-            <div key={j} className="flex justify-between">
-              <div className="h-4 w-1/3 rounded bg-gray-200"></div>
-              <div className="h-4 w-1/4 rounded bg-gray-200"></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-/**
- * Skeleton component for search bar loading state
- */
-export const SearchBarSkeleton = () => (
-  <div className="mb-4 rounded-lg bg-white p-4 shadow-md">
-    <div className="relative">
-      <div className="absolute left-3 top-1/2 -translate-y-1/2 transform">
-        <div className="skeleton-bg h-4 w-4 rounded"></div>
-      </div>
-      <div className="skeleton-bg h-10 w-full rounded pl-10"></div>
-    </div>
-  </div>
-);
-
-/**
- * Skeleton component for pagination controls loading state
- */
-export const PaginationSkeleton = () => (
-  <div className="mt-6 flex items-center justify-center space-x-2">
-    {[...Array(5)].map((_, i) => (
-      <div key={i} className="skeleton-bg h-8 w-8 rounded"></div>
-    ))}
-  </div>
-);
-
-/**
- * Skeleton component for action buttons loading state
- */
-export const ActionButtonsSkeleton = () => (
-  <div className="flex items-center gap-2">
-    <div className="skeleton-bg h-10 w-32 rounded"></div>
-    <div className="skeleton-bg h-10 w-36 rounded"></div>
-  </div>
-);
-
-/**
- * Skeleton component for tab navigation loading state
- */
-export const TabNavigationSkeleton = () => (
-  <div className="rounded-lg bg-white shadow-md">
-    <div className="flex space-x-1 p-1">
-      {[...Array(3)].map((_, i) => (
-        <div key={i} className="skeleton-bg h-10 w-32 rounded"></div>
-      ))}
     </div>
   </div>
 );

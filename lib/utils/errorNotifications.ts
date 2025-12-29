@@ -92,12 +92,3 @@ export function showRetryWarningNotification(
   });
 }
 
-/**
- * Show info notification for connection status
- */
-export function showConnectionInfoNotification(message: string) {
-  toast.info('Connection Status', {
-    description: message,
-    duration: 4000,
-  });
-}

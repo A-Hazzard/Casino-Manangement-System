@@ -13,8 +13,8 @@
  */
 
 import { UserDocument } from '@/shared/types/auth';
-export const ALLOWED_GENDERS = ['male', 'female', 'other'] as const;
-export type AllowedGender = (typeof ALLOWED_GENDERS)[number];
+const ALLOWED_GENDERS = ['male', 'female', 'other'] as const;
+type AllowedGender = (typeof ALLOWED_GENDERS)[number];
 
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 
@@ -228,7 +228,7 @@ export function validateNameField(value: string): boolean {
   return allowedPattern.test(value) && !phonePattern.test(value.trim());
 }
 
-export function validateGender(
+function validateGender(
   value: string | null | undefined
 ): value is AllowedGender {
   if (!value) return false;
@@ -263,34 +263,6 @@ export function validateStreetAddress(
   if (!trimmed) return true;
   // Allow letters, numbers, spaces, commas, and full stops
   const allowedPattern = /^[a-zA-Z0-9\s,\.]+$/;
-  return allowedPattern.test(trimmed);
-}
-
-/**
- * Validates town/region - allows letters, numbers, spaces, commas, and full stops
- * @param value - The town/region to validate
- * @returns True if valid, false otherwise
- */
-export function validateTownRegion(value: string | null | undefined): boolean {
-  if (!value) return true;
-  const trimmed = value.trim();
-  if (!trimmed) return true;
-  // Allow letters, numbers, spaces, commas, and full stops
-  const allowedPattern = /^[a-zA-Z0-9\s,\.]+$/;
-  return allowedPattern.test(trimmed);
-}
-
-/**
- * Validates country - only letters and spaces
- * @param value - The country to validate
- * @returns True if valid, false otherwise
- */
-export function validateCountry(value: string | null | undefined): boolean {
-  if (!value) return true;
-  const trimmed = value.trim();
-  if (!trimmed) return true;
-  // Allow only letters and spaces
-  const allowedPattern = /^[a-zA-Z\s]+$/;
   return allowedPattern.test(trimmed);
 }
 

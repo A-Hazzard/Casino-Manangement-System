@@ -53,8 +53,3 @@ export type MachineEvent = {
   }>;
 };
 
-export type FilterData = {
-  eventTypes: string[];
-  events: string[];
-  games: string[];
-};

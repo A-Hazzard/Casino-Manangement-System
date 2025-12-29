@@ -22,7 +22,7 @@ import { MachineHourlyChartsSkeleton, TopMachinesTableSkeleton } from './Machine
  * Note: This component does NOT include its own grid wrapper since it's rendered
  * inside a grid container. It just returns the individual chart skeletons.
  */
-export const RevenueAnalysisChartsSkeleton = () => (
+const RevenueAnalysisChartsSkeleton = () => (
   <>
     {/* Granularity Selector Skeleton */}
     <div className="flex items-center justify-end gap-2">
@@ -37,105 +37,6 @@ export const RevenueAnalysisChartsSkeleton = () => (
       ))}
     </div>
   </>
-);
-
-/**
- * Skeleton component for Locations Overview tab
- * Note: Metric cards are rendered separately above this skeleton
- */
-export const LocationsOverviewSkeleton = () => (
-  <div className="space-y-6">
-    {/* Interactive Map - Full width */}
-    <div className="w-full overflow-hidden rounded-lg border border-gray-200">
-      <Skeleton className="h-[400px] w-full" />
-    </div>
-
-    {/* Location Overview Table - 7 columns */}
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Skeleton className="h-5 w-5" />
-              <Skeleton className="h-6 w-48" />
-            </CardTitle>
-            <div className="text-sm text-gray-500">
-              <Skeleton className="h-4 w-64" />
-            </div>
-          </div>
-          <Skeleton className="h-10 w-24" />
-        </div>
-      </CardHeader>
-      <CardContent>
-        {/* Desktop table skeleton - 7 columns */}
-        <div className="hidden overflow-x-auto md:block">
-          <table className="w-full">
-            <thead className="border-b bg-gray-50">
-              <tr>
-                {Array.from({ length: 7 }).map((_, i) => (
-                  <th key={i} className="px-4 py-3">
-                    <Skeleton className="mx-auto h-4 w-24" />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <tr key={i} className="hover:bg-gray-50">
-                  {Array.from({ length: 7 }).map((_, j) => (
-                    <td key={j} className="px-4 py-3">
-                      <Skeleton className="mx-auto h-4 w-20" />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {/* Mobile cards skeleton */}
-        <div className="space-y-3 md:hidden">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-lg border border-gray-200 bg-white p-4"
-            >
-              <div className="mb-3 space-y-2">
-                <Skeleton className="h-5 w-3/4" />
-                <div className="flex items-center gap-4">
-                  <div className="space-y-1">
-                    <Skeleton className="h-3 w-20" />
-                    <Skeleton className="h-4 w-12" />
-                  </div>
-                  <div className="space-y-1">
-                    <Skeleton className="h-3 w-20" />
-                    <Skeleton className="h-4 w-12" />
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2 border-t border-gray-100 pt-3">
-                {Array.from({ length: 4 }).map((_, j) => (
-                  <div key={j} className="flex justify-between">
-                    <Skeleton className="h-3 w-16" />
-                    <Skeleton className="h-4 w-20" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        {/* Pagination skeleton */}
-        <div className="mt-4 flex justify-center">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-8 w-24" />
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-8 w-8" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  </div>
 );
 
 /**

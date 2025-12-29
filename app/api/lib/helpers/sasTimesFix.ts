@@ -17,7 +17,7 @@ import { calculateMovement } from '@/lib/utils/movementCalculation';
  * @param reportTimestamp - The report timestamp
  * @returns Promise<{ correctPrevIn: number; correctPrevOut: number; wasFixed: boolean }>
  */
-export async function fixPreviousMeters(
+async function fixPreviousMeters(
   collection: {
     _id: string;
     machineId?: string;
@@ -86,7 +86,7 @@ export async function fixPreviousMeters(
  * @param prevOut - Previous meters out
  * @returns Recalculated movement
  */
-export function recalculateCollectionMovement(
+function recalculateCollectionMovement(
   collection: {
     metersIn?: number;
     metersOut?: number;
@@ -118,7 +118,7 @@ export function recalculateCollectionMovement(
  * @param machineId - The machine ID
  * @returns Promise<number> - Number of history entries created
  */
-export async function rebuildMachineHistory(
+async function rebuildMachineHistory(
   machineId: string
 ): Promise<number> {
   const machineCollections = await Collections.find({
@@ -179,7 +179,7 @@ export async function rebuildMachineHistory(
  * @param report - The collection report
  * @returns Promise<{ success: boolean; error?: string }>
  */
-export async function fixCollectionSasTimes(
+async function fixCollectionSasTimes(
   collection: {
     _id: string;
     machineId?: string;
@@ -223,7 +223,7 @@ export async function fixCollectionSasTimes(
 
     // Recalculate SAS time range
     const { getSasTimePeriod, calculateSasMetrics } = await import(
-      '@/lib/helpers/collectionCreation'
+      './collectionCreation'
     );
 
     const { sasStartTime, sasEndTime } = await getSasTimePeriod(
@@ -435,7 +435,7 @@ export async function fixSasTimesForReport(
  * @param machine - The machine document
  * @returns boolean indicating if machine has issues
  */
-export function hasCollectionHistoryIssues(machine: {
+function hasCollectionHistoryIssues(machine: {
   collectionMetersHistory?: Array<{
     prevIn?: number;
     prevOut?: number;

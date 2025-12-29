@@ -68,7 +68,7 @@ type UnifiedBillValidatorProps = {
   gameDayOffset?: number;
 };
 
-export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
+const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
   machineId,
   timePeriod,
   onTimePeriodChange,

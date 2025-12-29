@@ -1,8 +1,6 @@
 import PageLayout from '@/components/layout/PageLayout';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeftIcon } from '@radix-ui/react-icons';
 
 type CabinetDetailsLoadingStateProps = {
   selectedLicencee: string;
@@ -218,62 +216,3 @@ export const CabinetDetailsLoadingState = ({
   </PageLayout>
 );
 
-type CabinetDetailsErrorStateProps = {
-  selectedLicencee: string;
-  setSelectedLicencee: (licencee: string) => void;
-  error: string;
-  onRetry: () => void;
-};
-
-/**
- * Error state component for cabinet details page
- */
-export const CabinetDetailsErrorState = ({
-  selectedLicencee,
-  setSelectedLicencee,
-  error,
-  onRetry,
-}: CabinetDetailsErrorStateProps) => (
-  <PageLayout
-    headerProps={{
-      selectedLicencee,
-      setSelectedLicencee,
-    }}
-    pageTitle=""
-    hideOptions={true}
-    hideLicenceeFilter={false}
-    mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
-    showToaster={false}
-  >
-    <div className="flex flex-1 flex-col overflow-x-hidden p-4 md:p-6">
-      {/* Back button */}
-      <div className="mb-2 mt-4">
-        <Button
-          variant="outline"
-          className="flex items-center border-buttonActive bg-container text-buttonActive transition-colors duration-300 hover:bg-buttonActive hover:text-container"
-          size="sm"
-        >
-          <ArrowLeftIcon className="mr-2 h-4 w-4" />
-          Back to Cabinets
-        </Button>
-      </div>
-
-      {/* Error message */}
-      <div className="flex flex-1 items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center text-destructive">
-              Error Loading Cabinet Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-center">
-            <p className="text-muted-foreground">{error}</p>
-            <Button onClick={onRetry} className="w-full">
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  </PageLayout>
-);

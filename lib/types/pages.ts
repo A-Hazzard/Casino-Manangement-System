@@ -12,29 +12,6 @@ export type ExtendedCabinetDetail = GamingMachine & {
   lastActivity?: string | Date;
 };
 
-export type LocationInfo = {
-  _id: string;
-  name: string;
-  address?: string;
-  licencee?: string;
-  contactName?: string;
-  moneyIn?: number;
-  moneyOut?: number;
-  gross?: number;
-  net?: number;
-};
-
-// Collection Report page types
-export type CollectionReportSkeletonProps = {
-  pathname: string;
-};
-
-export type TabButtonProps = {
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-};
-
 // Administration page types
 export type AddUserForm = {
   username?: string;

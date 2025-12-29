@@ -10,7 +10,7 @@
  * - Location picker map props and modals
  */
 
-export type LocationCoordinates = {
+type LocationCoordinates = {
   lat: number;
   lng: number;
 };
@@ -39,11 +39,4 @@ export type LocationPickerMapProps = {
   onLocationSelect: (location: SelectedLocation) => void;
   onMapLoadError?: () => void;
   onMapLoadSuccess?: () => void;
-};
-
-export type NewLocationModalProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onLocationSave: (location: SelectedLocation) => void;
-  initialMapType?: MapType;
 };

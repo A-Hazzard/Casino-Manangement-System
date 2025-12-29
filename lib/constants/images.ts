@@ -69,16 +69,3 @@ export const IMAGES = {
   sortIcon,
 } as const;
 
-// Page-specific icon mappings
-export const PAGE_ICONS = {
-  dashboard: IMAGES.dashboardIcon,
-  cabinets: IMAGES.cabinetsIcon,
-  locations: IMAGES.locationIcon,
-  administration: IMAGES.adminIcon,
-  members: IMAGES.membersIcon,
-  'collection-report': IMAGES.creditCardIcon,
-  reports: IMAGES.reportsButtonNoBg,
-  sessions: IMAGES.activityLogIcon,
-} as const;
-
-export type PageIconKey = keyof typeof PAGE_ICONS;

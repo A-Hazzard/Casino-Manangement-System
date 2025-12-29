@@ -14,17 +14,17 @@
  * @module app/api/collections/route
  */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  calculateSasMetrics,
+  createCollectionWithCalculations,
+  getSasTimePeriod,
+} from '@/app/api/lib/helpers/collectionCreation';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
-import { calculateChanges, logActivity } from '@/lib/helpers/activityLogger';
-import {
-  calculateSasMetrics,
-  createCollectionWithCalculations,
-  getSasTimePeriod,
-} from '@/lib/helpers/collectionCreation';
 import type {
   CollectionDocument,
   CreateCollectionPayload,
@@ -87,13 +87,23 @@ export async function GET(req: NextRequest) {
     const userRoles = (user.roles as string[]) || [];
     // Use only new field
     let userAccessibleLicensees: string[] = [];
-    if (Array.isArray((user as { assignedLicensees?: string[] })?.assignedLicensees)) {
-      userAccessibleLicensees = (user as { assignedLicensees: string[] }).assignedLicensees;
+    if (
+      Array.isArray(
+        (user as { assignedLicensees?: string[] })?.assignedLicensees
+      )
+    ) {
+      userAccessibleLicensees = (user as { assignedLicensees: string[] })
+        .assignedLicensees;
     }
     // Use only new field
     let userLocationPermissions: string[] = [];
-    if (Array.isArray((user as { assignedLocations?: string[] })?.assignedLocations)) {
-      userLocationPermissions = (user as { assignedLocations: string[] }).assignedLocations;
+    if (
+      Array.isArray(
+        (user as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (user as { assignedLocations: string[] })
+        .assignedLocations;
     }
     const isAdmin =
       userRoles.includes('admin') || userRoles.includes('developer');
@@ -422,33 +432,18 @@ export async function POST(req: NextRequest) {
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-        const createChanges = [
-          { field: 'machineId', oldValue: null, newValue: payload.machineId },
-          { field: 'location', oldValue: null, newValue: payload.location },
-          { field: 'collector', oldValue: null, newValue: payload.collector },
-          { field: 'metersIn', oldValue: null, newValue: payload.metersIn },
-          { field: 'metersOut', oldValue: null, newValue: payload.metersOut },
-          { field: 'notes', oldValue: null, newValue: payload.notes || '' },
-          {
-            field: 'isCompleted',
-            oldValue: null,
-            newValue: payload.isCompleted ?? false,
+        await logActivity({
+          action: 'CREATE',
+          details: `Created collection for machine ${payload.machineId} at location ${payload.location} (${payload.metersIn} in, ${payload.metersOut} out)`,
+          ipAddress: getClientIP(req) || undefined,
+          metadata: {
+            resource: 'collection',
+            resourceId: created._id.toString(),
+            resourceName: `Machine ${payload.machineId}`,
+            userId: currentUser._id as string,
+            username: currentUser.emailAddress as string,
           },
-        ];
-
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || 'user',
-          },
-          'CREATE',
-          'collection',
-          { id: created._id.toString(), name: `Machine ${payload.machineId}` },
-          createChanges,
-          `Created collection for machine ${payload.machineId} at location ${payload.location} (${payload.metersIn} in, ${payload.metersOut} out)`,
-          getClientIP(req) || undefined
-        );
+        });
       } catch (logError) {
         console.error('Failed to log activity:', logError);
       }
@@ -673,7 +668,10 @@ export async function PATCH(req: NextRequest) {
             originalCollection.machineId,
         };
       } catch (sasError) {
-        console.error('[Collections API] Error recalculating SAS metrics:', sasError);
+        console.error(
+          '[Collections API] Error recalculating SAS metrics:',
+          sasError
+        );
         // Continue with update even if SAS calculation fails
         // This prevents the entire update from failing
       }
@@ -695,24 +693,18 @@ export async function PATCH(req: NextRequest) {
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-        const changes = calculateChanges(
-          originalCollection.toObject(),
-          updateData
-        );
-
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || 'user',
+        await logActivity({
+          action: 'UPDATE',
+          details: `Updated collection for machine ${originalCollection.machineId} at location ${originalCollection.location}`,
+          ipAddress: getClientIP(req) || undefined,
+          metadata: {
+            resource: 'collection',
+            resourceId: id,
+            resourceName: `Machine ${originalCollection.machineId}`,
+            userId: currentUser._id as string,
+            username: currentUser.emailAddress as string,
           },
-          'UPDATE',
-          'collection',
-          { id, name: `Machine ${originalCollection.machineId}` },
-          changes,
-          `Updated collection for machine ${originalCollection.machineId} at location ${originalCollection.location}`,
-          getClientIP(req) || undefined
-        );
+        });
       } catch (logError) {
         console.error('Failed to log activity:', logError);
       }
@@ -843,52 +835,18 @@ export async function DELETE(req: NextRequest) {
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-        const deleteChanges = [
-          {
-            field: 'machineId',
-            oldValue: collectionToDelete.machineId,
-            newValue: null,
+        await logActivity({
+          action: 'DELETE',
+          details: `Deleted collection for machine ${collectionToDelete.machineId} at location ${collectionToDelete.location}`,
+          ipAddress: getClientIP(req) || undefined,
+          metadata: {
+            resource: 'collection',
+            resourceId: id,
+            resourceName: `Machine ${collectionToDelete.machineId}`,
+            userId: currentUser._id as string,
+            username: currentUser.emailAddress as string,
           },
-          {
-            field: 'location',
-            oldValue: collectionToDelete.location,
-            newValue: null,
-          },
-          {
-            field: 'collector',
-            oldValue: collectionToDelete.collector,
-            newValue: null,
-          },
-          {
-            field: 'metersIn',
-            oldValue: collectionToDelete.metersIn,
-            newValue: null,
-          },
-          {
-            field: 'metersOut',
-            oldValue: collectionToDelete.metersOut,
-            newValue: null,
-          },
-          {
-            field: 'notes',
-            oldValue: collectionToDelete.notes,
-            newValue: null,
-          },
-        ];
-
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || 'user',
-          },
-          'DELETE',
-          'collection',
-          { id, name: `Machine ${collectionToDelete.machineId}` },
-          deleteChanges,
-          `Deleted collection for machine ${collectionToDelete.machineId} at location ${collectionToDelete.location}`,
-          getClientIP(req) || undefined
-        );
+        });
       } catch (logError) {
         console.error('Failed to log activity:', logError);
       }

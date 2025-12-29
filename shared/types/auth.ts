@@ -26,10 +26,12 @@ export type ProfileValidationReasons = {
 
 export type UserDocument = Document & {
   _id: string;
-  emailAddress: string;
-  username: string;
-  password: string;
   isEnabled: boolean;
+  roles: string[];
+  username: string;
+  emailAddress: string;
+  assignedLocations?: string[];
+  assignedLicensees?: string[];
   profile?: {
     firstName?: string;
     lastName?: string;
@@ -49,11 +51,23 @@ export type UserDocument = Document & {
       idNumber?: string;
       notes?: string;
     };
+    phoneNumber?: string;
+    notes?: string;
   };
   profilePicture?: string;
+  password: string;
+  passwordUpdatedAt?: Date;
+  sessionVersion?: number;
+  loginCount?: number;
+  lastLoginAt?: Date;
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type LeanUserDocument = Omit<UserDocument, keyof Document> & {
+  _id: string;
+  __v?: number;
 };
 
 export type UserAuthPayload = {
@@ -95,12 +109,6 @@ export type UserAuthPayload = {
   invalidProfileReasons?: ProfileValidationReasons;
 };
 
-export type LoginRequestBody = {
-  identifier: string; // email or username
-  password: string;
-  rememberMe?: boolean;
-};
-
 export type AuthResult = {
   success: boolean;
   message?: string;
@@ -124,6 +132,7 @@ export type JwtPayload = {
   assignedLicensees?: string[];
   // Enhanced security
   sessionId: string;
+  sessionVersion?: number;
   dbContext: {
     connectionString: string;
     timestamp: number;
@@ -139,26 +148,6 @@ export type RefreshTokenPayload = {
   type: 'refresh';
   iat?: number;
   exp?: number;
-};
-
-export type SessionData = {
-  userId: string;
-  sessionId: string;
-  ipAddress: string;
-  userAgent: string;
-  createdAt: Date;
-  lastAccessedAt: Date;
-  expiresAt: Date;
-  isActive: boolean;
-};
-
-export type AuthContext = {
-  user: UserAuthPayload | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  login: (credentials: LoginRequestBody) => Promise<AuthResult>;
-  logout: () => Promise<void>;
-  refreshToken: () => Promise<boolean>;
 };
 
 export type LoginFormProps = {

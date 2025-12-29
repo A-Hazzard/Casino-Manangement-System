@@ -56,7 +56,7 @@ import {
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 import { hasMissingCoordinates } from '@/lib/utils/locationsPageUtils';
-import type { AggregatedLocation } from '@/shared/types/common';
+import type { AggregatedLocation } from '@/shared/types';
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
 import Image from 'next/image';
 import Link from 'next/link';

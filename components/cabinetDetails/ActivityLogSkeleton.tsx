@@ -10,7 +10,7 @@
  */
 import { Skeleton } from '@/components/ui/skeleton';
 
-export const ActivityLogSkeleton = () => (
+const ActivityLogSkeleton = () => (
   <div className="w-full">
     {/* Desktop Table View Skeleton */}
     <div className="hidden w-full overflow-x-auto rounded-lg lg:block">

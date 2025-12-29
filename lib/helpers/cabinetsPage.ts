@@ -13,7 +13,6 @@
  */
 
 import type { CabinetSection } from '@/lib/constants/cabinets';
-import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 
 // ============================================================================
@@ -67,90 +66,3 @@ export function handleSectionChange(
   router.push(newURL, { scroll: false });
 }
 
-// ============================================================================
-// Cabinet Sorting Utilities
-// ============================================================================
-
-/**
- * Utility function for proper alphabetical and numerical sorting
- */
-function sortMachinesAlphabetically(machines: Cabinet[]) {
-  return machines.sort((a, b) => {
-    const nameA = (a.assetNumber || a.smbId || a.serialNumber || '').toString();
-    const nameB = (b.assetNumber || b.smbId || b.serialNumber || '').toString();
-
-    // Extract the base name and number parts
-    const matchA = nameA.match(/^(.+?)(\d+)?$/);
-    const matchB = nameB.match(/^(.+?)(\d+)?$/);
-
-    if (!matchA || !matchB) {
-      return nameA.localeCompare(nameB);
-    }
-
-    const [, baseA, numA] = matchA;
-    const [, baseB, numB] = matchB;
-
-    // First compare the base part alphabetically
-    const baseCompare = baseA.localeCompare(baseB);
-    if (baseCompare !== 0) {
-      return baseCompare;
-    }
-
-    // If base parts are the same, compare numerically
-    const numAInt = numA ? parseInt(numA, 10) : 0;
-    const numBInt = numB ? parseInt(numB, 10) : 0;
-
-    return numAInt - numBInt;
-  });
-}
-
-// ============================================================================
-// Cabinet Filtering Operations
-// ============================================================================
-
-/**
- * Filters cabinets based on search term and selected location
- * @param cabinets - Array of cabinets to filter
- * @param search - Search term
- * @param selectedLocation - Selected location filter
- * @returns Filtered and sorted array of cabinets
- */
-export function filterCabinets(
-  cabinets: Cabinet[],
-  search: string,
-  selectedLocation: string
-): Cabinet[] {
-  let filtered = [...cabinets];
-
-  // Filter by location if a specific location is selected
-  if (selectedLocation !== 'all') {
-    filtered = filtered.filter(cab => cab.locationId === selectedLocation);
-  }
-
-  // Filter by search term
-  if (search.trim()) {
-    const searchLower = search.toLowerCase();
-    filtered = filtered.filter(cab => {
-      const cabRecord = cab as Record<string, unknown>;
-      // Check custom.name (lowercase - primary per schema) first, then Custom.name (uppercase - legacy fallback)
-      const customName = (
-        (cabRecord.custom as Record<string, unknown>)?.name ||
-        (cabRecord.Custom as Record<string, unknown>)?.name
-      )?.toString().toLowerCase() || '';
-      
-      const cabinetId = String(cab._id || '').toLowerCase();
-      return (
-        cab.assetNumber?.toLowerCase().includes(searchLower) ||
-        cab.smbId?.toLowerCase().includes(searchLower) ||
-        cab.locationName?.toLowerCase().includes(searchLower) ||
-        cab.serialNumber?.toLowerCase().includes(searchLower) ||
-        customName.includes(searchLower) ||
-        cabinetId.includes(searchLower) ||
-        cab._id?.toLowerCase().includes(searchLower)
-      );
-    });
-  }
-
-  // Sort the filtered cabinets alphabetically and numerically
-  return sortMachinesAlphabetically(filtered);
-}

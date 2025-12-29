@@ -14,16 +14,14 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 export function getCacheKey(params: Record<string, unknown>): string {
   return JSON.stringify(params);
 }
-
 /**
  * Checks if cached data is still valid
  * @param timestamp - Timestamp when data was cached
  * @returns Boolean indicating if cache is valid
  */
-export function isCacheValid(timestamp: number): boolean {
+function isCacheValid(timestamp: number): boolean {
   return Date.now() - timestamp < CACHE_TTL;
 }
-
 /**
  * Retrieves data from cache if valid
  * @param key - Cache key
@@ -61,15 +59,4 @@ export function setCachedData(key: string, data: unknown): void {
  */
 export function clearCache(): void {
   cache.clear();
-}
-
-/**
- * Gets cache statistics
- * @returns Object with cache size and entry count
- */
-export function getCacheStats() {
-  return {
-    entryCount: cache.size,
-    entries: Array.from(cache.keys()),
-  };
 }

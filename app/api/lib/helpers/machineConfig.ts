@@ -8,19 +8,7 @@
  */
 
 import { GamingLocations } from '../models/gaminglocations';
-import { Machine, machineSchema } from '../models/machines';
-import type { InferSchemaType, Document } from 'mongoose';
-
-export type MachineDocument = (InferSchemaType<typeof machineSchema> & Document & { _id: string }) | null;
-
-/**
- * Machine config update request body
- */
-export type MachineConfigUpdateBody = {
-  relayId: string;
-  smibConfig?: Record<string, unknown>;
-  smibVersion?: Record<string, unknown>;
-};
+import { Machine } from '../models/machines';
 
 /**
  * Builds update fields for machine configuration

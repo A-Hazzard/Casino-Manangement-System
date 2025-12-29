@@ -152,80 +152,12 @@ export async function getUserAccessibleLicenseesFromToken(userPayloadOverride?: 
   }
 }
 
-/**
- * Applies licensee filter to a MongoDB query
- * Use this for simple queries that filter documents directly
- */
-export function applyLicenseeFilter(
-  baseQuery: Record<string, unknown>,
-  userAccessibleLicensees: string[] | 'all',
-  licenseeFieldPath: string = 'rel.licencee'
-): Record<string, unknown> {
-  if (userAccessibleLicensees === 'all') {
-    return baseQuery;
-  }
-
-  if (userAccessibleLicensees.length === 0) {
-    // User has no licensees - return impossible match
-    return { ...baseQuery, _id: null };
-  }
-
-  return {
-    ...baseQuery,
-    [licenseeFieldPath]: { $in: userAccessibleLicensees },
-  };
-}
-
-/**
- * Applies licensee filter to a MongoDB aggregation pipeline
- * Use this for complex aggregations
- */
-export function applyLicenseeFilterToPipeline(
-  userAccessibleLicensees: string[] | 'all',
-  licenseeFieldPath: string = 'rel.licencee'
-): Record<string, unknown> | null {
-  if (userAccessibleLicensees === 'all') {
-    return null; // No filter needed
-  }
-
-  if (userAccessibleLicensees.length === 0) {
-    // User has no licensees - return impossible match
-    return { $match: { _id: null } };
-  }
-
-  return {
-    $match: {
-      [licenseeFieldPath]: { $in: userAccessibleLicensees },
-    },
-  };
-}
-
-/**
- * Validates if user can access a specific licensee
- * Throws error if unauthorized
- */
-export async function validateLicenseeAccess(
-  licenseeId: string | undefined,
-  userAccessibleLicensees: string[] | 'all'
-): Promise<void> {
-  if (!licenseeId) {
-    return; // No specific licensee requested
-  }
-
-  if (userAccessibleLicensees === 'all') {
-    return; // Admin can access all
-  }
-
-  if (!userAccessibleLicensees.includes(licenseeId)) {
-    throw new Error('Unauthorized: You do not have access to this licensee');
-  }
-}
 
 /**
  * Gets location filter based on licensee access
  * Use this when you need to filter by location IDs
  */
-export async function getLicenseeLocationFilter(
+async function getLicenseeLocationFilter(
   userAccessibleLicensees: string[] | 'all'
 ): Promise<string[] | 'all'> {
   if (userAccessibleLicensees === 'all') {

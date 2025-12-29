@@ -21,7 +21,7 @@ import { Machine } from '../models/machines';
  * @param currentCollectionId - The current collection ID to exclude
  * @returns The previous collection or null
  */
-export function findPreviousCollection(
+function findPreviousCollection(
   allCollections: Array<{
     _id: string;
     machineId?: string;
@@ -60,7 +60,7 @@ export function findPreviousCollection(
  * @param previousCollection - The previous collection (if any)
  * @returns Array of issues found
  */
-export function validateSasTimes(
+function validateSasTimes(
   collection: {
     _id: string;
     machineName?: string;
@@ -187,7 +187,7 @@ export function validateSasTimes(
  * @param actualPreviousCollection - The actual previous collection document
  * @returns Array of issues found
  */
-export function validatePreviousMeters(
+function validatePreviousMeters(
   collection: {
     _id: string;
     machineName?: string;
@@ -253,7 +253,7 @@ export function validatePreviousMeters(
  * @param collection - The collection to validate
  * @returns Array of issues found
  */
-export function validateMovementCalculation(collection: {
+function validateMovementCalculation(collection: {
   _id: string;
   machineName?: string;
   machineCustomName?: string;
@@ -345,7 +345,7 @@ export function validateMovementCalculation(collection: {
  * @param machineIds - Array of machine IDs to check
  * @returns Promise<CollectionIssue[]>
  */
-export async function checkCollectionHistoryIssues(
+async function checkCollectionHistoryIssues(
   machineIds: string[]
 ): Promise<CollectionIssue[]> {
   const issues: CollectionIssue[] = [];

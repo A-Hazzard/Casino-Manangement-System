@@ -8,18 +8,28 @@
  * - Firmware actions store (modals and selected firmware)
  * Used by various Zustand store implementations for state management.
  */
-import {
-  ActiveFilters,
-  ActiveTab,
+import type {
   dashboardData,
   DashboardTotals,
   dateRange,
   locations,
   TopPerformingData,
-} from '@/lib/types/index';
-import type { UserAuthPayload } from '@/shared/types/auth';
+  ActiveFilters,
+  ActiveTab,
+} from './index';
 import { TimePeriod } from '@/shared/types/common';
 import type { Firmware } from '@/shared/types/entities';
+
+// Firmware actions state type
+export type FirmwareActionsState = {
+  selectedFirmware: Firmware | null;
+  isDeleteModalOpen: boolean;
+  isDownloadModalOpen: boolean;
+  openDeleteModal: (firmware: Firmware) => void;
+  closeDeleteModal: () => void;
+  openDownloadModal: (firmware: Firmware) => void;
+  closeDownloadModal: () => void;
+};
 import type { CurrencyCode } from '@/shared/types/currency';
 
 export type DashBoardStore = {
@@ -81,19 +91,3 @@ export type DashBoardStore = {
   setIsAllLicensee: (_state: boolean) => void;
 };
 
-export type UserStore = {
-  user: UserAuthPayload | null;
-  setUser: (_user: UserAuthPayload) => void;
-  clearUser: () => void;
-};
-
-// Frontend-specific store types
-export type FirmwareActionsState = {
-  selectedFirmware: Firmware | null;
-  isDeleteModalOpen: boolean;
-  isDownloadModalOpen: boolean;
-  openDeleteModal: (firmware: Firmware) => void;
-  closeDeleteModal: () => void;
-  openDownloadModal: (firmware: Firmware) => void;
-  closeDownloadModal: () => void;
-};

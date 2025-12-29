@@ -7,7 +7,7 @@
  * @module app/api/lib/helpers/fixReportOperations
  */
 
-import { calculateSasMetrics } from '@/lib/helpers/collectionCreation';
+import { calculateSasMetrics } from './collectionCreation';
 import {
   CollectionData,
   FixResults,
@@ -25,7 +25,7 @@ import { Machine } from '../models/machines';
  * 1. collection.machineId (standard)
  * 2. collection.sasMeters.machine (fallback for older data)
  */
-export function getMachineIdFromCollection(
+function getMachineIdFromCollection(
   collection: CollectionData
 ): string | undefined {
   // Try collection.machineId first
@@ -93,22 +93,10 @@ export async function fixReportIssues(
     };
   } else if (reportId) {
     // Fix specific report BUT also fix ALL collections for SAS time chain integrity
-    // reportId can be either MongoDB _id or locationReportId (UUID)
-    // Try to find by locationReportId first (most common case from frontend)
-    const foundReport = await CollectionReport.findOne({
+    // reportId from URL is always locationReportId (UUID string)
+    const report = await CollectionReport.findOne({
       locationReportId: reportId,
     }).lean();
-
-    // If not found, try by MongoDB _id
-    let report = foundReport;
-    if (!report) {
-      try {
-        // CRITICAL: Use findOne with _id instead of findById (repo rule)
-        report = await CollectionReport.findOne({ _id: reportId }).lean();
-      } catch {
-        // Invalid ObjectId format, ignore
-      }
-    }
 
     if (!report) {
       throw new Error('Report not found');

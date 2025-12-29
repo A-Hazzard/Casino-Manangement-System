@@ -91,23 +91,6 @@ FeedbackSchema.pre('save', function (next) {
 export const FeedbackModel =
   mongoose.models.Feedback || model('Feedback', FeedbackSchema);
 
-export type Feedback = {
-  _id: string;
-  email: string;
-  category: 'bug' | 'suggestion' | 'general-review' | 'feature-request' | 'performance' | 'ui-ux' | 'other';
-  description: string;
-  submittedAt: Date;
-  status: 'pending' | 'reviewed' | 'resolved';
-  archived: boolean;
-  reviewedBy?: string | null;
-  reviewedAt?: Date | null;
-  notes?: string | null;
-  username?: string | null;
-  userId?: string | null;
-  createdAt?: Date;
-  updatedAt?: Date;
-};
-
 
 
 

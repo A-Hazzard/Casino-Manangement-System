@@ -1,8 +1,8 @@
 # Evolution One CMS - Complete Project Guide
 
-**Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 2025  
-**Version:** 4.0.0
+**Author:** Aaron Hazzard - Senior Software Engineer
+**Last Updated:** December 29, 2025
+**Version:** 4.1.0
 
 ## Table of Contents
 

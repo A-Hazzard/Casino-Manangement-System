@@ -219,7 +219,7 @@ export async function PATCH(
               );
 
               const { getSasTimePeriod, calculateSasMetrics } = await import(
-                '@/lib/helpers/collectionCreation'
+                '../../lib/helpers/collectionCreation'
               );
 
               // Get new SAS time range based on new collection timestamp

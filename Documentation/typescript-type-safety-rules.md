@@ -127,6 +127,35 @@ export type User = {
 };
 ```
 
+### 7. **Lean Object Types for Database Queries**
+
+- **Rule**: Use separate types for Mongoose documents vs lean query results
+- **Pattern**: Create `Lean[EntityName]` types for lean query results
+- **Reason**: Prevents runtime errors when calling document methods on plain objects
+- **Example**:
+
+```typescript
+// ✅ DO: Separate types for documents and lean objects
+export type UserDocument = Document & {
+  _id: string;
+  emailAddress: string;
+  roles: string[];
+  // ... full document interface
+};
+
+export type LeanUserDocument = Omit<UserDocument, keyof Document> & {
+  _id: string;
+  __v?: number; // Include MongoDB version field if needed
+};
+
+// Database query returns properly typed lean object
+const user = await UserModel.findOne({...}).lean() as LeanUserDocument | null;
+
+// ❌ DON'T: Call document methods on lean objects
+const user = await UserModel.findOne({...}).lean();
+const userJson = user.toJSON(); // Runtime error: toJSON is not a function
+```
+
 ## Type Organization Best Practices
 
 ### Shared Types Structure
@@ -246,6 +275,7 @@ Before creating or modifying types that represent backend data:
 - **Optional vs required fields** based on API behavior
 - **Nested object structures** and their relationships
 - **Array types** and their element structures
+- **Lean vs Document object handling** - ensure proper typing for database query results
 
 ## Validation Approach
 
@@ -325,6 +355,27 @@ export type UnsafeUser = {
   id: string;
   profile: { firstName: string }; // Assumes profile always exists
 };
+```
+
+### 4. **Lean Object Safety**
+
+```typescript
+// ✅ DO: Use proper typing for lean database queries
+const user = await UserModel.findOne({...}).lean() as LeanUserDocument | null;
+
+// Direct property access - no document methods needed
+const userData = {
+  id: user._id,
+  email: user.emailAddress,
+  roles: user.roles
+};
+
+// ❌ DON'T: Call Mongoose methods on lean objects
+const user = await UserModel.findOne({...}).lean();
+const jsonData = user.toJSON(); // Runtime error: toJSON is not a function
+
+// ❌ DON'T: Mix document and lean object types
+const user: UserDocument = await UserModel.findOne({...}).lean(); // Type mismatch
 ```
 
 ## Migration Guidelines

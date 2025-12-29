@@ -17,7 +17,7 @@ import type { MovementRequestStatus } from '@/lib/types/movementRequests';
  * @param status - Movement request status
  * @returns Logistics entry status
  */
-export function mapMovementStatusToLogisticsStatus(
+function mapMovementStatusToLogisticsStatus(
   status: MovementRequestStatus
 ): 'pending' | 'completed' | 'in-progress' | 'cancelled' {
   switch (status) {
@@ -40,7 +40,7 @@ export function mapMovementStatusToLogisticsStatus(
  * @param statusFilter - Optional status filter
  * @returns Query filters object
  */
-export function buildLogisticsFilters(
+function buildLogisticsFilters(
   searchTerm?: string | null,
   statusFilter?: string | null
 ): Record<string, unknown> {
@@ -69,7 +69,7 @@ export function buildLogisticsFilters(
  * @param logisticsData - Array of movement request documents
  * @returns Array of logistics entries
  */
-export function transformToLogisticsEntries(
+function transformToLogisticsEntries(
   logisticsData: Array<{
     _id: unknown;
     cabinetIn?: string;

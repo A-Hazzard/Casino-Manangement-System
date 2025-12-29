@@ -140,7 +140,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 /**
  * Format a change item for display in activity logs
  */
-export function formatChangeItem(change: ChangeItem): string {
+function formatChangeItem(change: ChangeItem): string {
   const { field, oldValue, newValue } = change;
 
   const formatValue = (value: unknown): string => {

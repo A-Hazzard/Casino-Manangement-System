@@ -18,7 +18,7 @@
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
-import { calculateCollectionReportTotals } from '@/lib/helpers/collectionReportCalculations';
+import { calculateCollectionReportTotals } from './collectionReportCalculations';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import mongoose from 'mongoose';
 
@@ -99,7 +99,7 @@ export function sanitizeCollectionReportPayload(
  * @param locationReportId - The location report ID
  * @returns Promise<void>
  */
-export async function updateCollectionsWithReportId(
+async function updateCollectionsWithReportId(
   machines: Array<{
     machineId?: string;
     metersIn?: number;
@@ -149,7 +149,7 @@ export async function updateCollectionsWithReportId(
  * @param locationReportId - The location report ID
  * @returns Promise<void>
  */
-export async function updateMachineCollectionData(
+async function updateMachineCollectionData(
   machineId: string,
   metersIn: number,
   metersOut: number,
@@ -335,11 +335,11 @@ export async function updateMachineCollectionData(
  * Creates a collection report and updates all related data
  *
  * @param body - The collection report payload
- * @returns Promise<{ success: boolean; data?: unknown; error?: string }>
+ * @returns Promise<{ success: boolean; report?: any; error?: string }>
  */
 export async function createCollectionReport(
   body: CreateCollectionReportPayload
-): Promise<{ success: boolean; data?: unknown; error?: string }> {
+): Promise<{ success: boolean; report?: any; error?: string }> {
   const startTime = Date.now();
 
   try {
@@ -480,7 +480,7 @@ export async function createCollectionReport(
       `✅ [createCollectionReport] Report creation completed successfully in ${duration}ms`
     );
 
-    return { success: true, data: created._id };
+    return { success: true, report: created };
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =

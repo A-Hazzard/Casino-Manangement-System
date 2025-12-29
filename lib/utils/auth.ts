@@ -11,11 +11,7 @@
  * - Token expiration handling
  */
 
-import type {
-  JwtPayload,
-  RefreshTokenPayload,
-  SessionData,
-} from '@/shared/types/auth';
+import type { JwtPayload, RefreshTokenPayload } from '@/shared/types/auth';
 import { SignJWT, jwtVerify } from 'jose';
 
 // ============================================================================
@@ -28,19 +24,6 @@ export function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     throw new Error('JWT_SECRET is not defined in environment variables.');
-  }
-  return secret;
-}
-
-/**
- * Get refresh token secret from environment variables
- */
-export function getRefreshTokenSecret(): string {
-  const secret = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error(
-      'REFRESH_TOKEN_SECRET or JWT_SECRET is not defined in environment variables.'
-    );
   }
   return secret;
 }
@@ -102,7 +85,12 @@ export async function generateRefreshToken(
   userId: string,
   sessionId: string
 ): Promise<string> {
-  const secret = getRefreshTokenSecret();
+  const secret = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error(
+      'REFRESH_TOKEN_SECRET or JWT_SECRET is not defined in environment variables.'
+    );
+  }
 
   const payload: RefreshTokenPayload = {
     userId,
@@ -148,7 +136,12 @@ export async function verifyRefreshToken(
   token: string
 ): Promise<RefreshTokenPayload | null> {
   try {
-    const secret = getRefreshTokenSecret();
+    const secret = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error(
+        'REFRESH_TOKEN_SECRET or JWT_SECRET is not defined in environment variables.'
+      );
+    }
     const { payload } = await jwtVerify(
       token,
       new TextEncoder().encode(secret)
@@ -158,62 +151,6 @@ export async function verifyRefreshToken(
     console.error('Refresh token verification failed:', error);
     return null;
   }
-}
-
-// Note: verifyAccessToken and verifyRefreshToken are already defined above
-
-// ============================================================================
-// Session Management
-// ============================================================================
-/**
- * Create session data object
- */
-export function createSessionData(
-  userId: string,
-  ipAddress: string,
-  userAgent: string,
-  rememberMe: boolean = false
-): SessionData {
-  const sessionId = crypto.randomUUID();
-  const now = new Date();
-  const expiresAt = new Date(
-    now.getTime() +
-      (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000)
-  ); // 30 days or 1 day
-
-  return {
-    userId,
-    sessionId,
-    ipAddress,
-    userAgent,
-    createdAt: now,
-    lastAccessedAt: now,
-    expiresAt,
-    isActive: true,
-  };
-}
-
-export function isSessionValid(session: SessionData): boolean {
-  const now = new Date();
-  return session.isActive && session.expiresAt > now;
-}
-
-export function updateSessionAccess(session: SessionData): SessionData {
-  return {
-    ...session,
-    lastAccessedAt: new Date(),
-  };
-}
-
-// Security utilities
-export function generateSecureToken(length: number = 32): string {
-  const chars =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
 }
 
 export function validatePasswordStrength(password: string): {
@@ -247,67 +184,6 @@ export function validatePasswordStrength(password: string): {
     errors,
   };
 }
-
-// Rate limiting utilities
-export class RateLimiter {
-  private attempts: Map<string, { count: number; resetTime: number }> =
-    new Map();
-
-  constructor(
-    private maxAttempts: number = 5,
-    private windowMs: number = 15 * 60 * 1000 // 15 minutes
-  ) {}
-
-  isAllowed(identifier: string): boolean {
-    const now = Date.now();
-    const attempt = this.attempts.get(identifier);
-
-    if (!attempt) {
-      this.attempts.set(identifier, {
-        count: 1,
-        resetTime: now + this.windowMs,
-      });
-      return true;
-    }
-
-    if (now > attempt.resetTime) {
-      this.attempts.set(identifier, {
-        count: 1,
-        resetTime: now + this.windowMs,
-      });
-      return true;
-    }
-
-    if (attempt.count >= this.maxAttempts) {
-      return false;
-    }
-
-    attempt.count++;
-    return true;
-  }
-
-  getRemainingAttempts(identifier: string): number {
-    const attempt = this.attempts.get(identifier);
-    if (!attempt) return this.maxAttempts;
-
-    const now = Date.now();
-    if (now > attempt.resetTime) return this.maxAttempts;
-
-    return Math.max(0, this.maxAttempts - attempt.count);
-  }
-
-  getResetTime(identifier: string): number | null {
-    const attempt = this.attempts.get(identifier);
-    return attempt ? attempt.resetTime : null;
-  }
-
-  clearAttempts(identifier: string): void {
-    this.attempts.delete(identifier);
-  }
-}
-
-// Global rate limiter instance
-export const loginRateLimiter = new RateLimiter(5, 15 * 60 * 1000); // 5 attempts per 15 minutes
 
 /**
  * Returns a user-friendly error message for login/auth errors.
@@ -350,22 +226,10 @@ export function getFriendlyErrorMessage(
 }
 
 /**
- * Type guard to check if error has a message property.
+ * Create authenticated axios request config
  */
-export function hasErrorMessage(error: unknown): error is { message: string } {
-  return (
-    error !== null &&
-    typeof error === 'object' &&
-    'message' in error &&
-    typeof (error as { message: unknown }).message === 'string'
-  );
-}
-
-/**
- * Get authentication token from cookies (client-side)
- */
-export function getAuthToken(): string | null {
-  if (typeof document === 'undefined') return null;
+export function getAuthHeaders(): Record<string, string> {
+  if (typeof document === 'undefined') return {};
 
   const cookies = document.cookie.split(';');
   const tokenCookie = cookies.find(cookie =>
@@ -373,16 +237,9 @@ export function getAuthToken(): string | null {
   );
 
   if (tokenCookie) {
-    return tokenCookie.split('=')[1];
+    const token = tokenCookie.split('=')[1];
+    return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
-  return null;
-}
-
-/**
- * Create authenticated axios request config
- */
-export function getAuthHeaders(): Record<string, string> {
-  const token = getAuthToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return {};
 }

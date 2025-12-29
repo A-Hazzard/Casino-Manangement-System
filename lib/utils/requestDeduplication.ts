@@ -100,24 +100,3 @@ export async function deduplicateRequest<T>(
   return promise as Promise<T>;
 }
 
-/**
- * Cancels an in-flight request by key
- * @param key - Unique key for the request
- */
-export function cancelRequest(key: RequestKey): void {
-  const existing = inFlightRequests.get(key);
-  if (existing) {
-    existing.controller.abort();
-    inFlightRequests.delete(key);
-  }
-}
-
-/**
- * Clears all in-flight requests (useful for cleanup)
- */
-export function clearAllRequests(): void {
-  inFlightRequests.forEach(({ controller }) => {
-    controller.abort();
-  });
-  inFlightRequests.clear();
-}

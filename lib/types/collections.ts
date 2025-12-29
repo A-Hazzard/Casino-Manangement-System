@@ -9,27 +9,6 @@
  * - Collection time management
  * - Collection history and records
  */
-export type Location = {
-  _id: string;
-  name: string;
-};
-
-export type MachineData = {
-  id: string;
-  name: string;
-  prevMetersIn?: number | string;
-  prevMetersOut?: number | string;
-};
-
-export type CabinetData = {
-  id: string;
-  name: string;
-  locationId?: string;
-  machines: MachineData[];
-  prevIn?: number;
-  prevOut?: number;
-};
-
 export type CollectionReportMachineEntry = {
   machineId: string;
   machineName: string;
@@ -46,11 +25,6 @@ export type CollectionReportMachineEntry = {
   ramClearCoinOut?: number;
   ramClearMetersIn?: number;
   ramClearMetersOut?: number;
-};
-
-export type LocationSelectItem = {
-  _id: string; // Or id, matching whatever is used
-  name: string;
 };
 
 export type CollectionSasMeters = {
@@ -147,11 +121,4 @@ export type PreviousCollectionMeters = {
   metersIn: number;
   metersOut: number;
   collectionTime?: Date;
-};
-
-export type MachineCollectionUpdate = {
-  machineId: string;
-  metersIn: number;
-  metersOut: number;
-  collectionTime: Date;
 };

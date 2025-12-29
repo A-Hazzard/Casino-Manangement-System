@@ -24,7 +24,7 @@ const idCache: Map<string, string> = new Map();
 /**
  * Checks if a value looks like a MongoDB ObjectId (24 character hex string)
  */
-export function isObjectId(value: unknown): boolean {
+function isObjectId(value: unknown): boolean {
   if (typeof value !== 'string') return false;
   // MongoDB ObjectId is exactly 24 hexadecimal characters
   return /^[0-9a-fA-F]{24}$/.test(value);

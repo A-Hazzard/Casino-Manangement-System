@@ -27,36 +27,6 @@ export type GamingDayRange = {
 // ============================================================================
 // Timezone Functions
 // ============================================================================
-/**
- * Get UTC offset for a licensee
- * @param licenseeName - The licensee name (e.g., "TTG", "Cabana", "Barbados")
- * @returns UTC offset in hours (positive for UTC+, negative for UTC-)
- */
-export function getTimezoneOffsetForLicensee(licenseeName: string): number {
-  // Trinidad and Tobago Gaming (TTG) = UTC-4
-  if (
-    licenseeName?.toLowerCase().includes('ttg') ||
-    licenseeName?.toLowerCase().includes('trinidad')
-  ) {
-    return -4;
-  }
-
-  // Guyana (Cabana) = UTC-4
-  if (
-    licenseeName?.toLowerCase().includes('cabana') ||
-    licenseeName?.toLowerCase().includes('guyana')
-  ) {
-    return -4;
-  }
-
-  // Barbados = UTC-4
-  if (licenseeName?.toLowerCase().includes('barbados')) {
-    return -4;
-  }
-
-  // Default to UTC-4 (Trinidad time) if not matched
-  return -4;
-}
 
 /**
  * Calculate gaming day range for a single date
@@ -65,7 +35,7 @@ export function getTimezoneOffsetForLicensee(licenseeName: string): number {
  * @param timezoneOffset - UTC offset in hours (e.g., -4 for UTC-4, default -4 for Trinidad/Guyana/Barbados)
  * @returns Object with rangeStart and rangeEnd in UTC
  */
-export function getGamingDayRange(
+function getGamingDayRange(
   selectedDate: Date,
   gameDayStartHour: number = 0,
   timezoneOffset: number = -4
@@ -96,7 +66,7 @@ export function getGamingDayRange(
  * @param timezoneOffset - UTC offset in hours (e.g., -4 for UTC-4, default -4 for Trinidad/Guyana/Barbados)
  * @returns Object with rangeStart and rangeEnd in UTC
  */
-export function getGamingDayRangeMultiDay(
+function getGamingDayRangeMultiDay(
   startDate: Date,
   endDate: Date,
   gameDayStartHour: number = 0,
@@ -345,50 +315,4 @@ export function getGamingDayRangesForLocations(
   }
 
   return ranges;
-}
-
-/**
- * Helper function to check if a date is within a gaming day range
- * @param date - The date to check
- * @param range - The gaming day range
- * @returns True if the date is within the range
- */
-export function isDateInGamingDayRange(
-  date: Date,
-  range: GamingDayRange
-): boolean {
-  return date >= range.rangeStart && date <= range.rangeEnd;
-}
-
-/**
- * Helper function to format gaming day range for display
- * @param range - The gaming day range
- * @param gameDayOffset - The gaming day offset for display
- * @returns Formatted string representation of the range
- */
-export function formatGamingDayRange(
-  range: GamingDayRange,
-  gameDayOffset: number
-): string {
-  const startTime = range.rangeStart.toLocaleString(undefined, {
-    timeZone: 'America/Port_of_Spain',
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
-
-  const endTime = range.rangeEnd.toLocaleString(undefined, {
-    timeZone: 'America/Port_of_Spain',
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
-
-  return `${startTime} - ${endTime} (${gameDayOffset}:00 AM start)`;
 }

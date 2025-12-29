@@ -13,13 +13,6 @@ export const SESSION_SORT_OPTIONS = [
   { value: 'totalHandle', label: 'Handle' },
 ] as const;
 
-/**
- * Default pagination settings
- */
-export const SESSIONS_PAGINATION = {
-  DEFAULT_PAGE: 1,
-  DEFAULT_LIMIT: 20,
-} as const;
 
 /**
  * Animation variants for sessions components

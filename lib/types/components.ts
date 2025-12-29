@@ -1,43 +1,8 @@
 // UI Component types
-import type { ActivityLog } from '@/app/api/lib/types/activityLog';
-import type { AggregatedLocation } from '@/lib/types/location';
 import type { MachineMovementRecord } from '@/lib/types/reports';
+import type { AggregatedLocation } from '@/shared/types';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import type { ExtendedCabinetDetail } from './pages';
-
-export type SmibConfig = {
-  firmwareVersion: string;
-  // Add other SMIB config properties as needed
-};
-
-export type CollectorSchedule = {
-  id: string;
-  _id?: string;
-  collectorName: string;
-  collector?: string;
-  locationName: string;
-  location?: string;
-  startTime: string;
-  endTime: string;
-  status:
-    | 'pending'
-    | 'completed'
-    | 'canceled'
-    | 'scheduled'
-    | 'in-progress'
-    | 'cancelled';
-  notes?: string;
-};
-
-export type CustomizedLabelProps = {
-  cx: number;
-  cy: number;
-  midAngle: number;
-  innerRadius: number;
-  outerRadius: number;
-  percent: number;
-  index: number;
-};
 
 export type RGBAColor = {
   r: number;
@@ -61,43 +26,11 @@ export type ChipProps = {
   className?: string;
 };
 
-export type NoDataMessageProps = {
-  message?: string;
-  className?: string;
-};
-
-export type EmptyStateProps = {
-  icon: React.ReactNode;
-  title: string;
-  message: string;
-};
-
 export type UploadSmibDataModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onRefresh?: () => void;
 };
-
-// Reports component types
-export type TemplateData = {
-  id: number;
-  name: string;
-  category: string;
-  rating: number;
-  uses: number;
-  description: string;
-  lastUpdated: string;
-  author: string;
-  sections: string[];
-  sampleData: {
-    title: string;
-    subtitle: string;
-    headers: string[];
-    data: string[][];
-  };
-};
-
-export type Option = Record<'value' | 'label', string>;
 
 // Modal Props Types
 export type NewLocationModalProps = {
@@ -144,50 +77,6 @@ export type NewMovementModalProps = {
   locations?: { _id: string; name: string }[];
 };
 
-export type LocationSelectorProps = {
-  onLocationSelect: (locationIds: string[]) => void;
-  selectedLocations: string[];
-  maxSelections?: number;
-  placeholder?: string;
-};
-
-export type TopMachine = {
-  id: string;
-  _id?: string;
-  machineId?: string;
-  name: string;
-  game?: string;
-  location: string;
-  locationName?: string;
-  locationId?: string;
-  performance: number;
-  revenue: number;
-  gamesPlayed: number;
-  handle?: number;
-  winLoss?: number;
-  jackpot?: number;
-  actualHold?: number;
-  manufacturer?: string;
-  avgWagerPerGame?: number;
-  moneyIn?: number;
-  moneyOut?: number;
-  gross?: number;
-  holdPercentage?: number;
-  lastActivity?: Date;
-  isOnline?: boolean;
-};
-
-export type TopMachinesTableProps = {
-  machines: TopMachine[];
-  loading?: boolean;
-  onMachineClick?: (machineId: string) => void;
-  className?: string;
-  timePeriod: string;
-  locationIds?: string[];
-  licencee?: string;
-  limit?: number;
-};
-
 export type RevenueAnalysisTableProps = {
   locations: AggregatedLocation[];
   loading?: boolean;
@@ -198,94 +87,6 @@ export type RevenueAnalysisTableProps = {
   onPageChange?: (page: number) => void;
   onLocationClick?: (location: AggregatedLocation) => void;
   timePeriod?: string;
-  locationIds?: string[];
-  licencee?: string;
-  className?: string;
-};
-
-export type LocationPaginationSkeletonProps = {
-  count?: number;
-  className?: string;
-};
-
-export type LocationData = {
-  id: string;
-  name: string;
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
-  performance: number;
-  revenue: number;
-};
-
-export type LocationMapProps = {
-  locations: LocationData[];
-  selectedLocations?: string[];
-  onLocationSelect?: (locationIds: string[]) => void;
-  onLocationClick?: (location: LocationData) => void;
-  center?: {
-    lat: number;
-    lng: number;
-  };
-  zoom?: number;
-  compact?: boolean;
-  className?: string;
-  height?: string;
-  showMetrics?: boolean;
-  selectedLocationId?: string;
-  // Optional pre-aggregated metrics to avoid duplicate API calls
-  aggregates?: Record<string, unknown>[];
-  // Two-phase loading props
-  gamingLocations?: Record<string, unknown>[]; // Basic location data for immediate display
-  gamingLocationsLoading?: boolean; // Loading state for gaming locations
-  financialDataLoading?: boolean; // Loading state for financial data
-};
-
-// Chart Props Types
-export type WinLossChartData = {
-  time: string;
-  winLoss: number;
-};
-
-export type WinLossChartProps = {
-  timePeriod: string;
-  locationIds?: string[];
-  licencee?: string;
-  className?: string;
-};
-
-export type PlaysChartData = {
-  time: string;
-  gamesPlayed: number;
-};
-
-export type PlaysChartProps = {
-  timePeriod: string;
-  locationIds?: string[];
-  licencee?: string;
-  className?: string;
-};
-
-export type JackpotChartData = {
-  time: string;
-  jackpot: number;
-};
-
-export type JackpotChartProps = {
-  timePeriod: string;
-  locationIds?: string[];
-  licencee?: string;
-  className?: string;
-};
-
-export type HandleChartData = {
-  time: string;
-  handle: number;
-};
-
-export type HandleChartProps = {
-  timePeriod: string;
   locationIds?: string[];
   licencee?: string;
   className?: string;
@@ -305,50 +106,6 @@ export type CollectionReportFiltersProps = {
   onFilterChange: (filter: string, checked: boolean) => void;
   onClearFilters: () => void;
   isSearching: boolean;
-};
-
-// Administration Types
-export type CountryDetailsModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  country: {
-    _id: string;
-    name: string;
-    alpha2: string;
-    alpha3: string;
-    isoNumeric: string;
-  } | null;
-};
-
-export type DeleteCountryModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  country: {
-    _id: string;
-    name: string;
-  } | null;
-  onDelete: () => void;
-};
-
-export type EditCountryModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  country: {
-    _id: string;
-    name: string;
-    alpha2: string;
-    alpha3: string;
-    isoNumeric: string;
-  } | null;
-};
-
-export type AddCountryModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-};
-
-export type PaginationLinkProps = React.ComponentProps<'a'> & {
-  isActive?: boolean;
 };
 
 export type SyncButtonProps = {
@@ -371,53 +128,49 @@ export type CabinetGridProps = {
   currentPage: number;
   itemsPerPage: number;
   router: AppRouterInstance;
-  sortOption?: 'assetNumber' | 'locationName' | 'moneyIn' | 'moneyOut' | 'jackpot' | 'gross' | 'cancelledCredits' | 'game' | 'smbId' | 'serialNumber' | 'lastOnline';
+  sortOption?:
+    | 'assetNumber'
+    | 'locationName'
+    | 'moneyIn'
+    | 'moneyOut'
+    | 'jackpot'
+    | 'gross'
+    | 'cancelledCredits'
+    | 'game'
+    | 'smbId'
+    | 'serialNumber'
+    | 'lastOnline';
   sortOrder?: 'asc' | 'desc';
-  onSortChange?: (option: 'assetNumber' | 'locationName' | 'moneyIn' | 'moneyOut' | 'jackpot' | 'gross' | 'cancelledCredits' | 'game' | 'smbId' | 'serialNumber' | 'lastOnline', order: 'asc' | 'desc') => void;
+  onSortChange?: (
+    option:
+      | 'assetNumber'
+      | 'locationName'
+      | 'moneyIn'
+      | 'moneyOut'
+      | 'jackpot'
+      | 'gross'
+      | 'cancelledCredits'
+      | 'game'
+      | 'smbId'
+      | 'serialNumber'
+      | 'lastOnline',
+    order: 'asc' | 'desc'
+  ) => void;
 };
 
-export type ActivityLogModalProps = {
-  open: boolean;
-  onClose: () => void;
-};
-
-export type ActivityGroup = {
-  range: string;
-  entries: ProcessedActivityEntry[];
-};
-
-export type ProcessedActivityEntry = {
-  id: string;
-  time: string;
-  type: string;
-  icon: React.ReactNode;
-  iconBg: string;
-  user: {
-    email: string;
-    role: string;
-  };
-  description: React.ReactNode;
-  originalActivity: ActivityLog;
-};
-
-// StackedChart component types
-export type StackedChartProps = {
-  title: string;
-  icon: React.ReactNode;
-  data: Array<{
-    hour: string;
-    [locationId: string]:
-      | {
-          handle: number;
-          winLoss: number;
-          jackpot: number;
-          plays: number;
-        }
-      | string;
-  }>;
-  dataKey: 'handle' | 'winLoss' | 'jackpot' | 'plays';
-  machines: string[]; // This will contain location IDs
-  colors: string[];
-  formatter: (value: number) => string;
-  locationNames?: Record<string, string>; // Map of location ID to location name
+// Collector schedule types
+export type CollectorSchedule = {
+  _id: string;
+  collectorName: string;
+  collector?: string; // Collector name/ID
+  locationName: string;
+  locationId: string;
+  location?: string; // Location name/ID
+  scheduledDate: string;
+  startTime: string | Date;
+  endTime: string | Date;
+  status: 'pending' | 'completed' | 'cancelled' | 'scheduled' | 'in-progress';
+  licencee?: string;
+  createdAt: string;
+  updatedAt: string;
 };

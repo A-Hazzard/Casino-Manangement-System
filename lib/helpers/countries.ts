@@ -59,28 +59,3 @@ export async function fetchCountries(): Promise<Country[]> {
   }
 }
 
-export const createCountry = async (
-  country: Omit<Country, '_id' | 'createdAt' | 'updatedAt'>
-) => {
-  const response = await axios.post('/api/countries', country);
-
-  // Activity logging removed - handled via API calls
-
-  return normalizeCountry(response.data.country);
-};
-
-export const updateCountry = async (country: Country) => {
-  const response = await axios.put(`/api/countries/${country._id}`, country);
-
-  // Activity logging removed - handled via API calls
-
-  return normalizeCountry(response.data.country);
-};
-
-export const deleteCountry = async (id: string) => {
-  const response = await axios.delete(`/api/countries/${id}`);
-
-  // Activity logging removed - handled via API calls
-
-  return response.data.success;
-};

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ComponentType, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
 import ConnectionError from './ConnectionError';
 
@@ -110,17 +110,3 @@ function ErrorBoundaryWrapper({
   }
 }
 
-/**
- * HOC to wrap any component with error handling
- */
-export function withPageErrorHandling<P extends object>(
-  WrappedComponent: ComponentType<P>
-) {
-  return function PageErrorHandledComponent(props: P) {
-    return (
-      <PageErrorBoundary>
-        <WrappedComponent {...props} />
-      </PageErrorBoundary>
-    );
-  };
-}

@@ -1,7 +1,7 @@
 import { Licencee } from '@/app/api/lib/models/licencee';
 
 // Helper function to generate a unique license key
-export function generateLicenseKey(): string {
+function generateLicenseKey(): string {
   const timestamp = Date.now().toString(36);
   const randomStr = Math.random().toString(36).substring(2, 8);
   return `LIC-${timestamp}-${randomStr}`.toUpperCase();

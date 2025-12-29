@@ -89,20 +89,3 @@ export function sortMachinesAlphabetically<
     return numAInt - numBInt;
   });
 }
-
-/**
- * Calculate amount to collect based on machine entries and financial inputs
- * Note: This is a placeholder function. The actual calculation is done in the hooks.
- */
-export function calculateAmountToCollect(
-  collectedMachineEntries: CollectionDocument[]
-): string {
-  if (!collectedMachineEntries.length) {
-    return '0';
-  }
-
-  // This function will be used with calculateMachineMovement
-  // For now, return a placeholder - the actual calculation needs access to calculateMachineMovement
-  // which is imported in the hook. We'll keep this calculation in the hook for now.
-  return '0';
-}

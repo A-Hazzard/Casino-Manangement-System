@@ -11,6 +11,7 @@
 
 import { colorPalette } from '@/lib/constants/uiConstants';
 import type { TopPerformingItem } from '@/lib/types';
+import { DateRange } from '@/lib/utils/dateUtils';
 import {
   exportMetersReportExcel,
   exportMetersReportPDF,
@@ -203,11 +204,13 @@ export function calculateTopMachines(
         const displayName = `${mainIdentifier} (${bracketParts.join(', ')})`;
 
         return {
+          id: item.machineDocumentId,
           _id: item.machineDocumentId,
           name: displayName,
+          performance: 0,
+          revenue: item.totalDrop,
           total: item.totalDrop,
           totalDrop: item.totalDrop,
-          performance: '',
           color: colorPalette[index % colorPalette.length],
           location: item.location,
           locationId: item.locationId,
@@ -242,7 +245,7 @@ export async function handleExportMeters({
   selectedLocations: string[];
   locations: Array<{ id: string; name: string }>;
   activeMetricsFilter: string;
-  customDateRange?: { startDate: Date; endDate: Date } | null;
+  customDateRange?: DateRange | null;
   selectedLicencee?: string | null;
   displayCurrency?: string | null;
   searchTerm: string;
@@ -272,9 +275,19 @@ export async function handleExportMeters({
         }),
       ...(displayCurrency && { currency: displayCurrency }),
       ...(activeMetricsFilter === 'Custom' &&
-        customDateRange && {
-          startDate: customDateRange.startDate.toISOString().split('T')[0],
-          endDate: customDateRange.endDate.toISOString().split('T')[0],
+        customDateRange &&
+        (customDateRange.startDate || customDateRange.start) &&
+        (customDateRange.endDate || customDateRange.end) && {
+          startDate: (
+            customDateRange.startDate || customDateRange.start
+          )!
+            .toISOString()
+            .split('T')[0],
+          endDate: (
+            customDateRange.endDate || customDateRange.end
+          )!
+            .toISOString()
+            .split('T')[0],
         }),
     });
 
@@ -291,9 +304,12 @@ export async function handleExportMeters({
       return;
     }
 
+    const start = customDateRange?.startDate || customDateRange?.start;
+    const end = customDateRange?.endDate || customDateRange?.end;
+
     const dateRangeStr =
-      activeMetricsFilter === 'Custom' && customDateRange
-        ? `${customDateRange.startDate.toLocaleDateString()} - ${customDateRange.endDate.toLocaleDateString()}`
+      activeMetricsFilter === 'Custom' && start && end
+        ? `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`
         : activeMetricsFilter;
 
     const metadata = {

@@ -17,6 +17,8 @@
 import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
 import { connectDB } from '../middleware/db';
 import { GamingLocations } from '../models/gaminglocations';
+import { CollectionReport } from '../models/collectionReport';
+import { PipelineStage } from 'mongoose';
 import type { TimePeriod } from '../types';
 import { getUserLocationFilter } from './licenseeFilter';
 import { getUserFromServer } from './users';
@@ -346,4 +348,191 @@ export async function getLocationNamesFromIds(
     .exec();
 
   return locations.map(loc => String(loc.name));
+}
+
+/**
+ * Aggregates the sum of totalDrop, totalCancelled, totalGross, and totalSasGross for all documents in the date range (and optional locationName filter).
+ * @param startDate - Start date for filtering.
+ * @param endDate - End date for filtering.
+ * @param locationName - Optional location name to filter.
+ * @param licencee - Optional licencee to filter.
+ * @returns Promise<{ drop: string; cancelledCredits: string; gross: string; sasGross: string; }> Aggregated sums for the summary table.
+ */
+export async function getMonthlyCollectionReportSummary(
+  startDate: Date,
+  endDate: Date,
+  locationName?: string,
+  licencee?: string
+): Promise<{
+  drop: string;
+  cancelledCredits: string;
+  gross: string;
+  sasGross: string;
+}> {
+  const match: Record<string, unknown> = {
+    timestamp: { $gte: startDate, $lte: endDate },
+  };
+  if (locationName) {
+    // Case-insensitive matching using regex
+    match.locationName = {
+      $regex: new RegExp(
+        `^${locationName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+        'i'
+      ),
+    };
+  }
+
+  let pipeline: PipelineStage[] = [];
+
+  if (licencee) {
+    // If licencee is specified, we need to join with gaminglocations to filter by licencee
+    pipeline = [
+      {
+        $lookup: {
+          from: 'gaminglocations',
+          localField: 'location',
+          foreignField: '_id',
+          as: 'locationDetails',
+        },
+      },
+      { $unwind: '$locationDetails' },
+      { $match: { 'locationDetails.rel.licencee': licencee, ...match } },
+      {
+        $group: {
+          _id: null,
+          drop: { $sum: '$totalDrop' },
+          cancelledCredits: { $sum: '$totalCancelled' },
+          gross: { $sum: '$totalGross' },
+          sasGross: { $sum: '$totalSasGross' },
+        },
+      },
+    ];
+  } else {
+    // No licencee filter, use simple aggregation
+    pipeline = [
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          drop: { $sum: '$totalDrop' },
+          cancelledCredits: { $sum: '$totalCancelled' },
+          gross: { $sum: '$totalGross' },
+          sasGross: { $sum: '$totalSasGross' },
+        },
+      },
+    ];
+  }
+
+  const result = await CollectionReport.aggregate(pipeline);
+  const agg = result[0] || {};
+  const formatSmartDecimal = (value: number | undefined): string => {
+    if (value === undefined) return '-';
+    const hasDecimals = value % 1 !== 0;
+    const decimalPart = value % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+    return value.toFixed(hasSignificantDecimals ? 2 : 0);
+  };
+
+  return {
+    drop: formatSmartDecimal(agg.drop),
+    cancelledCredits: formatSmartDecimal(agg.cancelledCredits),
+    gross: formatSmartDecimal(agg.gross),
+    sasGross: formatSmartDecimal(agg.sasGross),
+  };
+}
+
+/**
+ * Aggregates by locationName, summing totalDrop, totalCancelled, totalGross, and totalSasGross for each locationName in the date range (and optional locationName filter).
+ * @param startDate - Start date for filtering.
+ * @param endDate - End date for filtering.
+ * @param locationName - Optional location name to filter.
+ * @param licencee - Optional licencee to filter.
+ * @returns Promise<Array<{ location: string; drop: string; win: string; gross: string; sasGross: string }>> Aggregated data per location for the details table.
+ */
+export async function getMonthlyCollectionReportByLocation(
+  startDate: Date,
+  endDate: Date,
+  locationName?: string,
+  licencee?: string
+): Promise<
+  Array<{
+    location: string;
+    drop: string;
+    win: string;
+    gross: string;
+    sasGross: string;
+  }>
+> {
+  const match: Record<string, unknown> = {
+    timestamp: { $gte: startDate, $lte: endDate },
+  };
+  if (locationName) {
+    // Case-insensitive matching using regex
+    match.locationName = {
+      $regex: new RegExp(
+        `^${locationName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+        'i'
+      ),
+    };
+  }
+
+  let pipeline: PipelineStage[] = [];
+
+  if (licencee) {
+    // If licencee is specified, we need to join with gaminglocations to filter by licencee
+    pipeline = [
+      {
+        $lookup: {
+          from: 'gaminglocations',
+          localField: 'location',
+          foreignField: '_id',
+          as: 'locationDetails',
+        },
+      },
+      { $unwind: '$locationDetails' },
+      { $match: { 'locationDetails.rel.licencee': licencee, ...match } },
+      {
+        $group: {
+          _id: '$locationName',
+          drop: { $sum: '$totalDrop' },
+          win: { $sum: '$totalCancelled' },
+          gross: { $sum: '$totalGross' },
+          sasGross: { $sum: '$totalSasGross' },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ];
+  } else {
+    // No licencee filter, use simple aggregation
+    pipeline = [
+      { $match: match },
+      {
+        $group: {
+          _id: '$locationName',
+          drop: { $sum: '$totalDrop' },
+          win: { $sum: '$totalCancelled' },
+          gross: { $sum: '$totalGross' },
+          sasGross: { $sum: '$totalSasGross' },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ];
+  }
+
+  const result = await CollectionReport.aggregate(pipeline);
+  const formatSmartDecimal = (value: number | undefined): string => {
+    if (value === undefined) return '-';
+    const hasDecimals = value % 1 !== 0;
+    const decimalPart = value % 1;
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+    return value.toFixed(hasSignificantDecimals ? 2 : 0);
+  };
+
+  return result.map(row => ({
+    location: row._id || '-',
+    drop: formatSmartDecimal(row.drop),
+    win: formatSmartDecimal(row.win),
+    gross: formatSmartDecimal(row.gross),
+    sasGross: formatSmartDecimal(row.sasGross),
+  }));
 }

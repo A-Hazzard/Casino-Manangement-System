@@ -20,4 +20,3 @@ export type Firmware = {
   deletedAt?: string | null;
 };
 
-export type NewFirmware = Omit<Firmware, '_id' | 'createdAt' | 'updatedAt'>;

@@ -39,11 +39,3 @@ export type MetersReportResponse = {
   };
 };
 
-export type MetersReportFilters = {
-  locations: string[];
-  startDate?: string;
-  endDate?: string;
-  page?: number;
-  limit?: number;
-  search?: string;
-};

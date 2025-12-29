@@ -39,7 +39,9 @@ export default function RevenueAnalysisTable({
   onLocationClick,
 }: RevenueAnalysisTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<keyof AggregatedLocation>('name');
+  const [sortField, setSortField] = useState<keyof AggregatedLocation | 'name'>(
+    'name'
+  );
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Filter locations based on search term
@@ -48,11 +50,13 @@ export default function RevenueAnalysisTable({
     const q = (searchTerm || '').toLowerCase();
     return locations.filter(location => {
       const name =
-        location.name ||
+        (location as Record<string, unknown>).name ||
         (location as Record<string, unknown>).locationName ||
         '';
       const id =
-        location._id || (location as Record<string, unknown>).location || '';
+        (location as Record<string, unknown>)._id ||
+        (location as Record<string, unknown>).location ||
+        '';
       return (
         (typeof name === 'string' && name.toLowerCase().includes(q)) ||
         (typeof id === 'string' && id.toLowerCase().includes(q))
@@ -63,8 +67,11 @@ export default function RevenueAnalysisTable({
   // Sort locations
   const sortedLocations = useMemo(() => {
     return [...filteredLocations].sort((a, b) => {
-      const aValue = a[sortField];
-      const bValue = b[sortField];
+      const aVal = (a as Record<string, unknown>)[sortField];
+      const bVal = (b as Record<string, unknown>)[sortField];
+
+      const aValue = aVal === undefined && sortField === 'name' ? (a as Record<string, unknown>).locationName : aVal;
+      const bValue = bVal === undefined && sortField === 'name' ? (b as Record<string, unknown>).locationName : bVal;
 
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
@@ -83,7 +90,7 @@ export default function RevenueAnalysisTable({
   // Use sorted locations - sorting is applied here, pagination is handled by parent
   const paginatedLocations = sortedLocations;
 
-  const handleSort = (field: keyof AggregatedLocation) => {
+  const handleSort = (field: keyof AggregatedLocation | 'name') => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -96,7 +103,7 @@ export default function RevenueAnalysisTable({
     field,
     children,
   }: {
-    field: keyof AggregatedLocation;
+    field: keyof AggregatedLocation | 'name';
     children: React.ReactNode;
   }) => (
     <Button
@@ -192,7 +199,7 @@ export default function RevenueAnalysisTable({
                 location._id ||
                 (location as Record<string, unknown>).locationId;
               const locationName: string = String(
-                location.name ||
+                (location as Record<string, unknown>).name ||
                   (location as Record<string, unknown>).locationName ||
                   'Unknown'
               );
@@ -366,7 +373,15 @@ export default function RevenueAnalysisTable({
                 ) : (
                   paginatedLocations.map(location => (
                     <TableRow
-                      key={location._id || location.location || location.name}
+                      key={
+                        String(
+                          (location as Record<string, unknown>)._id ||
+                            (location as Record<string, unknown>).location ||
+                            (location as Record<string, unknown>).name ||
+                            (location as Record<string, unknown>).locationName ||
+                            ''
+                        )
+                      }
                       className="cursor-pointer transition-colors hover:bg-gray-50"
                       onClick={() => onLocationClick?.(location)}
                     >
@@ -449,7 +464,15 @@ export default function RevenueAnalysisTable({
           ) : (
             paginatedLocations.map(location => (
               <LocationCard
-                key={location._id || location.location || location.name}
+                key={
+                  String(
+                    (location as Record<string, unknown>)._id ||
+                      (location as Record<string, unknown>).location ||
+                      (location as Record<string, unknown>).name ||
+                      (location as Record<string, unknown>).locationName ||
+                      ''
+                  )
+                }
                 location={location}
               />
             ))

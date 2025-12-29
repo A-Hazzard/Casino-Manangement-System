@@ -13,7 +13,7 @@ type MemberTableSkeletonProps = {
   hideLocationColumn?: boolean;
 };
 
-export const MemberTableSkeleton: React.FC<MemberTableSkeletonProps> = ({
+const MemberTableSkeleton: React.FC<MemberTableSkeletonProps> = ({
   hideLocationColumn = false,
 }) => (
   <div className="overflow-x-auto rounded-lg bg-white shadow">

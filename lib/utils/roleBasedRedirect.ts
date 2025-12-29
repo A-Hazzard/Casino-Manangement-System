@@ -10,31 +10,9 @@
  * - Role priority handling (admin/developer/manager > technician > location admin > collector)
  */
 
-import type { UserRole } from './permissions';
-
 // ============================================================================
 // Redirect Path Functions
 // ============================================================================
-/**
- * Gets the default redirect path for a user based on their role.
- * Maps each role to their first accessible page.
- *
- * @param userRole - The user's primary role.
- * @returns The appropriate redirect path.
- */
-export function getDefaultRedirectPath(userRole: UserRole): string {
-  const roleRedirectMap: Record<UserRole, string> = {
-    developer: '/',
-    admin: '/',
-    manager: '/',
-    'location admin': '/collection-report', // Updated: location admin redirects to collection reports
-    technician: '/cabinets', // machines page
-    collector: '/collection-report', // collection report page
-  };
-
-  return roleRedirectMap[userRole] || '/cabinets'; // fallback to machines page
-}
-
 /**
  * Gets the default redirect path for multiple roles.
  * Uses the highest priority role to determine redirect.
@@ -85,26 +63,6 @@ export function getDefaultRedirectPathFromRoles(userRoles: string[]): string {
 // ============================================================================
 // Destination Name Functions
 // ============================================================================
-/**
- * Gets a user-friendly redirect message based on role.
- * Used for display purposes in UI.
- *
- * @param userRole - The user's primary role.
- * @returns Human-readable redirect destination.
- */
-export function getRedirectDestinationName(userRole: UserRole): string {
-  const destinationNames: Record<UserRole, string> = {
-    developer: 'Dashboard',
-    admin: 'Dashboard',
-    manager: 'Dashboard',
-    'location admin': 'Collection Report', // Updated: location admin redirects to collection reports
-    technician: 'Machines',
-    collector: 'Collection Report',
-  };
-
-  return destinationNames[userRole] || 'Machines';
-}
-
 /**
  * Gets a user-friendly redirect message for multiple roles.
  * Uses the same priority logic as getDefaultRedirectPathFromRoles.

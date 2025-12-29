@@ -40,37 +40,6 @@ export const calculateOfflineDurationHours = (
 };
 
 /**
- * Format offline duration in a human-readable string
- */
-export const formatOfflineDuration = (hours: number) => {
-  if (hours === 0) return 'Less than 1 hour';
-  if (hours < 24) {
-    const wholeHours = Math.floor(hours);
-    const minutes = Math.floor((hours - wholeHours) * 60);
-    if (minutes === 0) return `${wholeHours} hour${wholeHours > 1 ? 's' : ''}`;
-    return `${wholeHours} hour${wholeHours > 1 ? 's' : ''} ${minutes} minute${
-      minutes > 1 ? 's' : ''
-    }`;
-  }
-  const days = Math.floor(hours / 24);
-  const remainingHours = hours % 24;
-  const wholeRemainingHours = Math.floor(remainingHours);
-  const minutes = Math.floor((remainingHours - wholeRemainingHours) * 60);
-
-  if (wholeRemainingHours === 0 && minutes === 0) {
-    return `${days} day${days > 1 ? 's' : ''}`;
-  } else if (minutes === 0) {
-    return `${days} day${days > 1 ? 's' : ''} ${wholeRemainingHours} hour${
-      wholeRemainingHours > 1 ? 's' : ''
-    }`;
-  } else {
-    return `${days} day${days > 1 ? 's' : ''} ${wholeRemainingHours} hour${
-      wholeRemainingHours > 1 ? 's' : ''
-    } ${minutes} minute${minutes > 1 ? 's' : ''}`;
-  }
-};
-
-/**
  * Verification details type for Pareto calculations
  */
 export type VerificationDetails = {

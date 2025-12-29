@@ -13,15 +13,12 @@ import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
 import { useDebounce } from '@/lib/utils/hooks';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-type CustomDateRange = {
-  startDate: Date;
-  endDate: Date;
-};
+import { dateRange } from '@/lib/types/index';
 
 type UseCabinetDataProps = {
   selectedLicencee: string;
   activeMetricsFilter: string;
-  customDateRange?: CustomDateRange;
+  customDateRange?: dateRange;
   searchTerm: string;
   selectedLocation: string;
   selectedGameType: string;

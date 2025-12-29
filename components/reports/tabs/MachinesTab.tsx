@@ -34,7 +34,7 @@ import { MachinesEvaluationTab } from './MachinesEvaluationTab';
 import { MachinesOfflineTab } from './MachinesOfflineTab';
 import { MachinesOverviewTab } from './MachinesOverviewTab';
 
-import type { TopMachinesCriteria } from '@/components/ui/TopMachinesCriteriaSelector';
+import type { TopMachinesCriteria } from '@/lib/types/machinesEvaluationTab';
 import type { MachineEvaluationData } from '@/lib/types';
 import type { MachineData } from '@/shared/types/machines';
 

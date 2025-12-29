@@ -14,7 +14,7 @@ import {
   getCountryCurrency,
   getLicenseeCurrency,
 } from '@/lib/helpers/rates';
-import type { AggregatedLocation } from '@/lib/types/location';
+import type { AggregatedLocation } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 
 /**
@@ -98,71 +98,3 @@ export async function convertLocationCurrency(
   });
 }
 
-/**
- * Applies machine type filters to location rows
- *
- * @param rows - Array of aggregated locations
- * @param machineTypeFilter - Filter string (comma-separated)
- * @returns AggregatedLocation[]
- */
-export function applyMachineTypeFilter(
-  rows: AggregatedLocation[],
-  machineTypeFilter: string | null
-): AggregatedLocation[] {
-  if (!machineTypeFilter) {
-    return rows;
-  }
-
-  // Handle comma-separated multiple filters
-  const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
-
-  return rows.filter(loc => {
-    // Apply AND logic - location must match ALL selected filters
-    return filters.every(filter => {
-      switch (filter.trim()) {
-        case 'LocalServersOnly':
-          return loc.isLocalServer === true;
-        case 'SMIBLocationsOnly':
-          return loc.noSMIBLocation === false;
-        case 'NoSMIBLocation':
-          return loc.noSMIBLocation === true;
-        case 'MembershipOnly':
-          // Check both membershipEnabled and enableMembership fields for compatibility
-          return (
-            loc.membershipEnabled === true || loc.enableMembership === true
-          );
-        case 'MissingCoordinates':
-          // Check if location has missing coordinates
-          const geoCoords = loc.geoCoords;
-          if (!geoCoords) return true;
-          // Check for lat/lng format (using type assertion for entities.ts GeoCoordinates type)
-          const geoCoordsWithLatLng = geoCoords as { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number };
-          const hasLat = geoCoordsWithLatLng.lat !== undefined && geoCoordsWithLatLng.lat !== null;
-          const hasLng = geoCoordsWithLatLng.lng !== undefined && geoCoordsWithLatLng.lng !== null;
-          // Check for latitude/longitude format
-          const hasLatitude = geoCoordsWithLatLng.latitude !== undefined && geoCoordsWithLatLng.latitude !== null;
-          const hasLongitude = geoCoordsWithLatLng.longitude !== undefined && geoCoordsWithLatLng.longitude !== null;
-          const hasLongtitude = geoCoordsWithLatLng.longtitude !== undefined && geoCoordsWithLatLng.longtitude !== null;
-          // Location has coords if it has (lat AND lng) OR (latitude AND (longitude OR longtitude))
-          const hasValidCoords = (hasLat && hasLng) || (hasLatitude && (hasLongitude || hasLongtitude));
-          return !hasValidCoords;
-        case 'HasCoordinates':
-          // Check if location has coordinates
-          const geoCoordsForHas = loc.geoCoords;
-          if (!geoCoordsForHas) return false;
-          // Check for lat/lng format (using type assertion for entities.ts GeoCoordinates type)
-          const geoCoordsForHasWithLatLng = geoCoordsForHas as { lat?: number; lng?: number; latitude?: number; longitude?: number; longtitude?: number };
-          const hasLatForHas = geoCoordsForHasWithLatLng.lat !== undefined && geoCoordsForHasWithLatLng.lat !== null;
-          const hasLngForHas = geoCoordsForHasWithLatLng.lng !== undefined && geoCoordsForHasWithLatLng.lng !== null;
-          // Check for latitude/longitude format
-          const hasLatitudeForHas = geoCoordsForHasWithLatLng.latitude !== undefined && geoCoordsForHasWithLatLng.latitude !== null;
-          const hasLongitudeForHas = geoCoordsForHasWithLatLng.longitude !== undefined && geoCoordsForHasWithLatLng.longitude !== null;
-          const hasLongtitudeForHas = geoCoordsForHasWithLatLng.longtitude !== undefined && geoCoordsForHasWithLatLng.longtitude !== null;
-          // Location has coords if it has (lat AND lng) OR (latitude AND (longitude OR longtitude))
-          return (hasLatForHas && hasLngForHas) || (hasLatitudeForHas && (hasLongitudeForHas || hasLongtitudeForHas));
-        default:
-          return true;
-      }
-    });
-  });
-}

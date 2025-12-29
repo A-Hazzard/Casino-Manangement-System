@@ -9,9 +9,8 @@ import {
 import type {
   CurrentUser,
   OriginalUserType,
-  UserDocument,
-  UserDocumentWithPassword,
 } from '@/shared/types/users';
+import type { LeanUserDocument } from '@/shared/types/auth';
 import { JWTPayload, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
@@ -269,47 +268,6 @@ export async function getUserIdFromServer(): Promise<string | null> {
   return user ? (user._id as string) : null;
 }
 
-/**
- * Finds a user by email address (case-insensitive).
- *
- * @param emailAddress - The email address to search for.
- * @returns Promise resolving to a UserDocument or null if not found.
- */
-export async function getUserByEmail(
-  emailAddress: string
-): Promise<UserDocumentWithPassword | null> {
-  return UserModel.findOne({
-    emailAddress: { $regex: new RegExp(`^${emailAddress}$`, 'i') },
-  });
-}
-
-/**
- * Finds a user by username (case-insensitive).
- */
-export async function getUserByUsername(
-  username: string
-): Promise<UserDocumentWithPassword | null> {
-  return UserModel.findOne({
-    username: { $regex: new RegExp(`^${username}$`, 'i') },
-  });
-}
-
-/**
- * Formats user data for frontend consumption
- */
-export function formatUsersForResponse(users: UserDocument[]) {
-  return users.map((user: UserDocument) => ({
-    _id: user._id,
-    name: `${user.profile?.firstName ?? ''} ${
-      user.profile?.lastName ?? ''
-    }`.trim(),
-    username: user.username,
-    email: user.emailAddress,
-    enabled: user.isEnabled,
-    roles: user.roles,
-    profilePicture: user.profilePicture ?? null,
-  }));
-}
 
 /**
  * Retrieves all users from database
@@ -346,6 +304,26 @@ export async function getDeletedUsers() {
  * Note: _id is stored as String in the schema, not ObjectId
  * Uses .lean() to return a plain JavaScript object with all fields preserved
  */
+export async function getUserByEmail(email: string): Promise<LeanUserDocument | null> {
+  try {
+    await connectDB();
+    return await UserModel.findOne({ emailAddress: email }).lean() as LeanUserDocument | null;
+  } catch (error) {
+    console.error('Error getting user by email:', error);
+    throw error;
+  }
+}
+
+export async function getUserByUsername(username: string): Promise<LeanUserDocument | null> {
+  try {
+    await connectDB();
+    return await UserModel.findOne({ username }).lean() as LeanUserDocument | null;
+  } catch (error) {
+    console.error('Error getting user by username:', error);
+    throw error;
+  }
+}
+
 export async function getUserById(userId: string) {
   return await UserModel.findOne({ _id: userId }, '-password').lean();
 }

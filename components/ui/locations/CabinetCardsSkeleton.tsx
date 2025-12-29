@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
  * Cabinet Cards Skeleton Loader
  * Matches the exact structure of CabinetCardMobile component
  */
-export const CabinetCardsSkeleton: React.FC = () => (
+const CabinetCardsSkeleton: React.FC = () => (
   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
     {[...Array(10)].map((_, i) => (
       <div

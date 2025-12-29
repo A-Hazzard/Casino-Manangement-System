@@ -12,33 +12,6 @@
  * - User preferences and settings
  * Re-exports shared report types from shared/types/reports.
  */
-import type {
-  PaginationInfo,
-  ReportsLocationData,
-  ReportsLocationsResponse,
-} from '@shared/types/reports';
-
-// Re-export shared types for convenience
-export type { PaginationInfo, ReportsLocationData, ReportsLocationsResponse };
-
-// Backend-specific report types
-export type ReportQuery = {
-  timePeriod: string;
-  licencee?: string;
-  locationIds?: string[];
-  startDate?: Date;
-  endDate?: Date;
-  page?: number;
-  limit?: number;
-};
-
-export type ReportGenerationRequest = {
-  reportType: string;
-  filters: ReportQuery;
-  format: 'pdf' | 'csv' | 'excel';
-  userId: string;
-};
-
 // Logistics entry type for movement/logistics tracking
 export type LogisticsEntry = {
   id: string;
@@ -100,100 +73,6 @@ export type MachineMovementRecord = {
   updatedAt: Date;
 };
 
-// Report export types
-export type DailyCountsReport = {
-  locationId: string;
-  locationName: string;
-  date: string;
-  meterReadings: Array<{
-    machineId: string;
-    machineName: string;
-    openingReading: number;
-    closingReading: number;
-    netRevenue: number;
-    variance: number;
-  }>;
-  voucherData: {
-    issued: number;
-    redeemed: number;
-    outstanding: number;
-  };
-  physicalCounts: {
-    expectedCash: number;
-    actualCash: number;
-    variance: number;
-  };
-};
-
-// Additional report types for analytics store
-export type KpiMetric = {
-  id: string;
-  label: string;
-  name: string;
-  value: number;
-  change?: number;
-  changeType?: 'increase' | 'decrease' | 'neutral';
-  trend?: 'up' | 'down' | 'neutral';
-  format: 'currency' | 'percentage' | 'number';
-  description?: string;
-};
-
-export type CasinoLocation = {
-  _id: string;
-  name: string;
-  region: string;
-  totalMachines: number;
-  onlineMachines: number;
-  revenue: number;
-  performance: 'good' | 'average' | 'poor';
-  lastUpdated: Date;
-};
-
-export type GamingMachine = {
-  _id: string;
-  locationId: string;
-  manufacturer: string;
-  gameTitle: string;
-  lastActivity: string;
-  coinIn: number;
-  coinOut: number;
-  drop: number;
-  totalCancelledCredits: number;
-  jackpot: number;
-  gamesPlayed: number;
-  performance: 'good' | 'average' | 'poor';
-  isOnline: boolean;
-};
-
-export type ChartDataPoint = {
-  label: string;
-  value: number;
-  date?: Date;
-  category?: string;
-  metadata?: Record<string, unknown>;
-};
-
-// Report store types
-export type ReportType =
-  | 'locationPerformance'
-  | 'machineRevenue'
-  | 'fullFinancials'
-  | 'customerActivity'
-  | 'dailyCounts'
-  | 'activeCustomers'
-  | 'locationStats'
-  | 'machinePerformance'
-  | 'terminalCounts';
-
-export type ReportStep = {
-  id: string;
-  name: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'error';
-  progress: number;
-  message?: string;
-  data?: unknown;
-};
-
 export type ScheduledReport = {
   id: string;
   name: string;
@@ -246,19 +125,6 @@ export type CustomerMetrics = {
     totalSpend: number;
     visits: number;
   }>;
-};
-
-export type CustomerDemographic = {
-  ageGroup: string;
-  count: number;
-  percentage: number;
-};
-
-export type LoyaltyTier = {
-  tier: string;
-  count: number;
-  percentage: number;
-  color: string;
 };
 
 export type VoucherMetrics = {
@@ -333,24 +199,6 @@ export type ComplianceMetrics = {
     deadline: string;
     status: string;
   }>;
-};
-
-export type ComplianceCategory = {
-  category: string;
-  score: number;
-  checksPassed: number;
-  totalChecks: number;
-  pendingChecks: number;
-};
-
-export type RecentAudit = {
-  id: string;
-  type: string;
-  status: string;
-  severity: string;
-  date: string;
-  auditor: string;
-  findings: number;
 };
 
 // Dashboard widget types

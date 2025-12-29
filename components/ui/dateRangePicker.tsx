@@ -75,7 +75,7 @@ class ErrorBoundary extends React.Component<
 // Re-export DateRange from react-day-picker for external use if needed
 export type { RDPDateRange as DateRange };
 
-export type DateRangePickerProps = {
+type DateRangePickerProps = {
   value?: RDPDateRange;
   onChange?: (range?: RDPDateRange) => void;
   className?: string;

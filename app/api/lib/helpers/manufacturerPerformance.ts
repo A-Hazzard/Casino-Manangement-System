@@ -47,7 +47,7 @@ export type ManufacturerPerformanceItem = {
  * @param endDate - Optional custom end date
  * @returns Date range object
  */
-export function calculateManufacturerDateRange(
+function calculateManufacturerDateRange(
   timePeriod: TimePeriod,
   startDate?: string | null,
   endDate?: string | null
@@ -82,7 +82,7 @@ export function calculateManufacturerDateRange(
  * @param licencee - Optional licensee to filter by
  * @returns Aggregation pipeline stages
  */
-export function buildManufacturerPerformancePipeline(
+function buildManufacturerPerformancePipeline(
   locationId: string,
   startDate: Date,
   endDate: Date,
@@ -178,7 +178,7 @@ export function buildManufacturerPerformancePipeline(
  * @param manufacturerData - Array of manufacturer data items
  * @returns Totals object
  */
-export function calculateManufacturerTotals(
+function calculateManufacturerTotals(
   manufacturerData: ManufacturerDataItem[]
 ): {
   totalMachines: number;
@@ -216,7 +216,7 @@ export function calculateManufacturerTotals(
  * @param totals - Totals object
  * @returns Array of manufacturer performance items with percentages
  */
-export function calculateManufacturerPercentages(
+function calculateManufacturerPercentages(
   manufacturerData: ManufacturerDataItem[],
   totals: ReturnType<typeof calculateManufacturerTotals>
 ): ManufacturerPerformanceItem[] {

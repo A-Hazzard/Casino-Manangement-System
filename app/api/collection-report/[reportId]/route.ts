@@ -186,7 +186,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 4: Get existing report for logging
     // ============================================================================
-    const existingReport = await CollectionReport.findOne({ _id: reportId });
+    const existingReport = await CollectionReport.findOne({
+      locationReportId: reportId,
+    });
     if (!existingReport) {
       const duration = Date.now() - startTime;
       console.error(
@@ -366,7 +368,9 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 3: Get existing report and associated collections
     // ============================================================================
-    const existingReport = await CollectionReport.findOne({ _id: reportId });
+    const existingReport = await CollectionReport.findOne({
+      locationReportId: reportId,
+    });
     if (!existingReport) {
       const duration = Date.now() - startTime;
       console.error(
@@ -396,7 +400,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // STEP 6: Delete associated collections and report
     // ============================================================================
     await Collections.deleteMany({ locationReportId: reportId });
-    await CollectionReport.findOneAndDelete({ _id: reportId });
+    await CollectionReport.findOneAndDelete({ locationReportId: reportId });
 
     // ============================================================================
     // STEP 7: Log activity

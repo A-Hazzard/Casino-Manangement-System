@@ -63,11 +63,3 @@ export function mapToCabinetProps(cabinet: Cabinet): CabinetProps {
   };
 }
 
-/**
- * Transforms an array of cabinets to cabinet props
- * @param cabinets - Array of cabinet objects
- * @returns Array of transformed cabinet props
- */
-export function transformCabinetsToProps(cabinets: Cabinet[]): CabinetProps[] {
-  return cabinets.map(cabinet => mapToCabinetProps(cabinet));
-}

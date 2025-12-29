@@ -1,6 +1,3 @@
-import type { ActivityLogData } from '@/lib/types/hooks';
-import type { Licensee } from '@/lib/types/licensee';
-
 export type User = {
   _id: string;
   name: string;
@@ -49,29 +46,3 @@ export type DeleteUserModalProps = {
   onDelete: () => void;
 };
 
-// Hook types for useAdministrationData
-export type UseAdministrationDataProps = {
-  selectedLicencee: string;
-  activeSection: string;
-};
-
-export type UseAdministrationDataReturn = {
-  // Data states
-  users: User[];
-  licensees: Licensee[];
-  activityLogs: ActivityLogData[];
-
-  // Loading states
-  loadingUsers: boolean;
-  loadingLicensees: boolean;
-  loadingActivityLogs: boolean;
-
-  // Error states
-  error: string | null;
-
-  // Actions
-  refreshUsers: () => Promise<void>;
-  refreshLicensees: () => Promise<void>;
-  refreshActivityLogs: () => Promise<void>;
-  refreshAllData: () => Promise<void>;
-};

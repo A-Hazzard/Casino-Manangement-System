@@ -30,7 +30,7 @@ const formatSmartDecimal = (value: number): string => {
  * @param timePeriod - Optional time period filter (e.g., "Today", "Yesterday", "7d", "30d").
  * @returns Promise resolving to an array of AcceptedBillType.
  */
-export async function getAcceptedBillsByMachine(
+async function getAcceptedBillsByMachine(
   machineId: string,
   timePeriod?: string | null
 ): Promise<AcceptedBillType[]> {
@@ -69,7 +69,7 @@ export async function getAcceptedBillsByMachine(
  * @param timePeriod - Optional time period filter (e.g., "Today", "Yesterday", "7d", "30d").
  * @returns Promise resolving to an array of MachineEventType.
  */
-export async function getMachineEventsByMachine(
+async function getMachineEventsByMachine(
   machineId: string,
   timePeriod?: string | null
 ): Promise<MachineEventType[]> {
@@ -122,7 +122,7 @@ export async function getMachineEventsByMachine(
  * @param timePeriod - Optional time period filter (e.g., "Today", "Yesterday", "7d", "30d").
  * @returns Promise resolving to an array of CollectionMetersHistoryEntry.
  */
-export async function getCollectionMetersHistoryByMachine(
+async function getCollectionMetersHistoryByMachine(
   machineId: string,
   timePeriod?: string | null
 ): Promise<CollectionMetersHistoryEntry[]> {

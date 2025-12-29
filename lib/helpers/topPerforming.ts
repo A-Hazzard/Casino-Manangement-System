@@ -13,14 +13,8 @@
  */
 
 import { colorPalette } from '@/lib/constants/uiConstants';
-import { TopPerformingData, TopPerformingItem } from '@/lib/types';
+import { TopPerformingData, TopPerformingItem, ActiveTab } from '@/lib/types';
 import axios from 'axios';
-
-// ============================================================================
-// Type Definitions
-// ============================================================================
-
-type ActiveTab = 'locations' | 'Cabinets';
 
 // ============================================================================
 // Top Performing Data Fetching

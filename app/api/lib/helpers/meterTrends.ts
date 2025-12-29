@@ -28,7 +28,7 @@ import { getUserLocationFilter } from './licenseeFilter';
 /**
  * Meter trend metric item
  */
-export type MeterTrendMetric = {
+type MeterTrendMetric = {
   day: string;
   time: string;
   drop: number;
@@ -107,7 +107,7 @@ export function validateCustomDateRange(
  * @param endDateParam - Optional end date string (to detect time components)
  * @returns Object with useHourly, useMinute flags
  */
-export function determineAggregationGranularity(
+function determineAggregationGranularity(
   timePeriod: string,
   customStartDate?: Date,
   customEndDate?: Date,
@@ -164,27 +164,6 @@ export function determineAggregationGranularity(
 }
 
 /**
- * Determines if hourly aggregation should be used (legacy function for backward compatibility)
- *
- * @param timePeriod - Time period string
- * @param customStartDate - Optional custom start date
- * @param customEndDate - Optional custom end date
- * @returns True if hourly aggregation should be used
- */
-export function shouldUseHourlyAggregation(
-  timePeriod: string,
-  customStartDate?: Date,
-  customEndDate?: Date
-): boolean {
-  const { useHourly } = determineAggregationGranularity(
-    timePeriod,
-    customStartDate,
-    customEndDate
-  );
-  return useHourly;
-}
-
-/**
  * Filters locations based on user permissions
  *
  * @param locations - Array of location data
@@ -194,7 +173,7 @@ export function shouldUseHourlyAggregation(
  * @param userLocationPermissions - User's location permissions
  * @returns Filtered locations array
  */
-export function filterLocationsByPermissions(
+function filterLocationsByPermissions(
   locations: LocationData[],
   licencee: string | null,
   isAdmin: boolean,
@@ -224,7 +203,7 @@ export function filterLocationsByPermissions(
  * @param machineDocs - Array of machine documents
  * @returns Map of location ID to machine IDs
  */
-export function buildMachinesByLocationMap(
+function buildMachinesByLocationMap(
   machineDocs: Array<{ _id: unknown; gamingLocation?: unknown }>
 ): Map<string, string[]> {
   const machinesByLocation = new Map<string, string[]>();
@@ -254,7 +233,7 @@ export function buildMachinesByLocationMap(
  * @param shouldUseHourly - Whether to use hourly aggregation
  * @returns Aggregation pipeline stages
  */
-export function buildLocationMetricsPipeline(
+function buildLocationMetricsPipeline(
   machineIds: string[],
   rangeStart: Date,
   rangeEnd: Date,
@@ -574,7 +553,7 @@ async function processLocationMetricsSingleAggregation(
  * @param batchSize - Batch size for processing
  * @returns Array of meter trend metrics
  */
-export async function processLocationMetricsBatches(
+async function processLocationMetricsBatches(
   db: Db,
   locations: LocationData[],
   machinesByLocation: Map<string, string[]>,
@@ -659,7 +638,7 @@ export async function processLocationMetricsBatches(
  * @param metricsPerLocation - Array of meter trend metrics
  * @returns Maps of licensee ID to name and country ID to name
  */
-export async function loadCurrencyMetadata(
+async function loadCurrencyMetadata(
   db: Db,
   metricsPerLocation: MeterTrendMetric[]
 ): Promise<{
@@ -750,7 +729,7 @@ export async function loadCurrencyMetadata(
  * @param countryIdToName - Map of country ID to name
  * @returns Array of aggregated metrics
  */
-export function aggregateMetricsWithConversion(
+function aggregateMetricsWithConversion(
   metricsPerLocation: MeterTrendMetric[],
   shouldConvert: boolean,
   displayCurrency: CurrencyCode,

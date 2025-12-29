@@ -1,20 +1,5 @@
 // Shared common types used across frontend and backend
 import { Types } from 'mongoose';
-import type { LocationMembershipSettings } from './entities';
-
-// Generic API response type
-export type ApiResponse<T = unknown> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-};
-
-// Date range type for filtering
-export type DateRange = {
-  start: Date;
-  end: Date;
-};
 
 // Time period type for analytics
 export type TimePeriod =
@@ -37,99 +22,24 @@ export type ChartGranularity =
   | 'monthly'
   | 'yearly';
 
-// MongoDB related types
-export type MongooseId = string | Types.ObjectId;
-
-export type MongoMatchStage = {
-  _id?: MongooseId | { $in: MongooseId[] };
-  deletedAt?: { $in: (Date | null)[] };
-};
-
-// Database model related types
-export type WithTimestamps = {
-  createdAt?: Date;
-  updatedAt?: Date;
-  deletedAt?: Date | null;
-};
-
-// Helper type for MongoDB filtering
-export type RegexFilter = {
-  $regex: string;
-  $options: string;
-};
-
-// Helper type for getting multiple date ranges
+// Custom date range type for API responses
 export type CustomDate = {
-  startDate: Date | undefined;
-  endDate: Date | undefined;
+  startDate?: Date;
+  endDate?: Date;
 };
 
-// Query filter type
-export type QueryFilter = {
-  userId?: string;
-  location?: string;
-  machine?: string;
-  readAt?: {
-    $gte: Date;
-    $lte: Date;
-  };
-};
-
-// API params type
-export type ApiParamsType = {
-  timePeriod: 'Today' | 'Yesterday' | '7d' | '30d' | 'All Time' | 'Custom';
-  licencee: string;
-};
-
-// Pipeline stage type
-export type PipelineStage = {
-  [key: string]: unknown;
-};
-
-// Performance status
-export type PerformanceStatus = 'good' | 'average' | 'poor';
-
-// Sort direction
-export type SortDirection = 'asc' | 'desc';
-
-// Additional MongoDB types
+// MongoDB-specific types
 export type DateRangeFilter = {
   $gte?: Date;
   $lte?: Date;
 };
 
-export type ArrayFilter = {
-  $in?: unknown[];
-  $nin?: unknown[];
-};
+export type MongoDBQueryValue = string | number | boolean | Date | object | null | undefined;
 
-export type ExpressionFilter = {
-  [key: string]: unknown;
-};
+export type QueryFilter = Record<string, MongoDBQueryValue>;
 
-export type MongoDBQueryValue = unknown;
-
-export type MongooseCache = {
-  [key: string]: unknown;
-};
-
-export type MongoQuery = {
-  [key: string]: unknown;
-};
-
-// Meter and collection types
-export type MeterMovement = {
-  coinIn: number;
-  coinOut: number;
-  totalCancelledCredits: number;
-  totalHandPaidCancelledCredits: number;
-  totalWonCredits: number;
-  drop: number;
-  jackpot: number;
-  currentCredits: number;
-  gamesPlayed: number;
-  gamesWon: number;
-};
+// MongoDB related types
+export type MongooseId = string | Types.ObjectId;
 
 export type SasMeters = {
   coinIn: number;
@@ -145,33 +55,23 @@ export type SasMeters = {
   gross?: number;
   sasStartTime?: string;
   sasEndTime?: string;
+  movement?: {
+    coinIn?: number;
+    coinOut?: number;
+    jackpot?: number;
+    totalHandPaidCancelledCredits?: number;
+    totalCancelledCredits?: number;
+    gamesPlayed?: number;
+    gamesWon?: number;
+    currentCredits?: number;
+    totalWonCredits?: number;
+    drop?: number;
+  };
   [key: string]: unknown;
 };
 
-export type MeterData = {
-  _id: string;
-  machine: string;
-  location: string;
-  locationSession: string;
-  viewingAccountDenomination?: {
-    drop: number;
-    totalCancelledCredits: number;
-  };
-  movement?: MeterMovement;
-  coinIn: number;
-  coinOut: number;
-  totalCancelledCredits: number;
-  totalHandPaidCancelledCredits: number;
-  totalWonCredits: number;
-  drop: number;
-  jackpot: number;
-  currentCredits: number;
-  gamesPlayed: number;
-  gamesWon: number;
-  readAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
-};
+// Alias for backward compatibility
+export type MeterData = SasMeters;
 
 export type CollectionMetersHistoryEntry = {
   _id: string;
@@ -198,70 +98,4 @@ export type BillValidatorData = {
   dollar5000?: number;
   dollarTotal?: number;
   dollarTotalUnknown?: number;
-};
-
-// Location types
-export type Address = {
-  street?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  country?: string;
-};
-
-export type RelationshipInfo = {
-  licencee?: string;
-  [key: string]: unknown;
-};
-
-export type GeoCoordinates = {
-  latitude?: number;
-  longitude?: number;
-};
-
-export type Location = {
-  _id: string;
-  name: string;
-  address?: Address;
-  rel?: RelationshipInfo;
-  geoCoords?: GeoCoordinates;
-  profitShare?: number;
-  isLocalServer?: boolean;
-  hasSmib?: boolean;
-  noSMIBLocation?: boolean;
-  deletedAt?: Date | null;
-  membershipEnabled?: boolean;
-  locationMembershipSettings?: LocationMembershipSettings;
-};
-
-export type AggregatedLocation = {
-  _id: string;
-  location: string;
-  locationName: string;
-  name: string;
-  address?: Address;
-  rel?: RelationshipInfo;
-  geoCoords?: GeoCoordinates;
-  totalMachines: number;
-  onlineMachines: number;
-  sasMachines: number;
-  nonSasMachines: number;
-  moneyIn: number;
-  moneyOut: number;
-  coinIn: number;
-  coinOut: number;
-  jackpot: number;
-  gross: number;
-  gamesPlayed: number;
-  isLocalServer: boolean;
-  hasSmib: boolean;
-  hasSasMachines: boolean;
-  hasNonSasMachines: boolean;
-  noSMIBLocation: boolean;
-  country?: string; // For currency conversion
-  totalDrop?: number; // Alias for moneyIn in some contexts
-  enableMembership?: boolean; // Membership enabled flag
-  membershipEnabled?: boolean; // Alias for enableMembership
-  memberCount?: number; // Number of members at this location
-  locationMembershipSettings?: LocationMembershipSettings;
 };

@@ -40,7 +40,7 @@ export type PlaysTrendItem = {
  * @param locationIds - Optional comma-separated location IDs
  * @returns Aggregation pipeline stages
  */
-export function buildWinLossTrendsPipeline(
+function buildWinLossTrendsPipeline(
   timePeriod: TimePeriod,
   startDate: Date,
   endDate: Date,
@@ -130,7 +130,7 @@ export function buildWinLossTrendsPipeline(
  * @param locationIds - Optional comma-separated location IDs
  * @returns Aggregation pipeline stages
  */
-export function buildPlaysTrendsPipeline(
+function buildPlaysTrendsPipeline(
   timePeriod: TimePeriod,
   startDate: Date,
   endDate: Date,
@@ -471,7 +471,7 @@ export type HandleTrendItem = {
  * @param locationIds - Optional comma-separated location IDs
  * @returns Aggregation pipeline stages
  */
-export function buildHandleTrendsPipeline(
+function buildHandleTrendsPipeline(
   timePeriod: TimePeriod,
   startDate: Date,
   endDate: Date,
@@ -599,7 +599,7 @@ export type JackpotTrendItem = {
  * @param locationIds - Optional comma-separated location IDs
  * @returns Aggregation pipeline stages
  */
-export function buildJackpotTrendsPipeline(
+function buildJackpotTrendsPipeline(
   timePeriod: TimePeriod,
   startDate: Date,
   endDate: Date,

@@ -34,7 +34,7 @@ export interface PreviousCollectionMeters {
  * Calculate movement values using the same logic as the backend calculateMovement function
  * This ensures frontend validation matches backend creation
  */
-export function calculateMovementFrontend(
+function calculateMovementFrontend(
   currentMetersIn: number,
   currentMetersOut: number,
   previousMeters: PreviousCollectionMeters,

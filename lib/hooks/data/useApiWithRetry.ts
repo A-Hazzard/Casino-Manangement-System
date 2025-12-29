@@ -162,12 +162,3 @@ export function useApiWithRetry<T>(
   };
 }
 
-/**
- * Simplified hook for single API calls with retry
- */
-export function useApiCall<T>(
-  apiFunction: () => Promise<AxiosResponse<T>>,
-  options: UseApiWithRetryOptions = {}
-) {
-  return useApiWithRetry(apiFunction, options);
-}

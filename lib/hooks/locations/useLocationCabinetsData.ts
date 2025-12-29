@@ -23,6 +23,7 @@ import { getAuthHeaders } from '@/lib/utils/auth';
 import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
 import { useDebounce } from '@/lib/utils/hooks';
 import { filterAndSortCabinets } from '@/lib/utils/ui';
+import { dateRange as DateRange } from '@/lib/types';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
@@ -45,7 +46,7 @@ type UseLocationCabinetsDataProps = {
   locationId: string;
   selectedLicencee: string | null;
   activeMetricsFilter: string | null;
-  customDateRange: { startDate: Date | string; endDate: Date | string } | null;
+  customDateRange: DateRange | null;
   dateFilterInitialized: boolean;
   filtersInitialized: boolean;
   isAdminUser: boolean;
@@ -248,18 +249,26 @@ export function useLocationCabinetsData({
         selectedLicencee ?? undefined,
         activeMetricsFilter,
         undefined, // No searchTerm for batch fetching
-        activeMetricsFilter === 'Custom' && customDateRange
-          ? {
-              from:
-                customDateRange.startDate instanceof Date
-                  ? customDateRange.startDate
-                  : new Date(customDateRange.startDate),
-              to:
-                customDateRange.endDate instanceof Date
-                  ? customDateRange.endDate
-                  : new Date(customDateRange.endDate),
-            }
-          : undefined,
+              activeMetricsFilter === 'Custom' && customDateRange
+                ? {
+                    from:
+                      customDateRange.startDate instanceof Date
+                        ? customDateRange.startDate
+                        : customDateRange.startDate
+                          ? new Date(customDateRange.startDate)
+                          : customDateRange.from
+                            ? new Date(customDateRange.from)
+                            : undefined,
+                    to:
+                      customDateRange.endDate instanceof Date
+                        ? customDateRange.endDate
+                        : customDateRange.endDate
+                          ? new Date(customDateRange.endDate)
+                          : customDateRange.to
+                            ? new Date(customDateRange.to)
+                            : undefined,
+                  }
+                : undefined,
         nextBatchNumber,
         itemsPerBatch,
         displayCurrency
@@ -289,18 +298,26 @@ export function useLocationCabinetsData({
         selectedLicencee ?? undefined,
         activeMetricsFilter,
         undefined, // No searchTerm for batch fetching
-        activeMetricsFilter === 'Custom' && customDateRange
-          ? {
-              from:
-                customDateRange.startDate instanceof Date
-                  ? customDateRange.startDate
-                  : new Date(customDateRange.startDate),
-              to:
-                customDateRange.endDate instanceof Date
-                  ? customDateRange.endDate
-                  : new Date(customDateRange.endDate),
-            }
-          : undefined,
+              activeMetricsFilter === 'Custom' && customDateRange
+                ? {
+                    from:
+                      customDateRange.startDate instanceof Date
+                        ? customDateRange.startDate
+                        : customDateRange.startDate
+                          ? new Date(customDateRange.startDate)
+                          : customDateRange.from
+                            ? new Date(customDateRange.from)
+                            : undefined,
+                    to:
+                      customDateRange.endDate instanceof Date
+                        ? customDateRange.endDate
+                        : customDateRange.endDate
+                          ? new Date(customDateRange.endDate)
+                          : customDateRange.to
+                            ? new Date(customDateRange.to)
+                            : undefined,
+                  }
+                : undefined,
         currentBatch,
         itemsPerBatch,
         displayCurrency
@@ -514,11 +531,19 @@ export function useLocationCabinetsData({
                     from:
                       customDateRange.startDate instanceof Date
                         ? customDateRange.startDate
-                        : new Date(customDateRange.startDate),
+                        : customDateRange.startDate
+                          ? new Date(customDateRange.startDate)
+                          : customDateRange.from
+                            ? new Date(customDateRange.from)
+                            : undefined,
                     to:
                       customDateRange.endDate instanceof Date
                         ? customDateRange.endDate
-                        : new Date(customDateRange.endDate),
+                        : customDateRange.endDate
+                          ? new Date(customDateRange.endDate)
+                          : customDateRange.to
+                            ? new Date(customDateRange.to)
+                            : undefined,
                   }
                 : undefined,
               effectivePage,

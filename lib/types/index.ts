@@ -1,25 +1,11 @@
-import type {
-  QueryFilter,
-  ParamsType,
-  CustomDate,
-  TimePeriod,
-} from '@shared/types';
-import { Alert, ReportView } from './reports';
-
-export type { QueryFilter };
-export type { ParamsType };
-export type { CustomDate };
-export type { TimePeriod };
+import { ReportView } from './reports';
+import { DateRange } from '@/lib/utils/dateUtils';
+import { TimePeriod } from '@/shared/types/common';
 
 export * from '@/shared/types/entities';
 
-export type { LoginRequestBody, AuthResult } from '@/shared/types/auth';
-
-// Dashboard types
-export type {
-  UseDashboardFiltersProps,
-  UseDashboardFiltersReturn,
-} from './dashboard';
+// Re-export date types
+export type { DateRange };
 
 // Dashboard types
 export type dashboardData = {
@@ -44,66 +30,7 @@ export type DashboardTotals = {
   gross: number;
 };
 
-export type ActiveFilters = {
-  Today: boolean;
-  Yesterday: boolean;
-  last7days: boolean;
-  last30days: boolean;
-  Custom: boolean;
-};
-export type ActiveTab = 'locations' | 'Cabinets';
-export type dateRange = { startDate: Date; endDate: Date };
-export type Location = {
-  _id: string;
-  name: string;
-  locationName?: string;
-  geoCoords?: {
-    latitude?: number;
-    longitude?: number;
-    longtitude?: number;
-  };
-  totalMachines?: number;
-  onlineMachines?: number;
-  licenseeId?: string | null;
-  rel?: {
-    licencee?: string | string[] | null;
-  };
-};
-
-export type locations = Array<Location>;
-export type TimeFrames = {
-  time: string;
-  value: TimePeriod;
-};
-export type TopPerformingItem = {
-  _id: string;
-  name: string;
-  total: number;
-  performance: string;
-  color: string;
-  totalDrop: number;
-  location?: string;
-  locationId?: string;
-  machine?: string;
-  machineId?: string;
-  customName?: string;
-  assetNumber?: string;
-  game?: string;
-};
-
-export type TopPerformingData = Array<TopPerformingItem>;
-
 // Report types
-export type RealTimeMetrics = {
-  totalMachines: number;
-  onlineMachines: number;
-  totalRevenue: number;
-  activeTerminals: number;
-  currentPlayers: number;
-  alerts: Alert[];
-  lastUpdated: Date;
-};
-
 export type MachineEvaluationData = {
   locationName: string;
   locationId: string;
@@ -124,36 +51,14 @@ export type MachineEvaluationData = {
   averageWager?: number; // Added for Top Machines table (ME3-2.3)
 };
 
-export type MachineExportData = {
-  machineId: string;
-  machineName: string;
-  gameTitle: string;
-  locationName: string;
-  manufacturer: string;
-  netWin: number;
-  drop: number;
-  totalCancelledCredits: number;
-  gamesPlayed: number;
-  theoreticalHold: number;
-  isOnline: boolean;
-  isSasEnabled: boolean;
+export type ReportTab = {
+  id: ReportView;
+  label: string;
+  icon?: string;
+  description?: string;
 };
 
-export type LocationExportData = {
-  location: string;
-  locationName: string;
-  moneyIn: number;
-  moneyOut: number;
-  gross: number;
-  totalMachines: number;
-  onlineMachines: number;
-  sasMachines: number;
-  nonSasMachines: number;
-  hasSasMachines: boolean;
-  hasNonSasMachines: boolean;
-  isLocalServer: boolean;
-};
-
+// Top performing data types
 export type TopLocationData = {
   locationId: string;
   locationName: string;
@@ -164,35 +69,75 @@ export type TopLocationData = {
   totalMachines: number;
 };
 
-export type DateRange = {
-  start: Date;
-  end: Date;
-};
+export type TopPerformingData = TopPerformingItem[];
 
-// Additional types for constants
-export type licenceeOption = {
-  label: string;
-  value: string;
-};
-
-export type ReportTab = {
-  id: ReportView;
-  label: string;
-  icon?: string;
-  description?: string;
-};
-
-export type ReportField = {
+export type TopPerformingItem = {
   id: string;
-  label: string;
-  dataType: string;
-  category: string;
+  _id?: string;
+  name: string;
+  performance: number;
+  revenue: number;
+  location?: string;
+  locationId?: string;
+  machineId?: string;
+  game?: string;
+  customName?: string;
+  color?: string;
+  totalDrop?: number;
 };
 
-export type ReportFieldCategory = string;
+// Export data types
+export type LocationExportData = {
+  locationName: string;
+  totalMachines: number;
+  onlineMachines: number;
+  moneyIn: number;
+  moneyOut: number;
+  gross: number;
+  performance: string;
+  sasMachines: number;
+  nonSasMachines: number;
+  hasSasMachines: boolean;
+  hasNonSasMachines: boolean;
+  isLocalServer: boolean;
+};
 
-export type ReportType =
-  | 'locationPerformance'
-  | 'machineRevenue'
-  | 'fullFinancials'
-  | 'customerActivity';
+// Dashboard filter types
+export type dateRange = {
+  from?: Date;
+  to?: Date;
+  startDate?: Date;
+  endDate?: Date;
+  start?: Date;
+  end?: Date;
+  [key: string]: any;
+};
+
+// Location types
+export type locations = Array<{
+  _id: string;
+  name: string;
+  totalMachines?: number;
+  onlineMachines?: number;
+  moneyIn?: number;
+  moneyOut?: number;
+  gross?: number;
+}>;
+
+// Dashboard filter types
+export type ActiveTab = 'overview' | 'sas-evaluation' | 'revenue-analysis' | 'machines' | 'Cabinets' | 'locations';
+
+export type ActiveFilters = {
+  timePeriod?: string;
+  licencee?: string;
+  locationIds?: string[];
+  customDateRange?: dateRange;
+  Today?: boolean;
+  Yesterday?: boolean;
+  last7days?: boolean;
+  last30days?: boolean;
+  Custom?: boolean;
+};
+
+// Re-export TimePeriod
+export type { TimePeriod };

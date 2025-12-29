@@ -1,11 +1,11 @@
 // Shared entity types used across frontend and backend
 import { Types } from 'mongoose';
-import type { SasMeters } from './common';
 import type {
   BillValidatorData,
   CollectionMetersHistoryEntry,
   MeterData,
-} from './database';
+  SasMeters,
+} from './common';
 
 // Location types
 export type Location = {
@@ -59,6 +59,7 @@ export type AggregatedLocation = {
   _id?: string; // Optional location ID for internal use
   location: string;
   locationName: string;
+  name?: string; // Alias for locationName
   moneyIn: number;
   moneyOut: number;
   gross: number;
@@ -308,11 +309,6 @@ export type GamingMachine = {
   gameDayOffset?: number;
 };
 
-// Legacy type aliases for backward compatibility
-export type Machine = GamingMachine;
-export type Cabinet = GamingMachine;
-export type MachineDocument = GamingMachine;
-
 export type SmibConfig = {
   net?: {
     netMode?: number;
@@ -358,58 +354,6 @@ export type SmibDevice = {
   locationId?: string;
   online?: boolean;
   lastSeen?: Date | string | null;
-};
-
-export type SmibOnlineStatus = {
-  online: boolean;
-  lastSeen?: Date;
-  heartbeat?: Date;
-};
-
-// Unified User types - consolidates User from models and UserDocument from API types
-export type User = {
-  _id: string;
-  name: string;
-  username: string;
-  email: string;
-  emailAddress: string; // Added for API compatibility
-  enabled: boolean;
-  isEnabled: boolean; // Added for API compatibility
-  roles: string[];
-  profilePicture: string | null;
-  assignedLocations?: string[]; // Array of location IDs user has access to
-  assignedLicensees?: string[]; // Array of licensee IDs user has access to
-  password?: string;
-  profile?: {
-    firstName?: string;
-    lastName?: string;
-    middleName?: string;
-    otherName?: string;
-    gender?: string;
-    address?: {
-      street?: string;
-      town?: string;
-      region?: string;
-      country?: string;
-      postalCode?: string;
-    };
-    identification?: {
-      dateOfBirth?: string;
-      idType?: string;
-      idNumber?: string;
-      notes?: string;
-    };
-  };
-  // Additional fields from UserDocument
-  isLocked?: boolean;
-  lockedUntil?: Date | string;
-  failedLoginAttempts?: number;
-  lastLoginAt?: Date | string;
-  loginCount?: number;
-  sessionVersion?: number;
-  deletedAt?: Date | string | null;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
 };
 
 // Casino Member type - extends User for casino-specific functionality
@@ -488,40 +432,6 @@ export type CasinoMember = {
   };
 };
 
-// Licensee types
-export type Licensee = {
-  _id: string;
-  name: string;
-  description?: string;
-  country: string;
-  countryName?: string;
-  startDate?: Date | string;
-  expiryDate?: Date | string;
-  prevStartDate?: Date | string;
-  prevExpiryDate?: Date | string;
-  isPaid?: boolean;
-  lastEdited?: Date | string;
-  deletedAt?: Date | string | null;
-  createdAt: Date | string;
-  updatedAt: Date | string;
-  geoCoords?: {
-    latitude?: number;
-    longitude?: number;
-    zoomRatio?: number;
-  };
-};
-
-// Country types
-export type Country = {
-  _id: string;
-  name: string;
-  alpha2: string;
-  alpha3: string;
-  isoNumeric: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
 // Firmware types
 export type Firmware = {
   _id: string;
@@ -536,44 +446,9 @@ export type Firmware = {
   deletedAt?: string | null;
 };
 
-// Movement request types
-export type MovementRequest = {
-  _id: string;
-  variance: number;
-  previousBalance: number;
-  currentBalance: number;
-  amountToCollect: number;
-  amountCollected: number;
-  amountUncollected: number;
-  partnerProfit: number;
-  taxes: number;
-  advance: number;
-  locationName: string;
-  locationFrom: string;
-  locationTo: string;
-  locationId: string;
-  createdBy: string;
-  movementType: string;
-  installationType: string;
-  reason: string;
-  requestTo: string;
-  cabinetIn: string;
-  status: MovementRequestStatus;
-  timestamp: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  __v?: number;
-  approvedBy?: string;
-  approvedBySecond?: string;
-};
-
-export type MovementRequestStatus =
-  | 'pending'
-  | 'approved'
-  | 'rejected'
-  | 'in progress';
-
 // Supporting types for CasinoMember and GamingMachine
+export type MachineDocument = GamingMachine;
+
 export type MetersData = {
   _id?: string;
   machine?: string;
@@ -692,32 +567,6 @@ export type MembersTab = {
   label: string;
   icon: string;
   description: string;
-};
-
-export type MemberSummary = {
-  _id: string;
-  fullName: string;
-  address?: string;
-  phoneNumber: string;
-  lastLogin: string;
-  createdAt: string;
-  locationName: string;
-  gamingLocation?: string;
-  winLoss?: number;
-};
-
-export type SummaryStats = {
-  totalMembers: number;
-  totalLocations: number;
-  activeMembers: number;
-  totalSessions?: number;
-  averageSessionDuration?: number;
-  topPerformers?: unknown[];
-};
-
-export type SmibLocation = {
-  id: string;
-  name: string;
 };
 
 // Form data types for cabinet creation/editing

@@ -71,7 +71,7 @@ const getValidLongitude = (geo: {
 
 // Helper function to get location stats from locationAggregation data
 const getLocationStats = (
-  location: Location,
+  location: any,
   locationAggregates: Record<string, unknown>[]
 ) => {
   // Try to find matching data in locationAggregates
@@ -111,7 +111,7 @@ const LocationPopupContent = ({
   isFinancialDataLoading,
   onViewDetails,
 }: {
-  location: Location;
+  location: any;
   locationAggregates: Record<string, unknown>[];
   isFinancialDataLoading: boolean;
   onViewDetails: (locationId: string) => void;
@@ -315,7 +315,7 @@ export default function MapPreview(props: MapPreviewProps) {
 
   const validLocations = useMemo(() => {
     return (
-      props.gamingLocations?.filter(location => {
+      (props.gamingLocations as any[])?.filter(location => {
         if (!location.geoCoords) {
           return false;
         }
@@ -335,14 +335,14 @@ export default function MapPreview(props: MapPreviewProps) {
     if (!normalizedSelected || normalizedSelected === 'all') {
       return validLocations;
     }
-    return validLocations.filter(location =>
+    return validLocations.filter((location: any) =>
       matchesLicencee(location, normalizedSelected)
     );
   }, [normalizedSelected, validLocations]);
 
   const locationsWithoutCoords = useMemo(() => {
     return (
-      props.gamingLocations?.filter(location => {
+      (props.gamingLocations as any[])?.filter(location => {
         if (!location.geoCoords) return true;
 
         const validLongitude = getValidLongitude(location.geoCoords);
@@ -499,7 +499,7 @@ export default function MapPreview(props: MapPreviewProps) {
     }
 
     // Search through ALL locations, not just those with valid coordinates
-    const filtered = (props.gamingLocations || []).filter(location => {
+    const filtered = (props.gamingLocations as any[] || []).filter(location => {
       const locationName = location.name || location.locationName || '';
       return locationName.toLowerCase().includes(query.toLowerCase());
     });
@@ -509,7 +509,7 @@ export default function MapPreview(props: MapPreviewProps) {
   };
 
   // Zoom to location
-  const zoomToLocation = (location: Location) => {
+  const zoomToLocation = (location: any) => {
     // Use preview map ref if modal is not open, otherwise use modal map ref
     const activeMapRef = isModalOpen ? modalMapRef : previewMapRef;
     

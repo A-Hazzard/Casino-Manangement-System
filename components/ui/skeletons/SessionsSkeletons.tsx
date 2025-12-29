@@ -140,7 +140,7 @@ export const SessionsPageSkeleton = () => (
  * Only shows skeletons for membership settings and events sections
  * Used when data is being refetched (e.g., date filter changes)
  */
-export const SessionEventsContentSkeleton = () => (
+const SessionEventsContentSkeleton = () => (
   <>
     {/* Location Membership Settings Card Skeleton */}
     <div className="mb-6 rounded-lg border border-gray-200 bg-white shadow-sm">

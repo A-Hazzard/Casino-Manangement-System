@@ -290,7 +290,7 @@ export default function TopPerformingMachineModal({
   return (
     <div
       ref={backdropRef}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div

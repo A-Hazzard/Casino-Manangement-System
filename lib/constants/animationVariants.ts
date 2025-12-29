@@ -11,15 +11,6 @@
 import { Variants } from 'framer-motion';
 
 /**
- * Animation variants for expanding/collapsing configuration content.
- * Used in settings/configuration panels for smooth open/close transitions.
- */
-export const configContentVariants: Variants = {
-  hidden: { opacity: 0, height: 0 },
-  visible: { opacity: 1, height: 'auto' },
-};
-
-/**
  * Animation variants for container elements that animate their children.
  * Used to stagger child animations in lists or grouped UI sections.
  */

@@ -10,12 +10,13 @@ import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 import { differenceInMinutes } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { dateRange } from '@/lib/types/index';
 
 type UseCabinetDetailsDataProps = {
   slug: string;
   selectedLicencee: string;
   activeMetricsFilter: string | null;
-  customDateRange: { startDate: Date; endDate: Date } | null;
+  customDateRange?: dateRange;
   dateFilterInitialized: boolean;
 };
 

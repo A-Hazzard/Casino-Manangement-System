@@ -97,7 +97,7 @@ export async function buildCurrencyMaps(
  * @param licenseeMap - Map of licensee name to country ID
  * @returns Native currency code for the location
  */
-export function getNativeCurrencyForLocation(
+function getNativeCurrencyForLocation(
   locationDetails: LocationDetails | undefined,
   licenseeMap: Map<string, string>
 ): CurrencyCode {
@@ -127,7 +127,7 @@ export function getNativeCurrencyForLocation(
  * @param displayCurrency - Target display currency
  * @returns Converted meter data item
  */
-export function convertMeterDataCurrency(
+function convertMeterDataCurrency(
   item: TransformedMeterData,
   nativeCurrency: CurrencyCode,
   displayCurrency: CurrencyCode

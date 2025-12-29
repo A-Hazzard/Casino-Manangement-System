@@ -5,8 +5,8 @@
  * including calculating SAS metrics from meter data.
  */
 
-import { Collections } from '../models/collections';
 import { CollectionReport } from '../models/collectionReport';
+import { Collections } from '../models/collections';
 import { Meters } from '../models/meters';
 
 type CollectionSasMetrics = {
@@ -56,7 +56,7 @@ type MeterSyncResult = {
  * @param sasEndTime - End time of the SAS period
  * @returns Promise<CollectionSasMetrics | null>
  */
-export async function calculateSasMetricsFromMeters(
+async function calculateSasMetricsFromMeters(
   machineId: string,
   sasStartTime: Date,
   sasEndTime: Date
@@ -97,16 +97,14 @@ export async function calculateSasMetricsFromMeters(
  * @param collection - The collection document
  * @returns Promise<MeterSyncResult | null>
  */
-export async function syncCollectionSasMetrics(
-  collection: {
-    _id: string;
-    machineId?: string;
-    sasMeters?: {
-      sasStartTime?: string;
-      sasEndTime?: string;
-    };
-  }
-): Promise<MeterSyncResult | null> {
+async function syncCollectionSasMetrics(collection: {
+  _id: string;
+  machineId?: string;
+  sasMeters?: {
+    sasStartTime?: string;
+    sasEndTime?: string;
+  };
+}): Promise<MeterSyncResult | null> {
   const machineId = collection.machineId;
   if (!machineId) {
     return null;
@@ -197,9 +195,7 @@ export async function syncCollectionSasMetrics(
  * @param reportId - The collection report ID
  * @returns Promise<{ updatedCollections: number; results: MeterSyncResult[]; totals: { drop: number; cancelled: number; gross: number } }>
  */
-export async function syncReportMeters(
-  reportId: string
-): Promise<{
+export async function syncReportMeters(reportId: string): Promise<{
   updatedCollections: number;
   results: MeterSyncResult[];
   totals: { drop: number; cancelled: number; gross: number };
@@ -259,4 +255,3 @@ export async function syncReportMeters(
     },
   };
 }
-

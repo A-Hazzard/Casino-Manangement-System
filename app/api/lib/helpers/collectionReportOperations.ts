@@ -19,7 +19,7 @@ import type { CreateCollectionReportPayload } from '@/lib/types/api';
  * @param locationId - The location ID associated with the report
  * @returns Promise<void>
  */
-export async function cascadeTimestampUpdate(
+async function cascadeTimestampUpdate(
   reportId: string,
   newTimestamp: Date,
   locationId?: string
@@ -44,7 +44,10 @@ export async function cascadeTimestampUpdate(
       location: locationId,
     }).sort({ timestamp: -1 });
 
-    if (latestReport && latestReport._id.toString() === reportId) {
+    if (
+      latestReport &&
+      latestReport.locationReportId === reportId
+    ) {
       const GamingLocations = (
         await import('@/app/api/lib/models/gaminglocations')
       ).GamingLocations;
@@ -63,7 +66,7 @@ export async function cascadeTimestampUpdate(
  * @param reportId - The collection report ID
  * @returns Promise<string[]> - Array of machine IDs
  */
-export async function getAffectedMachineIds(
+async function getAffectedMachineIds(
   reportId: string
 ): Promise<string[]> {
   try {
@@ -87,7 +90,7 @@ export async function getAffectedMachineIds(
  * @param machineIds - Array of machine IDs to recalculate
  * @returns Promise<void>
  */
-export async function recalculateMultipleMachineCollections(
+async function recalculateMultipleMachineCollections(
   machineIds: string[]
 ): Promise<void> {
   for (const machineId of machineIds) {
@@ -159,7 +162,7 @@ export async function removeCollectionHistoryFromMachines(
  * @param currentCollectionTime - The current collection timestamp
  * @returns Promise<{ metersIn: number; metersOut: number } | null>
  */
-export async function findPreviousCollectionForRevert(
+async function findPreviousCollectionForRevert(
   machineId: string,
   currentCollectionTime: Date
 ): Promise<{ metersIn: number; metersOut: number } | null> {
@@ -245,7 +248,9 @@ export async function updateCollectionReport(
   reportId: string,
   updateData: Partial<CreateCollectionReportPayload>
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
-  const existingReport = await CollectionReport.findOne({ _id: reportId });
+  const existingReport = await CollectionReport.findOne({
+    locationReportId: reportId,
+  });
   if (!existingReport) {
     return {
       success: false,
@@ -261,7 +266,7 @@ export async function updateCollectionReport(
 
   // Update the report
   const updatedReport = await CollectionReport.findOneAndUpdate(
-    { _id: reportId },
+    { locationReportId: reportId },
     {
       ...updateData,
       isEditing: false, // Mark as NOT editing when report is finalized

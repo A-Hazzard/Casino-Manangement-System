@@ -1,8 +1,8 @@
 # Database Models & Relationships
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 27, 2025  
-**Version:** 2.2.0
+**Last Updated:** December 29, 2025  
+**Version:** 2.3.0
 
 ## Table of Contents
 
@@ -314,5 +314,148 @@ This focused documentation covers the essential database models and relationship
 - **Machine → Meter**: Primary financial data source
 - **Machine → CollectionMetersHistory**: Collection tracking
 - **GamingLocation → CollectionReport**: Location aggregation
+- **User → GamingLocation**: Access control and permissions
+- **User → Licencee**: Multi-tenant user management
+
+## User Model (user.ts)
+
+### Overview
+The User model manages authentication, authorization, and user profile data for the Evolution One CMS system.
+
+### Schema Structure
+
+```typescript
+interface User {
+  _id: string;              // Unique user identifier (string-based UUID)
+  isEnabled: boolean;       // Account enabled status (default: true)
+  roles: string[];          // User roles: ['developer', 'admin', 'manager', 'location admin', 'technician', 'collector']
+  username: string;         // Required username (unique, indexed)
+  emailAddress: string;     // Email address (unique, indexed, required)
+  assignedLocations?: string[];  // Array of location IDs user has access to
+  assignedLicensees?: string[];  // Array of licensee IDs user has access to
+
+  profile?: {
+    firstName?: string;
+    lastName?: string;
+    middleName?: string;
+    otherName?: string;
+    gender?: 'male' | 'female' | 'other';
+    address?: {
+      street?: string;
+      town?: string;
+      region?: string;
+      country?: string;
+      postalCode?: string;
+    };
+    identification?: {
+      dateOfBirth?: Date | string;
+      idType?: string;
+      idNumber?: string;
+      notes?: string;
+    };
+    phoneNumber?: string;
+    notes?: string;
+  };
+
+  profilePicture?: string;   // Profile picture URL
+  password: string;          // Hashed password (bcrypt)
+  passwordUpdatedAt?: Date;  // Last password update timestamp
+  sessionVersion?: number;   // Session invalidation version (default: 1)
+  loginCount?: number;       // Number of successful logins
+  lastLoginAt?: Date;        // Last successful login timestamp
+  deletedAt?: Date;          // Soft delete timestamp
+  createdAt: Date;           // Account creation timestamp
+  updatedAt: Date;           // Last modification timestamp
+}
+```
+
+### Key Features
+
+#### Authentication Fields
+- **Password Security**: Bcrypt-hashed passwords with salt rounds
+- **Session Management**: Version-based session invalidation for security
+- **Login Tracking**: Audit trail with login counts and timestamps
+
+#### Authorization Fields
+- **Role-Based Access**: Hierarchical permission system
+- **Location Access**: Granular location-based permissions
+- **Licensee Access**: Multi-tenant licensee-based restrictions
+
+#### Profile Management
+- **Comprehensive Profile**: Support for personal, contact, and identification data
+- **Validation Rules**: Strict validation for required profile fields
+- **Address Management**: Structured address storage with validation
+
+### Relationships
+
+#### With Gaming Locations
+```javascript
+// User has access to specific locations
+{
+  _id: "user-123",
+  assignedLocations: ["location-1", "location-2"],
+  assignedLicensees: ["licensee-a"]
+}
+```
+
+#### With Licensees
+```javascript
+// Multi-tenant user access
+{
+  _id: "user-123",
+  assignedLicensees: ["licensee-a", "licensee-b"],
+  // Inherits access to all locations under assigned licensees
+}
+```
+
+### Database Optimizations
+
+#### Indexes
+- `username`: Unique, ascending - Fast username lookups
+- `emailAddress`: Unique, ascending - Fast email lookups
+- Compound indexes for common query patterns
+
+#### Query Patterns
+- **Authentication**: `findOne({ emailAddress })` or `findOne({ username })`
+- **Permission Checks**: `findOne({ _id, assignedLocations: { $in: [...] } })`
+- **Licensee Filtering**: `findOne({ assignedLicensees: { $in: [...] } })`
+
+### TypeScript Integration
+
+#### Lean Object Handling
+```typescript
+// Database queries return lean objects for performance
+const user = await UserModel.findOne({ emailAddress }).lean() as LeanUserDocument | null;
+
+// Type-safe property access
+const userData = {
+  id: user._id,
+  email: user.emailAddress,
+  roles: user.roles,
+  locations: user.assignedLocations
+};
+```
+
+#### Type Definitions
+- `UserDocument`: Full Mongoose document interface
+- `LeanUserDocument`: Optimized lean query result interface
+- `UserAuthPayload`: Authentication response payload
+
+### Security Considerations
+
+#### Password Management
+- Bcrypt hashing with configurable salt rounds
+- Password update tracking for security policies
+- Password strength validation gates
+
+#### Session Security
+- JWT tokens with configurable expiration
+- Session version invalidation on security events
+- HTTP-only cookie storage for tokens
+
+#### Access Control
+- Role-based permissions with hierarchical access
+- Location-based data filtering
+- Licensee-based multi-tenancy enforcement
 
 This focused approach ensures developers understand exactly which database fields and relationships drive the UI components and how to implement them correctly.

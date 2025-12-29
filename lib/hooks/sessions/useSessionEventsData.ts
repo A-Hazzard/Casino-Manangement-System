@@ -47,7 +47,7 @@ export function useSessionEventsData(sessionId: string, machineId: string) {
         limit: itemsPerBatch.toString(),
       });
 
-      if (activeMetricsFilter === 'Custom' && customDateRange) {
+      if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
         params.append('startDate', new Date(customDateRange.startDate).toISOString());
         params.append('endDate', new Date(customDateRange.endDate).toISOString());
       } else if (activeMetricsFilter && activeMetricsFilter !== 'Custom') {
@@ -80,7 +80,7 @@ export function useSessionEventsData(sessionId: string, machineId: string) {
     try {
       const params = new URLSearchParams();
       
-      if (activeMetricsFilter === 'Custom' && customDateRange) {
+      if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
         params.append('startDate', new Date(customDateRange.startDate).toISOString());
         params.append('endDate', new Date(customDateRange.endDate).toISOString());
       } else if (activeMetricsFilter && activeMetricsFilter !== 'Custom') {

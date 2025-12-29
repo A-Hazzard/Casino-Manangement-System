@@ -12,7 +12,7 @@
  */
 
 import { useUserStore } from '@/lib/store/userStore';
-import { PageName, TabName, UserRole } from './permissions';
+import { PageName, UserRole } from './permissions';
 import { CACHE_KEYS, fetchUserWithCache } from './userCache';
 
 // ============================================================================
@@ -152,75 +152,6 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
 }
 
 // ============================================================================
-// Tab Access Functions
-// ============================================================================
-/**
- * Check if user has access to a specific tab (database-based)
- */
-export async function hasTabAccessDb(
-  page: PageName,
-  tab: TabName
-): Promise<boolean> {
-  const userData = await getCurrentUserFromDb();
-
-  if (!userData || !userData.enabled) {
-    return false;
-  }
-
-  const { roles } = userData;
-
-  // Tab permissions mapping
-  const tabPermissions: Record<string, Record<string, UserRole[]>> = {
-    administration: {
-      users: ['developer', 'admin', 'manager', 'location admin'],
-      licensees: ['developer', 'admin'],
-      'activity-logs': ['developer', 'admin', 'manager', 'location admin'],
-      feedback: ['developer', 'admin'],
-    },
-    'collection-reports': {
-      collection: [
-        'developer',
-        'admin',
-        'manager',
-        'location admin',
-        'collector',
-      ],
-      monthly: ['developer', 'admin', 'manager', 'location admin'],
-      'manager-schedules': ['developer', 'admin', 'manager'],
-      'collector-schedules': [
-        'developer',
-        'admin',
-        'manager',
-        'location admin',
-      ],
-    },
-    reports: {
-      machines: [
-        'developer',
-        'admin',
-        'manager',
-        'location admin',
-        'technician',
-      ],
-      locations: ['developer', 'admin', 'manager', 'location admin'],
-      meters: [
-        'developer',
-        'admin',
-        'manager',
-        'location admin',
-        'collector',
-      ],
-    },
-  };
-
-  const pageTabs = tabPermissions[page];
-  if (!pageTabs) return false;
-
-  const allowedRoles = pageTabs[tab] || [];
-  return roles.some(role => allowedRoles.includes(role));
-}
-
-// ============================================================================
 // Admin Access Functions
 // ============================================================================
 /**
@@ -247,37 +178,4 @@ export async function shouldShowNavigationLinkDb(
   page: PageName
 ): Promise<boolean> {
   return await hasPageAccessDb(page);
-}
-
-// ============================================================================
-// Role Functions
-// ============================================================================
-/**
- * Get user's highest priority role (database-based)
- */
-export async function getHighestPriorityRoleDb(): Promise<UserRole | null> {
-  const userData = await getCurrentUserFromDb();
-
-  if (!userData || !userData.enabled) {
-    return null;
-  }
-
-  const { roles } = userData;
-
-  const rolePriority: UserRole[] = [
-    'developer',
-    'admin',
-    'manager',
-    'location admin',
-    'technician',
-    'collector',
-  ];
-
-  for (const role of rolePriority) {
-    if (roles.includes(role)) {
-      return role;
-    }
-  }
-
-  return null;
 }

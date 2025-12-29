@@ -21,14 +21,12 @@ import {
   determineAllowedLocationIds,
   fetchLocationsWithMachines,
   getLocationNamesFromIds,
+  getMonthlyCollectionReportByLocation,
+  getMonthlyCollectionReportSummary,
 } from '@/app/api/lib/helpers/collectionReportQueries';
 import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReportService';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
-import {
-  getMonthlyCollectionReportByLocation,
-  getMonthlyCollectionReportSummary,
-} from '@/lib/helpers/collectionReport';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
@@ -364,8 +362,8 @@ export async function POST(req: NextRequest) {
             userEmail: currentUser.emailAddress as string,
             userRole: (currentUser.roles as string[])?.[0] || 'user',
             resource: 'collection',
-            resourceId: result.data
-              ? String(result.data)
+            resourceId: result.report
+              ? String(result.report._id)
               : sanitizedBody.locationReportId,
             resourceName: `${body.locationName} - ${body.collector || 'Unknown'}`,
             changes: createChanges,
@@ -379,7 +377,7 @@ export async function POST(req: NextRequest) {
     // ============================================================================
     // STEP 6: Return success response
     // ============================================================================
-    return NextResponse.json({ success: true, data: result.data });
+    return NextResponse.json({ success: true, report: result.report });
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =

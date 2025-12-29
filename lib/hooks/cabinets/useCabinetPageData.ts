@@ -379,7 +379,9 @@ export function useCabinetPageData() {
     smibHook.fetchMqttConfig(cabinetId);
     
     return () => smibHook.disconnectFromConfigStream();
-  }, [cabinet, smibHook]);
+    // Only depend on cabinet._id, not the whole smibHook object
+    // The smibHook functions are stable useCallback hooks, so they don't need to be in deps
+  }, [cabinet?._id]);
 
   return {
     slug,

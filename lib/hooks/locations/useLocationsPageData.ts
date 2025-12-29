@@ -22,7 +22,7 @@ import { useUserStore } from '@/lib/store/userStore';
 import type { DashboardTotals } from '@/lib/types';
 import type { LocationFilter } from '@/lib/types/location';
 import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
-import type { AggregatedLocation } from '@/shared/types/common';
+import type { AggregatedLocation } from '@/shared/types';
 import { useEffect, useMemo, useState } from 'react';
 
 export function useLocationsPageData() {
@@ -75,7 +75,7 @@ export function useLocationsPageData() {
 
     const isDeveloper = user?.roles?.includes('developer') ?? false;
     if (isDeveloper) return data;
-    return data.filter(loc => !/^test/i.test(loc.name || ''));
+    return data.filter(loc => !/^test/i.test(loc.locationName || loc.location || ''));
   }, [locationData, accumulatedLocations, searchTerm, selectedFilters, user]);
 
   const financialTotals = useMemo(() => calculateLocationFinancialTotals(

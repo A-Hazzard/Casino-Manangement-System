@@ -18,29 +18,6 @@ import axios from 'axios';
 // ============================================================================
 
 /**
- * Fetches all scheduler data
- * @param licencee Optional licencee filter
- * @returns Array of scheduler data
- */
-export async function fetchSchedulers(
-  licencee?: string
-): Promise<SchedulerData[]> {
-  try {
-    const baseUrl = '/api/schedulers';
-    const url =
-      licencee && licencee !== 'all'
-        ? `${baseUrl}?licencee=${licencee}`
-        : baseUrl;
-
-    const { data } = await axios.get(url);
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Error fetching schedulers:', error);
-    return [];
-  }
-}
-
-/**
  * Fetches schedulers with filtering options
  * @param options Filter options
  * @returns Filtered scheduler data

@@ -12,7 +12,7 @@
 
 import { Collections } from '../models/collections';
 import { Machine } from '../models/machines';
-import { calculateSasMetrics } from '@/lib/helpers/collectionCreation';
+import { calculateSasMetrics } from './collectionCreation';
 
 type RepairMode = 'dry-run' | 'commit';
 
@@ -43,7 +43,7 @@ type RepairResult = {
  * @param date - Date to normalize
  * @returns Normalized date at 8AM Trinidad time
  */
-export function normalizeTo8AMTrinidad(date: Date): Date {
+function normalizeTo8AMTrinidad(date: Date): Date {
   const normalized = new Date(date);
   normalized.setUTCHours(12, 0, 0, 0); // 12:00 UTC = 8:00 AM Trinidad
   return normalized;

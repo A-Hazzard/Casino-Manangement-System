@@ -12,22 +12,14 @@
 
 // Re-export common skeletons
 export {
-  TableSkeleton,
-  ChartSkeleton,
-  CardSkeleton,
-  MetricCardSkeleton,
-  MetricCardsSkeleton,
-  DropdownSkeleton,
   SummaryCardsSkeleton,
-  LocationSelectionSkeleton,
-  MainContentSkeleton,
+  MetricCardsSkeleton,
   ChartNoData,
+  ChartSkeleton,
 } from './CommonSkeletons';
 
 // Re-export dashboard skeletons
 export {
-  DashboardKPISkeleton,
-  DashboardChartsSkeleton,
   LocationMapSkeleton,
 } from './DashboardSkeletons';
 
@@ -42,16 +34,12 @@ export {
 
 // Re-export locations skeletons
 export {
-  RevenueAnalysisChartsSkeleton,
-  LocationsOverviewSkeleton,
   LocationsSASEvaluationSkeleton,
   LocationsRevenueAnalysisSkeleton,
 } from './LocationsSkeletons';
 
 // Re-export meters skeletons
 export {
-  MetersTableSkeleton,
-  MetersTabSkeleton,
 } from './MetersSkeletons';
 
 /**

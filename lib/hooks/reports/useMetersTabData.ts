@@ -261,7 +261,7 @@ export function useMetersTabData({
           limit: itemsPerBatch.toString(),
         });
 
-        if (activeMetricsFilter === 'Custom' && customDateRange) {
+        if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
           params.append(
             'startDate',
             customDateRange.startDate.toISOString().split('T')[0]
@@ -398,13 +398,8 @@ export function useMetersTabData({
     }
   }, [selectedLicencee, fetchLocations]);
 
-  // Set loading state when granularity changes (but keep existing data)
-  useEffect(() => {
-    if (selectedLocations.length > 0 && allHourlyChartData.length > 0) {
-      setHourlyChartLoading(true);
-      // Don't clear data - keep showing old data while loading new granularity
-    }
-  }, [chartGranularity, selectedLocations.length, allHourlyChartData.length]);
+  // Note: Granularity changes are handled by the main fetchMetersData effect
+  // which includes chartGranularity in its dependency array, so data is refetched automatically
 
   // Load initial batch on mount and when filters change
   useEffect(() => {
@@ -419,7 +414,6 @@ export function useMetersTabData({
     activeMetricsFilter,
     customDateRange,
     selectedLicencee,
-    chartGranularity,
     displayCurrency,
     fetchMetersData,
   ]);
@@ -493,7 +487,7 @@ export function useMetersTabData({
             granularity: chartGranularity,
           });
 
-          if (activeMetricsFilter === 'Custom' && customDateRange) {
+          if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
             params.append(
               'startDate',
               customDateRange.startDate.toISOString().split('T')[0]

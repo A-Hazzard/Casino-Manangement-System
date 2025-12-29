@@ -216,10 +216,3 @@ export function setupAxiosInterceptors() {
   );
 }
 
-/**
- * Clears axios interceptors (useful for cleanup)
- */
-export function clearAxiosInterceptors() {
-  axios.interceptors.request.clear();
-  axios.interceptors.response.clear();
-}

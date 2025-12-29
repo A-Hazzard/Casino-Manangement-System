@@ -6,8 +6,21 @@
  * loading states, sorting configuration, and action handlers.
  */
 import type { MachineEvaluationData } from '@/lib/types';
-import type { TopMachinesCriteria } from '@/components/ui/TopMachinesCriteriaSelector';
 import type { VerificationDetails } from '@/lib/helpers/machinesTab';
+
+export type TopMachinesCriteria =
+  | 'locationName'
+  | 'machineId'
+  | 'gameTitle'
+  | 'manufacturer'
+  | 'coinIn'
+  | 'netWin'
+  | 'gross'
+  | 'gamesPlayed'
+  | 'actualHold'
+  | 'theoreticalHold'
+  | 'averageWager'
+  | 'jackpot';
 
 export type MachinesEvaluationTabProps = {
   // Data props

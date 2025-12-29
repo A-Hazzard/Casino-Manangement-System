@@ -1,104 +1,15 @@
-import { buttonVariants } from '@/components/ui/button';
-import {
-  ActiveFilters,
-  ActiveTab,
-  dashboardData,
-  DashboardTotals,
-  dateRange,
-  locations,
-  TimeFrames,
-  TopPerformingData,
-} from '@/lib/types';
+import { dashboardData, DashboardTotals } from '@/lib/types';
 import type { CollectorSchedule } from '@/lib/types/components';
-import { TimePeriod, type ChartGranularity } from '@shared/types';
-import { VariantProps } from 'class-variance-authority';
-import { LatLng } from 'leaflet';
-import { JSX } from 'react';
+import { TimePeriod } from '@/shared/types';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 import type { CollectionReportLocationWithMachines } from './api';
 import type { LocationSelectItem } from './location';
-
-export type DashboardLayoutProps = {
-  activeTab: ActiveTab;
-  topPerformingData: TopPerformingData;
-  activeMetricsFilter: TimePeriod | '';
-  activePieChartFilter: TimePeriod | '';
-  activeFilters: ActiveFilters;
-  pieChartSortIsOpen: boolean;
-  totals: DashboardTotals | null;
-  chartData: dashboardData[];
-  gamingLocations: locations;
-  /** Optional pre-fetched aggregation data to avoid duplicate API calls */
-  locationAggregates?: Record<string, unknown>[];
-  /** Optional loading flag when aggregation is being fetched externally */
-  aggLoading?: boolean;
-  loadingChartData: boolean;
-  loadingTopPerforming?: boolean;
-  hasTopPerformingFetched?: boolean;
-  refreshing: boolean;
-  initialLoading?: boolean;
-  setLoadingChartData: (state: boolean) => void;
-  setRefreshing: (state: boolean) => void;
-  setActiveTab: (state: ActiveTab) => void;
-  setActivePieChartFilter: (state: TimePeriod | '') => void;
-  setActiveFilters: (state: ActiveFilters) => void;
-  setActiveMetricsFilter: (state: TimePeriod) => void;
-  setTotals: (state: DashboardTotals | null) => void;
-  setChartData: (state: dashboardData[]) => void;
-  setPieChartSortIsOpen: (state: boolean) => void;
-  setTopPerformingData: (state: TopPerformingData) => void;
-  onRefresh: () => void;
-  renderCustomizedLabel: (props: CustomizedLabelProps) => JSX.Element;
-  queryType?: 'user' | 'all';
-  userId?: string | null;
-  selectedLicencee: string;
-  chartGranularity?: ChartGranularity;
-  setChartGranularity?: (state: ChartGranularity) => void;
-  showGranularitySelector?: boolean;
-};
-
-export type PcLayoutProps = DashboardLayoutProps;
 
 export type ChartProps = {
   loadingChartData: boolean;
   chartData: dashboardData[];
   activeMetricsFilter: TimePeriod | '';
   totals?: DashboardTotals | null;
-};
-
-export type MapPreviewProps = {
-  gamingLocations: locations;
-  /** Optional pre-fetched aggregation data to avoid duplicate API calls */
-  locationAggregates?: Record<string, unknown>[];
-  /** Optional loading flag when aggregation is being fetched externally */
-  aggLoading?: boolean;
-};
-
-export type DateRangeProps = {
-  CustomDateRange: dateRange;
-  setCustomDateRange: (state: dateRange) => void;
-  setTotals?: (state: dashboardData | null) => void;
-  setChartData?: (state: dashboardData[]) => void;
-  selectedLicencee?: string;
-  setActiveFilters: (state: ActiveFilters) => void;
-  setShowDatePicker?: (state: boolean) => void;
-};
-
-export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean;
-  };
-
-export type DashboardCustomSelectProps = {
-  selectedFilter: TimePeriod | '';
-  placeholder?: string;
-  activePieChartFilter?: TimePeriod | '';
-  isActive: boolean;
-  timeFrames: TimeFrames[];
-  activeFilters: ActiveFilters;
-  onSelect: (value: TimePeriod) => void;
-  setShowDatePicker?: (state: boolean) => void;
-  disabled?: boolean;
 };
 
 export type CustomizedLabelProps = {
@@ -108,13 +19,6 @@ export type CustomizedLabelProps = {
   innerRadius: number;
   outerRadius: number;
   percent: number;
-};
-
-export type licenceeSelectProps = {
-  selected: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-  userLicenseeIds?: string[]; // If provided, only show these licensees (for non-admins)
 };
 
 // Centralized props type for date filters to comply with Next.js rules on shared typing
@@ -136,29 +40,6 @@ export type HeaderProps = {
   containerPaddingMobile?: string;
   disabled?: boolean;
   hideCurrencyFilter?: boolean;
-};
-
-// Next.js page parameter types for dynamic routes
-export type PageParams = {
-  params: Record<string, string>;
-  searchParams?: Record<string, string | string[] | undefined>;
-};
-
-export type PageParamsWithId = {
-  params: {
-    id: string;
-  };
-};
-
-export type PageParamsWithSlug = {
-  params: {
-    slug: string;
-  };
-};
-
-// Restore MobileLayoutProps as a type alias for DashboardLayoutProps
-export type MobileLayoutProps = DashboardLayoutProps & {
-  isChangingDateFilter: boolean;
 };
 
 // Tooltip data for collector hover
@@ -392,20 +273,55 @@ export type CollectorScheduleCardsProps = {
   loading?: boolean;
 };
 
-export type LocationPickerMapProps = {
-  onLocationSelect: (latlng: LatLng) => void;
-};
-
-export type CollectionReportDateFilter =
-  | 'today'
-  | 'yesterday'
-  | 'last7'
-  | 'last30'
-  | 'custom'
-  | 'alltime';
-
-export type DateRangeFilterProps = {
-  dateRange?: RDPDateRange;
-  onApply: (range?: RDPDateRange) => void;
+export type MapPreviewProps = {
+  gamingLocations?: any[];
+  locationAggregates?: Record<string, unknown>[];
+  aggLoading?: boolean;
+  zoom?: number;
+  center?: { lat: number; lng: number };
+  height?: string;
   className?: string;
 };
+
+// Layout Props
+export type MobileLayoutProps = {
+  children?: React.ReactNode;
+  activeFilters: import('@/lib/types').ActiveFilters;
+  activeTab: import('@/lib/types').ActiveTab;
+  totals: import('@/lib/types').DashboardTotals | null;
+  chartData: import('@/lib/types').dashboardData[];
+  gamingLocations: import('@/lib/types').locations;
+  loadingChartData: boolean;
+  refreshing: boolean;
+  pieChartSortIsOpen: boolean;
+  activeMetricsFilter: import('@shared/types').TimePeriod | '';
+  activePieChartFilter: import('@shared/types').TimePeriod | '';
+  topPerformingData: import('@/lib/types').TopPerformingData;
+  setLoadingChartData: (loading: boolean) => void;
+  setRefreshing: (refreshing: boolean) => void;
+  setActiveFilters: (filters: import('@/lib/types').ActiveFilters) => void;
+  setActiveTab: (tab: import('@/lib/types').ActiveTab) => void;
+  setTotals: (totals: import('@/lib/types').DashboardTotals | null) => void;
+  setChartData: (data: import('@/lib/types').dashboardData[]) => void;
+  setPieChartSortIsOpen: (isOpen: boolean) => void;
+  setTopPerformingData: (data: import('@/lib/types').TopPerformingData) => void;
+  setActiveMetricsFilter: (
+    filter: import('@shared/types').TimePeriod | ''
+  ) => void;
+  setActivePieChartFilter: (
+    filter: import('@shared/types').TimePeriod | ''
+  ) => void;
+  renderCustomizedLabel: (props: CustomizedLabelProps) => React.ReactNode;
+  selectedLicencee?: string;
+  loadingTopPerforming: boolean;
+  hasTopPerformingFetched: boolean;
+  onRefresh: () => Promise<void>;
+  isChangingDateFilter?: boolean;
+  chartGranularity: import('@shared/types/common').ChartGranularity;
+  setChartGranularity: (
+    granularity: import('@shared/types/common').ChartGranularity
+  ) => void;
+  showGranularitySelector: boolean;
+};
+
+export type PcLayoutProps = MobileLayoutProps;

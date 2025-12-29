@@ -41,12 +41,3 @@ export type ActivityLog = {
   updatedAt?: Date;
 };
 
-export type ActivityLogQueryParams = {
-  entityType?: string;
-  actionType?: string;
-  actorId?: string;
-  startDate?: string;
-  endDate?: string;
-  limit?: string;
-  skip?: string;
-};

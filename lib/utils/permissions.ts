@@ -33,15 +33,6 @@ export type PageName =
   | 'sessions'
   | 'administration';
 
-export type TabName =
-  | 'administration-users'
-  | 'administration-licensees'
-  | 'administration-activity-logs'
-  | 'administration-feedback'
-  | 'collection-reports-monthly'
-  | 'collection-reports-manager-schedules'
-  | 'collection-reports-collector-schedules';
-
 /**
  * Check if user has access to a specific page
  * @param userRoles - Array of user's roles
@@ -127,15 +118,6 @@ export const hasTabAccess = (
 };
 
 /**
- * Check if user has the highest priority role (Developer)
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user is Developer
- */
-export const isEvolutionAdmin = (userRoles: string[]): boolean => {
-  return userRoles.includes('developer');
-};
-
-/**
  * Check if user has admin-level access (Developer or Admin)
  * @param userRoles - Array of user's roles
  * @returns boolean indicating if user has admin access
@@ -153,95 +135,6 @@ export const hasManagerAccess = (userRoles: string[]): boolean => {
   return ['developer', 'admin', 'manager'].some(role =>
     userRoles.includes(role)
   );
-};
-
-/**
- * Check if user has location admin access or higher
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user has location admin access
- */
-export const hasLocationAdminAccess = (userRoles: string[]): boolean => {
-  return ['developer', 'admin', 'manager', 'location admin'].some(role =>
-    userRoles.includes(role)
-  );
-};
-
-/**
- * Get user's highest priority role
- * @param userRoles - Array of user's roles
- * @returns string representing the highest priority role
- */
-export const getHighestPriorityRole = (userRoles: string[]): string => {
-  const roleHierarchy: UserRole[] = [
-    'developer',
-    'admin',
-    'manager',
-    'location admin',
-    'technician',
-    'collector',
-  ];
-
-  for (const role of roleHierarchy) {
-    if (userRoles.includes(role)) {
-      return role;
-    }
-  }
-
-  return 'viewer'; // Default fallback
-};
-
-/**
- * Check if user can access a specific location
- * @param userRoles - Array of user's roles
- * @param userLocations - Array of location IDs user has access to
- * @param targetLocationId - Location ID to check access for
- * @returns boolean indicating if user can access the location
- */
-export const canAccessLocation = (
-  userRoles: string[],
-  userLocations: string[],
-  targetLocationId: string
-): boolean => {
-  // Developer and Admin can access all locations
-  if (hasAdminAccess(userRoles)) {
-    return true;
-  }
-
-  // Other roles can only access their assigned locations
-  return userLocations.includes(targetLocationId);
-};
-
-/**
- * Get accessible licensees for a user based on their locations
- * @param userRoles - Array of user's roles
- * @param userLocations - Array of location IDs user has access to
- * @param allLicensees - Array of all available licensees
- * @returns Array of licensee IDs the user can access
- */
-export const getAccessibleLicensees = (
-  userRoles: string[],
-  userLocations: string[],
-  allLicensees: Array<{ id: string; locations: string[] }>
-): string[] => {
-  // Developer and Admin can access all licensees
-  if (hasAdminAccess(userRoles)) {
-    return allLicensees.map(l => l.id);
-  }
-
-  // Other roles can only access licensees for their assigned locations
-  const accessibleLicenseeIds = new Set<string>();
-
-  for (const licensee of allLicensees) {
-    const hasLocationAccess = licensee.locations.some(locationId =>
-      userLocations.includes(locationId)
-    );
-
-    if (hasLocationAccess) {
-      accessibleLicenseeIds.add(licensee.id);
-    }
-  }
-
-  return Array.from(accessibleLicenseeIds);
 };
 
 /**
@@ -284,6 +177,20 @@ export const getRoleDisplayName = (userRoles: string[]): string => {
     collector: 'Collector',
   };
 
-  const highestRole = getHighestPriorityRole(userRoles);
-  return roleDisplayNames[highestRole] || 'User';
+  const roleHierarchy: UserRole[] = [
+    'developer',
+    'admin',
+    'manager',
+    'location admin',
+    'technician',
+    'collector',
+  ];
+
+  for (const role of roleHierarchy) {
+    if (userRoles.includes(role)) {
+      return roleDisplayNames[role] || 'User';
+    }
+  }
+
+  return 'User';
 };

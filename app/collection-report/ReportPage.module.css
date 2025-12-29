@@ -1,6 +1,0 @@
-.containerLimited {
-  @media (min-width: 1024px) {
-    max-width: 95%;
-    /* margin-left: 8rem; */
-  }
-}

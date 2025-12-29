@@ -19,6 +19,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type { dashboardData } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import { dateRange as DateRange } from '@/lib/types';
 import type { TimePeriod } from '@/shared/types/common';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -26,7 +27,7 @@ type UseLocationChartDataProps = {
   locationId: string;
   selectedLicencee: string | null;
   activeMetricsFilter: TimePeriod | null;
-  customDateRange: { startDate: Date | string; endDate: Date | string } | null;
+  customDateRange: DateRange | null;
   activeView: 'machines' | 'members';
 };
 
@@ -255,13 +256,17 @@ export function useLocationChartData({
           customDateRange
             ? {
                 from:
-                  customDateRange.startDate instanceof Date
-                    ? customDateRange.startDate
-                    : new Date(customDateRange.startDate),
+                  customDateRange.startDate
+                    ? new Date(customDateRange.startDate)
+                    : customDateRange.start
+                      ? new Date(customDateRange.start)
+                      : undefined,
                 to:
-                  customDateRange.endDate instanceof Date
-                    ? customDateRange.endDate
-                    : new Date(customDateRange.endDate),
+                  customDateRange.endDate
+                    ? new Date(customDateRange.endDate)
+                    : customDateRange.end
+                      ? new Date(customDateRange.end)
+                      : undefined,
               }
             : undefined,
           1, // page

@@ -1,6 +1,6 @@
 export type CabinetSection = 'cabinets' | 'smib' | 'movement' | 'firmware';
 
-export type CabinetTab = {
+type CabinetTab = {
   id: CabinetSection;
   label: string;
   icon: string;

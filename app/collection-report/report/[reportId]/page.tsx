@@ -30,6 +30,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import UnauthorizedError from '@/components/ui/errors/UnauthorizedError';
+import NotFoundError from '@/components/ui/errors/NotFoundError';
 import { CollectionReportSkeleton } from '@/components/ui/skeletons/CollectionReportDetailSkeletons';
 import {
   animateDesktopTabTransition,
@@ -53,6 +55,7 @@ function CollectionReportPageContent() {
   const {
     reportData,
     loading,
+    error,
     activeTab,
     searchTerm,
     sortField,
@@ -122,7 +125,36 @@ function CollectionReportPageContent() {
   // Render Logic
   // ============================================================================
   if (loading) return <CollectionReportSkeleton />;
-  if (!reportData) return null;
+  
+  // Handle error states
+  if (error === 'UNAUTHORIZED') {
+    return (
+      <UnauthorizedError
+        title="Access Denied"
+        message="You are not authorized to view this collection report."
+        resourceType="report"
+        customBackText="Back to Collection Reports"
+        customBackHref="/collection-report"
+      />
+    );
+  }
+  
+  if (error || !reportData) {
+    return (
+      <NotFoundError
+        title="Collection Report Not Found"
+        message={
+          error && error !== 'UNAUTHORIZED'
+            ? error
+            : 'The requested collection report could not be found.'
+        }
+        resourceType="report"
+        showRetry={false}
+        customBackText="Back to Collection Reports"
+        customBackHref="/collection-report"
+      />
+    );
+  }
 
   const TabButton = ({
     label,
@@ -345,13 +377,7 @@ function CollectionReportPageContent() {
           )}
 
           {activeTab === 'SAS Metrics Compare' && (
-            <LocationReportSasCompareTab
-              metrics={reportData.machineMetrics || []}
-              paginatedMetrics={paginatedMetricsData}
-              currentPage={machinePage}
-              totalPages={machineTotalPages}
-              onPageChange={setMachinePage}
-            />
+            <LocationReportSasCompareTab reportData={reportData} />
           )}
         </div>
       </div>
@@ -394,13 +420,7 @@ function CollectionReportPageContent() {
           )}
 
           {activeTab === 'SAS Metrics Compare' && (
-            <LocationReportSasCompareTab
-              metrics={reportData.machineMetrics || []}
-              paginatedMetrics={paginatedMetricsData}
-              currentPage={machinePage}
-              totalPages={machineTotalPages}
-              onPageChange={setMachinePage}
-            />
+            <LocationReportSasCompareTab reportData={reportData} />
           )}
         </div>
       </div>

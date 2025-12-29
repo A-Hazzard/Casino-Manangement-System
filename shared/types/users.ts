@@ -5,57 +5,9 @@ export type CurrentUser = {
   roles?: string[];
 };
 
-export type UserDocument = {
-  _id: string;
-  profile?: {
-    firstName?: string;
-    lastName?: string;
-    gender?: string;
-  };
-  username: string;
-  emailAddress: string;
-  isEnabled: boolean;
-  roles: string[];
-  profilePicture?: string | null;
-  sessionVersion?: number;
-  loginCount?: number;
-  lastLoginAt?: Date | string | null;
-  deletedAt?: Date | string | null;
-};
+import type { UserDocument } from './auth';
 
 export type UserDocumentWithPassword = UserDocument & {
-  password?: string;
-  permissions?: string[];
-  isLocked?: boolean;
-  lockedUntil?: Date | string;
-  failedLoginAttempts?: number;
-  loginCount?: number;
-  lastLoginAt?: Date | string;
-  toObject: (_options?: Record<string, unknown>) => {
-    _id: string;
-    emailAddress: string;
-    isEnabled: boolean;
-    roles: string[];
-    permissions?: string[];
-    sessionVersion?: number;
-    loginCount?: number;
-    lastLoginAt?: Date | string | null;
-    [key: string]: unknown;
-  };
-  toJSON: () => {
-    _id: string;
-    emailAddress: string;
-    username: string;
-    isEnabled: boolean;
-    roles: string[];
-    permissions?: string[];
-    sessionVersion?: number;
-    loginCount?: number;
-    lastLoginAt?: Date | string | null;
-    assignedLocations?: string[];
-    assignedLicensees?: string[];
-    [key: string]: unknown;
-  };
   updateOne: (update: Record<string, unknown>) => Promise<unknown>;
 };
 

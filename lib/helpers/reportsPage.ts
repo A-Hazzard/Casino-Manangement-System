@@ -19,112 +19,15 @@ import type {
   DateRange,
   LocationExportData,
   MachineEvaluationData,
-  MachineExportData,
   TopLocationData,
+  dateRange,
 } from '@/lib/types';
 import type { ExtendedLegacyExportData } from '@/lib/utils/exportUtils';
 import type { MachineData } from '@/shared/types/machines';
-import type React from 'react';
-
-type MachineSortConfig = {
-  key: keyof MachineData;
-  direction: 'asc' | 'desc';
-};
-
-// ============================================================================
-// Location Selection Handlers
-// ============================================================================
-
-/**
- * Handles location selection from dashboard map
- * @param locationIds - Array of selected location IDs
- */
-export function handleLocationSelect(locationIds: string[]) {
-  console.warn(`Selected locations: ${JSON.stringify(locationIds)}`);
-  // Here you could navigate to location details or show more info
-  // For now, just handle the first selected location if any
-  if (locationIds.length > 0) {
-    console.warn(`Primary selected location: ${locationIds[0]}`);
-  }
-}
-
-// ============================================================================
-// Dashboard Data Management
-// ============================================================================
-
-/**
- * Handles refresh action for dashboard data
- * @param setIsRefreshing - Function to set refreshing state
- * @returns Promise that resolves when refresh is complete
- */
-export async function handleRefresh(
-  setIsRefreshing: (refreshing: boolean) => void
-) {
-  setIsRefreshing(true);
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  setIsRefreshing(false);
-}
-
-/**
- * Creates time filter buttons configuration
- * @returns Array of time filter button objects
- */
-export function createTimeFilterButtons() {
-  return [
-    { id: 'Today', label: 'Today' },
-    { id: 'last7days', label: 'Last 7 Days' },
-    { id: 'last30days', label: 'Last 30 Days' },
-    { id: 'Custom', label: 'Custom Range' },
-  ];
-}
-
-/**
- * Loads dashboard data from MongoDB
- * @param setLoading - Function to set loading state
- * @param setLoading - Function to set loading state
- */
-export function loadDashboardData(setLoading: (loading: boolean) => void) {
-  setLoading(true);
-
-  // TODO: Implement actual API call to fetch dashboard data from MongoDB
-  // This should fetch real-time metrics from the database
-  // fetchDashboardMetrics().then(data => {
-  //   updateRealTimeMetrics(data);
-  //   setLoading(false);
-  // }).catch(error => {
-  //   console.error('Error fetching dashboard metrics:', error);
-  //   setLoading(false);
-  // });
-
-  // For now, just set loading to false
-  setLoading(false);
-}
 
 // ============================================================================
 // Export Functions
 // ============================================================================
-
-/**
- * Handles location selection for locations tab
- * @param locationIds - Array of selected location IDs
- * @param setSelectedLocations - Function to update selected locations
- */
-export function handleLocationSelectLocations(
-  locationIds: string[],
-  setSelectedLocations: (
-    locations: string[] | ((prev: string[]) => string[])
-  ) => void
-) {
-  // For now, handle the first selected location if any
-  if (locationIds.length > 0) {
-    const locationId = locationIds[0];
-    setSelectedLocations(prev =>
-      prev.includes(locationId)
-        ? prev.filter(id => id !== locationId)
-        : [...prev, locationId]
-    );
-  }
-}
 
 /**
  * Handles Machines Evaluation export
@@ -519,124 +422,21 @@ export async function handleExportSASEvaluation(
 // ============================================================================
 
 /**
- * Handles sorting for machine data
- * @param key - Sort key
- * @param setSortConfig - Function to update sort configuration
- */
-export function handleMachineSort(
-  key: keyof MachineData,
-  setSortConfig: React.Dispatch<React.SetStateAction<MachineSortConfig>>
-) {
-  setSortConfig(prevConfig => {
-    const newDirection: 'asc' | 'desc' =
-      prevConfig.key === key && prevConfig.direction === 'desc'
-        ? 'asc'
-        : 'desc';
-    return {
-      key,
-      direction: newDirection,
-    };
-  });
-}
-
-/**
- * Sorts evaluation data based on sort configuration
- * @param machines - Array of machine evaluation data
- * @param sortConfig - Current sort configuration
- * @returns Sorted array of machines
- */
-export function sortEvaluationData(
-  machines: MachineEvaluationData[],
-  sortConfig: { key: string; direction: 'asc' | 'desc' }
-) {
-  return [...machines].sort(
-    (a: MachineEvaluationData, b: MachineEvaluationData) => {
-      let aValue: number | string;
-      let bValue: number | string;
-
-      switch (sortConfig.key) {
-        case 'locationName':
-          aValue = a.locationName;
-          bValue = b.locationName;
-          break;
-        case 'machineId':
-          aValue = a.machineId;
-          bValue = b.machineId;
-          break;
-        case 'gameTitle':
-          aValue = a.gameTitle;
-          bValue = b.gameTitle;
-          break;
-        case 'manufacturer':
-          aValue = a.manufacturer;
-          bValue = b.manufacturer;
-          break;
-        case 'handle':
-          aValue = a.coinIn || 0;
-          bValue = b.coinIn || 0;
-          break;
-        case 'moneyIn':
-          aValue = a.drop || 0;
-          bValue = b.drop || 0;
-          break;
-        case 'netWin':
-          aValue = a.netWin;
-          bValue = b.netWin;
-          break;
-        case 'jackpot':
-          aValue = 0; // evaluationData doesn't have jackpot
-          bValue = 0;
-          break;
-        case 'avgWagerPerGame':
-          aValue = a.avgBet || 0;
-          bValue = b.avgBet || 0;
-          break;
-        case 'actualHold':
-          aValue = a.actualHold || 0;
-          bValue = b.actualHold || 0;
-          break;
-        case 'theoreticalHold':
-          aValue = a.theoreticalHold;
-          bValue = b.theoreticalHold;
-          break;
-        case 'gamesPlayed':
-          aValue = a.gamesPlayed;
-          bValue = b.gamesPlayed;
-          break;
-        default:
-          aValue = a.netWin;
-          bValue = b.netWin;
-      }
-
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortConfig.direction === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-
-      return sortConfig.direction === 'asc'
-        ? (aValue as number) - (bValue as number)
-        : (bValue as number) - (aValue as number);
-    }
-  );
-}
-
-/**
  * Handles machine meters export
  * @param activeTab - Current active tab
  * @param overviewMachines - Overview machines data
  * @param offlineMachines - Offline machines data
  * @param activeMetricsFilter - Active metrics filter
  * @param customDateRange - Custom date range
- * @param exportData - Export data function
+ * @param format - Export format (pdf or excel)
  * @param toast - Toast notification function
  */
 export async function handleExportMeters(
   activeTab: string,
-  overviewMachines: MachineExportData[],
-  offlineMachines: MachineExportData[],
+  overviewMachines: MachineData[],
+  offlineMachines: MachineData[],
   activeMetricsFilter: string,
-  customDateRange: { startDate: Date; endDate: Date } | null,
+  customDateRange: dateRange | null,
   format: 'pdf' | 'excel',
   toast: {
     error: (message: string) => void;
@@ -645,7 +445,7 @@ export async function handleExportMeters(
 ) {
   try {
     // Ensure we have data to export
-    let machinesToExport: MachineExportData[] = [];
+    let machinesToExport: MachineData[] = [];
 
     if (activeTab === 'overview') {
       if (overviewMachines.length === 0) {
@@ -674,13 +474,14 @@ export async function handleExportMeters(
       machinesToExport = overviewMachines;
     }
 
+    const startStr = customDateRange?.startDate || customDateRange?.start;
+    const endStr = customDateRange?.endDate || customDateRange?.end;
+
     const metersData: ExtendedLegacyExportData = {
       title: 'Machines Export Report',
       subtitle: `Machine performance data - ${
-        activeMetricsFilter === 'Custom' &&
-        customDateRange?.startDate &&
-        customDateRange?.endDate
-          ? `${customDateRange.startDate.toDateString()} - ${customDateRange.endDate.toDateString()}`
+        activeMetricsFilter === 'Custom' && startStr && endStr
+          ? `${new Date(startStr).toDateString()} - ${new Date(endStr).toDateString()}`
           : activeMetricsFilter
       }`,
       headers: [
@@ -698,17 +499,17 @@ export async function handleExportMeters(
         'Status',
         'SAS Enabled',
       ],
-      data: machinesToExport.map((machine: MachineExportData) => [
+      data: machinesToExport.map((machine: MachineData) => [
         `${machine.machineName} (${machine.machineId})`,
         machine.gameTitle,
         machine.locationName,
         machine.manufacturer,
         'Slot', // Default type since it's not in the data
-        machine.netWin.toLocaleString(),
-        machine.drop.toLocaleString(),
-        machine.totalCancelledCredits.toLocaleString(),
+        (machine.netWin || 0).toLocaleString(),
+        (machine.drop || 0).toLocaleString(),
+        (machine.totalCancelledCredits || 0).toLocaleString(),
         '0', // Jackpot not available in current data
-        machine.gamesPlayed.toLocaleString(),
+        (machine.gamesPlayed || 0).toLocaleString(),
         (() => {
           const hold = machine.theoreticalHold;
           if (hold === undefined) return '0%';
@@ -728,20 +529,20 @@ export async function handleExportMeters(
         {
           label: 'Online Machines',
           value: machinesToExport
-            .filter((m: MachineExportData) => m.isOnline)
+            .filter((m: MachineData) => m.isOnline)
             .length.toString(),
         },
         {
           label: 'Offline Machines',
           value: machinesToExport
-            .filter((m: MachineExportData) => !m.isOnline)
+            .filter((m: MachineData) => !m.isOnline)
             .length.toString(),
         },
         {
           label: 'Total Net Win',
           value: `$${machinesToExport
             .reduce(
-              (sum: number, m: MachineExportData) => sum + (m.netWin || 0),
+              (sum: number, m: MachineData) => sum + (m.netWin || 0),
               0
             )
             .toLocaleString()}`,
@@ -750,7 +551,7 @@ export async function handleExportMeters(
           label: 'Total Drop',
           value: `$${machinesToExport
             .reduce(
-              (sum: number, m: MachineExportData) => sum + (m.drop || 0),
+              (sum: number, m: MachineData) => sum + (m.drop || 0),
               0
             )
             .toLocaleString()}`,

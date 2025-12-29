@@ -31,7 +31,7 @@ type Props = Omit<ButtonProps, keyof BaseSyncButtonProps> & BaseSyncButtonProps;
 // Components
 // ============================================================================
 
-export const SyncButton = ({
+const SyncButton = ({
   onClick,
   isSyncing = false,
   className = '',
@@ -60,10 +60,6 @@ export const SyncButton = ({
       <span className={iconOnly ? 'hidden' : ''}>{label}</span>
     </Button>
   );
-};
-
-export const RefreshButton = (props: Omit<Props, 'variant'>) => {
-  return <SyncButton {...props} variant="refresh" />;
 };
 
 export default SyncButton;

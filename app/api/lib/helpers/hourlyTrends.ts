@@ -40,7 +40,7 @@ type DailyRevenueItem = {
  * @param days - Number of days for previous period
  * @returns Previous period date range
  */
-export function getPreviousPeriod(
+function getPreviousPeriod(
   startDate: Date,
   endDate: Date,
   days: number
@@ -60,7 +60,7 @@ export function getPreviousPeriod(
  * @param endDateParam - Optional custom end date
  * @returns Date range object
  */
-export function calculateHourlyTrendsDateRange(
+function calculateHourlyTrendsDateRange(
   timePeriod: TimePeriod,
   startDateParam?: string | null,
   endDateParam?: string | null
@@ -94,7 +94,7 @@ export function calculateHourlyTrendsDateRange(
  * @param endDate - End date
  * @returns Aggregation pipeline stages
  */
-export function buildCurrentPeriodRevenuePipeline(
+function buildCurrentPeriodRevenuePipeline(
   targetLocations: string[],
   startDate: Date,
   endDate: Date
@@ -130,7 +130,7 @@ export function buildCurrentPeriodRevenuePipeline(
  * @param prevEnd - Previous period end date
  * @returns Aggregation pipeline stages
  */
-export function buildPreviousPeriodPipeline(
+function buildPreviousPeriodPipeline(
   targetLocations: string[],
   prevStart: Date,
   prevEnd: Date
@@ -169,7 +169,7 @@ export function buildPreviousPeriodPipeline(
  * @param licencee - Optional licensee to filter by
  * @returns Aggregation pipeline stages
  */
-export function buildHourlyTrendsPipeline(
+function buildHourlyTrendsPipeline(
   targetLocations: string[],
   startDate: Date,
   endDate: Date,

@@ -1,8 +1,8 @@
 # API Overview
 
-**Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025  
-**Version:** 2.1.0
+**Author:** Aaron Hazzard - Senior Software Engineer
+**Last Updated:** December 29, 2025
+**Version:** 2.2.0
 
 ## Quick Search Guide (Ctrl+F)
 

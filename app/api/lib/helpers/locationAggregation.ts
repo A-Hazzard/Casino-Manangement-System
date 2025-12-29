@@ -2,7 +2,7 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
-import { AggregatedLocation } from '@/lib/types/location';
+import type { AggregatedLocation } from '@/shared/types';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { PipelineStage } from 'mongoose';
 

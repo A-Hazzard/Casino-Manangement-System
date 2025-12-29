@@ -18,38 +18,6 @@ export type LicenseeCurrencyMapping = {
   Barbados: 'BBD';
 };
 
-export type CurrencyConversionRequest = {
-  value: number;
-  fromCurrency: CurrencyCode;
-  toCurrency: CurrencyCode;
-};
-
-export type CurrencyConversionResponse = {
-  originalValue: number;
-  convertedValue: number;
-  fromCurrency: CurrencyCode;
-  toCurrency: CurrencyCode;
-  exchangeRate: number;
-  timestamp: string;
-};
-
-export type CurrencyMetadata = {
-  originalCurrency: CurrencyCode;
-  displayCurrency: CurrencyCode;
-  exchangeRate: number;
-  converted: boolean;
-};
-
-export type FinancialDataWithCurrency<T = Record<string, unknown>> = T & {
-  currencyMeta?: CurrencyMetadata;
-};
-
-export type CurrencyFilterState = {
-  displayCurrency: CurrencyCode;
-  isAllLicensee: boolean;
-  shouldConvert: boolean;
-};
-
 export type CurrencyContextType = {
   displayCurrency: CurrencyCode;
   setDisplayCurrency: (currency: CurrencyCode) => void;

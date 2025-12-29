@@ -14,16 +14,6 @@ import type { TimePeriod } from '../types';
 import { getDatesForTimePeriod } from '../utils/dates';
 
 /**
- * Top machines query parameters
- */
-export type TopMachinesParams = {
-  locationId: string;
-  timePeriod: string;
-  startDate?: string | null;
-  endDate?: string | null;
-};
-
-/**
  * Calculates date range for top machines query
  *
  * @param timePeriod - Time period string
@@ -31,7 +21,7 @@ export type TopMachinesParams = {
  * @param endDate - Optional custom end date
  * @returns Date range object
  */
-export function calculateTopMachinesDateRange(
+function calculateTopMachinesDateRange(
   timePeriod: string,
   startDate?: string | null,
   endDate?: string | null
@@ -79,7 +69,7 @@ export function calculateTopMachinesDateRange(
  * @param end - End date
  * @returns Aggregation pipeline stages
  */
-export function buildTopMachinesPipeline(
+function buildTopMachinesPipeline(
   locationId: string,
   start: Date,
   end: Date
@@ -197,7 +187,7 @@ export async function getTopMachinesByLocation(
  * @param limit - Limit for results
  * @returns Aggregation pipeline stages
  */
-export function buildTopMachinesDetailedPipeline(
+function buildTopMachinesDetailedPipeline(
   timePeriod: string,
   startDate: Date,
   endDate: Date,

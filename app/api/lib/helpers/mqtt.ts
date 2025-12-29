@@ -49,7 +49,7 @@ export type MQTTConfig = {
  * @param uri - MQTT URI string
  * @returns Host string or null
  */
-export function extractHostFromUri(uri?: string): string | null {
+function extractHostFromUri(uri?: string): string | null {
   if (!uri) return null;
   const match = uri.match(/@(.+):/);
   return match?.[1] || null;
@@ -61,7 +61,7 @@ export function extractHostFromUri(uri?: string): string | null {
  * @param uri - MQTT URI string
  * @returns Port string or null
  */
-export function extractPortFromUri(uri?: string): string | null {
+function extractPortFromUri(uri?: string): string | null {
   if (!uri) return null;
   const match = uri.match(/:(\d+)/);
   return match?.[1] || null;

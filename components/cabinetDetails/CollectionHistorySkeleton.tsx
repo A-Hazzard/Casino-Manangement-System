@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
-export const CollectionHistorySkeleton = () => (
+const CollectionHistorySkeleton = () => (
   <div className="w-full">
     {/* Desktop Table View Skeleton */}
     <div className="hidden w-full lg:block">

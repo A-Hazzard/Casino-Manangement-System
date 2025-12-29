@@ -9,15 +9,87 @@
 
 import { connectDB } from '../middleware/db';
 import { GamingLocations } from '../models/gaminglocations';
+import UserModel from '../models/user';
 
 /**
  * User role and permission information
  */
-export type UserPermissions = {
+type UserPermissions = {
   roles: string[];
   licensees: string[];
   locationPermissions: string[];
 };
+
+/**
+ * Paginated collectors response
+ */
+export type PaginatedCollectors = {
+  collectors: Array<{
+    id: string;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  }>;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+/**
+ * Fetches paginated collectors for a licensee
+ *
+ * @param page - Page number
+ * @param limit - Items per page
+ * @param licenceeId - Optional licensee ID to filter by
+ * @returns Promise with paginated collectors
+ */
+export async function getCollectorsPaginated(
+  page: number,
+  limit: number,
+  licenceeId?: string
+): Promise<PaginatedCollectors> {
+  const skip = (page - 1) * limit;
+
+  // Build filter for collectors
+  const filter: Record<string, unknown> = {
+    roles: 'collector',
+    isEnabled: true,
+  };
+
+  if (licenceeId) {
+    filter.assignedLicensees = licenceeId;
+  }
+
+  // Fetch total count for pagination
+  const total = await UserModel.countDocuments(filter);
+
+  // Fetch paginated users
+  const users = await UserModel.find(filter)
+    .sort({ username: 1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  const collectors = (users as Array<Record<string, unknown>>).map(user => ({
+    id: String(user._id),
+    username: String(user.username || ''),
+    email: String(user.emailAddress || ''),
+    firstName: String(
+      (user.profile as Record<string, unknown>)?.firstName || ''
+    ),
+    lastName: String((user.profile as Record<string, unknown>)?.lastName || ''),
+  }));
+
+  return {
+    collectors,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
+}
 
 /**
  * Collection reports query parameters
@@ -67,15 +139,15 @@ export async function buildCollectionReportsLocationFilter(
     }
 
     const managerLocations = await GamingLocations.find(
-        {
-          'rel.licencee': { $in: licensees },
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2025-01-01') } },
-          ],
-        },
+      {
+        'rel.licencee': { $in: licensees },
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      },
       { _id: 1 }
-      )
+    )
       .lean()
       .exec();
 

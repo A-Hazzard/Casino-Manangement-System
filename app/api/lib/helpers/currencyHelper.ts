@@ -14,7 +14,7 @@ export function shouldApplyCurrencyConversion(
 /**
  * Financial fields that need currency conversion from meters movement object
  */
-export const FINANCIAL_FIELDS = [
+const FINANCIAL_FIELDS = [
   'drop',
   'totalCancelledCredits',
   'coinIn',
@@ -31,7 +31,7 @@ export const FINANCIAL_FIELDS = [
  * @param toCurrency - Target currency code
  * @returns Object with converted financial fields
  */
-export function convertFinancialFields<T extends Record<string, unknown>>(
+function convertFinancialFields<T extends Record<string, unknown>>(
   data: T,
   fromCurrency: string,
   toCurrency: string
@@ -109,37 +109,7 @@ export async function applyCurrencyConversionToMetrics<T>(
   return convertObject(data) as T;
 }
 
-/**
- * Apply currency conversion to aggregation results
- * @param aggregationResult - Result from MongoDB aggregation
- * @param licensee - Selected licensee or 'all'
- * @param displayCurrency - Target currency for display
- * @returns Converted aggregation result
- */
-export async function applyCurrencyConversionToAggregation<T>(
-  aggregationResult: T,
-  licensee: string | null,
-  displayCurrency: string
-): Promise<T> {
-  return applyCurrencyConversionToMetrics(
-    aggregationResult,
-    licensee,
-    displayCurrency
-  );
-}
 
-/**
- * Convert session financial metrics
- * @param sessions - Array of session objects
- * @param licensee - Selected licensee or 'all'
- * @param displayCurrency - Target currency for display
- * @returns Sessions with converted financial metrics
- */
-export async function convertSessionFinancialMetrics<
-  T extends Array<Record<string, unknown>>,
->(sessions: T, licensee: string | null, displayCurrency: string): Promise<T> {
-  return applyCurrencyConversionToMetrics(sessions, licensee, displayCurrency);
-}
 
 /**
  * Get currency query parameter from request

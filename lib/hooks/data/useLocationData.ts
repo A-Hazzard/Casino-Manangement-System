@@ -11,13 +11,14 @@ import {
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { LocationFilter } from '@/lib/types/location';
 import { useDebounce } from '@/lib/utils/hooks';
-import { AggregatedLocation, TimePeriod } from '@/shared/types/common';
+import type { AggregatedLocation, dateRange } from '@/lib/types/index';
+import type { TimePeriod } from '@/shared/types/common';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseLocationDataProps = {
   selectedLicencee: string;
   activeMetricsFilter: string | null;
-  customDateRange: { startDate: Date; endDate: Date } | null;
+  customDateRange?: dateRange;
   searchTerm: string;
   selectedFilters: LocationFilter[];
 };

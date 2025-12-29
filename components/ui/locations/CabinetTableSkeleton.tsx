@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
  * Cabinet Table Skeleton Loader
  * Matches the exact structure of CabinetTable component
  */
-export const CabinetTableSkeleton: React.FC = () => (
+const CabinetTableSkeleton: React.FC = () => (
   <div className="w-full overflow-x-auto bg-white shadow">
     <table className="w-full">
       <thead>

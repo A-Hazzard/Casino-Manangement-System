@@ -10,8 +10,9 @@
  */
 
 import { handleExportSASEvaluation as handleExportSASEvaluationHelper } from '@/lib/helpers/reportsPage';
-import { DateRange, LocationExportData, TopLocationData } from '@/lib/types';
+import { LocationExportData, TopLocationData } from '@/lib/types';
 import { AggregatedLocation } from '@/lib/types/location';
+import { DateRange } from '@/lib/utils/dateUtils';
 import type { ExtendedLegacyExportData } from '@/lib/utils/exportUtils';
 import { ExportUtils } from '@/lib/utils/exportUtils';
 import { LocationMetrics, TopLocation } from '@/shared/types';
@@ -233,7 +234,6 @@ export async function handleExportSASEvaluation({
   // Convert AggregatedLocation[] to LocationExportData[]
   const paginatedLocations: LocationExportData[] = allLocationsForDropdown.map(
     loc => ({
-      location: (loc.location || loc._id) as string,
       locationName: (loc.locationName || loc.name || 'Unknown') as string,
       moneyIn: (loc.moneyIn || 0) as number,
       moneyOut: (loc.moneyOut || 0) as number,
@@ -247,6 +247,7 @@ export async function handleExportSASEvaluation({
       hasNonSasMachines: (loc.hasNonSasMachines ||
         (loc.nonSasMachines as number) > 0) as boolean,
       isLocalServer: (loc.isLocalServer || false) as boolean,
+      performance: '', // Added missing performance field
     })
   );
 

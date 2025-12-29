@@ -38,7 +38,7 @@ import { formatCurrency } from '@/lib/utils';
 import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useEffect, useState } from 'react';
-import { UnifiedBillValidator } from './UnifiedBillValidator';
+import UnifiedBillValidator from './UnifiedBillValidator';
 
 import ActivityLogDateFilter from '@/components/ui/ActivityLogDateFilter';
 import { useCabinetUIStore } from '@/lib/store/cabinetUIStore';
@@ -368,8 +368,8 @@ const CollectionSettingsContent: React.FC<{ cabinet: Cabinet }> = ({
   );
 };
 
-// Export the component as both default and named export
-export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
+// Export the component
+const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   cabinet,
   loading,
   activeMetricsTabContent,

@@ -22,7 +22,7 @@ interface CurrencyFilterProps {
 
 const CURRENCY_OPTIONS: CurrencyCode[] = ['USD', 'TTD', 'GYD', 'BBD'];
 
-export function CurrencyFilter({
+function CurrencyFilter({
   className = '',
   disabled = false,
   onCurrencyChange,

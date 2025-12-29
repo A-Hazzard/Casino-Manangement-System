@@ -34,8 +34,10 @@ import {
   MachinesEvaluationSkeleton,
   TopMachinesTableSkeleton,
 } from '@/components/ui/skeletons/ReportsSkeletons';
-import type { TopMachinesCriteria } from '@/components/ui/TopMachinesCriteriaSelector';
-import type { MachinesEvaluationTabProps } from '@/lib/types/machinesEvaluationTab';
+import type {
+  MachinesEvaluationTabProps,
+  TopMachinesCriteria,
+} from '@/lib/types/machinesEvaluationTab';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
 import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
 import {

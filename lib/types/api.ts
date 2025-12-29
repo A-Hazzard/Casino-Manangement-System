@@ -1,32 +1,63 @@
-import type {
-  ApiResponse,
-  CustomDate,
-  DateRange,
-  MongoMatchStage,
-  MongooseId,
-  ParamsType,
-  PipelineStage,
-  QueryFilter,
-  RegexFilter,
-  TimePeriod,
-  WithTimestamps,
-} from '@shared/types';
-import type { Document } from 'mongoose';
+import type { MongooseId, TimePeriod } from '@/shared/types';
+import type { SmibDevice } from '@/shared/types/entities';
+import type { QueryFilter } from './mongo';
 
-// Re-export shared types for convenience
-export type {
-  ApiResponse,
-  CustomDate,
-  DateRange,
-  MongoMatchStage,
-  MongooseId,
-  ParamsType,
-  PipelineStage,
-  QueryFilter,
-  RegexFilter,
-  TimePeriod,
-  WithTimestamps,
+// Re-export types for convenience
+export type { QueryFilter, TimePeriod };
+
+export type DiscoverSmibsResponse = {
+  success: boolean;
+  smibs: SmibDevice[];
+  error?: string;
 };
+
+// Collection Report interface for Mongoose model
+export interface ICollectionReport {
+  _id?: string;
+  variance: number;
+  previousBalance: number;
+  currentBalance: number;
+  amountToCollect: number;
+  amountCollected: number;
+  amountUncollected: number;
+  partnerProfit: number;
+  taxes: number;
+  advance: number;
+  collector?: string;
+  collectorName?: string;
+  locationName: string;
+  locationReportId: string;
+  location: string;
+  totalDrop: number;
+  totalCancelled: number;
+  totalGross: number;
+  totalSasGross: number;
+  timestamp: Date;
+  varianceReason?: string;
+  previousCollectionTime?: Date;
+  locationProfitPerc?: number;
+  reasonShortagePayment?: string;
+  balanceCorrection?: number;
+  balanceCorrectionReas?: string;
+  machinesCollected?: string;
+  isEditing?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+  __v?: number;
+}
+
+// Scheduler interface for Mongoose model
+export interface IScheduler {
+  _id: string;
+  creator: string;
+  collector: string;
+  location: string;
+  startTime: Date;
+  endTime: Date;
+  status: 'pending' | 'completed' | 'canceled';
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 export type AcceptedBill = {
   _id: string;
@@ -194,72 +225,4 @@ export type CollectionReportData = {
   locationMetrics: LocationMetric;
   sasMetrics?: SASMetric;
   isEditing?: boolean;
-};
-
-export type ICollectionReport = Document & {
-  _id: string;
-  variance: number;
-  previousBalance: number;
-  currentBalance: number;
-  amountToCollect: number;
-  amountCollected: number;
-  amountUncollected: number;
-  partnerProfit: number;
-  taxes: number;
-  advance: number;
-  collector?: string;
-  collectorName?: string;
-  locationName: string;
-  locationReportId: string;
-  location: string;
-  totalDrop: number;
-  totalCancelled: number;
-  totalGross: number;
-  totalSasGross: number;
-  timestamp: Date;
-  varianceReason?: string;
-  previousCollectionTime?: Date;
-  locationProfitPerc?: number;
-  reasonShortagePayment?: string;
-  balanceCorrection?: number;
-  balanceCorrectionReas?: string;
-  machinesCollected?: string;
-  isEditing?: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  __v: number;
-};
-
-export type IScheduler = Document & {
-  licencee: string;
-  location: string;
-  collector: string;
-  creator: string;
-  startTime: Date;
-  endTime: Date;
-  status: 'pending' | 'completed' | 'canceled';
-  notes?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-};
-
-// SMIB Discovery API Response Types
-export type DiscoverSmibsResponse = {
-  success: boolean;
-  smibs: import('@/shared/types/entities').SmibDevice[];
-  count: number;
-  error?: string;
-};
-
-export type SmibStatusResponse = {
-  success: boolean;
-  status: Record<string, import('@/shared/types/entities').SmibOnlineStatus>;
-  error?: string;
-};
-
-export type UpdateMachineConfigResponse = {
-  success: boolean;
-  data?: unknown;
-  machineId?: string;
-  error?: string;
 };

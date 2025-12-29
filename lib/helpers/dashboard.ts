@@ -23,6 +23,7 @@ import {
   DashboardTotals,
   locations,
   TopPerformingData,
+  dateRange as DateRange,
 } from '@/lib/types';
 
 import getAllGamingLocations from '@/lib/helpers/locations';
@@ -141,7 +142,7 @@ export const loadGamingLocations = async (
  */
 export const fetchDashboardTotals = async (
   activeMetricsFilter: TimePeriod,
-  customDateRange: { startDate: Date; endDate: Date },
+  customDateRange: DateRange,
   selectedLicencee: string | undefined,
   setTotals: (totals: DashboardTotals | null) => void,
   displayCurrency?: string,
@@ -351,7 +352,7 @@ export const fetchDashboardTotals = async (
  */
 export const fetchMetricsData = async (
   activeMetricsFilter: TimePeriod,
-  customDateRange: { startDate: Date; endDate: Date },
+  customDateRange: DateRange,
   selectedLicencee: string | undefined,
   setTotals: (totals: DashboardTotals | null) => void,
   setChartData: (data: dashboardData[]) => void,
@@ -421,7 +422,7 @@ export const fetchTopPerformingDataHelper = async (
   selectedLicencee?: string,
   currency?: string,
   signal?: AbortSignal,
-  customDateRange?: { startDate: Date; endDate: Date }
+  customDateRange?: DateRange
 ) => {
   // Only fetch data if there's a valid filter
   if (!activePieChartFilter) {
@@ -444,9 +445,9 @@ export const fetchTopPerformingDataHelper = async (
       currency,
       signal,
       activePieChartFilter === 'Custom'
-        ? customDateRange?.startDate
+        ? customDateRange?.startDate || customDateRange?.start
         : undefined,
-      activePieChartFilter === 'Custom' ? customDateRange?.endDate : undefined
+      activePieChartFilter === 'Custom' ? customDateRange?.endDate || customDateRange?.end : undefined
     );
     setTopPerformingData(data);
   } catch (error) {
@@ -491,7 +492,7 @@ export const fetchTopPerformingDataHelper = async (
  */
 export const handleDashboardRefresh = async (
   activeMetricsFilter: TimePeriod,
-  customDateRange: { startDate: Date; endDate: Date },
+  customDateRange: DateRange,
   selectedLicencee: string | undefined,
   activeTab: ActiveTab,
   activePieChartFilter: TimePeriod,
@@ -557,13 +558,3 @@ export const handleDashboardRefresh = async (
   }
 };
 
-/**
- * Creates time filter buttons configuration
- */
-export const getTimeFilterButtons = () => [
-  { label: 'Today', value: 'Today' as TimePeriod },
-  { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
-  { label: 'Last 7 days', value: '7d' as TimePeriod },
-  { label: '30 days', value: '30d' as TimePeriod },
-  { label: 'Custom', value: 'Custom' as TimePeriod },
-];

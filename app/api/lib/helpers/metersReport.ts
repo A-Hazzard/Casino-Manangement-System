@@ -18,23 +18,6 @@ import { Machine } from '../models/machines';
 import { Meters } from '../models/meters';
 
 /**
- * Request parameters for the meters report API
- */
-export type MetersReportParams = {
-  locations: string | null;
-  timePeriod: TimePeriod;
-  customStartDate: string | null;
-  customEndDate: string | null;
-  page: number;
-  limit: number;
-  search: string;
-  licencee: string | null;
-  currency: CurrencyCode | null;
-  includeHourlyData: boolean;
-  granularity?: 'hourly' | 'minute' | null;
-};
-
-/**
  * Parsed and validated request parameters
  */
 export type ParsedMetersReportParams = {
@@ -623,7 +606,7 @@ export async function getHourlyChartData(
  * @param machine - Machine data object
  * @returns Formatted machine ID string
  */
-export function formatMachineId(machine: MachineData): string {
+function formatMachineId(machine: MachineData): string {
   const serialNumber = machine.serialNumber?.trim() || '';
   const hasValidSerialNumber = serialNumber.length > 0;
   const customName = machine.custom?.name?.trim() || '';
@@ -650,7 +633,7 @@ export function formatMachineId(machine: MachineData): string {
  * @param value - Meter value to validate
  * @returns Validated number (0 if invalid or negative)
  */
-export function validateMeterValue(value: unknown): number {
+function validateMeterValue(value: unknown): number {
   const num = Number(value) || 0;
   return num >= 0 ? num : 0;
 }

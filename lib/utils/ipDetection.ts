@@ -17,7 +17,7 @@
  * Get the client's IP address from the request
  * Tries multiple headers to get the most accurate IP
  */
-export function getClientIP(request: Request): string {
+function getClientIP(request: Request): string {
   const headers = request.headers;
 
   // Check various headers in order of preference

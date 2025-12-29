@@ -11,7 +11,7 @@
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { getAccountingDetails } from '@/lib/helpers/accountingDetails';
+import { getAccountingDetails } from '@/app/api/lib/helpers/accountingDetails';
 import type { BillValidatorTimePeriod } from '@/shared/types/billValidator';
 import { NextRequest, NextResponse } from 'next/server';
 

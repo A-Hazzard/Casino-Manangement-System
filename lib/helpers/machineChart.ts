@@ -18,7 +18,7 @@ import {
   formatISODate,
   formatLocalDateTimeString,
 } from '@/shared/utils/dateFormat';
-import { TimePeriod } from '@shared/types';
+import { TimePeriod } from '@/shared/types';
 import axios from 'axios';
 
 /**

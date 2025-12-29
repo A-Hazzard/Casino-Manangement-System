@@ -10,7 +10,7 @@
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { getCollectorsPaginated } from '@/lib/helpers/collectionReport';
+import { getCollectorsPaginated } from '@/app/api/lib/helpers/collectionReports';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**

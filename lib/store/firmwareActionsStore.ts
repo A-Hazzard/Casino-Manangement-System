@@ -11,9 +11,7 @@
  */
 import { create } from 'zustand';
 import type { FirmwareActionsState } from '@/lib/types/store';
-
-// Re-export frontend-specific types for convenience
-export type { FirmwareActionsState };
+import type { Firmware } from '@/shared/types/entities';
 
 // Define a no-op version for SSR
 const dummyState: FirmwareActionsState = {
@@ -32,11 +30,11 @@ const createStore = () => {
     selectedFirmware: null,
     isDeleteModalOpen: false,
     isDownloadModalOpen: false,
-    openDeleteModal: firmware =>
+    openDeleteModal: (firmware: Firmware) =>
       set({ selectedFirmware: firmware, isDeleteModalOpen: true }),
     closeDeleteModal: () =>
       set({ selectedFirmware: null, isDeleteModalOpen: false }),
-    openDownloadModal: firmware =>
+    openDownloadModal: (firmware: Firmware) =>
       set({ selectedFirmware: firmware, isDownloadModalOpen: true }),
     closeDownloadModal: () =>
       set({ selectedFirmware: null, isDownloadModalOpen: false }),

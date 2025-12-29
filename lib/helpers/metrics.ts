@@ -18,7 +18,7 @@ import {
   formatISODate,
   formatLocalDateTimeString,
 } from '@/shared/utils/dateFormat';
-import { TimePeriod } from '@shared/types';
+import { TimePeriod } from '@/shared/types';
 import axios from 'axios';
 import { getGranularityFromDataPoints } from '../utils/chartGranularity';
 
@@ -526,7 +526,7 @@ export async function getMetrics(
  * @param endDate - End date for the period
  * @returns Complete chart data with filled intervals
  */
-export function fillMissingIntervals(
+function fillMissingIntervals(
   data: dashboardData[],
   timePeriod: TimePeriod,
   startDate?: Date,
