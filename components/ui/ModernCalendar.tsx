@@ -461,7 +461,7 @@ export function ModernCalendar({
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-auto max-w-[calc(100vw-2rem)] p-0 sm:max-w-[600px] lg:max-w-[700px]"
+          className="z-[1100] w-auto max-w-[calc(100vw-2rem)] p-0 sm:max-w-[600px] lg:max-w-[700px]"
           align="start"
           side="bottom"
           sideOffset={8}

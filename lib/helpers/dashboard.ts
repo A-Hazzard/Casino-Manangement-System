@@ -21,14 +21,14 @@ import {
   ActiveTab,
   dashboardData,
   DashboardTotals,
+  dateRange as DateRange,
   locations,
   TopPerformingData,
-  dateRange as DateRange,
 } from '@/lib/types';
 
 import getAllGamingLocations from '@/lib/helpers/locations';
 import { fetchTopPerformingData } from '@/lib/helpers/topPerforming';
-import { classifyError } from '@/lib/utils/errorHandling';
+import { classifyError, isAbortError } from '@/lib/utils/errorHandling';
 import { showErrorNotification } from '@/lib/utils/errorNotifications';
 import { switchFilter } from '@/lib/utils/metrics';
 import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
@@ -55,7 +55,8 @@ export const loadGamingLocations = async (
     // Lightweight locations fetch (minimal projection, no heavy lookups)
     const params = new URLSearchParams();
     params.append('minimal', '1');
-    if (selectedLicencee && selectedLicencee !== 'all') {
+    // Always pass licensee parameter (even if 'all' or empty) so API knows user's selection
+    if (selectedLicencee) {
       params.append('licencee', selectedLicencee);
     }
     if (options?.forceAll) {
@@ -75,22 +76,8 @@ export const loadGamingLocations = async (
 
     return locationsData;
   } catch (error) {
-    // Check if this is a cancellation error (expected behavior, don't log or show notification)
-    const axios = (await import('axios')).default;
-    const isCanceled =
-      axios.isCancel(error) ||
-      (error instanceof Error &&
-        (error.name === 'CanceledError' ||
-          error.name === 'AbortError' ||
-          error.message === 'canceled' ||
-          error.message === 'The user aborted a request.')) ||
-      (error &&
-        typeof error === 'object' &&
-        'code' in error &&
-        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'));
-
-    // Re-throw cancellation errors so useAbortableRequest can handle them silently
-    if (isCanceled) {
+    // Silently handle aborted requests - re-throw so useAbortableRequest can handle them
+    if (isAbortError(error)) {
       throw error;
     }
 
@@ -111,21 +98,8 @@ export const loadGamingLocations = async (
       setGamingLocations(locationsData);
       return locationsData;
     } catch (fallbackError) {
-      // Check if fallback error is also a cancellation
-      const isFallbackCanceled =
-        axios.isCancel(fallbackError) ||
-        (fallbackError instanceof Error &&
-          (fallbackError.name === 'CanceledError' ||
-            fallbackError.name === 'AbortError' ||
-            fallbackError.message === 'canceled' ||
-            fallbackError.message === 'The user aborted a request.')) ||
-        (fallbackError &&
-          typeof fallbackError === 'object' &&
-          'code' in fallbackError &&
-          (fallbackError.code === 'ERR_CANCELED' ||
-            fallbackError.code === 'ECONNABORTED'));
-
-      if (isFallbackCanceled) {
+      // Silently handle aborted requests - re-throw so useAbortableRequest can handle them
+      if (isAbortError(fallbackError)) {
         throw fallbackError;
       }
 
@@ -186,10 +160,23 @@ export const fetchDashboardTotals = async (
 
     console.log('🔍 [fetchDashboardTotals] Calling API:', url);
     // Use deduplication to prevent duplicate requests
-    const locationData = await deduplicateRequest(url, async abortSignal => {
-      const response = await axios.get(url, { signal: abortSignal || signal });
-      return response.data;
-    });
+    let locationData;
+    try {
+      locationData = await deduplicateRequest(url, async abortSignal => {
+        const response = await axios.get(url, {
+          signal: abortSignal || signal,
+        });
+        return response.data;
+      });
+    } catch (error) {
+      // Check if this is a silent abort marker from deduplicateRequest
+      if (error instanceof Error && error.message === 'ABORT_SILENT') {
+        // Silently return - this was an abort error handled by deduplicateRequest
+        return;
+      }
+      // Re-throw other errors so they can be handled by the outer catch block
+      throw error;
+    }
 
     console.log('🔍 [fetchDashboardTotals] API Response:', {
       hasData: !!locationData.data,
@@ -318,17 +305,63 @@ export const fetchDashboardTotals = async (
     setTotals(totals);
     console.log('🔍 [fetchDashboardTotals] setTotals called with:', totals);
   } catch (error) {
-    // Silently handle aborted requests - this is expected behavior
-    if (
-      error instanceof Error &&
-      (error.name === 'AbortError' || error.name === 'CanceledError')
-    ) {
-      console.log(
-        '🔍 [fetchDashboardTotals] Request aborted (filter/page change)'
-      );
+    // CRITICAL: Check for abort errors FIRST - aborting is NOT an error, it's expected when switching filters
+    // Abort errors should NEVER show error toasts or log errors
+
+    // Check axios.isCancel first (most reliable check for axios cancellations)
+    // This handles axios cancellation tokens which may appear as {} when serialized
+    if (axios.isCancel && axios.isCancel(error)) {
+      // Silently return - aborting is expected behavior when switching filters
       return;
     }
 
+    // Check our isAbortError utility (handles other abort error types like AbortError, CanceledError, etc.)
+    if (isAbortError(error)) {
+      // Silently return - aborting is expected behavior when switching filters
+      return;
+    }
+
+    // Check for empty object errors - these might be abort errors that weren't caught above
+    // Empty objects from axios cancellations sometimes don't serialize properly
+    // Also check if error has no meaningful properties (empty or only prototype properties)
+    if (
+      error &&
+      typeof error === 'object' &&
+      (Object.keys(error).length === 0 ||
+        (Object.keys(error).length === 1 &&
+          'message' in error &&
+          !error.message))
+    ) {
+      // Empty object or object with only empty message - likely an abort error that wasn't properly detected
+      // Silently return to avoid false error toasts
+      return;
+    }
+
+    // Check if this is an axios error that might be an abort in disguise
+    // Sometimes aborted requests can appear as errors with specific characteristics
+    const axiosError = error as {
+      code?: string;
+      response?: { status?: number; data?: unknown };
+      message?: string;
+    };
+
+    // If error has code ERR_CANCELED or ECONNABORTED, it's definitely an abort
+    if (
+      axiosError.code === 'ERR_CANCELED' ||
+      axiosError.code === 'ECONNABORTED'
+    ) {
+      // Silently return - this is an abort error
+      return;
+    }
+
+    // Check if this is the ABORT_SILENT marker from deduplicateRequest
+    if (error instanceof Error && error.message === 'ABORT_SILENT') {
+      // Silently return - this was an abort error handled by deduplicateRequest
+      return;
+    }
+
+    // Only show error notification for ACTUAL errors (not aborts)
+    // Real server errors (500, etc.) should still be shown
     const apiError = classifyError(error);
     showErrorNotification(apiError, 'Dashboard Totals');
 
@@ -447,27 +480,14 @@ export const fetchTopPerformingDataHelper = async (
       activePieChartFilter === 'Custom'
         ? customDateRange?.startDate || customDateRange?.start
         : undefined,
-      activePieChartFilter === 'Custom' ? customDateRange?.endDate || customDateRange?.end : undefined
+      activePieChartFilter === 'Custom'
+        ? customDateRange?.endDate || customDateRange?.end
+        : undefined
     );
     setTopPerformingData(data);
   } catch (error) {
-    // Check if this is a cancelled request - don't treat as error
-    const axios = (await import('axios')).default;
-    if (axios.isCancel && axios.isCancel(error)) {
-      // Request was cancelled, silently return
-      return;
-    }
-
-    // Check for standard abort errors
-    if (
-      (error instanceof Error && error.name === 'AbortError') ||
-      (error instanceof Error && error.message === 'canceled') ||
-      (error &&
-        typeof error === 'object' &&
-        'code' in error &&
-        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'))
-    ) {
-      // Request was cancelled, silently return
+    // Silently handle aborted requests - this is expected behavior when switching filters
+    if (isAbortError(error)) {
       return;
     }
 
@@ -545,6 +565,11 @@ export const handleDashboardRefresh = async (
     ]);
     setTopPerformingData(topPerformingDataResult);
   } catch (error) {
+    // Silently handle aborted requests - this is expected behavior when switching filters
+    if (isAbortError(error)) {
+      return;
+    }
+
     const apiError = classifyError(error);
     showErrorNotification(apiError, 'Dashboard Refresh');
 
@@ -557,4 +582,3 @@ export const handleDashboardRefresh = async (
     setLoadingTopPerforming(false);
   }
 };
-

@@ -34,14 +34,14 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
 import MembersNavigation from '@/components/members/common/MembersNavigation';
 import {
-  MembersHandlersProvider,
-  useMembersHandlers,
+    MembersHandlersProvider,
+    useMembersHandlers,
 } from '@/components/members/context/MembersHandlersContext';
 import MembersListTab from '@/components/members/tabs/MembersListTab';
 import MembersSummaryTab from '@/components/members/tabs/MembersSummaryTab';
 import {
-  MembersListTabSkeleton,
-  MembersSummaryTabSkeleton,
+    MembersListTabSkeleton,
+    MembersSummaryTabSkeleton,
 } from '@/components/ui/skeletons/MembersSkeletons';
 import { MEMBERS_TABS_CONFIG } from '@/lib/constants/members';
 import { useMembersNavigation } from '@/lib/hooks/navigation';
@@ -50,8 +50,8 @@ import { Suspense } from 'react';
 
 import { IMAGES } from '@/lib/constants/images';
 import {
-  useLocationMachineStats,
-  useLocationMembershipStats,
+    useLocationMachineStats,
+    useLocationMembershipStats,
 } from '@/lib/hooks/data';
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
@@ -143,7 +143,9 @@ export default function LocationPage() {
   // ============================================================================
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const locationId = params.slug as string;
+  const tabParam = searchParams.get('tab');
 
   const {
     selectedLicencee,
@@ -183,12 +185,10 @@ export default function LocationPage() {
     ].some(role => userRoles.includes(role));
   }, [user]);
 
-  // View Toggle State - check URL params for view
-  const searchParams = useSearchParams();
-  const [activeView, setActiveView] = useState<'machines' | 'members'>(() => {
-    const viewParam = searchParams.get('view');
-    return viewParam === 'members' ? 'members' : 'machines';
-  });
+  // View Toggle State - checks URL param first, defaults to machines
+  const [activeView, setActiveView] = useState<'machines' | 'members'>(
+    tabParam === 'members' ? 'members' : 'machines'
+  );
 
   // ============================================================================
   // Custom Hooks
@@ -220,8 +220,11 @@ export default function LocationPage() {
     useLocationMembershipStats(locationId);
 
   // Members Tab Navigation
-  const { activeTab, handleTabClick } =
-    useMembersNavigation(MEMBERS_TABS_CONFIG);
+  // Disable URL sync for location details page to prevent conflicts
+  const { activeTab, handleTabClick } = useMembersNavigation(
+    MEMBERS_TABS_CONFIG,
+    true
+  );
 
   // ============================================================================
   // Refs
@@ -246,24 +249,36 @@ export default function LocationPage() {
   ]);
 
   // ============================================================================
-  // Effects - Initialization
+  // Effects - Initialization & Sync
   // ============================================================================
 
-  // Reset view to machines when location changes
+  // Sync state with URL parameter
   useEffect(() => {
-    setActiveView('machines');
-  }, [locationId]);
-
-  // Prevent access to members tab if location doesn't have membership enabled
-  useEffect(() => {
-    if (activeView === 'members' && !cabinetsData.locationMembershipEnabled) {
+    if (tabParam === 'members') {
+      setActiveView('members');
+    } else {
       setActiveView('machines');
-      // Update URL to remove view=members if manually accessed
-      const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.delete('view');
-      window.history.replaceState({}, '', currentUrl.toString());
     }
-  }, [activeView, cabinetsData.locationMembershipEnabled]);
+  }, [tabParam]);
+
+  // If we are on members tab but it should be hidden (and not loading), redirect to machines
+  useEffect(() => {
+    if (
+      activeView === 'members' &&
+      !membershipStatsLoading &&
+      membershipStats &&
+      membershipStats.membershipCount === 0 &&
+      cabinetsData.locationMembershipEnabled
+    ) {
+      // If user manually navigated to ?tab=members but there are no members, switch back
+      handleViewChange('machines');
+    }
+  }, [
+    activeView,
+    membershipStatsLoading,
+    membershipStats,
+    cabinetsData.locationMembershipEnabled,
+  ]);
 
   // Detect when date filter is properly initialized
   useEffect(() => {
@@ -273,29 +288,27 @@ export default function LocationPage() {
   }, [activeMetricsFilter]);
 
   // ============================================================================
-  // Effects - URL Synchronization
-  // ============================================================================
-  // Sync URL with activeView
-  useEffect(() => {
-    const currentUrl = new URL(window.location.href);
-    if (activeView === 'members' && cabinetsData.locationMembershipEnabled) {
-      currentUrl.searchParams.set('view', 'members');
-          } else {
-      currentUrl.searchParams.delete('view');
-    }
-    window.history.replaceState({}, '', currentUrl.toString());
-  }, [activeView, cabinetsData.locationMembershipEnabled]);
-
-  // Reset view to machines when location changes
-  useEffect(() => {
-    setActiveView('machines');
-  }, [locationId]);
-
-  // ============================================================================
   // Event Handlers
   // ============================================================================
   const handleFilterChange = (status: 'All' | 'Online' | 'Offline') => {
     cabinetsData.setSelectedStatus(status);
+  };
+
+  const handleViewChange = (view: 'machines' | 'members') => {
+    setActiveView(view);
+
+    // Create new URLSearchParams to preserve other params if they exist (though currently none strictly needed)
+    const newParams = new URLSearchParams(searchParams.toString());
+
+    if (view === 'members') {
+      newParams.set('tab', 'members');
+    } else {
+      newParams.delete('tab');
+    }
+
+    // Construct new path
+    const newPath = `?${newParams.toString()}`;
+    router.push(newPath);
   };
 
   // Refresh handler
@@ -311,11 +324,19 @@ export default function LocationPage() {
       return;
     }
 
-      // Refresh machine status and membership stats
-      await Promise.all([refreshMachineStats(), refreshMembershipStats()]);
+    // Refresh machine status and membership stats
+    await Promise.all([refreshMachineStats(), refreshMembershipStats()]);
     // Refresh cabinets data (hook handles the refresh)
     await cabinetsData.refreshCabinets();
-  }, [activeView, refreshMachineStats, refreshMembershipStats, cabinetsData]);
+    // Refresh chart data
+    chartDataHook.refreshChart();
+  }, [
+    activeView,
+    refreshMachineStats,
+    refreshMembershipStats,
+    cabinetsData,
+    chartDataHook,
+  ]);
 
   const { openCabinetModal } = useNewCabinetStore();
 
@@ -342,6 +363,13 @@ export default function LocationPage() {
       </PageLayout>
     );
   }
+
+  // Determine if Members tab should be shown
+  // Show if feature enabled AND (has members OR stats are still loading)
+  const showMembersTab =
+    cabinetsData.locationMembershipEnabled &&
+    (membershipStatsLoading ||
+      (membershipStats && membershipStats.membershipCount > 0));
 
   // ============================================================================
   // Render
@@ -390,13 +418,13 @@ export default function LocationPage() {
                     </div>
                   </div>
                 ) : (
-                <Image
-                  src={IMAGES.locationIcon}
-                  alt="Location Icon"
-                  width={32}
-                  height={32}
-                  className="h-4 w-4 flex-shrink-0"
-                />
+                  <Image
+                    src={IMAGES.locationIcon}
+                    alt="Location Icon"
+                    width={32}
+                    height={32}
+                    className="h-4 w-4 flex-shrink-0"
+                  />
                 )}
               </h1>
               {/* Refresh icon - Hidden on members tab */}
@@ -456,13 +484,13 @@ export default function LocationPage() {
                     </div>
                   </div>
                 ) : (
-                <Image
-                  src={IMAGES.locationIcon}
-                  alt="Location Icon"
-                  width={32}
-                  height={32}
-                  className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
-                />
+                  <Image
+                    src={IMAGES.locationIcon}
+                    alt="Location Icon"
+                    width={32}
+                    height={32}
+                    className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
+                  />
                 )}
               </h1>
               {/* Mobile: Refresh icon - Hidden on members tab */}
@@ -514,7 +542,7 @@ export default function LocationPage() {
         {/* View Toggle */}
         <div className="mb-6 flex w-full border-b border-gray-200">
           <button
-            onClick={() => setActiveView('machines')}
+            onClick={() => handleViewChange('machines')}
             className={`flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
               activeView === 'machines'
                 ? 'border-blue-600 text-blue-600'
@@ -524,9 +552,9 @@ export default function LocationPage() {
             <Server className="h-4 w-4" />
             Machines
           </button>
-          {cabinetsData.locationMembershipEnabled && (
+          {showMembersTab && (
             <button
-              onClick={() => setActiveView('members')}
+              onClick={() => handleViewChange('members')}
               className={`flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
                 activeView === 'members'
                   ? 'border-blue-600 text-blue-600'
@@ -577,7 +605,9 @@ export default function LocationPage() {
             refreshing={cabinetsData.refreshing}
             showGranularitySelector={chartDataHook.showGranularitySelector}
             chartGranularity={chartDataHook.chartGranularity}
-            availableGranularityOptions={chartDataHook.availableGranularityOptions}
+            availableGranularityOptions={
+              chartDataHook.availableGranularityOptions
+            }
             activeMetricsFilter={activeMetricsFilter}
             searchTerm={cabinetsData.searchTerm}
             selectedStatus={cabinetsData.selectedStatus}

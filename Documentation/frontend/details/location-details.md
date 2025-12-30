@@ -328,11 +328,19 @@ Key features include:
 
 ### Charts and Trends
 
-- **GET `/api/locations/[locationId]/chart`**
-  - **Purpose:** Fetch chart data for location performance
-  - **Query Parameters:** `startDate`, `endDate`, `timePeriod`
-  - **Response:** `{ success: true, data: ChartData[] }`
-  - **Used By:** Performance charts
+- **GET `/api/analytics/location-trends`**
+  - **Purpose:** Fetch aggregated location trend data (used for Custom date ranges and Quarterly/All Time with monthly/weekly granularity)
+  - **Query Parameters:** `locationIds`, `timePeriod`, `licencee`, `startDate`, `endDate`, `currency`, `granularity`
+  - **Response:** `{ success: true, trends: Array<{ day, time, [locationId]: { handle, winLoss, jackpot, plays, drop, gross } }> }`
+  - **Used By:** Location chart when Custom period selected or Quarterly/All Time with monthly/weekly granularity
+  - **Data Transformation:** Response transformed from `trends` array to `dashboardData[]` format
+
+- **GET `/api/machines/[machineId]/chart`**
+  - **Purpose:** Fetch chart data for individual machines (used for Today/Yesterday/7d/30d periods)
+  - **Query Parameters:** `timePeriod`, `startDate`, `endDate`, `currency`, `licensee`, `granularity`
+  - **Response:** `{ success: true, data: Array<{ day, time, drop, totalCancelledCredits, gross }>, dataSpan?: { minDate, maxDate } }`
+  - **Used By:** Location chart for non-Custom periods (fetches data per machine and aggregates)
+  - **Note:** For location-level aggregation, data is fetched for all machines in the location and combined
 
 ---
 
@@ -346,8 +354,18 @@ Key features include:
   - Provides: `cabinetsData`, `loading`, `refreshCabinets`, `setCurrentPage`
 
 - **`useLocationChartData`** (`lib/hooks/locations/useLocationChartData.ts`)
-  - Manages chart data and date filtering
-  - Provides chart data for visualization
+  - Manages chart data fetching with abort controller support
+  - Handles granularity detection and auto-update (hourly/minute for short periods)
+  - Supports multiple API endpoints:
+    - `/api/analytics/location-trends` for Custom periods and Quarterly/All Time with monthly/weekly granularity
+    - `/api/machines/[machineId]/chart` for Today/Yesterday/7d/30d periods (per-machine aggregation)
+  - Provides: `chartData`, `loadingChartData`, `chartGranularity`, `setChartGranularity`, `showGranularitySelector`, `availableGranularityOptions`, `refreshChart`
+  - Features:
+    - Request deduplication to prevent duplicate API calls
+    - Abort error handling (silently handles filter changes)
+    - Auto-granularity detection based on data span
+    - Manual granularity override (user can manually set granularity)
+    - Refresh functionality via `refreshChart()` function
 
 - **`useLocationMachineStats`** (`lib/hooks/data.ts`)
   - Fetches machine status statistics
@@ -380,7 +398,10 @@ Key features include:
 - `activeView` - Current view ('machines' | 'members')
 - `locationId` - Current location ID from URL params
 - `cabinetsData` - Machines data and state
-- `chartData` - Chart data for visualization
+- `chartData` - Chart data for visualization (from `useLocationChartData`)
+- `chartGranularity` - Current chart granularity ('hourly' | 'minute' | 'daily' | 'weekly' | 'monthly')
+- `showGranularitySelector` - Whether granularity selector should be shown
+- `availableGranularityOptions` - Available granularity options based on time period
 - `machineStats` - Machine status counts
 - `membershipStats` - Membership statistics
 - `activeTab` - Members navigation tab
@@ -421,6 +442,9 @@ Key features include:
 - **`handleRefresh`** (main component)
   - Refreshes all location data
   - Updates machines, charts, and statistics
+  - Calls `chartDataHook.refreshChart()` to refresh chart data
+  - Calls `refreshMachineStats()` and `refreshMembershipStats()` for stats
+  - Calls `cabinetsData.refreshCabinets()` for machines data
 
 - **`onBack`** (navigation function)
   - Navigates back to locations list
@@ -484,6 +508,30 @@ Key features include:
 - **Lazy Loading**: Chart data loaded on demand
 - **Optimized Queries**: Database queries optimized for location-specific data
 - **Pagination**: Efficient handling of large machine lists
+- **Request Deduplication**: Prevents duplicate chart API calls using `deduplicateRequest` utility
+- **Abort Controller**: Cancels previous requests when filters change rapidly
+- **API Selection**: Uses optimized `/api/analytics/location-trends` for Custom periods and long periods with monthly/weekly granularity
+
+### Chart Granularity Options
+
+**Available Granularities:**
+
+- **Hourly**: Default for Today/Yesterday and Custom periods ≤ 2 days
+- **Minute**: Available for Today/Yesterday and Custom periods ≤ 2 days
+- **Daily**: Default for 7d/30d periods
+- **Weekly**: Available for Quarterly/All Time periods (requires server aggregation)
+- **Monthly**: Available for Quarterly/All Time periods (requires server aggregation)
+
+**Granularity Selector Visibility:**
+
+- Shown for: Today, Yesterday, Custom periods ≤ 2 days, Quarterly/All Time (when data span ≥ 1 week)
+- Hidden for: 7d, 30d, Custom periods > 2 days
+
+**Auto-Detection:**
+
+- Automatically detects if data span > 5 hours and defaults to hourly
+- User can manually override granularity selection
+- Once manually set, auto-update is disabled
 
 ### Responsive Design
 

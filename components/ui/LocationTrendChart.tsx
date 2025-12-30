@@ -153,7 +153,17 @@ export function LocationTrendChart({
     return false; // Show dates for Quarterly, All Time
   }, [timePeriod, data, granularity, isHourly]);
 
-  const shouldShowMonths = timePeriod === 'Quarterly';
+  // Detect monthly data by checking if day field matches "YYYY-MM" pattern
+  const hasMonthlyData = useMemo(() => {
+    return data.some(d => {
+      const day = d.day;
+      if (!day || typeof day !== 'string') return false;
+      // Check if day matches monthly format "YYYY-MM"
+      return /^\d{4}-\d{2}$/.test(day);
+    });
+  }, [data]);
+
+  const shouldShowMonths = timePeriod === 'Quarterly' || hasMonthlyData || granularity === 'monthly';
 
   // Detect if chart data has minute-level detail (HH:MM format with non-zero minutes)
   const hasMinuteLevelData = useMemo(() => {
@@ -418,12 +428,30 @@ export function LocationTrendChart({
                         }
                         return formatTime12Hour(val as string);
                       } else if (shouldShowMonths) {
-                        // For Quarterly: show months
+                        // For Quarterly or monthly granularity: show months
+                        const dayValue = String(filteredData[index]?.day || (val as string));
+                        
+                        // Check if this is monthly data (format: "YYYY-MM")
+                        if (/^\d{4}-\d{2}$/.test(dayValue)) {
+                          // Format as "Oct 2025" for monthly granularity
+                          const date = new Date(dayValue + '-01'); // Add day to make valid date
+                          if (!isNaN(date.getTime())) {
+                            return formatDate(date, {
+                              month: 'short',
+                              year: 'numeric',
+                            });
+                          }
+                        }
+                        
+                        // Fallback: try to parse as date
                         const date = new Date(val as string);
-                        return formatDate(date, {
-                          month: 'short',
-                          year: 'numeric',
-                        });
+                        if (!isNaN(date.getTime())) {
+                          return formatDate(date, {
+                            month: 'short',
+                            year: 'numeric',
+                          });
+                        }
+                        return String(val);
                       } else {
                         // For 7d, 30d, All Time: show dates
                         return formatDisplayDate(val);
@@ -505,11 +533,31 @@ export function LocationTrendChart({
                         }
                         return formatTime12Hour(label as string);
                       } else if (shouldShowMonths) {
+                        // For Quarterly or monthly granularity: show months
+                        const payloadDay = payload?.[0]?.payload?.day;
+                        const dayValue = payloadDay || (label as string);
+                        
+                        // Check if this is monthly data (format: "YYYY-MM")
+                        if (/^\d{4}-\d{2}$/.test(dayValue)) {
+                          // Format as "Oct 2025" for monthly granularity
+                          const date = new Date(dayValue + '-01'); // Add day to make valid date
+                          if (!isNaN(date.getTime())) {
+                            return formatDate(date, {
+                              month: 'short',
+                              year: 'numeric',
+                            });
+                          }
+                        }
+                        
+                        // Fallback: try to parse as date
                         const date = new Date(label as string);
-                        return formatDate(date, {
-                          month: 'short',
-                          year: 'numeric',
-                        });
+                        if (!isNaN(date.getTime())) {
+                          return formatDate(date, {
+                            month: 'short',
+                            year: 'numeric',
+                          });
+                        }
+                        return String(label);
                       } else {
                         // Validate date before formatting to prevent "Invalid Date"
                         const date = new Date(label as string);

@@ -142,29 +142,83 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 - `components/ui/MapPreview.tsx` - Leaflet-based map component
 
-**API Endpoint:**
+**API Endpoints:**
 
 - `GET /api/locationAggregation` - Fetches location financial aggregates for map markers
+- `GET /api/locations?minimal=1` - Fetches location list with minimal projection for map display
 
 **Data Flow:**
 
-1. `PcLayout` component fetches location aggregates via `useEffect`
-2. Data filtered by `activeMetricsFilter`, `customDateRange`, and `selectedLicencee`
-3. Location aggregates combined with `gamingLocations` data (from `loadGamingLocations`)
-4. Map markers colored based on financial performance
-5. Clickable markers show location details modal
+1. `PcLayout` component fetches location aggregates via `useEffect` when `activeMetricsFilter` is available
+2. `loadGamingLocations` fetches location list from `GET /api/locations?minimal=1` with explicit `rel.licencee` filter
+3. Data filtered by `activeMetricsFilter`, `customDateRange`, and `selectedLicencee`
+4. Location aggregates combined with `gamingLocations` data (already filtered by licensee)
+5. Map markers colored based on financial performance (excellent, good, average, poor)
+6. Clickable markers show location details modal with financial metrics
+
+**Licensee Filtering:**
+
+- `GET /api/locations` now explicitly filters by `rel.licencee` when a specific licensee is selected
+- Frontend filters `filteredLocations` (already licensee-filtered) for map display
+- Search bar filters only the licensee-filtered locations, not all locations
+- Map center automatically adjusts based on selected licensee
+
+**Map Refresh:**
+
+- Refresh button triggers `props.refreshing` state change
+- `PcLayout` `useEffect` includes `props.refreshing` in dependency array
+- When refresh is triggered, `aggLoading` is set to `true`, showing skeleton loader
+- Location aggregation data is refetched with current filter parameters
+
+**Search Functionality:**
+
+- Search bar positioned above map with `z-[800]` z-index
+- Searches through `filteredLocations` (already filtered by licensee and coordinates)
+- Dropdown results appear with `z-[801]` z-index
+- Only searches locations that are currently displayed on the map
+
+**Z-Index Layering:**
+
+- Search bar: `z-[800]` (below popups and modals)
+- Search dropdown: `z-[801]` (above search bar)
+- Location popups: `z-900` (above search bar, below custom range filter)
+- Custom range filter: `z-[1100]` (above all map elements)
+- Top performing modals: `z-[1100]` (above all map elements)
+
+**UI Scaling:**
+
+- When map is in minimized state, UI elements scale down:
+  - Reduced font sizes for popup content
+  - Reduced padding and margins
+  - Smaller icons and buttons
+  - Compact search bar
+- When map is maximized, original styling is maintained
+
+**Map Rendering:**
+
+- Map components only render when `mapReady` is `true` (prevents Leaflet initialization errors)
+- Safety checks in `zoomToLocation` function for map refs
+- Both preview and modal `MapContainer` components check `mapReady` before rendering
 
 **Key Functions:**
 
-- `loadGamingLocations` - Fetches location list from `GET /api/locations?minimal=1`
-- Location aggregation fetch handled in `PcLayout.tsx` component's `useEffect`
+- `loadGamingLocations` - Fetches location list from `GET /api/locations?minimal=1` with licensee filter
+- Location aggregation fetch handled in `PcLayout.tsx` component's `useEffect` (includes `props.refreshing` dependency)
 - `deduplicateRequest` - Prevents duplicate API calls for same parameters
+- `isAbortError` - Silently handles abort errors when filters change rapidly
+
+**Error Handling:**
+
+- Abort errors are silently handled (expected when switching filters)
+- Empty object errors from axios cancellations are caught and ignored
+- Only actual server errors trigger error notifications
 
 **Notes:**
 
 - Only visible on desktop layout (`PcLayout`)
 - Map updates automatically when filters change
-- Loading indicator shown while fetching location aggregates
+- Loading skeleton shown while fetching location aggregates
+- Map refresh shows skeleton loader during data refetch
 
 ---
 

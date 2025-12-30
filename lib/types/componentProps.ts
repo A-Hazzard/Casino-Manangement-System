@@ -10,6 +10,7 @@ export type ChartProps = {
   chartData: dashboardData[];
   activeMetricsFilter: TimePeriod | '';
   totals?: DashboardTotals | null;
+  granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
 };
 
 export type CustomizedLabelProps = {

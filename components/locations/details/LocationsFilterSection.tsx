@@ -60,7 +60,7 @@ export default function LocationsFilterSection({
             onSelectionChange={ids =>
               onMultiFilterChange(ids as LocationFilter[])
             }
-            placeholder="Location Status"
+            placeholder="Location Type"
             showSearch={false}
             className="w-[200px]"
           />

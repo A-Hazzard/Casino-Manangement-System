@@ -25,6 +25,7 @@ import { DashboardTotals } from '@/lib/types';
 import { TimePeriod } from '@/lib/types/api';
 import { AggregatedLocation } from '@/lib/types/location';
 import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import { LocationMetrics, TopLocation } from '@/shared/types';
 import { MachineData } from '@/shared/types/machines';
 import axios from 'axios';
@@ -236,7 +237,8 @@ export function useLocationsTabData({
       setGamingLocationsLoading(true);
       try {
         const params = new URLSearchParams();
-        if (selectedLicencee && selectedLicencee !== 'all') {
+        // Always pass licensee parameter so API knows user's selection
+        if (selectedLicencee) {
           params.append('licencee', selectedLicencee);
         }
 
@@ -249,10 +251,12 @@ export function useLocationsTabData({
         const { locations: locationsData } = response.data;
         setGamingLocations(locationsData || []);
       } catch (error) {
-        if (!axios.isCancel(error)) {
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
+          return;
+        }
           console.error('Error loading gaming locations:', error);
           setGamingLocations([]);
-        }
       } finally {
         setGamingLocationsLoading(false);
       }
@@ -343,10 +347,12 @@ export function useLocationsTabData({
         // Same structure as dashboard uses
         setLocationAggregates(locationData.data || []);
       } catch (error) {
-        if (!axios.isCancel(error)) {
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
+          return;
+        }
           console.error('Error fetching location aggregation:', error);
           setLocationAggregates([]);
-        }
       } finally {
         setLocationAggregatesLoading(false);
       }
@@ -443,6 +449,10 @@ export function useLocationsTabData({
         displayCurrency
       );
     } catch (error) {
+      // Silently handle aborted requests - this is expected behavior when switching filters
+      if (isAbortError(error)) {
+        return;
+      }
       console.error('Error fetching metrics totals:', error);
       setMetricsTotalsLoading(false);
     }
@@ -719,7 +729,8 @@ export function useLocationsTabData({
 
         return true;
       } catch (error) {
-        if (axios.isCancel(error)) {
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
           return null;
         }
 
@@ -828,7 +839,10 @@ export function useLocationsTabData({
 
         setTopMachinesData(filteredMachines);
       } catch (error) {
-        if (!axios.isCancel(error)) {
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
+          return;
+        }
           const errorMessage = axios.isAxiosError(error)
             ? error.response?.data?.error || error.message
             : error instanceof Error
@@ -839,7 +853,6 @@ export function useLocationsTabData({
             duration: 3000,
           });
           setTopMachinesData([]);
-        }
       } finally {
         setTopMachinesLoading(false);
         // Don't set global loading - use specific topMachinesLoading state
@@ -908,7 +921,10 @@ export function useLocationsTabData({
 
         setBottomMachinesData(filteredMachines);
       } catch (error) {
-        if (!axios.isCancel(error)) {
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
+          return;
+        }
           const errorMessage = axios.isAxiosError(error)
             ? error.response?.data?.error || error.message
             : error instanceof Error
@@ -922,7 +938,6 @@ export function useLocationsTabData({
             }
           );
           setBottomMachinesData([]);
-        }
       } finally {
         setBottomMachinesLoading(false);
         // Don't set global loading - use specific bottomMachinesLoading state
@@ -982,7 +997,10 @@ export function useLocationsTabData({
           });
           setLocationTrendData(response.data);
         } catch (error) {
-          if (!axios.isCancel(error)) {
+          // Silently handle aborted requests - this is expected behavior when switching filters
+          if (isAbortError(error)) {
+            return;
+          }
             console.error('Error fetching location trend data:', error);
             if (axios.isAxiosError(error) && error.response?.status !== 500) {
               toast.error('Failed to fetch location trend data', {
@@ -990,7 +1008,6 @@ export function useLocationsTabData({
               });
             }
             setLocationTrendData(null);
-          }
         } finally {
           setLocationTrendLoading(false);
         }

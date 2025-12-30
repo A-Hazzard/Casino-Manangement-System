@@ -9,9 +9,9 @@ import {
     searchAllLocations,
 } from '@/lib/helpers/locations';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
+import type { AggregatedLocation, dateRange } from '@/lib/types/index';
 import { LocationFilter } from '@/lib/types/location';
 import { useDebounce } from '@/lib/utils/hooks';
-import type { AggregatedLocation, dateRange } from '@/lib/types/index';
 import type { TimePeriod } from '@/shared/types/common';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -132,8 +132,6 @@ export function useLocationData({
   );
 
   // Track fetch to prevent duplicate calls
-  const fetchInProgressRef = useRef(false);
-  const lastFetchKeyRef = useRef<string>('');
   const isInitialMountRef = useRef(true);
   const hasCompletedFirstFetchRef = useRef(false);
   // Track the current filter state for each request to prevent stale updates
@@ -150,38 +148,35 @@ export function useLocationData({
       // Create unique key for this fetch - include filters in the key
       const fetchKey = `${debouncedSearchTerm}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeForFetch?.from?.getTime()}-${dateRangeForFetch?.to?.getTime()}-${displayCurrency}-${page}-${limit}-${currentFilters}`;
 
-      // Skip if this exact fetch is already in progress
-      if (fetchInProgressRef.current && lastFetchKeyRef.current === fetchKey) {
-        console.log('[useLocationData] Skipping duplicate fetch');
-        return;
-      }
-
-      // Mark as in progress and update key BEFORE making request
-      fetchInProgressRef.current = true;
-      lastFetchKeyRef.current = fetchKey;
+      // Mark this as the current active fetch generation
+      const currentFetchId = Date.now();
+      lastFetchRef.current = currentFetchId;
       currentRequestFiltersRef.current = currentFilters;
 
-      console.log('[useLocationData] Starting fetch:', {
-        isInitialMount: isInitialMountRef.current,
-        hasCompletedFirst: hasCompletedFirstFetchRef.current,
-        fetchKey,
-      });
-
-      // Don't clear data immediately - keep showing old data with loading state
-      // This prevents the "blank screen" issue when navigating or changing filters
-      setLoading(true);
+      // Reset error state
       setError(null);
+      
+      // Update loading state
+      // If we are searching or changing filters, we might want to clear data or show loading immediately
+      setLoading(true);
+      if (debouncedSearchTerm.trim()) {
+        setSearchLoading(true);
+      }
 
       // Mark that we're no longer on initial mount after first fetch
       if (isInitialMountRef.current) {
         isInitialMountRef.current = false;
       }
 
+      console.log('[useLocationData] Starting fetch:', {
+        fetchId: currentFetchId,
+        fetchKey,
+      });
+
       const result = await makeRequest(async signal => {
         // Only use backend search if debounced search term exists
         // Frontend filtering is handled in the component
         if (debouncedSearchTerm.trim()) {
-          setSearchLoading(true);
           const effectiveLicencee = selectedLicencee || '';
           const effectiveFilter = activeMetricsFilter || 'Today';
           const searchData = await searchAllLocations(
@@ -194,7 +189,6 @@ export function useLocationData({
               : undefined,
             signal
           );
-          setSearchLoading(false);
           return { data: searchData, pagination: undefined };
         }
 
@@ -213,54 +207,31 @@ export function useLocationData({
         );
 
         return result;
-      }, 'locations'); // Use unique key to prevent cancellation from other requests
+      }, 'locations'); // Unique key prevents overlapping requests
 
-      // Only update state if request wasn't aborted (result is not null)
-      // AND if the filters haven't changed since this request started
-      if (result) {
-        // Check if filters changed during the request - if so, ignore this response
-        const filtersAtRequestStart = currentRequestFiltersRef.current;
-        const filtersNow = selectedFilters.length
-          ? selectedFilters.join(',')
-          : '';
-
-        if (filtersAtRequestStart !== filtersNow) {
-          console.log(
-            '[useLocationData] Filters changed during request - ignoring stale response',
-            {
-              filtersAtRequestStart,
-              filtersNow,
-            }
-          );
-          // Don't update state - a new request should be in progress
-          fetchInProgressRef.current = false;
-          return;
+      // Only process the result if this is still the latest request
+      if (lastFetchRef.current === currentFetchId) {
+        if (result) {
+          setLocationData(result.data);
+          if (result.pagination) {
+            const total =
+              result.pagination.totalCount ?? result.pagination.total ?? 0;
+            setTotalCount(total);
+          } else {
+            setTotalCount(result.data.length);
+          }
+          hasCompletedFirstFetchRef.current = true;
         }
-
-        setLocationData(result.data);
-        if (result.pagination) {
-          const total =
-            result.pagination.totalCount ?? result.pagination.total ?? 0;
-          setTotalCount(total);
-        } else {
-          setTotalCount(result.data.length);
-        }
-        hasCompletedFirstFetchRef.current = true;
-        console.log('[useLocationData] Fetch completed successfully');
-        // Only set loading to false when we successfully received data
+        
+        // Always clear loading if we are the latest request
         setLoading(false);
         setSearchLoading(false);
-        lastFetchRef.current = Date.now();
       } else {
-        console.log(
-          '[useLocationData] Fetch aborted - keeping loading state and existing data'
-        );
-        // If aborted, keep loading state active so skeleton continues to show
-        // The next request will complete and update the loading state
+        console.log('[useLocationData] Ignoring stale response from older fetch', {
+          currentFetchId,
+          latestFetchId: lastFetchRef.current
+        });
       }
-
-      // Clear in-progress flag AFTER request completes (success or abort)
-      fetchInProgressRef.current = false;
     },
     [
       debouncedSearchTerm,

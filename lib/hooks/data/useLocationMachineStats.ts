@@ -13,6 +13,7 @@ import type {
     MachineStats,
     UseLocationMachineStatsReturn,
 } from '@/lib/types/locationMachineStats';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import { useCallback, useEffect, useState } from 'react';
 
 export function useLocationMachineStats(
@@ -40,6 +41,11 @@ export function useLocationMachineStats(
       );
       setMachineStats(stats);
     } catch (err) {
+      // Silently handle aborted requests - this is expected behavior when switching filters
+      if (isAbortError(err)) {
+        return;
+      }
+
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to fetch machine stats';
       setError(errorMessage);
@@ -82,6 +88,11 @@ export function useLocationMachineStats(
           setMachineStatsLoading(false);
         }
       } catch (error) {
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
+          return;
+        }
+
         // Handle any errors
         const errorMessage =
           error instanceof Error ? error.message : 'Failed to fetch machine stats';

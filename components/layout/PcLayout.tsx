@@ -35,6 +35,7 @@ import type { TopPerformingItem } from '@/lib/types';
 import { PcLayoutProps } from '@/lib/types/componentProps';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import axios from 'axios';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -77,6 +78,7 @@ export default function PcLayout(props: PcLayoutProps) {
   /**
    * Fetches location aggregation data for the MapPreview component.
    * Only fetches when activeMetricsFilter is available and updates when filters change.
+   * Also responds to refresh button clicks by refetching data.
    */
   useEffect(() => {
     let aborted = false;
@@ -129,10 +131,11 @@ export default function PcLayout(props: PcLayoutProps) {
         // Only update state if request wasn't aborted
         if (!aborted) setLocationAggregates(json.data || []);
       } catch (error) {
-        // Ignore abort errors (request was cancelled), but clear data on other errors
-        if (!aborted && !axios.isCancel(error)) {
-          setLocationAggregates([]);
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error) || aborted) {
+          return;
         }
+          setLocationAggregates([]);
       } finally {
         if (!aborted) {
           setAggLoading(false);
@@ -143,7 +146,12 @@ export default function PcLayout(props: PcLayoutProps) {
     return () => {
       aborted = true;
     };
-  }, [activeMetricsFilter, customDateRange, selectedLicencee]);
+  }, [
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicencee,
+    props.refreshing,
+  ]);
 
   return (
     <div className="hidden md:block">

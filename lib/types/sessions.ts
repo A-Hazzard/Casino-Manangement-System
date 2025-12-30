@@ -31,13 +31,7 @@ export type Session = {
   duration?: number;
 };
 
-export type PaginationData = {
-  currentPage: number;
-  totalPages: number;
-  totalSessions: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-};
+// Note: PaginationData export removed - it's only used locally in hooks, not imported elsewhere
 
 export type MachineEvent = {
   _id: string;

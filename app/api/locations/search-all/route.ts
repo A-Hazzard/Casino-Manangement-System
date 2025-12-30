@@ -237,13 +237,13 @@ export async function GET(request: NextRequest) {
     >();
     matchingLocations.forEach(location => {
       const locationId = String(location._id);
-        const gameDayOffset = location.gameDayOffset ?? 8;
-        const gamingDayRange = getGamingDayRangeForPeriod(
-          timePeriod,
-          gameDayOffset,
-          customStartDate,
-          customEndDate
-        );
+      const gameDayOffset = location.gameDayOffset ?? 8;
+      const gamingDayRange = getGamingDayRangeForPeriod(
+        timePeriod,
+        gameDayOffset,
+        customStartDate,
+        customEndDate
+      );
       gamingDayRanges.set(locationId, {
         ...gamingDayRange,
         gameDayOffset,
@@ -263,25 +263,25 @@ export async function GET(request: NextRequest) {
 
     // Step 4: Get ALL machines for ALL locations in one query
     const allMachines = await Machine.find(
+      {
+        $and: [
           {
-            $and: [
-              {
-                $or: [
+            $or: [
               { gamingLocation: { $in: allLocationIds } },
               { gamingLocation: { $in: matchingLocations.map(l => l._id) } },
-                ],
-              },
-              {
-                $or: [
-                  { deletedAt: null },
-                  { deletedAt: { $lt: new Date('2025-01-01') } },
-                ],
-              },
             ],
           },
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ],
+          },
+        ],
+      },
       { _id: 1, gamingLocation: 1 }
-        )
-          .lean()
+    )
+      .lean()
       .exec();
 
     // Step 5: Group machines by location
@@ -298,120 +298,83 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Step 6: Get ALL meters for ALL machines, grouped by location
-    const allMachineIds = allMachines.map(m => String(m._id));
+    // Step 6: Get ALL meters for ALL locations
     const metersByLocation = new Map<
       string,
       { totalMoneyIn: number; totalMoneyOut: number }
     >();
 
-    if (allMachineIds.length > 0) {
-      // Use cursor for Meters aggregation (MANDATORY for performance)
-      const metersAggregation: Array<{
-        _id: string;
-        totalMoneyIn: number;
-        totalMoneyOut: number;
-        minReadAt: Date;
-        maxReadAt: Date;
-      }> = [];
+    if (allLocationIds.length > 0) {
+      // Use aggregation to group by location AND hour to avoid inflation
       const cursor = Meters.aggregate([
-          {
-            $match: {
-            machine: { $in: allMachineIds },
-              readAt: {
+        {
+          $match: {
+            location: { $in: allLocationIds },
+            readAt: {
               $gte: globalStart,
               $lte: globalEnd,
             },
           },
         },
         {
-          $lookup: {
-            from: 'machines',
-            localField: 'machine',
-            foreignField: '_id',
-            as: 'machineDetails',
-          },
-        },
-        {
-          $unwind: {
-            path: '$machineDetails',
-            preserveNullAndEmptyArrays: false,
-          },
-        },
-        {
-          $addFields: {
-            locationId: {
-              $toString: '$machineDetails.gamingLocation',
-              },
+          $group: {
+            _id: {
+              location: '$location',
+              // Truncate to hour for bucketed summation
+              hour: { $dateTrunc: { date: '$readAt', unit: 'hour' } },
+            },
+            totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
+            totalMoneyOut: {
+              $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
             },
           },
-          {
-            $group: {
-            _id: '$locationId',
-              totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
-              totalMoneyOut: {
-                $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-              },
-            minReadAt: { $min: '$readAt' },
-            maxReadAt: { $max: '$readAt' },
-            },
-          },
+        },
       ]).cursor({ batchSize: 1000 });
 
       for await (const doc of cursor) {
-        metersAggregation.push(doc as {
-          _id: string;
-          totalMoneyIn: number;
-          totalMoneyOut: number;
-          minReadAt: Date;
-          maxReadAt: Date;
-        });
-      }
-
-      // Step 7: Filter by gaming day ranges in memory
-      metersAggregation.forEach(agg => {
-        const locationId = String(agg._id);
+        const locationId = String(doc._id.location);
+        const bucketHour = new Date(doc._id.hour);
         const gamingDayRange = gamingDayRanges.get(locationId);
-        if (!gamingDayRange) return;
 
-        // Check if the aggregated data falls within the gaming day range
-        const minReadAt = new Date(agg.minReadAt as Date);
-        const maxReadAt = new Date(agg.maxReadAt as Date);
-        const hasValidReadAt =
-          (minReadAt >= gamingDayRange.rangeStart &&
-            minReadAt <= gamingDayRange.rangeEnd) ||
-          (maxReadAt >= gamingDayRange.rangeStart &&
-            maxReadAt <= gamingDayRange.rangeEnd) ||
-          (minReadAt <= gamingDayRange.rangeStart &&
-            maxReadAt >= gamingDayRange.rangeEnd);
+        if (!gamingDayRange) continue;
 
-        if (hasValidReadAt) {
-          metersByLocation.set(locationId, {
-            totalMoneyIn: (agg.totalMoneyIn as number) || 0,
-            totalMoneyOut: (agg.totalMoneyOut as number) || 0,
-          });
+        // Only include buckets that are within this location's specific gaming day range
+        const isWithinRange =
+          bucketHour >= gamingDayRange.rangeStart &&
+          bucketHour <= gamingDayRange.rangeEnd;
+
+        if (isWithinRange) {
+          if (!metersByLocation.has(locationId)) {
+            metersByLocation.set(locationId, {
+              totalMoneyIn: 0,
+              totalMoneyOut: 0,
+            });
+          }
+          const current = metersByLocation.get(locationId)!;
+          current.totalMoneyIn += (doc.totalMoneyIn as number) || 0;
+          current.totalMoneyOut += (doc.totalMoneyOut as number) || 0;
         }
-      });
+      }
     }
 
     // Step 8: Combine results
     const locations = matchingLocations.map(location => {
       const locationId = String(location._id);
       const financialData = metersByLocation.get(locationId) || {
-          totalMoneyIn: 0,
-          totalMoneyOut: 0,
-        };
+        totalMoneyIn: 0,
+        totalMoneyOut: 0,
+      };
 
-        return {
-          ...location,
-          totalMachines: location.machineStats?.[0]?.totalMachines || 0,
-          onlineMachines: location.machineStats?.[0]?.onlineMachines || 0,
-          moneyIn: financialData.totalMoneyIn || 0,
-          moneyOut: financialData.totalMoneyOut || 0,
-          gross:
-            (financialData.totalMoneyIn || 0) -
-            (financialData.totalMoneyOut || 0),
-        };
+      return {
+        ...location,
+        totalMachines: location.machineStats?.[0]?.totalMachines || 0,
+        onlineMachines: location.machineStats?.[0]?.onlineMachines || 0,
+        moneyIn: financialData.totalMoneyIn || 0,
+        moneyOut: financialData.totalMoneyOut || 0,
+        gross:
+          (financialData.totalMoneyIn || 0) -
+          (financialData.totalMoneyOut || 0),
+      };
     });
     // Format locations for response
     const formattedLocations = (locations as LocationAggregationResult[]).map(
@@ -448,16 +411,16 @@ export async function GET(request: NextRequest) {
     if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
       // Get licensee details for currency mapping
       const licenseesData = await Licencee.find(
-          {
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          },
-          { _id: 1, name: 1 }
-        )
-          .lean()
-          .exec();
+        {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
+          ],
+        },
+        { _id: 1, name: 1 }
+      )
+        .lean()
+        .exec();
 
       // Create a map of licensee ID to name
       const licenseeIdToName = new Map<string, string>();

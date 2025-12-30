@@ -22,6 +22,7 @@ import { getAuthHeaders } from '@/lib/utils/auth';
 import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
 import { formatLocalDateTimeString } from '@/shared/utils/dateFormat';
 import { DateRange } from 'react-day-picker';
+import { isAbortError } from '@/lib/utils/errorHandling';
 // Activity logging removed - handled via API calls
 
 /**
@@ -162,26 +163,14 @@ export const fetchCabinets = async (
       `Failed to fetch cabinets data. Status: ${response.status}`
     );
   } catch (error) {
-    // Check if this is a cancellation error (expected behavior when filters change)
-    const axios = await import('axios');
-    if (axios.default.isCancel && axios.default.isCancel(error)) {
-      // Silently handle cancellation - this is expected when filters change rapidly
-      // The error will be handled by useAbortableRequest, no need to log here
-      // Re-throw so useAbortableRequest can handle it properly (returns null instead of logging)
-      throw error;
+    // CRITICAL: Check for abort errors FIRST - aborting is NOT an error, it's expected when switching filters
+    // Abort errors should NEVER show error logs or throw errors
+    if (isAbortError(error)) {
+      // Silently return empty array - aborting is expected behavior when switching filters
+      return [];
     }
 
-    // Check for CanceledError (axios cancel token)
-    if (
-      error &&
-      typeof error === 'object' &&
-      'message' in error &&
-      error.message === 'canceled'
-    ) {
-      // Also silently handle CanceledError - this is expected when filters change
-      throw error;
-    }
-
+    // Only log actual errors (not aborts)
     console.error('❌ [FETCH CABINETS] Error fetching cabinets:', error);
     if (error instanceof Error) {
       console.error('   Error message:', error.message);
@@ -616,7 +605,12 @@ export async function fetchCabinetsForLocation(
       return { data: [] };
     }
   } catch (error) {
-    console.error(' Error in fetchCabinetsForLocation:', error);
+    // CRITICAL: Check for abort errors FIRST - aborting is NOT an error, it's expected when switching filters
+    // Abort errors should NEVER show error logs or throw errors
+    if (isAbortError(error)) {
+      // Silently return empty data - aborting is expected behavior when switching filters
+      return { data: [] };
+    }
 
     // Check if it's a 403 Unauthorized error
     if (axios.isAxiosError(error) && error.response?.status === 403) {
@@ -627,6 +621,9 @@ export async function fetchCabinetsForLocation(
       unauthorizedError.isUnauthorized = true;
       throw unauthorizedError;
     }
+
+    // Only log actual errors (not aborts)
+    console.error('❌ Error in fetchCabinetsForLocation:', error);
 
     // Always return an empty array for other errors instead of throwing
     return { data: [] };

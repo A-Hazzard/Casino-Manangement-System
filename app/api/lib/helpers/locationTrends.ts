@@ -14,9 +14,9 @@ import { Licencee } from '@/app/api/lib/models/licencee';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
-  convertFromUSD,
-  convertToUSD,
-  getCountryCurrency,
+    convertFromUSD,
+    convertToUSD,
+    getCountryCurrency,
 } from '@/lib/helpers/rates';
 import { getDatesForTimePeriod } from '@/lib/utils/dates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
@@ -605,7 +605,11 @@ function formatDailyTrends(
 ): LocationTrendData[] {
   const trends: LocationTrendData[] = [];
   const current = new Date(queryStartDate);
-  while (current <= queryEndDate) {
+  current.setUTCHours(0, 0, 0, 0);
+
+  const end = new Date(queryEndDate);
+
+  while (current <= end) {
     const dayKey = current.toISOString().split('T')[0];
     const trendItem: LocationTrendData = {
       day: dayKey,
@@ -626,7 +630,99 @@ function formatDailyTrends(
     });
 
     trends.push(trendItem);
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+  return trends;
+}
+
+/**
+ * Format trends data for weekly aggregation
+ */
+function formatWeeklyTrends(
+  convertedData: DailyTrendItem[],
+  targetLocations: string[],
+  queryStartDate: Date,
+  queryEndDate: Date
+): LocationTrendData[] {
+  const trends: LocationTrendData[] = [];
+  
+  // Align to the start of the week (Sunday) to match the pipeline's $dayOfWeek - 1 logic
+  const current = new Date(queryStartDate);
+  const dayOfWeek = current.getUTCDay(); // 0 is Sunday
+  current.setUTCDate(current.getUTCDate() - dayOfWeek);
+  current.setUTCHours(0, 0, 0, 0);
+
+  const end = new Date(queryEndDate);
+
+  while (current <= end) {
+    const dayKey = current.toISOString().split('T')[0];
+    const trendItem: LocationTrendData = {
+      day: dayKey,
+    };
+
+    targetLocations.forEach(locationId => {
+      const locationData = convertedData.find(
+        item => item.location === locationId && item.day === dayKey
+      );
+      trendItem[locationId] = {
+        handle: locationData?.handle || 0,
+        winLoss: locationData?.winLoss || 0,
+        jackpot: locationData?.jackpot || 0,
+        plays: locationData?.plays || 0,
+        drop: locationData?.drop || 0,
+        gross: locationData?.gross || 0,
+      };
+    });
+
+    trends.push(trendItem);
+    current.setUTCDate(current.getUTCDate() + 7);
+  }
+  return trends;
+}
+
+/**
+ * Format trends data for monthly aggregation
+ */
+function formatMonthlyTrends(
+  convertedData: DailyTrendItem[],
+  targetLocations: string[],
+  queryStartDate: Date,
+  queryEndDate: Date
+): LocationTrendData[] {
+  const trends: LocationTrendData[] = [];
+  
+  // Align to the start of the month
+  const current = new Date(queryStartDate);
+  current.setUTCDate(1);
+  current.setUTCHours(0, 0, 0, 0);
+
+  const end = new Date(queryEndDate);
+
+  while (current <= end) {
+    const year = current.getUTCFullYear();
+    const month = (current.getUTCMonth() + 1).toString().padStart(2, '0');
+    const dayKey = `${year}-${month}`; // Matches pipeline's %Y-%m format
+    
+    const trendItem: LocationTrendData = {
+      day: dayKey,
+    };
+
+    targetLocations.forEach(locationId => {
+      const locationData = convertedData.find(
+        item => item.location === locationId && item.day === dayKey
+      );
+      trendItem[locationId] = {
+        handle: locationData?.handle || 0,
+        winLoss: locationData?.winLoss || 0,
+        jackpot: locationData?.jackpot || 0,
+        plays: locationData?.plays || 0,
+        drop: locationData?.drop || 0,
+        gross: locationData?.gross || 0,
+      };
+    });
+
+    trends.push(trendItem);
+    current.setUTCMonth(current.getUTCMonth() + 1);
   }
   return trends;
 }
@@ -889,7 +985,7 @@ export async function getLocationTrends(
     );
   }
 
-  // Format trends data
+  // Format trends data based on granularity
   const trends = useMinute
     ? // For minute-level, use data as-is (already has minute-level grouping from pipeline)
       convertDailyTrendsToLocationTrends(convertedData, targetLocations)
@@ -899,12 +995,26 @@ export async function getLocationTrends(
           targetLocations,
           convertedData[0]?.day || new Date().toISOString().split('T')[0]
         )
-      : formatDailyTrends(
-          convertedData,
-          targetLocations,
-          queryStartDate,
-          queryEndDate
-        );
+      : useMonthly
+        ? formatMonthlyTrends(
+            convertedData,
+            targetLocations,
+            queryStartDate,
+            queryEndDate
+          )
+        : useWeekly
+          ? formatWeeklyTrends(
+              convertedData,
+              targetLocations,
+              queryStartDate,
+              queryEndDate
+            )
+          : formatDailyTrends(
+              convertedData,
+              targetLocations,
+              queryStartDate,
+              queryEndDate
+            );
 
   // Calculate totals
   const totals = calculateLocationTotals(convertedData, targetLocations);

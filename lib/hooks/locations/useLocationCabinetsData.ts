@@ -19,14 +19,14 @@ import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { dateRange as DateRange } from '@/lib/types';
 import { getAuthHeaders } from '@/lib/utils/auth';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
 import { useDebounce } from '@/lib/utils/hooks';
 import { filterAndSortCabinets } from '@/lib/utils/ui';
-import { dateRange as DateRange } from '@/lib/types';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import axios from 'axios';
-import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type CabinetSortOption =
@@ -65,7 +65,6 @@ export function useLocationCabinetsData({
   setDateFilterInitialized,
   setFiltersInitialized,
 }: UseLocationCabinetsDataProps) {
-  const router = useRouter();
   const { displayCurrency } = useCurrencyFormat();
   const makeCabinetsRequest = useAbortableRequest();
 
@@ -566,6 +565,11 @@ export function useLocationCabinetsData({
           }
           setError(null);
         } catch (error) {
+          // Silently handle aborted requests - this is expected behavior when switching filters
+          if (isAbortError(error)) {
+            return;
+          }
+
           if (process.env.NODE_ENV === 'development') {
             console.error('Error fetching cabinets:', error);
           }
@@ -609,13 +613,8 @@ export function useLocationCabinetsData({
     activeMetricsFilter,
     customDateRange,
     dateFilterInitialized,
-    router,
-    isAdminUser,
-    debouncedSearchTerm,
-    displayCurrency,
     makeCabinetsRequest,
     filtersInitialized,
-    locationMembershipEnabled,
   ]);
 
   // Initialize filters flag

@@ -7,6 +7,7 @@ import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { fetchCabinetById } from '@/lib/helpers/cabinets';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import { differenceInMinutes } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -161,6 +162,11 @@ export function useCabinetDetailsData({
       } else {
         setError('Failed to fetch cabinet details');
         setErrorType('unknown');
+      }
+
+      // Silently handle aborted requests - this is expected behavior when switching filters
+      if (isAbortError(err)) {
+        return;
       }
 
       // Only show toast for non-unauthorized errors

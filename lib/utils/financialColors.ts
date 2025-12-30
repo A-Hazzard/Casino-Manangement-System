@@ -90,3 +90,68 @@ export function getFinancialColorClass(
     return 'text-gray-600'; // Gray for zero values
   }
 }
+// ============================================================================
+// Performance Definitions
+// ============================================================================
+
+export type PerformanceLevel = 'excellent' | 'good' | 'average' | 'poor';
+
+/**
+ * Performance configuration with labels, colors, and descriptions.
+ * Based on Revenue Performance (%) = (Gross / Money In) * 100
+ */
+export const PERFORMANCE_CONFIG: Record<
+  PerformanceLevel,
+  {
+    label: string;
+    description: string;
+    minPct: number;
+    dotColor: string;
+    textColor: string;
+  }
+> = {
+  excellent: {
+    label: 'Excellent',
+    description: 'Revenue Performance > 20%',
+    minPct: 20,
+    dotColor: 'bg-green-500',
+    textColor: 'text-green-600',
+  },
+  good: {
+    label: 'Good',
+    description: 'Revenue Performance 15% - 20%',
+    minPct: 15,
+    dotColor: 'bg-blue-500',
+    textColor: 'text-blue-600',
+  },
+  average: {
+    label: 'Average',
+    description: 'Revenue Performance 10% - 15%',
+    minPct: 10,
+    dotColor: 'bg-yellow-500',
+    textColor: 'text-yellow-600',
+  },
+  poor: {
+    label: 'Poor',
+    description: 'Revenue Performance < 10%',
+    minPct: 0,
+    dotColor: 'bg-red-500',
+    textColor: 'text-red-600',
+  },
+};
+
+/**
+ * Calculate performance level based on gross and money in
+ */
+export function getPerformanceLevel(
+  gross: number,
+  moneyIn: number
+): PerformanceLevel {
+  if (!moneyIn || moneyIn <= 0) return 'poor';
+  const pct = (gross / moneyIn) * 100;
+
+  if (pct > PERFORMANCE_CONFIG.excellent.minPct) return 'excellent';
+  if (pct >= PERFORMANCE_CONFIG.good.minPct) return 'good';
+  if (pct >= PERFORMANCE_CONFIG.average.minPct) return 'average';
+  return 'poor';
+}

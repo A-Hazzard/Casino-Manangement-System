@@ -3,6 +3,9 @@
  * Prevents duplicate API calls by tracking in-flight requests
  */
 
+import axios from 'axios';
+import { isAbortError } from './errorHandling';
+
 type RequestKey = string;
 type RequestPromise<T> = Promise<T>;
 
@@ -91,6 +94,21 @@ export async function deduplicateRequest<T>(
     .catch(error => {
       // Remove from map on error
       inFlightRequests.delete(normalizedKey);
+      
+      // Silently handle abort errors - don't re-throw them
+      // Abort errors are expected when switching filters and should not propagate
+      if (axios.isCancel && axios.isCancel(error)) {
+        // Return a rejected promise that resolves to undefined (silent abort)
+        // This prevents the error from propagating to the caller
+        return Promise.reject(new Error('ABORT_SILENT')); // Special marker for silent abort
+      }
+      
+      if (isAbortError(error)) {
+        // Return a rejected promise that resolves to undefined (silent abort)
+        return Promise.reject(new Error('ABORT_SILENT')); // Special marker for silent abort
+      }
+      
+      // Re-throw actual errors (not aborts) so caller can handle them
       throw error;
     });
 

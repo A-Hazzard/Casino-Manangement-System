@@ -23,6 +23,7 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { apiLogger } from '@/app/api/lib/utils/logger';
 import { UpdateLocationData } from '@/lib/types/location';
 import { generateMongoId } from '@/lib/utils/id';
@@ -105,20 +106,22 @@ export async function GET(request: Request) {
     const isAdminOrDeveloper =
       userRoles.includes('admin') || userRoles.includes('developer');
 
+    // Determine the licensee filter to use
+    // If forceAll is true and user is admin, ignore licensee filter (show all)
+    // If licencee is 'all' or empty, pass undefined to getUserLocationFilter to return all locations
+    // Otherwise, use the licensee parameter from query string
+    const licenseeFilterToUse =
+      forceAll && isAdminOrDeveloper
+        ? undefined
+        : licencee && licencee !== 'all'
+          ? licencee
+          : undefined;
+
     // Apply location filtering based on licensee + location permissions
-    if (
-      (showAll &&
-        userAccessibleLicensees === 'all' &&
-        userLocationPermissions.length === 0) ||
-      (forceAll && isAdminOrDeveloper)
-    ) {
-      // Admin with no restrictions requesting all locations - no filter needed
-      queryFilter = deletionFilter;
-    } else {
-      // Apply intersection of licensee access + location permissions (respecting roles)
+    // Always use getUserLocationFilter to ensure proper access control
       const allowedLocationIds = await getUserLocationFilter(
         userAccessibleLicensees,
-        licencee || undefined,
+      licenseeFilterToUse,
         userLocationPermissions,
         userRoles
       );
@@ -129,9 +132,75 @@ export async function GET(request: Request) {
           queryFilter = { ...deletionFilter, _id: null };
         } else {
           queryFilter = { ...deletionFilter, _id: { $in: allowedLocationIds } };
+
+        // CRITICAL: Add explicit licensee filter when specific licensee is selected
+        // This ensures we only return locations from the selected licensee
+        if (licenseeFilterToUse && licenseeFilterToUse !== 'all') {
+          // Resolve licensee ID (could be ID or name)
+          let resolvedLicenseeId = licenseeFilterToUse;
+          try {
+            const licenseeDoc = await Licencee.findOne(
+              {
+                $or: [
+                  { _id: licenseeFilterToUse },
+                  {
+                    name: {
+                      $regex: new RegExp(`^${licenseeFilterToUse}$`, 'i'),
+                    },
+                  },
+                ],
+              },
+              { _id: 1 }
+            ).lean();
+
+            if (licenseeDoc && !Array.isArray(licenseeDoc)) {
+              resolvedLicenseeId = String(licenseeDoc._id);
+            }
+          } catch {
+            // If resolution fails, use as-is
+          }
+
+          queryFilter['rel.licencee'] = resolvedLicenseeId;
+          console.log(
+            `[Locations API] Applied licensee filter: ${resolvedLicenseeId} (from ${licenseeFilterToUse})`
+          );
+        }
         }
       } else {
-        queryFilter = deletionFilter;
+      // Admin with no restrictions - return all locations (with deletion filter)
+      // But if a specific licensee is selected, still filter by it
+      queryFilter = { ...deletionFilter };
+      if (licenseeFilterToUse && licenseeFilterToUse !== 'all') {
+        // Resolve licensee ID (could be ID or name)
+        let resolvedLicenseeId = licenseeFilterToUse;
+        try {
+          const licenseeDoc = await Licencee.findOne(
+            {
+              $or: [
+                { _id: licenseeFilterToUse },
+                {
+                  name: { $regex: new RegExp(`^${licenseeFilterToUse}$`, 'i') },
+                },
+              ],
+            },
+            { _id: 1 }
+          ).lean();
+
+          if (licenseeDoc && !Array.isArray(licenseeDoc)) {
+            resolvedLicenseeId = String(licenseeDoc._id);
+          }
+        } catch (error) {
+          // If resolution fails, use as-is
+          console.warn(
+            `[Locations API] Failed to resolve licensee ${licenseeFilterToUse}:`,
+            error
+          );
+        }
+
+        queryFilter['rel.licencee'] = resolvedLicenseeId;
+        console.log(
+          `[Locations API] Applied licensee filter (admin): ${resolvedLicenseeId} (from ${licenseeFilterToUse})`
+        );
       }
     }
 

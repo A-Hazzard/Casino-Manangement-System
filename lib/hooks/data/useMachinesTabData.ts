@@ -7,6 +7,7 @@
 
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import type {
   MachineData,
   MachinesApiResponse,
@@ -87,11 +88,13 @@ export const useMachinesTabData = (
         setStatsLoading(false);
       }
     } catch (error) {
-      if (!axios.isCancel(error)) {
-        console.error('Failed to fetch machine stats:', error);
-        toast.error('Failed to load machine statistics');
-        setStatsLoading(false);
+      // Silently handle aborted requests - this is expected behavior when switching filters
+      if (isAbortError(error)) {
+        return;
       }
+      console.error('Failed to fetch machine stats:', error);
+      toast.error('Failed to load machine statistics');
+      setStatsLoading(false);
     }
   }, [
     selectedLicencee,
@@ -150,10 +153,12 @@ export const useMachinesTabData = (
           }
         });
       } catch (error) {
-        if (!axios.isCancel(error)) {
-          console.error('Failed to fetch overview machines:', error);
-          toast.error('Failed to load overview machines');
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
+          return;
         }
+        console.error('Failed to fetch overview machines:', error);
+        toast.error('Failed to load overview machines');
       } finally {
         setOverviewLoading(false);
       }
@@ -211,10 +216,12 @@ export const useMachinesTabData = (
           }
         });
       } catch (error) {
-        if (!axios.isCancel(error)) {
-          console.error('Failed to fetch offline machines:', error);
-          toast.error('Failed to load offline machines data');
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
+          return;
         }
+        console.error('Failed to fetch offline machines:', error);
+        toast.error('Failed to load offline machines data');
       } finally {
         setOfflineLoading(false);
       }
@@ -256,10 +263,12 @@ export const useMachinesTabData = (
           setAllMachines(response.data.data || []);
         });
       } catch (error) {
-        if (!axios.isCancel(error)) {
-          console.error('Failed to fetch all machines:', error);
-          toast.error('Failed to load evaluation data');
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
+          return;
         }
+        console.error('Failed to fetch all machines:', error);
+        toast.error('Failed to load evaluation data');
       } finally {
         setEvaluationLoading(false);
       }

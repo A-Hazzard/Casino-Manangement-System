@@ -302,8 +302,8 @@ export default function LocationCabinetsSection({
       {/* Date Filters and Machine Status Section: Responsive layout for filters and status */}
       <div className="mt-4">
         {/* Desktop and md: Side by side layout */}
-        <div className="hidden items-center justify-between gap-4 md:flex">
-          <div className="min-w-0 flex-1">
+        <div className="hidden items-start gap-4 md:flex md:flex-wrap">
+          <div className="min-w-0 flex-1 md:min-w-[300px]">
             <DashboardDateFilters
               onCustomRangeGo={handleRefresh}
               hideAllTime={false}
@@ -311,7 +311,7 @@ export default function LocationCabinetsSection({
               enableTimeInputs={true}
             />
           </div>
-          <div className="ml-4 w-auto flex-shrink-0">
+          <div className="w-auto flex-shrink-0 md:min-w-[200px]">
             <MachineStatusWidget
               isLoading={machineStatsLoading || membershipStatsLoading || machineStats === null || machineStats === undefined}
               onlineCount={machineStats?.onlineMachines || 0}

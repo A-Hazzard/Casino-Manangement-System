@@ -1,318 +1,209 @@
 /**
- * Sessions Data Custom Hook
+ * useSessions Hook
  *
- * Provides a custom hook for managing sessions data fetching, state management,
- * pagination, search, and sorting. It handles batch-based pagination for
- * performance and includes proper cleanup and error handling.
+ * Fetches and manages sessions data with pagination and batch loading.
  *
  * Features:
- * - Fetches sessions with filtering and pagination
- * - Batch-based pagination for performance
- * - Search functionality with debouncing
- * - Sorting capabilities
- * - Date range filtering
- * - Licensee filtering
- * - Proper request cancellation
- * - Error handling and notifications
+ * - Fetches sessions from API
+ * - Handles pagination and batch loading
+ * - Manages loading, error, and pagination states
  */
 
-import { buildSessionsQueryParams } from '@/lib/helpers/sessions';
+'use client';
+
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import type { PaginationData, Session } from '@/lib/types/sessions';
+import { useSessionsFilters } from './useSessionsFilters';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import { useDebounce } from '@/lib/utils/hooks';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+
+type Session = {
+  _id: string;
+  [key: string]: unknown;
+};
+
+type PaginationData = {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+};
+
 export function useSessions() {
+  const makeRequest = useAbortableRequest();
+  const { selectedLicencee, activeMetricsFilter, customDateRange } =
+    useDashBoardStore();
+  const { searchTerm, sortBy, sortOrder } = useSessionsFilters();
+  
+  // Debounce search term to reduce API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // ============================================================================
+  // State Management
+  // ============================================================================
   const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  // Debounce search term to reduce API calls
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
-  const [sortBy, setSortBy] = useState('startTime');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(0);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
-  const [totalSessionsFromAPI, setTotalSessionsFromAPI] = useState<number>(0);
+  const [pagination, setPagination] = useState<PaginationData | null>(null);
 
   const itemsPerPage = 20;
   const itemsPerBatch = 100;
   const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
-  const { selectedLicencee, activeMetricsFilter, customDateRange } =
-    useDashBoardStore();
-
-  // AbortController for canceling previous requests
-  const makeRequest = useAbortableRequest();
-
-  // Calculate which batch we need based on current page
-  // pagesPerBatch is a constant (5) so adding it to deps is safe but unnecessary
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / pagesPerBatch) + 1;
-    },
-    [pagesPerBatch]
-  );
-
-  /**
-   * Fetch sessions from API
-   */
+  // ============================================================================
+  // Data Fetching
+  // ============================================================================
   const fetchSessions = useCallback(
     async (batch: number = 1) => {
+      setLoading(true);
       await makeRequest(async signal => {
+        const params = new URLSearchParams({
+          page: batch.toString(),
+          limit: itemsPerBatch.toString(),
+        });
+
+        if (debouncedSearchTerm) {
+          params.append('search', debouncedSearchTerm);
+        }
+
+        if (sortBy) {
+          params.append('sortBy', sortBy);
+        }
+
+        if (sortOrder) {
+          params.append('sortOrder', sortOrder);
+        }
+
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.append('licencee', selectedLicencee);
+        }
+
+        if (
+          activeMetricsFilter === 'Custom' &&
+          customDateRange?.startDate &&
+          customDateRange?.endDate
+        ) {
+          params.append('startDate', new Date(customDateRange.startDate).toISOString());
+          params.append('endDate', new Date(customDateRange.endDate).toISOString());
+        } else if (activeMetricsFilter && activeMetricsFilter !== 'Custom') {
+          params.append('dateFilter', activeMetricsFilter);
+        }
+
         try {
-          setLoading(true);
-          setError(null);
-
-          // Build query parameters
-          let startDate: Date | undefined;
-          let endDate: Date | undefined;
-
-          if (activeMetricsFilter === 'Custom' && customDateRange) {
-            startDate = customDateRange.startDate;
-            endDate = customDateRange.endDate;
-          } else {
-            // Handle other filter types
-            const now = new Date();
-            switch (activeMetricsFilter) {
-              case 'Today':
-                startDate = new Date(now.setHours(0, 0, 0, 0));
-                endDate = new Date(now.setHours(23, 59, 59, 999));
-                break;
-              case 'Yesterday':
-                const yesterday = new Date(now);
-                yesterday.setDate(yesterday.getDate() - 1);
-                startDate = new Date(yesterday.setHours(0, 0, 0, 0));
-                endDate = new Date(yesterday.setHours(23, 59, 59, 999));
-                break;
-              case 'last7days':
-                startDate = new Date(now.setDate(now.getDate() - 7));
-                endDate = new Date();
-                break;
-              case 'last30days':
-                startDate = new Date(now.setDate(now.getDate() - 30));
-                endDate = new Date();
-                break;
-            }
-          }
-
-          const queryParams = buildSessionsQueryParams({
-            page: batch,
-            limit: itemsPerBatch,
-            search: debouncedSearchTerm,
-            sortBy,
-            sortOrder,
-            licensee: selectedLicencee === 'all' ? undefined : selectedLicencee,
-            startDate,
-            endDate,
+          const response = await axios.get(`/api/sessions?${params}`, {
+            signal,
           });
 
-          const response = await axios.get(
-            `/api/sessions?${queryParams.toString()}`,
-            { signal }
-          );
-          const data = response.data;
-          // API returns { success: true, data: { sessions, pagination } }
-          const newSessions = data.data?.sessions || data.sessions || [];
+          if (response.data.success) {
+            const { sessions, pagination: paginationData } = response.data.data;
+            setPagination(paginationData);
 
-          // Update total sessions count from API pagination
-          if (data.data?.pagination?.totalSessions) {
-            setTotalSessionsFromAPI(data.data.pagination.totalSessions);
+            setAllSessions(prev => {
+              const existingIds = new Set(prev.map(s => s._id));
+              return [
+                ...prev,
+                ...sessions.filter((s: Session) => !existingIds.has(s._id)),
+              ];
+            });
+
+            setError(null);
           }
-
-          // Merge new sessions into allSessions, avoiding duplicates
-          setAllSessions(prev => {
-            const existingIds = new Set(prev.map(s => s._id));
-            const uniqueNewSessions = newSessions.filter(
-              (s: Session) => !existingIds.has(s._id)
-            );
-            return [...prev, ...uniqueNewSessions];
-          });
         } catch (err) {
-          // Check if this is a cancelled request - don't treat as error
-          if (axios.isCancel && axios.isCancel(err)) {
-            // Request was cancelled, silently return without changing loading state
-            // The next request will handle loading state
+          // Silently handle aborted requests - this is expected behavior when switching filters
+          if (isAbortError(err)) {
             return;
           }
 
-          // Check for standard abort errors
-          if (
-            (err instanceof Error && err.name === 'AbortError') ||
-            (err instanceof Error && err.message === 'canceled') ||
-            (err &&
-              typeof err === 'object' &&
-              'code' in err &&
-              (err.code === 'ERR_CANCELED' || err.code === 'ECONNABORTED'))
-          ) {
-            // Request was cancelled, silently return without changing loading state
-            // The next request will handle loading state
-            return;
-          }
-
-          // Only show error for actual errors
           const errorMessage =
             err instanceof Error ? err.message : 'Failed to fetch sessions';
           setError(errorMessage);
           toast.error(errorMessage);
           setAllSessions([]);
+        } finally {
           setLoading(false);
         }
-
-        // Only set loading to false on successful completion
-        setLoading(false);
       });
     },
     [
-      debouncedSearchTerm, // Use debounced value instead of searchTerm
-      sortBy,
-      sortOrder,
       selectedLicencee,
       activeMetricsFilter,
       customDateRange,
-      itemsPerBatch,
+      debouncedSearchTerm,
+      sortBy,
+      sortOrder,
       makeRequest,
     ]
   );
 
-  /**
-   * Handle search input change
-   */
-  const handleSearch = useCallback((value: string) => {
-    setSearchTerm(value);
-    setCurrentPage(0); // Reset to first page
-  }, []);
-
-  /**
-   * Handle sort change
-   */
-  const handleSort = useCallback(
-    (field: string) => {
-      if (field === sortBy) {
-        // Toggle sort order if same field
-        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-      } else {
-        // Set new field with default desc order
-        setSortBy(field);
-        setSortOrder('desc');
-      }
-      setCurrentPage(0); // Reset to first page
-    },
-    [sortBy, sortOrder]
-  );
-
-  /**
-   * Handle page change
-   */
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
-  }, []);
-
-  // Load initial batch on mount and when filters change
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
+    setCurrentPage(0);
     setAllSessions([]);
     setLoadedBatches(new Set([1]));
-    setCurrentPage(0);
-    setTotalSessionsFromAPI(0); // Reset API total when filters change
     fetchSessions(1);
   }, [
-    debouncedSearchTerm,
-    sortBy,
-    fetchSessions,
-    sortOrder,
     selectedLicencee,
     activeMetricsFilter,
     customDateRange,
+    debouncedSearchTerm,
+    sortBy,
+    sortOrder,
+    fetchSessions,
   ]);
 
-  // Fetch next batch when crossing batch boundaries
+  // Batch loading logic
   useEffect(() => {
     if (loading) return;
-
-    const currentBatch = calculateBatchNumber(currentPage);
+    const currentBatch = Math.floor(currentPage / pagesPerBatch) + 1;
     const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
     const nextBatch = currentBatch + 1;
 
-    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
     if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
       setLoadedBatches(prev => new Set([...prev, nextBatch]));
       fetchSessions(nextBatch);
     }
+  }, [currentPage, loading, loadedBatches, fetchSessions, pagesPerBatch]);
 
-    // Also ensure current batch is loaded
-    if (!loadedBatches.has(currentBatch)) {
-      setLoadedBatches(prev => new Set([...prev, currentBatch]));
-      fetchSessions(currentBatch);
-    }
-  }, [
-    currentPage,
-    loading,
-    calculateBatchNumber,
-    loadedBatches,
-    fetchSessions,
-    pagesPerBatch,
-  ]);
-
-  // Get items for current page from the current batch
-  const paginatedSessions = useMemo(() => {
-    const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
-    const startIndex = positionInBatch;
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
+  const sessions = useMemo(() => {
+    const startIndex = currentPage * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return allSessions.slice(startIndex, endIndex);
-  }, [allSessions, currentPage, itemsPerPage, pagesPerBatch]);
+  }, [allSessions, currentPage, itemsPerPage]);
 
-  // Calculate total pages - use API total if available, otherwise use loaded sessions
-  const totalPages = useMemo(() => {
-    if (totalSessionsFromAPI > 0) {
-      // Use API total for accurate pagination
-      return Math.ceil(totalSessionsFromAPI / itemsPerPage);
-    }
-    // Fallback to loaded sessions count
-    const totalItems = allSessions.length;
-    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
-    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [totalSessionsFromAPI, allSessions.length, itemsPerPage]);
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
 
-  // Create pagination object for compatibility
-  const pagination: PaginationData | null = useMemo(() => {
-    // Use API total if available, otherwise use loaded sessions count
-    const totalCount =
-      totalSessionsFromAPI > 0 ? totalSessionsFromAPI : allSessions.length;
-    if (totalCount === 0 && allSessions.length === 0) return null;
-    return {
-      currentPage: currentPage + 1, // Convert to 1-based for display
-      totalPages,
-      totalSessions: totalCount, // Use API total or loaded count
-      hasNextPage: currentPage < totalPages - 1,
-      hasPrevPage: currentPage > 0,
-    };
-  }, [currentPage, totalPages, allSessions.length, totalSessionsFromAPI]);
-
-  /**
-   * Refresh sessions - clear and reload from batch 1
-   */
-  const refreshSessions = useCallback(async () => {
+  const refreshSessions = useCallback(() => {
+    setCurrentPage(0);
     setAllSessions([]);
     setLoadedBatches(new Set([1]));
-    setCurrentPage(0);
-    await fetchSessions(1);
+    fetchSessions(1);
   }, [fetchSessions]);
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
-    sessions: paginatedSessions,
+    sessions,
     loading,
     error,
-    searchTerm,
-    sortBy,
-    sortOrder,
-    currentPage,
     pagination,
-    handleSearch,
-    handleSort,
+    currentPage,
     handlePageChange,
     refreshSessions,
-    fetchSessions: () => fetchSessions(1),
   };
 }

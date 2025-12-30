@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency } from '@/lib/utils';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -170,25 +171,8 @@ const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
           throw new Error('Failed to fetch bill validator data');
         }
       } catch (error) {
-        // Re-throw abort errors so useAbortableRequest can handle them
-        const axiosInstance = (await import('axios')).default;
-        if (axiosInstance.isCancel(error)) {
-          throw error;
-        }
-        if (
-          error instanceof Error &&
-          (error.name === 'AbortError' ||
-            error.message === 'canceled' ||
-            error.message === 'The user aborted a request.')
-        ) {
-          throw error;
-        }
-        if (
-          error &&
-          typeof error === 'object' &&
-          'code' in error &&
-          (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED')
-        ) {
+        // Re-throw abort errors so useAbortableRequest can handle them silently
+        if (isAbortError(error)) {
           throw error;
         }
 

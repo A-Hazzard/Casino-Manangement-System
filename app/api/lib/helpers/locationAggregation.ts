@@ -2,8 +2,8 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
-import type { AggregatedLocation } from '@/shared/types';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import type { AggregatedLocation } from '@/shared/types';
 import type { PipelineStage } from 'mongoose';
 
 /**
@@ -71,54 +71,65 @@ export const getLocationsWithMetrics = async (
     basePipeline.push({ $match: { _id: { $in: selectedLocationIdStrings } } });
   }
 
-  // Apply machine type filters (SMIB, No SMIB, Local Server, Membership) at database level
+  // Apply machine type filters (SMIB, No SMIB, Local Server, Membership, Models) at database level
   if (machineTypeFilter) {
     const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
-    const filterConditions: Record<string, unknown>[] = [];
+
+    // Group filters by logical categories to allow OR within category and AND across
+    const connectionFilters: Record<string, unknown>[] = [];
+    const featureFilters: Record<string, unknown>[] = [];
+    const qualityFilters: Record<string, unknown>[] = [];
 
     filters.forEach(filter => {
-      switch (filter.trim()) {
+      const f = filter.trim();
+      switch (f) {
+        // --- Connection Category ---
         case 'LocalServersOnly':
-          filterConditions.push({ isLocalServer: true });
+          connectionFilters.push({ isLocalServer: true });
           break;
         case 'SMIBLocationsOnly':
-          filterConditions.push({ noSMIBLocation: { $ne: true } });
+          connectionFilters.push({ noSMIBLocation: { $ne: true } });
           break;
         case 'NoSMIBLocation':
-          filterConditions.push({ noSMIBLocation: true });
+          connectionFilters.push({ noSMIBLocation: true });
           break;
+
+        // --- Feature Category ---
         case 'MembershipOnly':
           // Check both membershipEnabled and enableMembership fields for compatibility
-          filterConditions.push({
+          featureFilters.push({
             $or: [{ membershipEnabled: true }, { enableMembership: true }],
           });
           break;
+
+        // --- Quality Category ---
         case 'MissingCoordinates':
-          filterConditions.push({
+          qualityFilters.push({
             $or: [
               { geoCoords: { $exists: false } },
               { geoCoords: null },
               { 'geoCoords.latitude': { $exists: false } },
               { 'geoCoords.latitude': null },
+              { 'geoCoords.latitude': 0 },
               {
                 $and: [
-                  { 'geoCoords.longitude': { $exists: false } },
-                  { 'geoCoords.longitude': null },
-                  { 'geoCoords.longtitude': { $exists: false } },
-                  { 'geoCoords.longtitude': null },
+                  { 'geoCoords.longitude': { $exists: false, $eq: null } },
+                  { 'geoCoords.longtitude': { $exists: false, $eq: null } },
                 ],
               },
             ],
           });
           break;
         case 'HasCoordinates':
-          filterConditions.push({
+          qualityFilters.push({
             $and: [
-              { 'geoCoords.latitude': { $exists: true, $ne: null } },
+              { 'geoCoords.latitude': { $exists: true, $nin: [null, 0] } },
               {
                 $or: [
-                  { 'geoCoords.longitude': { $exists: true, $ne: null } },
-                  { 'geoCoords.longtitude': { $exists: true, $ne: null } },
+                  { 'geoCoords.longitude': { $exists: true, $nin: [null, 0] } },
+                  {
+                    'geoCoords.longtitude': { $exists: true, $nin: [null, 0] },
+                  },
                 ],
               },
             ],
@@ -127,10 +138,17 @@ export const getLocationsWithMetrics = async (
       }
     });
 
-    // Apply AND logic - location must match ALL of the selected filters
-    // This allows users to narrow down locations by combining multiple criteria
-    if (filterConditions.length > 0) {
-      basePipeline.push({ $match: { $and: filterConditions } });
+    // Combine categories: (Conn1 OR Conn2) AND (Feat1) AND (Qual1 OR Qual2)
+    const combinedFilters: Record<string, unknown>[] = [];
+    if (connectionFilters.length > 0)
+      combinedFilters.push({ $or: connectionFilters });
+    if (featureFilters.length > 0)
+      combinedFilters.push({ $or: featureFilters });
+    if (qualityFilters.length > 0)
+      combinedFilters.push({ $or: qualityFilters });
+
+    if (combinedFilters.length > 0) {
+      basePipeline.push({ $match: { $and: combinedFilters } });
     }
   }
 
@@ -229,6 +247,7 @@ export const getLocationsWithMetrics = async (
         // The index on { location: 1, readAt: 1 } makes this query very efficient
 
         // Build optimized aggregation pipeline that uses location field directly
+        // Group by location AND hour to prevent data inflation from global date ranges
         const aggregationPipeline: PipelineStage[] = [
           {
             $match: {
@@ -241,7 +260,10 @@ export const getLocationsWithMetrics = async (
           },
           {
             $group: {
-              _id: '$location', // Group by location field directly (no lookup needed!)
+              _id: {
+                location: '$location',
+                hour: { $dateTrunc: { date: '$readAt', unit: 'hour' } },
+              },
               totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
               totalCancelledCredits: {
                 $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
@@ -252,29 +274,24 @@ export const getLocationsWithMetrics = async (
               totalCoinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
               totalCoinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
               totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
-              minReadAt: { $min: '$readAt' }, // For gaming day range filtering
-              maxReadAt: { $max: '$readAt' }, // For gaming day range filtering
             },
           },
         ];
 
-        // Use cursor for Meters aggregation (even though grouped, still use cursor for consistency)
         const locationAggregations: Array<{
-          _id: string;
+          _id: { location: string; hour: Date };
           totalDrop: number;
           totalCancelledCredits: number;
           totalGamesPlayed: number;
           totalCoinIn: number;
           totalCoinOut: number;
           totalJackpot: number;
-          minReadAt: Date;
-          maxReadAt: Date;
         }> = [];
         const locationAggregationsCursor = Meters.aggregate(
           aggregationPipeline,
           {
             allowDiskUse: true,
-            maxTimeMS: 120000, // 2 minutes timeout (reduced from 5 min due to optimization)
+            maxTimeMS: 120000,
           }
         ).cursor({ batchSize: 1000 });
 
@@ -282,7 +299,7 @@ export const getLocationsWithMetrics = async (
           locationAggregations.push(doc as (typeof locationAggregations)[0]);
         }
 
-        // Group meters by location and filter by gaming day ranges (in memory)
+        // Initialize location metrics map
         const locationMetricsMap = new Map<
           string,
           {
@@ -295,34 +312,37 @@ export const getLocationsWithMetrics = async (
           }
         >();
 
-        // Process pre-aggregated data and filter by gaming day ranges
-        // Note: Since we're using a global date range, we need to filter by gaming day ranges in memory
-        // This is still much faster than the previous approach because we're grouping in MongoDB first
-        for (const locationAgg of locationAggregations) {
-          const locationId = String(locationAgg._id);
+        // Process buckets and filter by each location's specific range
+        for (const bucketAgg of locationAggregations) {
+          const locationId = String(bucketAgg._id.location);
+          const bucketHour = new Date(bucketAgg._id.hour);
           const gamingDayRange = gamingDayRanges.get(locationId);
           if (!gamingDayRange) continue;
 
-          // For gaming day range filtering, check if the aggregated data overlaps with the location's gaming day range
-          // Since we already filtered by global range, we just need to verify overlap
-          const minReadAt = new Date(locationAgg.minReadAt as Date);
-          const maxReadAt = new Date(locationAgg.maxReadAt as Date);
+          const isWithinRange =
+            bucketHour >= gamingDayRange.rangeStart &&
+            bucketHour <= gamingDayRange.rangeEnd;
 
-          // Check if there's any overlap between the aggregated date range and the location's gaming day range
-          const hasOverlap =
-            minReadAt <= gamingDayRange.rangeEnd &&
-            maxReadAt >= gamingDayRange.rangeStart;
-
-          if (!hasOverlap) continue;
-
-          locationMetricsMap.set(locationId, {
-            moneyIn: (locationAgg.totalDrop as number) || 0,
-            moneyOut: (locationAgg.totalCancelledCredits as number) || 0,
-            gamesPlayed: (locationAgg.totalGamesPlayed as number) || 0,
-            coinIn: (locationAgg.totalCoinIn as number) || 0,
-            coinOut: (locationAgg.totalCoinOut as number) || 0,
-            jackpot: (locationAgg.totalJackpot as number) || 0,
-          });
+          if (isWithinRange) {
+            if (!locationMetricsMap.has(locationId)) {
+              locationMetricsMap.set(locationId, {
+                moneyIn: 0,
+                moneyOut: 0,
+                gamesPlayed: 0,
+                coinIn: 0,
+                coinOut: 0,
+                jackpot: 0,
+              });
+            }
+            const metrics = locationMetricsMap.get(locationId)!;
+            metrics.moneyIn += (bucketAgg.totalDrop as number) || 0;
+            metrics.moneyOut +=
+              (bucketAgg.totalCancelledCredits as number) || 0;
+            metrics.gamesPlayed += (bucketAgg.totalGamesPlayed as number) || 0;
+            metrics.coinIn += (bucketAgg.totalCoinIn as number) || 0;
+            metrics.coinOut += (bucketAgg.totalCoinOut as number) || 0;
+            metrics.jackpot += (bucketAgg.totalJackpot as number) || 0;
+          }
         }
 
         // Build location results
@@ -541,18 +561,15 @@ export const getLocationsWithMetrics = async (
 
         if (batchLocationIds.length > 0) {
           // 🚀 PERFORMANCE OPTIMIZATION: Use location field directly from meters
-          // Meters collection has a 'location' field, so we can skip the expensive $lookup to machines
-          // This dramatically improves performance (10-20x faster)
+          // Group by location AND hour to prevent data inflation from batch global date ranges
           const batchMetersAggregation: Array<{
-            _id: string;
+            _id: { location: string; hour: Date };
             totalDrop: number;
             totalMoneyOut: number;
             totalGamesPlayed: number;
             totalCoinIn: number;
             totalCoinOut: number;
             totalJackpot: number;
-            minReadAt: Date;
-            maxReadAt: Date;
           }> = [];
           const batchMetersCursor = Meters.aggregate([
             {
@@ -566,7 +583,10 @@ export const getLocationsWithMetrics = async (
             },
             {
               $group: {
-                _id: '$location', // Group by location field directly (no lookup needed!)
+                _id: {
+                  location: '$location',
+                  hour: { $dateTrunc: { date: '$readAt', unit: 'hour' } },
+                },
                 totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
                 totalMoneyOut: {
                   $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
@@ -581,8 +601,6 @@ export const getLocationsWithMetrics = async (
                 totalJackpot: {
                   $sum: { $ifNull: ['$movement.jackpot', 0] },
                 },
-                minReadAt: { $min: '$readAt' },
-                maxReadAt: { $max: '$readAt' },
               },
             },
           ]).cursor({ batchSize: 1000 });
@@ -594,28 +612,35 @@ export const getLocationsWithMetrics = async (
           }
 
           // Step 7: Filter by gaming day ranges in memory
-          // Note: Since we're using a global date range, we need to filter by gaming day ranges in memory
           batchMetersAggregation.forEach(agg => {
-            const locationId = String(agg._id);
+            const locationId = String(agg._id.location);
+            const bucketHour = new Date(agg._id.hour);
             const gamingDayRange = batchGamingDayRanges.get(locationId);
             if (!gamingDayRange) return;
 
-            // Check if there's any overlap between the aggregated date range and the location's gaming day range
-            const minReadAt = new Date(agg.minReadAt as Date);
-            const maxReadAt = new Date(agg.maxReadAt as Date);
-            const hasOverlap =
-              minReadAt <= gamingDayRange.rangeEnd &&
-              maxReadAt >= gamingDayRange.rangeStart;
+            // Check if the hour start falls within the location's specific gaming day range
+            const isWithinRange =
+              bucketHour >= gamingDayRange.rangeStart &&
+              bucketHour <= gamingDayRange.rangeEnd;
 
-            if (hasOverlap) {
-              batchMetersByLocation.set(locationId, {
-                totalDrop: (agg.totalDrop as number) || 0,
-                totalMoneyOut: (agg.totalMoneyOut as number) || 0,
-                totalGamesPlayed: (agg.totalGamesPlayed as number) || 0,
-                totalCoinIn: (agg.totalCoinIn as number) || 0,
-                totalCoinOut: (agg.totalCoinOut as number) || 0,
-                totalJackpot: (agg.totalJackpot as number) || 0,
-              });
+            if (isWithinRange) {
+              if (!batchMetersByLocation.has(locationId)) {
+                batchMetersByLocation.set(locationId, {
+                  totalDrop: 0,
+                  totalMoneyOut: 0,
+                  totalGamesPlayed: 0,
+                  totalCoinIn: 0,
+                  totalCoinOut: 0,
+                  totalJackpot: 0,
+                });
+              }
+              const current = batchMetersByLocation.get(locationId)!;
+              current.totalDrop += (agg.totalDrop as number) || 0;
+              current.totalMoneyOut += (agg.totalMoneyOut as number) || 0;
+              current.totalGamesPlayed += (agg.totalGamesPlayed as number) || 0;
+              current.totalCoinIn += (agg.totalCoinIn as number) || 0;
+              current.totalCoinOut += (agg.totalCoinOut as number) || 0;
+              current.totalJackpot += (agg.totalJackpot as number) || 0;
             }
           });
         }

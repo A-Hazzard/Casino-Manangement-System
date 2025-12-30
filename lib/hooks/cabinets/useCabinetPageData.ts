@@ -152,7 +152,8 @@ export function useCabinetPageData() {
         const hoursDiff =
           (range.rangeEnd.getTime() - range.rangeStart.getTime()) /
           (1000 * 60 * 60);
-        return hoursDiff <= 24;
+        const daysDiff = hoursDiff / 24;
+        return daysDiff <= 2; // Show toggle only if ≤ 2 days (48 hours)
       } catch (error) {
         console.error('Error calculating gaming day range:', error);
         return false;

@@ -460,6 +460,17 @@ The Locations page provides comprehensive management and analytics for gaming lo
 - `deduplicateRequest` utility prevents duplicate API calls
 - Used for location data and metrics fetching
 
+### Abort Error Handling
+
+- `isAbortError` utility centralizes abort/cancellation error detection
+- Abort errors are silently handled (expected when switching filters)
+- Prevents false error toasts when filters change rapidly
+- Applied to all data fetching hooks:
+  - `useLocationsPageData` - Metrics totals fetch
+  - `useLocationData` - Location data fetch
+  - `useLocationMachineStats` - Machine stats fetch
+  - `useLocationMembershipStats` - Membership stats fetch
+
 ---
 
 ## Currency Conversion Rules

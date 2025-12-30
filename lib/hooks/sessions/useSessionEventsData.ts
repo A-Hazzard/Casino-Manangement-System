@@ -8,6 +8,7 @@
 
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import type { MachineEvent } from '@/lib/types/sessions';
 import type { SessionInfo } from '@/shared/types/entities';
 import axios from 'axios';
@@ -65,10 +66,12 @@ export function useSessionEventsData(sessionId: string, machineId: string) {
           return [...prev, ...events.filter((e: MachineEvent) => !existingIds.has(e._id))];
         });
       } catch (err) {
-        if (!axios.isCancel(err)) {
-          toast.error('Failed to fetch events');
-          setError('Failed to load data');
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(err)) {
+          return;
         }
+        toast.error('Failed to fetch events');
+        setError('Failed to load data');
       } finally {
         setLoading(false);
       }

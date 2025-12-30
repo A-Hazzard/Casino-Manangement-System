@@ -19,6 +19,7 @@ import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
 import { useUserStore } from '@/lib/store/userStore';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import type { MetersReportData, MetersReportResponse } from '@/shared/types/meters';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -219,10 +220,8 @@ export function useMetersTabData({
 
         setLocations(fetchedLocations);
       } catch (err: unknown) {
-        if (axios.isCancel && axios.isCancel(err)) {
-          return;
-        }
-        if (err instanceof Error && err.name === 'AbortError') {
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(err)) {
           return;
         }
         console.error('Error fetching locations:', err);
@@ -321,13 +320,8 @@ export function useMetersTabData({
             return [...prev, ...uniqueNewMeters];
           });
         } catch (err: unknown) {
-          if (axios.isCancel && axios.isCancel(err)) {
-            setLoading(false);
-            setReportsLoading(false);
-            setHourlyChartLoading(false);
-            return;
-          }
-          if (err instanceof Error && err.name === 'AbortError') {
+          // Silently handle aborted requests - this is expected behavior when switching filters
+          if (isAbortError(err)) {
             setLoading(false);
             setReportsLoading(false);
             setHourlyChartLoading(false);
@@ -519,12 +513,8 @@ export function useMetersTabData({
             setHourlyChartData([]);
           }
         } catch (error) {
-          if (error instanceof Error && error.name === 'AbortError') {
-            setHourlyChartLoading(false);
-            setReportsLoading(false);
-            return;
-          }
-          if (axios.isCancel && axios.isCancel(error)) {
+          // Silently handle aborted requests - this is expected behavior when switching filters
+          if (isAbortError(error)) {
             setHourlyChartLoading(false);
             setReportsLoading(false);
             return;

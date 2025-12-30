@@ -84,12 +84,12 @@ export default function TopPerformingMachineModal({
   // Never show for 7d and 30d - they always use daily format
   const showGranularitySelector = useMemo(() => {
     const timePeriod = effectiveTimePeriod as TimePeriod;
-    
+
     // Never show granularity selector for 7d and 30d
     if (timePeriod === '7d' || timePeriod === '30d') {
       return false;
     }
-    
+
     if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
       return true;
     }
@@ -127,7 +127,7 @@ export default function TopPerformingMachineModal({
   // For 7d and 30d, always use 'hourly' (which displays as daily format in Chart component)
   useEffect(() => {
     const timePeriod = effectiveTimePeriod as TimePeriod;
-    
+
     // Force 'hourly' for 7d and 30d (Chart component will display as daily format)
     if (
       timePeriod === '7d' ||
@@ -138,7 +138,7 @@ export default function TopPerformingMachineModal({
       setChartGranularity('hourly');
       return;
     }
-    
+
     const updateGranularity = () => {
       const defaultGranularity = getDefaultChartGranularity(
         timePeriod,

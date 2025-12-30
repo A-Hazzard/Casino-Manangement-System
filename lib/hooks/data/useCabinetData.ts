@@ -10,6 +10,7 @@ import {
 } from '@/lib/helpers/cabinets';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import { useDebounce } from '@/lib/utils/hooks';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -324,6 +325,11 @@ export const useCabinetData = ({
 
         // Metrics totals fetch moved to dedicated effect to avoid race conditions
       } catch (error) {
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
+          return;
+        }
+
         console.error('Error fetching cabinet data:', error);
         setAllCabinets([]);
         setTotalCount(0);
@@ -466,6 +472,11 @@ export const useCabinetData = ({
           setMetricsTotals(null);
         }
       } catch (error) {
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
+          return;
+        }
+
         console.error(
           '[useCabinetData] Failed to fetch metrics totals:',
           error

@@ -12,9 +12,86 @@
  */
 
 import type { ApiError } from '@/lib/types/errors';
+import axios from 'axios';
 
 // Re-export for use in other files
 export type { ApiError };
+
+// ============================================================================
+// Abort Error Detection
+// ============================================================================
+/**
+ * Check if an error is an abort/cancellation error that should be silently ignored
+ * Abort errors are expected when users switch filters and should not show error toasts
+ */
+export function isAbortError(error: unknown): boolean {
+  // Handle null/undefined
+  if (!error) {
+    return false;
+  }
+
+  // Check for axios cancellation (must be checked first as axios.isCancel handles special cases)
+  if (axios.isCancel && axios.isCancel(error)) {
+    return true;
+  }
+
+  // Check for standard AbortError (fetch API) or CanceledError
+  if (error instanceof Error) {
+    if (
+      error.name === 'AbortError' ||
+      error.name === 'CanceledError' ||
+      error.message === 'canceled' ||
+      error.message === 'The user aborted a request.' ||
+      error.message.includes('aborted') ||
+      error.message.includes('canceled')
+    ) {
+      return true;
+    }
+  }
+
+  // Check for error objects with cancel/abort indicators (including empty objects that might be abort errors)
+  if (typeof error === 'object') {
+    const errorObj = error as {
+      code?: string;
+      name?: string;
+      message?: string;
+    };
+
+    // Check for abort-related codes
+    if (
+      errorObj.code === 'ERR_CANCELED' ||
+      errorObj.code === 'ECONNABORTED' ||
+      errorObj.name === 'CanceledError' ||
+      errorObj.name === 'AbortError'
+    ) {
+      return true;
+    }
+
+    // Check message for abort indicators
+    if (
+      errorObj.message &&
+      (errorObj.message.includes('aborted') ||
+        errorObj.message.includes('canceled') ||
+        errorObj.message === 'canceled' ||
+        errorObj.message === 'The user aborted a request.')
+    ) {
+      return true;
+    }
+
+    // Handle empty objects - if error is {} and axios.isCancel doesn't catch it,
+    // it might be an abort error from deduplicateRequest or other sources
+    // Check if it's truly empty (no enumerable properties)
+    const keys = Object.keys(errorObj);
+    if (keys.length === 0) {
+      // Empty object - could be an abort error, but we can't be sure
+      // However, if axios.isCancel didn't catch it, it's likely not an abort
+      // So we'll return false for empty objects to be safe
+      return false;
+    }
+  }
+
+  return false;
+}
 
 // ============================================================================
 // Error Classification
@@ -179,4 +256,3 @@ export function getUserFriendlyErrorMessage(error: ApiError): string {
 
   return error.message || 'An unexpected error occurred. Please try again.';
 }
-

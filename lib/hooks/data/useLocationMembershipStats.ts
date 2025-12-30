@@ -12,6 +12,7 @@ import {
 } from '@/lib/helpers/membershipStats';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import { useCallback, useEffect, useState } from 'react';
 
 export type UseLocationMembershipStatsReturn = {
@@ -47,6 +48,11 @@ export function useLocationMembershipStats(
       );
       setMembershipStats(stats);
     } catch (err) {
+      // Silently handle aborted requests - this is expected behavior when switching filters
+      if (isAbortError(err)) {
+        return;
+      }
+
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to fetch membership stats';
       setError(errorMessage);
@@ -87,6 +93,11 @@ export function useLocationMembershipStats(
           setMembershipStatsLoading(false);
         }
       } catch (error) {
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
+          return;
+        }
+
         // Handle any errors
         const errorMessage =
           error instanceof Error ? error.message : 'Failed to fetch membership stats';

@@ -5,24 +5,28 @@ import { Label } from '@/components/ui/label';
 import { DashboardChartSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
 import type { dashboardData } from '@/lib/types';
 import { ChartProps } from '@/lib/types/componentProps';
-import { formatDisplayDate, formatTime } from '@/shared/utils/dateFormat';
+import {
+  formatDate,
+  formatDisplayDate,
+  formatTime,
+} from '@/shared/utils/dateFormat';
 import { useState } from 'react';
 import {
-    Area,
-    AreaChart,
-    CartesianGrid,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
-
 
 export default function Chart({
   loadingChartData,
   chartData,
   activeMetricsFilter,
   totals,
+  granularity,
 }: ChartProps) {
   // State for selected metrics (all selected by default)
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([
@@ -49,7 +53,7 @@ export default function Chart({
     if (totals === null || totals === undefined) {
       return <DashboardChartSkeleton />;
     }
-    
+
     // Show no data message only if we have totals but no chart data (legitimate empty state)
     return (
       <div className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md">
@@ -66,7 +70,12 @@ export default function Chart({
     if (!val || !day) return 0;
     try {
       const date = new Date(`${day}T${val}:00Z`);
-      return date.getHours() * 60 + date.getMinutes();
+      if (!isNaN(date.getTime())) {
+        return date.getHours() * 60 + date.getMinutes();
+      }
+      // Fallback for independent time parsing
+      const [h, m] = val.split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
     } catch {
       return 0;
     }
@@ -75,6 +84,10 @@ export default function Chart({
   const parseDay = (val?: string) => {
     if (!val) return 0;
     try {
+      // Explicitly handle YYYY-MM format for monthly data
+      if (/^\d{4}-\d{2}$/.test(val)) {
+        return new Date(`${val}-01`).getTime();
+      }
       return new Date(val).getTime();
     } catch {
       return 0;
@@ -82,7 +95,13 @@ export default function Chart({
   };
 
   // Determine if we should use hourly or daily formatting
+  // Respects the granularity prop - if daily/weekly/monthly is set, use that instead of hourly
   const shouldUseHourlyFormat = () => {
+    // If granularity is explicitly set to daily, weekly, or monthly, don't use hourly format
+    if (granularity === 'daily' || granularity === 'weekly' || granularity === 'monthly') {
+      return false;
+    }
+
     if (
       activeMetricsFilter === 'Today' ||
       activeMetricsFilter === 'Yesterday'
@@ -120,7 +139,6 @@ export default function Chart({
 
   const isHourlyChart = shouldUseHourlyFormat();
   const isMinuteLevel = hasMinuteLevelData();
-
 
   // For hourly charts, filter to only the most common day
   // BUT: For minute-level data, don't filter by day - show all data points
@@ -214,8 +232,10 @@ export default function Chart({
     // For hourly/daily: use $0.01 threshold
     const threshold = isMinuteLevelData ? 0 : 0.01;
 
-    const hasMoneyIn = selectedMetrics.includes('Money In') && moneyIn > threshold;
-    const hasMoneyOut = selectedMetrics.includes('Money Out') && moneyOut > threshold;
+    const hasMoneyIn =
+      selectedMetrics.includes('Money In') && moneyIn > threshold;
+    const hasMoneyOut =
+      selectedMetrics.includes('Money Out') && moneyOut > threshold;
     const hasGross = selectedMetrics.includes('Gross') && gross > threshold;
 
     return hasMoneyIn || hasMoneyOut || hasGross;
@@ -230,7 +250,8 @@ export default function Chart({
       const item = filteredChartData[i];
       const hasData =
         (selectedMetrics.includes('Money In') && (item.moneyIn || 0) >= 0.01) ||
-        (selectedMetrics.includes('Money Out') && (item.moneyOut || 0) >= 0.01) ||
+        (selectedMetrics.includes('Money Out') &&
+          (item.moneyOut || 0) >= 0.01) ||
         (selectedMetrics.includes('Gross') && (item.gross || 0) >= 0.01);
       if (hasData) {
         firstNonZeroIndex = i;
@@ -244,7 +265,8 @@ export default function Chart({
       const item = filteredChartData[i];
       const hasData =
         (selectedMetrics.includes('Money In') && (item.moneyIn || 0) >= 0.01) ||
-        (selectedMetrics.includes('Money Out') && (item.moneyOut || 0) >= 0.01) ||
+        (selectedMetrics.includes('Money Out') &&
+          (item.moneyOut || 0) >= 0.01) ||
         (selectedMetrics.includes('Gross') && (item.gross || 0) >= 0.01);
       if (hasData) {
         lastNonZeroIndex = i;
@@ -272,21 +294,27 @@ export default function Chart({
 
       // Check if current point has any activity for selected metrics
       const hasActivity =
-        (selectedMetrics.includes('Money In') && (current.moneyIn || 0) >= 0.01) ||
-        (selectedMetrics.includes('Money Out') && (current.moneyOut || 0) >= 0.01) ||
+        (selectedMetrics.includes('Money In') &&
+          (current.moneyIn || 0) >= 0.01) ||
+        (selectedMetrics.includes('Money Out') &&
+          (current.moneyOut || 0) >= 0.01) ||
         (selectedMetrics.includes('Gross') && (current.gross || 0) >= 0.01);
 
       // Check if previous point has activity
       const previousHasActivity = previous
-        ? (selectedMetrics.includes('Money In') && (previous.moneyIn || 0) >= 0.01) ||
-          (selectedMetrics.includes('Money Out') && (previous.moneyOut || 0) >= 0.01) ||
+        ? (selectedMetrics.includes('Money In') &&
+            (previous.moneyIn || 0) >= 0.01) ||
+          (selectedMetrics.includes('Money Out') &&
+            (previous.moneyOut || 0) >= 0.01) ||
           (selectedMetrics.includes('Gross') && (previous.gross || 0) >= 0.01)
         : false;
 
       // Check if next point has activity
       const nextHasActivity = next
-        ? (selectedMetrics.includes('Money In') && (next.moneyIn || 0) >= 0.01) ||
-          (selectedMetrics.includes('Money Out') && (next.moneyOut || 0) >= 0.01) ||
+        ? (selectedMetrics.includes('Money In') &&
+            (next.moneyIn || 0) >= 0.01) ||
+          (selectedMetrics.includes('Money Out') &&
+            (next.moneyOut || 0) >= 0.01) ||
           (selectedMetrics.includes('Gross') && (next.gross || 0) >= 0.01)
         : false;
 
@@ -389,7 +417,13 @@ export default function Chart({
             <AreaChart data={gapFilteredChartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
-                dataKey={isHourlyChart ? 'time' : 'day'}
+                dataKey={
+                  isHourlyChart
+                    ? 'time'
+                    : granularity === 'weekly' || granularity === 'monthly'
+                      ? 'day'
+                      : 'day'
+                }
                 tickFormatter={(val, index) => {
                   if (isHourlyChart) {
                     const day = gapFilteredChartData[index]?.day;
@@ -408,12 +442,62 @@ export default function Chart({
                     return val;
                   } else {
                     // For daily charts (7d, 30d, etc.), format the day value
-                    // val should be the day string (e.g., "2025-11-16")
+                    // val should be the day string (e.g., "2025-11-16" or "2025-10" for monthly)
                     if (val) {
                       // Try to get the day from the data point if val is not a valid date string
                       const dataPoint = gapFilteredChartData[index];
                       const dayValue = dataPoint?.day || val;
-                      // Validate and format the date
+
+                      // Check granularity first to determine data format
+                      // Order matters: monthly comes before weekly since monthly is "YYYY-MM" and weekly is "YYYY-MM-DD"
+
+                      // Check if this is monthly data (format: "YYYY-MM")
+                      if (granularity === 'monthly') {
+                        // Monthly data comes as "YYYY-MM" format from the API
+                        const monthlyPattern = /^\d{4}-\d{2}$/;
+                        if (monthlyPattern.test(dayValue)) {
+                          // Format as "Oct 2025" for monthly granularity
+                          const date = new Date(dayValue + '-01'); // Add day to make valid date
+                          if (!isNaN(date.getTime())) {
+                            return formatDate(date, {
+                              month: 'short',
+                              year: 'numeric',
+                            });
+                          }
+                        }
+                      }
+
+                      // Check if this is weekly data
+                      // Weekly data comes as the Monday of the week (format: "YYYY-MM-DD")
+                      // We detect it by checking if granularity is 'weekly'
+                      if (granularity === 'weekly') {
+                        const date = new Date(dayValue);
+                        if (!isNaN(date.getTime())) {
+                          // Calculate week number within the month (1-5)
+                          const weekStart = date;
+                          const monthStart = new Date(
+                            weekStart.getFullYear(),
+                            weekStart.getMonth(),
+                            1
+                          );
+                          const daysDiff =
+                            Math.floor(
+                              (weekStart.getTime() - monthStart.getTime()) /
+                                (1000 * 60 * 60 * 24)
+                            ) + 1;
+                          const weekNumber = Math.ceil(daysDiff / 7);
+
+                          // Format as "Week d of m" (e.g., "Week 1 of Oct")
+                          return `Week ${weekNumber} of ${formatDate(
+                            weekStart,
+                            {
+                              month: 'short',
+                            }
+                          )}`;
+                        }
+                      }
+
+                      // Validate and format the date for daily charts
                       const date = new Date(dayValue);
                       if (!isNaN(date.getTime())) {
                         return formatDisplayDate(date);

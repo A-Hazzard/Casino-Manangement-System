@@ -13,6 +13,17 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LocationMapSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+    PERFORMANCE_CONFIG,
+    PerformanceLevel,
+    getPerformanceLevel as getCommonPerformanceLevel,
+} from '@/lib/utils/financialColors';
 import { formatCurrency } from '@/lib/utils/formatting';
 import { MapPin, Search, TrendingUp } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -110,164 +121,60 @@ const MapAutoBounds = dynamic(
   { ssr: false }
 );
 
-// Performance Legend Control Component - Renders inside map using Leaflet Control
-const PerformanceLegendControl = dynamic(
-  () =>
-    Promise.all([import('react-leaflet'), import('react')]).then(
-      ([leafletMod, reactMod]) => {
-        const { useMap } = leafletMod;
-        const { useEffect, useRef } = reactMod;
+const PerformanceLegend = () => {
+  const [openTooltip, setOpenTooltip] = useState<string | null>(null);
 
-        return function PerformanceLegendControl() {
-          const map = useMap();
-          // Type for Leaflet Control - matches L.Control interface from @types/leaflet
-          type LeafletControl = {
-            addTo: (map: ReturnType<typeof useMap>) => LeafletControl;
-            remove: () => LeafletControl;
-          };
-          const controlRef = useRef<LeafletControl | null>(null);
-
-          useEffect(() => {
-            if (!map) return;
-
-            // Wait for map to be fully initialized
-            const mapContainer = map.getContainer?.();
-            if (!mapContainer) {
-              // Map not ready yet, return and let the effect run again
-              return;
+  return (
+    <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-1.5 rounded-lg bg-white/95 px-2 py-2 text-xs text-muted-foreground shadow-lg backdrop-blur-sm sm:px-3 sm:py-2 md:flex-col lg:flex-row lg:flex-wrap lg:gap-4">
+      {(
+        Object.entries(PERFORMANCE_CONFIG) as [
+          PerformanceLevel,
+          (typeof PERFORMANCE_CONFIG)['excellent'],
+        ][]
+      ).map(([key, config]) => (
+        <Tooltip
+          key={key}
+          open={openTooltip === key}
+          onOpenChange={open => {
+            if (open) {
+              setOpenTooltip(key);
+            } else if (openTooltip === key) {
+              setOpenTooltip(null);
             }
-
-            // Check if control already exists on map
-            const existingControl = mapContainer.querySelector(
-              '.performance-legend-control'
-            );
-            if (existingControl) {
-              // Control already exists, don't add again
-              return;
-            }
-
-            // Dynamically import Leaflet to access Control class
-            import('leaflet').then(L => {
-              // Double-check control doesn't exist (race condition protection)
-              const currentMapContainer = map.getContainer?.();
-              if (!currentMapContainer) return;
-
-              const existing = currentMapContainer.querySelector(
-                '.performance-legend-control'
-              );
-              if (existing) {
-                return;
-              }
-
-              // Create custom control class
-              const LegendControl = L.Control.extend({
-                onAdd: function () {
-                  const container = L.DomUtil.create(
-                    'div',
-                    'performance-legend-control'
-                  );
-                  container.style.cssText =
-                    'background: transparent; border: none; box-shadow: none; padding: 0;';
-
-                  // Create legend content
-                  const legendDiv = document.createElement('div');
-                  legendDiv.className =
-                    'max-h-[40vh] overflow-y-auto rounded-lg bg-white/95 px-2 py-2 text-xs text-muted-foreground shadow-lg backdrop-blur-sm sm:px-3 sm:py-2';
-                  legendDiv.innerHTML = `
-                    <div class="flex flex-col gap-1.5 sm:flex-col md:flex-col lg:flex-row lg:flex-wrap lg:gap-4">
-                      <div class="flex cursor-help items-center gap-1">
-                        <div class="h-3 w-3 rounded-full bg-green-500"></div>
-                        <span class="hidden sm:inline">Excellent Performance</span>
-                        <span class="sm:hidden">Excellent</span>
-                      </div>
-                      <div class="flex cursor-help items-center gap-1">
-                        <div class="h-3 w-3 rounded-full bg-blue-500"></div>
-                        <span class="hidden sm:inline">Good Performance</span>
-                        <span class="sm:hidden">Good</span>
-                      </div>
-                      <div class="flex cursor-help items-center gap-1">
-                        <div class="h-3 w-3 rounded-full bg-yellow-500"></div>
-                        <span class="hidden sm:inline">Average Performance</span>
-                        <span class="sm:hidden">Average</span>
-                      </div>
-                      <div class="flex cursor-help items-center gap-1">
-                        <div class="h-3 w-3 rounded-full bg-red-500"></div>
-                        <span class="hidden sm:inline">Poor Performance</span>
-                        <span class="sm:hidden">Poor</span>
-                      </div>
-                    </div>
-                  `;
-
-                  container.appendChild(legendDiv);
-                  return container;
-                },
-                onRemove: function () {
-                  // Cleanup if needed
-                },
-              });
-
-              try {
-                // Create and add control to map
-                // Access the actual Leaflet map instance from react-leaflet's useMap
-                // The map from useMap() is already the L.Map instance
-                const legendControl = new LegendControl({
-                  position: 'bottomright',
-                }) as L.Control;
-
-                // addTo returns the control instance (for chaining), and takes a Map
-                legendControl.addTo(map as unknown as L.Map);
-                // Cast to our type interface - L.Control implements the methods we need
-                controlRef.current = legendControl as unknown as LeafletControl;
-              } catch (error) {
-                console.error(
-                  'Error adding performance legend control:',
-                  error
-                );
-              }
-            });
-
-            // Cleanup
-            return () => {
-              if (controlRef.current) {
-                try {
-                  controlRef.current.remove();
-                } catch {
-                  // Ignore cleanup errors
-                }
-                controlRef.current = null;
-              }
-            };
-          }, [map]);
-
-          return null;
-        };
-      }
-    ),
-  { ssr: false }
-);
-
-// Helper functions using Revenue Performance (%) per documentation
-// Revenue % = (gross / drop) * 100
-const computeRevenuePercent = (gross: number, moneyIn: number) => {
-  if (!moneyIn || moneyIn <= 0) return 0;
-  return (gross / moneyIn) * 100;
+          }}
+        >
+          <TooltipTrigger
+            asChild
+            onClick={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpenTooltip(openTooltip === key ? null : key);
+            }}
+          >
+            <div className="flex cursor-help items-center gap-1 transition-opacity hover:opacity-80">
+              <div className={`h-3 w-3 rounded-full ${config.dotColor}`}></div>
+              <span className="hidden sm:inline">{config.label}</span>
+              <span className="sm:hidden">{config.label.split(' ')[0]}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="z-[10000]">
+            <p>{config.description}</p>
+          </TooltipContent>
+        </Tooltip>
+      ))}
+    </div>
+  );
 };
 
+// Helper functions using centralized Performance logic
 const getPerformanceColor = (gross: number, moneyIn: number) => {
-  const pct = computeRevenuePercent(gross, moneyIn);
-  if (pct > 20) return 'text-green-600';
-  if (pct >= 15) return 'text-blue-600';
-  if (pct >= 10) return 'text-yellow-600';
-  return 'text-red-600';
+  const level = getCommonPerformanceLevel(gross, moneyIn);
+  return PERFORMANCE_CONFIG[level].textColor;
 };
 
-// Helper function to get performance label from revenue % thresholds
+// Helper function to get performance label from centralized config
 const getPerformanceLabel = (gross: number, moneyIn: number) => {
-  const pct = computeRevenuePercent(gross, moneyIn);
-  if (pct > 20) return 'excellent';
-  if (pct >= 15) return 'good';
-  if (pct >= 10) return 'average';
-  return 'poor';
+  return getCommonPerformanceLevel(gross, moneyIn);
 };
 
 type LocationData = {
@@ -494,6 +401,8 @@ export default function LocationMap({
   });
 
   // Search functionality
+  // CRITICAL: Search only through validLocations (already filtered by licensee and coordinates)
+  // This ensures search results match what's shown on the map
   const handleSearch = (query: string) => {
     setSearchQuery(query);
 
@@ -503,8 +412,9 @@ export default function LocationMap({
       return;
     }
 
-    // Search through ALL locations, not just those with valid coordinates
-    const filtered = locations.filter(location => {
+    // Search through validLocations (already filtered by licensee and coordinates)
+    // This ensures search results only show locations from the selected licensee
+    const filtered = validLocations.filter(location => {
       const locationName = location.name || '';
       return locationName.toLowerCase().includes(query.toLowerCase());
     });
@@ -636,128 +546,8 @@ export default function LocationMap({
 
   if (compact) {
     return (
-      <div className="relative z-0 h-full w-full">
-        <MapContainer
-          center={mapCenter}
-          zoom={zoom}
-          scrollWheelZoom={true}
-          style={{ height: '100%', width: '100%' }}
-        >
-          <MapController onMapReady={handleMapReady} />
-          {/* Grey map tiles similar to Google Analytics */}
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-            className="grayscale"
-          />
-
-          {mapInstanceReady &&
-            validLocations.map(location => renderMarker(location, location.id))}
-          {/* Performance Legend Control - Inside map container */}
-          <PerformanceLegendControl />
-        </MapContainer>
-      </div>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MapPin className="h-5 w-5" />
-          Location Performance Map
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Interactive map showing casino location performance metrics
-        </p>
-      </CardHeader>
-      <CardContent>
-        {/* Notification for locations without coordinates */}
-        {locationsWithoutCoords.length > 0 && (
-          <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 p-3">
-            <div className="flex items-center gap-2 text-sm text-yellow-800">
-              <MapPin className="h-4 w-4" />
-              <span>
-                <strong>{locationsWithoutCoords.length}</strong> location
-                {locationsWithoutCoords.length !== 1 ? 's' : ''}
-                {locationsWithoutCoords.length === 1 ? ' has' : ' have'} no
-                coordinates and can&apos;t be displayed on the map
-              </span>
-            </div>
-            {locationsWithoutCoords.length <= 5 && (
-              <div className="mt-1 text-xs text-yellow-700">
-                Missing:{' '}
-                {locationsWithoutCoords.map(loc => loc.name).join(', ')}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Map - Full Width with Search Overlay */}
-        <div className="relative z-0 h-[500px] w-full overflow-hidden rounded-lg lg:h-[45rem]">
-          {/* Search Bar Overlay - Top Left */}
-          <div className="absolute left-3 top-3 z-[1000] w-[calc(100%-1.5rem)] max-w-xs">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search locations..."
-                value={searchQuery}
-                onChange={e => handleSearch(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white/95 py-2 pl-10 pr-4 text-sm shadow-lg backdrop-blur-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onClick={e => e.stopPropagation()}
-              />
-              {/* Search Results Dropdown */}
-              {showSearchResults && (
-                <div className="absolute top-full z-[1001] mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
-                  {searchResults.length > 0 ? (
-                    searchResults.map(location => {
-                      const hasValidCoords =
-                        location.coordinates &&
-                        location.coordinates[0] !== 0 &&
-                        location.coordinates[1] !== 0;
-
-                      return (
-                        <button
-                          key={location.id}
-                          onClick={e => {
-                            e.stopPropagation();
-                            zoomToLocation(location);
-                          }}
-                          className="flex w-full items-center gap-2 border-b border-gray-200 px-4 py-2 text-left text-sm last:border-b-0 hover:bg-gray-100"
-                        >
-                          <MapPin
-                            className={`h-4 w-4 flex-shrink-0 ${
-                              hasValidCoords
-                                ? 'text-gray-400'
-                                : 'text-yellow-500'
-                            }`}
-                          />
-                          <span
-                            className={`truncate ${
-                              hasValidCoords ? '' : 'text-yellow-600'
-                            }`}
-                          >
-                            {location.name}
-                          </span>
-                          {!hasValidCoords && (
-                            <span className="ml-auto flex-shrink-0 rounded bg-yellow-100 px-1 text-xs text-yellow-600">
-                              No map
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <div className="p-4 text-center text-sm text-gray-500">
-                      No locations found matching &quot;{searchQuery}&quot;
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
+      <TooltipProvider>
+        <div className="relative z-0 h-full w-full">
           <MapContainer
             center={mapCenter}
             zoom={zoom}
@@ -765,21 +555,147 @@ export default function LocationMap({
             style={{ height: '100%', width: '100%' }}
           >
             <MapController onMapReady={handleMapReady} />
-            <MapAutoBounds locations={validLocations} />
+            {/* Grey map tiles similar to Google Analytics */}
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
               className="grayscale"
             />
+
             {mapInstanceReady &&
               validLocations.map(location =>
                 renderMarker(location, location.id)
               )}
-            {/* Performance Legend Control - Inside map container */}
-            <PerformanceLegendControl />
           </MapContainer>
+          {/* Performance Legend - Positioned over map */}
+          <PerformanceLegend />
         </div>
-      </CardContent>
-    </Card>
+      </TooltipProvider>
+    );
+  }
+
+  return (
+    <TooltipProvider>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Location Performance Map
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Interactive map showing casino location performance metrics
+          </p>
+        </CardHeader>
+        <CardContent>
+          {/* Notification for locations without coordinates */}
+          {locationsWithoutCoords.length > 0 && (
+            <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 p-3">
+              <div className="flex items-center gap-2 text-sm text-yellow-800">
+                <MapPin className="h-4 w-4" />
+                <span>
+                  <strong>{locationsWithoutCoords.length}</strong> location
+                  {locationsWithoutCoords.length !== 1 ? 's' : ''}
+                  {locationsWithoutCoords.length === 1 ? ' has' : ' have'} no
+                  coordinates and can&apos;t be displayed on the map
+                </span>
+              </div>
+              {locationsWithoutCoords.length <= 5 && (
+                <div className="mt-1 text-xs text-yellow-700">
+                  Missing:{' '}
+                  {locationsWithoutCoords.map(loc => loc.name).join(', ')}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Map - Full Width with Search Overlay */}
+          <div className="relative z-0 h-[500px] w-full overflow-hidden rounded-lg lg:h-[45rem]">
+            {/* Search Bar Overlay - Top Left */}
+            <div className="absolute left-3 top-3 z-[1000] w-[calc(100%-1.5rem)] max-w-xs">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search locations..."
+                  value={searchQuery}
+                  onChange={e => handleSearch(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white/95 py-2 pl-10 pr-4 text-sm shadow-lg backdrop-blur-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onClick={e => e.stopPropagation()}
+                />
+                {/* Search Results Dropdown */}
+                {showSearchResults && (
+                  <div className="absolute top-full z-[1001] mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
+                    {searchResults.length > 0 ? (
+                      searchResults.map(location => {
+                        const hasValidCoords =
+                          location.coordinates &&
+                          location.coordinates[0] !== 0 &&
+                          location.coordinates[1] !== 0;
+
+                        return (
+                          <button
+                            key={location.id}
+                            onClick={e => {
+                              e.stopPropagation();
+                              zoomToLocation(location);
+                            }}
+                            className="flex w-full items-center gap-2 border-b border-gray-200 px-4 py-2 text-left text-sm last:border-b-0 hover:bg-gray-100"
+                          >
+                            <MapPin
+                              className={`h-4 w-4 flex-shrink-0 ${
+                                hasValidCoords
+                                  ? 'text-gray-400'
+                                  : 'text-yellow-500'
+                              }`}
+                            />
+                            <span
+                              className={`truncate ${
+                                hasValidCoords ? '' : 'text-yellow-600'
+                              }`}
+                            >
+                              {location.name}
+                            </span>
+                            {!hasValidCoords && (
+                              <span className="ml-auto flex-shrink-0 rounded bg-yellow-100 px-1 text-xs text-yellow-600">
+                                No map
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="p-4 text-center text-sm text-gray-500">
+                        No locations found matching &quot;{searchQuery}&quot;
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <MapContainer
+              center={mapCenter}
+              zoom={zoom}
+              scrollWheelZoom={true}
+              style={{ height: '100%', width: '100%' }}
+            >
+              <MapController onMapReady={handleMapReady} />
+              <MapAutoBounds locations={validLocations} />
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                className="grayscale"
+              />
+              {mapInstanceReady &&
+                validLocations.map(location =>
+                  renderMarker(location, location.id)
+                )}
+            </MapContainer>
+            {/* Performance Legend - Positioned over map */}
+            <PerformanceLegend />
+          </div>
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   );
 }

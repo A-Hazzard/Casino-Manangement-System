@@ -79,6 +79,7 @@ function LocationsPageContent() {
     totalPages,
     handleRefresh,
     handleFilterChange,
+    handleMultiFilterChange,
     setSearchTerm,
     setCurrentPage,
     fetchData,
@@ -163,7 +164,7 @@ function LocationsPageContent() {
             onSearchChange={setSearchTerm}
             selectedFilters={selectedFilters}
             onFilterChange={handleFilterChange}
-            onMultiFilterChange={() => {}}
+            onMultiFilterChange={handleMultiFilterChange}
           />
         </div>
 
@@ -212,10 +213,12 @@ function LocationsPageContent() {
                     if (action === 'edit') openEditModal(loc);
                     if (action === 'delete') openDeleteModal(loc);
                   }}
-                  onSort={() => {}}
-                  sortOption="locationName"
-                  sortOrder="asc"
-                  formatCurrency={amount => `$${amount.toFixed(2)}`}
+                  onSort={locationsPageData.handleSort}
+                  sortOption={locationsPageData.sortOption}
+                  sortOrder={locationsPageData.sortOrder}
+                  formatCurrency={amount =>
+                    `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  }
                 />
               </div>
 

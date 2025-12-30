@@ -19,8 +19,9 @@ import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
+import { isAbortError } from '@/lib/utils/errorHandling';
 import type { DashboardTotals } from '@/lib/types';
-import type { LocationFilter } from '@/lib/types/location';
+import type { LocationFilter, LocationSortOption } from '@/lib/types/location';
 import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
 import type { AggregatedLocation } from '@/shared/types';
 import { useEffect, useMemo, useState } from 'react';
@@ -45,6 +46,10 @@ export function useLocationsPageData() {
   const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(null);
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(true);
   const [filtersInitialized, setFiltersInitialized] = useState(false);
+  
+  // Sorting State
+  const [sortOption, setSortOption] = useState<LocationSortOption>('moneyIn');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const makeMetricsRequest = useAbortableRequest();
 
@@ -69,14 +74,37 @@ export function useLocationsPageData() {
   const filteredLocationData = useMemo(() => {
     // When filters are active, always use locationData from API (which is already filtered)
     // When no filters and no search, use accumulatedLocations
-    const data = selectedFilters.length > 0
+    let data = selectedFilters.length > 0
       ? locationData
       : (searchTerm.trim() ? locationData : accumulatedLocations);
 
     const isDeveloper = user?.roles?.includes('developer') ?? false;
-    if (isDeveloper) return data;
-    return data.filter(loc => !/^test/i.test(loc.locationName || loc.location || ''));
-  }, [locationData, accumulatedLocations, searchTerm, selectedFilters, user]);
+    if (!isDeveloper) {
+      data = data.filter(loc => !/^test/i.test(loc.locationName || loc.location || ''));
+    }
+    
+    // sorting logic
+    return [...data].sort((a, b) => {
+      let valA: any = a[sortOption as keyof AggregatedLocation];
+      let valB: any = b[sortOption as keyof AggregatedLocation];
+
+      // Handle undefined/null
+      if (valA === undefined || valA === null) valA = 0;
+      if (valB === undefined || valB === null) valB = 0;
+
+      // String comparison
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        return sortOrder === 'asc' 
+          ? valA.localeCompare(valB) 
+          : valB.localeCompare(valA);
+      }
+      
+      // Numeric comparison
+      return sortOrder === 'asc' 
+        ? (Number(valA) - Number(valB)) 
+        : (Number(valB) - Number(valA));
+    });
+  }, [locationData, accumulatedLocations, searchTerm, selectedFilters, user, sortOption, sortOrder]);
 
   const financialTotals = useMemo(() => calculateLocationFinancialTotals(
     accumulatedLocations.length > 0 ? accumulatedLocations : locationData
@@ -105,6 +133,19 @@ export function useLocationsPageData() {
     setSelectedFilters(prev => checked ? [...prev, filter] : prev.filter(f => f !== filter));
   };
 
+  const handleMultiFilterChange = (filters: LocationFilter[]) => {
+    setSelectedFilters(filters);
+  };
+  
+  const handleSort = (option: LocationSortOption) => {
+    if (sortOption === option) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortOption(option);
+      setSortOrder('desc');
+    }
+  };
+
   // ============================================================================
   // Effects
   // ============================================================================
@@ -120,6 +161,11 @@ export function useLocationsPageData() {
     if (selectedFilters.length > 0) {
       return;
     }
+    
+    // Don't accumulate stale data while loading new data
+    if (loading) {
+      return;
+    }
 
     if (!searchTerm.trim() && locationData.length > 0) {
       setAccumulatedLocations(prev => {
@@ -128,14 +174,12 @@ export function useLocationsPageData() {
         return [...prev, ...newLocations];
       });
     }
-  }, [locationData, searchTerm, selectedFilters]);
+  }, [locationData, searchTerm, selectedFilters, loading]);
 
   // Clear accumulated locations when filters change
   useEffect(() => {
-    if (selectedFilters.length > 0) {
-      setAccumulatedLocations([]);
-    }
-  }, [selectedFilters]);
+    setAccumulatedLocations([]);
+  }, [selectedFilters, activeMetricsFilter, selectedLicencee, customDateRange]);
 
   // Initial data fetch on mount
   useEffect(() => {
@@ -167,6 +211,14 @@ export function useLocationsPageData() {
           signal,
           machineTypeFilterString
         );
+      } catch (error) {
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        // fetchDashboardTotals should handle abort errors internally, but catch any that leak through
+        if (isAbortError(error)) {
+          return;
+        }
+        // Re-throw actual errors - fetchDashboardTotals will handle them and show appropriate toasts
+        throw error;
       } finally {
         setMetricsTotalsLoading(false);
       }
@@ -189,9 +241,13 @@ export function useLocationsPageData() {
     searchTerm,
     currentPage,
     totalPages,
+    sortOption,
+    sortOrder,
     // Handlers
     handleRefresh,
     handleFilterChange,
+    handleMultiFilterChange,
+    handleSort,
     setSearchTerm,
     setCurrentPage,
     fetchData,

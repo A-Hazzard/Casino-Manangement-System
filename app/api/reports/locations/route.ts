@@ -16,12 +16,12 @@
  */
 
 import {
-    getUserAccessibleLicenseesFromToken,
-    getUserLocationFilter,
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import {
-    applyLocationsCurrencyConversion,
-    handleSummaryMode,
+  applyLocationsCurrencyConversion,
+  handleSummaryMode,
 } from '@/app/api/lib/helpers/locationsReport';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -33,7 +33,10 @@ import { TimePeriod } from '@/app/api/lib/types';
 import { getLicenseeCurrency } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
-import type { AggregatedLocation, GeoCoordinates } from '@/shared/types/entities';
+import type {
+  AggregatedLocation,
+  GeoCoordinates,
+} from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -89,7 +92,7 @@ export async function GET(req: NextRequest) {
     await connectDB();
     const userPayload = await getUserFromServer();
     if (!userPayload)
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const userRoles = (userPayload.roles as string[]) || [];
     const userLocationPermissions =
@@ -109,16 +112,16 @@ export async function GET(req: NextRequest) {
       userAccessibleLicensees !== 'all' &&
       userAccessibleLicensees.length === 1
     ) {
-        resolvedLicensee = userAccessibleLicensees[0];
+      resolvedLicensee = userAccessibleLicensees[0];
     }
 
     if (!currencyParam && resolvedLicensee) {
-        const licenseeDoc = await Licencee.findOne(
-          { _id: resolvedLicensee },
-          { name: 1 }
-        ).lean();
-        if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
-          displayCurrency = getLicenseeCurrency(licenseeDoc.name);
+      const licenseeDoc = await Licencee.findOne(
+        { _id: resolvedLicensee },
+        { name: 1 }
+      ).lean();
+      if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
+        displayCurrency = getLicenseeCurrency(licenseeDoc.name);
       }
     }
 
@@ -153,9 +156,9 @@ export async function GET(req: NextRequest) {
       locationMatchStage._id = { $in: intersection };
     } else if (specificLocations.length > 0) {
       locationMatchStage._id = { $in: specificLocations };
-      }
+    }
 
-      if (licencee && licencee !== 'all') {
+    if (licencee && licencee !== 'all') {
       locationMatchStage['rel.licencee'] = licencee;
     }
 
@@ -176,50 +179,69 @@ export async function GET(req: NextRequest) {
     // Apply machine type filters (SMIB, No SMIB, Local Server, Membership, Coordinates)
     if (machineTypeFilter) {
       const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
-      const filterConditions: Record<string, unknown>[] = [];
+
+      // Group filters by logical categories to allow OR within category and AND across
+      const connectionFilters: Record<string, unknown>[] = [];
+      const featureFilters: Record<string, unknown>[] = [];
+      const qualityFilters: Record<string, unknown>[] = [];
 
       filters.forEach(filter => {
-        switch (filter.trim()) {
+        const f = filter.trim();
+        switch (f) {
+          // --- Connection Category ---
           case 'LocalServersOnly':
-            filterConditions.push({ isLocalServer: true });
+            connectionFilters.push({ isLocalServer: true });
             break;
           case 'SMIBLocationsOnly':
-            filterConditions.push({ noSMIBLocation: { $ne: true } });
+            connectionFilters.push({ noSMIBLocation: { $ne: true } });
             break;
           case 'NoSMIBLocation':
-            filterConditions.push({ noSMIBLocation: true });
+            connectionFilters.push({ noSMIBLocation: true });
             break;
+
+          // --- Feature Category ---
           case 'MembershipOnly':
-            filterConditions.push({
+            featureFilters.push({
               $or: [{ membershipEnabled: true }, { enableMembership: true }],
             });
             break;
+
+          // --- Quality Category ---
           case 'MissingCoordinates':
-            filterConditions.push({
+            qualityFilters.push({
               $or: [
                 { geoCoords: { $exists: false } },
                 { geoCoords: null },
                 { 'geoCoords.latitude': { $exists: false } },
                 { 'geoCoords.latitude': null },
+                { 'geoCoords.latitude': 0 },
                 {
-                  $and: [
-                    { 'geoCoords.longitude': { $exists: false } },
-                    { 'geoCoords.longitude': null },
-                    { 'geoCoords.longtitude': { $exists: false } },
-                    { 'geoCoords.longtitude': null },
+                  $or: [
+                    { 'geoCoords.longitude': { $exists: false, $eq: null } },
+                    { 'geoCoords.longtitude': { $exists: false, $eq: null } },
                   ],
                 },
               ],
             });
             break;
           case 'HasCoordinates':
-            filterConditions.push({
+            qualityFilters.push({
               $and: [
-                { 'geoCoords.latitude': { $exists: true, $ne: null } },
+                { 'geoCoords.latitude': { $exists: true, $nin: [null, 0] } },
                 {
                   $or: [
-                    { 'geoCoords.longitude': { $exists: true, $ne: null } },
-                    { 'geoCoords.longtitude': { $exists: true, $ne: null } },
+                    {
+                      'geoCoords.longitude': {
+                        $exists: true,
+                        $nin: [null, 0],
+                      },
+                    },
+                    {
+                      'geoCoords.longtitude': {
+                        $exists: true,
+                        $nin: [null, 0],
+                      },
+                    },
                   ],
                 },
               ],
@@ -228,8 +250,17 @@ export async function GET(req: NextRequest) {
         }
       });
 
-      if (filterConditions.length > 0) {
-        const machineFilter = { $and: filterConditions };
+      // Combine categories: (Conn1 OR Conn2) AND (Feat1) AND (Qual1 OR Qual2)
+      const combinedFilters: Record<string, unknown>[] = [];
+      if (connectionFilters.length > 0)
+        combinedFilters.push({ $or: connectionFilters });
+      if (featureFilters.length > 0)
+        combinedFilters.push({ $or: featureFilters });
+      if (qualityFilters.length > 0)
+        combinedFilters.push({ $or: qualityFilters });
+
+      if (combinedFilters.length > 0) {
+        const machineFilter = { $and: combinedFilters };
         if (locationMatchStage.$and && Array.isArray(locationMatchStage.$and)) {
           locationMatchStage.$and.push(machineFilter);
         } else {
@@ -270,16 +301,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const gamingDayRanges = getGamingDayRangesForLocations(
-      locations.map(loc => ({
-        _id: String(loc._id),
-        gameDayOffset: loc.gameDayOffset ?? 8,
-      })),
-      timePeriod,
-      customStartDate,
-      customEndDate
-    );
-
     // ============================================================================
     // STEP 6: Aggregate financial metrics per location (optimized via cursor)
     // ============================================================================
@@ -304,6 +325,7 @@ export async function GET(req: NextRequest) {
         smibBoard: 1,
         assetNumber: 1,
         serialNumber: 1,
+        lastCollectionAt: 1,
       }
     ).lean();
 
@@ -316,46 +338,77 @@ export async function GET(req: NextRequest) {
         .push(m as unknown as Record<string, unknown>);
     });
 
+    // Calculate gaming day ranges for each location
+    const locationRanges = getGamingDayRangesForLocations(
+      locations.map(loc => ({
+        _id: String(loc._id),
+        gameDayOffset: loc.gameDayOffset ?? 8,
+      })),
+      timePeriod,
+      customStartDate,
+      customEndDate
+    );
+
     // Global date range for initial aggregation
     let globalStart = new Date();
     let globalEnd = new Date(0);
-    gamingDayRanges.forEach(range => {
+    locationRanges.forEach(range => {
       if (range.rangeStart < globalStart) globalStart = range.rangeStart;
       if (range.rangeEnd > globalEnd) globalEnd = range.rangeEnd;
     });
 
-      const metersCursor = Meters.aggregate([
-        {
-          $match: {
+    // Use aggregation to group by location AND hour to avoid inflation
+    const metersCursor = Meters.aggregate([
+      {
+        $match: {
           location: { $in: allLocationIds },
           readAt: { $gte: globalStart, $lte: globalEnd },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            location: '$location',
+            // Truncate to hour for bucketed summation
+            hour: { $dateTrunc: { date: '$readAt', unit: 'hour' } },
+          },
+          totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+          totalCancelledCredits: {
+            $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
           },
         },
-        {
-          $group: {
-          _id: '$location',
-            totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-            totalCancelledCredits: {
-              $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-            },
-          minReadAt: { $min: '$readAt' },
-          maxReadAt: { $max: '$readAt' },
-          },
-        },
-      ])
-        .allowDiskUse(true)
-        .cursor({ batchSize: 1000 });
+      },
+    ])
+      .allowDiskUse(true)
+      .cursor({ batchSize: 1000 });
 
-    const metricsMap = new Map<string, Record<string, unknown>>();
-      for await (const doc of metersCursor) {
-      const locId = String(doc._id);
-      const range = gamingDayRanges.get(locId);
-      if (
-        range &&
-        (doc.minReadAt as Date) <= range.rangeEnd &&
-        (doc.maxReadAt as Date) >= range.rangeStart
-      ) {
-        metricsMap.set(locId, doc as unknown as Record<string, unknown>);
+    const metricsMap = new Map<
+      string,
+      { totalDrop: number; totalCancelledCredits: number }
+    >();
+
+    for await (const doc of metersCursor) {
+      const locId = String(doc._id.location);
+      const bucketHour = new Date(doc._id.hour);
+      const range = locationRanges.get(locId);
+
+      if (!range) continue;
+
+      // Only include buckets that are within this location's specific gaming day range
+      // Meter readings are discrete events. Since we grouped by hour, we check if the hour
+      // start time falls within the gaming day range.
+      // NOTE: This handles different per-location offsets perfectly.
+      const isWithinRange =
+        bucketHour >= range.rangeStart && bucketHour <= range.rangeEnd;
+
+      if (isWithinRange) {
+        if (!metricsMap.has(locId)) {
+          metricsMap.set(locId, { totalDrop: 0, totalCancelledCredits: 0 });
+        }
+        const current = metricsMap.get(locId)!;
+        current.totalDrop += (doc.totalDrop as number) || 0;
+        current.totalCancelledCredits +=
+          (doc.totalCancelledCredits as number) || 0;
       }
     }
 
@@ -370,35 +423,35 @@ export async function GET(req: NextRequest) {
         totalCancelledCredits: 0,
       };
 
-        const totalMachines = machines.length;
-        const onlineMachines = machines.filter(
+      const totalMachines = machines.length;
+      const onlineMachines = machines.filter(
         m =>
-            m.lastActivity &&
+          m.lastActivity &&
           new Date(m.lastActivity as string) >
-              new Date(Date.now() - 24 * 60 * 60 * 1000)
-        ).length;
-        const sasMachines = machines.filter(
+            new Date(Date.now() - 24 * 60 * 60 * 1000)
+      ).length;
+      const sasMachines = machines.filter(
         m => m.isSasMachine as boolean
-        ).length;
+      ).length;
       const hasSmib = machines.some(
         m =>
           (m.relayId as string | undefined)?.trim() ||
           (m.smibBoard as string | undefined)?.trim()
       );
 
-        if (
-          !showAllLocations &&
-          totalMachines === 0 &&
+      if (
+        !showAllLocations &&
+        totalMachines === 0 &&
         (metrics.totalDrop as number) === 0
       )
-          continue;
+        continue;
 
-        locationResults.push({
+      locationResults.push({
         _id: locId,
         location: locId,
         locationName: loc.name,
         isLocalServer: loc.isLocalServer || false,
-          membershipEnabled: Boolean(
+        membershipEnabled: Boolean(
           loc.membershipEnabled ||
             (loc as { enableMembership?: boolean }).enableMembership
         ),
@@ -415,7 +468,7 @@ export async function GET(req: NextRequest) {
         onlineMachines,
         sasMachines,
         nonSasMachines: totalMachines - sasMachines,
-          hasSasMachines: sasMachines > 0,
+        hasSasMachines: sasMachines > 0,
         hasNonSasMachines: totalMachines - sasMachines > 0,
         noSMIBLocation: loc.noSMIBLocation || !hasSmib,
         hasSmib,
@@ -466,7 +519,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error('Reports Locations API Error:', err);
-        return NextResponse.json(
+    return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );

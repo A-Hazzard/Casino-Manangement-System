@@ -108,6 +108,12 @@ export function getGamingDayRangeForPeriod(
   const nowUtc = new Date();
   const nowLocal = new Date(nowUtc.getTime() + timezoneOffset * 60 * 60 * 1000);
 
+  if (timePeriod === 'Yesterday') {
+    console.error(
+      `[GAMING DAY DEBUG] timePeriod=Yesterday, nowUtc=${nowUtc.toISOString()}, timezoneOffset=${timezoneOffset}, nowLocal=${nowLocal.toISOString()}`
+    );
+  }
+
   // Use the local date for "today" calculations in UTC
   const today = new Date(
     Date.UTC(
@@ -133,14 +139,23 @@ export function getGamingDayRangeForPeriod(
       );
 
     case 'Yesterday':
-      // 🔧 FIX: Yesterday's gaming day should be relative to current gaming day
-      // If it's 2 AM and we're in yesterday's gaming day, "Yesterday" = day before yesterday
-      const currentHour2 = nowLocal.getUTCHours();
-      const yesterdayBase =
-        currentHour2 < gameDayStartHour
-          ? new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
-          : new Date(today.getTime() - 24 * 60 * 60 * 1000); // 1 day ago
-      return getGamingDayRange(yesterdayBase, gameDayStartHour, timezoneOffset);
+      // "Yesterday" refers to the calendar day before "today".
+      // However, if we are currently before the gaming day start hour,
+      // "today" (gaming day) is actually yesterday's calendar day,
+      // so "Yesterday" (gaming day) must be the day before that.
+      const currentHourY = nowLocal.getUTCHours();
+      const todayY =
+        currentHourY < gameDayStartHour
+          ? new Date(today.getTime() - 24 * 60 * 60 * 1000) // Shift back if in early morning
+          : today;
+      const calendarYesterday = new Date(
+        todayY.getTime() - 24 * 60 * 60 * 1000
+      );
+      return getGamingDayRange(
+        calendarYesterday,
+        gameDayStartHour,
+        timezoneOffset
+      );
 
     case 'last7days':
     case '7d':
@@ -303,7 +318,9 @@ export function getGamingDayRangesForLocations(
   const ranges = new Map<string, GamingDayRange>();
 
   for (const location of locations) {
-    const gameDayOffset = location.gameDayOffset || 0;
+    // Use ?? instead of || to properly handle 0 as a valid value
+    // Default to 8 (8 AM) if gameDayOffset is undefined
+    const gameDayOffset = location.gameDayOffset ?? 8;
     const range = getGamingDayRangeForPeriod(
       timePeriod,
       gameDayOffset,

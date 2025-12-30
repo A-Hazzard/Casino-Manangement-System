@@ -321,6 +321,33 @@ input[type='checkbox'] {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Leaflet popup z-index: Higher than search bar (z-[800]) but lower than custom range filter (z-[1100]) */
+/* Target the popup pane which is the parent container for all popups */
+.leaflet-popup-pane {
+  z-index: 900 !important;
+}
+
+.leaflet-popup {
+  z-index: 900 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  z-index: 900 !important;
+}
+
+.leaflet-popup-tip {
+  z-index: 900 !important;
+}
+
+/* Ensure popup pane is above search bar but below custom range filter */
+.leaflet-container .leaflet-popup-pane {
+  z-index: 900 !important;
+}
+
+.leaflet-container .leaflet-popup {
+  z-index: 900 !important;
+}
+
 .leaflet-control-zoom {
   border: none !important;
   border-radius: 8px !important;

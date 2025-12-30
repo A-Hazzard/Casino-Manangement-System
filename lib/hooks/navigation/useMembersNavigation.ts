@@ -1,14 +1,20 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import type { MembersTab, MembersView } from '@/shared/types/entities';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../auth';
-import type { MembersView, MembersTab } from '@/shared/types/entities';
 
 /**
  * Custom hook for managing members navigation logic
  * Handles URL state management, permission checking, and tab switching
+ *
+ * @param membersTabsConfig - Configuration for available tabs
+ * @param disableUrlSync - Optional flag to disable URL synchronization (for location details page)
  */
-export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
+export function useMembersNavigation(
+  membersTabsConfig: MembersTab[],
+  disableUrlSync: boolean = false
+) {
   // ============================================================================
   // Hooks & State
   // ============================================================================
@@ -35,14 +41,15 @@ export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
       const newTab = value as MembersView;
       setActiveTab(newTab);
 
-      // Update URL with tab parameter - always include it
-      const params = new URLSearchParams(searchParams?.toString() || '');
-      params.set('tab', newTab);
-
-      const newUrl = `${pathname}?${params.toString()}`;
-      router.push(newUrl, { scroll: false });
+      // Only update URL if URL sync is enabled (not disabled for location details page)
+      if (!disableUrlSync) {
+        const params = new URLSearchParams(searchParams?.toString() || '');
+        params.set('tab', newTab);
+        const newUrl = `${pathname}?${params.toString()}`;
+        router.push(newUrl, { scroll: false });
+      }
     },
-    [router, pathname, searchParams]
+    [disableUrlSync, router, pathname, searchParams]
   );
 
   // ============================================================================
@@ -57,14 +64,18 @@ export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
     if (tab === 'summary-report' || tab === 'members') {
       setActiveTab(tab as MembersView);
     } else {
-      // If tab is missing or invalid, set default and update URL
+      // If tab is missing or invalid, set default
       setActiveTab('members');
-      const params = new URLSearchParams(searchParams?.toString() || '');
-      params.set('tab', 'members');
-      const newUrl = `${pathname}?${params.toString()}`;
-      router.replace(newUrl, { scroll: false });
+
+      // Only update URL if URL sync is enabled (not disabled for location details page)
+      if (!disableUrlSync) {
+        const params = new URLSearchParams(searchParams?.toString() || '');
+        params.set('tab', 'members');
+        const newUrl = `${pathname}?${params.toString()}`;
+        router.replace(newUrl, { scroll: false });
+      }
     }
-  }, [searchParams, pathname, router]);
+  }, [searchParams, disableUrlSync, pathname, router]);
 
   /**
    * All tabs are available for authenticated users

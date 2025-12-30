@@ -5,12 +5,6 @@ export type CurrentUser = {
   roles?: string[];
 };
 
-import type { UserDocument } from './auth';
-
-export type UserDocumentWithPassword = UserDocument & {
-  updateOne: (update: Record<string, unknown>) => Promise<unknown>;
-};
-
 export type OriginalUserType = {
   _id: string;
   username: string;

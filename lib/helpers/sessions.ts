@@ -74,32 +74,4 @@ export function formatPoints(points: number | undefined | null): string {
 // ============================================================================
 // API Query Building
 // ============================================================================
-
-/**
- * Build API query parameters for sessions
- */
-export function buildSessionsQueryParams(params: {
-  page?: number;
-  limit?: number;
-  search?: string;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  licensee?: string;
-  startDate?: Date;
-  endDate?: Date;
-}): URLSearchParams {
-  const queryParams = new URLSearchParams();
-
-  if (params.page) queryParams.append('page', params.page.toString());
-  if (params.limit) queryParams.append('limit', params.limit.toString());
-  if (params.search) queryParams.append('search', params.search);
-  if (params.sortBy) queryParams.append('sortBy', params.sortBy);
-  if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
-  if (params.licensee) queryParams.append('licencee', params.licensee);
-  if (params.startDate)
-    queryParams.append('startDate', params.startDate.toISOString());
-  if (params.endDate)
-    queryParams.append('endDate', params.endDate.toISOString());
-
-  return queryParams;
-}
+// Note: buildSessionsQueryParams was removed as it was unused
