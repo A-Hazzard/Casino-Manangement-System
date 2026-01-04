@@ -108,7 +108,7 @@ Key features include:
 
 **Components Used:**
 
-- `LocationCabinetsSection` (`components/locations/sections/LocationCabinetsSection.tsx`)
+- `LocationsDetailsCabinetsSection` (`components/locations/sections/LocationsDetailsCabinetsSection.tsx`)
 - Machine table/card display
 - Search and filter controls
 - Pagination controls

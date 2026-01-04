@@ -27,7 +27,7 @@ The page features a tabbed interface with two main views:
 - **URL Pattern:** `/members`
 - **Authentication:** Required (ProtectedRoute)
 - **Access Level:** All authenticated users
-- **Main Component:** `MembersContent` (`components/members/MembersContent.tsx`)
+- **Main Component:** `MembersPageContent` (`components/members/MembersPageContent.tsx`)
 
 ## Page Sections
 
@@ -66,15 +66,15 @@ The page features a tabbed interface with two main views:
 **Components Used:**
 
 - `MembersListTab` (`components/members/tabs/MembersListTab.tsx`) - Main list tab component
-- `MemberTable` (`components/ui/members/MemberTable.tsx`) - Desktop table view
-- `MemberCard` (`components/ui/members/MemberCard.tsx`) - Mobile card view
-- `MemberTableSkeleton` (`components/ui/members/MemberTableSkeleton.tsx`) - Loading skeleton
-- `MemberSkeleton` (`components/ui/members/MemberSkeleton.tsx`) - Loading skeleton for cards
+- `MembersMemberTable` (`components/members/tabs/MembersMemberTable.tsx`) - Desktop table view
+- `MembersMemberCard` (`components/members/common/MembersMemberCard.tsx`) - Mobile card view
+- `MembersMemberTableSkeleton` (`components/members/tabs/MembersMemberTableSkeleton.tsx`) - Loading skeleton
+- `MembersMemberSkeleton` (`components/members/common/MembersMemberSkeleton.tsx`) - Loading skeleton for cards
 - `PaginationControls` (`components/ui/PaginationControls.tsx`) - Pagination component
 - `LocationSingleSelect` (`components/ui/common/LocationSingleSelect.tsx`) - Location filter dropdown
-- `EditMemberModal` (`components/ui/members/EditMemberModal.tsx`) - Edit member modal
-- `DeleteMemberModal` (`components/ui/members/DeleteMemberModal.tsx`) - Delete member modal
-- `NewMemberModal` (`components/ui/members/NewMemberModal.tsx`) - Create member modal
+- `MembersEditMemberModal` (`components/members/modals/MembersEditMemberModal.tsx`) - Edit member modal
+- `MembersDeleteMemberModal` (`components/members/modals/MembersDeleteMemberModal.tsx`) - Delete member modal
+- `MembersNewMemberModal` (`components/members/modals/MembersNewMemberModal.tsx`) - Create member modal
 
 **API Endpoints:**
 
@@ -140,7 +140,7 @@ The page features a tabbed interface with two main views:
 - `MembersKPICardsSkeleton` (`components/members/summary/MembersKPICardsSkeleton.tsx`) - KPI cards loading skeleton
 - `MembersTable` (`components/members/summary/MembersTable.tsx`) - Summary table component
 - `MembersTableSkeleton` (`components/members/summary/MembersTableSkeleton.tsx`) - Table loading skeleton
-- `DashboardDateFilters` (`components/ui/DashboardDateFilters.tsx`) - Date range filter component
+- `DateFilters` (`components/ui/common/DateFilters.tsx`) - Date range filter component
 - `LocationSingleSelect` (`components/ui/common/LocationSingleSelect.tsx`) - Location filter
 - `PaginationControls` (`components/ui/PaginationControls.tsx`) - Pagination
 - `MemberDetailsModal` (`components/members/MemberDetailsModal.tsx`) - Member details view modal

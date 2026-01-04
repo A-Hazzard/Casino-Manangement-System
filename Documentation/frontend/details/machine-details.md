@@ -36,7 +36,7 @@ Key features include:
 - **URL Pattern:** `/cabinets/[slug]` where `[slug]` is the machine/cabinet ID
 - **Authentication:** Required (ProtectedRoute)
 - **Access Level:** All authenticated users (role-based features may vary)
-- **Main Component:** `CabinetDetailPageContent` (within `app/cabinets/[slug]/page.tsx`)
+- **Main Component:** `CabinetsDetailsPageContent` (`components/cabinets/CabinetsDetailsPageContent.tsx`)
 
 ## Page Sections
 
@@ -46,7 +46,7 @@ Key features include:
 
 **Components Used:**
 
-- `CabinetSummarySection` (`components/cabinets/details/CabinetSummarySection.tsx`)
+- `CabinetsDetailsSummarySection` (`components/cabinets/details/CabinetsDetailsSummarySection.tsx`)
 - Status indicators, location information, basic metrics
 
 **API Endpoints:**
@@ -77,7 +77,7 @@ Key features include:
 
 **Components Used:**
 
-- `CabinetAccountingSection` (`components/cabinets/details/CabinetAccountingSection.tsx`)
+- `CabinetsDetailsAccountingSection` (`components/cabinets/details/CabinetsDetailsAccountingSection.tsx`)
 - Financial metrics display, calculations
 
 **API Endpoints:**
@@ -109,7 +109,7 @@ Key features include:
 
 **Components Used:**
 
-- `CabinetChartSection` (`components/cabinets/details/CabinetChartSection.tsx`)
+- `CabinetsDetailsChartSection` (`components/cabinets/details/CabinetsDetailsChartSection.tsx`)
 - Chart components, date filters
 
 **API Endpoints:**
@@ -141,7 +141,7 @@ Key features include:
 
 **Components Used:**
 
-- `CabinetSMIBManagementSection` (`components/cabinets/details/CabinetSMIBManagementSection.tsx`)
+- `CabinetsDetailsSMIBManagementSection` (`components/cabinets/details/CabinetsDetailsSMIBManagementSection.tsx`)
 - Configuration forms, status displays
 
 **API Endpoints:**

@@ -22,7 +22,7 @@ export type TopMachinesCriteria =
   | 'averageWager'
   | 'jackpot';
 
-export type MachinesEvaluationTabProps = {
+export type ReportsMachinesEvaluationProps = {
   // Data props
   evaluationData: MachineEvaluationData[];
   allMachines: MachineEvaluationData[];

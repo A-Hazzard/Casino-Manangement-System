@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { GamingMachine } from '@/shared/types/entities';
 
-type CabinetActionsState = {
+type CabinetsActionsState = {
   selectedCabinet: GamingMachine | null;
   isEditModalOpen: boolean;
   isDeleteModalOpen: boolean;
@@ -11,8 +11,8 @@ type CabinetActionsState = {
   closeDeleteModal: () => void;
 };
 
-// Define a no-op ve`rsion for SSR
-const dummyState: CabinetActionsState = {
+// Define a no-op version for SSR
+const dummyState: CabinetsActionsState = {
   selectedCabinet: null,
   isEditModalOpen: false,
   isDeleteModalOpen: false,
@@ -24,7 +24,7 @@ const dummyState: CabinetActionsState = {
 
 // Make sure store is created only on client-side
 const createStore = () => {
-  return create<CabinetActionsState>(set => ({
+  return create<CabinetsActionsState>(set => ({
     selectedCabinet: null,
     isEditModalOpen: false,
     isDeleteModalOpen: false,
@@ -51,14 +51,14 @@ const getClientStore = () => {
 };
 
 /**
- * Zustand store for managing cabinet actions (edit/delete modals).
+ * Zustand store for managing cabinets actions (edit/delete modals).
  *
  * - Tracks selected cabinet and modal open/close state.
  * - Provides actions to open/close edit and delete modals.
  * - Returns a dummy state for SSR.
  *
- * @returns Zustand hook for accessing and updating cabinet actions state.
+ * @returns Zustand hook for accessing and updating cabinets actions state.
  */
 // Use this store only on client side
-export const useCabinetActionsStore =
+export const useCabinetsActionsStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

@@ -14,7 +14,7 @@ import type {
 export type MachineData = SharedMachineData;
 export type MachineStats = SharedMachineStats;
 
-export type MachinesOverviewTabProps = {
+export type ReportsMachinesOverviewProps = {
   // Data props
   overviewMachines: MachineData[];
   allMachines: MachineData[];

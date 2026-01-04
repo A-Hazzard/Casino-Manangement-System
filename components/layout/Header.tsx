@@ -28,7 +28,7 @@
  * @param hideCurrencyFilter - Hide currency filter
  */
 'use client';
-import CurrencyFilter from '@/components/filters/CurrencyFilter';
+import CurrencyFilter from '@/components/layout/CurrencyFilter';
 import { ClientOnly } from '@/components/ui/ClientOnly';
 import LicenceeSelect from '@/components/ui/LicenceeSelect';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';

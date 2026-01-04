@@ -12,8 +12,8 @@
  * - Navigation state checking
  */
 
-import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 
 type UseSessionsNavigationReturn = {
   navigateToSessionEvents: (sessionId: string, machineId: string) => void;
@@ -48,6 +48,7 @@ export function useSessionsNavigation(): UseSessionsNavigationReturn {
 
   // Check if navigation back is possible
   const canNavigateBack = useCallback(() => {
+    if (typeof window === 'undefined') return false;
     return window.history.length > 1;
   }, []);
 

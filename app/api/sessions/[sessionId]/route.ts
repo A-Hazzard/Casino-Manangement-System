@@ -1,135 +1,118 @@
 /**
- * Machine Session Details API Route
+ * Session Details API Route
  *
- * This route handles fetching machine session details including membership settings.
- * It supports:
- * - Session metadata retrieval
- * - Location membership settings
- * - Member information
- *
- * @module app/api/sessions/[sessionId]/route
+ * Fetches detailed information about a specific session.
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
-import { Member } from '@/app/api/lib/models/members';
-import type { LocationMembershipSettings } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
 
-type MachineSessionDocument = {
-  _id: string;
-  memberId: string;
-  machineId: string;
-  locationMembershipSettings?: LocationMembershipSettings;
-  startTime?: Date;
-  endTime?: Date;
-  status?: string;
-};
-
-/**
- * Main GET handler for fetching machine session details
- *
- * Flow:
- * 1. Parse route parameters
- * 2. Connect to database
- * 3. Fetch session document by _id
- * 4. Return session info with membership settings
- */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   const startTime = Date.now();
+  const { sessionId } = await params;
 
   try {
-    // ============================================================================
-    // STEP 1: Parse route parameters and query parameters
-    // ============================================================================
-    const { sessionId } = await params;
-
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
     await connectDB();
 
-    // ============================================================================
-    // STEP 3: Fetch session document by _id
-    // ============================================================================
-    const sessionDocument = await MachineSession.findOne({
-      _id: sessionId,
-    })
-      .select({
-        _id: 1,
-        memberId: 1,
-        machineId: 1,
-        locationMembershipSettings: 1,
-        startTime: 1,
-        endTime: 1,
-        status: 1,
-      })
-      .lean<MachineSessionDocument | null>();
-
-    // ============================================================================
-    // STEP 4: Fetch member information
-    // ============================================================================
-    if (!sessionDocument) {
+    // Validate sessionId
+    if (!sessionId || sessionId === 'undefined' || sessionId === 'null') {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Session not found',
+        { success: false, error: 'Invalid session ID' },
+        { status: 400 }
+      );
+    }
+
+    // Since _id is defined as String in the schema, we match directly with the string sessionId
+    const sessionDetails = await MachineSession.aggregate([
+      { $match: { _id: sessionId } },
+      {
+        $lookup: {
+          from: 'members',
+          localField: 'memberId',
+          foreignField: '_id',
+          as: 'member',
         },
+      },
+      {
+        $unwind: {
+          path: '$member',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'machines',
+          localField: 'machineId',
+          foreignField: '_id',
+          as: 'machine',
+        },
+      },
+      {
+        $unwind: {
+          path: '$machine',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'gaminglocations',
+          localField: 'machine.gamingLocation',
+          foreignField: '_id',
+          as: 'location',
+        },
+      },
+      {
+        $unwind: {
+          path: '$location',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          memberId: 1,
+          machineId: 1,
+          startTime: 1,
+          endTime: 1,
+          status: 1,
+          locationMembershipSettings: {
+            $ifNull: [
+              '$member.locationMembershipSettings',
+              '$location.locationMembershipSettings',
+            ],
+          },
+          memberFirstName: '$member.profile.firstName',
+          memberLastName: '$member.profile.lastName',
+        },
+      },
+    ]);
+
+    if (!sessionDetails || sessionDetails.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Session not found' },
         { status: 404 }
       );
     }
 
-    // Fetch member information
-    let memberFirstName: string | undefined;
-    let memberLastName: string | undefined;
-    
-    if (sessionDocument.memberId) {
-      try {
-        const member = await Member.findOne({ _id: sessionDocument.memberId })
-          .select({ 'profile.firstName': 1, 'profile.lastName': 1 })
-          .lean<{ profile?: { firstName?: string; lastName?: string } } | null>();
-        
-        if (member?.profile) {
-          memberFirstName = member.profile.firstName;
-          memberLastName = member.profile.lastName;
-        }
-      } catch (error) {
-        console.warn('Failed to fetch member information:', error);
-        // Continue without member info
-      }
-    }
-
-    const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Machine Session API] Completed in ${duration}ms`);
-    }
+    const data = sessionDetails[0];
 
     return NextResponse.json({
       success: true,
-      data: {
-        _id: sessionDocument._id,
-        memberId: sessionDocument.memberId,
-        machineId: sessionDocument.machineId,
-        locationMembershipSettings: sessionDocument.locationMembershipSettings,
-        startTime: sessionDocument.startTime,
-        endTime: sessionDocument.endTime,
-        status: sessionDocument.status,
-        memberFirstName,
-        memberLastName,
-      },
+      data,
     });
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
     console.error(
-      `[Machine Session API] Error after ${duration}ms:`,
-      errorMessage,
-      error
+      `[SessionDetails API] Error after ${duration}ms:`,
+      errorMessage
     );
+
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }

@@ -39,7 +39,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 **Purpose:** Displays page title, refresh button, and "New Location" button (if user has manage permissions).
 
 **Components:**
-- `components/locations/details/LocationsHeaderSection.tsx` - Header component
+- `components/locations/details/LocationsDetailsHeaderSection.tsx` - Header component
 
 **Features:**
 - Page title with loading indicator
@@ -120,7 +120,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 **Purpose:** Allows users to search locations and apply status filters (SMIB, No SMIB, Local Server, Membership, Coordinates).
 
 **Components:**
-- `components/locations/details/LocationsFilterSection.tsx` - Search and filter component
+- `components/locations/details/LocationsDetailsFilterSection.tsx` - Search and filter component
 
 **Search Functionality:**
 - Text search input for location names
@@ -160,10 +160,10 @@ The Locations page provides comprehensive management and analytics for gaming lo
 **Purpose:** Displays the list of locations in table format (desktop) or card format (mobile).
 
 **Components:**
-- `components/ui/locations/LocationTable.tsx` - Desktop table view
-- `components/ui/locations/LocationCard.tsx` - Mobile card view
-- `components/ui/locations/LocationSkeleton.tsx` - Loading skeleton for cards
-- `components/ui/locations/CabinetTableSkeleton.tsx` - Loading skeleton for table
+- `components/locations/LocationsLocationTable.tsx` - Desktop table view
+- `components/locations/LocationsLocationCard.tsx` - Mobile card view
+- `components/locations/LocationsLocationSkeleton.tsx` - Loading skeleton for cards
+- `components/locations/LocationsCabinetTableSkeleton.tsx` - Loading skeleton for table
 
 **API Endpoint:**
 - `GET /api/reports/locations` - Returns paginated location list with financial metrics
@@ -222,9 +222,9 @@ The Locations page provides comprehensive management and analytics for gaming lo
 **Purpose:** Provides modals for creating, editing, and deleting locations.
 
 **Components:**
-- `components/ui/locations/NewLocationModal.tsx` - Create new location modal
-- `components/ui/locations/EditLocationModal.tsx` - Edit existing location modal
-- `components/ui/locations/DeleteLocationModal.tsx` - Delete confirmation modal
+- `components/locations/modals/LocationsNewLocationModal.tsx` - Create new location modal
+- `components/locations/modals/LocationsEditLocationModal.tsx` - Edit existing location modal
+- `components/locations/modals/LocationsDeleteLocationModal.tsx` - Delete confirmation modal
 
 **New Location Modal Features:**
 - Location name

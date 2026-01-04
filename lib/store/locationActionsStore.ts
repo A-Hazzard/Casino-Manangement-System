@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { LocationActionsState } from '@/lib/types/location';
+import type { AggregatedLocation } from '@/shared/types';
 
 // This is a store for location actions (edit/delete)
 
@@ -13,8 +13,18 @@ import { LocationActionsState } from '@/lib/types/location';
  * @returns Zustand hook for accessing and updating location actions state.
  */
 
+type LocationsActionsState = {
+  selectedLocation: Partial<AggregatedLocation>;
+  isEditModalOpen: boolean;
+  isDeleteModalOpen: boolean;
+  openEditModal: (location: Partial<AggregatedLocation>) => void;
+  openDeleteModal: (location: Partial<AggregatedLocation>) => void;
+  closeEditModal: () => void;
+  closeDeleteModal: () => void;
+};
+
 // Define a no-op version for SSR
-const dummyState: LocationActionsState = {
+const dummyState: LocationsActionsState = {
   selectedLocation: {},
   isEditModalOpen: false,
   isDeleteModalOpen: false,
@@ -26,7 +36,7 @@ const dummyState: LocationActionsState = {
 
 // Make sure store is created only on client-side
 const createStore = () => {
-  return create<LocationActionsState>(set => ({
+  return create<LocationsActionsState>(set => ({
     selectedLocation: {},
     isEditModalOpen: false,
     isDeleteModalOpen: false,
@@ -50,6 +60,15 @@ const getClientStore = () => {
   return storeInstance;
 };
 
+/**
+ * Zustand store for managing locations actions (edit/delete modals).
+ *
+ * - Tracks selected location and modal open/close state.
+ * - Provides actions to open/close edit and delete modals.
+ * - Returns a dummy state for SSR.
+ *
+ * @returns Zustand hook for accessing and updating locations actions state.
+ */
 // Use this store only on client side
-export const useLocationActionsStore =
+export const useLocationsActionsStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

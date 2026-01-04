@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useMemberActionsStore } from '@/lib/store/memberActionsStore';
+import { useMembersActionsStore } from '@/lib/store/memberActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CasinoMember as Member } from '@/shared/types/entities';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
@@ -36,19 +36,19 @@ type MemberSortOption =
 
 // Import SVG icons for pre-rendering
 
+import MembersMemberCard from '@/components/members/common/MembersMemberCard';
+import MembersMemberSkeleton from '@/components/members/common/MembersMemberSkeleton';
 import { useMembersHandlers } from '@/components/members/context/MembersHandlersContext';
+import MembersDeleteMemberModal from '@/components/members/modals/MembersDeleteMemberModal';
+import MembersEditMemberModal from '@/components/members/modals/MembersEditMemberModal';
+import MembersNewMemberModal from '@/components/members/modals/MembersNewMemberModal';
+import MembersMemberTable from '@/components/members/tabs/MembersMemberTable';
+import MembersMemberTableSkeleton from '@/components/members/tabs/MembersMemberTableSkeleton';
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
-import DeleteMemberModal from '@/components/ui/members/DeleteMemberModal';
-import EditMemberModal from '@/components/ui/members/EditMemberModal';
-import MemberCard from '@/components/ui/members/MemberCard';
-import MemberSkeleton from '@/components/ui/members/MemberSkeleton';
-import MemberTable from '@/components/ui/members/MemberTable';
-import MemberTableSkeleton from '@/components/ui/members/MemberTableSkeleton';
-import NewMemberModal from '@/components/ui/members/NewMemberModal';
 
-interface MembersListTabProps {
+type MembersListTabProps = {
   forcedLocationId?: string;
-}
+};
 
 export default function MembersListTab({
   forcedLocationId,
@@ -61,7 +61,7 @@ export default function MembersListTab({
     openDeleteModal,
     closeEditModal,
     closeDeleteModal,
-  } = useMemberActionsStore();
+  } = useMembersActionsStore();
   const {
     setOnRefresh,
     setOnNewMember,
@@ -663,7 +663,9 @@ export default function MembersListTab({
         {/* Mobile View */}
         <div className="mt-4 space-y-4 pb-24 lg:hidden">
           {loading ? (
-            Array.from({ length: 3 }).map((_, i) => <MemberSkeleton key={i} />)
+            Array.from({ length: 3 }).map((_, i) => (
+              <MembersMemberSkeleton key={i} />
+            ))
           ) : paginatedMembers.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 py-12 text-center">
               <Users className="mb-3 h-10 w-10 text-gray-400" />
@@ -676,7 +678,7 @@ export default function MembersListTab({
             </div>
           ) : (
             paginatedMembers.map(member => (
-              <MemberCard
+              <MembersMemberCard
                 key={member._id}
                 member={member}
                 onMemberClick={handleMemberClick}
@@ -693,13 +695,15 @@ export default function MembersListTab({
         {/* Desktop View */}
         <div className="hidden lg:block">
           {loading ? (
-            <MemberTableSkeleton hideLocationColumn={!!forcedLocationId} />
+            <MembersMemberTableSkeleton
+              hideLocationColumn={!!forcedLocationId}
+            />
           ) : paginatedMembers.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <span className="text-lg text-gray-500">No members found.</span>
             </div>
           ) : (
-            <MemberTable
+            <MembersMemberTable
               members={paginatedMembers}
               sortOption={sortOption}
               sortOrder={sortOrder}
@@ -727,19 +731,19 @@ export default function MembersListTab({
       })()}
 
       {/* Modals */}
-      <EditMemberModal
+      <MembersEditMemberModal
         isOpen={isEditModalOpen}
         onClose={closeEditModal}
         member={selectedMember._id ? (selectedMember as Member) : null}
         onMemberUpdated={handleMemberUpdated}
       />
-      <DeleteMemberModal
+      <MembersDeleteMemberModal
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
         member={selectedMember._id ? (selectedMember as Member) : null}
         onDelete={fetchMembers}
       />
-      <NewMemberModal
+      <MembersNewMemberModal
         isOpen={isNewMemberModalOpen}
         onClose={handleCloseNewMemberModal}
         onMemberCreated={handleMemberCreated}

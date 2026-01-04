@@ -74,3 +74,13 @@ export function getLicenseeName(
   );
   return entry ? entry[0] : licenseeObjectId;
 }
+
+/**
+ * Licensee selection options for dropdowns.
+ */
+export const licenseeOptions = [
+  { value: 'all', label: 'All Licensees' },
+  { value: '9a5db2cb29ffd2d962fd1d91', label: 'TTG' },
+  { value: 'c03b094083226f216b3fc39c', label: 'Cabana' },
+  { value: '732b094083226f216b3fc11a', label: 'Barbados' },
+];

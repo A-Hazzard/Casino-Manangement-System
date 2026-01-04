@@ -104,7 +104,7 @@ Key features include:
 **Purpose:** Display machines in table or card format based on screen size.
 
 **Components Used:**
-- `LocationCabinetsSection` (`components/locations/sections/LocationCabinetsSection.tsx`)
+- `LocationsDetailsCabinetsSection` (`components/locations/sections/LocationsDetailsCabinetsSection.tsx`)
 - Desktop table view with all columns
 - Mobile card view with essential information
 

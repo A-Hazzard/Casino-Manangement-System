@@ -23,7 +23,7 @@ export type CustomizedLabelProps = {
 };
 
 // Centralized props type for date filters to comply with Next.js rules on shared typing
-export type DashboardDateFiltersProps = {
+export type DateFiltersProps = {
   disabled?: boolean;
   onCustomRangeGo?: () => void;
   hideAllTime: boolean;
@@ -100,7 +100,7 @@ export type MonthlyReportDetailsRow = {
   sasGross: string;
 };
 
-export type NewCollectionModalProps = {
+export type CollectionReportNewCollectionModalProps = {
   show: boolean;
   onClose: () => void;
   locations: CollectionReportLocationWithMachines[];
@@ -109,9 +109,42 @@ export type NewCollectionModalProps = {
   onSuccess?: () => void;
 };
 
+export type CollectionReportEditCollectionModalProps = {
+  show: boolean;
+  onClose: () => void;
+  reportId: string;
+  locations: CollectionReportLocationWithMachines[];
+  onRefresh?: () => void;
+};
+
 // Collection Report UI Props Types
 
-export type CollectionDesktopUIProps = {
+export type CollectionReportTableProps = {
+  data: CollectionReportRow[];
+  loading?: boolean;
+  reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
+  onEdit?: (reportId: string) => void;
+  onDelete?: (reportId: string) => void;
+  sortField?: keyof CollectionReportRow;
+  sortDirection?: 'asc' | 'desc';
+  onSort?: (field: keyof CollectionReportRow) => void;
+  editableReportIds?: Set<string>; // Set of locationReportIds that can be edited
+  selectedLicencee?: string | null;
+};
+
+export type CollectionReportCardsProps = {
+  data: CollectionReportRow[];
+  gridLayout?: boolean; // New prop to control grid vs single column layout
+  reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
+  onEdit?: (reportId: string) => void;
+  onDelete?: (reportId: string) => void;
+  editableReportIds?: Set<string>; // Set of locationReportIds that can be edited
+  loading?: boolean;
+  onRefresh?: () => void;
+  selectedLicencee?: string | null;
+};
+
+export type CollectionReportDesktopUIProps = {
   loading: boolean;
   filteredReports: CollectionReportRow[];
   desktopTableRef: React.RefObject<HTMLDivElement | null>;
@@ -137,7 +170,7 @@ export type CollectionDesktopUIProps = {
   editableReportIds?: Set<string>; // Set of locationReportIds that can be edited (most recent per location)
 };
 
-export type CollectionMobileUIProps = {
+export type CollectionReportMobileUIProps = {
   loading: boolean;
   filteredReports: CollectionReportRow[];
   mobileCardsRef: React.RefObject<HTMLDivElement | null>;
@@ -161,7 +194,7 @@ export type CollectionMobileUIProps = {
   editableReportIds?: Set<string>; // Set of locationReportIds that can be edited (most recent per location)
 };
 
-export type MonthlyDesktopUIProps = {
+export type CollectionReportMonthlyDesktopUIProps = {
   locations: Array<{ id: string; name: string }>;
   monthlyLocation: string;
   onMonthlyLocationChange: (value: string) => void;
@@ -181,7 +214,9 @@ export type MonthlyDesktopUIProps = {
   monthlyLastItemIndex: number;
 };
 
-export type MonthlyMobileUIProps = {
+export type MonthlyDesktopUIProps = CollectionReportMonthlyDesktopUIProps;
+
+export type CollectionReportMonthlyMobileUIProps = {
   locations: Array<{ id: string; name: string }>;
   monthlyLocation: string;
   onMonthlyLocationChange: (value: string) => void;
@@ -194,7 +229,19 @@ export type MonthlyMobileUIProps = {
   monthlyLoading: boolean;
 };
 
-export type ManagerDesktopUIProps = {
+export type MonthlyMobileUIProps = CollectionReportMonthlyMobileUIProps;
+
+export type CollectionReportMonthlyDetailsTableProps = {
+  details: MonthlyReportDetailsRow[];
+  loading: boolean;
+};
+
+export type CollectionReportMonthlySummaryTableProps = {
+  summary: MonthlyReportSummary;
+  loading: boolean;
+};
+
+export type CollectionReportManagerDesktopUIProps = {
   locations: LocationSelectItem[];
   collectors: string[];
   selectedSchedulerLocation: string;
@@ -208,7 +255,7 @@ export type ManagerDesktopUIProps = {
   loadingSchedulers: boolean;
 };
 
-export type ManagerMobileUIProps = {
+export type CollectionReportManagerMobileUIProps = {
   locations: LocationSelectItem[];
   collectors: string[];
   selectedSchedulerLocation: string;
@@ -220,10 +267,33 @@ export type ManagerMobileUIProps = {
   onResetSchedulerFilters: () => void;
   schedulers: SchedulerTableRow[];
   loadingSchedulers: boolean;
+};
+
+export type CollectionReportManagerScheduleTableProps = {
+  data: SchedulerTableRow[];
+  loading: boolean;
+};
+
+export type CollectionReportManagerScheduleCardsProps = {
+  data: SchedulerTableRow[];
+  loading: boolean;
+};
+
+export type CollectionReportManagerScheduleFiltersProps = {
+  locations: LocationSelectItem[];
+  collectors: string[];
+  selectedLocation: string;
+  onLocationChange: (value: string) => void;
+  selectedCollector: string;
+  onCollectorChange: (value: string) => void;
+  selectedStatus: string;
+  onStatusChange: (value: string) => void;
+  onReset: () => void;
+  loading: boolean;
 };
 
 // Collector Schedule prop types
-export type CollectorScheduleDesktopUIProps = {
+export type CollectionReportCollectorDesktopUIProps = {
   locations: LocationSelectItem[];
   collectors: string[];
   selectedLocation: string;
@@ -237,7 +307,7 @@ export type CollectorScheduleDesktopUIProps = {
   loadingCollectorSchedules: boolean;
 };
 
-export type CollectorScheduleMobileUIProps = {
+export type CollectionReportCollectorMobileUIProps = {
   locations: LocationSelectItem[];
   collectors: string[];
   selectedLocation: string;
@@ -251,7 +321,7 @@ export type CollectorScheduleMobileUIProps = {
   loadingCollectorSchedules: boolean;
 };
 
-export type CollectorScheduleFiltersProps = {
+export type CollectionReportCollectorScheduleFiltersProps = {
   selectedLocation: string;
   onLocationChange: (value: string) => void;
   selectedStatus: string;
@@ -264,15 +334,36 @@ export type CollectorScheduleFiltersProps = {
   loading?: boolean;
 };
 
-export type CollectorScheduleTableProps = {
+export type CollectorScheduleFiltersProps = CollectionReportCollectorScheduleFiltersProps;
+
+export type CollectionReportFiltersProps = {
+  locations: Array<{ _id: string; name: string }>;
+  selectedLocation: string;
+  onLocationChange: (value: string) => void;
+  search: string;
+  onSearchChange: (value: string) => void;
+  onSearchSubmit: () => void;
+  showUncollectedOnly: boolean;
+  onShowUncollectedOnlyChange: (checked: boolean) => void;
+  selectedFilters: string[];
+  onFilterChange: (filter: string, checked: boolean) => void;
+  onClearFilters: () => void;
+  isSearching: boolean;
+};
+
+export type CollectionReportCollectorScheduleTableProps = {
   data: CollectorSchedule[];
   loading?: boolean;
 };
 
-export type CollectorScheduleCardsProps = {
+export type CollectorScheduleTableProps = CollectionReportCollectorScheduleTableProps;
+
+export type CollectionReportCollectorScheduleCardsProps = {
   data: CollectorSchedule[];
   loading?: boolean;
 };
+
+export type CollectorScheduleCardsProps = CollectionReportCollectorScheduleCardsProps;
 
 export type MapPreviewProps = {
   gamingLocations?: any[];
@@ -285,7 +376,7 @@ export type MapPreviewProps = {
 };
 
 // Layout Props
-export type MobileLayoutProps = {
+export type DashboardMobileLayoutProps = {
   children?: React.ReactNode;
   activeFilters: import('@/lib/types').ActiveFilters;
   activeTab: import('@/lib/types').ActiveTab;
@@ -314,6 +405,7 @@ export type MobileLayoutProps = {
   ) => void;
   renderCustomizedLabel: (props: CustomizedLabelProps) => React.ReactNode;
   selectedLicencee?: string;
+  setSelectedLicencee: (licencee: string) => void;
   loadingTopPerforming: boolean;
   hasTopPerformingFetched: boolean;
   onRefresh: () => Promise<void>;
@@ -323,6 +415,8 @@ export type MobileLayoutProps = {
     granularity: import('@shared/types/common').ChartGranularity
   ) => void;
   showGranularitySelector: boolean;
+  sortBy: 'totalDrop' | 'totalWin';
+  setSortBy: (sortBy: 'totalDrop' | 'totalWin') => void;
 };
 
-export type PcLayoutProps = MobileLayoutProps;
+export type DashboardDesktopLayoutProps = DashboardMobileLayoutProps;

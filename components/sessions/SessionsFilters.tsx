@@ -1,23 +1,13 @@
 'use client';
 
-import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import DateFilters from '@/components/ui/common/DateFilters'; // Aliased as DashboardDateFilters in concept
 import { CustomSelect } from '@/components/ui/custom-select';
 import { Input } from '@/components/ui/input';
 import { SESSION_SORT_OPTIONS } from '@/lib/constants/sessions';
+import { SessionsFiltersProps } from '@/lib/types/sessions';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 
-type SessionsFiltersProps = {
-  searchTerm: string;
-  onSearchChange: (value: string) => void;
-  sortBy: string;
-  sortOrder: 'asc' | 'desc';
-  // New props for explicit control to keep consistency with other pages
-  setSortBy?: (field: string) => void;
-  setSortOrder?: (order: 'asc' | 'desc') => void;
-  onSortChange?: (field: string) => void; // kept for backward compatibility
-};
-
-export default function SessionsFilters({
+export function SessionsFilters({
   searchTerm,
   onSearchChange,
   sortBy,
@@ -26,22 +16,21 @@ export default function SessionsFilters({
   setSortOrder,
   onSortChange,
 }: SessionsFiltersProps) {
-  // Handlers with fallbacks to onSortChange for compatibility
+  
   const handleSortFieldChange = (value: string) => {
     if (setSortBy) setSortBy(value);
-    else if (onSortChange) onSortChange(value);
+    if (onSortChange) onSortChange(value);
   };
 
   const handleSortOrderChange = (value: string) => {
-    const order = value === 'asc' ? 'asc' : 'desc';
-    if (setSortOrder) setSortOrder(order);
+    if (setSortOrder) setSortOrder(value as 'asc' | 'desc');
   };
 
   return (
     <div className="w-full max-w-full space-y-4">
       {/* Date Filters */}
       <div>
-        <DashboardDateFilters hideAllTime={false} mode="desktop" />
+        <DateFilters hideAllTime={false} mode="desktop" />
       </div>
 
       {/* Mobile: Search + Horizontal scroll filters */}
@@ -96,7 +85,7 @@ export default function SessionsFilters({
         </div>
       </div>
 
-      {/* Desktop: Search row (purple bar style like other pages) */}
+      {/* Desktop: Search row (purple bar style) */}
       <div className="hidden items-center gap-4 rounded-b-none rounded-t-lg bg-buttonActive p-4 md:flex">
         {/* Search */}
         <div className="relative min-w-0 max-w-md flex-1">

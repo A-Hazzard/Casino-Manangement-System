@@ -46,7 +46,7 @@ type UseEditCollectionModalProps = {
   show: boolean;
   reportId: string;
   locations: CollectionReportLocationWithMachines[];
-  onRefresh: () => void;
+  onRefresh?: () => void;
   onClose: () => void;
 };
 

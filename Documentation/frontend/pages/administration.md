@@ -73,7 +73,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/UserSummaryCards.tsx` - Grid of 5 summary cards
+- `components/administration/AdministrationUserSummaryCards.tsx` - Grid of 5 summary cards
 
 **API Endpoint:**
 
@@ -105,7 +105,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/SearchFilterBar.tsx` - Search input and filter dropdowns
+- `components/administration/AdministrationSearchFilterBar.tsx` - Search input and filter dropdowns
 
 **Functionality:**
 
@@ -134,10 +134,10 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/UserTable.tsx` - Desktop table view
-- `components/administration/UserCard.tsx` - Mobile card view
-  - `components/administration/UserTableSkeleton.tsx` - Loading skeleton for table
-  - `components/administration/UserCardSkeleton.tsx` - Loading skeleton for cards
+- `components/administration/tables/AdministrationUserTable.tsx` - Desktop table view
+- `components/administration/cards/AdministrationUserCard.tsx` - Mobile card view
+  - `components/administration/skeletons/AdministrationUserTableSkeleton.tsx` - Loading skeleton for table
+  - `components/administration/skeletons/AdministrationUserCardSkeleton.tsx` - Loading skeleton for cards
 
 **API Endpoint:**
 
@@ -187,9 +187,9 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/AddUserModal.tsx` - Create new user modal
-- `components/administration/UserModal.tsx` - Edit existing user modal
-- `components/administration/DeleteUserModal.tsx` - Delete confirmation modal
+- `components/administration/modals/AdministrationAddUserModal.tsx` - Create new user modal
+- `components/administration/modals/AdministrationUserModal.tsx` - Edit existing user modal
+- `components/administration/modals/AdministrationDeleteUserModal.tsx` - Delete confirmation modal
 
 **Add User Modal Features:**
 
@@ -250,7 +250,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/LicenseeSearchBar.tsx` - Search input component
+- `components/administration/AdministrationLicenseeSearchBar.tsx` - Search input component
 
 **Functionality:**
 
@@ -271,10 +271,10 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/LicenseeTable.tsx` - Desktop table view
-- `components/administration/LicenseeCard.tsx` - Mobile card view
-- `components/administration/LicenseeTableSkeleton.tsx` - Loading skeleton
-- `components/administration/LicenseeCardSkeleton.tsx` - Loading skeleton
+- `components/administration/tables/AdministrationLicenseeTable.tsx` - Desktop table view
+- `components/administration/cards/AdministrationLicenseeCard.tsx` - Mobile card view
+- `components/administration/skeletons/AdministrationLicenseeTableSkeleton.tsx` - Loading skeleton
+- `components/administration/skeletons/AdministrationLicenseeCardSkeleton.tsx` - Loading skeleton
 
 **API Endpoint:**
 
@@ -306,12 +306,12 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/AddLicenseeModal.tsx` - Create new licensee modal
-- `components/administration/EditLicenseeModal.tsx` - Edit existing licensee modal
-- `components/administration/DeleteLicenseeModal.tsx` - Delete confirmation modal
-- `components/administration/PaymentHistoryModal.tsx` - View payment history
-- `components/administration/LicenseeSuccessModal.tsx` - Success message with license key
-- `components/administration/PaymentStatusConfirmModal.tsx` - Confirm payment status change
+- `components/administration/modals/AdministrationAddLicenseeModal.tsx` - Create new licensee modal
+- `components/administration/modals/AdministrationEditLicenseeModal.tsx` - Edit existing licensee modal
+- `components/administration/modals/AdministrationDeleteLicenseeModal.tsx` - Delete confirmation modal
+- `components/administration/modals/AdministrationPaymentHistoryModal.tsx` - View payment history
+- `components/administration/modals/AdministrationLicenseeSuccessModal.tsx` - Success message with license key
+- `components/administration/modals/AdministrationPaymentStatusConfirmModal.tsx` - Confirm payment status change
 
 **Add/Edit Licensee Modal Features:**
 
@@ -351,7 +351,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/ActivityLogsTable.tsx` - Activity logs table
+- `components/administration/tables/AdministrationActivityLogsTable.tsx` - Activity logs table
 
 **API Endpoint:**
 
@@ -378,7 +378,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/FeedbackManagement.tsx` - Main feedback management component
+- `components/administration/AdministrationFeedbackManagement.tsx` - Main feedback management component
 
 **API Endpoint:**
 

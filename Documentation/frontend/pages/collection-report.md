@@ -38,7 +38,7 @@ Key features include:
 - **URL Pattern:** `/collection-report`
 - **Authentication:** Required (ProtectedRoute)
 - **Access Level:** All authenticated users (except Technician - redirected to Cabinets)
-- **Main Component:** `CollectionReportContent` (within `app/collection-report/page.tsx`)
+- **Main Component:** `CollectionReportPageContent` (`components/collectionReport/CollectionReportPageContent.tsx`)
 
 ## Page Sections
 
@@ -71,12 +71,16 @@ Key features include:
 **Purpose:** Main collection reports listing with search, filtering, pagination, and CRUD operations.
 
 **Components Used:**
-- `CollectionDesktopUI` (`components/collectionReport/CollectionDesktopUI.tsx`) - Desktop table view
-- `CollectionMobileUI` (`components/collectionReport/CollectionMobileUI.tsx`) - Mobile card view
+- `CollectionReportDesktopLayout` (`components/collectionReport/tabs/collection/CollectionReportDesktopLayout.tsx`) - Desktop layout with filters and table
+- `CollectionReportMobileLayout` (`components/collectionReport/tabs/collection/CollectionReportMobileLayout.tsx`) - Mobile layout with filters and cards
+- `CollectionReportTable` (`components/collectionReport/tabs/collection/CollectionReportTable.tsx`) - Desktop table view
+- `CollectionReportCards` (`components/collectionReport/tabs/collection/CollectionReportCards.tsx`) - Mobile card view
+- `CollectionReportFilters` (`components/collectionReport/tabs/collection/CollectionReportFilters.tsx`) - Search and filter controls
 - `CollectionReportHeader` (`components/collectionReport/CollectionReportHeader.tsx`) - Page header
-- `DashboardDateFilters` (`components/dashboard/DashboardDateFilters.tsx`) - Date range filter
+- `DateFilters` (`components/ui/common/DateFilters.tsx`) - Date range filter
 - `PaginationControls` (`components/ui/PaginationControls.tsx`) - Pagination
-- `CollectionReportPageSkeleton` (`components/ui/skeletons/CollectionReportPageSkeleton.tsx`) - Loading skeleton
+- `CollectionReportTableSkeleton` (`components/collectionReport/CollectionReportTableSkeleton.tsx`) - Table loading skeleton
+- `CollectionReportCardSkeleton` (`components/collectionReport/CollectionReportCardSkeleton.tsx`) - Card loading skeleton
 
 **API Endpoints:**
 - `GET /api/collectionReport` - Fetch collection reports with pagination and filtering
@@ -123,9 +127,9 @@ Key features include:
 **Purpose:** Monthly summary reports with aggregated collection data.
 
 **Components Used:**
-- `MonthlyDesktopUI` (`components/collectionReport/MonthlyDesktopUI.tsx`) - Desktop view
-- `MonthlyMobileUI` (`components/collectionReport/MonthlyMobileUI.tsx`) - Mobile view
-- Dynamically imported components
+- `CollectionReportMonthlyDesktop` (`components/collectionReport/tabs/monthly/CollectionReportMonthlyDesktop.tsx`) - Desktop view
+- `CollectionReportMonthlyMobile` (`components/collectionReport/tabs/monthly/CollectionReportMonthlyMobile.tsx`) - Mobile view
+- Dynamically imported components (for code splitting)
 
 **API Endpoints:**
 - `GET /api/collectionReport` - Fetch monthly summary data (with `timePeriod` parameter)
@@ -150,9 +154,9 @@ Key features include:
 **Purpose:** Collector schedule management for collection assignments.
 
 **Components Used:**
-- `CollectorDesktopUI` (`components/collectionReport/CollectorDesktopUI.tsx`) - Desktop view
-- `CollectorMobileUI` (`components/collectionReport/CollectorMobileUI.tsx`) - Mobile view
-- Dynamically imported components
+- `CollectionReportCollectorDesktop` (`components/collectionReport/tabs/collector/CollectionReportCollectorDesktop.tsx`) - Desktop view
+- `CollectionReportCollectorMobile` (`components/collectionReport/tabs/collector/CollectionReportCollectorMobile.tsx`) - Mobile view
+- Dynamically imported components (for code splitting)
 
 **API Endpoints:**
 - Collector schedule API endpoints (specific routes)
@@ -176,9 +180,9 @@ Key features include:
 **Purpose:** Manager schedule management and oversight.
 
 **Components Used:**
-- `ManagerDesktopUI` (`components/collectionReport/ManagerDesktopUI.tsx`) - Desktop view
-- `ManagerMobileUI` (`components/collectionReport/ManagerMobileUI.tsx`) - Mobile view
-- Dynamically imported components
+- `CollectionReportManagerDesktop` (`components/collectionReport/tabs/manager/CollectionReportManagerDesktop.tsx`) - Desktop view
+- `CollectionReportManagerMobile` (`components/collectionReport/tabs/manager/CollectionReportManagerMobile.tsx`) - Mobile view
+- Dynamically imported components (for code splitting)
 
 **API Endpoints:**
 - Manager schedule API endpoints (specific routes)
@@ -202,11 +206,11 @@ Key features include:
 **Purpose:** Create, edit, and delete collection reports via modal interfaces.
 
 **Components Used:**
-- `NewCollectionModal` (`components/collectionReport/NewCollectionModal.tsx`) - Desktop create modal
-- `EditCollectionModal` (`components/collectionReport/EditCollectionModal.tsx`) - Desktop edit modal
-- `MobileCollectionModal` (`components/collectionReport/mobile/MobileCollectionModal.tsx`) - Mobile create modal
-- `MobileEditCollectionModal` (`components/collectionReport/mobile/MobileEditCollectionModal.tsx`) - Mobile edit modal
-- `CollectionReportModals` (`components/collectionReport/CollectionReportModals.tsx`) - Modal orchestration component
+- `CollectionReportNewCollectionModal` (`components/collectionReport/modals/CollectionReportNewCollectionModal.tsx`) - Desktop create modal
+- `CollectionReportEditCollectionModal` (`components/collectionReport/modals/CollectionReportEditCollectionModal.tsx`) - Desktop edit modal
+- `CollectionReportMobileNewCollectionModal` (`components/collectionReport/mobile/CollectionReportMobileNewCollectionModal.tsx`) - Mobile create modal
+- `CollectionReportMobileEditCollectionModal` (`components/collectionReport/mobile/CollectionReportMobileEditCollectionModal.tsx`) - Mobile edit modal
+- `CollectionReportModals` (`components/collectionReport/modals/CollectionReportModals.tsx`) - Modal orchestration component
 - Delete confirmation dialog
 
 **API Endpoints:**

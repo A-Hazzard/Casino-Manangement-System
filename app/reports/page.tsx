@@ -3,7 +3,7 @@
 import { Suspense } from 'react';
 
 // Components
-import ReportsContent from '@/components/reports/ReportsContent';
+import ReportsPageContent from '@/components/reports/ReportsPageContent';
 import { ReportsPageSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
@@ -23,7 +23,7 @@ export default function ReportsPage() {
   return (
     <ProtectedRoute requiredPage="reports">
       <Suspense fallback={<ReportsPageSkeleton />}>
-        <ReportsContent />
+        <ReportsPageContent />
       </Suspense>
     </ProtectedRoute>
   );

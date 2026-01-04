@@ -48,7 +48,7 @@ export function useCollectionReportPageData() {
   const [allReports, setAllReports] = useState<CollectionReportRow[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalReports, setTotalReports] = useState(0);
-  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
@@ -96,7 +96,10 @@ export function useCollectionReportPageData() {
 
   const fetchReports = useCallback(
     async (batch: number = 1) => {
-      if (activeTab !== 'collection') return;
+      if (activeTab !== 'collection') {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         const result = await fetchCollectionReportsByLicencee(
@@ -225,11 +228,18 @@ export function useCollectionReportPageData() {
 
   // Load initial batch on mount and when filters change
   useEffect(() => {
-    setAllReports([]);
-    setLoadedBatches(new Set([1]));
-    setCurrentPage(0);
-    fetchReports(1);
-  }, [fetchReports]);
+    // Only fetch if we're on the collection tab
+    if (activeTab === 'collection') {
+      setAllReports([]);
+      setLoadedBatches(new Set());
+      setCurrentPage(0);
+      setLoading(true);
+      fetchReports(1);
+    } else {
+      // If not on collection tab, ensure loading is false
+      setLoading(false);
+    }
+  }, [fetchReports, activeTab]);
 
   // Fetch next batch when crossing batch boundaries
   useEffect(() => {

@@ -15,12 +15,13 @@
  * - Filter change notifications
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 type UseSessionsFiltersProps = {
   onFiltersChange?: (filters: {
     searchTerm: string;
     sortBy: string;
     sortOrder: 'asc' | 'desc';
+    status: string;
   }) => void;
 };
 
@@ -28,15 +29,18 @@ type UseSessionsFiltersReturn = {
   searchTerm: string;
   sortBy: string;
   sortOrder: 'asc' | 'desc';
+  statusFilter: string;
   setSearchTerm: (term: string) => void;
   setSortBy: (field: string) => void;
   setSortOrder: (order: 'asc' | 'desc') => void;
+  setStatusFilter: (status: string) => void;
   handleSort: (field: string) => void;
   clearFilters: () => void;
   filters: {
     searchTerm: string;
     sortBy: string;
     sortOrder: 'asc' | 'desc';
+    statusFilter: string;
   };
   hasActiveFilters: boolean;
   getSortIcon: (field: string) => React.ReactNode;
@@ -49,6 +53,7 @@ export function useSessionsFilters({
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('startTime');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Handle search term changes
   const handleSearchTermChange = useCallback((term: string) => {
@@ -83,14 +88,18 @@ export function useSessionsFilters({
     setSearchTerm('');
     setSortBy('startTime');
     setSortOrder('desc');
+    setStatusFilter('all');
   }, []);
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
     return (
-      searchTerm.trim() !== '' || sortBy !== 'startTime' || sortOrder !== 'desc'
+      searchTerm.trim() !== '' ||
+      sortBy !== 'startTime' ||
+      sortOrder !== 'desc' ||
+      statusFilter !== 'all'
     );
-  }, [searchTerm, sortBy, sortOrder]);
+  }, [searchTerm, sortBy, sortOrder, statusFilter]);
 
   // Get sort icon for a field
   const getSortIcon = useCallback(
@@ -108,23 +117,27 @@ export function useSessionsFilters({
         searchTerm,
         sortBy,
         sortOrder,
+        status: statusFilter,
       });
     }
-  }, [searchTerm, sortBy, sortOrder, onFiltersChange]);
+  }, [searchTerm, sortBy, sortOrder, statusFilter, onFiltersChange]);
 
   return {
     searchTerm,
     sortBy,
     sortOrder,
+    statusFilter,
     setSearchTerm: handleSearchTermChange,
     setSortBy: handleSortByChange,
     setSortOrder: handleSortOrderChange,
+    setStatusFilter,
     handleSort,
     clearFilters,
     filters: {
       searchTerm,
       sortBy,
       sortOrder,
+      statusFilter,
     },
     hasActiveFilters,
     getSortIcon,

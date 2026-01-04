@@ -12,8 +12,6 @@
 
 'use client';
 
-import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets';
-import { getMachineChartData } from '@/lib/helpers/machineChart';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type { dashboardData } from '@/lib/types';
@@ -158,6 +156,13 @@ export function useLocationChartData({
   // ============================================================================
   // Effects - Data Fetching
   // ============================================================================
+  // Reset lastFetchParamsRef on unmount to ensure fresh fetch on remount
+  useEffect(() => {
+    return () => {
+      lastFetchParamsRef.current = '';
+    };
+  }, []);
+
   // Update granularity based on data span
   // This effect should NOT trigger a refetch - it only updates UI state
   useEffect(() => {
@@ -211,15 +216,18 @@ export function useLocationChartData({
   useEffect(() => {
     // Only fetch if machines view is active
     if (activeView !== 'machines') {
+      setLoadingChartData(false);
       return;
     }
 
     // On initial load, we need locationId at minimum
     if (!locationId) {
+      setLoadingChartData(false);
       return;
     }
 
     // Use 'Today' as default if activeMetricsFilter is not set
+    // This ensures we always fetch on initial load even if activeMetricsFilter is null
     const timePeriod = activeMetricsFilter || 'Today';
 
     // Determine when granularity should be included in API call and fetch key
@@ -286,7 +294,9 @@ export function useLocationChartData({
     });
 
     // Skip if this exact fetch was already made (unless refresh was triggered)
-    if (lastFetchParamsRef.current === fetchKey && refreshTrigger === 0) {
+    const shouldSkip = lastFetchParamsRef.current === fetchKey && refreshTrigger === 0;
+
+    if (shouldSkip) {
       return;
     }
 
@@ -304,307 +314,174 @@ export function useLocationChartData({
             ? chartGranularity
             : undefined;
 
-        // For Custom date range OR Quarterly/All Time with monthly/weekly granularity,
-        // use location-trends API (single request with server-side aggregation)
-        const shouldUseLocationTrendsAPI =
-          (timePeriod === 'Custom' &&
-            customDateRange?.startDate &&
-            customDateRange?.endDate) ||
-          (needsServerAggregation &&
-            (timePeriod === 'Quarterly' || timePeriod === 'All Time'));
+        // Always use location-trends API (server-side aggregation) for all time periods
+        // This replaces the previous client-side aggregation of individual machine charts
+        const params: Record<string, string> = {
+          locationIds: locationId,
+          timePeriod: timePeriod as string,
+        };
 
-        if (shouldUseLocationTrendsAPI) {
-          const params: Record<string, string> = {
-            locationIds: locationId,
-            timePeriod: timePeriod as string, // Use actual timePeriod (Custom, Quarterly, or All Time)
-          };
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.licencee = selectedLicencee;
+        }
 
-          if (selectedLicencee && selectedLicencee !== 'all') {
-            params.licencee = selectedLicencee;
-          }
+        if (displayCurrency) {
+          params.currency = displayCurrency;
+        }
 
-          if (displayCurrency) {
-            params.currency = displayCurrency;
-          }
+        // Add custom date range params only for Custom period
+        if (
+          timePeriod === 'Custom' &&
+          customDateRange?.startDate &&
+          customDateRange?.endDate
+        ) {
+          const startDate =
+            customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate);
+          const endDate =
+            customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate);
 
-          // Add custom date range params only for Custom period
-          if (
-            timePeriod === 'Custom' &&
-            customDateRange?.startDate &&
-            customDateRange?.endDate
-          ) {
-            const startDate =
-              customDateRange.startDate instanceof Date
-                ? customDateRange.startDate
-                : new Date(customDateRange.startDate);
-            const endDate =
-              customDateRange.endDate instanceof Date
-                ? customDateRange.endDate
-                : new Date(customDateRange.endDate);
+          params.startDate = startDate.toISOString().split('T')[0];
+          params.endDate = endDate.toISOString().split('T')[0];
+        }
 
-            params.startDate = startDate.toISOString().split('T')[0];
-            params.endDate = endDate.toISOString().split('T')[0];
-          }
+        // Always pass granularity if it's defined (calculated earlier based on period length)
+        if (granularity) {
+          params.granularity = granularity;
+        }
 
-          // Always pass granularity when using location-trends API
-          if (granularity) {
-            params.granularity = granularity;
-          }
+        const response = await axios.get('/api/analytics/location-trends', {
+          params,
+          signal,
+          timeout: 120000,
+        });
 
-          const response = await axios.get('/api/analytics/location-trends', {
-            params,
-            signal,
-            timeout: 120000,
-          });
-
-          // Transform location-trends response to dashboardData format
-          const trendsData = response.data?.trends || [];
-          const transformedData: dashboardData[] = trendsData.map(
-            (item: {
-              day: string;
-              time?: string;
-              [locationId: string]:
-                | {
-                    handle: number;
-                    winLoss: number;
-                    jackpot: number;
-                    plays: number;
-                    drop: number;
-                    gross: number;
-                  }
-                | string
-                | undefined;
-            }) => {
-              const locationData = item[locationId];
-              if (!locationData || typeof locationData === 'string') {
-                return {
-                  xValue: item.time || item.day,
-                  day: item.day,
-                  time: item.time,
-                  moneyIn: 0,
-                  moneyOut: 0,
-                  gross: 0,
-                };
-              }
-
+        // Transform location-trends response to dashboardData format
+        const trendsData = response.data?.trends || [];
+        const transformedData: dashboardData[] = trendsData.map(
+          (item: {
+            day: string;
+            time?: string;
+            [locationId: string]:
+              | {
+                  handle: number;
+                  winLoss: number;
+                  jackpot: number;
+                  plays: number;
+                  drop: number;
+                  gross: number;
+                }
+              | string
+              | undefined;
+          }) => {
+            const locationData = item[locationId];
+            if (!locationData || typeof locationData === 'string') {
               return {
                 xValue: item.time || item.day,
                 day: item.day,
                 time: item.time,
-                moneyIn: locationData.drop || 0,
-                moneyOut: locationData.handle || 0,
-                gross: locationData.gross || 0,
+                moneyIn: 0,
+                moneyOut: 0,
+                gross: 0,
               };
             }
-          );
 
-          setChartData(transformedData);
+            return {
+              xValue: item.time || item.day,
+              day: item.day,
+              time: item.time,
+              moneyIn: locationData.drop || 0,
+              moneyOut: locationData.handle || 0,
+              gross: locationData.gross || 0,
+            };
+          }
+        );
 
-          // Extract data span from response if available
-          if (response.data?.dataSpan) {
-            setDataSpan(response.data.dataSpan);
-          } else if (transformedData.length > 0) {
-            // Calculate data span from transformed data
-            // For hourly data, use day + time to get accurate timestamps
-            const timestamps: Date[] = [];
-            transformedData.forEach(d => {
-              if (d.day && d.time) {
-                try {
-                  const timeParts = d.time.split(':');
-                  const hours = parseInt(timeParts[0] || '0', 10);
-                  const minutes = parseInt(timeParts[1] || '0', 10);
-                  const dateStr = d.day.split('T')[0]; // Get YYYY-MM-DD part
-                  const timestamp = new Date(
-                    `${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
-                  );
-                  if (!isNaN(timestamp.getTime())) {
-                    timestamps.push(timestamp);
-                  }
-                } catch {
-                  // Fallback to day only
-                  const dayDate = new Date(d.day);
-                  if (!isNaN(dayDate.getTime())) {
-                    timestamps.push(dayDate);
-                  }
+        setChartData(transformedData);
+
+        // Extract data span from response if available
+        if (response.data?.dataSpan) {
+          setDataSpan(response.data.dataSpan);
+        } else if (transformedData.length > 0) {
+          // Calculate data span from transformed data
+          // For hourly data, use day + time to get accurate timestamps
+          const timestamps: Date[] = [];
+          transformedData.forEach(d => {
+            if (d.day && d.time) {
+              try {
+                const timeParts = d.time.split(':');
+                const hours = parseInt(timeParts[0] || '0', 10);
+                const minutes = parseInt(timeParts[1] || '0', 10);
+                const dateStr = d.day.split('T')[0]; // Get YYYY-MM-DD part
+                const timestamp = new Date(
+                  `${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
+                );
+                if (!isNaN(timestamp.getTime())) {
+                  timestamps.push(timestamp);
                 }
-              } else if (d.day) {
+              } catch {
+                // Fallback to day only
                 const dayDate = new Date(d.day);
                 if (!isNaN(dayDate.getTime())) {
                   timestamps.push(dayDate);
                 }
               }
+            } else if (d.day) {
+              const dayDate = new Date(d.day);
+              if (!isNaN(dayDate.getTime())) {
+                timestamps.push(dayDate);
+              }
+            }
+          });
+
+          if (timestamps.length > 0) {
+            const minDate = new Date(
+              Math.min(...timestamps.map(t => t.getTime()))
+            );
+            const maxDate = new Date(
+              Math.max(...timestamps.map(t => t.getTime()))
+            );
+            setDataSpan({
+              minDate: minDate.toISOString(),
+              maxDate: maxDate.toISOString(),
             });
 
-            if (timestamps.length > 0) {
-              const minDate = new Date(
-                Math.min(...timestamps.map(t => t.getTime()))
-              );
-              const maxDate = new Date(
-                Math.max(...timestamps.map(t => t.getTime()))
-              );
-              setDataSpan({
-                minDate: minDate.toISOString(),
-                maxDate: maxDate.toISOString(),
-              });
+            // Update granularity based on actual data span ONLY on initial load
+            // Once user manually changes granularity, NEVER auto-update it again
+            // The hasManuallySetGranularityRef flag prevents any auto-updates after manual change
+            if (!hasManuallySetGranularityRef.current) {
+              const hoursDiff =
+                (maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60);
+              const shouldBeHourly = hoursDiff > 5;
 
-              // Update granularity based on actual data span ONLY on initial load
-              // Once user manually changes granularity, NEVER auto-update it again
-              // The hasManuallySetGranularityRef flag prevents any auto-updates after manual change
-              if (!hasManuallySetGranularityRef.current) {
-                const hoursDiff =
-                  (maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60);
-                const shouldBeHourly = hoursDiff > 5;
-
-                // Only update if we're in a period that supports granularity
-                // AND the current granularity doesn't match what it should be based on data span
-                // This ensures we only update on initial load, not after user changes it
-                if (
-                  (activeMetricsFilter === 'Today' ||
-                    activeMetricsFilter === 'Yesterday' ||
-                    (activeMetricsFilter === 'Custom' &&
-                      customDateRange?.startDate &&
-                      customDateRange?.endDate)) &&
-                  ((shouldBeHourly && chartGranularity === 'minute') ||
-                    (!shouldBeHourly && chartGranularity === 'hourly'))
-                ) {
-                  // Only update on initial load - once user changes it manually, this won't run
-                  setChartGranularity(shouldBeHourly ? 'hourly' : 'minute');
-                }
+              // Only update if we're in a period that supports granularity
+              // AND the current granularity doesn't match what it should be based on data span
+              // This ensures we only update on initial load, not after user changes it
+              if (
+                (activeMetricsFilter === 'Today' ||
+                  activeMetricsFilter === 'Yesterday' ||
+                  (activeMetricsFilter === 'Custom' &&
+                    customDateRange?.startDate &&
+                    customDateRange?.endDate)) &&
+                ((shouldBeHourly && chartGranularity === 'minute') ||
+                  (!shouldBeHourly && chartGranularity === 'hourly'))
+              ) {
+                // Only update on initial load - once user changes it manually, this won't run
+                setChartGranularity(shouldBeHourly ? 'hourly' : 'minute');
               }
-              // If hasManuallySetGranularityRef.current is true, do nothing - respect user's choice
-            } else {
-              setDataSpan(null);
             }
+            // If hasManuallySetGranularityRef.current is true, do nothing - respect user's choice
           } else {
             setDataSpan(null);
           }
-
-          return;
-        }
-
-        // For non-Custom periods, fetch all machines at the location and aggregate
-        const machinesResponse = await fetchCabinetsForLocation(
-          locationId,
-          selectedLicencee || undefined,
-          timePeriod,
-          undefined, // searchTerm
-          undefined, // customDateRange not needed for non-Custom periods
-          1, // page
-          10000, // high limit to get all machines
-          displayCurrency,
-          signal
-        );
-
-        const machines = machinesResponse.data;
-
-        if (!machines || machines.length === 0) {
-          setChartData([]);
-          setDataSpan(null);
-          return;
-        }
-
-        // Fetch chart data for all machines in parallel
-        const chartPromises = machines.map(machine =>
-          getMachineChartData(
-            String(machine._id),
-            timePeriod as TimePeriod,
-            customDateRange?.startDate,
-            customDateRange?.endDate,
-            displayCurrency,
-            selectedLicencee,
-            granularity,
-            signal
-          )
-        );
-
-        const chartResults = await Promise.all(chartPromises);
-
-        // Aggregate chart data from all machines
-        const aggregatedDataMap = new Map<
-          string,
-          {
-            moneyIn: number;
-            moneyOut: number;
-            gross: number;
-            day: string;
-            time: string;
-          }
-        >();
-        let earliestMinDate: Date | null = null;
-        let latestMaxDate: Date | null = null;
-
-        chartResults.forEach(
-          (result: {
-            data: dashboardData[];
-            dataSpan?: { minDate: string; maxDate: string };
-          }) => {
-            // Track data span
-            if (result.dataSpan?.minDate && result.dataSpan?.maxDate) {
-              const minDate = new Date(result.dataSpan.minDate);
-              const maxDate = new Date(result.dataSpan.maxDate);
-
-              if (!earliestMinDate || minDate < earliestMinDate) {
-                earliestMinDate = minDate;
-              }
-              if (!latestMaxDate || maxDate > latestMaxDate) {
-                latestMaxDate = maxDate;
-              }
-            }
-
-            // Aggregate data points
-            result.data.forEach((point: dashboardData) => {
-              const key = `${point.day}_${point.time || ''}`;
-              const existing = aggregatedDataMap.get(key);
-
-              if (existing) {
-                existing.moneyIn += point.moneyIn;
-                existing.moneyOut += point.moneyOut;
-                existing.gross += point.gross;
-              } else {
-                aggregatedDataMap.set(key, {
-                  moneyIn: point.moneyIn,
-                  moneyOut: point.moneyOut,
-                  gross: point.gross,
-                  day: point.day,
-                  time: point.time || '',
-                });
-              }
-            });
-          }
-        );
-
-        // Convert map to array and format as dashboardData
-        const aggregatedData: dashboardData[] = Array.from(
-          aggregatedDataMap.values()
-        ).map(values => ({
-          xValue: values.time || values.day,
-          day: values.day,
-          time: values.time,
-          moneyIn: values.moneyIn,
-          moneyOut: values.moneyOut,
-          gross: values.gross,
-        }));
-
-        // Sort by day and time
-        aggregatedData.sort((a, b) => {
-          const dayCompare = (a.day || '').localeCompare(b.day || '');
-          if (dayCompare !== 0) return dayCompare;
-          return (a.time || '').localeCompare(b.time || '');
-        });
-
-        setChartData(aggregatedData);
-
-        // Store aggregated data span
-        if (earliestMinDate !== null && latestMaxDate !== null) {
-          const minDate: Date = earliestMinDate;
-          const maxDate: Date = latestMaxDate;
-          setDataSpan({
-            minDate: minDate.toISOString(),
-            maxDate: maxDate.toISOString(),
-          });
         } else {
           setDataSpan(null);
         }
+
+        return;
       } catch (error) {
         // Silently handle aborted requests - this is expected behavior when switching filters
         if (isAbortError(error)) {

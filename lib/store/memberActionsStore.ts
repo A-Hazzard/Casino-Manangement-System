@@ -13,7 +13,7 @@ import { CasinoMember as Member } from '@/shared/types/entities';
  * @returns Zustand hook for accessing and updating member actions state.
  */
 
-type MemberActionsState = {
+type MembersActionsState = {
   selectedMember: Partial<Member>;
   isEditModalOpen: boolean;
   isDeleteModalOpen: boolean;
@@ -24,7 +24,7 @@ type MemberActionsState = {
 };
 
 // Define a no-op version for SSR
-const dummyState: MemberActionsState = {
+const dummyState: MembersActionsState = {
   selectedMember: {},
   isEditModalOpen: false,
   isDeleteModalOpen: false,
@@ -36,7 +36,7 @@ const dummyState: MemberActionsState = {
 
 // Make sure store is created only on client-side
 const createStore = () => {
-  return create<MemberActionsState>(set => ({
+  return create<MembersActionsState>(set => ({
     selectedMember: {},
     isEditModalOpen: false,
     isDeleteModalOpen: false,
@@ -60,6 +60,15 @@ const getClientStore = () => {
   return storeInstance;
 };
 
+/**
+ * Zustand store for managing members actions (edit/delete modals).
+ *
+ * - Tracks selected member and modal open/close state.
+ * - Provides actions to open/close edit and delete modals.
+ * - Returns a dummy state for SSR.
+ *
+ * @returns Zustand hook for accessing and updating members actions state.
+ */
 // Use this store only on client side
-export const useMemberActionsStore =
+export const useMembersActionsStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

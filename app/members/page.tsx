@@ -3,7 +3,7 @@
 import { Suspense } from 'react';
 
 // Components
-import MembersContent from '@/components/members/MembersContent';
+import MembersPageContent from '@/components/members/MembersPageContent';
 import { MembersPageSkeleton } from '@/components/ui/skeletons/MembersSkeletons';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
@@ -22,7 +22,7 @@ export default function MembersPage() {
   return (
     <ProtectedRoute requiredPage="members">
       <Suspense fallback={<MembersPageSkeleton />}>
-        <MembersContent />
+        <MembersPageContent />
       </Suspense>
     </ProtectedRoute>
   );

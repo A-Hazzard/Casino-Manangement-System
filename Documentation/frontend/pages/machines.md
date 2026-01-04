@@ -31,7 +31,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 
 ## File Information
 
-- **Main File:** `app/cabinets/page.tsx` (Note: URL is `/cabinets` but also accessible as machines)
+- **Main File:** `components/cabinets/CabinetsPageContent.tsx` (Note: URL is `/cabinets` but also accessible as machines)
 - **URL Pattern:** `/cabinets`
 - **Authentication:** Required (ProtectedRoute with `requiredPage="machines"`)
 - **Access Level:** All authenticated users (with role-based restrictions)
@@ -45,7 +45,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 **Purpose:** Displays page title, refresh button, and action buttons (Add Cabinet, New Movement Request, Upload SMIB Data).
 
 **Components:**
-- `components/cabinets/CabinetActions.tsx` - Action buttons component
+- `components/cabinets/CabinetsActions.tsx` - Action buttons component
 
 **Features:**
 - Page title "Cabinets" with icon
@@ -204,10 +204,11 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 **Purpose:** Displays the list of cabinets in table format (desktop) or card format (mobile).
 
 **Components:**
-- `components/cabinets/CabinetContentDisplay.tsx` - Main display component
-- `components/ui/cabinets/CabinetTable.tsx` - Desktop table view
-- `components/ui/cabinets/CabinetCard.tsx` - Mobile card view
-- `components/ui/cabinets/CabinetSkeletonLoader.tsx` - Loading skeletons
+- `components/cabinets/CabinetsCabinetContentDisplay.tsx` - Main display component
+- `components/cabinets/CabinetsCabinetTable.tsx` - Desktop table view
+- `components/cabinets/CabinetsCabinetCard.tsx` - Mobile card view
+- `components/cabinets/CabinetsCabinetCardSkeleton.tsx` - Card loading skeletons
+- `components/cabinets/CabinetsCabinetTableSkeleton.tsx` - Table loading skeletons
 
 **API Endpoint:**
 - `GET /api/machines/aggregation` - Returns paginated cabinet list with financial metrics
@@ -265,9 +266,9 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 **Purpose:** Provides modals for creating, editing, and deleting cabinets.
 
 **Components:**
-- `components/ui/cabinets/NewCabinetModal.tsx` - Create new cabinet modal
-- `components/ui/cabinets/EditCabinetModal.tsx` - Edit existing cabinet modal
-- `components/ui/cabinets/DeleteCabinetModal.tsx` - Delete confirmation modal
+- `components/cabinets/modals/CabinetsNewCabinetModal.tsx` - Create new cabinet modal
+- `components/cabinets/modals/CabinetsEditCabinetModal.tsx` - Edit existing cabinet modal
+- `components/cabinets/modals/CabinetsDeleteCabinetModal.tsx` - Delete confirmation modal
 
 **New Cabinet Modal Features:**
 - Cabinet name, asset number, serial number
@@ -301,7 +302,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 **Purpose:** Manages SMIB (Slot Machine Interface Board) devices, including configuration, network settings, MQTT settings, and operations.
 
 **Components:**
-- `components/cabinets/SMIBManagementTab.tsx` - Main SMIB management component
+- `components/cabinets/CabinetsSMIBManagementTab.tsx` - Main SMIB management component
 - `components/cabinets/smibManagement/*` - Various SMIB configuration sections
 - `components/ui/smib/SMIBSearchSelect.tsx` - SMIB device search and selection
 
@@ -344,7 +345,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 **Purpose:** Manages cabinet movement requests between locations.
 
 **Components:**
-- `components/cabinets/MovementRequests.tsx` - Movement requests list component
+- `components/cabinets/CabinetsMovementRequests.tsx` - Movement requests list component
 - `components/ui/movements/NewMovementRequestModal.tsx` - New movement request modal
 
 **Features:**

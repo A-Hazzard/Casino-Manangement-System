@@ -335,12 +335,20 @@ export async function GET(request: NextRequest) {
           machineSerialNumber: '$machine.serialNumber',
           machineCustomName: '$machine.custom.name',
           machineGame: '$machine.game',
+          locationName: { $ifNull: ['$location.name', 'Unknown Location'] },
           memberId: 1,
           memberName: 1,
           startTime: 1,
           endTime: 1,
           gamesPlayed: 1,
           points: 1,
+          status: {
+            $cond: {
+              if: { $eq: ['$endTime', null] },
+              then: 'active',
+              else: 'completed',
+            },
+          },
           handle: { $ifNull: ['$startMeters.drop', 0] },
           cancelledCredits: {
             $ifNull: ['$startMeters.totalCancelledCredits', 0],
@@ -349,6 +357,14 @@ export async function GET(request: NextRequest) {
           won: { $ifNull: ['$startMeters.totalWonCredits', 0] },
           bet: { $ifNull: ['$startMeters.coinIn', 0] },
           gamesWon: 1,
+          totalPlays: '$gamesPlayed',
+          totalWin: { $ifNull: ['$startMeters.totalWonCredits', 0] },
+          totalLoss: {
+            $subtract: [
+              { $ifNull: ['$startMeters.coinIn', 0] },
+              { $ifNull: ['$startMeters.totalWonCredits', 0] },
+            ],
+          },
           duration: {
             $cond: {
               if: {

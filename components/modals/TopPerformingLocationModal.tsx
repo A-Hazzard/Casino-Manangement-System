@@ -19,7 +19,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import Chart from '@/components/ui/dashboard/Chart';
+import DashboardChart from '@/components/dashboard/DashboardChart';
 import { DashboardChartSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -643,7 +643,7 @@ export default function TopPerformingLocationModal({
                     </select>
                   </div>
                 )}
-                <Chart
+                <DashboardChart
                   loadingChartData={loadingChart}
                   chartData={chartData}
                   activeMetricsFilter={effectiveTimePeriod as TimePeriod}

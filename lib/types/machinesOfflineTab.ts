@@ -11,7 +11,7 @@ import type { MachineStats } from '@/lib/types/locationMachineStats';
 // Use the shared MachineData type for consistency
 export type MachineData = SharedMachineData;
 
-export type MachinesOfflineTabProps = {
+export type ReportsMachinesOfflineProps = {
   // Data props
   offlineMachines: MachineData[];
   locations: { id: string; name: string; sasEnabled: boolean }[];

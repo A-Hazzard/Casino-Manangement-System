@@ -77,7 +77,7 @@ export type NewMovementModalProps = {
   locations?: { _id: string; name: string }[];
 };
 
-export type RevenueAnalysisTableProps = {
+export type ReportsLocationsRevenueTableProps = {
   locations: AggregatedLocation[];
   loading?: boolean;
   error?: string | null;
@@ -92,22 +92,7 @@ export type RevenueAnalysisTableProps = {
   className?: string;
 };
 
-// Collection Report Types
-export type CollectionReportFiltersProps = {
-  locations: Array<{ _id: string; name: string }>;
-  selectedLocation: string;
-  onLocationChange: (value: string) => void;
-  search: string;
-  onSearchChange: (value: string) => void;
-  onSearchSubmit: () => void;
-  showUncollectedOnly: boolean;
-  onShowUncollectedOnlyChange: (checked: boolean) => void;
-  selectedFilters: string[];
-  onFilterChange: (filter: string, checked: boolean) => void;
-  onClearFilters: () => void;
-  isSearching: boolean;
-};
-
+// SyncButtonProps remains here as it is truly reusable
 export type SyncButtonProps = {
   onClick: () => void;
   isSyncing?: boolean;
@@ -123,7 +108,7 @@ export type PaginationControlsProps = {
   setCurrentPage: (page: number) => void;
 };
 
-export type CabinetGridProps = {
+export type LocationsCabinetGridProps = {
   filteredCabinets: ExtendedCabinetDetail[];
   currentPage: number;
   itemsPerPage: number;

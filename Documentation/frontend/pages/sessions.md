@@ -104,8 +104,10 @@ The page allows users to:
 **Purpose:** Display sessions data in a responsive table format with all relevant session information.
 
 **Components Used:**
-- `SessionsTable` (`components/sessions/SessionsTable.tsx`) - Main table component
-- `SessionsPageSkeleton` (`components/ui/skeletons/SessionsSkeletons.tsx`) - Loading skeleton
+- `SessionsTable` (`components/sessions/SessionsTable.tsx`) - Table component
+- `SessionsDesktopTable` (`components/sessions/SessionsDesktopTable.tsx`) - Desktop table view
+- `SessionsMobileCards` (`components/sessions/SessionsMobileCards.tsx`) - Mobile card view
+- `SessionsTableSkeleton` (`components/sessions/SessionsTableSkeleton.tsx`) - Loading skeleton (if applicable)
 - Table rows with formatted data columns
 
 **API Endpoints:**

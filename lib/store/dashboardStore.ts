@@ -25,6 +25,7 @@ const dummyState: DashBoardStore = {
   chartData: [],
   gamingLocations: [],
   selectedLicencee: '',
+  sortBy: 'totalDrop',
   customDateRange: {
     startDate: new Date(new Date().setHours(0, 0, 0, 0)),
     endDate: new Date(new Date().setHours(23, 59, 59, 999)),
@@ -48,6 +49,7 @@ const dummyState: DashBoardStore = {
   setChartData: () => {},
   setGamingLocations: () => {},
   setSelectedLicencee: () => {},
+  setSortBy: () => {},
   setCustomDateRange: () => {},
   setPendingCustomDateRange: () => {},
   setTopPerformingData: () => {},
@@ -80,8 +82,9 @@ const createStore = () => {
         totals: null,
         chartData: [],
         gamingLocations: [],
-        selectedLicencee: '',
-        customDateRange: {
+  selectedLicencee: '',
+  sortBy: 'totalDrop',
+  customDateRange: {
           startDate: new Date(new Date().setHours(0, 0, 0, 0)),
           endDate: new Date(new Date().setHours(23, 59, 59, 999)),
         },
@@ -110,6 +113,7 @@ const createStore = () => {
         setSelectedLicencee: selectedLicencee => {
           set({ selectedLicencee });
         },
+        setSortBy: sortBy => set({ sortBy }),
         setCustomDateRange: customDateRange => set({ customDateRange }),
         setPendingCustomDateRange: pendingCustomDateRange =>
           set({ pendingCustomDateRange }),

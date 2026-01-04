@@ -7,15 +7,15 @@
 
 'use client';
 
-import AddUserModal from '@/components/administration/AddUserModal';
-import DeleteUserModal from '@/components/administration/DeleteUserModal';
-import SearchFilterBar from '@/components/administration/SearchFilterBar';
-import UserCard from '@/components/administration/UserCard';
-import UserCardSkeleton from '@/components/administration/UserCardSkeleton';
-import UserModal from '@/components/administration/UserModal';
-import UserSummaryCards from '@/components/administration/UserSummaryCards';
-import UserTable from '@/components/administration/UserTable';
-import UserTableSkeleton from '@/components/administration/UserTableSkeleton';
+import { AdministrationSearchFilterBar } from '@/components/administration/AdministrationSearchFilterBar';
+import { AdministrationUserSummaryCards } from '@/components/administration/AdministrationUserSummaryCards';
+import { AdministrationUserCard } from '@/components/administration/cards/AdministrationUserCard';
+import AdministrationAddUserModal from '@/components/administration/modals/AdministrationAddUserModal';
+import AdministrationDeleteUserModal from '@/components/administration/modals/AdministrationDeleteUserModal';
+import AdministrationUserModal from '@/components/administration/modals/AdministrationUserModal';
+import { AdministrationUserCardSkeleton } from '@/components/administration/skeletons/AdministrationUserCardSkeleton';
+import { AdministrationUserTableSkeleton } from '@/components/administration/skeletons/AdministrationUserTableSkeleton';
+import { AdministrationUserTable } from '@/components/administration/tables/AdministrationUserTable';
 import PaginationControls from '@/components/ui/PaginationControls';
 import { useAdministrationUserCounts } from '@/lib/hooks/administration/useAdministrationUserCounts';
 import type { SortKey, User } from '@/lib/types/administration';
@@ -102,10 +102,13 @@ export default function AdministrationUsersSection({
   return (
     <>
       {/* Summary Cards */}
-      <UserSummaryCards counts={counts} isLoading={countsLoading} />
+      <AdministrationUserSummaryCards
+        counts={counts}
+        isLoading={countsLoading}
+      />
 
       {/* Search Filter Bar */}
-      <SearchFilterBar
+      <AdministrationSearchFilterBar
         searchValue={searchValue}
         setSearchValue={setSearchValue}
         selectedRole={selectedRole}
@@ -116,16 +119,16 @@ export default function AdministrationUsersSection({
       <div className="block lg:hidden">
         {isSearching ? (
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <UserCardSkeleton />
-            <UserCardSkeleton />
-            <UserCardSkeleton />
-            <UserCardSkeleton />
+            <AdministrationUserCardSkeleton />
+            <AdministrationUserCardSkeleton />
+            <AdministrationUserCardSkeleton />
+            <AdministrationUserCardSkeleton />
           </div>
         ) : processedUsers.length > 0 ? (
           <>
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
               {processedUsers.map(userItem => (
-                <UserCard
+                <AdministrationUserCard
                   key={userItem.username}
                   user={userItem}
                   onEdit={handleEditUser}
@@ -150,10 +153,10 @@ export default function AdministrationUsersSection({
       </div>
       <div className="hidden lg:block">
         {isSearching ? (
-          <UserTableSkeleton />
+          <AdministrationUserTableSkeleton />
         ) : processedUsers.length > 0 ? (
           <>
-            <UserTable
+            <AdministrationUserTable
               users={processedUsers}
               sortConfig={
                 sortConfig as {
@@ -182,7 +185,7 @@ export default function AdministrationUsersSection({
           </p>
         )}
       </div>
-      <UserModal
+      <AdministrationUserModal
         open={isUserModalOpen}
         user={selectedUser}
         onClose={async () => {
@@ -192,7 +195,7 @@ export default function AdministrationUsersSection({
         }}
         onSave={handleSaveUser}
       />
-      <DeleteUserModal
+      <AdministrationDeleteUserModal
         open={isDeleteModalOpen}
         user={selectedUserToDelete}
         onClose={() => {
@@ -205,7 +208,7 @@ export default function AdministrationUsersSection({
           }
         }}
       />
-      <AddUserModal
+      <AdministrationAddUserModal
         open={isAddUserModalOpen}
         onClose={closeAddUserModal}
         onSuccess={refreshUsers}

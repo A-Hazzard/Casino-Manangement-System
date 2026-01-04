@@ -20,8 +20,8 @@ export type AccountingDetailsProps = {
   onDataRefresh?: () => Promise<void>; // Optional callback to refresh parent data after auto-fix
 };
 
-// Props for CabinetSearchFilters component
-export type CabinetSearchFiltersProps = {
+// Props for CabinetsCabinetSearchFilters component
+export type CabinetsCabinetSearchFiltersProps = {
   // Search state
   searchTerm: string;
   onSearchChange: (searchTerm: string) => void;

@@ -12,9 +12,10 @@
 4. [Cabinet Details Charts](#cabinet-details-charts)
 5. [Reports Page - Meters Tab Charts](#reports-page---meters-tab-charts)
 6. [Reports Page - Locations Tab Charts](#reports-page---locations-tab-charts)
-7. [Data Flow Diagrams](#data-flow-diagrams)
-8. [Common Patterns](#common-patterns)
-9. [Examples](#examples)
+7. [Reports Page - Evaluation Tab Charts](#reports-page---evaluation-tab-charts)
+8. [Data Flow Diagrams](#data-flow-diagrams)
+9. [Common Patterns](#common-patterns)
+10. [Examples](#examples)
 
 ---
 
@@ -1080,6 +1081,394 @@ GET /api/analytics/location-trends?locationIds=loc1,loc2,loc3&timePeriod=7d&gran
 - `app/api/analytics/location-trends/route.ts` - Location trends API
 - `app/api/lib/helpers/locationTrends.ts` - Location trends helper
 - `components/ui/LocationTrendChart.tsx` - Location trend chart component
+
+---
+
+## Reports Page - Evaluation Tab Charts
+
+### Overview
+
+The Evaluation tab features three specialized bar charts that display performance metrics grouped by manufacturer or game. These charts use percentage-based metrics to show relative contribution and support complex filtering (All, Top 5, Bottom 5) with individual item selection.
+
+**Key Differences from Other Charts:**
+
+- **Bar Charts** (not area/line charts) - Horizontal bar visualization
+- **Percentage Metrics** - All values shown as percentages of total
+- **Client-Side Aggregation** - Data aggregated from machine-level data, not API
+- **Complex Filtering** - Top 5, Bottom 5, All options with checkbox selection
+- **Multi-Metric Display** - Multiple metrics shown simultaneously on same chart
+
+### Chart Types
+
+1. **Manufacturer Performance Chart** - Groups by manufacturer
+2. **Games Performance Chart** - Groups by game title (full metrics)
+3. **Games Performance Revenue Chart** - Groups by game title (revenue-focused)
+
+### Data Source
+
+**No Direct API Endpoint** - Charts receive pre-aggregated data from parent component.
+
+**Data Flow:**
+
+```mermaid
+flowchart TD
+    A[MachinesTab] -->|Fetch| B[/api/machines/aggregation]
+    B -->|Return| C[allMachines Array]
+    C -->|Transform| D[evaluationData]
+    D -->|Filter by Location| E[filteredEvaluationData]
+    E -->|Group by Manufacturer| F[manufacturerData]
+    E -->|Group by Game| G[gamesData]
+    F -->|Pass as Props| H[ManufacturerPerformanceChart]
+    G -->|Pass as Props| I[GamesPerformanceChart]
+    G -->|Pass as Props| J[GamesPerformanceRevenueChart]
+    H -->|Use Hook| K[useManufacturerPerformanceData]
+    I -->|Use Hook| L[useGamesPerformanceData]
+    J -->|Use Hook| M[useGamesRevenueData]
+    K -->|Calculate Percentages| N[Chart Data]
+    L -->|Calculate Percentages| N
+    M -->|Calculate Percentages| N
+    N -->|Render| O[Recharts BarChart]
+```
+
+### Manufacturer Performance Chart
+
+**Component:** `components/ui/ManufacturerPerformanceChart.tsx`
+
+**Hook:** `components/ui/ManufacturerPerformanceChart/useManufacturerPerformanceData.ts`
+
+**Purpose:** Displays performance metrics grouped by manufacturer.
+
+**Metrics Displayed:**
+
+- Floor Positions % - Percentage of total machines
+- Total Handle % - Percentage of total coin in
+- Total Win % - Percentage of total net win
+- Total Drop % - Percentage of total drop
+- Total Cancelled Credits % - Percentage of total cancelled credits
+- Total Gross % - Percentage of total gross revenue
+- Total Games Played % - Percentage of total games played
+
+**Data Structure:**
+
+```typescript
+type ManufacturerPerformanceData = {
+  manufacturer: string;
+  floorPositions: number;        // Percentage
+  totalHandle: number;           // Percentage
+  totalWin: number;              // Percentage
+  totalDrop: number;            // Percentage
+  totalCancelledCredits: number; // Percentage
+  totalGross: number;            // Percentage
+  totalGamesPlayed: number;      // Percentage
+  rawTotals?: {                  // Absolute values for tooltip
+    coinIn: number;
+    netWin: number;
+    drop: number;
+    gross: number;
+    cancelledCredits: number;
+    gamesPlayed: number;
+  };
+  totalMetrics?: {               // Totals for percentage calculation
+    coinIn: number;
+    netWin: number;
+    drop: number;
+    gross: number;
+    cancelledCredits: number;
+    gamesPlayed: number;
+  };
+  machineCount?: number;
+  totalMachinesCount?: number;
+};
+```
+
+**Filtering Logic:**
+
+```typescript
+// Hook: useManufacturerPerformanceData
+const aggregatedData = useMemo(() => {
+  if (!allMachines.length) return initialData;
+
+  let filteredMachines = allMachines;
+
+  // Apply Top 5 / Bottom 5 filters
+  if (!selectedFilters.includes('all-manufacturers')) {
+    if (selectedFilters.includes('top-5-manufacturers')) {
+      // Group by manufacturer, calculate totals, sort descending
+      // Take top 5
+    }
+    if (selectedFilters.includes('bottom-5-manufacturers')) {
+      // Group by manufacturer, calculate totals, sort ascending
+      // Take bottom 5
+    }
+  }
+
+  // Group filtered machines by manufacturer
+  const groupByManufacturer = filteredMachines.reduce((acc, machine) => {
+    const manufacturer = machine.manufacturer.trim();
+    if (!acc[manufacturer]) acc[manufacturer] = [];
+    acc[manufacturer].push(machine);
+    return acc;
+  }, {});
+
+  // Calculate totals across all filtered machines
+  const totalMetrics = filteredMachines.reduce((acc, machine) => ({
+    coinIn: acc.coinIn + (machine.coinIn || 0),
+    netWin: acc.netWin + (machine.netWin || 0),
+    // ... other metrics
+  }), { coinIn: 0, netWin: 0, ... });
+
+  // Calculate percentages for each manufacturer
+  return Object.keys(groupByManufacturer).map(manufacturer => {
+    const machines = groupByManufacturer[manufacturer];
+    const totals = machines.reduce((acc, machine) => ({
+      coinIn: acc.coinIn + (machine.coinIn || 0),
+      // ... aggregate
+    }), { coinIn: 0, ... });
+
+    return {
+      manufacturer,
+      floorPositions: (machines.length / filteredMachines.length) * 100,
+      totalHandle: totalMetrics.coinIn > 0 
+        ? (totals.coinIn / totalMetrics.coinIn) * 100 
+        : 0,
+      // ... other percentages
+      rawTotals: totals,
+      totalMetrics,
+    };
+  });
+}, [allMachines, selectedFilters]);
+```
+
+**Checkbox Selection:**
+
+- When "All Manufacturers" is selected, all manufacturers are automatically selected
+- User can uncheck individual manufacturers even when "All" is selected
+- When switching from "All" to "Top 5" or "Bottom 5", only those items are selected
+- When switching back to "All", all manufacturers are re-selected
+
+**Implementation:**
+
+```typescript
+// Sync selected manufacturers when filters change
+useEffect(() => {
+  if (aggregatedData.length === 0) return;
+
+  const availableManufacturers = aggregatedData.map(d => d.manufacturer);
+  
+  // Check if filter changed
+  const filterChanged = 
+    prevFiltersRef.current.join(',') !== selectedFilters.join(',');
+  const switchedToAll = 
+    filterChanged && selectedFilters.includes('all-manufacturers');
+  
+  prevFiltersRef.current = selectedFilters;
+
+  // If switched to "All Manufacturers", select all
+  if (switchedToAll) {
+    setSelectedManufacturers(availableManufacturers);
+    return;
+  }
+
+  // Remove invalid selections
+  const validSelections = selectedManufacturers.filter(mfr => 
+    availableManufacturers.includes(mfr)
+  );
+  
+  if (validSelections.length !== selectedManufacturers.length) {
+    setSelectedManufacturers(validSelections);
+  }
+}, [aggregatedData, selectedFilters, selectedManufacturers]);
+```
+
+### Games Performance Chart
+
+**Component:** `components/ui/GamesPerformanceChart.tsx`
+
+**Hook:** `components/ui/GamesPerformanceChart/useGamesPerformanceData.ts`
+
+**Purpose:** Displays performance metrics grouped by game title (full metrics).
+
+**Metrics Displayed:**
+
+- Floor Positions % - Percentage of total machines
+- Total Handle % - Percentage of total coin in
+- Total Win % - Percentage of total net win
+- Total Drop % - Percentage of total drop
+- Total Cancelled Credits % - Percentage of total cancelled credits
+- Total Gross % - Percentage of total gross revenue
+- Total Games Played % - Percentage of total games played
+
+**Data Structure:** Same as Manufacturer Performance, but with `gameName` instead of `manufacturer`.
+
+**Filtering Logic:** Identical to Manufacturer Performance, but groups by `gameTitle` instead of `manufacturer`.
+
+**Key Implementation Details:**
+
+```typescript
+// Group by gameTitle (trimmed to ensure consistency)
+const groupByGameName = filteredMachines
+  .filter(machine => machine.gameTitle && machine.gameTitle.trim() !== '')
+  .reduce((acc, machine) => {
+    const gameName = machine.gameTitle.trim(); // Important: trim whitespace
+    if (!acc[gameName]) acc[gameName] = [];
+    acc[gameName].push(machine);
+    return acc;
+  }, {} as Record<string, MachineEvaluationData[]>);
+```
+
+### Games Performance Revenue Chart
+
+**Component:** `components/ui/GamesPerformanceRevenueChart.tsx`
+
+**Hook:** `components/ui/GamesPerformanceRevenueChart/useGamesRevenueData.ts`
+
+**Purpose:** Displays revenue-focused metrics grouped by game title.
+
+**Metrics Displayed:**
+
+- Total Drop % - Percentage of total drop
+- Total Cancelled Credits % - Percentage of total cancelled credits
+- Total Gross % - Percentage of total gross revenue
+
+**Data Structure:** Same as Games Performance, but only includes revenue metrics.
+
+**Filtering Logic:** Identical to Games Performance Chart.
+
+### Percentage Calculation
+
+**Critical:** Percentages are calculated relative to `allMachines` prop, not just the filtered data.
+
+**Why:** This ensures percentages show contribution relative to the total dataset (all selected locations), not just the filtered subset.
+
+**Example:**
+
+```typescript
+// In useManufacturerPerformanceData hook
+const totalMetrics = allMachines.reduce((acc, machine) => ({
+  coinIn: acc.coinIn + (machine.coinIn || 0),
+  netWin: acc.netWin + (machine.netWin || 0),
+  // ... other metrics
+}), { coinIn: 0, netWin: 0, ... });
+
+// Calculate percentage for each manufacturer
+totalHandle: totalMetrics.coinIn > 0 
+  ? (totals.coinIn / totalMetrics.coinIn) * 100 
+  : 0
+```
+
+**Important:** The `allMachines` prop passed to charts must be the same filtered dataset used to calculate `manufacturerData` and `gamesData` in `MachinesTab.tsx`. This ensures consistency.
+
+### Chart Rendering
+
+**Component Structure:**
+
+```typescript
+<ResponsiveContainer width="100%" height={400}>
+  <BarChart
+    data={chartData}
+    layout="vertical"  // Horizontal bars
+    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+  >
+    <CartesianGrid strokeDasharray="3 3" />
+    <XAxis type="number" domain={[0, 100]} />
+    <YAxis 
+      dataKey="manufacturerName" 
+      type="category" 
+      width={150}
+    />
+    <Tooltip content={<CustomTooltip />} />
+    
+    {/* Render bars for selected metrics only */}
+    {selectedMetrics.includes('Floor Positions %') && (
+      <Bar dataKey="Floor Positions %" fill="#8884d8" />
+    )}
+    {selectedMetrics.includes('Total Handle %') && (
+      <Bar dataKey="Total Handle %" fill="#82ca9d" />
+    )}
+    {/* ... other metrics */}
+  </BarChart>
+</ResponsiveContainer>
+```
+
+**Metric Selection:**
+
+- Users can check/uncheck individual metrics via checkboxes
+- Only selected metrics are rendered as bars
+- All metrics selected by default (except Revenue chart which only has 3)
+
+### Filter Flow
+
+**Complete Filter Flow:**
+
+```mermaid
+flowchart TD
+    A[User Selects Filter] -->|All/Top 5/Bottom 5| B[selectedFilters State]
+    B -->|Trigger| C[useEffect in Chart Component]
+    C -->|Check| D{Filter Changed?}
+    D -->|Yes, to All| E[Select All Items]
+    D -->|Yes, to Top 5| F[Select Top 5 Items]
+    D -->|Yes, to Bottom 5| G[Select Bottom 5 Items]
+    E -->|Update| H[selectedGames/selectedManufacturers]
+    F -->|Update| H
+    G -->|Update| H
+    H -->|Trigger| I[usePerformanceData Hook]
+    I -->|Recalculate| J[aggregatedData]
+    J -->|Filter by Selection| K[filteredData]
+    K -->|Calculate Percentages| L[chartData]
+    L -->|Render| M[BarChart]
+    
+    N[User Unchecks Item] -->|Update| H
+    H -->|Trigger| I
+```
+
+### Key Files
+
+- `components/ui/ManufacturerPerformanceChart.tsx` - Manufacturer chart component
+- `components/ui/GamesPerformanceChart.tsx` - Games chart component
+- `components/ui/GamesPerformanceRevenueChart.tsx` - Games revenue chart component
+- `components/ui/ManufacturerPerformanceChart/useManufacturerPerformanceData.ts` - Manufacturer data hook
+- `components/ui/GamesPerformanceChart/useGamesPerformanceData.ts` - Games data hook
+- `components/ui/GamesPerformanceRevenueChart/useGamesRevenueData.ts` - Games revenue data hook
+- `components/reports/tabs/MachinesTab.tsx` - Parent component that provides data
+- `components/reports/tabs/MachinesEvaluationTab.tsx` - Evaluation tab container
+
+### Common Patterns
+
+#### Data Trimming
+
+All string fields (manufacturer, gameTitle) are trimmed to ensure consistency:
+
+```typescript
+const manufacturer = (machine.manufacturer || 'Unknown').trim();
+const gameName = (machine.gameTitle || 'Unknown').trim();
+```
+
+This prevents mismatches like "Manufacturer A" vs "Manufacturer A " (with trailing space).
+
+#### Percentage Calculation Formula
+
+```typescript
+percentage = (itemValue / totalValue) * 100
+
+// Example:
+totalHandle = totalMetrics.coinIn > 0 
+  ? (totals.coinIn / totalMetrics.coinIn) * 100 
+  : 0
+```
+
+#### Filter State Management
+
+```typescript
+// Track previous filters to detect changes
+const prevFiltersRef = useRef<string[]>([]);
+
+// Check if filter actually changed (not just a re-render)
+const filterChanged = 
+  prevFiltersRef.current.join(',') !== selectedFilters.join(',');
+
+// Update previous filters
+prevFiltersRef.current = selectedFilters;
+```
 
 ---
 

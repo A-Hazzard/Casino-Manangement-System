@@ -7,17 +7,17 @@
 
 'use client';
 
-import LicenseeSearchBar from '@/components/administration/LicenseeSearchBar';
-import LicenseeCard from '@/components/administration/LicenseeCard';
-import LicenseeCardSkeleton from '@/components/administration/LicenseeCardSkeleton';
-import LicenseeTable from '@/components/administration/LicenseeTable';
-import LicenseeTableSkeleton from '@/components/administration/LicenseeTableSkeleton';
-import AddLicenseeModal from '@/components/administration/AddLicenseeModal';
-import EditLicenseeModal from '@/components/administration/EditLicenseeModal';
-import DeleteLicenseeModal from '@/components/administration/DeleteLicenseeModal';
-import PaymentHistoryModal from '@/components/administration/PaymentHistoryModal';
-import LicenseeSuccessModal from '@/components/administration/LicenseeSuccessModal';
-import PaymentStatusConfirmModal from '@/components/administration/PaymentStatusConfirmModal';
+import AdministrationLicenseeSearchBar from '@/components/administration/AdministrationLicenseeSearchBar';
+import AdministrationLicenseeCard from '@/components/administration/cards/AdministrationLicenseeCard';
+import AdministrationLicenseeCardSkeleton from '@/components/administration/skeletons/AdministrationLicenseeCardSkeleton';
+import AdministrationLicenseeTable from '@/components/administration/tables/AdministrationLicenseeTable';
+import AdministrationLicenseeTableSkeleton from '@/components/administration/skeletons/AdministrationLicenseeTableSkeleton';
+import AdministrationAddLicenseeModal from '@/components/administration/modals/AdministrationAddLicenseeModal';
+import AdministrationEditLicenseeModal from '@/components/administration/modals/AdministrationEditLicenseeModal';
+import AdministrationDeleteLicenseeModal from '@/components/administration/modals/AdministrationDeleteLicenseeModal';
+import AdministrationPaymentHistoryModal from '@/components/administration/modals/AdministrationPaymentHistoryModal';
+import AdministrationLicenseeSuccessModal from '@/components/administration/modals/AdministrationLicenseeSuccessModal';
+import AdministrationPaymentStatusConfirmModal from '@/components/administration/modals/AdministrationPaymentStatusConfirmModal';
 import type { Licensee } from '@/lib/types/licensee';
 import type { Country } from '@/lib/types/country';
 import type { AddLicenseeForm } from '@/lib/types/pages';
@@ -107,10 +107,10 @@ export default function AdministrationLicenseesSection({
     return (
       <>
         <div className="block lg:hidden">
-          <LicenseeCardSkeleton />
+          <AdministrationLicenseeCardSkeleton />
         </div>
         <div className="hidden lg:block">
-          <LicenseeTableSkeleton />
+          <AdministrationLicenseeTableSkeleton />
         </div>
       </>
     );
@@ -118,7 +118,7 @@ export default function AdministrationLicenseesSection({
 
   return (
     <>
-      <LicenseeSearchBar
+      <AdministrationLicenseeSearchBar
         searchValue={licenseeSearchValue}
         setSearchValue={setLicenseeSearchValue}
       />
@@ -132,7 +132,7 @@ export default function AdministrationLicenseesSection({
         {filteredLicensees.length > 0 ? (
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
             {filteredLicensees.map(licensee => (
-              <LicenseeCard
+              <AdministrationLicenseeCard
                 key={licensee._id}
                 licensee={licensee}
                 onEdit={handleOpenEditLicensee}
@@ -149,7 +149,7 @@ export default function AdministrationLicenseesSection({
         )}
       </div>
       <div className="hidden lg:block">
-        <LicenseeTable
+        <AdministrationLicenseeTable
           licensees={filteredLicensees}
           onEdit={handleOpenEditLicensee}
           onDelete={handleOpenDeleteLicensee}
@@ -157,7 +157,7 @@ export default function AdministrationLicenseesSection({
           onTogglePaymentStatus={handleTogglePaymentStatus}
         />
       </div>
-      <AddLicenseeModal
+      <AdministrationAddLicenseeModal
         open={isAddLicenseeModalOpen}
         onClose={async () => {
           setIsAddLicenseeModalOpen(false);
@@ -169,7 +169,7 @@ export default function AdministrationLicenseesSection({
         countries={countries}
         countriesLoading={isCountriesLoading}
       />
-      <EditLicenseeModal
+      <AdministrationEditLicenseeModal
         open={isEditLicenseeModalOpen}
         onClose={async () => {
           setIsEditLicenseeModalOpen(false);
@@ -181,13 +181,13 @@ export default function AdministrationLicenseesSection({
         countries={countries}
         countriesLoading={isCountriesLoading}
       />
-      <DeleteLicenseeModal
+      <AdministrationDeleteLicenseeModal
         open={isDeleteLicenseeModalOpen}
         onClose={() => setIsDeleteLicenseeModalOpen(false)}
         onDelete={handleDeleteLicensee}
         licensee={selectedLicensee}
       />
-      <PaymentHistoryModal
+      <AdministrationPaymentHistoryModal
         open={isPaymentHistoryModalOpen}
         onClose={() => {
           setIsPaymentHistoryModalOpen(false);
@@ -195,7 +195,7 @@ export default function AdministrationLicenseesSection({
         }}
         licensee={selectedLicenseeForPayment}
       />
-      <LicenseeSuccessModal
+      <AdministrationLicenseeSuccessModal
         open={isLicenseeSuccessModalOpen}
         onClose={() => {
           setIsLicenseeSuccessModalOpen(false);
@@ -203,7 +203,7 @@ export default function AdministrationLicenseesSection({
         }}
         licensee={createdLicensee}
       />
-      <PaymentStatusConfirmModal
+      <AdministrationPaymentStatusConfirmModal
         open={isPaymentConfirmModalOpen}
         onClose={() => {
           setIsPaymentConfirmModalOpen(false);

@@ -33,6 +33,7 @@ Documentation/frontend/
 │   ├── members.md                     # Member management
 │   ├── sessions.md                    # Session tracking
 │   ├── collection-report.md           # Collection reporting
+│   ├── reports.md                     # Reports page with evaluation tab
 │   ├── login.md                       # Authentication page
 │   ├── pages-overview.md              # High-level page overview
 │   └── redirect-pages.md              # Routing and redirects
@@ -123,6 +124,17 @@ Documentation/frontend/
 - Collection report creation and management
 - Financial tracking and variance analysis
 - Mobile-responsive design
+
+**[Reports](pages/reports.md)** - Machine and location performance analytics
+
+**Key Features:**
+
+- Multi-tab interface (Machines, Locations, etc.)
+- Evaluation tab with performance charts
+- Manufacturer and game performance analysis
+- Top/bottom machines tables
+- Pareto analysis summaries
+- Export functionality
 
 **[Login](pages/login.md)** - Authentication and user login
 

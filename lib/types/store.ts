@@ -8,17 +8,18 @@
  * - Firmware actions store (modals and selected firmware)
  * Used by various Zustand store implementations for state management.
  */
+import { TimePeriod } from '@/shared/types/common';
+import type { CurrencyCode } from '@/shared/types/currency';
+import type { Firmware } from '@/shared/types/entities';
 import type {
+  ActiveFilters,
+  ActiveTab,
   dashboardData,
   DashboardTotals,
   dateRange,
   locations,
   TopPerformingData,
-  ActiveFilters,
-  ActiveTab,
 } from './index';
-import { TimePeriod } from '@/shared/types/common';
-import type { Firmware } from '@/shared/types/entities';
 
 // Firmware actions state type
 export type FirmwareActionsState = {
@@ -30,64 +31,67 @@ export type FirmwareActionsState = {
   openDownloadModal: (firmware: Firmware) => void;
   closeDownloadModal: () => void;
 };
-import type { CurrencyCode } from '@/shared/types/currency';
 
 export type DashBoardStore = {
   initialLoading: boolean;
-  setInitialLoading: (_state: boolean) => void;
+  setInitialLoading: (state: boolean) => void;
 
   loadingChartData: boolean;
-  setLoadingChartData: (_state: boolean) => void;
+  setLoadingChartData: (state: boolean) => void;
 
   loadingTopPerforming: boolean;
-  setLoadingTopPerforming: (_state: boolean) => void;
+  setLoadingTopPerforming: (state: boolean) => void;
 
   refreshing: boolean;
-  setRefreshing: (_state: boolean) => void;
+  setRefreshing: (state: boolean) => void;
 
   pieChartSortIsOpen: boolean;
-  setPieChartSortIsOpen: (_state: boolean) => void;
+  setPieChartSortIsOpen: (state: boolean) => void;
 
   showDatePicker: boolean;
-  setShowDatePicker: (_state: boolean) => void;
+  setShowDatePicker: (state: boolean) => void;
 
   activeTab: ActiveTab;
-  setActiveTab: (_state: ActiveTab) => void;
+  setActiveTab: (state: ActiveTab) => void;
 
   activeFilters: ActiveFilters;
-  setActiveFilters: (_state: ActiveFilters) => void;
+  setActiveFilters: (state: ActiveFilters) => void;
 
   totals: DashboardTotals | null;
-  setTotals: (_state: DashboardTotals | null) => void;
+  setTotals: (state: DashboardTotals | null) => void;
 
   chartData: dashboardData[];
-  setChartData: (_state: dashboardData[]) => void;
+  setChartData: (state: dashboardData[]) => void;
 
   activeMetricsFilter: TimePeriod | '';
-  setActiveMetricsFilter: (_state: TimePeriod | '') => void;
+  setActiveMetricsFilter: (state: TimePeriod | '') => void;
 
   activePieChartFilter: TimePeriod | '';
-  setActivePieChartFilter: (_state: TimePeriod | '') => void;
+  setActivePieChartFilter: (state: TimePeriod | '') => void;
 
   customDateRange: dateRange;
-  setCustomDateRange: (_state: dateRange) => void;
+  setCustomDateRange: (state: dateRange) => void;
 
   pendingCustomDateRange?: dateRange;
-  setPendingCustomDateRange: (_state?: dateRange) => void;
+  setPendingCustomDateRange: (state?: dateRange) => void;
 
   topPerformingData: TopPerformingData;
-  setTopPerformingData: (_state: TopPerformingData) => void;
+  setTopPerformingData: (state: TopPerformingData) => void;
 
   gamingLocations: locations;
-  setGamingLocations: (_state: locations) => void;
+  setGamingLocations: (state: locations) => void;
 
   selectedLicencee: string;
-  setSelectedLicencee: (_state: string) => void;
+  setSelectedLicencee: (state: string) => void;
+
+  // Sorting for top performing data
+  sortBy: 'totalDrop' | 'totalWin';
+  setSortBy: (state: 'totalDrop' | 'totalWin') => void;
 
   // Currency support
   displayCurrency: CurrencyCode;
-  setDisplayCurrency: (_state: CurrencyCode) => void;
+  setDisplayCurrency: (state: CurrencyCode) => void;
   isAllLicensee: boolean;
-  setIsAllLicensee: (_state: boolean) => void;
+  setIsAllLicensee: (state: boolean) => void;
 };
 
