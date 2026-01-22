@@ -108,12 +108,6 @@ export function getGamingDayRangeForPeriod(
   const nowUtc = new Date();
   const nowLocal = new Date(nowUtc.getTime() + timezoneOffset * 60 * 60 * 1000);
 
-  if (timePeriod === 'Yesterday') {
-    console.error(
-      `[GAMING DAY DEBUG] timePeriod=Yesterday, nowUtc=${nowUtc.toISOString()}, timezoneOffset=${timezoneOffset}, nowLocal=${nowLocal.toISOString()}`
-    );
-  }
-
   // Use the local date for "today" calculations in UTC
   const today = new Date(
     Date.UTC(

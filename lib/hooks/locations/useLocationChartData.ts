@@ -29,7 +29,7 @@ type UseLocationChartDataProps = {
   activeMetricsFilter: TimePeriod | null;
   customDateRange: DateRange | null;
   activeView: 'machines' | 'members';
-  status?: 'All' | 'Online' | 'Offline';
+  status?: string;
   gameType?: string;
 };
 
@@ -341,7 +341,7 @@ export function useLocationChartData({
 
         // Add status filter
         if (status && status !== 'All') {
-          params.status = status.toLowerCase();
+          params.status = status.startsWith('Offline') ? 'offline' : status.toLowerCase();
         }
 
         // Add game type filter

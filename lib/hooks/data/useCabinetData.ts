@@ -117,7 +117,6 @@ export const useCabinetData = ({
     gross: number;
   } | null>(null);
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
-  const [lastFilterBackendKey, setLastFilterBackendKey] = useState<string>('');
 
   // AbortController for canceling previous requests
   const makeRequest = useAbortableRequest();
@@ -181,9 +180,17 @@ export const useCabinetData = ({
       // 3. Status filter (if not 'All', filter by onlineStatus)
       if (selectedStatus !== 'All' && selectedStatus !== 'all') {
         const isOnline = cabinet.online === true;
+        
+        if (selectedStatus === 'NeverOnline') {
+            // Never Online: Offline AND (no activity OR never online)
+            // Note: API filtering handles this more reliably, but for client-side search/filter:
+            const hasHistory = cabinet.lastOnline || cabinet.lastActivity;
+            return !isOnline && !hasHistory;
+        }
+
         const matchesStatus =
           (selectedStatus === 'Online' && isOnline) ||
-          (selectedStatus === 'Offline' && !isOnline);
+          (selectedStatus.startsWith('Offline') && !isOnline);
         if (!matchesStatus) return false;
       }
 
@@ -258,9 +265,11 @@ export const useCabinetData = ({
             ? 'all'
             : selectedStatus === 'Online'
               ? 'online'
-              : selectedStatus === 'Offline'
-                ? 'offline'
-                : 'all';
+              : selectedStatus === 'NeverOnline'
+                ? 'never-online'
+                : selectedStatus.startsWith('Offline')
+                  ? 'offline'
+                  : 'all';
 
         console.warn('[useCabinetData] Calling fetchCabinets with:', {
           selectedLicencee,
@@ -387,6 +396,12 @@ export const useCabinetData = ({
           setError('Invalid data format received from server');
         }
 
+        // Set loading to false only after a successful data processing
+        setLoading(false);
+        if (!hasReceivedFirstResponseRef.current) {
+          hasReceivedFirstResponseRef.current = true;
+        }
+
         // Metrics totals fetch moved to dedicated effect to avoid race conditions
       } catch (error) {
         // Silently handle aborted requests - this is expected behavior when switching filters
@@ -400,17 +415,7 @@ export const useCabinetData = ({
         setError(
           error instanceof Error ? error.message : 'Failed to load cabinets'
         );
-      } finally {
         setLoading(false);
-        if (!hasReceivedFirstResponseRef.current && result !== null) {
-          hasReceivedFirstResponseRef.current = true;
-          // Set the initial filter key so subsequent filter changes can be detected
-          // Normalize status to handle both 'All'/'all' and 'Online'/'Offline'
-          const normalizedStatus = selectedStatus === 'all' || selectedStatus === 'All' ? 'All' : selectedStatus;
-          const initialFilterKey = `${selectedLocation}|${normalizedStatus}`;
-          setLastFilterBackendKey(initialFilterKey);
-          console.warn('[useCabinetData] Initial load completed, set filter key:', initialFilterKey);
-        }
       }
     },
     [
@@ -441,9 +446,14 @@ export const useCabinetData = ({
   // Note: loadCabinets is called explicitly by the page component
   // This ensures proper control over when data is fetched
 
+  // DISABLED: This effect was causing duplicate API calls
+  // The parent component (useCabinetsPageData) already handles filter change refetches
+  // Keeping this code commented for reference but it should NOT be re-enabled
+  // 
   // Trigger refetch when status or location filter changes (filtering is now done at API level)
   // Note: This replaces the old frontend-first filtering approach since status filtering
   // is now handled at the database query level for better performance
+  /*
   useEffect(() => {
     // Only trigger if we have the necessary filters initialized
     if (!activeMetricsFilter) {
@@ -457,8 +467,7 @@ export const useCabinetData = ({
 
     // Create a unique key for this filter combination (only status and location since they're API-level)
     // Normalize status to handle both 'All'/'all' and 'Online'/'Offline'
-    const normalizedStatus = selectedStatus === 'all' || selectedStatus === 'All' ? 'All' : selectedStatus;
-    const filterKey = `${selectedLocation}|${normalizedStatus}`;
+    const filterKey = `${selectedLocation}|${selectedStatus}`;
 
     // Skip if this is the same filter combination we just loaded
     if (filterKey === lastFilterBackendKey) {
@@ -484,6 +493,7 @@ export const useCabinetData = ({
     lastFilterBackendKey,
     loadCabinetsRef,
   ]);
+  */
 
   // Removed useEffect for filtering - now handled by memoized filteredCabinets
   // Dedicated effect to fetch metrics totals reliably when filters change
@@ -534,7 +544,11 @@ export const useCabinetData = ({
               selectedGameType,
               selectedStatus === 'All' || selectedStatus === 'all'
                 ? 'all'
-                : selectedStatus.toLowerCase()
+                : selectedStatus === 'NeverOnline'
+                  ? 'never-online'
+                  : selectedStatus.startsWith('Offline')
+                    ? 'offline'
+                    : selectedStatus.toLowerCase()
             ),
           'totals'
         );

@@ -463,27 +463,24 @@ export async function getMetrics(
 
     return filledData;
   } catch (error: unknown) {
-    // Handle cancelled/aborted requests first - these are expected when user changes filters
+    // First, check if the error is due to a cancelled request.
+    // These are expected and should be handled silently by the calling hook.
     if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED')
+      (axios.isCancel && axios.isCancel(error)) ||
+      (error instanceof Error && error.name === 'AbortError') ||
+      (error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'))
     ) {
-      // Re-throw cancelled requests so caller can handle them (e.g. useAbortableRequest)
+      // Re-throw cancelled requests so the caller (e.g., useAbortableRequest) can handle them.
       throw error;
     }
 
-    // Check for axios.isCancel() to properly detect cancelled requests
-    if (axios.isCancel && axios.isCancel(error)) {
-      // Re-throw cancelled requests so caller can handle them (e.g. useAbortableRequest)
-      throw error;
-    }
-
-    // Enhanced error handling for metrics fetch
+    // If the error is not a cancellation, it's unexpected. Log it.
     console.error('Failed to fetch metrics:', error);
 
-    // Handle specific error types
+    // Handle specific HTTP error types for more granular feedback
     if (error && typeof error === 'object' && 'response' in error) {
       const axiosError = error as {
         response?: { status?: number; statusText?: string };
@@ -510,26 +507,26 @@ export async function getMetrics(
       }
     }
 
+    // Handle network errors
     if (
       (error &&
         typeof error === 'object' &&
         'code' in error &&
         error.code === 'NETWORK_ERROR') ||
-      (error &&
-        typeof error === 'object' &&
-        'message' in error &&
+      (error instanceof Error &&
         typeof error.message === 'string' &&
-        error.message?.includes('Network Error'))
+        error.message.includes('Network Error'))
     ) {
       console.error('Network error while fetching metrics');
       return [];
     }
 
-    // Log the full error in development
+    // Log the full error in development for better debugging
     if (process.env.NODE_ENV === 'development') {
       console.error('Full error details:', error);
     }
 
+    // Fallback to returning an empty array for any other unexpected errors.
     return [];
   }
 }

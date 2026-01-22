@@ -386,13 +386,17 @@ export const MachinesOverviewSkeleton = () => (
             ))}
           </div>
           {/* Pagination skeleton */}
-          <div className="flex items-center justify-between pt-4">
-            <Skeleton className="h-4 w-32" />
+          <div className="flex flex-col items-center justify-center space-y-4 pt-4 sm:flex-row sm:space-y-0 sm:space-x-4">
             <div className="flex items-center gap-2">
-              <Skeleton className="h-8 w-8" />
-              <Skeleton className="h-8 w-8" />
-              <Skeleton className="h-8 w-8" />
-              <Skeleton className="h-8 w-8" />
+              <Skeleton className="h-8 w-8 rounded-md" />
+              <Skeleton className="h-8 w-8 rounded-md" />
+              <div className="flex items-center gap-2 px-2">
+                <Skeleton className="h-4 w-8" />
+                <Skeleton className="h-8 w-14 rounded-md" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+              <Skeleton className="h-8 w-8 rounded-md" />
+              <Skeleton className="h-8 w-8 rounded-md" />
             </div>
           </div>
         </div>
@@ -846,14 +850,18 @@ export const MachinesOfflineSkeleton = () => (
             ))}
           </div>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between pt-4">
-            <Skeleton className="h-4 w-32" />
+          {/* Pagination skeleton */}
+          <div className="flex flex-col items-center justify-center space-y-4 pt-4 sm:flex-row sm:space-y-0 sm:space-x-4">
             <div className="flex items-center gap-2">
-              <Skeleton className="h-8 w-8" />
-              <Skeleton className="h-8 w-8" />
-              <Skeleton className="h-8 w-8" />
-              <Skeleton className="h-8 w-8" />
+              <Skeleton className="h-8 w-8 rounded-md" />
+              <Skeleton className="h-8 w-8 rounded-md" />
+              <div className="flex items-center gap-2 px-2">
+                <Skeleton className="h-4 w-8" />
+                <Skeleton className="h-8 w-14 rounded-md" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+              <Skeleton className="h-8 w-8 rounded-md" />
+              <Skeleton className="h-8 w-8 rounded-md" />
             </div>
           </div>
         </div>

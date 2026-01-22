@@ -6,53 +6,54 @@
  * @module components/reports/tabs/machines/ReportsMachinesOverview
  */
 
-import { Button } from '@/components/shared/ui/button';
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
+import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
 import StatusIcon from '@/components/shared/ui/common/StatusIcon';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
 import { Input } from '@/components/shared/ui/input';
+import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/shared/ui/select';
 import {
-  MachinesOverviewSkeleton,
-  MetricCardsSkeleton,
+    MachinesOverviewSkeleton,
+    MetricCardsSkeleton,
 } from '@/components/shared/ui/skeletons/ReportsSkeletons';
 import type {
-  MachineData,
-  ReportsMachinesOverviewProps,
+    MachineData,
+    ReportsMachinesOverviewProps,
 } from '@/lib/types/reports';
 import { getFinancialColorClass } from '@/lib/utils/financial';
-import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { Pencil2Icon } from '@radix-ui/react-icons';
 import {
-  BarChart3,
-  ChevronDown,
-  ChevronUp,
-  Download,
-  ExternalLink,
-  FileSpreadsheet,
-  FileText,
-  RefreshCw,
-  Trash2,
+    BarChart3,
+    ChevronDown,
+    ChevronUp,
+    Download,
+    ExternalLink,
+    FileSpreadsheet,
+    FileText,
+    RefreshCw,
+    Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React from 'react';
@@ -472,33 +473,27 @@ export const ReportsMachinesOverview = ({
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between">
+            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-gray-500">
-                Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
-                {Math.min(
-                  pagination.page * pagination.limit,
-                  pagination.totalCount
-                )}{' '}
-                of {pagination.totalCount} results
+                Showing{' '}
+                <span className="font-medium">
+                  {(pagination.page - 1) * pagination.limit + 1}
+                </span>{' '}
+                to{' '}
+                <span className="font-medium">
+                  {Math.min(
+                    pagination.page * pagination.limit,
+                    pagination.totalCount
+                  )}
+                </span>{' '}
+                of <span className="font-medium">{pagination.totalCount}</span>{' '}
+                results
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onPageChange(pagination.page - 1)}
-                  disabled={!pagination.hasPrevPage}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onPageChange(pagination.page + 1)}
-                  disabled={!pagination.hasNextPage}
-                >
-                  Next
-                </Button>
-              </div>
+              <PaginationControls
+                currentPage={pagination.page - 1}
+                totalPages={pagination.totalPages}
+                setCurrentPage={(page: number) => onPageChange(page + 1)}
+              />
             </div>
           )}
         </CardContent>

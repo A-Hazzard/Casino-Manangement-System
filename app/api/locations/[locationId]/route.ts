@@ -23,10 +23,10 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
 import {
-  convertFromUSD,
-  convertToUSD,
-  getCountryCurrency,
-  getLicenseeCurrency,
+    convertFromUSD,
+    convertToUSD,
+    getCountryCurrency,
+    getLicenseeCurrency,
 } from '@/lib/helpers/rates';
 import { TransformedCabinet } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
@@ -327,6 +327,15 @@ export async function GET(request: NextRequest) {
           $or: [
             { lastActivity: { $lt: threeMinutesAgo } },
             { lastActivity: { $exists: false } },
+            { lastActivity: null },
+          ],
+        });
+      } else if (onlineStatus === 'never-online') {
+        const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
+        andArray.push({
+          $or: [
+            { lastActivity: { $exists: false } },
+            { lastActivity: null },
           ],
         });
       }

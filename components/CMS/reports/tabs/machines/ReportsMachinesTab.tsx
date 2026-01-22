@@ -25,8 +25,9 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useDebounce } from '@/lib/utils/hooks';
 
 import {
+  calculateOfflineDurationHours,
   calculateParetoStatement,
-  getPerformanceRating,
+  getPerformanceRating
 } from '@/lib/helpers/machines';
 import { handleExportMeters as handleExportMetersHelper } from '@/lib/helpers/reports';
 
@@ -41,6 +42,11 @@ import type { MachineData } from '@/shared/types/machines';
 /**
  * Main ReportsMachinesTab Component
  */
+const ITEMS_PER_PAGE = 20;
+// Fetch 100 items at a time (5 pages worth)
+const ITEMS_PER_BATCH = 100;
+const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
+
 export default function ReportsMachinesTab() {
   // ============================================================================
   // Hooks & Context
@@ -99,15 +105,10 @@ export default function ReportsMachinesTab() {
     useState<TopMachinesCriteria>('netWin');
   const [bottomMachinesSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  const [overviewCurrentPage, setOverviewCurrentPage] = useState(0);
-  const overviewItemsPerPage = 10;
-
-  const [offlineCurrentPage, setOfflineCurrentPage] = useState(0);
-  const offlineItemsPerPage = 10;
-
   // ============================================================================
   // Data Fetching Hook
   // ============================================================================
+  // Pass batch size for API requests
   const {
     machineStats,
     allOverviewMachines,
@@ -128,7 +129,21 @@ export default function ReportsMachinesTab() {
     setEvaluationLoading,
     setOfflineLoading,
     setAllOfflineMachines,
-  } = useMachinesTabData(activeTab, displayCurrency);
+  } = useMachinesTabData(activeTab, displayCurrency, ITEMS_PER_BATCH, ITEMS_PER_BATCH);
+
+  // Pagination State - Local (for UI)
+  const [overviewCurrentPage, setOverviewCurrentPage] = useState(0);
+  const [overviewLoadedBatches, setOverviewLoadedBatches] = useState<Set<number>>(new Set([1]));
+
+  const [offlineCurrentPage, setOfflineCurrentPage] = useState(0);
+  const [offlineLoadedBatches, setOfflineLoadedBatches] = useState<Set<number>>(new Set([1]));
+
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / PAGES_PER_BATCH) + 1;
+    },
+    []
+  );
 
   // Get machine stats - pass locationId(s) when specific locations are selected for offline tab
   // Multiple locations are passed as comma-separated string (API handles this)
@@ -425,23 +440,49 @@ export default function ReportsMachinesTab() {
   // ============================================================================
 
   const paginatedOverviewMachines = useMemo(() => {
-    const startIndex = overviewCurrentPage * overviewItemsPerPage;
-    const endIndex = startIndex + overviewItemsPerPage;
+    const startIndex = overviewCurrentPage * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
     return allOverviewMachines.slice(startIndex, endIndex);
   }, [allOverviewMachines, overviewCurrentPage]);
 
   const overviewTotalPages = useMemo(() => {
-    return Math.ceil(allOverviewMachines.length / overviewItemsPerPage) || 1;
+    return Math.max(1, Math.ceil(allOverviewMachines.length / ITEMS_PER_PAGE));
   }, [allOverviewMachines.length]);
 
   const paginatedOfflineMachines = useMemo(() => {
-    const startIndex = offlineCurrentPage * offlineItemsPerPage;
-    const endIndex = startIndex + offlineItemsPerPage;
-    return allOfflineMachines.slice(startIndex, endIndex);
-  }, [allOfflineMachines, offlineCurrentPage]);
+    // Clone and sort first
+    const sorted = [...allOfflineMachines].sort((a, b) => {
+      const { key, direction } = sortConfig;
+      const factor = direction === 'asc' ? 1 : -1;
+
+      if (key === 'offlineDurationHours') {
+        const durA = calculateOfflineDurationHours(a.lastActivity);
+        const durB = calculateOfflineDurationHours(b.lastActivity);
+        return (durA - durB) * factor;
+      }
+
+      // Handle standard keys
+      let valA = a[key as keyof MachineData];
+      let valB = b[key as keyof MachineData];
+
+      // Handle null/undefined values
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        return valA.localeCompare(valB) * factor;
+      }
+
+      // Default to numeric comparison
+      valA = (valA as number) || 0;
+      valB = (valB as number) || 0;
+      return (valA - valB) * factor;
+    });
+
+    const startIndex = offlineCurrentPage * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return sorted.slice(startIndex, endIndex);
+  }, [allOfflineMachines, offlineCurrentPage, sortConfig]);
 
   const offlineTotalPages = useMemo(() => {
-    return Math.ceil(allOfflineMachines.length / offlineItemsPerPage) || 1;
+    return Math.max(1, Math.ceil(allOfflineMachines.length / ITEMS_PER_PAGE));
   }, [allOfflineMachines.length]);
 
   // ============================================================================
@@ -668,6 +709,84 @@ export default function ReportsMachinesTab() {
     setOfflineLoading,
   ]);
 
+  // Batch loading effect for Overview
+  useEffect(() => {
+    if (overviewLoading || !activeMetricsFilter || searchTerm.trim()) return;
+
+    const currentBatch = calculateBatchNumber(overviewCurrentPage);
+    const isLastPageOfBatch = (overviewCurrentPage + 1) % PAGES_PER_BATCH === 0;
+    const nextBatch = currentBatch + 1;
+
+    if ((isLastPageOfBatch && !overviewLoadedBatches.has(nextBatch)) || !overviewLoadedBatches.has(currentBatch)) {
+      const batchToLoad = isLastPageOfBatch ? nextBatch : currentBatch;
+      fetchOverviewMachines(batchToLoad, searchTerm, overviewSelectedLocation, onlineStatusFilter);
+      setOverviewLoadedBatches(prev => new Set([...prev, batchToLoad]));
+    }
+  }, [
+    overviewCurrentPage,
+    overviewLoading,
+    activeMetricsFilter,
+    searchTerm,
+    overviewLoadedBatches,
+    fetchOverviewMachines,
+    calculateBatchNumber,
+    overviewSelectedLocation,
+    onlineStatusFilter,
+  ]);
+
+  // Batch loading effect for Offline
+  useEffect(() => {
+    if (offlineLoading || !activeMetricsFilter || offlineSearchTerm.trim()) return;
+
+    const currentBatch = calculateBatchNumber(offlineCurrentPage);
+    const isLastPageOfBatch = (offlineCurrentPage + 1) % PAGES_PER_BATCH === 0;
+    const nextBatch = currentBatch + 1;
+
+    if ((isLastPageOfBatch && !offlineLoadedBatches.has(nextBatch)) || !offlineLoadedBatches.has(currentBatch)) {
+      const batchToLoad = isLastPageOfBatch ? nextBatch : currentBatch;
+      fetchOfflineMachines(
+        batchToLoad, 
+        offlineSearchTerm, 
+        offlineSelectedLocations.length > 0 && !offlineSelectedLocations.includes('all') ? offlineSelectedLocations.join(',') : 'all', 
+        selectedOfflineDuration
+      );
+      setOfflineLoadedBatches(prev => new Set([...prev, batchToLoad]));
+    }
+  }, [
+    offlineCurrentPage,
+    offlineLoading,
+    activeMetricsFilter,
+    offlineSearchTerm,
+    offlineLoadedBatches,
+    fetchOfflineMachines,
+    calculateBatchNumber,
+    offlineSelectedLocations,
+    selectedOfflineDuration,
+  ]);
+
+  // Reset pages when filters change
+  useEffect(() => {
+    setOverviewCurrentPage(0);
+    setOverviewLoadedBatches(new Set([1]));
+  }, [
+    debouncedSearchTerm,
+    overviewSelectedLocation,
+    onlineStatusFilter,
+    selectedLicencee,
+    customDateRange,
+  ]);
+
+  useEffect(() => {
+    setOfflineCurrentPage(0);
+    setOfflineLoadedBatches(new Set([1]));
+  }, [
+    debouncedOfflineSearchTerm,
+    offlineSelectedLocations,
+    selectedOfflineDuration,
+    selectedLicencee,
+    customDateRange,
+  ]);
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -741,7 +860,7 @@ export default function ReportsMachinesTab() {
             gamesLoading={evaluationLoading}
             pagination={{
               page: overviewCurrentPage + 1,
-              limit: overviewItemsPerPage,
+              limit: ITEMS_PER_PAGE,
               totalCount: allOverviewMachines.length,
               totalPages: overviewTotalPages,
               hasNextPage: overviewCurrentPage < overviewTotalPages - 1,
@@ -808,14 +927,14 @@ export default function ReportsMachinesTab() {
             allOfflineMachines={allOfflineMachines}
             offlinePagination={{
               page: offlineCurrentPage + 1,
-              limit: offlineItemsPerPage,
+              limit: ITEMS_PER_PAGE,
               totalCount: allOfflineMachines.length,
               totalPages: offlineTotalPages,
               hasNextPage: offlineCurrentPage < offlineTotalPages - 1,
               hasPrevPage: offlineCurrentPage > 0,
             }}
             sortConfig={{
-              key: sortConfig.key as keyof MachineData,
+              key: sortConfig.key as keyof MachineData | 'offlineDurationHours',
               direction: sortConfig.direction,
             }}
             onSearchChange={setOfflineSearchTerm}

@@ -239,7 +239,7 @@ export default function CabinetsPageContent() {
                 onStatusChange={setSelectedStatus}
                 sortOption={sortOption}
                 sortOrder={sortOrder}
-                onSortChange={() => {}}
+                onSortChange={handleColumnSort}
                 activeSection={activeSection}
                 showLocationFilter={true}
               />
@@ -257,7 +257,7 @@ export default function CabinetsPageContent() {
                 sortOption={sortOption}
                 sortOrder={sortOrder}
                 currentPage={currentPage}
-                totalPages={Math.ceil((cabinetsPageData.totalCount || 0) / 20)}
+                totalPages={Math.ceil((cabinetsPageData.filteredCabinets.length || 0) / 20)}
                 onPageChange={setCurrentPage}
                 onSort={handleColumnSort}
                 onEdit={() => {}}

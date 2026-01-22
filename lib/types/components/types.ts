@@ -1,8 +1,8 @@
 // UI Component types
+import type { ExtendedCabinetDetail } from '@/lib/types/pages';
 import type { MachineMovementRecord } from '@/lib/types/reports';
 import type { AggregatedLocation } from '@/shared/types';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
-import type { ExtendedCabinetDetail } from '@/lib/types/pages';
 
 export type RGBAColor = {
   r: number;
@@ -124,7 +124,8 @@ export type LocationsCabinetGridProps = {
     | 'game'
     | 'smbId'
     | 'serialNumber'
-    | 'lastOnline';
+    | 'lastOnline'
+    | 'offlineTime';
   sortOrder?: 'asc' | 'desc';
   onSortChange?: (
     option:
@@ -138,7 +139,8 @@ export type LocationsCabinetGridProps = {
       | 'game'
       | 'smbId'
       | 'serialNumber'
-      | 'lastOnline',
+      | 'lastOnline'
+      | 'offlineTime',
     order: 'asc' | 'desc'
   ) => void;
 };

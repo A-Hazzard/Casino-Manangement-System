@@ -12,9 +12,9 @@ import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
-  convertFromUSD,
-  convertToUSD,
-  getCountryCurrency,
+    convertFromUSD,
+    convertToUSD,
+    getCountryCurrency,
 } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
@@ -812,41 +812,48 @@ export async function getOfflineMachines(
           { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
       },
-      { lastActivity: { $exists: true, $lt: threeMinutesAgo } },
     ],
   };
 
-  // Apply duration filter if specified
-  if (durationFilter && durationFilter !== 'all') {
-    const andArray = machineMatchStage.$and as Array<Record<string, unknown>>;
-    const now = new Date();
-    let durationThreshold: Date;
+  const andArray = machineMatchStage.$and as Array<Record<string, unknown>>;
 
-    switch (durationFilter) {
-      case '1h':
-        durationThreshold = new Date(now.getTime() - 1 * 60 * 60 * 1000);
-        break;
-      case '4h':
-        durationThreshold = new Date(now.getTime() - 4 * 60 * 60 * 1000);
-        break;
-      case '24h':
-        durationThreshold = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        durationThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        durationThreshold = threeMinutesAgo;
+  // Apply duration filter
+  if (durationFilter === 'never') {
+    // Specific filter for machines that have NEVER been online
+    andArray.push({ lastActivity: { $exists: false } });
+  } else {
+    // Default: Must have been online at some point, but not recently
+    // This matches the original logic for 'offline'
+    andArray.push({ lastActivity: { $exists: true, $lt: threeMinutesAgo } });
+
+    if (durationFilter && durationFilter !== 'all') {
+      const now = new Date();
+      let durationThreshold: Date;
+
+      switch (durationFilter) {
+        case '1h':
+          durationThreshold = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+          break;
+        case '4h':
+          durationThreshold = new Date(now.getTime() - 4 * 60 * 60 * 1000);
+          break;
+        case '24h':
+          durationThreshold = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          durationThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          durationThreshold = threeMinutesAgo;
+      }
+
+      andArray.push({
+        $or: [
+          { lastActivity: { $exists: false } },
+          { lastActivity: { $lt: durationThreshold } },
+        ],
+      });
     }
-
-    // Machines offline for at least the specified duration
-    // (lastActivity is older than the threshold OR doesn't exist)
-    andArray.push({
-      $or: [
-        { lastActivity: { $exists: false } },
-        { lastActivity: { $lt: durationThreshold } },
-      ],
-    });
   }
 
   if (locationId && locationId !== 'all') {

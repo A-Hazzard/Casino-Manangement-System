@@ -6,52 +6,54 @@
  * @module components/reports/tabs/machines/ReportsMachinesOffline
  */
 
-import { Badge } from '@/components/shared/ui/badge';
-import { Button } from '@/components/shared/ui/button';
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
+import { Badge } from '@/components/shared/ui/badge';
+import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
-import { Input } from '@/components/shared/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/shared/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
-import { MachinesOfflineSkeleton } from '@/components/shared/ui/skeletons/ReportsSkeletons';
-import {
-  ChevronDown,
-  ChevronUp,
-  Download,
-  ExternalLink,
-  FileSpreadsheet,
-  FileText,
-  Monitor,
-  RefreshCw,
-} from 'lucide-react';
-import React, { useMemo } from 'react';
-import { getFinancialColorClass } from '@/lib/utils/financial';
-import Image from 'next/image';
-import editIcon from '@/public/editIcon.svg';
-import deleteIcon from '@/public/deleteIcon.svg';
-import { useRouter } from 'next/navigation';
-import type { MachineData, ReportsMachinesOfflineProps } from '@/lib/types/reports';
+import { Input } from '@/components/shared/ui/input';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/shared/ui/select';
+import { MachinesOfflineSkeleton } from '@/components/shared/ui/skeletons/ReportsSkeletons';
 import { calculateOfflineDurationHours } from '@/lib/helpers/machines';
+import type { MachineData, ReportsMachinesOfflineProps } from '@/lib/types/reports';
+import { getFinancialColorClass } from '@/lib/utils/financial';
+import deleteIcon from '@/public/deleteIcon.svg';
+import editIcon from '@/public/editIcon.svg';
+import { format } from 'date-fns';
+import {
+    ChevronDown,
+    ChevronUp,
+    Download,
+    ExternalLink,
+    FileSpreadsheet,
+    FileText,
+    Monitor,
+    RefreshCw,
+} from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import React, { useMemo } from 'react';
 
 // ============================================================================
 // Internal Components
@@ -299,7 +301,7 @@ export const ReportsMachinesOffline = ({
           value={selectedOfflineDuration}
           onValueChange={onDurationChange}
         >
-          <SelectTrigger className="w-full border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500 md:w-40">
+          <SelectTrigger className="w-full border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500 md:w-52">
             <SelectValue
               placeholder="All Durations"
               className="text-gray-900"
@@ -307,6 +309,7 @@ export const ReportsMachinesOffline = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Durations</SelectItem>
+            <SelectItem value="never">Never Online</SelectItem>
             <SelectItem value="1h">1+ Hours</SelectItem>
             <SelectItem value="4h">4+ Hours</SelectItem>
             <SelectItem value="24h">24+ Hours</SelectItem>
@@ -475,29 +478,37 @@ export const ReportsMachinesOffline = ({
                           </button>
                         </td>
                         <td className="p-3 text-left">
-                          {lastOnlineDate ? lastOnlineDate.toLocaleString() : 'Never'}
+                          {lastOnlineDate ? format(lastOnlineDate, 'MMM d, yyyy h:mm a') : 'Never'}
                         </td>
                         <td className="p-3 text-left">
-                          <Badge
-                            variant="outline"
-                            className={
-                              hoursOffline >= 168
-                                ? 'border-red-600 text-red-600' // 7+ days
-                                : hoursOffline >= 24
-                                  ? 'border-orange-600 text-orange-600' // 24+ hours
-                                  : hoursOffline >= 4
-                                    ? 'border-yellow-600 text-yellow-600' // 4+ hours
-                                    : 'border-green-600 text-green-600' // Less than 4 hours
-                            }
-                          >
-                            {hoursOffline >= 168
-                              ? `${Math.floor(hoursOffline / 24)}d`
-                              : hoursOffline >= 24
-                                ? `${Math.floor(hoursOffline)}h`
-                                : hoursOffline >= 1
-                                  ? `${Math.floor(hoursOffline * 60)}m`
-                                  : 'Just now'}
-                          </Badge>
+                              {(!machine.lastActivity || machine.lastActivity === '') ? (
+                                <Badge variant="outline" className="border-gray-500 text-gray-500">
+                                  Never Online
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    hoursOffline >= 168
+                                      ? 'border-red-600 text-red-600' // 7+ days
+                                      : hoursOffline >= 24
+                                        ? 'border-orange-600 text-orange-600' // 24+ hours
+                                        : hoursOffline >= 4
+                                          ? 'border-yellow-600 text-yellow-600' // 4+ hours
+                                          : 'border-green-600 text-green-600' // Less than 4 hours
+                                  }
+                                >
+                                  {hoursOffline >= 168
+                                    ? `${Math.floor(hoursOffline / 24)}d`
+                                    : hoursOffline >= 24
+                                      ? `${Math.floor(hoursOffline)}h`
+                                      : hoursOffline >= 1
+                                        ? `${Math.floor(hoursOffline)}h`
+                                        : hoursOffline * 60 >= 1
+                                          ? `${Math.floor(hoursOffline * 60)}m`
+                                          : 'less than a minute ago'}
+                                </Badge>
+                              )}
                         </td>
                         <td className="p-3 text-left">
                           <span className={getFinancialColorClass(machine.coinIn)}>
@@ -564,26 +575,34 @@ export const ReportsMachinesOffline = ({
                       {/* Header */}
                       <div className="mb-4 flex flex-col border-b border-gray-100 pb-3">
                         <div className="mb-2 flex items-center justify-between">
-                          <Badge
-                            variant="outline"
-                            className={
-                              hoursOffline >= 168
-                                ? 'border-red-600 text-red-600' // 7+ days
-                                : hoursOffline >= 24
-                                  ? 'border-orange-600 text-orange-600' // 24+ hours
-                                  : hoursOffline >= 4
-                                    ? 'border-yellow-600 text-yellow-600' // 4+ hours
-                                    : 'border-green-600 text-green-600' // Less than 4 hours
-                            }
-                          >
-                            {hoursOffline >= 168
-                              ? `${Math.floor(hoursOffline / 24)}d`
-                              : hoursOffline >= 24
-                                ? `${Math.floor(hoursOffline)}h`
-                                : hoursOffline >= 1
-                                  ? `${Math.floor(hoursOffline * 60)}m`
-                                  : 'Just now'}
-                          </Badge>
+                            {(!machine.lastActivity || machine.lastActivity === '') ? (
+                                <Badge variant="outline" className="border-gray-500 text-gray-500">
+                                  Never Online
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    hoursOffline >= 168
+                                      ? 'border-red-600 text-red-600' // 7+ days
+                                      : hoursOffline >= 24
+                                        ? 'border-orange-600 text-orange-600' // 24+ hours
+                                        : hoursOffline >= 4
+                                          ? 'border-yellow-600 text-yellow-600' // 4+ hours
+                                          : 'border-green-600 text-green-600' // Less than 4 hours
+                                  }
+                                >
+                                  {hoursOffline >= 168
+                                    ? `${Math.floor(hoursOffline / 24)}d`
+                                    : hoursOffline >= 24
+                                      ? `${Math.floor(hoursOffline)}h`
+                                      : hoursOffline >= 1
+                                        ? `${Math.floor(hoursOffline)}h`
+                                        : hoursOffline * 60 >= 1
+                                          ? `${Math.floor(hoursOffline * 60)}m`
+                                          : 'less than a minute ago'}
+                                </Badge>
+                              )}
                         </div>
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
@@ -628,7 +647,7 @@ export const ReportsMachinesOffline = ({
                         <div>
                           <p className="text-xs font-medium text-gray-500">Last Online</p>
                           <p className="mt-1 text-sm font-semibold text-gray-900">
-                            {lastOnlineDate ? lastOnlineDate.toLocaleString() : 'Never'}
+                            {lastOnlineDate ? format(lastOnlineDate, 'MMM d, yyyy h:mm a') : 'Never'}
                           </p>
                         </div>
                         <div>
@@ -688,33 +707,30 @@ export const ReportsMachinesOffline = ({
 
           {/* Pagination */}
           {offlinePagination.totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between">
+            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-gray-500">
-                Showing {(offlinePagination.page - 1) * offlinePagination.limit + 1} to{' '}
-                {Math.min(
-                  offlinePagination.page * offlinePagination.limit,
-                  offlinePagination.totalCount
-                )}{' '}
-                of {offlinePagination.totalCount} results
+                Showing{' '}
+                <span className="font-medium">
+                  {(offlinePagination.page - 1) * offlinePagination.limit + 1}
+                </span>{' '}
+                to{' '}
+                <span className="font-medium">
+                  {Math.min(
+                    offlinePagination.page * offlinePagination.limit,
+                    offlinePagination.totalCount
+                  )}
+                </span>{' '}
+                of{' '}
+                <span className="font-medium">
+                  {offlinePagination.totalCount}
+                </span>{' '}
+                results
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onPageChange(offlinePagination.page - 1)}
-                  disabled={!offlinePagination.hasPrevPage}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onPageChange(offlinePagination.page + 1)}
-                  disabled={!offlinePagination.hasNextPage}
-                >
-                  Next
-                </Button>
-              </div>
+              <PaginationControls
+                currentPage={offlinePagination.page - 1}
+                totalPages={offlinePagination.totalPages}
+                setCurrentPage={(page: number) => onPageChange(page + 1)}
+              />
             </div>
           )}
         </CardContent>

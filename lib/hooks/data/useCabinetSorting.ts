@@ -18,7 +18,8 @@ export type CabinetSortOption =
   | 'game'
   | 'smbId'
   | 'serialNumber'
-  | 'lastOnline';
+  | 'lastOnline'
+  | 'offlineTime';
 
 type UseCabinetSortingProps = {
   filteredCabinets: Cabinet[];
@@ -40,6 +41,8 @@ type UseCabinetSortingReturn = {
   totalPages: number;
   handleSortToggle: () => void;
   handleColumnSort: (column: CabinetSortOption) => void;
+  setSortOption: (option: CabinetSortOption) => void;
+  setSortOrder: (order: 'asc' | 'desc') => void;
   setCurrentPage: (page: number) => void;
   transformCabinet: (cabinet: Cabinet) => ReturnType<typeof mapToCabinetProps>;
 };
@@ -91,6 +94,42 @@ export const useCabinetSorting = ({
 
     const sorted = [...filteredCabinets].sort((firstCabinet, secondCabinet) => {
       const orderMultiplier = sortOrder === 'desc' ? -1 : 1;
+      
+      // Special handling for offlineTime sorting
+      if (sortOption === 'offlineTime') {
+        const now = Date.now();
+        const fiveMinutesAgo = now - 5 * 60 * 1000;
+        
+        // Determine if machines are online (lastActivity within last 5 minutes)
+        const firstLastActivity = firstCabinet.lastActivity || firstCabinet.lastOnline;
+        const secondLastActivity = secondCabinet.lastActivity || secondCabinet.lastOnline;
+        
+        const firstIsOnline = firstLastActivity && new Date(firstLastActivity).getTime() > fiveMinutesAgo;
+        const secondIsOnline = secondLastActivity && new Date(secondLastActivity).getTime() > fiveMinutesAgo;
+        
+        // If both online or both offline, compare by offline time
+        if (firstIsOnline && secondIsOnline) {
+          return 0; // Both online, maintain order
+        }
+        if (!firstIsOnline && !secondIsOnline) {
+          // Both offline, compare by time offline (older lastActivity = longer offline)
+          const firstTime = firstLastActivity ? new Date(firstLastActivity).getTime() : 0;
+          const secondTime = secondLastActivity ? new Date(secondLastActivity).getTime() : 0;
+
+          // Always push "Never Online" (0) to the bottom
+          if (firstTime === 0 && secondTime > 0) return 1;
+          if (firstTime > 0 && secondTime === 0) return -1;
+          if (firstTime === 0 && secondTime === 0) return 0;
+
+          // Lower timestamp = longer offline time
+          // For 'desc' (Longest First): we want lower timestamps first, so reverse the comparison
+          return (firstTime < secondTime ? 1 : -1) * orderMultiplier;
+        }
+        // One online, one offline - offline machines come first when sorting by offline time
+        return firstIsOnline ? 1 : -1;
+      }
+      
+      // Standard sorting for other options
       const firstValue = firstCabinet[sortOption] || 0;
       const secondValue = secondCabinet[sortOption] || 0;
 
@@ -199,6 +238,8 @@ export const useCabinetSorting = ({
     // Actions
     handleSortToggle,
     handleColumnSort,
+    setSortOption,
+    setSortOrder,
     setCurrentPage,
     transformCabinet,
   };

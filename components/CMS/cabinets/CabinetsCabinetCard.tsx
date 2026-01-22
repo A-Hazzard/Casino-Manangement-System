@@ -16,17 +16,18 @@
 
 import { Button } from '@/components/shared/ui/button';
 import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
+import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { CabinetCardProps } from '@/lib/types/components';
 import { formatCurrency } from '@/lib/utils';
 import {
-  getGrossColorClass,
-  getMoneyInColorClass,
-  getMoneyOutColorClass,
+    getGrossColorClass,
+    getMoneyInColorClass,
+    getMoneyOutColorClass,
 } from '@/lib/utils/financial';
-import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import gsap from 'gsap';
-import { ExternalLink, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Clock, ExternalLink, Eye, Pencil, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
@@ -164,6 +165,14 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
           )}
         </div>
       </div>
+      
+      {/* Offline Status - Show when offline */}
+      {!isOnline && (
+        <div className="mb-3 flex items-center gap-1.5 text-xs text-red-600 font-medium">
+          <Clock className="h-3 w-3" />
+          <span>{props.lastOnline ? `Offline ${formatDistanceToNow(new Date(props.lastOnline), { addSuffix: true })}` : 'Never Online'}</span>
+        </div>
+      )}
 
       {/* Financial Data - List Layout */}
       <div className="border-t border-gray-200 pt-2 text-sm">

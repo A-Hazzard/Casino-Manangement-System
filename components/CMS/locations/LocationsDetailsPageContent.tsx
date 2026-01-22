@@ -34,14 +34,14 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
 import MembersNavigation from '@/components/CMS/members/common/MembersNavigation';
 import {
-    MembersHandlersProvider,
-    useMembersHandlers,
+  MembersHandlersProvider,
+  useMembersHandlers,
 } from '@/components/CMS/members/context/MembersHandlersContext';
 import MembersListTab from '@/components/CMS/members/tabs/MembersListTab';
 import MembersSummaryTab from '@/components/CMS/members/tabs/MembersSummaryTab';
 import {
-    MembersListTabSkeleton,
-    MembersSummaryTabSkeleton,
+  MembersListTabSkeleton,
+  MembersSummaryTabSkeleton,
 } from '@/components/shared/ui/skeletons/MembersSkeletons';
 import { MEMBERS_TABS_CONFIG } from '@/lib/constants';
 import { useMembersNavigation } from '@/lib/hooks/navigation';
@@ -50,8 +50,8 @@ import { Suspense } from 'react';
 
 import { IMAGES } from '@/lib/constants';
 import {
-    useLocationMachineStats,
-    useLocationMembershipStats,
+  useLocationMachineStats,
+  useLocationMembershipStats,
 } from '@/lib/hooks/data';
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licensee';
@@ -298,7 +298,7 @@ export default function LocationsDetailsPageContent() {
   // ============================================================================
   // Event Handlers
   // ============================================================================
-  const handleFilterChange = (status: 'All' | 'Online' | 'Offline') => {
+  const handleFilterChange = (status: string) => {
     cabinetsData.setSelectedStatus(status);
   };
 

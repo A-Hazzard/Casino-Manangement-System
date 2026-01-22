@@ -56,6 +56,8 @@ export const CabinetsCabinetSearchFilters = ({
     { value: 'locationName-desc', label: 'Location (Z to A)' },
     { value: 'lastOnline-desc', label: 'Last Online (Most Recent)' },
     { value: 'lastOnline-asc', label: 'Last Online (Oldest First)' },
+    { value: 'offlineTime-desc', label: 'Offline Time (Longest First)' },
+    { value: 'offlineTime-asc', label: 'Offline Time (Shortest First)' },
   ];
 
   const locationOptions = locations.map(location => ({
@@ -126,19 +128,21 @@ export const CabinetsCabinetSearchFilters = ({
                 searchPlaceholder="Search game types..."
               />
             </div>
-            <div className="w-32 flex-shrink-0 relative">
+            <div className="w-44 flex-shrink-0 relative">
               <CustomSelect
                 value={selectedStatus}
                 onValueChange={onStatusChange}
                 options={[
                   { value: 'All', label: 'All Machines' },
                   { value: 'Online', label: 'Online' },
-                  { value: 'Offline', label: 'Offline' },
+                  { value: 'OfflineLongest', label: 'Offline (Longest First)' },
+                  { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
+                  { value: 'NeverOnline', label: 'Never Online' },
                 ]}
                 placeholder="All Status"
                 className="w-full"
                 triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={true}
+                searchable={false}
                 emptyMessage="No status options found"
               />
             </div>
@@ -200,19 +204,21 @@ export const CabinetsCabinetSearchFilters = ({
             </div>
 
             {/* Status Filter */}
-            <div className="w-auto min-w-[120px] max-w-[150px] flex-shrink-0">
+            <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
               <CustomSelect
                 value={selectedStatus}
                 onValueChange={onStatusChange}
                 options={[
                   { value: 'All', label: 'All Machines' },
                   { value: 'Online', label: 'Online' },
-                  { value: 'Offline', label: 'Offline' },
+                  { value: 'OfflineLongest', label: 'Offline (Longest First)' },
+                  { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
+                  { value: 'NeverOnline', label: 'Never Online' },
                 ]}
                 placeholder="All Status"
                 className="w-full"
                 triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={true}
+                searchable={false}
                 emptyMessage="No status options found"
               />
             </div>

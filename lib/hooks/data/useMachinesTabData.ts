@@ -9,10 +9,10 @@ import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { isAbortError } from '@/lib/utils/errors';
 import type {
-  MachineData,
-  MachinesApiResponse,
-  MachineStats,
-  MachineStatsApiResponse,
+    MachineData,
+    MachinesApiResponse,
+    MachineStats,
+    MachineStatsApiResponse,
 } from '@/shared/types/machines';
 import axios from 'axios';
 import { useCallback, useState } from 'react';
@@ -38,9 +38,11 @@ export const useMachinesTabData = (
   const [allOverviewMachines, setAllOverviewMachines] = useState<MachineData[]>(
     []
   );
+  const [overviewTotalCount, setOverviewTotalCount] = useState(0);
   const [allOfflineMachines, setAllOfflineMachines] = useState<MachineData[]>(
     []
   );
+  const [offlineTotalCount, setOfflineTotalCount] = useState(0);
   const [allMachines, setAllMachines] = useState<MachineData[]>([]);
   const [locations, setLocations] = useState<
     { id: string; name: string; sasEnabled: boolean }[]
@@ -138,6 +140,8 @@ export const useMachinesTabData = (
             { params, signal }
           );
           const newMachines = response.data.data || [];
+          const totalCount = response.data.pagination?.totalCount || 0;
+          setOverviewTotalCount(totalCount);
 
           // On page 1, replace the data; otherwise append
           if (page === 1) {
@@ -201,6 +205,8 @@ export const useMachinesTabData = (
             { params, signal }
           );
           const newOfflineMachines = response.data.data || [];
+          const totalCount = response.data.pagination?.totalCount || 0;
+          setOfflineTotalCount(totalCount);
 
           // On batch 1 or search, replace the data; otherwise append
           if (batch === 1 || search?.trim()) {
@@ -316,8 +322,10 @@ export const useMachinesTabData = (
   return {
     machineStats,
     allOverviewMachines,
+    overviewTotalCount,
     setAllOverviewMachines,
     allOfflineMachines,
+    offlineTotalCount,
     setAllOfflineMachines,
     allMachines,
     locations,

@@ -16,6 +16,7 @@
 
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
+import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import {
   Table,
   TableBody,
@@ -31,7 +32,6 @@ import {
   getMoneyInColorClass,
   getMoneyOutColorClass,
 } from '@/lib/utils/financial';
-import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import type { DataTableProps } from '@/shared/types/components';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { ClockIcon, Cross1Icon, MobileIcon } from '@radix-ui/react-icons';
@@ -280,13 +280,15 @@ export default function CabinetsCabinetTable({
                       </Badge>
                     </div>
 
-                    {/* Row 3: Last Activity */}
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <ClockIcon className="h-3 w-3 flex-shrink-0" />
-                      <span className="whitespace-normal break-words">
-                        {lastOnlineText}
-                      </span>
-                    </div>
+                    {/* Row 3: Last Activity - Only show time for offline machines */}
+                    {!isOnline && (
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <ClockIcon className="h-3 w-3 flex-shrink-0" />
+                        <span className="whitespace-normal break-words">
+                          {lastOnlineText === 'Never' ? 'Never Online' : `Offline ${lastOnlineText}`}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>

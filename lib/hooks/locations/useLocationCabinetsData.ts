@@ -43,7 +43,8 @@ type CabinetSortOption =
   | 'game'
   | 'smbId'
   | 'serialNumber'
-  | 'lastOnline';
+  | 'lastOnline'
+  | 'offlineTime';
 
 type UseLocationCabinetsDataProps = {
   locationId: string;
@@ -56,6 +57,10 @@ type UseLocationCabinetsDataProps = {
   setDateFilterInitialized: (value: boolean) => void;
   setFiltersInitialized: (value: boolean) => void;
 };
+
+const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_BATCH = 100;
+const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
 
 export function useLocationCabinetsData({
   locationId,
@@ -88,9 +93,7 @@ export function useLocationCabinetsData({
       longtitude?: number;
     };
   } | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<
-    'All' | 'Online' | 'Offline'
-  >('All');
+  const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedGameType, setSelectedGameType] = useState<string>('all');
   const [allCabinets, setAllCabinets] = useState<Cabinet[]>([]);
   const [accumulatedCabinets, setAccumulatedCabinets] = useState<Cabinet[]>([]);
@@ -98,6 +101,18 @@ export function useLocationCabinetsData({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
   const [currentPage, setCurrentPage] = useState(0);
+
+  // Effect to handle automatic sorting when status changes to Offline sorting variants
+  useEffect(() => {
+    if (selectedStatus === 'OfflineLongest') {
+      setSortOption('offlineTime');
+      setSortOrder('desc');
+    } else if (selectedStatus === 'OfflineShortest') {
+      setSortOption('offlineTime');
+      setSortOrder('asc');
+    }
+  }, [selectedStatus]);
+
   const [locations, setLocations] = useState<{ id: string; name: string }[]>(
     []
   );
@@ -111,12 +126,6 @@ export function useLocationCabinetsData({
   const cabinetsRequestInProgress = useRef(false);
   const prevCabinetsFetchKey = useRef<string>('');
 
-  // ============================================================================
-  // Constants
-  // ============================================================================
-  const itemsPerPage = 20;
-  const itemsPerBatch = 100;
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
   // ============================================================================
   // Computed Values
@@ -144,9 +153,9 @@ export function useLocationCabinetsData({
 
   const calculateBatchNumber = useCallback(
     (page: number) => {
-      return Math.floor(page / pagesPerBatch) + 1;
+      return Math.floor(page / PAGES_PER_BATCH) + 1;
     },
-    [pagesPerBatch]
+    []
   );
 
   // Determine the full source set to work from (all loaded cabinets for the period)
@@ -158,16 +167,16 @@ export function useLocationCabinetsData({
   // Calculate total pages based on the filtered & sorted set
   const effectiveTotalPages = useMemo(() => {
     const totalItems = filteredCabinets.length;
-    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
+    const totalPagesFromItems = Math.ceil(totalItems / ITEMS_PER_PAGE);
     return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [filteredCabinets.length, itemsPerPage]);
+  }, [filteredCabinets.length]);
 
   // Get paginated cabinets for current page
   const paginatedCabinets = useMemo(() => {
-    const startIndex = currentPage * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
+    const startIndex = currentPage * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
     return filteredCabinets.slice(startIndex, endIndex);
-  }, [filteredCabinets, currentPage, itemsPerPage]);
+  }, [filteredCabinets, currentPage]);
 
   // ============================================================================
   // Filter & Sort Logic
@@ -239,8 +248,7 @@ export function useLocationCabinetsData({
 
     const currentBatch = calculateBatchNumber(currentPage);
 
-    // Check if we're on the last page of the current batch
-    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
+    const isLastPageOfBatch = (currentPage + 1) % PAGES_PER_BATCH === 0;
     const nextBatch = currentBatch + 1;
 
     // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
@@ -257,9 +265,11 @@ export function useLocationCabinetsData({
           ? 'all'
           : selectedStatus === 'Online'
             ? 'online'
-            : selectedStatus === 'Offline'
-              ? 'offline'
-              : 'all';
+            : selectedStatus === 'NeverOnline'
+              ? 'never-online'
+              : selectedStatus.startsWith('Offline')
+                ? 'offline'
+                : 'all';
 
       fetchCabinetsForLocation(
         locationId,
@@ -286,9 +296,8 @@ export function useLocationCabinetsData({
                             : undefined,
                   }
                 : undefined,
-        nextBatchNumber,
-        itemsPerBatch,
-        displayCurrency,
+        PAGES_PER_BATCH,
+        ITEMS_PER_BATCH,
         onlineStatus
       ).then(result => {
         if (result.data.length > 0) {
@@ -317,9 +326,11 @@ export function useLocationCabinetsData({
           ? 'all'
           : selectedStatus === 'Online'
             ? 'online'
-            : selectedStatus === 'Offline'
-              ? 'offline'
-              : 'all';
+            : selectedStatus === 'NeverOnline'
+              ? 'never-online'
+              : selectedStatus.startsWith('Offline')
+                ? 'offline'
+                : 'all';
 
       fetchCabinetsForLocation(
         locationId,
@@ -347,7 +358,7 @@ export function useLocationCabinetsData({
                   }
                 : undefined,
         currentBatch,
-        itemsPerBatch,
+        ITEMS_PER_BATCH,
         displayCurrency,
         onlineStatus
       ).then(result => {
@@ -369,11 +380,8 @@ export function useLocationCabinetsData({
     cabinetsLoading,
     activeMetricsFilter,
     loadedBatches,
-    locationId,
-    selectedLicencee,
-    customDateRange,
     calculateBatchNumber,
-    pagesPerBatch,
+    PAGES_PER_BATCH,
     debouncedSearchTerm,
     displayCurrency,
     selectedStatus,
@@ -388,16 +396,8 @@ export function useLocationCabinetsData({
       activeMetricsFilter === 'Custom' && customDateRange
         ? JSON.stringify(customDateRange)
         : 'none';
-    // Convert selectedStatus to onlineStatus for fetch key
-    const onlineStatus =
-      selectedStatus === 'All'
-        ? 'all'
-        : selectedStatus === 'Online'
-          ? 'online'
-          : selectedStatus === 'Offline'
-            ? 'offline'
-            : 'all';
-    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}-${onlineStatus}`;
+
+    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}-${selectedStatus}`;
 
     const fetchData = async () => {
       // Only proceed if filters are initialized
@@ -419,6 +419,7 @@ export function useLocationCabinetsData({
         if (!cabinetsRequestInProgress.current) {
           setLoading(false);
           setCabinetsLoading(false);
+          setIsFilterResetting(false);
         }
         return;
       }
@@ -557,7 +558,7 @@ export function useLocationCabinetsData({
           const effectivePage = debouncedSearchTerm?.trim() ? 1 : 1;
           const effectiveLimit = debouncedSearchTerm?.trim()
             ? undefined
-            : itemsPerBatch;
+            : ITEMS_PER_BATCH;
 
           // Convert selectedStatus to onlineStatus format for API
           const onlineStatus =
@@ -565,9 +566,11 @@ export function useLocationCabinetsData({
               ? 'all'
               : selectedStatus === 'Online'
                 ? 'online'
-                : selectedStatus === 'Offline'
-                  ? 'offline'
-                  : 'all';
+                : selectedStatus === 'NeverOnline'
+                  ? 'never-online'
+                  : selectedStatus.startsWith('Offline')
+                    ? 'offline'
+                    : 'all';
 
           const result = await makeCabinetsRequest(async signal => {
             return await fetchCabinetsForLocation(
@@ -657,6 +660,8 @@ export function useLocationCabinetsData({
           setCabinetsLoading(false);
           cabinetsRequestInProgress.current = false;
         }
+        // Ensure isFilterResetting is always reset when fetching completes or errors
+        setIsFilterResetting(false);
       }
     };
 
@@ -737,7 +742,7 @@ export function useLocationCabinetsData({
     financialTotals,
     // Setters
     setSearchTerm,
-    setSelectedStatus: useCallback((status: 'All' | 'Online' | 'Offline') => {
+    setSelectedStatus: useCallback((status: string) => {
       setIsFilterResetting(true);
       setAccumulatedCabinets([]);
       setSelectedStatus(status);

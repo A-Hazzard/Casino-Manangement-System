@@ -24,6 +24,7 @@
  * @param sortOption - Current sort option
  * @param onSortChange - Callback when sort changes
  */
+import CabinetTable from '@/components/CMS/cabinets/CabinetsCabinetTable';
 import { Button } from '@/components/shared/ui/button';
 import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
 import type { CabinetSortOption } from '@/lib/hooks/data';
@@ -31,17 +32,17 @@ import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { LocationsCabinetGridProps } from '@/lib/types/components';
 import type { ExtendedCabinetDetail } from '@/lib/types/pages';
-import CabinetTable from '@/components/CMS/cabinets/CabinetsCabinetTable';
 import { formatCurrency } from '@/lib/utils';
 import {
-  getGrossColorClass,
-  getMoneyInColorClass,
-  getMoneyOutColorClass,
+    getGrossColorClass,
+    getMoneyInColorClass,
+    getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { formatDistanceToNow } from 'date-fns';
 import gsap from 'gsap';
-import { Copy, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Clock, Copy, Eye, Pencil, Trash2 } from 'lucide-react';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -111,6 +112,14 @@ function CabinetCardMobile({
           title={cabinet.isOnline ? 'Online' : 'Offline'}
         ></span>
       </div>
+      
+      {/* Offline Status - Show when offline */}
+      {!cabinet.isOnline && (
+        <div className="mb-2 flex items-center gap-1.5 text-xs text-red-600 font-medium">
+          <Clock className="h-3 w-3" />
+          <span>{cabinet.lastOnline ? `Offline ${formatDistanceToNow(new Date(cabinet.lastOnline), { addSuffix: true })}` : 'Never Online'}</span>
+        </div>
+      )}
       <p className="mb-1 text-sm text-gray-600">
         Game:{' '}
         {/* Show game name or placeholder if not provided */}

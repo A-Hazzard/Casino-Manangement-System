@@ -17,10 +17,10 @@
 
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import {
-  getMachineStats,
-  getOverviewMachines,
-  getAllMachines,
-  getOfflineMachines,
+    getAllMachines,
+    getMachineStats,
+    getOfflineMachines,
+    getOverviewMachines,
 } from '@/app/api/lib/helpers/reports/machines';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     // Pagination parameters for overview
     const page = parseInt(searchParams.get('page') || '1');
     const requestedLimit = parseInt(searchParams.get('limit') || '10');
-    const limit = Math.min(requestedLimit, 50);
+    const limit = Math.min(requestedLimit, 500);
     const skip = (page - 1) * limit;
 
     // Parse dates

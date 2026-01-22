@@ -16,8 +16,8 @@
  */
 
 import {
-    getUserAccessibleLicenseesFromToken,
-    getUserLocationFilter,
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -70,7 +70,6 @@ export async function GET(req: NextRequest) {
       ? locationIdsParam.split(',').filter(id => id && id !== 'all' && id !== 'null') 
       : [];
     
-    console.warn('[API] Parsed location IDs:', locationIdArray);
     
     // Support multiple game types
     const gameTypesParam = searchParams.get('gameType') || searchParams.get('gameTypes');
@@ -236,8 +235,6 @@ export async function GET(req: NextRequest) {
     // Get all locations with their gameDayOffset
     const locations = await GamingLocations.find(matchStage).lean();
     
-    console.warn('[API] Found locations:', locations.length, 'IDs:', locations.map(l => l._id));
-
     if (locations.length === 0) {
       console.warn('[API] No locations found in database');
       return NextResponse.json({ success: true, data: [] });
@@ -313,22 +310,21 @@ export async function GET(req: NextRequest) {
             $or: [
               { lastActivity: { $lt: threeMinutesAgo } },
               { lastActivity: { $exists: false } },
+              { lastActivity: null },
+            ],
+          });
+        } else if (onlineStatus === 'never-online') {
+          const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
+          andArray.push({
+            $or: [
+              { lastActivity: { $exists: false } },
+              { lastActivity: null },
             ],
           });
         }
       }
       
       const allLocationMachines = await Machine.find(machineMatchQuery).lean();
-      
-      console.warn('[API] Found machines:', allLocationMachines.length, 'for locations:', allLocationIds);
-      if (allLocationMachines.length > 0) {
-        const locationCounts = allLocationMachines.reduce((acc, m) => {
-          const loc = String(m.gamingLocation);
-          acc[loc] = (acc[loc] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-        console.warn('[API] Machines per location:', locationCounts);
-      }
 
       if (onlineStatus !== 'all') {
         console.warn('🔍 [API DEBUG] Filtering by onlineStatus:', onlineStatus);
@@ -592,6 +588,15 @@ export async function GET(req: NextRequest) {
               $or: [
                 { lastActivity: { $lt: threeMinutesAgo } },
                 { lastActivity: { $exists: false } },
+                { lastActivity: null },
+              ],
+            });
+          } else if (onlineStatus === 'never-online') {
+            const andArray = batchMachineMatchQuery.$and as Array<Record<string, unknown>>;
+            andArray.push({
+              $or: [
+                { lastActivity: { $exists: false } },
+                { lastActivity: null },
               ],
             });
           }

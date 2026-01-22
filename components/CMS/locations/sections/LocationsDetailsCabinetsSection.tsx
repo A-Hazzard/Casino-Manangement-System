@@ -17,17 +17,15 @@
 
 'use client';
 
-import DateFilters from '@/components/shared/ui/common/DateFilters';
 import LocationsCabinetGrid from '@/components/CMS/locations/LocationsCabinetGrid';
 import LocationsDetailsChartSection from '@/components/CMS/locations/sections/LocationsDetailsChartSection';
+import DateFilters from '@/components/shared/ui/common/DateFilters';
 import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
 import { CustomSelect } from '@/components/shared/ui/custom-select';
 import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
 import UnauthorizedError from '@/components/shared/ui/errors/UnauthorizedError';
 import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards';
 import { Input } from '@/components/shared/ui/input';
-import LocationsCabinetCardsSkeleton from '../LocationsCabinetCardsSkeleton';
-import LocationsCabinetTableSkeleton from '../LocationsCabinetTableSkeleton';
 import MachineStatusWidget from '@/components/shared/ui/MachineStatusWidget';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import type { dashboardData } from '@/lib/types';
@@ -39,6 +37,8 @@ import gsap from 'gsap';
 import { Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
+import LocationsCabinetCardsSkeleton from '../LocationsCabinetCardsSkeleton';
+import LocationsCabinetTableSkeleton from '../LocationsCabinetTableSkeleton';
 
 type CabinetSortOption =
   | 'assetNumber'
@@ -51,7 +51,8 @@ type CabinetSortOption =
   | 'game'
   | 'smbId'
   | 'serialNumber'
-  | 'lastOnline';
+  | 'lastOnline'
+  | 'offlineTime';
 
 type LocationsDetailsCabinetsSectionProps = {
   // Data
@@ -83,7 +84,7 @@ type LocationsDetailsCabinetsSectionProps = {
   activeMetricsFilter: string | null;
   // Filters
   searchTerm: string;
-  selectedStatus: 'All' | 'Online' | 'Offline';
+  selectedStatus: string;
   selectedGameType: string;
   sortOption: CabinetSortOption;
   sortOrder: 'asc' | 'desc';
@@ -102,7 +103,7 @@ type LocationsDetailsCabinetsSectionProps = {
   } | null;
   // Setters
   setSearchTerm: (value: string) => void;
-  setSelectedStatus: (status: 'All' | 'Online' | 'Offline') => void;
+  setSelectedStatus: (status: string) => void;
   setSelectedGameType: (type: string) => void;
   setSortOption: (option: CabinetSortOption) => void;
   setSortOrder: (order: 'asc' | 'desc') => void;
@@ -113,7 +114,7 @@ type LocationsDetailsCabinetsSectionProps = {
   setSelectedLocationId: (id: string) => void;
   // Handlers
   handleRefresh: () => Promise<void>;
-  handleFilterChange: (status: 'All' | 'Online' | 'Offline') => void;
+  handleFilterChange: (status: string) => void;
   handleLocationChangeInPlace: (newLocationId: string) => void;
 };
 
@@ -406,21 +407,23 @@ export default function LocationsDetailsCabinetsSection({
             </div>
 
             {/* Status Filter */}
-            <div className="w-auto min-w-[120px] max-w-[150px] flex-shrink-0">
+            <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
               <CustomSelect
                 value={selectedStatus}
                 onValueChange={value =>
-                  handleFilterChange(value as 'All' | 'Online' | 'Offline')
+                  handleFilterChange(value)
                 }
                 options={[
                   { value: 'All', label: 'All Machines' },
                   { value: 'Online', label: 'Online' },
-                  { value: 'Offline', label: 'Offline' },
+                  { value: 'OfflineLongest', label: 'Offline (Longest First)' },
+                  { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
+                  { value: 'NeverOnline', label: 'Never Online' },
                 ]}
                 placeholder="All Status"
                 className="w-full"
                 triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={true}
+                searchable={false}
                 emptyMessage="No status options found"
               />
             </div>
@@ -479,21 +482,23 @@ export default function LocationsDetailsCabinetsSection({
                 emptyMessage="No game types found"
               />
             </div>
-            <div className="relative w-32 flex-shrink-0">
+            <div className="relative w-44 flex-shrink-0">
               <CustomSelect
                 value={selectedStatus}
                 onValueChange={value =>
-                  handleFilterChange(value as 'All' | 'Online' | 'Offline')
+                  handleFilterChange(value)
                 }
                 options={[
                   { value: 'All', label: 'All Machines' },
                   { value: 'Online', label: 'Online' },
-                  { value: 'Offline', label: 'Offline' },
+                  { value: 'OfflineLongest', label: 'Offline (Longest First)' },
+                  { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
+                  { value: 'NeverOnline', label: 'Never Online' },
                 ]}
                 placeholder="All Status"
                 className="w-full"
                 triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={true}
+                searchable={false}
                 emptyMessage="No status options found"
               />
             </div>
@@ -561,6 +566,14 @@ export default function LocationsDetailsCabinetsSection({
                   {
                     value: 'lastOnline-asc',
                     label: 'Last Online (Oldest First)',
+                  },
+                  {
+                    value: 'offlineTime-desc',
+                    label: 'Offline Time (Longest First)',
+                  },
+                  {
+                    value: 'offlineTime-asc',
+                    label: 'Offline Time (Shortest First)',
                   },
                 ]}
                 placeholder="Sort by"

@@ -14,7 +14,8 @@ type CabinetSortOption =
   | 'game'
   | 'smbId'
   | 'serialNumber'
-  | 'lastOnline';
+  | 'lastOnline'
+  | 'offlineTime';
 
 /**
  * Animates table rows when data changes
@@ -92,8 +93,43 @@ export const filterAndSortCabinets = (
   // Apply sorting
   filtered.sort((a, b) => {
     const order = sortOrder === 'desc' ? -1 : 1;
-    let valA = a[sortOption] as string | number | undefined;
-    let valB = b[sortOption] as string | number | undefined;
+
+    // Special handling for offlineTime sorting
+    if (sortOption === 'offlineTime') {
+      const now = Date.now();
+      const fiveMinutesAgo = now - 5 * 60 * 1000;
+
+      const firstLastActivity = a.lastActivity || a.lastOnline;
+      const secondLastActivity = b.lastActivity || b.lastOnline;
+
+      const firstIsOnline =
+        firstLastActivity &&
+        new Date(firstLastActivity).getTime() > fiveMinutesAgo;
+      const secondIsOnline =
+        secondLastActivity &&
+        new Date(secondLastActivity).getTime() > fiveMinutesAgo;
+
+      if (firstIsOnline && secondIsOnline) return 0;
+      if (!firstIsOnline && !secondIsOnline) {
+        const firstTime = firstLastActivity
+          ? new Date(firstLastActivity).getTime()
+          : 0;
+        const secondTime = secondLastActivity
+          ? new Date(secondLastActivity).getTime()
+          : 0;
+
+        // Always push "Never Online" (0) to the bottom
+        if (firstTime === 0 && secondTime > 0) return 1;
+        if (firstTime > 0 && secondTime === 0) return -1;
+        if (firstTime === 0 && secondTime === 0) return 0;
+
+        return (firstTime < secondTime ? 1 : -1) * order;
+      }
+      return firstIsOnline ? 1 : -1;
+    }
+
+    let valA = a[sortOption as keyof Cabinet] as string | number | undefined;
+    let valB = b[sortOption as keyof Cabinet] as string | number | undefined;
 
     // Handle null/undefined specifically for sorting, treating them as lowest value
     const aIsNull = valA === null || valA === undefined;
