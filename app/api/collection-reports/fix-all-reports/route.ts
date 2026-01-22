@@ -15,7 +15,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { fixAllReportsData } from '../../lib/helpers/bulkReportsFix';
+import { fixAllReportsData } from '../../lib/helpers/collectionReport/bulkReportsFix';
 import { getUserById, getUserIdFromServer } from '../../lib/helpers/users';
 import { connectDB } from '../../lib/middleware/db';
 
@@ -110,3 +110,4 @@ export async function POST() {
     );
   }
 }
+

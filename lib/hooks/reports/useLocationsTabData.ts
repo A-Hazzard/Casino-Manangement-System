@@ -25,7 +25,7 @@ import { DashboardTotals } from '@/lib/types';
 import { TimePeriod } from '@/lib/types/api';
 import { AggregatedLocation } from '@/lib/types/location';
 import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
-import { isAbortError } from '@/lib/utils/errorHandling';
+import { isAbortError } from '@/lib/utils/errors';
 import { LocationMetrics, TopLocation } from '@/shared/types';
 import { MachineData } from '@/shared/types/machines';
 import axios from 'axios';
@@ -1122,3 +1122,4 @@ export function useLocationsTabData({
     calculateBatchNumber,
   };
 }
+

@@ -10,11 +10,12 @@
  * @module app/api/firmwares/[id]/serve/route
  */
 
+import { downloadFirmwareFromGridFS } from '@/app/api/lib/helpers/firmware';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Firmware } from '@/app/api/lib/models/firmware';
+import fs from 'fs';
 import { GridFSBucket } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
 import path from 'path';
 
 /**
@@ -31,7 +32,7 @@ import path from 'path';
  * 8. Return static URL
  */
 export async function GET(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const startTime = Date.now();
@@ -44,8 +45,6 @@ export async function GET(
     if (!db) {
       throw new Error('Database connection failed');
     }
-    const bucket = new GridFSBucket(db, { bucketName: 'firmwares' });
-
     // ============================================================================
     // STEP 2: Parse and validate request parameters
     // ============================================================================
@@ -63,7 +62,7 @@ export async function GET(
     }
 
     const firmware = firmwareDoc as unknown as {
-      fileId: Parameters<typeof bucket.openDownloadStream>[0];
+      fileId: Parameters<GridFSBucket['openDownloadStream']>[0];
       fileName: string;
     };
 
@@ -80,14 +79,7 @@ export async function GET(
     // ============================================================================
     // STEP 5: Download firmware from GridFS
     // ============================================================================
-    const downloadStream = bucket.openDownloadStream(firmware.fileId);
-    const chunks: Buffer[] = [];
-
-    for await (const chunk of downloadStream) {
-      chunks.push(chunk);
-    }
-
-    const buffer = Buffer.concat(chunks);
+    const buffer = await downloadFirmwareFromGridFS(firmware.fileId);
 
     // ============================================================================
     // STEP 6: Write file to /public/firmwares/

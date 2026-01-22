@@ -19,7 +19,7 @@ import { TopPerformingData } from '@/lib/types';
 import type {
     UseDashboardRefreshProps,
     UseDashboardRefreshReturn,
-} from '@/lib/types/dashboardRefresh';
+} from '@/lib/types/dashboard';
 import { TimePeriod } from '@/shared/types/common';
 import { useCallback } from 'react';
 
@@ -92,3 +92,4 @@ export function useDashboardRefresh({
     canRefresh,
   };
 }
+

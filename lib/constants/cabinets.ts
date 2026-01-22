@@ -28,3 +28,4 @@ export const CABINET_TABS_CONFIG: CabinetTab[] = [
     icon: '💾',
   },
 ];
+

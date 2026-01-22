@@ -420,3 +420,4 @@ export function validateCollectionReportData(data: unknown): boolean {
     typeof report.locationMetrics === 'object'
   );
 }
+

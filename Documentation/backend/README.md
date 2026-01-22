@@ -15,8 +15,8 @@
 This directory contains comprehensive documentation for all backend API routes in the Evolution One CMS system. The documentation has been restructured into logical categories for improved navigation and maintainability.
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** December 29, 2025
-**Version:** 2.5.0 - Documentation Synchronization
+**Last Updated:** January 2025
+**Version:** 2.6.0 - Documentation Structure Update
 
 ## Documentation Structure
 
@@ -326,8 +326,8 @@ The system implements comprehensive RBAC:
 
 ### Development Resources
 
-- **[TypeScript Types](../../typescript-type-safety-rules.md)** - TypeScript guidelines
-- **[Engineering Guidelines](../../ENGINEERING_GUIDELINES.md)** - Development standards
+- **[TypeScript Types](../typescript-type-safety-rules.md)** - TypeScript guidelines
+- **[Engineering Rules](../.cursor/rules/nextjs-rules.mdc)** - Development standards (see `.cursor/rules/nextjs-rules.mdc`)
 
 ## Support & Maintenance
 

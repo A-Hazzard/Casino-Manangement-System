@@ -412,15 +412,38 @@ interface Licensee {
 ```typescript
 interface ActivityLog {
   _id: string;                    // Unique log entry identifier
-  userId: string;                 // User who performed action
+  timestamp: Date;                // Timestamp of the event
+  userId: string;                 // User who performed the action
   username: string;               // Username for display
-  action: string;                 // Action performed (USER_CREATED, etc.)
-  resource: string;               // Resource type affected
+  action: string;                 // Action performed (e.g., 'create', 'update', 'login_success')
+  resource: string;               // Resource type affected (e.g., 'user', 'location')
   resourceId: string;             // Specific resource ID
-  details: Record<string, any>;   // Action-specific details
-  ipAddress: string;              // Client IP address
-  userAgent: string;              // Client user agent
-  createdAt: Date;                // Log entry timestamp
+  resourceName?: string;          // Name of the resource for easier identification
+  details?: string;               // Human-readable description of the action
+  previousData?: any;             // State of the data before the change
+  newData?: any;                  // State of the data after the change
+  ipAddress?: string;             // Client IP address
+  userAgent?: string;             // Client user agent
+  
+  // Legacy fields for backward compatibility
+  actor?: {
+    id?: string;
+    email?: string;
+    role?: string;
+  };
+  actionType?: string;            // Legacy equivalent of 'action'
+  entityType?: string;            // Legacy equivalent of 'resource'
+  entity?: {
+    id?: string;
+    name?: string;
+  };
+  changes?: Array<{
+    field: string;
+    oldValue: any;
+    newValue: any;
+  }>;
+  description?: string;           // Legacy equivalent of 'details'
+  createdAt: Date;                // Log entry creation timestamp
 }
 ```
 

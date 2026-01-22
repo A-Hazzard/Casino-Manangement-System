@@ -15,11 +15,11 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-  applyCurrencyConversionToMetrics,
-  getCurrencyFromQuery,
-  shouldApplyCurrencyConversion,
-} from '@/app/api/lib/helpers/currencyHelper';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+    applyCurrencyConversionToMetrics,
+    getCurrencyFromQuery,
+    shouldApplyCurrencyConversion,
+} from '@/app/api/lib/helpers/currency/helper';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
 import { generateMongoId } from '@/lib/utils/id';
@@ -103,7 +103,11 @@ export async function GET(request: NextRequest) {
 
     // Location filter
     if (locationFilter && locationFilter !== 'all') {
-      query.gamingLocation = locationFilter;
+      if (locationFilter.includes(',')) {
+        query.gamingLocation = { $in: locationFilter.split(',') };
+      } else {
+        query.gamingLocation = locationFilter;
+      }
     }
 
     // Build optimized sort options with indexing considerations
@@ -564,3 +568,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+

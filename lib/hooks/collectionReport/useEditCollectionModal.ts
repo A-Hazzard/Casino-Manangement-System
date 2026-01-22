@@ -18,11 +18,11 @@
 import { updateCollectionReport } from '@/lib/helpers/collectionReport';
 import {
   deleteMachineCollection,
-  fetchCollectionReportById,
   fetchCollectionsByReportId,
   sortMachinesAlphabetically,
 } from '@/lib/helpers/collectionReport/editCollectionModalHelpers';
-import { validateMachineEntry } from '@/lib/helpers/collectionReportModal';
+import { fetchCollectionReportById } from '@/lib/helpers/collectionReport/fetching';
+import { validateMachineEntry } from '@/lib/helpers/collectionReport';
 import { updateCollection } from '@/lib/helpers/collections';
 import { useDebounce, useDebouncedCallback } from '@/lib/hooks/useDebounce';
 import { useUserStore } from '@/lib/store/userStore';
@@ -34,10 +34,12 @@ import type {
 import type {
   CollectionDocument,
   PreviousCollectionMeters,
-} from '@/lib/types/collections';
-import { calculateDefaultCollectionTime } from '@/lib/utils/collectionTime';
-import { calculateMachineMovement } from '@/lib/utils/frontendMovementCalculation';
-import { calculateMovement } from '@/lib/utils/movementCalculation';
+} from '@/lib/types/collection';
+import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
+import {
+  calculateMachineMovement,
+  calculateMovement,
+} from '@/lib/utils/movement';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -1192,37 +1194,38 @@ export function useEditCollectionModal({
   useEffect(() => {
     if (show && reportId) {
       fetchCollectionReportById(reportId)
-        .then(data => {
-          setReportData(data);
+        .then((data) => {
+          const reportData = data as CollectionReportData;
+          setReportData(reportData);
 
           // CRITICAL: If report has isEditing: true, there are unsaved changes
-          if (data.isEditing) {
+          if (reportData.isEditing) {
             setHasUnsavedEdits(true);
           }
 
           // Set the collection time to the report's timestamp
-          if (data.collectionDate && data.collectionDate !== '-') {
-            setCurrentCollectionTime(new Date(data.collectionDate));
+          if (reportData.collectionDate && reportData.collectionDate !== '-') {
+            setCurrentCollectionTime(new Date(reportData.collectionDate));
             setHasSetCollectionTimeFromReport(true);
           }
 
           setFinancials({
-            taxes: data.locationMetrics?.taxes?.toString() || '',
-            advance: data.locationMetrics?.advance?.toString() || '',
-            variance: data.locationMetrics?.variance?.toString() || '',
-            varianceReason: data.locationMetrics?.varianceReason || '',
+            taxes: reportData.locationMetrics?.taxes?.toString() || '',
+            advance: reportData.locationMetrics?.advance?.toString() || '',
+            variance: reportData.locationMetrics?.variance?.toString() || '',
+            varianceReason: reportData.locationMetrics?.varianceReason || '',
             amountToCollect:
-              data.locationMetrics?.amountToCollect?.toString() || '',
+              reportData.locationMetrics?.amountToCollect?.toString() || '',
             collectedAmount:
-              data.locationMetrics?.collectedAmount?.toString() || '',
+              reportData.locationMetrics?.collectedAmount?.toString() || '',
             balanceCorrection:
-              data.locationMetrics?.balanceCorrection?.toString() || '',
+              reportData.locationMetrics?.balanceCorrection?.toString() || '',
             balanceCorrectionReason:
-              data.locationMetrics?.correctionReason || '',
+              reportData.locationMetrics?.correctionReason || '',
             previousBalance:
-              data.locationMetrics?.previousBalanceOwed?.toString() || '',
+              reportData.locationMetrics?.previousBalanceOwed?.toString() || '',
             reasonForShortagePayment:
-              data.locationMetrics?.reasonForShortage || '',
+              reportData.locationMetrics?.reasonForShortage || '',
           });
         })
         .catch(error => {
@@ -1581,3 +1584,4 @@ export function useEditCollectionModal({
     userId,
   };
 }
+

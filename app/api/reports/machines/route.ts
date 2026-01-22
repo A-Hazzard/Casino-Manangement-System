@@ -21,8 +21,8 @@ import {
   getOverviewMachines,
   getAllMachines,
   getOfflineMachines,
-} from '@/app/api/lib/helpers/machinesReport';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+} from '@/app/api/lib/helpers/reports/machines';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
@@ -49,13 +49,16 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type'); // 'overview', 'stats', 'all', 'offline'
-    const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || 'Today';
+    const timePeriod =
+      (searchParams.get('timePeriod') as TimePeriod) || 'Today';
 
-    const licencee = searchParams.get('licensee') || searchParams.get('licencee') || undefined;
+    const licencee =
+      searchParams.get('licensee') || searchParams.get('licencee') || undefined;
     const onlineStatus = searchParams.get('onlineStatus') || 'all';
     const searchTerm = searchParams.get('search');
     const locationId = searchParams.get('locationId');
-    const displayCurrency = (searchParams.get('currency') as CurrencyCode) || 'USD';
+    const displayCurrency =
+      (searchParams.get('currency') as CurrencyCode) || 'USD';
 
     // Pagination parameters for overview
     const page = parseInt(searchParams.get('page') || '1');
@@ -69,7 +72,10 @@ export async function GET(req: NextRequest) {
       const customStart = searchParams.get('startDate');
       const customEnd = searchParams.get('endDate');
       if (!customStart || !customEnd) {
-        return NextResponse.json({ error: 'Missing startDate or endDate' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Missing startDate or endDate' },
+          { status: 400 }
+        );
       }
       startDate = new Date(customStart + 'T00:00:00-04:00');
       endDate = new Date(customEnd + 'T23:59:59-04:00');
@@ -117,14 +123,20 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const db = await connectDB();
     if (!db) {
-      return NextResponse.json({ error: 'DB connection failed' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'DB connection failed' },
+        { status: 500 }
+      );
     }
 
     // ============================================================================
     // STEP 4: Build match filters for machines and locations
     // ============================================================================
     const machineMatchStage: Record<string, unknown> = {
-      $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
+      ],
     };
 
     if (allowedLocationIds !== 'all') {
@@ -156,18 +168,25 @@ export async function GET(req: NextRequest) {
     if (locationId && locationId !== 'all') {
       const requestedIds = locationId.split(',').filter(id => id.trim());
       if (allowedLocationIds !== 'all') {
-        const accessible = requestedIds.filter(id => allowedLocationIds.includes(id));
+        const accessible = requestedIds.filter(id =>
+          allowedLocationIds.includes(id)
+        );
         if (accessible.length === 0) {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-        machineMatchStage.gamingLocation = accessible.length === 1 ? accessible[0] : { $in: accessible };
+        machineMatchStage.gamingLocation =
+          accessible.length === 1 ? accessible[0] : { $in: accessible };
       } else {
-        machineMatchStage.gamingLocation = requestedIds.length === 1 ? requestedIds[0] : { $in: requestedIds };
+        machineMatchStage.gamingLocation =
+          requestedIds.length === 1 ? requestedIds[0] : { $in: requestedIds };
       }
     }
 
     const locationMatchStage: Record<string, unknown> = {
-      $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
+      ],
     };
 
     if (allowedLocationIds !== 'all') {
@@ -185,7 +204,6 @@ export async function GET(req: NextRequest) {
     switch (type) {
       case 'stats':
         result = await getMachineStats(
-          db,
           machineMatchStage,
           locationMatchStage,
           startDate,
@@ -197,7 +215,6 @@ export async function GET(req: NextRequest) {
         break;
       case 'overview':
         result = await getOverviewMachines(
-          db,
           machineMatchStage,
           locationMatchStage,
           page,
@@ -208,11 +225,15 @@ export async function GET(req: NextRequest) {
         );
         break;
       case 'all':
-        result = await getAllMachines(db, searchParams, startDate, endDate, locationMatchStage);
+        result = await getAllMachines(
+          searchParams,
+          startDate,
+          endDate,
+          locationMatchStage
+        );
         break;
       case 'offline':
         result = await getOfflineMachines(
-          db,
           searchParams,
           page,
           limit,
@@ -224,7 +245,6 @@ export async function GET(req: NextRequest) {
         break;
       default:
         result = await getOverviewMachines(
-          db,
           machineMatchStage,
           locationMatchStage,
           page,

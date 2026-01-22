@@ -7,7 +7,7 @@
 
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { isAbortError } from '@/lib/utils/errorHandling';
+import { isAbortError } from '@/lib/utils/errors';
 import type {
   MachineData,
   MachinesApiResponse,
@@ -338,3 +338,4 @@ export const useMachinesTabData = (
     fetchLocationsData,
   };
 };
+

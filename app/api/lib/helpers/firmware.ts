@@ -7,38 +7,53 @@
  * @module app/api/lib/helpers/firmware
  */
 
-import { GridFSBucket } from 'mongodb';
+import { Firmware } from '@/lib/types/firmware';
+import { Db, GridFSBucket, ObjectId } from 'mongodb';
 import { connectDB } from '../middleware/db';
-import { Firmware } from '../models/firmware';
+import { Firmware as FirmwareModel } from '../models/firmware';
 
 /**
  * Firmware file data
  */
 export type FirmwareFileData = {
-  fileId: Parameters<GridFSBucket['openDownloadStream']>[0];
+  fileId: string | ObjectId;
   fileName: string;
 };
 
 /**
  * Downloads firmware file from GridFS as buffer
  *
- * @param fileId - GridFS file ID
+ * @param fileId - GridFS file ID (as stored in the Firmware document)
  * @returns Buffer containing firmware file data
  */
 export async function downloadFirmwareFromGridFS(
-  fileId: Parameters<GridFSBucket['openDownloadStream']>[0]
+  fileId: string | ObjectId
 ): Promise<Buffer> {
   const db = await connectDB();
   if (!db) {
     throw new Error('Database connection failed');
   }
 
-  const bucket = new GridFSBucket(db, { bucketName: 'firmwares' });
-  const downloadStream = bucket.openDownloadStream(fileId);
+  const bucket = new GridFSBucket(db as unknown as Db, {
+    bucketName: 'firmwares',
+  });
+
+  // GridFSBucket.openDownloadStream accepts ObjectId or string.
+  // Casting to 'any' here only for the driver call to bypass complex internal typing
+  // if necessary, but we've defined the input type strictly.
+  const downloadStream = bucket.openDownloadStream(fileId as ObjectId);
 
   const chunks: Buffer[] = [];
-  for await (const chunk of downloadStream) {
-    chunks.push(chunk);
+  try {
+    for await (const chunk of downloadStream) {
+      chunks.push(chunk);
+    }
+  } catch (err) {
+    console.error(`Error downloading from GridFS: ${err instanceof Error ? err.message : String(err)}`, { 
+      fileId: fileId.toString(),
+      bucketName: 'firmwares'
+    });
+    throw err;
   }
 
   return Buffer.concat(chunks);
@@ -47,28 +62,24 @@ export async function downloadFirmwareFromGridFS(
 /**
  * Finds firmware document by ID
  *
- * @param firmwareId - Firmware document ID
+ * @param firmwareId - Firmware document ID (String)
  * @returns Firmware file data or null if not found
  */
 export async function findFirmwareById(
   firmwareId: string
 ): Promise<FirmwareFileData | null> {
-  const db = await connectDB();
-  if (!db) {
-    throw new Error('Database connection failed');
-  }
-
-  const firmwareDoc = await Firmware.findOne({ _id: firmwareId }).lean();
+  await connectDB();
+  
+  // Use .lean<Firmware>() to get a typed object
+  const firmwareDoc = await FirmwareModel.findOne({ _id: firmwareId }).lean<Firmware>();
 
   if (!firmwareDoc) {
     return null;
   }
 
-  const firmware = firmwareDoc as unknown as FirmwareFileData;
-
   return {
-    fileId: firmware.fileId,
-    fileName: firmware.fileName,
+    fileId: firmwareDoc.fileId,
+    fileName: firmwareDoc.fileName,
   };
 }
 
@@ -81,19 +92,19 @@ export async function findFirmwareById(
 export async function findFirmwareByVersion(
   version: string
 ): Promise<FirmwareFileData | null> {
-  const firmwareDoc = await Firmware.findOne({
+  await connectDB();
+  
+  const firmwareDoc = await FirmwareModel.findOne({
     version: version,
     $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
-  }).lean();
+  }).lean<Firmware>();
 
   if (!firmwareDoc) {
     return null;
   }
 
-  const firmware = firmwareDoc as unknown as FirmwareFileData;
-
   return {
-    fileId: firmware.fileId,
-    fileName: firmware.fileName,
+    fileId: firmwareDoc.fileId,
+    fileName: firmwareDoc.fileName,
   };
 }

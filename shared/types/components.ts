@@ -23,3 +23,4 @@ export type DataTableProps<T> = {
   formatDate?: (date: string | Date) => string;
   formatNumber?: (number: number) => string;
 };
+

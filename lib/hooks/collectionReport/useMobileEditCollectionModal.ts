@@ -8,7 +8,7 @@
 'use client';
 
 import { sortMachinesAlphabetically } from '@/lib/helpers/collectionReport/mobileEditCollectionModalHelpers';
-import { validateMachineEntry } from '@/lib/helpers/collectionReportModal';
+import { validateMachineEntry } from '@/lib/helpers/collectionReport';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useUserStore } from '@/lib/store/userStore';
@@ -16,7 +16,7 @@ import type {
   CollectionReportLocationWithMachines,
   CollectionReportMachineSummary,
 } from '@/lib/types/api';
-import type { CollectionDocument } from '@/lib/types/collections';
+import type { CollectionDocument } from '@/lib/types/collection';
 import axios, { type AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -1100,3 +1100,4 @@ export function useMobileEditCollectionModal({
     setStoreCollectedMachines,
   };
 }
+

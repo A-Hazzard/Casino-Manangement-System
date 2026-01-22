@@ -16,7 +16,7 @@ import {
     getUserAccessibleLicenseesFromToken,
     getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
 import type { PipelineStage } from 'mongoose';
@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
       licensee && licensee.toLowerCase() !== 'all' ? licensee : undefined;
     const locationId = searchParams.get('locationId');
     const machineTypeFilter = searchParams.get('machineTypeFilter');
+    const search = searchParams.get('search')?.trim();
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -133,6 +134,26 @@ export async function GET(req: NextRequest) {
         $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
       },
     ];
+
+    // Apply search filter (Location Name or ID)
+    if (search) {
+      const isObjectIdFormat = /^[0-9a-fA-F]{24}$/.test(search);
+      const searchConditions: Record<string, unknown>[] = [
+        { 'locationDetails.name': { $regex: search, $options: 'i' } },
+      ];
+
+      if (isObjectIdFormat) {
+        searchConditions.push({ 'locationDetails._id': search });
+      } else {
+         searchConditions.push({ 'locationDetails._id': { $regex: search, $options: 'i' } });
+      }
+
+      aggregationPipeline.push({
+        $match: {
+          $or: searchConditions,
+        },
+      });
+    }
 
     // Apply licensee filter if specified (filter by location's licensee)
     if (effectiveLicensee) {
@@ -255,6 +276,22 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Apply game type filter from query params
+    const gameType = searchParams.get('gameType');
+    if (gameType) {
+      const types = gameType.split(',').filter(t => t.trim() !== '' && t !== 'all');
+      if (types.length > 0) {
+        aggregationPipeline.push({
+          $match: {
+            $or: [
+              { game: { $in: types } },
+              { installedGame: { $in: types } }
+            ]
+          }
+        });
+      }
+    }
+
     // Get total machines count (ALL machines, including those without lastActivity)
     // Single result aggregation - use exec() for efficiency
     const totalCountResult = await Machine.aggregate([
@@ -357,3 +394,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

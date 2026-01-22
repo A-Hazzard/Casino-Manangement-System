@@ -19,12 +19,12 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { AxiosResponse } from 'axios';
-import { classifyError, isRetryableError } from '@/lib/utils/errorHandling';
+import { classifyError, isRetryableError } from '@/lib/utils/errors';
 import type { ApiError } from '@/lib/types/errors';
 import type {
   UseApiWithRetryOptions,
   UseApiWithRetryReturn,
-} from '@/lib/types/apiHooks';
+} from '@/lib/types/api';
 
 // ============================================================================
 // Hook
@@ -161,4 +161,5 @@ export function useApiWithRetry<T>(
     reset,
   };
 }
+
 

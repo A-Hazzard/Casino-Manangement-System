@@ -15,8 +15,8 @@ import {
   getUserAccessibleLicenseesFromToken,
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
-import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { getLicenseeObjectId } from '@/lib/utils/licensee';
 
 /**
  * Main GET handler for collection report locations
@@ -125,3 +125,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ locations: [] }, { status: 500 });
   }
 }
+

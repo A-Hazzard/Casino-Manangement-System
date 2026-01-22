@@ -14,10 +14,10 @@
 'use client';
 
 import { fetchCollectionReportById } from '@/lib/helpers/collectionReport';
-import { checkSasTimeIssues } from '@/lib/helpers/collectionReportDetailPageData';
+import { checkSasTimeIssues } from '@/lib/helpers/collectionReport/detailData';
 import { fetchCollectionsByLocationReportId } from '@/lib/helpers/collections';
 import type { CollectionReportData, MachineMetric } from '@/lib/types/api';
-import type { CollectionDocument } from '@/lib/types/collections';
+import type { CollectionDocument } from '@/lib/types/collection';
 import { validateCollectionReportData } from '@/lib/utils/validation';
 import type {
   CollectionIssue,
@@ -491,3 +491,4 @@ export function useCollectionReportDetailsData() {
     handleFixReportClick: () => setShowFixReportConfirmation(true),
   };
 }
+

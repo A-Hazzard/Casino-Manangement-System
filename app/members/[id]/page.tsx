@@ -7,8 +7,8 @@
  * @module app/members/[id]/page
  */
 
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import MembersDetailsPageContent from '@/components/members/MembersDetailsPageContent';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
+import MembersDetailsPageContent from '@/components/CMS/members/MembersDetailsPageContent';
 
 export default function MemberDetailsPage() {
   return (

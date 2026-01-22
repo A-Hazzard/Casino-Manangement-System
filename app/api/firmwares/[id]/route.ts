@@ -9,11 +9,62 @@
  */
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+    downloadFirmwareFromGridFS,
+    findFirmwareById,
+} from '@/app/api/lib/helpers/firmware';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Firmware } from '@/app/api/lib/models/firmware';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Main GET handler for downloading firmware by ID
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const startTime = Date.now();
+
+  try {
+    const { id } = await params;
+
+    const firmware = await findFirmwareById(id);
+    if (!firmware) {
+      return NextResponse.json(
+        { error: 'Firmware not found' },
+        { status: 404 }
+      );
+    }
+
+    const buffer = await downloadFirmwareFromGridFS(firmware.fileId);
+
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Firmware Download API] Completed in ${duration}ms`);
+    }
+
+    return new NextResponse(buffer as unknown as BodyInit, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="${firmware.fileName}"`,
+        'Content-Length': buffer.length.toString(),
+      },
+    });
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to download firmware';
+    console.error(
+      `[Firmware Download API] Error after ${duration}ms:`,
+      errorMessage
+    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  }
+}
 
 /**
  * Main DELETE handler for soft deleting a firmware
@@ -26,12 +77,15 @@ import { NextRequest, NextResponse } from 'next/server';
  * 5. Log activity
  * 6. Return success response
  */
-export async function DELETE(req: NextRequest) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     // ============================================================================
     // STEP 1: Parse and validate request parameters
     // ============================================================================
-    const id = req.nextUrl.pathname.split('/').pop();
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -48,13 +102,16 @@ export async function DELETE(req: NextRequest) {
     // ============================================================================
     // STEP 3: Find firmware by ID
     // ============================================================================
-    const firmwareToDelete = await Firmware.findOne({ _id: id });
-    if (!firmwareToDelete) {
+    const firmwareToDeleteData = await findFirmwareById(id);
+    if (!firmwareToDeleteData) {
       return NextResponse.json(
         { message: 'Firmware not found' },
         { status: 404 }
       );
     }
+    
+    // Get the full document for logging details
+    const firmwareToDelete = await Firmware.findOne({ _id: id });
 
     // ============================================================================
     // STEP 4: Soft delete firmware

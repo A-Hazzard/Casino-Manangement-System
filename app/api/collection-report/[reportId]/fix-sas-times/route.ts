@@ -11,7 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/middleware/db';
-import { fixSasTimesForReport } from '@/app/api/lib/helpers/sasTimesFix';
+import { fixSasTimesForReport } from '@/app/api/lib/helpers/collectionReport/fixes/sasTimes';
 
 /**
  * Main POST handler for fixing SAS times

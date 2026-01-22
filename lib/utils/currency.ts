@@ -35,19 +35,6 @@ export function formatCurrency(value: number | null | undefined): string {
 }
 
 // ============================================================================
-// Legacy Formatting
-// ============================================================================
-/**
- * Legacy format function for backwards compatibility
- * @deprecated Use formatCurrency instead
- */
-export default function formatCurrencyLegacy(
-  value: number | null | undefined
-): string {
-  return (value ?? 0).toLocaleString();
-}
-
-// ============================================================================
 // Custom Currency Formatting
 // ============================================================================
 /**
@@ -76,3 +63,4 @@ export function formatCurrencyWithCode(
 // ============================================================================
 // Plain Number Formatting
 // ============================================================================
+

@@ -1,7 +1,7 @@
 # Frontend Engineering Guidelines
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025  
+**Last Updated:** January 2025  
 **Version:** 1.0.0
 
 ## Table of Contents
@@ -125,7 +125,7 @@ function PageContent() {
 ### File Length Guidelines
 
 - **Maximum page.tsx length**: ~100-150 lines (wrapper only)
-- **Maximum content component length**: ~300-400 lines
+- **Maximum content component length**: ~300-500 lines
 - **If component exceeds limit**: Extract sub-components or custom hooks
 - **Complex pages**: Break into multiple smaller components
 
@@ -291,11 +291,11 @@ function MyComponent() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
+
   useEffect(() => {
     // 50+ lines of data fetching logic
   }, [dependencies]);
-  
+
   // ... more complex logic
 }
 
@@ -325,49 +325,49 @@ function MyComponent() {
 **Comment Format:**
 
 ```tsx
-{/* ============================================================================
+{
+  /* ============================================================================
    Header Section: Title, actions, and navigation
-   ============================================================================ */}
+   ============================================================================ */
+}
 <div className="header-section">
   {/* Page Title */}
   <h1>Page Title</h1>
-  
+
   {/* Action Buttons: Create, Edit, Delete */}
   <div className="actions">
     <Button>Create</Button>
   </div>
-</div>
+</div>;
 
-{/* ============================================================================
+{
+  /* ============================================================================
    Filters Section: Search, date filters, and sorting
-   ============================================================================ */}
+   ============================================================================ */
+}
 <div className="filters-section">
   {/* Search Input */}
   <Input placeholder="Search..." />
-  
+
   {/* Date Range Filter */}
   <DateRangePicker />
-</div>
+</div>;
 
-{/* ============================================================================
+{
+  /* ============================================================================
    Data Display Section: Table or cards with pagination
-   ============================================================================ */}
+   ============================================================================ */
+}
 <div className="data-section">
   {/* Loading State */}
   {loading && <SkeletonLoader />}
-  
+
   {/* Data Table */}
-  {!loading && (
-    <Table>
-      {/* Table content */}
-    </Table>
-  )}
-  
+  {!loading && <Table>{/* Table content */}</Table>}
+
   {/* Pagination Controls */}
-  {!loading && totalPages > 1 && (
-    <PaginationControls />
-  )}
-</div>
+  {!loading && totalPages > 1 && <PaginationControls />}
+</div>;
 ```
 
 ### Spacing in JSX
@@ -382,7 +382,9 @@ function MyComponent() {
 **Spacing Guidelines:**
 
 ```tsx
-{/* Good spacing - easy to scan */}
+{
+  /* Good spacing - easy to scan */
+}
 <div className="page-container">
   {/* Header Section */}
   <div className="header">
@@ -399,9 +401,11 @@ function MyComponent() {
   <div className="content">
     <Table />
   </div>
-</div>
+</div>;
 
-{/* Bad spacing - hard to scan */}
+{
+  /* Bad spacing - hard to scan */
+}
 <div className="page-container">
   <div className="header">
     <h1>Title</h1>
@@ -413,7 +417,7 @@ function MyComponent() {
   <div className="content">
     <Table />
   </div>
-</div>
+</div>;
 ```
 
 ### Section Comment Examples
@@ -440,10 +444,10 @@ function MyComponent() {
   <div className="data-display">
     {/* Loading State: Show skeleton while fetching */}
     {loading && <SkeletonLoader />}
-    
+
     {/* Error State: Show error message */}
     {error && <ErrorMessage />}
-    
+
     {/* Success State: Show data */}
     {!loading && !error && <DataTable />}
   </div>
@@ -670,14 +674,14 @@ function fetchUser(id: any): Promise<any> {
 
 ## File Length Guidelines Summary
 
-| File Type              | Maximum Lines | Action if Exceeded                    |
-| ---------------------- | ------------- | ------------------------------------- |
-| `page.tsx` (wrapper)   | 100-150       | Extract content to separate component |
-| Content Component      | 300-400       | Extract sub-components or hooks       |
-| Regular Component      | 400-500       | Extract sub-components or hooks        |
-| Helper File           | 500-600       | Split into multiple focused files      |
-| Hook File              | 300-400       | Split into multiple hooks              |
-| Util File              | 300-400       | Split into multiple util files         |
+| File Type            | Maximum Lines | Action if Exceeded                    |
+| -------------------- | ------------- | ------------------------------------- |
+| `page.tsx` (wrapper) | 100-150       | Extract content to separate component |
+| Content Component    | 300-400       | Extract sub-components or hooks       |
+| Regular Component    | 400-500       | Extract sub-components or hooks       |
+| Helper File          | 500-600       | Split into multiple focused files     |
+| Hook File            | 300-400       | Split into multiple hooks             |
+| Util File            | 300-400       | Split into multiple util files        |
 
 ---
 
@@ -740,4 +744,3 @@ When refactoring a page, ensure:
 ---
 
 **Last Updated:** November 22, 2025
-

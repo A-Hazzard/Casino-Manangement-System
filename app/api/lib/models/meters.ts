@@ -57,3 +57,4 @@ MetersSchema.index({ locationSession: 1, readAt: 1 }); // Added index for new fi
  * Exported as 'Meters' for use in API routes and data access layers.
  */
 export const Meters = models['meters'] || model('meters', MetersSchema);
+

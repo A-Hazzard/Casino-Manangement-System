@@ -66,3 +66,4 @@ export type MachineStatsApiResponse = {
   totalDrop: number;
   totalCancelledCredits: number;
 };
+

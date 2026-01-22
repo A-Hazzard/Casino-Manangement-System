@@ -27,9 +27,12 @@ import {
 } from '@/lib/types';
 
 import getAllGamingLocations from '@/lib/helpers/locations';
-import { fetchTopPerformingData } from '@/lib/helpers/topPerforming';
-import { classifyError, isAbortError } from '@/lib/utils/errorHandling';
-import { showErrorNotification } from '@/lib/utils/errorNotifications';
+import { fetchTopPerformingData } from '@/lib/helpers/machines';
+import {
+  classifyError,
+  isAbortError,
+  showErrorNotification,
+} from '@/lib/utils/errors';
 import { switchFilter } from '@/lib/utils/metrics';
 import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
 import { TimePeriod } from '@/shared/types/common';

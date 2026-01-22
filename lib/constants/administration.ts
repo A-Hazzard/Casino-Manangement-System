@@ -32,3 +32,4 @@ export const ADMINISTRATION_TABS_CONFIG: AdministrationTab[] = [
     icon: '💬', // Speech bubble emoji
   },
 ];
+

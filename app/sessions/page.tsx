@@ -8,8 +8,8 @@
  * @module app/sessions/page
  */
 
-import SessionsPageContent from '@/components/sessions/SessionsPageContent';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import SessionsPageContent from '@/components/CMS/sessions/SessionsPageContent';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 
 export default function SessionsPage() {
   return (
@@ -18,3 +18,4 @@ export default function SessionsPage() {
     </ProtectedRoute>
   );
 }
+

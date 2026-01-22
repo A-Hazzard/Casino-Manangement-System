@@ -12,8 +12,8 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
-import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { Machine } from '@/app/api/lib/models/machines';
 import { mqttService } from '@/app/api/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
@@ -116,7 +116,10 @@ export async function POST(
           ipAddress: clientIP || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
           userId: currentUser._id as string,
-          username: currentUser.username as string,
+          username:
+            (currentUser.emailAddress as string) ||
+            (currentUser.username as string) ||
+            'unknown',
           metadata: {
             userRole: (currentUser.roles as string[])?.[0] || 'user',
             resource: 'location',

@@ -11,7 +11,7 @@
  * @module app/api/analytics/hourly-revenue/route
  */
 
-import { getHourlyRevenue } from '@/app/api/lib/helpers/trends';
+import { getHourlyRevenue } from '@/app/api/lib/helpers/trends/general';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -59,7 +59,6 @@ export async function GET(request: NextRequest) {
     // STEP 3: Execute the core hourly revenue fetching logic via helper
     // ============================================================================
     const hourlyRevenue = await getHourlyRevenue(
-      db,
       locationId,
       timePeriod,
       startDate,
@@ -89,3 +88,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

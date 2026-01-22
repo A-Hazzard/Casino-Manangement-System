@@ -9,29 +9,17 @@
  * @module app/collection-report/page
  */
 
-import CollectionReportPageContent from '@/components/collectionReport/CollectionReportPageContent';
-import CollectionReportTableSkeleton from '@/components/collectionReport/CollectionReportTableSkeleton';
-import CollectionReportCardSkeleton from '@/components/collectionReport/CollectionReportCardSkeleton';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import CollectionReportPageContent from '@/components/CMS/collectionReport/CollectionReportPageContent';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 import { Suspense } from 'react';
 
 export default function CollectionReportPage() {
   return (
     <ProtectedRoute requiredPage="collection-report">
-      <Suspense
-        fallback={
-          <div className="flex flex-col flex-1 p-4 md:p-6">
-            <div className="hidden lg:block">
-              <CollectionReportTableSkeleton />
-            </div>
-            <div className="lg:hidden">
-              <CollectionReportCardSkeleton count={4} />
-            </div>
-          </div>
-        }
-      >
+      <Suspense fallback={null}>
         <CollectionReportPageContent />
       </Suspense>
     </ProtectedRoute>
   );
 }
+

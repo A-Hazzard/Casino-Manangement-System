@@ -25,7 +25,7 @@ import {
     getCountryCurrency,
     getLicenseeCurrency,
 } from '@/lib/helpers/rates';
-import type { MachineDocument } from '@/lib/types/mongo';
+import type { MachineDocument } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { PipelineStage } from 'mongoose';

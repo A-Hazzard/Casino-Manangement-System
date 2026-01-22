@@ -1,7 +1,7 @@
 # Collections API - Backend Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 27, 2025  
+**Last Updated:** January 2025  
 **Version:** 1.1.0
 
 ## Overview
@@ -164,7 +164,12 @@ Creates a new collection document.
 
 ### PATCH `/api/collections`
 
-Updates an existing collection document.
+Updates an existing collection document. This is used when editing a machine's entry within a collection report.
+
+**Critical Data Integrity Logic:**
+- If `metersIn`, `metersOut`, or `ramClear` values are changed, the endpoint automatically recalculates `prevIn`, `prevOut`, and the `movement` object by finding the true previous collection from the database.
+- If the `timestamp` is changed, it automatically recalculates the SAS time window and re-aggregates SAS metrics (`drop`, `totalCancelledCredits`, `gross`, etc.) for the new time period.
+- This ensures data consistency and corrects any calculation errors that might arise from edits.
 
 #### Query Parameters
 
@@ -180,17 +185,12 @@ Same fields as POST endpoint. Only provided fields are updated.
 
 ### DELETE `/api/collections`
 
-Soft-deletes a collection document.
+Permanently deletes a collection document and reverts the associated machine's state.
 
-#### Query Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | string | Yes | Collection document `_id` |
-
-#### Behavior
-
-Sets `deletedAt` timestamp instead of removing the document.
+**Behavior:**
+- Performs a hard delete on the collection document.
+- Reverts the machine's `collectionMeters` (`metersIn`, `metersOut`) to the values from before this collection was recorded.
+- Removes the corresponding entry from the machine's `collectionMetersHistory` array to maintain data integrity.
 
 ---
 

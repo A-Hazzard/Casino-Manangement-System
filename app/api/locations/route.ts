@@ -19,7 +19,7 @@ import {
   getUserAccessibleLicenseesFromToken,
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
@@ -28,6 +28,7 @@ import { apiLogger } from '@/app/api/lib/utils/logger';
 import { UpdateLocationData } from '@/lib/types/location';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -400,7 +401,18 @@ export async function POST(request: Request) {
     });
 
     // ============================================================================
-    // STEP 6: Save location to database
+    // STEP 6: Clean up old unique index (Temporary fix for name reuse)
+    // ============================================================================
+    try {
+      // Drop the old global unique index if it exists.
+      // This is necessary because Mongoose won't automatically remove it when we change it to a partial index.
+      await GamingLocations.collection.dropIndex('name_1');
+    } catch {
+      // Index might not exist, which is fine
+    }
+
+    // ============================================================================
+    // STEP 7: Save location to database
     // ============================================================================
     await newLocation.save();
 
@@ -457,6 +469,8 @@ export async function POST(request: Request) {
           ipAddress: getClientIP(request as NextRequest) || undefined,
           userAgent:
             (request as NextRequest).headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
@@ -479,21 +493,48 @@ export async function POST(request: Request) {
     if (duration > 1000) {
       console.warn(`[Locations API POST] Completed in ${duration}ms`);
     }
+
+    // Force revalidation of the locations page to ensure the new location appears
+    revalidatePath('/locations');
+
     return NextResponse.json(
       { success: true, location: newLocation },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     const duration = Date.now() - startTime;
-    const errorMessage =
+    let errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
+    let status = 500;
+
+    // Handle MongoDB duplicate key error (code 11000)
+    if (error && typeof error === 'object' && error.code === 11000) {
+      let fieldName = 'field';
+      if (error.keyPattern) {
+        fieldName = Object.keys(error.keyPattern)[0];
+      } else if (error.message && error.message.includes('index:')) {
+        const match = error.message.match(/index: (.+?)_\d/);
+        if (match && match[1]) fieldName = match[1];
+      }
+
+      const friendlyFieldMap: Record<string, string> = {
+        name: 'Location Name',
+        location: 'Location ID',
+        'rel.licencee': 'Licensee',
+      };
+
+      const displayField = friendlyFieldMap[fieldName] || fieldName;
+      errorMessage = `This ${displayField} is already taken. Please use a unique value.`;
+      status = 400;
+    }
+
     console.error(
       `[Locations API POST] Error after ${duration}ms:`,
       errorMessage
     );
     return NextResponse.json(
       { success: false, message: errorMessage },
-      { status: 500 }
+      { status }
     );
   }
 }
@@ -680,6 +721,17 @@ export async function PUT(request: Request) {
     updateData.updatedAt = new Date();
 
     // ============================================================================
+    // STEP 6.5: Clean up old unique index (Temporary fix for name reuse)
+    // ============================================================================
+    try {
+      // Drop the old global unique index if it exists.
+      // This is necessary because Mongoose won't automatically remove it when we change it to a partial index.
+      await GamingLocations.collection.dropIndex('name_1');
+    } catch {
+      // Index might not exist, which is fine
+    }
+
+    // ============================================================================
     // STEP 7: Update location in database
     // ============================================================================
     const result = await GamingLocations.updateOne(
@@ -784,6 +836,8 @@ export async function PUT(request: Request) {
           ipAddress: getClientIP(request as NextRequest) || undefined,
           userAgent:
             (request as NextRequest).headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
@@ -806,6 +860,9 @@ export async function PUT(request: Request) {
     if (duration > 1000) {
       console.warn(`[Locations API PUT] Completed in ${duration}ms`);
     }
+    // Force revalidation of the locations page
+    revalidatePath('/locations');
+
     return NextResponse.json(
       {
         success: true,
@@ -814,17 +871,40 @@ export async function PUT(request: Request) {
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
     const duration = Date.now() - startTime;
-    const errorMessage =
+    let errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
+    let status = 500;
+
+    // Handle MongoDB duplicate key error (code 11000)
+    if (error && typeof error === 'object' && error.code === 11000) {
+      let fieldName = 'field';
+      if (error.keyPattern) {
+        fieldName = Object.keys(error.keyPattern)[0];
+      } else if (error.message && error.message.includes('index:')) {
+        const match = error.message.match(/index: (.+?)_\d/);
+        if (match && match[1]) fieldName = match[1];
+      }
+
+      const friendlyFieldMap: Record<string, string> = {
+        name: 'Location Name',
+        location: 'Location ID',
+        'rel.licencee': 'Licensee',
+      };
+
+      const displayField = friendlyFieldMap[fieldName] || fieldName;
+      errorMessage = `This ${displayField} is already taken. Please use a unique value.`;
+      status = 400;
+    }
+
     console.error(
       `[Locations API PUT] Error after ${duration}ms:`,
       errorMessage
     );
     return NextResponse.json(
       { success: false, message: errorMessage },
-      { status: 500 }
+      { status }
     );
   }
 }
@@ -940,6 +1020,8 @@ export async function DELETE(request: Request) {
           ipAddress: getClientIP(request as NextRequest) || undefined,
           userAgent:
             (request as NextRequest).headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
@@ -962,6 +1044,9 @@ export async function DELETE(request: Request) {
     if (duration > 1000) {
       console.warn(`[Locations API DELETE] Completed in ${duration}ms`);
     }
+    // Force revalidation of the locations page
+    revalidatePath('/locations');
+
     return NextResponse.json(
       { success: true, message: 'Location deleted successfully' },
       { status: 200 }
@@ -980,3 +1065,4 @@ export async function DELETE(request: Request) {
     );
   }
 }
+

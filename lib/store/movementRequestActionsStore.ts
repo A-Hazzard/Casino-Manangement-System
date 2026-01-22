@@ -10,7 +10,7 @@
  * @returns Zustand hook for accessing and updating movement request actions state.
  */
 import { create } from 'zustand';
-import { MovementRequest } from '@/lib/types/movementRequests';
+import { MovementRequest } from '@/lib/types/movement';
 
 type MovementRequestActionsState = {
   isEditModalOpen: boolean;
@@ -64,3 +64,4 @@ const getClientStore = () => {
 // Use this store only on client side
 export const useMovementRequestActionsStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);
+

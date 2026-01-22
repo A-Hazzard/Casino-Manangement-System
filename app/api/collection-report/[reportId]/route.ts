@@ -16,7 +16,7 @@ import {
   removeCollectionHistoryFromMachines,
   revertMachineCollectionMeters,
   updateCollectionReport,
-} from '@/app/api/lib/helpers/collectionReportOperations';
+} from '@/app/api/lib/helpers/collectionReport/operations';
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';

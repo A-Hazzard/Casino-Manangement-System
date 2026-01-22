@@ -7,7 +7,7 @@ import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { fetchCabinetById } from '@/lib/helpers/cabinets';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
-import { isAbortError } from '@/lib/utils/errorHandling';
+import { isAbortError } from '@/lib/utils/errors';
 import { differenceInMinutes } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -231,3 +231,4 @@ export function useCabinetDetailsData({
     handleCabinetUpdated,
   };
 }
+

@@ -1,12 +1,12 @@
 /**
  * Formatting Utilities
  *
- * Utility functions for formatting currency, numbers, and dates.
+ * Utility functions for formatting currency and numbers.
  *
  * Features:
  * - Currency formatting with smart decimals
  * - Number formatting with commas
- * - Date formatting
+ * - Date formatting (re-exported from date utilities)
  */
 
 // ============================================================================
@@ -35,25 +35,12 @@ export function formatCurrency(value: number): string {
 }
 
 // ============================================================================
-// Date Formatting
+// Date Formatting (Re-exported for convenience)
 // ============================================================================
 /**
- * Format a date string to readable format
+ * Re-export formatDate from date utilities for backward compatibility
+ * The actual implementation is in lib/utils/date/formatting.ts
  */
-export function formatDate(dateString: string | Date | undefined): string {
-  if (!dateString) return 'N/A';
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return 'Invalid Date';
-  }
-}
+export { formatDate } from './date/formatting';
+
 

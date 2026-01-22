@@ -19,11 +19,12 @@ import {
   getUserAccessibleLicenseesFromToken,
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
+import { getMemberCountsPerLocation } from '@/app/api/lib/helpers/membershipAggregation';
 import {
   applyLocationsCurrencyConversion,
   handleSummaryMode,
-} from '@/app/api/lib/helpers/locationsReport';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+} from '@/app/api/lib/helpers/reports/locations';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
@@ -413,6 +414,11 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
+    // STEP 6.5: Aggregate member counts per location
+    // ============================================================================
+    const memberCountMap = await getMemberCountsPerLocation(allLocationIds);
+
+    // ============================================================================
     // STEP 7: Apply post-aggregation filters and currency conversion
     // ============================================================================
     for (const loc of locations) {
@@ -446,15 +452,18 @@ export async function GET(req: NextRequest) {
       )
         continue;
 
+      const membershipEnabled = Boolean(
+        loc.membershipEnabled ||
+          (loc as { enableMembership?: boolean }).enableMembership
+      );
+
       locationResults.push({
         _id: locId,
         location: locId,
         locationName: loc.name,
+        ...(membershipEnabled && { memberCount: memberCountMap.get(locId) || 0 }),
         isLocalServer: loc.isLocalServer || false,
-        membershipEnabled: Boolean(
-          loc.membershipEnabled ||
-            (loc as { enableMembership?: boolean }).enableMembership
-        ),
+        membershipEnabled,
         moneyIn: Math.round((metrics.totalDrop as number) * 100) / 100,
         moneyOut:
           Math.round((metrics.totalCancelledCredits as number) * 100) / 100,
@@ -541,3 +550,4 @@ function createEmptyResponse(page: number, limit: number, currency: string) {
     converted: false,
   });
 }
+

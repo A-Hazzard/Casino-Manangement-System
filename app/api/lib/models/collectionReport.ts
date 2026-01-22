@@ -42,3 +42,4 @@ const collectionReportSchema = new Schema<ICollectionReport>(
 export const CollectionReport =
   (mongoose.models?.CollectionReport as mongoose.Model<ICollectionReport>) ||
   mongoose.model<ICollectionReport>("CollectionReport", collectionReportSchema);
+

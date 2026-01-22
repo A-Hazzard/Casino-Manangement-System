@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchLicenseeById } from '@/lib/helpers/clientLicensees';
+import { fetchLicenseeById } from '@/lib/helpers/client';
 import {
   convertCurrency,
   formatAmount,
@@ -21,10 +21,10 @@ import React, {
   useState,
 } from 'react';
 
-interface CurrencyProviderProps {
+type CurrencyProviderProps = {
   children: React.ReactNode;
   initialCurrency?: CurrencyCode;
-}
+};
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(
   undefined

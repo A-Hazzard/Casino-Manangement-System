@@ -19,5 +19,5 @@ export { useMembersTabContent } from './useMembersTabContent';
 export { useReportsTabContent } from './useReportsTabContent';
 export { useSessions } from './useSessions';
 export { useSessionsFilters } from './useSessionsFilters';
-export { useSessionsNavigation } from './useSessionsNavigation';
 export { useSmibConfiguration } from './useSmibConfiguration';
+

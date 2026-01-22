@@ -3,9 +3,9 @@
 import { Suspense } from 'react';
 
 // Components
-import MembersPageContent from '@/components/members/MembersPageContent';
-import { MembersPageSkeleton } from '@/components/ui/skeletons/MembersSkeletons';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import MembersPageContent from '@/components/CMS/members/MembersPageContent';
+import { MembersPageSkeleton } from '@/components/shared/ui/skeletons/MembersSkeletons';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 
 /**
  * Members Page
@@ -27,3 +27,4 @@ export default function MembersPage() {
     </ProtectedRoute>
   );
 }
+

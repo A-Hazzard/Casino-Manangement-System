@@ -10,7 +10,7 @@
  * @module app/api/analytics/winloss-trends/route
  */
 
-import { getWinLossTrends } from '@/app/api/lib/helpers/trends';
+import { getWinLossTrends } from '@/app/api/lib/helpers/trends/general';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -52,12 +52,11 @@ export async function GET(req: NextRequest) {
     // STEP 3: Fetch win/loss trends data
     // ============================================================================
     const winLossTrends = await getWinLossTrends(
-      db,
       timePeriod,
       licencee,
       locationIds
     );
-
+    
     // ============================================================================
     // STEP 4: Return win/loss trends
     // ============================================================================
@@ -86,3 +85,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+

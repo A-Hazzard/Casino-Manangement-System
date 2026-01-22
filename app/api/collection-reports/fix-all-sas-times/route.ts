@@ -16,7 +16,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { fixAllSasTimesData } from '../../lib/helpers/bulkSasTimesFix';
+import { fixAllSasTimesData } from '../../lib/helpers/collectionReport/fixes/bulkSasTimes';
 import { getUserById, getUserIdFromServer } from '../../lib/helpers/users';
 import { connectDB } from '../../lib/middleware/db';
 
@@ -121,3 +121,4 @@ export async function POST() {
     );
   }
 }
+

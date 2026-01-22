@@ -1,5 +1,5 @@
 import { ReportView } from './reports';
-import { DateRange } from '@/lib/utils/dateUtils';
+import { DateRange } from '@/lib/utils/date';
 import { TimePeriod } from '@/shared/types/common';
 
 export * from '@/shared/types/entities';
@@ -141,3 +141,4 @@ export type ActiveFilters = {
 
 // Re-export TimePeriod
 export type { TimePeriod };
+

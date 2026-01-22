@@ -8,9 +8,9 @@
  * @module app/administration/page
  */
 
-import AdministrationPageContent from '@/components/administration/AdministrationPageContent';
-import { AdministrationUserTableSkeleton } from '@/components/administration/skeletons/AdministrationUserTableSkeleton';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import AdministrationPageContent from '@/components/CMS/administration/AdministrationPageContent';
+import { AdministrationUserTableSkeleton } from '@/components/CMS/administration/skeletons/AdministrationUserTableSkeleton';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 import { Suspense } from 'react';
 
 export default function AdministrationPage() {
@@ -22,3 +22,4 @@ export default function AdministrationPage() {
     </ProtectedRoute>
   );
 }
+

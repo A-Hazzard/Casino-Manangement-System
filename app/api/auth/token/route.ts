@@ -10,7 +10,7 @@
  * @module app/api/auth/token/route
  */
 
-import { getUserIdFromServer } from '@/app/api/lib/helpers/users';
+import { getUserIdFromServer } from '@/app/api/lib/helpers/users/users';
 import { NextResponse } from 'next/server';
 
 /**
@@ -46,3 +46,4 @@ export async function GET() {
     );
   }
 }
+

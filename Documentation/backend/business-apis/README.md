@@ -73,6 +73,20 @@ This directory contains documentation for the core business domain APIs that han
 - `GET /api/collection-report/[id]/details` - Report implementation details
 - `PUT /api/collection-report/[id]/repair` - Report repair operations
 
+### 💵 Vault Management
+**[vault-api.md](./vault-api.md)** - Vault operations and cash management
+
+**Key Endpoints:**
+- `GET /api/vault/cash-monitoring` - Total cash on premises
+- `GET /api/vault/cash-monitoring/denominations` - Denomination breakdown
+- `GET /api/vault/end-of-day` - End of day report generation
+- `POST /api/vault/end-of-day` - Export end of day report
+- `GET /api/vault/float-requests/[id]` - Float request details
+- `PUT /api/vault/float-requests/[id]` - Update float request
+- `GET /api/vault/payouts/[id]` - Payout details
+- `PUT /api/vault/payouts/[id]` - Update payout
+- `GET /api/vault/shifts/[id]` - Shift details
+
 ## Business Logic Features
 
 ### Location-Based Operations
@@ -99,6 +113,13 @@ This directory contains documentation for the core business domain APIs that han
 - Revenue analysis and metrics
 - Compliance and audit trails
 
+### Vault Management
+- Cash monitoring and denomination tracking
+- Float request management (increase/decrease)
+- Payout processing and tracking
+- Shift management for cashiers
+- End of day reporting and reconciliation
+
 ## Common Patterns
 
 ### Filtering and Search
@@ -113,12 +134,16 @@ Most list endpoints support:
 - Machines generate sessions and collections
 - Members participate in sessions
 - Collections are associated with locations and machines
+- Vault operations are associated with locations and cashiers
+- Float requests and payouts are linked to shifts
 
 ### Real-Time Updates
 - Machine status changes
 - Session activity monitoring
 - Collection progress tracking
 - Financial metric updates
+- Vault cash balance updates
+- Float request status changes
 
 ## Related Documentation
 

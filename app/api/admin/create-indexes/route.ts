@@ -185,3 +185,4 @@ export async function GET() {
     collections: ['members', 'machinesessions', 'machineevents'],
   });
 }
+

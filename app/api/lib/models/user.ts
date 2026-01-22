@@ -8,6 +8,8 @@ const ALLOWED_ROLES = [
   'admin',
   'manager',
   'location admin',
+  'vault-manager',
+  'cashier',
   'technician',
   'collector',
 ] as const;
@@ -259,3 +261,4 @@ const UserModel = mongoose.models?.users || model('users', UserSchema);
  */
 
 export default UserModel;
+

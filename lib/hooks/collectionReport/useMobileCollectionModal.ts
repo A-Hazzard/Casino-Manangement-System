@@ -17,11 +17,11 @@
 
 import { createCollectionReport as createCollectionReportAPI } from '@/lib/helpers/collectionReport';
 import { sortMachinesAlphabetically } from '@/lib/helpers/collectionReport/editCollectionModalHelpers';
-import { validateMachineEntry } from '@/lib/helpers/collectionReportModal';
+import { validateMachineEntry } from '@/lib/helpers/collectionReport';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
-import type { CollectionDocument } from '@/lib/types/collections';
+import type { CollectionDocument } from '@/lib/types/collection';
 import axios, { type AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -956,3 +956,4 @@ export function useMobileCollectionModal({
     fetchExistingCollections,
   };
 }
+

@@ -4,7 +4,6 @@
  * Helper function for saving user updates with change detection and activity logging.
  */
 
-import { updateUser } from '@/lib/helpers/administration';
 import type { User } from '@/lib/types/administration';
 import {
   detectChanges,
@@ -12,6 +11,7 @@ import {
   getChangesSummary,
 } from '@/lib/utils/changeDetection';
 import { toast } from 'sonner';
+import { updateUser } from './data';
 
 type SaveUserParams = {
   selectedUser: User;
@@ -257,4 +257,3 @@ export async function saveUserHelper({
     onError(error);
   }
 }
-

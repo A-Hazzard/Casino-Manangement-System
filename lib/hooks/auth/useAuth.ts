@@ -59,3 +59,4 @@ export function useAuth(): UseAuthReturn {
     isAuthenticated: !!user && user.isEnabled,
   };
 }
+

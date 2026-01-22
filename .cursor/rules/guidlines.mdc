@@ -1,0 +1,344 @@
+rule("Backend API route files must follow strict structure and documentation for maintainability, clarity, and code quality.") {
+appliesTo: "app/api/\*_/_.ts"
+
+checklist: [
+"File-level JSDoc with summary, features, and @module tag",
+"Imports grouped and ordered: helpers, types, utilities, Next.js, external libraries",
+"Handler functions (e.g., GET) must use documented step-by-step visual comments and numbered steps",
+"Each major operation inside handlers must be labeled as `STEP N: [Description]` with separator lines",
+"Flow must be pre-documented in handler JSDoc (listing steps)",
+"Complex or reusable logic extracted to app/api/lib/helpers/[feature].ts and imported",
+"Performance tracking added (measure elapsed time; log >1000ms and on error)",
+"Proper try/catch error handling with suitable HTTP status codes and safe error messages",
+"No use of any types; types defined and imported where necessary",
+"No direct db.collection access; always use imported Mongoose models from app/api/lib/models/",
+"when querying by id, use findOne({ \_id: id }) not findById(id)",
+"Licensee/location-based filtering for data according to user context"
+]
+
+rationale: """ - Ensures routes are easy to maintain, audit, and extend - Establishes uniform code/comment/documentation style - Prevents accidental type safety, security, or organization regressions - Enables scalable helper extraction and modularization - Prevents performance regressions by highlighting slow routes - Reduces error-proneness in database access
+"""
+
+examples: [
+section("File-level JSDoc") {
+snippet("""
+/**
+_ Machines API Route
+_
+_ This route handles machine record retrieval and status reporting.
+_ It supports:
+_ - List all machines
+_ - Filter by location/licensee
+_ - Fetch machine status info
+_
+_ @module app/api/machines/route
+_/
+""")
+},
+section("Import order") {
+snippet("""
+// Helpers
+import { getUserFromServer } from '@/app/api/lib/helpers/auth';
+import { fetchMachines } from '@/app/api/lib/helpers/machines';
+// Types
+import { type Machine, type MachineStatus } from '@/app/api/lib/types';
+// Utilities
+import { connectDB } from '@/app/api/lib/utils/db';
+// Next.js
+import { NextRequest, NextResponse } from 'next/server';
+""")
+},
+section("Handler structure with comments and flow doc") {
+snippet("""
+/**
+_ Main GET handler for machines
+_
+_ Flow:
+_ 1. Parse and validate request parameters
+_ 2. Authenticate user and get allowed locations
+_ 3. Fetch machines from database
+_ 4. Transform results
+_ 5. Return JSON response
+\*/
+export async function GET(req: NextRequest) {
+const startTime = Date.now();
+try {
+// ============================================================================
+// STEP 1: Parse and validate request parameters
+// ============================================================================
+const { searchParams } = new URL(req.url);
+const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+
+          // ============================================================================
+          // STEP 2: Authenticate user and get allowed locations
+          // ============================================================================
+          const user = await getUserFromServer();
+          const allowedLocationIds = await getUserLocationFilter(licensee ?? undefined);
+
+          // ============================================================================
+          // STEP 3: Fetch machines from database
+          // ============================================================================
+          const machines = await fetchMachines({ ...params, allowedLocationIds });
+
+          // ============================================================================
+          // STEP 4: Transform results
+          // ============================================================================
+          const response = machines.map(transformMachine);
+
+          // ============================================================================
+          // STEP 5: Return response
+          // ============================================================================
+          const duration = Date.now() - startTime;
+          if (duration > 1000) {
+            console.warn(`[Machines API] Completed in ${duration}ms`);
+          }
+          return NextResponse.json(response);
+        } catch (err) {
+          const duration = Date.now() - startTime;
+          console.error(`[Machines API] Failed after ${duration}ms:`, err);
+          const errorMessage = err instanceof Error ? err.message : 'Server Error';
+          return NextResponse.json({ error: errorMessage }, { status: 500 });
+        }
+      }
+      """)
+    }
+
+]
+
+antiPatterns: [
+"Missing step-by-step comments or visual separators",
+"No file-level JSDoc or @module tag",
+"Direct use of db.collection(...) or findById/findByIdAndUpdate",
+"Overly long handler functions: >20-30 lines per helper/logic block",
+"Usage of any type in parameters or results",
+"Untracked slow operations",
+"Comments that do not match executed steps",
+"No input validation or missing HTTP status codes on error"
+]
+}
+
+rule("Backend API helper files must be modular, documented, and typed.") {
+appliesTo: "app/api/lib/helpers/\*_/_.ts"
+checklist: [
+"File-level JSDoc with feature/domain description and @module tag",
+"Sectioned with visual comments for function grouping (data fetch, transform, etc)",
+"All exported functions have JSDoc with params and return annotated",
+"No use of any type; all params and results are well-typed",
+"Helper must be focused on one business domain (e.g., metersReport, auth, machines)"
+]
+rationale: "Ensures helpers are reusable, clear, and testable; supports IDE navigation and onboarding."
+}
+
+rule("Backend API route and helper files must not exceed line limits.") {
+appliesTo: [
+{ pattern: "app/api/**/route.ts", maxLines: 500 },
+{ pattern: "app/api/lib/helpers/**/*.ts", maxLines: 600 },
+{ pattern: "app/api/lib/models/**/*.ts", maxLines: 400 },
+{ pattern: "app/api/lib/utils/**/*.ts", maxLines: 400 }
+]
+remedy: "Extract to more helper files or split by domain when exceeding limit."
+}
+
+rule("All backend code must use strict TypeScript standards.") {
+appliesTo: "app/api/\*_/_"
+checklist: [
+"Prefer type over interface unless extending interfaces",
+"No any types",
+"No underscore-prefixed variables, except _id for MongoDB",
+"Types organized: shared/types (cross-domain), app/api/lib/types (backend only)",
+"Database types modelled using InferSchemaType<typeof schema> & Document for Mongoose"
+]
+rationale: "Type safety, maintainability, and clarity for all contributors."
+}
+
+rule("All backend database access must use Mongoose models, not direct collection calls.") {
+appliesTo: "app/api/\*_/_.ts"
+must: [
+"Import models from @/app/api/lib/models/ (e.g., import { Machine } from '@/app/api/lib/models/machines')",
+"Use Model.findOne({ _id: id }) for string IDs, not findById",
+"Never use db.collection(), Model.findById(), Model.findByIdAndUpdate()"
+]
+rationale: "Prevents type-unsafe code and leverages Mongoose features."
+modelsList: [
+"Member", "Machine", "GamingLocations", "Meters", "MachineSession", "MachineEvents", "Licencee",
+"Countries", "Collections", "CollectionReport", "MovementRequest", "Feedback", "Firmware",
+"Scheduler", "AcceptedBills", "ActivityLog", "User"
+]
+remedy: "See all models in app/api/lib/models/; always use model methods and string \_id."
+}
+
+rule("Licensee/location-based filtering is required for all appropriate backend queries.") {
+appliesTo: "app/api/\*_/_.ts"
+snippet("""
+// Always support both spellings
+const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+// Get user's accessible locations
+const allowedLocationIds = await getUserLocationFilter(licensee || undefined);
+// Apply filter to query
+if (allowedLocationIds !== 'all') {
+matchStage['gamingLocation'] = { $in: allowedLocationIds };
+}
+""")
+rationale: "Enforces correct access control."
+}
+
+section("Checklists and Refactoring Tracker") {
+body: """
+
+### For every API route file:
+
+- File-level JSDoc with description and features
+- Step-by-step comments with separators and numbered steps
+- Documented flow in handler
+- Business logic in helpers as needed
+- Performance tracking for slow ops
+- Error handling with HTTP status codes
+- Grouped imports
+- No direct db.collection
+- Proper TypeScript usage
+
+### For every helper file:
+
+- File-level JSDoc and section comments
+- Typed params/results
+- Focus on a single feature domain
+
+### Refactoring Checklist
+
+- File-level JSDoc added
+- Step-by-step comments
+- Numbered steps in handlers
+- Helper extraction done
+- Performance & error handling
+- Imports organized
+- No any
+- Within line limits
+- Refactoring tracker updated if refactored
+  """
+  }
+
+reference("Examples") {
+files: [
+"app/api/reports/meters/route.ts",
+"app/api/lib/helpers/metersReport.ts",
+"app/api/dashboard/totals/route.ts"
+]
+rationale: "Use as reference for ideal structure."
+}
+
+rule("User data caching patterns for frontend components.") {
+appliesTo: "lib/**/\*.ts", "components/**/_.tsx", "app/\*\*/_.tsx"
+
+checklist: [
+"Use fetchUserWithCache for user-related API calls that don't change frequently",
+"Use CACHE_KEYS constants for cache key names",
+"Clear cache when user data changes (login/logout)",
+"Understand in-flight request deduplication",
+"Set appropriate TTL based on data freshness requirements"
+]
+
+rationale: """ - Prevents duplicate API calls for the same data - Reduces server load and improves performance - Ensures data consistency across components - Prevents race conditions with concurrent requests
+"""
+
+whenToUse: """
+**When to use userCache:** - User profile data that doesn't change frequently - User permissions that are cached for session duration - Current user data that multiple components need - Any user-related data fetched from /api/auth/current-user or similar
+
+    **When NOT to use:**
+    - Real-time data that changes frequently
+    - Data that must always be fresh (use React Query with short staleTime instead)
+    - One-time data that won't be reused
+
+"""
+
+howToUse: """
+```typescript
+import { CACHE_KEYS, fetchUserWithCache } from '@/lib/utils/userCache';
+
+    // Example: Fetching user profile with caching
+    const userProfile = await fetchUserWithCache(
+      CACHE_KEYS.USER_PROFILE,
+      async () => {
+        const response = await axios.get('/api/user/profile');
+        return response.data;
+      },
+      5 * 60 * 1000 // TTL: 5 minutes (optional, defaults to 5 min)
+    );
+    ```
+
+    **Cache Keys:**
+    - CACHE_KEYS.CURRENT_USER - Current authenticated user data
+    - CACHE_KEYS.USER_PROFILE - User profile information
+    - CACHE_KEYS.USER_PERMISSIONS - User permissions and roles
+
+    **TTL (Time To Live):**
+    - Default: 5 minutes (5 * 60 * 1000 ms)
+    - Customize based on data freshness requirements
+    - Longer TTL for stable data (user roles, profile)
+    - Shorter TTL for data that changes more frequently
+
+"""
+
+whyToUse: """
+**Performance Benefits:** - Prevents duplicate API calls when multiple components need same data - Reduces network requests and server load - Improves perceived performance (instant data from cache)
+
+    **In-Flight Deduplication:**
+    - If multiple components request same data simultaneously, they share the same promise
+    - Prevents race conditions and duplicate requests
+    - First request fetches, others wait for same promise
+
+    **Cache Invalidation:**
+    - Automatically cleared when user logs in/out (via userStore)
+    - Call clearUserCache() manually when user data changes
+    - Cache expires based on TTL (automatic cleanup)
+
+"""
+
+examples: [
+section("Basic usage") {
+snippet("""
+import { CACHE_KEYS, fetchUserWithCache } from '@/lib/utils/userCache';
+
+      const userData = await fetchUserWithCache(
+        CACHE_KEYS.CURRENT_USER,
+        async () => {
+          const res = await axios.get('/api/auth/current-user');
+          return res.data;
+        }
+      );
+      """)
+    },
+    section("Custom TTL") {
+      snippet("""
+      // Cache for 10 minutes instead of default 5
+      const data = await fetchUserWithCache(
+        CACHE_KEYS.USER_PROFILE,
+        fetchFn,
+        10 * 60 * 1000 // 10 minutes
+      );
+      """)
+    },
+    section("Cache invalidation") {
+      snippet("""
+      import { clearUserCache } from '@/lib/utils/userCache';
+
+      // Clear all user cache (e.g., on logout)
+      clearUserCache();
+      """)
+    }
+
+]
+
+antiPatterns: [
+"Caching real-time data that changes frequently",
+"Not clearing cache on user changes",
+"Using cache for data that must always be fresh",
+"Creating custom cache keys instead of using CACHE_KEYS constants",
+"Setting TTL too long for frequently changing data"
+]
+}
+
+meta {
+lastUpdated: "2025-11-22"
+author: "Aaron Hazzard"
+version: "1.1.0"
+}

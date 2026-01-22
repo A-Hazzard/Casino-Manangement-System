@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/middleware/db';
 import { CollectionReport } from '../../../lib/models/collectionReport';
-import { checkCollectionReportIssues } from '@/app/api/lib/helpers/collectionIssueChecker';
+import { checkCollectionReportIssues } from '@/app/api/lib/helpers/collectionReport/issueChecker';
 
 /**
  * Main GET handler for checking SAS times

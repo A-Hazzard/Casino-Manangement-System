@@ -20,7 +20,7 @@ import {
     getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getLocationsWithMetrics } from '@/app/api/lib/helpers/locationAggregation';
-import { convertLocationCurrency } from '@/app/api/lib/helpers/locationCurrencyConversion';
+import { convertLocationCurrency } from '@/app/api/lib/helpers/currency/location';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
@@ -30,7 +30,7 @@ import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion'
 import { LocationFilter } from '@/lib/types/location';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 
 /**
  * Main GET handler for location aggregation
@@ -446,3 +446,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

@@ -1,7 +1,7 @@
 # Administration Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** December 29, 2025
+**Last Updated:** January 2025
 **Version:** 3.1.0
 
 ## Table of Contents
@@ -46,7 +46,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/AdministrationNavigation.tsx` - Tab navigation component
+- `components/CMS/administration/AdministrationNavigation.tsx` - Tab navigation component
 
 **Tab Configuration:**
 
@@ -73,7 +73,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/AdministrationUserSummaryCards.tsx` - Grid of 5 summary cards
+- `components/CMS/administration/AdministrationUserSummaryCards.tsx` - Grid of 5 summary cards
 
 **API Endpoint:**
 
@@ -105,7 +105,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/AdministrationSearchFilterBar.tsx` - Search input and filter dropdowns
+- `components/CMS/administration/AdministrationSearchFilterBar.tsx` - Search input and filter dropdowns
 
 **Functionality:**
 
@@ -134,10 +134,10 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/tables/AdministrationUserTable.tsx` - Desktop table view
-- `components/administration/cards/AdministrationUserCard.tsx` - Mobile card view
-  - `components/administration/skeletons/AdministrationUserTableSkeleton.tsx` - Loading skeleton for table
-  - `components/administration/skeletons/AdministrationUserCardSkeleton.tsx` - Loading skeleton for cards
+- `components/CMS/administration/tables/AdministrationUserTable.tsx` - Desktop table view
+- `components/CMS/administration/cards/AdministrationUserCard.tsx` - Mobile card view
+  - `components/CMS/administration/skeletons/AdministrationUserTableSkeleton.tsx` - Loading skeleton for table
+  - `components/CMS/administration/skeletons/AdministrationUserCardSkeleton.tsx` - Loading skeleton for cards
 
 **API Endpoint:**
 
@@ -187,9 +187,9 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/modals/AdministrationAddUserModal.tsx` - Create new user modal
-- `components/administration/modals/AdministrationUserModal.tsx` - Edit existing user modal
-- `components/administration/modals/AdministrationDeleteUserModal.tsx` - Delete confirmation modal
+- `components/CMS/administration/modals/AdministrationAddUserModal.tsx` - Create new user modal
+- `components/CMS/administration/modals/AdministrationUserModal.tsx` - Edit existing user modal
+- `components/CMS/administration/modals/AdministrationDeleteUserModal.tsx` - Delete confirmation modal
 
 **Add User Modal Features:**
 
@@ -203,13 +203,51 @@ The Administration page provides comprehensive user and licensee management func
 
 **Edit User Modal Features:**
 
-- Same fields as Add User Modal
-- Pre-populated with existing user data
-- Change detection (only sends changed fields to API)
-- Profile picture management (upload, crop, remove)
-- Password reset functionality
-- Account status toggle (`isEnabled`)
-- Session version increment on role/permission changes
+
+
+-   **Comprehensive Profile Management:** Edit personal details (firstName, lastName, gender, phoneNumber), address (street, town, region, country, postalCode), and identification details (dateOfBirth, idType, idNumber, notes).
+
+-   **Profile Picture Management:** Upload, crop, and remove profile pictures using a `CircleCropModal`.
+
+-   **Account Information:**
+
+    *   **Username & Email:** Edit username and email address with asynchronous uniqueness validation (including debounce) and real-time feedback.
+
+    *   **Password Management:** Set a new password with real-time password strength validation, feedback on requirements (length, uppercase, lowercase, number, special character), and confirmation field.
+
+    *   **Account Status Toggle:** For Developer/Admin/Manager roles, toggle `isEnabled` to activate/deactivate the user account.
+
+-   **Roles & Permissions:**
+
+    *   **Dynamic Role Options:** Available roles for assignment are filtered based on the editing user's permissions (e.g., Managers cannot assign Admin or Developer roles).
+
+    *   **Role Assignment:** Assign/unassign multiple roles to the user via checkboxes.
+
+    *   **Role Information Dialog:** View a dialog showing pages accessible to each specific role.
+
+-   **Assigned Licensees:**
+
+    *   Assign multiple licensees to the user using a `MultiSelectDropdown`.
+
+    *   Includes an "All Licensees" toggle for easy assignment.
+
+    *   Role-based restrictions apply (e.g., Managers cannot change licensee assignments, Location Admins' licensees are pre-filled).
+
+-   **Assigned Locations:**
+
+    *   Assign multiple specific locations to the user using a `MultiSelectDropdown`.
+
+    *   Includes an "All Locations for selected licensee(s)" toggle.
+
+    *   Dynamic filtering of available locations based on selected licensees.
+
+    *   If a licensee is deselected, locations belonging only to that licensee are automatically removed from assigned locations.
+
+-   **Change Detection:** Only sends changed fields to the API on save.
+
+-   **Validation:** Client-side validation for all fields, matching backend rules.
+
+-   **Session Version Increment:** Automatically increments `sessionVersion` when roles or assignments change to invalidate old sessions.
 
 **Delete User Modal Features:**
 
@@ -250,7 +288,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/AdministrationLicenseeSearchBar.tsx` - Search input component
+- `components/CMS/administration/AdministrationLicenseeSearchBar.tsx` - Search input component
 
 **Functionality:**
 
@@ -271,10 +309,10 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/tables/AdministrationLicenseeTable.tsx` - Desktop table view
-- `components/administration/cards/AdministrationLicenseeCard.tsx` - Mobile card view
-- `components/administration/skeletons/AdministrationLicenseeTableSkeleton.tsx` - Loading skeleton
-- `components/administration/skeletons/AdministrationLicenseeCardSkeleton.tsx` - Loading skeleton
+- `components/CMS/administration/tables/AdministrationLicenseeTable.tsx` - Desktop table view
+- `components/CMS/administration/cards/AdministrationLicenseeCard.tsx` - Mobile card view
+- `components/CMS/administration/skeletons/AdministrationLicenseeTableSkeleton.tsx` - Loading skeleton
+- `components/CMS/administration/skeletons/AdministrationLicenseeCardSkeleton.tsx` - Loading skeleton
 
 **API Endpoint:**
 
@@ -306,12 +344,12 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/modals/AdministrationAddLicenseeModal.tsx` - Create new licensee modal
-- `components/administration/modals/AdministrationEditLicenseeModal.tsx` - Edit existing licensee modal
-- `components/administration/modals/AdministrationDeleteLicenseeModal.tsx` - Delete confirmation modal
-- `components/administration/modals/AdministrationPaymentHistoryModal.tsx` - View payment history
-- `components/administration/modals/AdministrationLicenseeSuccessModal.tsx` - Success message with license key
-- `components/administration/modals/AdministrationPaymentStatusConfirmModal.tsx` - Confirm payment status change
+- `components/CMS/administration/modals/AdministrationAddLicenseeModal.tsx` - Create new licensee modal
+- `components/CMS/administration/modals/AdministrationEditLicenseeModal.tsx` - Edit existing licensee modal
+- `components/CMS/administration/modals/AdministrationDeleteLicenseeModal.tsx` - Delete confirmation modal
+- `components/CMS/administration/modals/AdministrationPaymentHistoryModal.tsx` - View payment history
+- `components/CMS/administration/modals/AdministrationLicenseeSuccessModal.tsx` - Success message with license key
+- `components/CMS/administration/modals/AdministrationPaymentStatusConfirmModal.tsx` - Confirm payment status change
 
 **Add/Edit Licensee Modal Features:**
 
@@ -351,7 +389,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/tables/AdministrationActivityLogsTable.tsx` - Activity logs table
+- `components/CMS/administration/tables/AdministrationActivityLogsTable.tsx` - Activity logs table
 
 **API Endpoint:**
 
@@ -378,7 +416,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Components:**
 
-- `components/administration/AdministrationFeedbackManagement.tsx` - Main feedback management component
+- `components/CMS/administration/AdministrationFeedbackManagement.tsx` - Main feedback management component
 
 **API Endpoint:**
 

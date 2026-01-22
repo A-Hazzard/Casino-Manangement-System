@@ -15,7 +15,7 @@ import {
   getHourlyTrends,
   processMultipleLocationsHourlyData,
   processSingleLocationHourlyData,
-} from '@/app/api/lib/helpers/hourlyTrends';
+} from '@/app/api/lib/helpers/trends/hourly';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -73,7 +73,6 @@ export async function GET(req: NextRequest) {
       hourlyData,
       targetLocations,
     } = await getHourlyTrends(
-      db,
       locationId,
       locationIds,
       timePeriod,
@@ -137,3 +136,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+

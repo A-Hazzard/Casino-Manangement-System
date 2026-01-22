@@ -49,3 +49,4 @@ export const REPORTS_ANIMATIONS = {
     exit: { opacity: 0, x: -20 },
   },
 } as const;
+

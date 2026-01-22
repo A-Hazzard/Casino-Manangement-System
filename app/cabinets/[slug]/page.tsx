@@ -7,8 +7,10 @@
  * @module app/cabinets/[slug]/page
  */
 
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import CabinetsDetailsPageContent from '@/components/cabinets/CabinetsDetailsPageContent';
+export const dynamic = 'force-dynamic';
+
+import CabinetsDetailsPageContent from '@/components/CMS/cabinets/CabinetsDetailsPageContent';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 
 export default function CabinetPage() {
   return (

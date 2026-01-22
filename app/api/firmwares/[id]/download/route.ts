@@ -20,7 +20,6 @@ import { NextRequest, NextResponse } from 'next/server';
  * Main GET handler for downloading firmware by ID
  *
  * Flow:
- * 1. Parse and validate request parameters
  * 2. Find firmware document by ID
  * 3. Download firmware file from GridFS
  * 4. Return file with appropriate headers

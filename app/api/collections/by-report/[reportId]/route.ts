@@ -13,7 +13,7 @@
 import { Collections } from '@/app/api/lib/models/collections';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import type { CollectionDocument } from '@/lib/types/collections';
+import type { CollectionDocument } from '@/lib/types/collection';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**

@@ -11,7 +11,7 @@
  */
 
 import type { ReportConfig } from '@/lib/types/reports';
-import { generateReportData } from '@/app/api/lib/helpers/reports';
+import { generateReportData } from '@/app/api/lib/helpers/reports/general';
 import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -137,3 +137,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+

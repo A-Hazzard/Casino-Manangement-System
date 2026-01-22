@@ -10,6 +10,8 @@
  * - Role priority handling (admin/developer/manager > technician > location admin > collector)
  */
 
+import { HIGH_PRIORITY_ROLES } from '../constants/';
+import { UserRole } from './permissions';
 // ============================================================================
 // Redirect Path Functions
 // ============================================================================
@@ -18,46 +20,38 @@
  * Uses the highest priority role to determine redirect.
  *
  * Priority order:
- * 1. admin, developer, manager, administration → dashboard (/)
- * 2. technician → cabinets (/cabinets)
- * 3. location admin → collection reports (/collection-report)
- * 4. collector → collection reports (/collection-report)
+ * 1. admin, developer, manager, location admin → dashboard (/)
+ * 2. vault-manager → /vault/management
+ * 3. cashier → /vault/cashier/payouts
+ * 4. technician → cabinets (/cabinets)
+ * 5. collector → collection reports (/collection-report)
  *
  * @param userRoles - Array of user roles.
  * @returns The appropriate redirect path.
  */
-export function getDefaultRedirectPathFromRoles(userRoles: string[]): string {
-  if (!userRoles || userRoles.length === 0) {
-    return '/cabinets'; // fallback
-  }
+export function getDefaultRedirectPathFromRoles(userRoles: UserRole[]): string {
+  if (!userRoles || userRoles.length === 0) return '/cabinets'; 
 
-  // Priority 1: If user has admin, developer, manager, or administration → dashboard
+  // Priority 1: If user has admin, developer, manager, or location admin → dashboard
   // (If user has any of these 4 roles, always redirect to dashboard, even with other roles)
-  const highPriorityRoles = ['admin', 'developer', 'manager', 'administration'];
-  const hasHighPriorityRole = highPriorityRoles.some(role =>
+  const hasHighPriorityRole = HIGH_PRIORITY_ROLES.some(role =>
     userRoles.includes(role)
   );
-  if (hasHighPriorityRole) {
-    return '/'; // Dashboard
-  }
+  if (hasHighPriorityRole) return '/';
 
-  // Priority 2: If user has technician → cabinets
-  if (userRoles.includes('technician')) {
-    return '/cabinets';
-  }
+  // Priority 2: If user has vault-manager → vault management
+  if (userRoles.includes('vault-manager')) return '/vault/management';
 
-  // Priority 3: If user has location admin → collection reports
-  if (userRoles.includes('location admin')) {
-    return '/collection-report';
-  }
+  // Priority 3: If user has cashier → cashier payouts
+  if (userRoles.includes('cashier')) return '/vault/cashier/payouts';
 
-  // Priority 4: If user only has collector → collection reports
-  if (userRoles.includes('collector')) {
-    return '/collection-report';
-  }
+  // Priority 4: If user has technician → cabinets
+  if (userRoles.includes('technician')) return '/cabinets';
 
-  // Fallback if no recognized roles
-  return '/cabinets';
+  // Priority 5: If user only has collector → collection reports
+  if (userRoles.includes('collector')) return '/collection-report';
+
+  return '/cabinets'; // Fallback if no recognized roles
 }
 
 // ============================================================================
@@ -73,30 +67,33 @@ export function getDefaultRedirectPathFromRoles(userRoles: string[]): string {
 export function getRedirectDestinationNameFromRoles(
   userRoles: string[]
 ): string {
-  if (!userRoles || userRoles.length === 0) {
-    return 'Machines';
-  }
+  if (!userRoles || userRoles.length === 0) return 'Machines';
 
-  // Priority 1: If user has admin, developer, manager, or administration → Dashboard
-  const highPriorityRoles = ['admin', 'developer', 'manager', 'administration'];
-  const hasHighPriorityRole = highPriorityRoles.some(role =>
+  // Priority 1: If user has admin, developer, manager, or location admin → Dashboard
+  
+  const hasHighPriorityRole = HIGH_PRIORITY_ROLES.some(role =>
     userRoles.includes(role)
   );
   if (hasHighPriorityRole) {
     return 'Dashboard';
   }
 
-  // Priority 2: If user has technician → Machines
+  // Priority 2: If user has vault-manager → Vault Management
+  if (userRoles.includes('vault-manager')) {
+    return 'Vault Management';
+  }
+
+  // Priority 3: If user has cashier → Cashier Interface
+  if (userRoles.includes('cashier')) {
+    return 'Cashier Interface';
+  }
+
+  // Priority 4: If user has technician → Machines
   if (userRoles.includes('technician')) {
     return 'Machines';
   }
 
-  // Priority 3: If user has location admin → Collection Report
-  if (userRoles.includes('location admin')) {
-    return 'Collection Report';
-  }
-
-  // Priority 4: If user only has collector → Collection Report
+  // Priority 5: If user only has collector → Collection Report
   if (userRoles.includes('collector')) {
     return 'Collection Report';
   }

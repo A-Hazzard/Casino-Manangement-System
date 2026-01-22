@@ -9,7 +9,7 @@
  * - Activity logging utilities
  */
 
-import type { CollectionDocument } from '@/lib/types/collections';
+import type { CollectionDocument } from '@/lib/types/collection';
 import axios, { type AxiosError } from 'axios';
 
 /**
@@ -159,4 +159,5 @@ export async function logActivity(
     console.error('Error logging activity:', error);
   }
 }
+
 

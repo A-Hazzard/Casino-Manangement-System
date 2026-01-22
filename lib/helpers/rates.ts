@@ -15,7 +15,7 @@
  * - Handles currency conversion for financial data arrays.
  */
 
-import { getLicenseeName } from '@/lib/utils/licenseeMapping';
+import { getLicenseeName } from '@/lib/utils/licensee';
 import type {
   CurrencyCode,
   ExchangeRates,
@@ -223,4 +223,5 @@ export function formatAmount(
 
   return `${symbol}${formatted}`;
 }
+
 

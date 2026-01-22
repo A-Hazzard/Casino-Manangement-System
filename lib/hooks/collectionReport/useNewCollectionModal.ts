@@ -22,13 +22,14 @@ import type {
   CollectionReportMachineSummary,
   CreateCollectionReportPayload,
 } from '@/lib/types/api';
-import type { CollectionDocument } from '@/lib/types/collections';
-import { calculateDefaultCollectionTime } from '@/lib/utils/collectionTime';
-import { calculateMachineMovement } from '@/lib/utils/frontendMovementCalculation';
+import type { CollectionDocument } from '@/lib/types/collection';
+import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
+import { calculateMachineMovement } from '@/lib/utils/movement';
 import { validateCollectionReportPayload } from '@/lib/utils/validation';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
 
 type UseNewCollectionModalProps = {
   show: boolean;
@@ -144,6 +145,14 @@ export function useNewCollectionModal({
   const locationProfitShare = useMemo(
     () => selectedLocation?.profitShare ?? 50,
     [selectedLocation?.profitShare]
+  );
+
+  const anyConfirmationOpen = !!(
+    showUpdateConfirmation ||
+    showMachineRolloverWarning ||
+    showDeleteConfirmation ||
+    showViewMachineConfirmation ||
+    showCreateReportConfirmation
   );
 
   // Update location name when location changes
@@ -792,6 +801,8 @@ export function useNewCollectionModal({
         { drop: 0, cancelledCredits: 0, gross: 0 }
       );
 
+      const reportId = uuidv4();
+
       const payload: CreateCollectionReportPayload = {
         variance: Number(financials.variance) || 0,
         previousBalance: Number(financials.previousBalance) || 0,
@@ -807,7 +818,7 @@ export function useNewCollectionModal({
         advance: Number(financials.advance) || 0,
         collector: userId || 'unknown',
         locationName: selectedLocationName,
-        locationReportId: '',
+        locationReportId: reportId,
         location: selectedLocationId,
         totalDrop: reportTotalData.drop,
         totalCancelled: reportTotalData.cancelledCredits,
@@ -831,7 +842,7 @@ export function useNewCollectionModal({
           prevMetersIn: e.prevIn || 0,
           prevMetersOut: e.prevOut || 0,
           timestamp: e.timestamp,
-          locationReportId: '',
+          locationReportId: reportId,
         })),
         collectionIds: collectedMachineEntries.map(e => String(e._id)),
       };
@@ -1045,5 +1056,7 @@ export function useNewCollectionModal({
     handleCancelMachineRollover,
     handleCancelEdit,
     handleAddEntry,
+    anyConfirmationOpen,
   };
 }
+

@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-**Last Updated:** November 22, 2025  
+**Last Updated:** January 2025  
 **Version:** 2.1.0
 
 ## Recent Performance Optimizations (November 11th, 2025) 🚀
@@ -69,7 +69,7 @@
 - **SAS Evaluation**: `sasEvaluationOnly=true` - Filter for SAS locations only
 - **Financial Data**: Default shows all locations with financial data
 
-**Last Updated:** November 27, 2025  
+**Last Updated:** January 2025  
 **Version:** 2.1.0
 
 ## Table of Contents
@@ -1127,7 +1127,7 @@ type Meter = {
 
 ---
 
-**Last Updated:** October 15th, 2025
+**Last Updated:** January 2025
 
 ### 13. Development Guidelines
 

@@ -44,6 +44,9 @@ const ActivityLogSchema = new Schema(
         'firmware',
         'auth',
         'feedback',
+        'collection-report',
+        'report',
+        'system',
       ],
     },
     resourceId: { type: String, required: true },
@@ -95,6 +98,12 @@ ActivityLogSchema.index({ entityType: 1, timestamp: -1 });
 ActivityLogSchema.index({ 'actor.id': 1, timestamp: -1 });
 ActivityLogSchema.index({ actionType: 1, timestamp: -1 });
 
+// In development, delete the model if it exists to ensure schema updates are applied
+if (process.env.NODE_ENV === 'development' && models?.ActivityLog) {
+  delete models.ActivityLog;
+}
+
 export const ActivityLog =
   models?.ActivityLog ||
   model('ActivityLog', ActivityLogSchema, 'activityLogs');
+

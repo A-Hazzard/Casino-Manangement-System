@@ -10,7 +10,7 @@
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { getCollectorsPaginated } from '@/app/api/lib/helpers/collectionReports';
+import { getCollectorsPaginated } from '@/app/api/lib/helpers/collectionReport/reports';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -63,3 +63,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

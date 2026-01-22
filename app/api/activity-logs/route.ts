@@ -14,12 +14,12 @@
 
 import { calculateChanges } from '@/app/api/lib/helpers/activityLogger';
 import { ActivityLog } from '@/app/api/lib/models/activityLog';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import User from '@/app/api/lib/models/user';
-import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipDetection';
+import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -403,3 +403,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

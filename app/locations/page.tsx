@@ -9,9 +9,11 @@
  * @module app/locations/page
  */
 
-import LocationsPageContent from '@/components/locations/LocationsPageContent';
-import PageErrorBoundary from '@/components/ui/errors/PageErrorBoundary';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import LocationsPageContent from '@/components/CMS/locations/LocationsPageContent';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
+import PageErrorBoundary from '@/components/shared/ui/errors/PageErrorBoundary';
+
+export const dynamic = 'force-dynamic';
 
 export default function LocationsPage() {
   return (
@@ -22,3 +24,4 @@ export default function LocationsPage() {
     </ProtectedRoute>
   );
 }
+

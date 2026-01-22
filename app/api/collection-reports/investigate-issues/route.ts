@@ -9,7 +9,7 @@
  * @module app/api/collection-reports/investigate-issues/route
  */
 
-import { investigateMostRecentReport } from '@/app/api/lib/helpers/collectionIssueChecker';
+import { investigateMostRecentReport } from '@/app/api/lib/helpers/collectionReport/issueChecker';
 import { NextResponse } from 'next/server';
 import { getUserById, getUserIdFromServer } from '../../lib/helpers/users';
 import { connectDB } from '../../lib/middleware/db';
@@ -120,3 +120,4 @@ export async function GET() {
     );
   }
 }
+

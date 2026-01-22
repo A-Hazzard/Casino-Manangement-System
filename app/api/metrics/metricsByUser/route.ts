@@ -12,7 +12,7 @@
 import {
   getUserMetrics,
   validateTimePeriod,
-} from '@/app/api/lib/helpers/userMetrics';
+} from '@/app/api/lib/helpers/users/metrics';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -81,3 +81,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+

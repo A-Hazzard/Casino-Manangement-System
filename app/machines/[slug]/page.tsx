@@ -7,8 +7,10 @@
  * @module app/machines/[slug]/page
  */
 
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import MachineDetailsPageContent from '@/components/machines/MachineDetailsPageContent';
+export const dynamic = 'force-dynamic';
+
+import MachineDetailsPageContent from '@/components/CMS/machines/MachineDetailsPageContent';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 
 export default function MachinePage() {
   return (

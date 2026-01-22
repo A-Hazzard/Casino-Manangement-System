@@ -118,7 +118,11 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // Add location filter if specified (but no licensee filtering)
     if (locationFilter && locationFilter !== 'all') {
-      matchConditions.gamingLocation = locationFilter;
+      if (locationFilter.includes(',')) {
+        matchConditions.gamingLocation = { $in: locationFilter.split(',') };
+      } else {
+        matchConditions.gamingLocation = locationFilter;
+      }
     }
 
     // ============================================================================
@@ -167,7 +171,11 @@ export async function GET(request: NextRequest) {
 
     // Include location filter if specified (for location-specific pages)
     if (locationFilter && locationFilter !== 'all') {
-      totalMembersConditions.gamingLocation = locationFilter;
+      if (locationFilter.includes(',')) {
+        totalMembersConditions.gamingLocation = { $in: locationFilter.split(',') };
+      } else {
+        totalMembersConditions.gamingLocation = locationFilter;
+      }
     }
 
     // Only include search filter if there's a search term
@@ -442,3 +450,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+

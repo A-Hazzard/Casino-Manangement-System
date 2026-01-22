@@ -227,3 +227,4 @@ machineSchema.index({ 'custom.name': 1 });
 machineSchema.index({ lastSasMeterAt: -1 });
 
 export const Machine = models['machines'] ?? model('machines', machineSchema);
+

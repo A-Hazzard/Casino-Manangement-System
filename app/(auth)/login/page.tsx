@@ -8,11 +8,11 @@
 
 import { Suspense } from 'react';
 import Image from 'next/image';
-import LoginForm from '@/components/auth/LoginForm';
-import LiquidGradient from '@/components/ui/LiquidGradient';
-import PasswordUpdateModal from '@/components/ui/PasswordUpdateModal';
-import ProfileValidationModal from '@/components/ui/ProfileValidationModal';
-import { LoginPageSkeleton } from '@/components/ui/skeletons/LoginSkeletons';
+import LoginForm from '@/components/shared/auth/LoginForm';
+import LiquidGradient from '@/components/shared/ui/LiquidGradient';
+import PasswordUpdateModal from '@/components/shared/ui/PasswordUpdateModal';
+import ProfileValidationModal from '@/components/shared/ui/ProfileValidationModal';
+import { LoginPageSkeleton } from '@/components/shared/ui/skeletons/LoginSkeletons';
 
 // Hooks
 import { useLoginPageData } from '@/lib/hooks/auth/useLoginPageData';
@@ -98,3 +98,4 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+

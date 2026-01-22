@@ -6,3 +6,4 @@ export const COLLECTION_TABS_CONFIG: CollectionTab[] = [
   { id: 'manager', label: 'Manager Schedule', icon: '🗂️' },
   { id: 'collector', label: 'Collectors Schedule', icon: '👥' },
 ];
+

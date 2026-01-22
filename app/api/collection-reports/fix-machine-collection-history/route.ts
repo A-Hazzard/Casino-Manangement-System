@@ -17,7 +17,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { fixMachineCollectionHistory } from '../../lib/helpers/machineCollectionHistoryFix';
+import { fixMachineCollectionHistory } from '../../lib/helpers/collectionReport/machineHistoryFix';
 import { getUserById, getUserIdFromServer } from '../../lib/helpers/users';
 import { connectDB } from '../../lib/middleware/db';
 

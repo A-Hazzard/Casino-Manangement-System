@@ -12,7 +12,7 @@ import {
 } from '@/lib/helpers/membershipStats';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { isAbortError } from '@/lib/utils/errorHandling';
+import { isAbortError } from '@/lib/utils/errors';
 import { useCallback, useEffect, useState } from 'react';
 
 export type UseLocationMembershipStatsReturn = {
@@ -119,3 +119,4 @@ export function useLocationMembershipStats(
     error,
   };
 }
+

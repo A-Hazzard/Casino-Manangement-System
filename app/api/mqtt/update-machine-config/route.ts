@@ -20,7 +20,7 @@ import {
   getLocationName,
   updateMachineConfiguration,
 } from '@/app/api/lib/helpers/machineConfig';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
@@ -183,4 +183,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
 

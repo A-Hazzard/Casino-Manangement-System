@@ -4,7 +4,7 @@
  */
 
 import axios from 'axios';
-import { isAbortError } from './errorHandling';
+import { isAbortError } from './errors/handling';
 
 type RequestKey = string;
 type RequestPromise<T> = Promise<T>;
@@ -117,4 +117,5 @@ export async function deduplicateRequest<T>(
 
   return promise as Promise<T>;
 }
+
 

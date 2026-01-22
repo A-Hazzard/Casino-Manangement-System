@@ -4,25 +4,25 @@
  */
 
 import {
-  fetchCabinetLocations,
-  fetchCabinets,
-  fetchCabinetTotals,
+    fetchCabinetLocations,
+    fetchCabinets,
+    fetchCabinetTotals,
 } from '@/lib/helpers/cabinets';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
+import { dateRange } from '@/lib/types/index';
+import { isAbortError } from '@/lib/utils/errors';
 import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
-import { isAbortError } from '@/lib/utils/errorHandling';
 import { useDebounce } from '@/lib/utils/hooks';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { dateRange } from '@/lib/types/index';
 
 type UseCabinetDataProps = {
   selectedLicencee: string;
   activeMetricsFilter: string;
   customDateRange?: dateRange;
   searchTerm: string;
-  selectedLocation: string;
-  selectedGameType: string;
+  selectedLocation: string[];
+  selectedGameType: string[];
   selectedStatus: string;
   displayCurrency?: string;
 };
@@ -49,8 +49,8 @@ type UseCabinetDataReturn = {
   filterCabinets: (
     cabinets: Cabinet[],
     searchTerm: string,
-    selectedLocation: string,
-    selectedGameType: string,
+    selectedLocation: string[],
+    selectedGameType: string[],
     selectedStatus: string
   ) => void;
   setError: (error: string | null) => void;
@@ -71,9 +71,38 @@ export const useCabinetData = ({
 
   // State management
   const [initialLoading, setInitialLoading] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start as false, will be set to true when loadCabinets is called
   const [error, setError] = useState<string | null>(null);
   const [allCabinets, setAllCabinets] = useState<Cabinet[]>([]);
+  // Use refs to track first load - these reset when allCabinets is cleared
+  const hasReceivedFirstResponseRef = useRef(false);
+  const hasStartedFirstLoadRef = useRef(false);
+
+  // Reset refs and initialLoading when data is cleared (fresh page load scenario)
+  // This ensures skeleton shows on initial load even if refs persisted from previous session
+  useEffect(() => {
+    if (
+      allCabinets.length === 0 &&
+      !loading &&
+      !hasReceivedFirstResponseRef.current
+    ) {
+      // Fresh start: reset refs and ensure initialLoading is true
+      hasReceivedFirstResponseRef.current = false;
+      hasStartedFirstLoadRef.current = false;
+      setInitialLoading(true);
+    }
+  }, [allCabinets.length, loading]);
+
+  // Sync initialLoading with actual data state after first response
+  // This handles async state updates - when allCabinets updates after setAllCabinets,
+  // we can safely set initialLoading to false
+  useEffect(() => {
+    if (hasReceivedFirstResponseRef.current && initialLoading) {
+      // First response was received, now that state has updated, set initialLoading to false
+      setInitialLoading(false);
+    }
+  }, [allCabinets.length, initialLoading]);
+
   // Removed filteredCabinets state - now using memoized value for better performance
   const [locations, setLocations] = useState<{ _id: string; name: string }[]>(
     []
@@ -135,41 +164,31 @@ export const useCabinetData = ({
     // If searchTerm is provided, the API already filtered the results by search
     // Location filter is now handled by the API (passed via locationId parameter)
     // We only need to apply frontend filters (game type, status)
-    let filtered = allCabinets;
+    return allCabinets.filter(cabinet => {
+      // 1. Location filter (matches any of multiple selected locations)
+      if (selectedLocation.length > 0 && !selectedLocation.includes('all')) {
+        const matchesLocation = selectedLocation.some(locId => String(cabinet.locationId) === String(locId));
+        if (!matchesLocation) return false;
+      }
 
-    // Note: Location filter is now handled at API level via locationId parameter
-    // No need to filter by location here since API already filtered it
+      // 2. Game Type filter (matches any of multiple selected game types)
+      if (selectedGameType.length > 0 && !selectedGameType.includes('all')) {
+        const machineGame = (cabinet.game || cabinet.installedGame || '').toString();
+        const matchesGameType = selectedGameType.includes(machineGame);
+        if (!matchesGameType) return false;
+      }
 
-    // Apply game type filter
-    if (selectedGameType && selectedGameType !== 'all') {
-      filtered = filtered.filter(cabinet => {
-        const cabinetGame = cabinet.game || cabinet.installedGame;
-        return cabinetGame === selectedGameType;
-      });
-    }
+      // 3. Status filter (if not 'All', filter by onlineStatus)
+      if (selectedStatus !== 'All' && selectedStatus !== 'all') {
+        const isOnline = cabinet.online === true;
+        const matchesStatus =
+          (selectedStatus === 'Online' && isOnline) ||
+          (selectedStatus === 'Offline' && !isOnline);
+        if (!matchesStatus) return false;
+      }
 
-    // Apply status filter
-    if (
-      selectedStatus &&
-      selectedStatus !== 'All' &&
-      selectedStatus !== 'all'
-    ) {
-      filtered = filtered.filter(cabinet => {
-        if (selectedStatus === 'Online') {
-          return cabinet.online === true;
-        } else if (selectedStatus === 'Offline') {
-          return cabinet.online === false;
-        }
-        return true;
-      });
-    }
-
-    // Note: Search filtering is handled by the API when searchTerm is provided
-    // Frontend search filter is only needed if we're doing client-side only filtering
-    // which we're not doing anymore - all search goes through the API
-
-    console.warn('Filtered cabinets result:', filtered.length);
-    return filtered;
+      return true;
+    });
   }, [
     allCabinets,
     searchTerm,
@@ -180,15 +199,27 @@ export const useCabinetData = ({
 
   // Legacy filterCabinets function for backward compatibility (now just updates state)
   const filterCabinets = useCallback(() => {
-    // This function is now handled by the memoized filteredCabinets above
-    // Keeping for backward compatibility but it's no longer needed
   }, []);
 
   // Load cabinets with proper error handling and logging
   const loadCabinets = useCallback(
     async (page?: number, limit?: number) => {
       const result = await makeRequest(async signal => {
-        console.warn('Loading cabinets with filters:', {
+        // Mark that we've started the first load
+        if (!hasStartedFirstLoadRef.current) {
+          hasStartedFirstLoadRef.current = true;
+          // Ensure initialLoading is true when we start the first load
+          setInitialLoading(true);
+        }
+
+        setLoading(true);
+        setError(null);
+        if (page === 1) {
+          hasReceivedFirstResponseRef.current = false;
+          hasStartedFirstLoadRef.current = true;
+        }
+
+        console.warn('[useCabinetData] Loading cabinets with filters:', {
           selectedLicencee,
           activeMetricsFilter,
           page,
@@ -199,10 +230,10 @@ export const useCabinetData = ({
                 endDate: customDateRange.endDate?.toISOString(),
               }
             : undefined,
+          selectedLocation,
+          selectedGameType,
+          selectedStatus,
         });
-
-        setLoading(true);
-        setError(null);
 
         const dateRangeForFetch =
           activeMetricsFilter === 'Custom' &&
@@ -220,6 +251,30 @@ export const useCabinetData = ({
         const effectivePage = debouncedSearchTerm?.trim() ? 1 : page;
         const effectiveLimit = debouncedSearchTerm?.trim() ? undefined : limit; // No limit when searching = fetch all
 
+        // Convert selectedStatus to onlineStatus format for API
+        // Handle both 'All'/'all' and 'Online'/'Offline' cases
+        const onlineStatus =
+          selectedStatus === 'All' || selectedStatus === 'all'
+            ? 'all'
+            : selectedStatus === 'Online'
+              ? 'online'
+              : selectedStatus === 'Offline'
+                ? 'offline'
+                : 'all';
+
+        console.warn('[useCabinetData] Calling fetchCabinets with:', {
+          selectedLicencee,
+          activeMetricsFilter,
+          dateRangeForFetch,
+          displayCurrency,
+          effectivePage,
+          effectiveLimit,
+          debouncedSearchTerm,
+          selectedLocation, // Pass locationId to filter at API level
+          selectedGameType, // Pass gameType to filter at API level
+          onlineStatus, // Pass onlineStatus to filter at API level
+        });
+
         const cabinetsData = await fetchCabinets(
           selectedLicencee,
           activeMetricsFilter,
@@ -229,6 +284,8 @@ export const useCabinetData = ({
           effectiveLimit,
           debouncedSearchTerm,
           selectedLocation, // Pass locationId to filter at API level
+          selectedGameType, // Pass gameType to filter at API level
+          onlineStatus, // Pass onlineStatus to filter at API level
           signal
         );
 
@@ -241,8 +298,19 @@ export const useCabinetData = ({
           '[useCabinetData] Fetch aborted - keeping loading state and existing data'
         );
         // If aborted, keep loading state active so skeleton continues to show
+        // Also reset the first load ref so initialLoading can be set again on next attempt
+        hasStartedFirstLoadRef.current = false;
+        // Don't set loading to false here - a new request has likely started
         return;
       }
+
+      // Calculate result data length BEFORE try block for use in finally
+      // This avoids async state update timing issues
+      const resultDataLength = Array.isArray(result)
+        ? result.length
+        : result && typeof result === 'object' && 'cabinets' in result
+          ? (result as { cabinets: unknown[] }).cabinets.length
+          : 0;
 
       try {
         console.warn('✅ [USE CABINET DATA] Fetch completed, received:', {
@@ -251,11 +319,7 @@ export const useCabinetData = ({
             typeof result === 'object' &&
             result !== null &&
             !Array.isArray(result),
-          length: Array.isArray(result)
-            ? result.length
-            : result && typeof result === 'object' && 'cabinets' in result
-              ? (result as { cabinets: unknown[] }).cabinets.length
-              : 0,
+          length: resultDataLength,
           type: typeof result,
         });
 
@@ -338,7 +402,15 @@ export const useCabinetData = ({
         );
       } finally {
         setLoading(false);
-        setInitialLoading(false);
+        if (!hasReceivedFirstResponseRef.current && result !== null) {
+          hasReceivedFirstResponseRef.current = true;
+          // Set the initial filter key so subsequent filter changes can be detected
+          // Normalize status to handle both 'All'/'all' and 'Online'/'Offline'
+          const normalizedStatus = selectedStatus === 'all' || selectedStatus === 'All' ? 'All' : selectedStatus;
+          const initialFilterKey = `${selectedLocation}|${normalizedStatus}`;
+          setLastFilterBackendKey(initialFilterKey);
+          console.warn('[useCabinetData] Initial load completed, set filter key:', initialFilterKey);
+        }
       }
     },
     [
@@ -348,6 +420,7 @@ export const useCabinetData = ({
       displayCurrency,
       debouncedSearchTerm,
       selectedLocation,
+      selectedStatus,
       makeRequest,
     ]
   );
@@ -365,57 +438,51 @@ export const useCabinetData = ({
     loadLocations();
   }, [loadLocations]);
 
-  // REMOVED: Automatic loadCabinets() call
-  // The page component should explicitly control when to load cabinets
-  // This prevents redundant calls and unnecessary cancellations
+  // Note: loadCabinets is called explicitly by the page component
+  // This ensures proper control over when data is fetched
 
-  // Frontend-first filtering for location/status, with backend fallback when no results
+  // Trigger refetch when status or location filter changes (filtering is now done at API level)
+  // Note: This replaces the old frontend-first filtering approach since status filtering
+  // is now handled at the database query level for better performance
   useEffect(() => {
-    // Only consider fallback when we actually have some cabinets loaded
-    if (!allCabinets.length) {
+    // Only trigger if we have the necessary filters initialized
+    if (!activeMetricsFilter) {
       return;
     }
 
-    const hasLocationOrStatusFilter =
-      (selectedLocation && selectedLocation !== 'all') ||
-      (selectedStatus && selectedStatus !== 'All' && selectedStatus !== 'all');
-
-    if (!hasLocationOrStatusFilter) {
+    // Skip initial load (handled by page component)
+    if (!hasReceivedFirstResponseRef.current) {
       return;
     }
 
-    const filterKey = `${selectedLocation}|${selectedStatus}|${selectedGameType}|${debouncedSearchTerm}`;
+    // Create a unique key for this filter combination (only status and location since they're API-level)
+    // Normalize status to handle both 'All'/'all' and 'Online'/'Offline'
+    const normalizedStatus = selectedStatus === 'all' || selectedStatus === 'All' ? 'All' : selectedStatus;
+    const filterKey = `${selectedLocation}|${normalizedStatus}`;
 
-    // If frontend filtering returns zero results for the current filters,
-    // perform a backend query without pagination to ensure we didn't miss
-    // matches that live outside the initial batch.
-    if (
-      filteredCabinets.length === 0 &&
-      !loading &&
-      filterKey !== lastFilterBackendKey
-    ) {
-      setLastFilterBackendKey(filterKey);
-      // Fetch full dataset for this licensee/time period/currency, then
-      // frontend filters will re-run automatically on the larger set.
-      // Passing undefined page/limit lets the API decide (typically "all").
-      // We intentionally ignore the returned promise here – errors are
-      // handled inside loadCabinets.
-      if (loadCabinetsRef.current) {
-        void loadCabinetsRef.current(undefined, undefined);
-      }
+    // Skip if this is the same filter combination we just loaded
+    if (filterKey === lastFilterBackendKey) {
+      return;
     }
-    // Note: loadCabinetsRef is a stable ref that always points to the latest loadCabinets function
-    // We only want to reload when the actual filter values change, not when the function is recreated
+
+    // Trigger refetch when status or location changes (these are now API-level filters)
+    // We trigger even when going back to "All" or "all" to ensure we get the full dataset
+    console.warn('[useCabinetData] Status/Location filter changed, triggering refetch:', {
+      selectedStatus,
+      selectedLocation,
+      filterKey,
+      lastFilterBackendKey,
+    });
+    setLastFilterBackendKey(filterKey);
+    if (loadCabinetsRef.current) {
+      void loadCabinetsRef.current(1, 50);
+    }
   }, [
-    allCabinets.length,
-    filteredCabinets.length,
     selectedLocation,
     selectedStatus,
-    selectedGameType,
-    debouncedSearchTerm,
-    loading,
+    activeMetricsFilter,
     lastFilterBackendKey,
-    loadCabinetsRef, // Include ref to satisfy exhaustive-deps (refs are stable)
+    loadCabinetsRef,
   ]);
 
   // Removed useEffect for filtering - now handled by memoized filteredCabinets
@@ -434,7 +501,7 @@ export const useCabinetData = ({
     }
 
     // Create a dependency key to detect actual changes
-    const depsKey = `${activeMetricsFilter}-${selectedLicencee || 'all'}-${displayCurrency || 'default'}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}`;
+    const depsKey = `${activeMetricsFilter}-${selectedLicencee || 'all'}-${displayCurrency || 'default'}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${selectedLocation.join(',')}-${selectedGameType.join(',')}-${selectedStatus}`;
 
     // On initial mount, don't abort anything (there's nothing to abort)
     // Only abort if dependencies actually changed (not on initial mount)
@@ -462,7 +529,12 @@ export const useCabinetData = ({
               customDateRange,
               selectedLicencee,
               displayCurrency,
-              signal
+              signal,
+              selectedLocation,
+              selectedGameType,
+              selectedStatus === 'All' || selectedStatus === 'all'
+                ? 'all'
+                : selectedStatus.toLowerCase()
             ),
           'totals'
         );
@@ -491,6 +563,9 @@ export const useCabinetData = ({
     customDateRange,
     selectedLicencee,
     displayCurrency,
+    selectedLocation,
+    selectedGameType,
+    selectedStatus,
     makeRequest,
   ]);
 

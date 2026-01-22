@@ -7,10 +7,12 @@
  * @module app/locations/[slug]/page
  */
 
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import LocationsDetailsPageContent from '@/components/locations/LocationsDetailsPageContent';
+export const dynamic = 'force-dynamic';
+
+import LocationsDetailsPageContent from '@/components/CMS/locations/LocationsDetailsPageContent';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
+import { MachinesOverviewSkeleton } from '@/components/shared/ui/skeletons/ReportsSkeletons';
 import { Suspense } from 'react';
-import { MachinesOverviewSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
 
 export default function LocationPage() {
   return (

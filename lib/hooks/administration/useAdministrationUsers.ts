@@ -7,9 +7,8 @@
 
 'use client';
 
-import { fetchUsers } from '@/lib/helpers/administration';
+import { fetchUsers, administrationUtils } from '@/lib/helpers/administration';
 import { saveUserHelper } from '@/lib/helpers/administration/saveUserHelper';
-import { administrationUtils } from '@/lib/helpers/administrationPage';
 import { useUserStore } from '@/lib/store/userStore';
 import type { SortKey, User } from '@/lib/types/administration';
 import axios from 'axios';
@@ -760,3 +759,4 @@ export function useAdministrationUsers({
     getUserDisplayName,
   };
 }
+

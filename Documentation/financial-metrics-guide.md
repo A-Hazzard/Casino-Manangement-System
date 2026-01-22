@@ -1,7 +1,7 @@
 # Financial Metrics Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 3, 2025  
+**Last Updated:** January 2025  
 **Status:** Updated to reflect current implementation
 
 ## Quick Search Guide (Ctrl+F)
@@ -21,7 +21,7 @@
 
 This guide covers all financial metrics used in the Evolution One Casino Management System. All calculations follow standard casino industry practices and support regulatory reporting requirements.
 
-**Last Updated:** November 3, 2025  
+**Last Updated:** January 2025  
 **Version:** 2.1.0
 
 ## Table of Contents

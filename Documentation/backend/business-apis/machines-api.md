@@ -79,6 +79,7 @@ X-RateLimit-Reset: 1640995200
 - `search` (string, optional) - Search by asset number, serial number, or game type
 - `sortBy` (string, optional) - Sort field (default: 'assetNumber')
 - `sortOrder` (string, optional) - Sort order: 'asc' | 'desc' (default: 'asc')
+- `timePeriod` (string, optional) - Predefined periods for meter data ('Today', 'Yesterday', '7d', '30d', 'All Time', 'Custom'). Required if meter data is requested.
 
 **Response (Success - 200):**
 ```json
@@ -204,7 +205,11 @@ X-RateLimit-Reset: 1640995200
 ```
 
 **Used By:** Machine detail views, machine editing forms
-**Notes:** Includes current metrics, configuration, and location details
+**Notes:** Includes current metrics, configuration, and location details.
+**Meter Data Aggregation:** This endpoint now supports meter data aggregation based on `timePeriod` query parameter.
+-   **Query Parameters:**
+    *   `timePeriod` (string, optional) - Specifies the period for meter data aggregation ('Today', 'Yesterday', '7d', '30d', 'All Time'). If not provided, 'All Time' meter data is returned.
+-   **Implementation:** Utilizes MongoDB's `$facet` aggregation pipeline to efficiently calculate meter data for the requested `timePeriod` in a single query, respecting the location's gaming day offset. Meter data includes `drop`, `totalCancelledCredits`, `jackpot`, `coinIn`, `coinOut`, `gamesPlayed`, and `gamesWon`.
 
 ---
 
@@ -278,26 +283,54 @@ X-RateLimit-Reset: 1640995200
 
 ### GET /api/machines/aggregation
 
-**Purpose:** Retrieve aggregated machine data and metrics
+**Purpose:** Retrieve aggregated machine data and metrics, including a paginated list of machines.
 
 **Query Parameters:**
-- `location` (string, optional) - Filter by location ID
-- `licensee` (string, optional) - Filter by licensee ID
-- `startDate` (string, optional) - Start date (ISO format)
-- `endDate` (string, optional) - End date (ISO format)
-- `timePeriod` (string, optional) - Predefined periods ('today', 'yesterday', '7d', '30d')
+- `location` (string, optional) - Filter by location ID.
+- `licensee` (string, optional) - Filter by licensee ID.
+- `startDate` (string, optional) - Start date (ISO format).
+- `endDate` (string, optional) - End date (ISO format).
+- `timePeriod` (string, optional) - Predefined periods ('today', 'yesterday', '7d', '30d', 'Custom').
+- `page` (number, optional) - Page number for machine list (default: 1).
+- `limit` (number, optional) - Items per page for machine list (default: 50, max: 200).
+- `search` (string, optional) - Search by asset number, serial number, or game type.
+- `sortBy` (string, optional) - Sort field for machine list (default: 'assetNumber').
+- `sortOrder` (string, optional) - Sort order: 'asc' | 'desc' (default: 'asc').
+- `displayCurrency` (string, optional) - Currency code for displayed monetary values.
+- `gameType` (string, optional) - Filter machines by game type.
+- `onlineStatus` (string, optional) - Filter machines by online status ('online', 'offline', 'all').
 
 **Response (Success - 200):**
 ```json
 {
   "success": true,
-  "data": {
+  "cabinets": [
+    {
+      "_id": "machine_id_1",
+      "assetNumber": "A001",
+      "serialNumber": "SN123456",
+      "gameType": "Slot Machine",
+      "location": "location_id_1",
+      "locationName": "Downtown Casino",
+      "online": true,
+      "moneyIn": 1000,
+      "moneyOut": 500,
+      "gross": 500
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 150,
+    "totalPages": 3
+  },
+  "metrics": {
     "totalMachines": 150,
     "onlineMachines": 142,
     "offlineMachines": 8,
     "totalDrop": 250000,
-    "totalCoinIn": 1250000,
-    "totalJackpot": 62500,
+    "totalCancelledCredits": 125000,
+    "totalGross": 125000,
     "averagePerformance": {
       "dropPerMachine": 1666.67,
       "winPercentage": 92.5
@@ -326,26 +359,29 @@ interface Machine {
   _id: string;                    // Unique machine identifier
   assetNumber: string;            // Unique asset identifier
   serialNumber: string;           // Hardware serial number
+  game: string;                   // Game title
   gameType: string;               // Type of gaming machine
-  location: string;               // Assigned location ID
-  status: 'online' | 'offline';   // Current operational status
+  gamingLocation: string;         // Assigned location ID
+  status: 'online' | 'offline';   // Current operational status (derived)
+  isSasMachine?: boolean;         // Flag indicating if it's a SAS machine
+  smibBoard?: string;             // SMIB Board serial number
+  smibVersion?: {                 // SMIB firmware version
+    firmware: string;
+    version: string;
+  };
+  custom?: {                      // Custom fields
+    name?: string;                // Custom name for the machine
+  };
+  collectionTime?: Date;          // Last collection timestamp
+  previousCollectionTime?: Date;  // Previous collection timestamp
+  collectionMeters?: {            // Last known collection meters
+    metersIn: number;
+    metersOut: number;
+  };
+  collectorDenomination: number;  // Multiplier for collection reports
   lastSeen?: Date;                // Last communication timestamp
-  smbId?: string;                 // SMIB relay identifier
-  isCronosMachine: boolean;       // Cronos system integration flag
-  configuration: {
-    maxBet: number;               // Maximum bet amount
-    denominations: number[];      // Accepted bet denominations
-    paylines: number;             // Number of paylines
-    reels?: number;               // Number of reels
-  };
-  sasMeters?: {                   // Current SAS meter readings
-    drop: number;                 // Total money inserted
-    coinIn: number;               // Total bets placed
-    jackpot: number;              // Jackpot payouts
-    coinOut: number;              // Total payouts
-    gamesPlayed: number;          // Total games played
-  };
-  currentBalance?: number;         // Current machine balance
+  manufacturer?: string;          // Machine manufacturer
+  gameNumber?: string;            // Game number
   deletedAt?: Date;               // Soft delete timestamp
   createdAt: Date;                // Creation timestamp
   updatedAt: Date;                // Last modification timestamp
@@ -355,17 +391,19 @@ interface Machine {
 ### Machine Creation Request
 ```typescript
 interface CreateMachineRequest {
-  assetNumber: string;            // Required: Unique asset identifier
-  serialNumber: string;           // Required: Hardware serial number
-  gameType: string;               // Required: Game type description
-  location: string;               // Required: Location ID
-  smbId?: string;                 // Optional: SMIB relay ID
-  isCronosMachine?: boolean;      // Optional: Cronos integration (default: false)
-  configuration?: {
-    maxBet?: number;
-    denominations?: number[];
-    paylines?: number;
-    reels?: number;
+  serialNumber: string;           // Required: Hardware serial number (becomes custom.name if custom.name not provided)
+  game: string;                   // Required: Game title
+  gameType: string;               // Required: Game type description (e.g., 'slot')
+  gamingLocation: string;         // Required: Location ID (replaces 'location')
+  smibBoard?: string;             // Optional: SMIB Board serial number (replaces 'smbId')
+  manufacturer?: string;          // Optional: Machine manufacturer
+  cabinetType?: string;           // Optional: Type of cabinet
+  assetStatus?: string;           // Optional: Asset status
+  accountingDenomination?: number; // Optional: Accounting denomination
+  collectionSettings?: {          // Optional: Initial collection settings
+    lastCollectionTime?: string;
+    lastMetersIn?: string;
+    lastMetersOut?: string;
   };
 }
 ```
@@ -373,16 +411,21 @@ interface CreateMachineRequest {
 ### Machine Update Request
 ```typescript
 interface UpdateMachineRequest {
-  gameType?: string;
-  location?: string;
-  smbId?: string;
-  isCronosMachine?: boolean;
-  configuration?: {
-    maxBet?: number;
-    denominations?: number[];
-    paylines?: number;
-    reels?: number;
+  serialNumber?: string;           // Optional: Hardware serial number
+  game?: string;                   // Optional: Game title
+  gameType?: string;               // Optional: Type of gaming machine
+  gamingLocation?: string;         // Optional: Assigned location ID
+  smibBoard?: string;             // Optional: SMIB Board serial number
+  manufacturer?: string;          // Optional: Machine manufacturer
+  cabinetType?: string;           // Optional: Type of cabinet
+  assetStatus?: string;           // Optional: Asset status
+  accountingDenomination?: number; // Optional: Accounting denomination
+  collectionTime?: Date;          // Optional: Last collection timestamp
+  collectionMeters?: {            // Optional: Last known collection meters
+    metersIn?: number;
+    metersOut?: number;
   };
+  collectorDenomination?: number;  // Optional: Multiplier for collection reports
 }
 ```
 

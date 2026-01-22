@@ -1,7 +1,7 @@
 # Backend Engineering Guidelines
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** December 29, 2025
+**Last Updated:** January 2025
 **Version:** 1.1.0
 
 ## Table of Contents
@@ -564,7 +564,77 @@ When refactoring an API route, ensure:
 - [ ] File length is within guidelines
 - [ ] Tracker updated in `API_REFACTORING_TRACKER.md`
 
+## 10. User Data Caching (Frontend)
+
+### 10.1 When to Use Caching
+
+Use `userCache` from `lib/utils/userCache.ts` for:
+- User profile data that doesn't change frequently
+- User permissions and roles (cached for session duration)
+- Current user data needed by multiple components
+- Any user-related data from `/api/auth/current-user` or similar endpoints
+
+**Do NOT use caching for:**
+- Real-time data that changes frequently
+- Data that must always be fresh (use React Query with short `staleTime` instead)
+- One-time data that won't be reused
+
+### 10.2 How to Use
+
+```typescript
+import { CACHE_KEYS, fetchUserWithCache } from '@/lib/utils/userCache';
+
+// Basic usage with default 5-minute TTL
+const userData = await fetchUserWithCache(
+  CACHE_KEYS.CURRENT_USER,
+  async () => {
+    const response = await axios.get('/api/auth/current-user');
+    return response.data;
+  }
+);
+
+// Custom TTL (10 minutes)
+const profile = await fetchUserWithCache(
+  CACHE_KEYS.USER_PROFILE,
+  fetchFn,
+  10 * 60 * 1000 // 10 minutes in milliseconds
+);
+```
+
+### 10.3 Cache Keys
+
+Always use `CACHE_KEYS` constants:
+- `CACHE_KEYS.CURRENT_USER` - Current authenticated user data
+- `CACHE_KEYS.USER_PROFILE` - User profile information
+- `CACHE_KEYS.USER_PERMISSIONS` - User permissions and roles
+
+### 10.4 Cache Invalidation
+
+Cache is automatically cleared:
+- When user logs in/out (via `userStore.setUser()` / `clearUser()`)
+- When TTL expires (automatic cleanup)
+
+Manually clear cache:
+```typescript
+import { clearUserCache } from '@/lib/utils/userCache';
+clearUserCache(); // Clears all user-related cache entries
+```
+
+### 10.5 In-Flight Request Deduplication
+
+The cache system automatically deduplicates concurrent requests:
+- Multiple components requesting same data simultaneously share the same promise
+- Prevents race conditions and duplicate API calls
+- First request fetches, others wait for the same promise
+
+### 10.6 Integration with React Query
+
+The cache works alongside React Query:
+- `useCurrentUserQuery` uses `fetchUserWithCache` internally
+- Cache TTL aligns with React Query `staleTime`
+- Both systems work together to prevent unnecessary requests
+
 ---
 
-**Last Updated:** November 22, 2025
+**Last Updated:** January 2025
 

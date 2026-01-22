@@ -207,42 +207,79 @@ go run main.go
 
 ## 🏗️ Development Guidelines
 
+**See [`.cursor/rules/nextjs-rules.mdc`](.cursor/rules/nextjs-rules.mdc) for complete engineering rules and [Documentation/PROJECT_GUIDE.md](Documentation/PROJECT_GUIDE.md) for detailed guidelines.**
+
 ### Package Management & Build Integrity
 
 - **Use `pnpm` exclusively** for all package management
 - Always run `pnpm build` after code changes
 - Fix build errors immediately and re-run until clean build
+- Run `pnpm type-check` to verify TypeScript types
+- Run `pnpm lint` to check code style
 
 ### TypeScript & Code Organization
 
-- **Prefer `type` over `interface`** for consistency
-- **No `any` allowed** - Create proper type definitions
+- **Prefer `type` over `interface`** for consistency across the codebase
+- **No `any` allowed** - Create appropriate type definitions for all variables and functions
+- **No underscore prefixes allowed** - Never prefix variables or functions with underscores
+- **Always check dependencies before deleting code** - Use `grep` to verify usage before removal
 - Organize types in appropriate directories:
-  - `shared/types/` - Shared types between frontend/backend
-  - `lib/types/` - Application-wide types
-  - `app/api/lib/types/` - API-specific types
+  - `shared/types/` - Shared types between frontend/backend (entities, API, database)
+  - `lib/types/` - Frontend-specific types
+  - `app/api/lib/types/` - Backend-specific types
+- **Avoid type duplication** - Import and re-export from shared types instead of redefining
 
 ### File Organization & Separation of Concerns
 
-- Keep `page.tsx` files lean - offload logic to helpers
-- API logic in `app/api/lib/helpers/`
-- Shared utilities in `lib/utils/` or `lib/helpers/`
-- Components organized by feature in `components/`
+- **Keep all `page.tsx` files lean** - Offload complex logic into helper functions and utilities
+- **API-related logic** should reside in `app/api/lib/helpers/` or specific feature directories
+- **Shared utilities** should reside in `lib/utils/` or `lib/helpers/`
+- **Context providers** should be in `lib/contexts/` or `lib/providers/`
+- **Feature-specific code** should be organized within their related directories in `lib/` (e.g., `lib/helpers/cabinets/`, `lib/hooks/cabinets/`)
+- **Components organized by feature** in `components/[feature]/` with subfolders for tabs, modals, details, etc.
+- **Create reusable UI components** in `components/ui/` for common patterns
+
+### API Route Structure (CRITICAL)
+
+- **All API routes must follow exact structure pattern** with step-by-step comments
+- Use `// ============================================================================` separators for major steps
+- Number each step: `// STEP 1:`, `// STEP 2:`, etc.
+- Extract complex logic to `app/api/lib/helpers/[feature].ts` when functions exceed 20-30 lines
+- Include file-level JSDoc describing route purpose and features
+
+### Component Structure (CRITICAL)
+
+- **All components must be organized with clear sections** using section comments
+- Use `// ============================================================================` to separate: Hooks & State, Computed Values, Event Handlers, Effects, Render
+- **Maximum component length**: ~400-500 lines (extract sub-components if needed)
+- **Use JSX comments** to mark major UI sections (headers, filters, tables, forms, modals)
 
 ### Code Quality
 
-- Address all ESLint warnings immediately
-- Run `pnpm lint` regularly
-- Document complex business logic
-- Use proper error handling in components
+- **Never ignore ESLint rule violations** - Address all warnings and errors immediately
+- Run `pnpm lint` regularly and use `pnpm lint --fix` when possible
+- Document complex business logic with clear explanations
+- Use proper error handling in components, especially for async operations
+- **Every function should have JSDoc** describing purpose, parameters, and return value
 
 ### Security & Authentication
 
-- **Implement secure authentication practices** through Firebase Authentication
+- **Implement secure authentication practices** using JWT tokens with `jose` library
 - **Follow OWASP standards** to safeguard code from vulnerabilities
 - Never expose sensitive information (API keys, tokens) in client-side code
 - Always validate and sanitize user input, especially in form submissions
 - Use middleware for route protection where necessary
+- Store JWT tokens in secure HTTP-only cookies with proper expiration
+
+### Performance Optimization
+
+- **All `Meters.aggregate()` calls MUST use `.cursor({ batchSize: 1000 })`** instead of `.exec()`
+- Use `location` field directly from Meters collection instead of expensive `$lookup` operations
+- Eliminate N+1 query patterns with batch queries
+- **Performance Targets**: 7d queries <10s, 30d queries <15s
+- Implement proper code-splitting and lazy loading for pages and large components
+- Use `useMemo` and `useCallback` for expensive computations
+- **Use specific skeleton loaders** - Each page/component must have its own skeleton that matches the exact layout
 
 ### Timezone Management
 
@@ -290,24 +327,86 @@ go run main.go
 ## 🏗️ Project Structure
 
 ```
-Evolution1 CMS/
-├── app/                    # Next.js App Router pages
-│   ├── api/               # API routes and handlers
-│   ├── (auth)/            # Authentication pages
-│   ├── administration/    # Admin management
-│   ├── cabinets/          # Cabinet management
-│   ├── collection-report/ # Collection reporting
-│   ├── locations/         # Location management
-├── components/            # Reusable UI components
-├── lib/                   # Utilities, helpers, types, stores
-├── shared/                # Shared types between frontend/backend
-├── public/                # Static assets
-├── test/                  # Go-based MongoDB query tool for development
-├── Documentation/         # Comprehensive documentation
-│   ├── frontend/         # Frontend component documentation
-│   ├── backend/          # API documentation
-│   └── *.md             # General documentation
-└── middleware.ts          # Next.js middleware
+evolution-one-cms/
+├── app/                          # Next.js App Router (Next.js 15)
+│   ├── (auth)/                  # Authentication pages
+│   │   └── login/               # Login page
+│   ├── api/                     # API routes and handlers
+│   │   └── lib/
+│   │       ├── helpers/         # Backend business logic
+│   │       ├── models/           # Mongoose models
+│   │       ├── types/            # Backend-specific types
+│   │       └── utils/            # Backend utilities
+│   ├── administration/           # Admin management pages
+│   ├── cabinets/                 # Cabinet/machine management
+│   │   └── [slug]/               # Cabinet detail pages
+│   ├── collection-report/        # Collection reporting
+│   │   └── report/[reportId]/    # Collection report details
+│   ├── locations/                # Location management
+│   │   └── [slug]/               # Location detail pages
+│   ├── machines/                 # Machine pages
+│   │   └── [slug]/               # Machine detail pages
+│   ├── members/                   # Member management
+│   │   └── [id]/                  # Member detail pages
+│   ├── reports/                   # Reports dashboard
+│   ├── sessions/                  # Session management
+│   │   └── [sessionId]/[machineId]/events/  # Session events
+│   ├── layout.tsx                 # Root layout
+│   └── page.tsx                   # Home/dashboard page
+├── components/                    # React components
+│   ├── [feature]/                 # Feature-specific components
+│   │   ├── tabs/                  # Tab-specific components
+│   │   ├── modals/                # Modal components
+│   │   ├── details/                # Detail page components
+│   │   └── skeletons/             # Loading skeletons
+│   └── ui/                        # Reusable UI components (Shadcn/ui)
+│       ├── skeletons/             # Shared skeleton loaders
+│       └── common/                 # Common utilities
+├── lib/                           # Frontend libraries
+│   ├── helpers/                   # Frontend data fetching & API helpers
+│   │   ├── [feature]/             # Feature-specific helpers
+│   │   └── client/                 # Client-side utilities
+│   ├── utils/                     # Pure utility functions
+│   │   ├── [category]/            # Categorized utilities
+│   │   └── [feature]/             # Feature-specific utilities
+│   ├── types/                      # Frontend-specific types
+│   │   ├── [feature]/             # Feature-specific types
+│   │   └── index.ts                # Type exports
+│   ├── hooks/                     # Custom React hooks
+│   │   ├── [feature]/             # Feature-specific hooks
+│   │   └── data/                   # Data fetching hooks
+│   ├── store/                      # Zustand stores
+│   ├── contexts/                   # React contexts
+│   ├── constants/                  # Application constants
+│   └── providers/                  # React providers
+├── shared/                         # Shared code between frontend/backend
+│   ├── types/                      # Shared type definitions
+│   │   ├── entities.ts             # Core entity types
+│   │   ├── api.ts                   # API request/response types
+│   │   ├── database.ts              # Database-related types
+│   │   └── index.ts                 # Central exports
+│   └── utils/                       # Shared utilities
+├── public/                         # Static assets (images, icons, etc.)
+├── test/                          # Go-based MongoDB query tool for development
+├── Documentation/                 # Comprehensive documentation
+│   ├── frontend/                   # Frontend documentation
+│   │   ├── pages/                  # Page documentation
+│   │   ├── details/                 # Detail page docs
+│   │   ├── guidelines/             # Frontend guidelines
+│   │   └── integration/            # Integration docs
+│   ├── backend/                    # Backend API documentation
+│   │   ├── core-apis/              # Core APIs
+│   │   ├── business-apis/          # Business domain APIs
+│   │   ├── analytics-apis/         # Analytics APIs
+│   │   ├── specialized-apis/       # Specialized APIs
+│   │   ├── calculation-systems/     # Calculation systems
+│   │   └── real-time-systems/      # MQTT/real-time systems
+│   ├── PROJECT_GUIDE.md            # Complete project guide
+│   └── *.md                        # System-wide guides
+├── .cursor/                        # Cursor IDE configuration
+│   └── rules/                       # Engineering rules and guidelines
+├── middleware.ts                   # Next.js middleware (auth, routing)
+└── [config files]                 # TypeScript, ESLint, Tailwind, etc.
 ```
 
 ## 📊 Key Modules & Documentation
@@ -329,32 +428,25 @@ Evolution1 CMS/
 
 ### Backend Documentation
 
+**See [Backend Documentation README](Documentation/backend/README.md) for complete API reference.**
+
 - **API Overview:** Complete API reference ([api-overview.md](Documentation/backend/api-overview.md))
-- **Reports API:** Backend reporting and aggregation ([reports-api.md](Documentation/backend/reports-api.md))
-- **Meters Report API:** Machine-level meter readings ([meters-report-api.md](Documentation/backend/meters-report-api.md))
-- **Analytics:** Dashboard analytics and metrics ([analytics-api.md](Documentation/backend/analytics-api.md))
-- **Collections:** Financial data and collection management ([collections-api.md](Documentation/backend/collections-api.md))
-  - Collection Report Details API - Individual report data and meter syncing
-- **Members:** Member management and session tracking ([members-api.md](Documentation/backend/members-api.md))
-  - Member Details API - Individual member data and session history
-  - Member Sessions API - Session tracking and event details
-- **Sessions:** Gaming session management ([sessions-api.md](Documentation/backend/sessions-api.md))
-  - Session Events API - Detailed session event tracking
-- **Locations & Machines:** Location and machine management ([locations-machines-api.md](Documentation/backend/locations-machines-api.md))
-  - Location Details API - Individual location data and analytics
-  - Machine Details API - Individual machine data and events
-- **Authentication:** Security and user management ([auth-api.md](Documentation/backend/auth-api.md))
-- **Administration:** User management and system administration ([administration-api.md](Documentation/backend/administration-api.md))
-- **Operations:** System operations and metrics tracking ([operations-api.md](Documentation/backend/operations-api.md))
-- **System Configuration:** System configuration and settings ([system-config-api.md](Documentation/backend/system-config-api.md))
+- **Core APIs:** Authentication, administration, system configuration ([core-apis/](Documentation/backend/core-apis/))
+- **Business APIs:** Locations, machines, members, sessions, collections ([business-apis/](Documentation/backend/business-apis/))
+- **Analytics APIs:** Reporting, analytics, operations ([analytics-apis/](Documentation/backend/analytics-apis/))
+- **Specialized APIs:** Meter synchronization, location-machine relationships ([specialized-apis/](Documentation/backend/specialized-apis/))
+- **Calculation Systems:** Bill validator, SAS gross calculations ([calculation-systems/](Documentation/backend/calculation-systems/))
+- **Real-Time Systems:** MQTT architecture and implementation ([real-time-systems/](Documentation/backend/real-time-systems/))
 
 ### General Documentation
 
+- **Project Guide:** Complete system overview and architecture ([PROJECT_GUIDE.md](Documentation/PROJECT_GUIDE.md))
 - **Timezone:** Trinidad timezone handling and date conversion ([timezone.md](Documentation/timezone.md))
-- **Engineering Guidelines:** Development standards and best practices ([ENGINEERING_GUIDELINES.md](Documentation/ENGINEERING_GUIDELINES.md))
 - **Financial Metrics:** Financial calculations and metrics guide ([financial-metrics-guide.md](Documentation/financial-metrics-guide.md))
 - **Gaming Day Offset:** Complete gaming day offset system guide ([gaming-day-offset-system.md](.cursor/gaming-day-offset-system.md))
-- **SAS GROSS Calculation:** SAS GROSS calculation system and verification ([sas-gross-calculation-system.md](Documentation/backend/sas-gross-calculation-system.md))
+- **Performance Optimization:** Database and frontend optimization strategies ([PERFORMANCE_OPTIMIZATION_GUIDE.md](Documentation/PERFORMANCE_OPTIMIZATION_GUIDE.md))
+- **TypeScript Type Safety:** Three-tier type system guidelines ([typescript-type-safety-rules.md](Documentation/typescript-type-safety-rules.md))
+- **Database Models:** Complete database schema reference ([database-models.md](Documentation/database-models.md))
 
 See [pages-overview.md](Documentation/frontend/pages-overview.md) for a full list of pages and documentation status.
 
@@ -384,4 +476,4 @@ Evolution1 CMS enforces strict engineering discipline in type safety, code style
 
 ---
 
-**Last Updated:** November 28th, 2025
+**Last Updated:** January 2025

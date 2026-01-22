@@ -53,7 +53,7 @@ export async function fetchUserId(): Promise<string | null> {
         'Token API returned 401 with stored auth data - auto-logging out and redirecting to /login'
       );
       try {
-        const { logoutUser } = await import('./clientAuth');
+        const { logoutUser } = await import('./client');
         await logoutUser();
       } finally {
         if (typeof window !== 'undefined') {
@@ -66,3 +66,4 @@ export async function fetchUserId(): Promise<string | null> {
     return null;
   }
 }
+

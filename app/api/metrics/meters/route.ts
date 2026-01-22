@@ -14,10 +14,10 @@
 
 import { getUserAccessibleLicenseesFromToken } from '@/app/api/lib/helpers/licenseeFilter';
 import {
-  getMeterTrends,
-  validateCustomDateRange,
-} from '@/app/api/lib/helpers/meterTrends';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+    getMeterTrends,
+    validateCustomDateRange,
+} from '@/app/api/lib/helpers/trends/meters';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
@@ -114,6 +114,19 @@ export async function GET(req: NextRequest) {
     const displayCurrency =
       (params.currency as CurrencyCode | undefined) || 'USD';
     const granularity = params.granularity as 'hourly' | 'minute' | undefined;
+    
+    // Parse filter parameters
+    const locationIdParam = params.locationId;
+    const locationIds = locationIdParam 
+      ? locationIdParam.split(',').filter(id => id && id !== 'all' && id !== 'null') 
+      : undefined;
+      
+    const gameTypeParam = params.gameType;
+    const gameTypes = gameTypeParam 
+      ? gameTypeParam.split(',').filter(type => type && type !== 'all' && type !== 'null') 
+      : undefined;
+      
+    const onlineStatus = params.onlineStatus;
 
     if (!timePeriod) {
       return NextResponse.json(
@@ -177,7 +190,6 @@ export async function GET(req: NextRequest) {
     // STEP 6: Fetch meter trends data
     // ============================================================================
     const aggregatedMetrics = await getMeterTrends(
-      db,
       {
         timePeriod,
         licencee,
@@ -185,6 +197,9 @@ export async function GET(req: NextRequest) {
         endDate,
         displayCurrency,
         granularity,
+        locationIds,
+        gameTypes,
+        onlineStatus,
       },
       accessibleLicensees,
       userRoles,
@@ -228,3 +243,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

@@ -5,6 +5,7 @@ import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { AggregatedLocation } from '@/shared/types';
 import type { PipelineStage } from 'mongoose';
+import { getMemberCountsPerLocation } from './membershipAggregation';
 
 /**
  * Aggregates and returns location metrics, including machine counts and online status, with optional filters.
@@ -428,29 +429,7 @@ export const getLocationsWithMetrics = async (
         .map(loc => loc.location);
 
       if (membershipEnabledLocations.length > 0) {
-        const { Member } = await import('@/app/api/lib/models/members');
-
-        // Count members for each membership-enabled location
-        const memberCounts = await Member.aggregate([
-          {
-            $match: {
-              gamingLocation: { $in: membershipEnabledLocations },
-              deletedAt: { $lt: new Date('2025-01-01') }, // Exclude deleted members
-            },
-          },
-          {
-            $group: {
-              _id: '$gamingLocation',
-              count: { $sum: 1 },
-            },
-          },
-        ]);
-
-        // Create a map of location ID to member count
-        const memberCountMap = new Map<string, number>();
-        memberCounts.forEach((item: { _id: string; count: number }) => {
-          memberCountMap.set(item._id, item.count);
-        });
+        const memberCountMap = await getMemberCountsPerLocation(membershipEnabledLocations);
 
         // Add member counts to locations
         locationsWithMetrics.forEach(loc => {
@@ -702,29 +681,7 @@ export const getLocationsWithMetrics = async (
         .map(loc => loc.location);
 
       if (membershipEnabledLocations.length > 0) {
-        const { Member } = await import('@/app/api/lib/models/members');
-
-        // Count members for each membership-enabled location
-        const memberCounts = await Member.aggregate([
-          {
-            $match: {
-              gamingLocation: { $in: membershipEnabledLocations },
-              deletedAt: { $lt: new Date('2025-01-01') }, // Exclude deleted members
-            },
-          },
-          {
-            $group: {
-              _id: '$gamingLocation',
-              count: { $sum: 1 },
-            },
-          },
-        ]);
-
-        // Create a map of location ID to member count
-        const memberCountMap = new Map<string, number>();
-        memberCounts.forEach((item: { _id: string; count: number }) => {
-          memberCountMap.set(item._id, item.count);
-        });
+        const memberCountMap = await getMemberCountsPerLocation(membershipEnabledLocations);
 
         // Add member counts to locations
         locationsWithMetrics.forEach(loc => {
@@ -1029,3 +986,4 @@ export const getLocationsWithMetrics = async (
     };
   }
 };
+

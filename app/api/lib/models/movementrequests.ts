@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import type { MovementRequest as MovementRequestType } from '@/lib/types/movementRequests';
+import type { MovementRequest as MovementRequestType } from '@/lib/types/movement';
 
 const movementRequestSchema = new Schema<MovementRequestType>(
   {
@@ -42,3 +42,4 @@ const movementRequestSchema = new Schema<MovementRequestType>(
 export const MovementRequest =
   (mongoose.models?.MovementRequest as mongoose.Model<MovementRequestType>) ||
   mongoose.model<MovementRequestType>('MovementRequest', movementRequestSchema);
+

@@ -3,34 +3,34 @@
  * Handles search term, location filter, and filter logic
  */
 
-import { useState, useCallback, useEffect } from 'react';
 import type {
-  UseCabinetFiltersProps,
-  UseCabinetFiltersReturn,
-} from '@/lib/types/cabinetFilters';
+    UseCabinetFiltersProps,
+    UseCabinetFiltersReturn,
+} from '@/lib/types/cabinet';
+import { useCallback, useEffect, useState } from 'react';
 
 export function useCabinetFilters({
   onFiltersChange,
 }: UseCabinetFiltersProps = {}): UseCabinetFiltersReturn {
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState<string>('all');
-  const [selectedGameType, setSelectedGameType] = useState<string>('all');
+  const [selectedLocation, setSelectedLocation] = useState<string[]>([]);
+  const [selectedGameType, setSelectedGameType] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
 
   // Clear all filters
   const clearFilters = useCallback(() => {
     setSearchTerm('');
-    setSelectedLocation('all');
-    setSelectedGameType('all');
+    setSelectedLocation([]);
+    setSelectedGameType([]);
     setSelectedStatus('All');
   }, []);
 
   // Check if any filters are active
   const hasActiveFilters =
     searchTerm.trim() !== '' ||
-    selectedLocation !== 'all' ||
-    selectedGameType !== 'all' ||
+    selectedLocation.length > 0 ||
+    selectedGameType.length > 0 ||
     selectedStatus !== 'All';
 
   // Handle search term changes
@@ -39,13 +39,13 @@ export function useCabinetFilters({
   }, []);
 
   // Handle location filter changes
-  const handleLocationChange = useCallback((location: string) => {
-    setSelectedLocation(location);
+  const handleLocationChange = useCallback((locations: string[]) => {
+    setSelectedLocation(locations);
   }, []);
 
   // Handle game type filter changes
-  const handleGameTypeChange = useCallback((gameType: string) => {
-    setSelectedGameType(gameType);
+  const handleGameTypeChange = useCallback((gameTypes: string[]) => {
+    setSelectedGameType(gameTypes);
   }, []);
 
   // Handle status filter changes
@@ -84,3 +84,4 @@ export function useCabinetFilters({
     hasActiveFilters,
   };
 }
+

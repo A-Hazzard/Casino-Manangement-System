@@ -7,7 +7,7 @@
  * @module app/sessions/[sessionId]/[machineId]/events/page
  */
 
-import { SessionsEventsPageContent } from '@/components/sessions/SessionsEventsPageContent';
+import { SessionsEventsPageContent } from '@/components/CMS/sessions/SessionsEventsPageContent';
 import { use } from 'react';
 
 export default function SessionEventsPage({

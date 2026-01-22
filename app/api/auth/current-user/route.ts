@@ -15,7 +15,7 @@ import {
   getInvalidProfileFields,
   hasInvalidProfileFields,
 } from '@/app/api/lib/helpers/profileValidation';
-import { getUserById, getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserById, getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextResponse } from 'next/server';
 
@@ -105,3 +105,4 @@ export async function GET() {
     );
   }
 }
+

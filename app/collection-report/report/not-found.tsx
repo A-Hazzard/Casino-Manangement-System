@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Header from '@/components/layout/Header';
+import Header from '@/components/shared/layout/Header';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import NotFoundError from '@/components/ui/errors/NotFoundError';
+import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
 
 export default function CollectionReportDetailNotFound() {
   // Add client-side initialization
@@ -62,3 +62,4 @@ function CollectionReportDetailNotFoundContent() {
     </>
   );
 }
+

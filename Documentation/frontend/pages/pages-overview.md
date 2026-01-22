@@ -11,7 +11,7 @@
 
 This document provides an overview of all pages in the Evolution One CMS frontend application. Each page has detailed documentation following a standardized structure.
 
-**Last Updated:** December 2024
+**Last Updated:** January 2025
 
 ## Documentation Structure
 
@@ -115,6 +115,20 @@ All page documentation files follow a consistent structure:
   - URL: `/login`
   - File: `app/(auth)/login/page.tsx`
   - Authentication: Not Required (Public Access)
+
+### Vault Management System
+
+- **[Vault Management](./vault.md)** (`/vault/management`)
+  - Cash management system with vault overview, cash desks, floats, expenses, transactions, transfers, and reports
+  - URL: `/vault/management` and sub-routes
+  - File: `app/vault/management/page.tsx` and sub-pages
+  - Access: Vault Manager roles required
+
+- **[Vault Cashier](./vault.md#cashier-pages)** (`/vault/cashier`)
+  - Cashier interface with payouts, shifts, and float requests
+  - URL: `/vault/cashier` and sub-routes
+  - File: `app/vault/cashier/page.tsx` and sub-pages
+  - Access: Cashier roles required
 
 ## Common Patterns
 

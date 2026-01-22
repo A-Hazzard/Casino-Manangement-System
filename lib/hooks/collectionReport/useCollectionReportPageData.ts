@@ -6,7 +6,7 @@
 
 'use client';
 
-import { COLLECTION_TABS_CONFIG } from '@/lib/constants/collection';
+import { COLLECTION_TABS_CONFIG } from '@/lib/constants';
 import {
     fetchCollectionReportsByLicencee,
     getLocationsWithMachines,
@@ -17,11 +17,11 @@ import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionView } from '@/lib/types/collection';
-import type { CollectionReportRow } from '@/lib/types/componentProps';
+import type { CollectionReportRow } from '@/lib/types/components';
 import type { LocationSelectItem } from '@/lib/types/location';
 import axios from 'axios';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useCollectionReportFilters } from './useCollectionReportFilters';
 
@@ -43,9 +43,12 @@ export function useCollectionReportPageData() {
   // ============================================================================
   // Collection Reports State
   // ============================================================================
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start as false, will be set to true when fetchReports is called
   const [refreshing] = useState(false);
   const [allReports, setAllReports] = useState<CollectionReportRow[]>([]);
+  const hasReceivedFirstResponseRef = useRef(false);
+  const hasStartedFirstLoadRef = useRef(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalReports, setTotalReports] = useState(0);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
@@ -56,7 +59,7 @@ export function useCollectionReportPageData() {
     CollectionReportLocationWithMachines[]
   >([]);
 
-  const itemsPerPage = 10;
+  const itemsPerPage = 20;
   const itemsPerBatch = 50;
   const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
@@ -100,6 +103,14 @@ export function useCollectionReportPageData() {
         setLoading(false);
         return;
       }
+      
+      // Mark that we've started the first load
+      if (!hasStartedFirstLoadRef.current) {
+        hasStartedFirstLoadRef.current = true;
+        // Ensure initialLoading is true when we start the first load
+        setInitialLoading(true);
+      }
+      
       setLoading(true);
       try {
         const result = await fetchCollectionReportsByLicencee(
@@ -130,6 +141,11 @@ export function useCollectionReportPageData() {
         }
       } finally {
         setLoading(false);
+        // Only set initialLoading to false after first response (success or error)
+        if (!hasReceivedFirstResponseRef.current) {
+          hasReceivedFirstResponseRef.current = true;
+          setInitialLoading(false);
+        }
       }
     },
     [
@@ -296,7 +312,8 @@ export function useCollectionReportPageData() {
 
   return {
     activeTab,
-    loading,
+    loading: loading || initialLoading, // Combine both loading states
+    initialLoading,
     refreshing,
     allReports,
     filteredReports,
@@ -338,3 +355,4 @@ export function useCollectionReportPageData() {
     }, [selectedLicencee]),
   };
 }
+

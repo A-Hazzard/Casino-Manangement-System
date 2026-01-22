@@ -23,6 +23,7 @@ import {
   getDefaultRedirectPathFromRoles,
   getRedirectDestinationNameFromRoles,
 } from '@/lib/utils/roleBasedRedirect';
+import { UserRole } from '@/lib/utils/permissions';
 export default function UnauthorizedPage() {
   const router = useRouter();
   const { user } = useUserStore();
@@ -34,22 +35,22 @@ export default function UnauthorizedPage() {
   useEffect(() => {
     // Redirect after 5 seconds based on user role
     const timer = setTimeout(() => {
-      const redirectPath = getDefaultRedirectPathFromRoles(user?.roles || []);
+      const redirectPath = getDefaultRedirectPathFromRoles(user?.roles as UserRole[]);
       router.push(redirectPath);
     }, 5000);
 
     return () => clearTimeout(timer);
   }, [router, user]);
 
-  const userRole = user?.roles ? getRoleDisplayName(user.roles) : 'User';
+  const userRole = user?.roles ? getRoleDisplayName(user.roles as UserRole[]) : 'User';
   const userName =
     user?.profile?.firstName && user?.profile?.lastName
       ? `${user.profile.firstName} ${user.profile.lastName}`
       : user?.username || 'User';
 
-  const redirectPath = getDefaultRedirectPathFromRoles(user?.roles || []);
+  const redirectPath = getDefaultRedirectPathFromRoles(user?.roles as UserRole[]);
   const redirectDestination = getRedirectDestinationNameFromRoles(
-    user?.roles || []
+    user?.roles as UserRole[]
   );
 
   return (
@@ -112,3 +113,4 @@ export default function UnauthorizedPage() {
     </div>
   );
 }
+

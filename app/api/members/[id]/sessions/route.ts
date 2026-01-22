@@ -16,7 +16,7 @@ import {
   applyCurrencyConversionToMetrics,
   getCurrencyFromQuery,
   shouldApplyCurrencyConversion,
-} from '@/app/api/lib/helpers/currencyHelper';
+} from '@/app/api/lib/helpers/currency/helper';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
 import { NextRequest, NextResponse } from 'next/server';

@@ -14,10 +14,11 @@
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
-  getUserLocationFilter,
+    getUserAccessibleLicenseesFromToken,
+    getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getMemberCountsPerLocation } from '@/app/api/lib/helpers/membershipAggregation';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
@@ -47,6 +48,8 @@ type LocationAggregationResult = {
   isLocalServer: boolean;
   hasSmib: boolean;
   noSMIBLocation: boolean;
+  membershipEnabled?: boolean;
+  memberCount?: number;
 };
 
 /**
@@ -81,6 +84,8 @@ export async function GET(request: NextRequest) {
     const customEndDate = searchParams.get('endDate')
       ? new Date(searchParams.get('endDate')!)
       : undefined;
+
+    const machineTypeFilter = searchParams.get('machineTypeFilter');
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -171,6 +176,96 @@ export async function GET(request: NextRequest) {
       locationMatch.$and.push({ _id: { $in: allowedLocationIds } });
     }
 
+    // Apply machine type filters (SMIB, No SMIB, Local Server, Membership, Coordinates)
+    if (machineTypeFilter) {
+      const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
+
+      // Group filters by logical categories to allow OR within category and AND across
+      const connectionFilters: Record<string, unknown>[] = [];
+      const featureFilters: Record<string, unknown>[] = [];
+      const qualityFilters: Record<string, unknown>[] = [];
+
+      filters.forEach(filter => {
+        const f = filter.trim();
+        switch (f) {
+          // --- Connection Category ---
+          case 'LocalServersOnly':
+            connectionFilters.push({ isLocalServer: true });
+            break;
+          case 'SMIBLocationsOnly':
+            connectionFilters.push({ noSMIBLocation: { $ne: true } });
+            break;
+          case 'NoSMIBLocation':
+            connectionFilters.push({ noSMIBLocation: true });
+            break;
+
+          // --- Feature Category ---
+          case 'MembershipOnly':
+            featureFilters.push({
+              $or: [{ membershipEnabled: true }, { enableMembership: true }],
+            });
+            break;
+
+          // --- Quality Category ---
+          case 'MissingCoordinates':
+            qualityFilters.push({
+              $or: [
+                { geoCoords: { $exists: false } },
+                { geoCoords: null },
+                { 'geoCoords.latitude': { $exists: false } },
+                { 'geoCoords.latitude': null },
+                { 'geoCoords.latitude': 0 },
+                {
+                  $or: [
+                    { 'geoCoords.longitude': { $exists: false, $eq: null } },
+                    { 'geoCoords.longtitude': { $exists: false, $eq: null } },
+                  ],
+                },
+              ],
+            });
+            break;
+          case 'HasCoordinates':
+            qualityFilters.push({
+              $and: [
+                { 'geoCoords.latitude': { $exists: true, $nin: [null, 0] } },
+                {
+                  $or: [
+                    {
+                      'geoCoords.longitude': {
+                        $exists: true,
+                        $nin: [null, 0],
+                      },
+                    },
+                    {
+                      'geoCoords.longtitude': {
+                        $exists: true,
+                        $nin: [null, 0],
+                      },
+                    },
+                  ],
+                },
+              ],
+            });
+            break;
+        }
+      });
+
+      // Combine categories: (Conn1 OR Conn2) AND (Feat1) AND (Qual1 OR Qual2)
+      const combinedFilters: Record<string, unknown>[] = [];
+      if (connectionFilters.length > 0)
+        combinedFilters.push({ $or: connectionFilters });
+      if (featureFilters.length > 0)
+        combinedFilters.push({ $or: featureFilters });
+      if (qualityFilters.length > 0)
+        combinedFilters.push({ $or: qualityFilters });
+
+      if (combinedFilters.length > 0) {
+        combinedFilters.forEach(filter => {
+          locationMatch.$and.push(filter);
+        });
+      }
+    }
+
     // ============================================================================
     // STEP 6: Fetch locations with aggregation (machines, financial data)
     // ============================================================================
@@ -211,7 +306,7 @@ export async function GET(request: NextRequest) {
                       {
                         $gt: [
                           '$lastActivity',
-                          new Date(Date.now() - 3 * 60 * 1000),
+                          new Date(Date.now() - 24 * 60 * 60 * 1000),
                         ],
                       },
                       1,
@@ -259,7 +354,13 @@ export async function GET(request: NextRequest) {
     });
 
     // Step 3: Get ALL location IDs
-    const allLocationIds = matchingLocations.map(loc => String(loc._id));
+    const allLocationIds = matchingLocations.map(loc => {
+      // Ensure we get the string representation of the ID, handling both String and ObjectId
+      const id = loc._id;
+      return typeof id === 'object' && id !== null && 'toString' in id
+        ? id.toString()
+        : String(id);
+    });
 
     // Step 4: Get ALL machines for ALL locations in one query
     const allMachines = await Machine.find(
@@ -357,45 +458,41 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Step 8: Combine results
-    const locations = matchingLocations.map(location => {
+    const memberCountMap = await getMemberCountsPerLocation(allLocationIds);
+
+    // Step 8: Combine results and create the initial AggregatedLocation objects
+    const locations: LocationAggregationResult[] = matchingLocations.map(location => {
       const locationId = String(location._id);
       const financialData = metersByLocation.get(locationId) || {
         totalMoneyIn: 0,
         totalMoneyOut: 0,
       };
 
+      const membershipEnabled = Boolean(
+        location.membershipEnabled ||
+          (location as { enableMembership?: boolean }).enableMembership
+      );
+
       return {
-        ...location,
+        _id: locationId,
+        name: location.name,
+        address: location.address,
+        country: location.country,
+        rel: location.rel,
+        profitShare: location.profitShare,
+        geoCoords: location.geoCoords,
         totalMachines: location.machineStats?.[0]?.totalMachines || 0,
         onlineMachines: location.machineStats?.[0]?.onlineMachines || 0,
         moneyIn: financialData.totalMoneyIn || 0,
         moneyOut: financialData.totalMoneyOut || 0,
-        gross:
-          (financialData.totalMoneyIn || 0) -
-          (financialData.totalMoneyOut || 0),
+        gross: (financialData.totalMoneyIn || 0) - (financialData.totalMoneyOut || 0),
+        isLocalServer: location.isLocalServer || false,
+        hasSmib: location.hasSmib || false,
+        noSMIBLocation: !(location.hasSmib || false),
+        membershipEnabled,
+        memberCount: memberCountMap.get(locationId) || 0,
       };
     });
-    // Format locations for response
-    const formattedLocations = (locations as LocationAggregationResult[]).map(
-      loc => ({
-        _id: loc._id,
-        name: loc.name,
-        address: loc.address,
-        country: loc.country,
-        rel: loc.rel,
-        profitShare: loc.profitShare,
-        geoCoords: loc.geoCoords,
-        totalMachines: loc.totalMachines || 0,
-        onlineMachines: loc.onlineMachines || 0,
-        moneyIn: loc.moneyIn || 0,
-        moneyOut: loc.moneyOut || 0,
-        gross: loc.gross || 0,
-        isLocalServer: loc.isLocalServer || false,
-        hasSmib: loc.hasSmib || false,
-        noSMIBLocation: !(loc.hasSmib || false),
-      })
-    ) as LocationAggregationResult[];
 
     // ============================================================================
     // STEP 7: Apply currency conversion if needed
@@ -407,7 +504,7 @@ export async function GET(request: NextRequest) {
       currentUserRoles.includes('developer');
 
     // Apply currency conversion ONLY for Admin/Developer viewing "All Licensees"
-    let finalLocations = formattedLocations;
+    let finalLocations = locations;
     if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
       // Get licensee details for currency mapping
       const licenseesData = await Licencee.find(
@@ -441,7 +538,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Convert each location's financial data
-      finalLocations = formattedLocations.map(loc => {
+      finalLocations = locations.map(loc => {
         const licenseeId = loc.rel?.licencee as string | undefined;
 
         if (!licenseeId) {
@@ -487,22 +584,25 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 8: Return formatted location data
     // ============================================================================
-    const response = finalLocations.map((loc: LocationAggregationResult) => ({
-      location: loc._id.toString(),
+    // Step 9: Return final results with unified property mapping
+    const response = finalLocations.map((loc) => ({
+      location: loc._id,
       locationName: loc.name || 'Unknown Location',
       country: loc.country,
       address: loc.address,
       rel: loc.rel,
       profitShare: loc.profitShare,
       geoCoords: loc.geoCoords,
-      totalMachines: loc.totalMachines || 0,
-      onlineMachines: loc.onlineMachines || 0,
-      moneyIn: loc.moneyIn || 0,
-      moneyOut: loc.moneyOut || 0,
-      gross: loc.gross || 0,
-      isLocalServer: loc.isLocalServer || false,
-      hasSmib: loc.hasSmib || false,
-      noSMIBLocation: loc.noSMIBLocation || false,
+      totalMachines: loc.totalMachines,
+      onlineMachines: loc.onlineMachines,
+      moneyIn: loc.moneyIn,
+      moneyOut: loc.moneyOut,
+      gross: loc.gross,
+      isLocalServer: loc.isLocalServer,
+      hasSmib: loc.hasSmib,
+      noSMIBLocation: loc.noSMIBLocation,
+      membershipEnabled: loc.membershipEnabled,
+      memberCount: loc.memberCount,
     }));
 
     const duration = Date.now() - startTime;
@@ -525,3 +625,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

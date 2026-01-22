@@ -31,7 +31,7 @@ The page allows users to:
 - **URL Pattern:** `/sessions`
 - **Authentication:** Required (ProtectedRoute)
 - **Access Level:** All authenticated users (with "sessions" page permission)
-- **Main Component:** `SessionsPageContent` (within `app/sessions/page.tsx`)
+- **Main Component:** `SessionsPageContent` (`components/CMS/sessions/SessionsPageContent.tsx`)
 
 ## Page Sections
 

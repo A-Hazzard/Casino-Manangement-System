@@ -1,7 +1,7 @@
 # Authentication and Authorization Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** December 30, 2025  
+**Last Updated:** January 2025  
 **Version:** 1.0.0
 
 ## Table of Contents

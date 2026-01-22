@@ -8,7 +8,7 @@
  * @features Token Verification, Authentication Testing, Login Flow Support
  */
 
-import { getUserIdFromServer } from '@/app/api/lib/helpers/users';
+import { getUserIdFromServer } from '@/app/api/lib/helpers/users/users';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -92,3 +92,4 @@ export async function GET() {
     );
   }
 }
+

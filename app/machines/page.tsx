@@ -8,9 +8,11 @@
  * @module app/machines/page
  */
 
-import MachinesPageContent from '@/components/machines/MachinesPageContent';
-import CabinetsCabinetTableSkeleton from '@/components/cabinets/CabinetsCabinetTableSkeleton';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+export const dynamic = 'force-dynamic';
+
+import CabinetsCabinetTableSkeleton from '@/components/CMS/cabinets/CabinetsCabinetTableSkeleton';
+import MachinesPageContent from '@/components/CMS/machines/MachinesPageContent';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 import { Suspense } from 'react';
 
 export default function MachinesPage() {
@@ -22,3 +24,4 @@ export default function MachinesPage() {
     </ProtectedRoute>
   );
 }
+

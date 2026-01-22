@@ -10,7 +10,7 @@ import {
   getUserAccessibleLicenseesFromToken,
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { NextRequest, NextResponse } from 'next/server';
@@ -126,3 +126,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

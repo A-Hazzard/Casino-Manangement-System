@@ -55,3 +55,4 @@ const getClientStore = () => {
 // Use this store only on client side
 export const useFirmwareActionsStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);
+

@@ -15,7 +15,7 @@
  * @module app/api/auth/login/route
  */
 
-import { authenticateUser } from '@/app/api/lib/helpers/auth';
+import { authenticateUser } from '@/app/api/lib/helpers/auth/auth';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import {
   createBadRequestResponse,
@@ -183,3 +183,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

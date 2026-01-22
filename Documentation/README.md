@@ -14,8 +14,8 @@
 This directory contains comprehensive documentation for the Evolution One Casino Management System. The documentation is organized into logical sections covering frontend, backend, system architecture, and development guidelines.
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** December 29, 2025
-**Version:** 4.2.0 - Documentation Synchronization
+**Last Updated:** January 2025
+**Version:** 4.3.0 - Documentation Structure Update
 
 ## Documentation Structure
 
@@ -50,9 +50,11 @@ Documentation/
 ### For New Developers
 
 1. **Start Here:** Read [PROJECT_GUIDE.md](./PROJECT_GUIDE.md) for complete system overview
-2. **Frontend Development:** Review [Frontend Guidelines](./frontend/guidelines/FRONTEND_GUIDELINES.md)
-3. **Backend Development:** Review [Backend Guidelines](./backend/GUIDELINES.md)
-4. **API Integration:** Check [Backend API Overview](./backend/api-overview.md)
+2. **Engineering Rules:** Review [`.cursor/rules/nextjs-rules.mdc`](../.cursor/rules/nextjs-rules.mdc) for strict coding standards
+3. **Frontend Development:** Review [Frontend Guidelines](./frontend/guidelines/FRONTEND_GUIDELINES.md)
+4. **Backend Development:** Review [Backend Guidelines](./backend/GUIDELINES.md)
+5. **API Integration:** Check [Backend API Overview](./backend/api-overview.md)
+6. **Type Safety:** Understand [TypeScript Type Safety](./typescript-type-safety-rules.md) three-tier system
 
 ### For Specific Tasks
 
@@ -69,6 +71,7 @@ Documentation/
 **[PROJECT_GUIDE.md](./PROJECT_GUIDE.md)** - Complete project overview and system architecture
 
 **Covers:**
+
 - System architecture and technology stack
 - TypeScript type safety system
 - Database models and relationships
@@ -82,28 +85,37 @@ Documentation/
 **[Frontend Documentation](./frontend/)** - Complete frontend page and component documentation
 
 **Key Sections:**
-- **[Pages](./frontend/pages/)** - Main application pages (dashboard, administration, locations, machines, members, sessions, collection-report, login)
+
+- **[Pages](./frontend/pages/)** - Main application pages
+  - Dashboard, Reports, Cabinets, Locations, Members, Sessions, Collection Report, Administration, Login, Vault Management
+  - See [pages-overview.md](./frontend/pages/pages-overview.md) for complete list
 - **[Details](./frontend/details/)** - Detail page documentation
+  - Location Details, Location Machines, Machine Details, Collection Report Details
 - **[Integration](./frontend/integration/)** - MQTT and real-time integration
 - **[Guidelines](./frontend/guidelines/)** - Frontend development standards
+  - Component structure, JSX commenting, loading states, skeleton loaders
 
 ### 🔧 Backend Documentation
 
 **[Backend Documentation](./backend/)** - Complete API endpoint documentation
 
 **Key Sections:**
+
+- **[API Overview](./backend/api-overview.md)** - Complete API reference and structure
 - **[Core APIs](./backend/core-apis/)** - Authentication, administration, system configuration
-- **[Business APIs](./backend/business-apis/)** - Locations, machines, members, sessions, collections
-- **[Analytics APIs](./backend/analytics-apis/)** - Reporting, analytics, operations
+- **[Business APIs](./backend/business-apis/)** - Locations, machines, cabinets, members, sessions, collections
+- **[Analytics APIs](./backend/analytics-apis/)** - Reporting, analytics, operations, meters
 - **[Specialized APIs](./backend/specialized-apis/)** - Meter synchronization, location-machine relationships
 - **[Calculation Systems](./backend/calculation-systems/)** - Bill validator, SAS gross calculations
 - **[Real-Time Systems](./backend/real-time-systems/)** - MQTT architecture and implementation
+- **[Backend Guidelines](./backend/GUIDELINES.md)** - Backend development standards and best practices
 
 ### 💰 Financial System
 
 **[Financial Metrics Guide](./financial-metrics-guide.md)** - Comprehensive financial calculation system
 
 **Covers:**
+
 - Money In (Drop) calculations
 - Money Out (Cancelled Credits) calculations
 - Gross Revenue formulas
@@ -116,6 +128,7 @@ Documentation/
 **[Database Models](./database-models.md)** - Complete database schema reference
 
 **Covers:**
+
 - All MongoDB collections
 - Model relationships
 - Field definitions
@@ -127,6 +140,7 @@ Documentation/
 **[TypeScript Type Safety](./typescript-type-safety-rules.md)** - Type system guidelines
 
 **Covers:**
+
 - Three-tier type system (shared, frontend, backend)
 - Type organization rules
 - Type safety best practices
@@ -137,6 +151,7 @@ Documentation/
 **[Role Based Permissions](./Role%20Based%20Permissions.md)** - Access control system
 
 **Covers:**
+
 - Role definitions
 - Permission structure
 - Access control patterns
@@ -147,6 +162,7 @@ Documentation/
 **[Timezone Guide](./timezone.md)** - Timezone and date handling
 
 **Covers:**
+
 - UTC storage standards
 - Display timezone conversion
 - Gaming day offset system
@@ -159,6 +175,7 @@ Documentation/
 **[Performance Optimization Guide](./PERFORMANCE_OPTIMIZATION_GUIDE.md)** - Performance best practices
 
 **Covers:**
+
 - Database query optimization
 - Frontend performance techniques
 - Caching strategies
@@ -169,6 +186,7 @@ Documentation/
 **[Query Results Explanation](./QUERY_RESULTS_EXPLANATION.md)** - Understanding API responses
 
 **Covers:**
+
 - Response format standards
 - Pagination patterns
 - Error handling

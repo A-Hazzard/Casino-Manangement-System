@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   type UpdateHistoryPayload,
   updateReportMachineHistories,
-} from '@/app/api/lib/helpers/reportHistoryUpdate';
+} from '@/app/api/lib/helpers/collectionReport/historyUpdate';
 import { connectDB } from '@/app/api/lib/middleware/db';
 
 /**

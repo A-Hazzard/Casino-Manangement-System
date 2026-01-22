@@ -14,7 +14,7 @@
 
 import { locations } from '@/lib/types';
 import { getAuthHeaders } from '@/lib/utils/auth';
-import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
+import { getLicenseeObjectId } from '@/lib/utils/licensee';
 import axios from 'axios';
 import { TimePeriod } from '../types/api';
 import { AggregatedLocation } from '../types/location';
@@ -61,27 +61,7 @@ export default async function getAllGamingLocations(
     );
 
     return Array.isArray(fetchedLocations) ? fetchedLocations : [];
-  } catch (error) {
-    // Check if this is a cancellation error (expected behavior, don't log)
-    const isCanceled =
-      axios.isCancel(error) ||
-      (error instanceof Error &&
-        (error.name === 'CanceledError' ||
-          error.name === 'AbortError' ||
-          error.message === 'canceled' ||
-          error.message === 'The user aborted a request.')) ||
-      (error &&
-        typeof error === 'object' &&
-        'code' in error &&
-        (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'));
-
-    // Re-throw cancellation errors so useAbortableRequest can handle them silently
-    if (isCanceled) {
-      throw error;
-    }
-
-    // Only log non-cancellation errors
-    console.error('Error fetching gaming locations:', error);
+  } catch {
     return [];
   }
 }
@@ -129,7 +109,8 @@ export const searchAllLocations = async (
   displayCurrency?: string,
   timePeriod?: string,
   customDateRange?: { from: Date; to: Date },
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  machineTypeFilter?: string
 ): Promise<AggregatedLocation[]> => {
   try {
     const params: Record<string, string> = {};
@@ -141,6 +122,7 @@ export const searchAllLocations = async (
       params.startDate = customDateRange.from.toISOString();
       params.endDate = customDateRange.to.toISOString();
     }
+    if (machineTypeFilter) params.machineTypeFilter = machineTypeFilter;
 
     const response = await axios.get('/api/locations/search-all', {
       params,
@@ -148,6 +130,9 @@ export const searchAllLocations = async (
     });
     return response.data || [];
   } catch (error) {
+    if (axios.isCancel(error)) {
+      throw error;
+    }
     console.error('Failed to search all locations:', error);
     return [];
   }
@@ -281,3 +266,4 @@ export async function fetchAggregatedLocationsData(
     return { data: [] };
   }
 }
+

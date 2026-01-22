@@ -15,7 +15,7 @@
 
 import axios from 'axios';
 
-import type { Country } from '@/lib/types/country';
+import type { Country } from '@/lib/types/common';
 
 // Activity logging removed - handled via API calls
 
@@ -58,4 +58,5 @@ export async function fetchCountries(): Promise<Country[]> {
     throw error;
   }
 }
+
 

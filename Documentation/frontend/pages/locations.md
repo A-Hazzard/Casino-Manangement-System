@@ -1,7 +1,7 @@
 # Locations Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** December 29, 2025
+**Last Updated:** January 2025
 **Version:** 3.1.0
 
 ## Table of Contents
@@ -39,7 +39,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 **Purpose:** Displays page title, refresh button, and "New Location" button (if user has manage permissions).
 
 **Components:**
-- `components/locations/details/LocationsDetailsHeaderSection.tsx` - Header component
+- `components/CMS/locations/details/LocationsDetailsHeaderSection.tsx` - Header component
 
 **Features:**
 - Page title with loading indicator
@@ -120,7 +120,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 **Purpose:** Allows users to search locations and apply status filters (SMIB, No SMIB, Local Server, Membership, Coordinates).
 
 **Components:**
-- `components/locations/details/LocationsDetailsFilterSection.tsx` - Search and filter component
+- `components/CMS/locations/details/LocationsDetailsFilterSection.tsx` - Search and filter component
 
 **Search Functionality:**
 - Text search input for location names
@@ -160,10 +160,10 @@ The Locations page provides comprehensive management and analytics for gaming lo
 **Purpose:** Displays the list of locations in table format (desktop) or card format (mobile).
 
 **Components:**
-- `components/locations/LocationsLocationTable.tsx` - Desktop table view
-- `components/locations/LocationsLocationCard.tsx` - Mobile card view
-- `components/locations/LocationsLocationSkeleton.tsx` - Loading skeleton for cards
-- `components/locations/LocationsCabinetTableSkeleton.tsx` - Loading skeleton for table
+- `components/CMS/locations/LocationsLocationTable.tsx` - Desktop table view
+- `components/CMS/locations/LocationsLocationCard.tsx` - Mobile card view
+- `components/CMS/locations/LocationsLocationSkeleton.tsx` - Loading skeleton for cards
+- `components/CMS/locations/LocationsCabinetTableSkeleton.tsx` - Loading skeleton for table
 
 **API Endpoint:**
 - `GET /api/reports/locations` - Returns paginated location list with financial metrics
@@ -179,31 +179,31 @@ The Locations page provides comprehensive management and analytics for gaming lo
 - `startDate`, `endDate` - Custom date range
 
 **Data Flow:**
-1. `useLocationData` hook fetches locations from API
-2. Data accumulated in `accumulatedLocations` state for pagination
-3. Client-side filtering applied based on search and filters
-4. Pagination handled client-side (20 items per page)
-5. Locations displayed with financial metrics (money in, money out, gross)
+1. `useLocationData` hook fetches locations in batches from the API.
+2. Data is accumulated in an `accumulatedLocations` state.
+3. Client-side filtering (search) and sorting are applied to this accumulated list.
+4. The resulting list is then paginated for display.
+5. Locations are displayed with financial metrics (money in, money out, gross).
 
 **Display Features:**
-- Location name with click handler (navigates to location details)
-- Financial metrics with currency formatting
-- Machine status badge (X/Y Online) with color coding
-- Action buttons (Edit, Delete) if user has permissions
-- Responsive layout (table on desktop, cards on mobile)
-
-**Machine Status Badge:**
-- Displays "X/Y Online" format
-- Color coding:
-  - Green: All machines online
-  - Yellow: Some machines online
-  - Red: All machines offline
-  - Gray: No machines
+-   Location name with click handler (navigates to location details).
+-   **Conditional Status Icons:**
+    *   **SMIB Location Icon:** Displays if the location has SMIB machines.
+    *   **Local Server Icon:** Displays if the location uses a local server.
+    *   **Membership Icon:** Displays if the location has membership enabled.
+    *   **Warning Icon:** Displays if a location (especially a No-SMIB type) has no recent collection report.
+    *   **Missing Coordinates Icon:** Displays if the location lacks geographic coordinates.
+    *   **Unknown Type Icon:** Displays if the location doesn't match any known type.
+-   Financial metrics with currency formatting.
+-   **Machine Status Badge:** Displays "X/Y Online" with color coding (Green: all online, Yellow: some online/offline, Red: all offline, Gray: no machines).
+-   **Membership Count Badge:** Displays the number of members if membership is enabled.
+-   Action buttons (Edit, Delete) if user has permissions.
+-   Responsive layout (table on desktop, cards on mobile).
 
 **Pagination:**
-- Client-side pagination (20 items per page)
-- `PaginationControls` component shown when `totalPages > 1`
-- Page state managed via `currentPage` and `setCurrentPage`
+- **Hybrid Model**: Pagination is client-side over a server-loaded, accumulated dataset. The `useLocationData` hook fetches data in large batches from the server, and the UI paginates through this local, accumulated list.
+- This optimizes performance by minimizing API calls while still providing a paginated experience.
+- Page state managed via `currentPage` and `setCurrentPage`.
 
 **Key Functions:**
 - `useLocationData` - Hook managing location data fetch
@@ -222,9 +222,9 @@ The Locations page provides comprehensive management and analytics for gaming lo
 **Purpose:** Provides modals for creating, editing, and deleting locations.
 
 **Components:**
-- `components/locations/modals/LocationsNewLocationModal.tsx` - Create new location modal
-- `components/locations/modals/LocationsEditLocationModal.tsx` - Edit existing location modal
-- `components/locations/modals/LocationsDeleteLocationModal.tsx` - Delete confirmation modal
+- `components/CMS/locations/modals/LocationsNewLocationModal.tsx` - Create new location modal
+- `components/CMS/locations/modals/LocationsEditLocationModal.tsx` - Edit existing location modal
+- `components/CMS/locations/modals/LocationsDeleteLocationModal.tsx` - Delete confirmation modal
 
 **New Location Modal Features:**
 - Location name
@@ -252,7 +252,9 @@ The Locations page provides comprehensive management and analytics for gaming lo
 
 **Key Functions:**
 - Modals managed via state in `app/locations/page.tsx`
-- `openEditModal`, `openDeleteModal`, `closeDeleteModal` from `useLocationActionsStore`
+- `openEditModal` (triggered by `LocationsLocationTable` and `LocationsLocationCard`) - Opens edit modal with location data.
+- `openDeleteModal` (triggered by `LocationsLocationTable`) - Opens delete modal with location data.
+- `closeDeleteModal` - Closes delete modal.
 
 ---
 

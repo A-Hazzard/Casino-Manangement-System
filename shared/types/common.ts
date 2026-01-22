@@ -99,3 +99,4 @@ export type BillValidatorData = {
   dollarTotal?: number;
   dollarTotalUnknown?: number;
 };
+

@@ -11,7 +11,7 @@
  * @module app/api/analytics/jackpot-trends/route
  */
 
-import { getJackpotTrends } from '@/app/api/lib/helpers/trends';
+import { getJackpotTrends } from '@/app/api/lib/helpers/trends/general';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -53,7 +53,6 @@ export async function GET(req: NextRequest) {
     // STEP 3: Execute the core jackpot trends fetching logic via helper
     // ============================================================================
     const jackpotTrends = await getJackpotTrends(
-      db,
       timePeriod,
       licencee,
       locationIds
@@ -87,3 +86,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

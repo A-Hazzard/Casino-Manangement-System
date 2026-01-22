@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { classifyError, type ApiError } from '@/lib/utils/errorHandling';
-import { showErrorNotification } from '@/lib/utils/errorNotifications';
+import { classifyError, showErrorNotification, type ApiError } from '@/lib/utils/errors';
 
 /**
  * Global error handler hook that can be used across all components
@@ -103,3 +102,4 @@ export function useGlobalErrorHandler() {
     handleApiCallWithRetry,
   };
 }
+

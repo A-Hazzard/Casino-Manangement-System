@@ -14,13 +14,13 @@
  */
 
 import { dashboardData } from '@/lib/types';
+import { TimePeriod } from '@/shared/types';
 import {
   formatISODate,
   formatLocalDateTimeString,
 } from '@/shared/utils/dateFormat';
-import { TimePeriod } from '@/shared/types';
 import axios from 'axios';
-import { getGranularityFromDataPoints } from '../utils/chartGranularity';
+import { getGranularityFromDataPoints } from '../utils/chart/granularity';
 
 // ============================================================================
 // Metrics Data Fetching and Processing
@@ -46,7 +46,10 @@ export async function getMetrics(
   licencee?: string,
   displayCurrency?: string,
   signal?: AbortSignal,
-  granularity?: 'hourly' | 'minute'
+  granularity?: 'hourly' | 'minute',
+  locationId?: string | string[],
+  gameType?: string | string[],
+  onlineStatus?: string
 ): Promise<dashboardData[]> {
   try {
     let url = `/api/metrics/meters?timePeriod=${timePeriod}`;
@@ -84,6 +87,23 @@ export async function getMetrics(
     if (granularity) {
       url += `&granularity=${granularity}`;
     }
+    
+    // Add location filter if provided
+    if (locationId && locationId !== 'all' && (Array.isArray(locationId) ? locationId.length > 0 : true)) {
+      const locIds = Array.isArray(locationId) ? locationId.join(',') : locationId;
+      url += `&locationId=${encodeURIComponent(locIds)}`;
+    }
+    
+    // Add game type filter if provided
+    if (gameType && gameType !== 'all' && (Array.isArray(gameType) ? gameType.length > 0 : true)) {
+      const gTypes = Array.isArray(gameType) ? gameType.join(',') : gameType;
+      url += `&gameType=${encodeURIComponent(gTypes)}`;
+    }
+    
+    // Add status filter if provided
+    if (onlineStatus && onlineStatus !== 'all') {
+      url += `&onlineStatus=${encodeURIComponent(onlineStatus)}`;
+    }
 
     const { data } = await axios.get<
       Array<{
@@ -106,10 +126,10 @@ export async function getMetrics(
       },
       signal,
     });
-    if (!Array.isArray(data) || data.length === 0) return [];
+    // if (!Array.isArray(data) || data.length === 0) return [];
 
     // Check if API response contains minute-level data (time format is "HH:MM" with non-zero minutes)
-    const hasMinuteLevelData = data.some(item => {
+    const hasMinuteLevelData = Array.isArray(data) && data.some(item => {
       if (!item.time) return false;
       const timeParts = item.time.split(':');
       if (timeParts.length !== 2) return false;
@@ -450,14 +470,14 @@ export async function getMetrics(
       'code' in error &&
       (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED')
     ) {
-      // Silently handle cancelled requests - this is expected when user changes filters
-      return [];
+      // Re-throw cancelled requests so caller can handle them (e.g. useAbortableRequest)
+      throw error;
     }
 
     // Check for axios.isCancel() to properly detect cancelled requests
     if (axios.isCancel && axios.isCancel(error)) {
-      // Silently handle cancelled requests
-      return [];
+      // Re-throw cancelled requests so caller can handle them (e.g. useAbortableRequest)
+      throw error;
     }
 
     // Enhanced error handling for metrics fetch
@@ -534,7 +554,7 @@ function fillMissingIntervals(
   isHourly?: boolean,
   isMinute?: boolean
 ): dashboardData[] {
-  if (data.length === 0) return [];
+  // if (data.length === 0) return [];
 
   // Store original data length for safety check
   const originalDataLength = data.length;
@@ -675,3 +695,4 @@ function fillMissingIntervals(
 
   return filledData;
 }
+

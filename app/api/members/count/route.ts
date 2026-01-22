@@ -7,10 +7,10 @@
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
-  getUserLocationFilter,
+    getUserAccessibleLicenseesFromToken,
+    getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
 import type { PipelineStage } from 'mongoose';
@@ -106,9 +106,15 @@ export async function GET(req: NextRequest) {
 
     // Apply location access filter
     if (locationId) {
-      aggregationPipeline.push({
-        $match: { gamingLocation: locationId },
-      });
+      if (locationId.includes(',')) {
+        aggregationPipeline.push({
+          $match: { gamingLocation: { $in: locationId.split(',') } },
+        });
+      } else {
+        aggregationPipeline.push({
+          $match: { gamingLocation: locationId },
+        });
+      }
     } else if (allowedLocationIds !== 'all') {
       // Apply location permissions
       if (allowedLocationIds.length === 0) {
@@ -175,3 +181,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

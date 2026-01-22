@@ -87,3 +87,4 @@ export function useReportsNavigation(reportsTabsConfig: ReportTab[]) {
     handleTabChange,
   };
 }
+

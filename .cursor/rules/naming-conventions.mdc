@@ -178,9 +178,72 @@ components/collectionReport/
 │ └── `types/` (Backend-specific types)
 └── `[route]/` (Route handlers)
 
-## 5. Summary of Best Practices
+## 5. Utility File Organization & Naming
+
+### 5.1. File Naming Based on Use Cases
+
+**CRITICAL**: File names should reflect what the code **does** or **is used for**, not where it runs or technical implementation details.
+
+**Good Examples:**
+- ✅ `machine.ts` - For machine movement calculations (not `frontendCalculation.ts`)
+- ✅ `mapping.ts` - For data transformation/mapping utilities
+- ✅ `normalization.ts` - For form value normalization
+- ✅ `validation.ts` - For validation logic
+- ✅ `totals.ts` - For calculating totals
+- ✅ `colors.ts` - For color coding utilities
+
+**Bad Examples:**
+- ❌ `frontendCalculation.ts` - Too generic, doesn't indicate use case
+- ❌ `clientUtils.ts` - Technical detail, not use case
+- ❌ `backendHelpers.ts` - Technical detail, not use case
+
+**Rules:**
+- Name files based on **actual usage patterns** and **business purpose**
+- Avoid prefixes like "frontend", "client", "server" unless necessary for disambiguation
+- Use descriptive names that indicate the file's primary purpose
+- When in doubt, check how the file is actually used in the codebase
+
+### 5.2. Grouping Related Files
+
+**When to Group in Subfolders:**
+- Multiple files (3+) related to the same domain/feature
+- Files serve distinct but related purposes
+- Files are substantial (>100 lines) and warrant separation
+
+**When to Merge Files:**
+- Files are small (<100 lines each) and serve similar purposes
+- Files are tightly related (e.g., normalization and formatting)
+- Merging improves code discoverability without creating bloat
+
+**Grouping Structure:**
+```
+lib/utils/[domain]/
+├── [purpose].ts (e.g., mapping.ts, normalization.ts, validation.ts)
+├── [purpose].ts
+└── index.ts (central re-exports)
+```
+
+**Examples:**
+- `lib/utils/movement/` - movement/calculation.ts, movement/requests.ts, movement/machine.ts
+- `lib/utils/financial/` - financial/totals.ts, financial/colors.ts
+- `lib/utils/cabinet/` - cabinet/mapping.ts, cabinet/normalization.ts, cabinet/validation.ts
+
+### 5.3. File Organization Checklist
+
+Before grouping or merging files:
+
+1. ✅ **Check file sizes** - Small files (<100 lines) may be merge candidates
+2. ✅ **Review use cases** - Files should be named based on actual usage
+3. ✅ **Evaluate relationships** - Tightly related small files → merge; Distinct purposes → group
+4. ✅ **Consider discoverability** - Does grouping/merging improve code navigation?
+5. ✅ **Verify imports** - Update all imports after changes
+
+## 6. Summary of Best Practices
 
 - **Lean Wrappers**: Keep `page.tsx` files minimal, delegating logic to a `PageContent` component.
 - **Specific Loading States**: Create content-specific skeletons in `components/ui/skeletons/`.
 - **Centralized Types**: Prefer `shared/types/` for data entities and `lib/types/` for UI-related types.
 - **No Generic Names**: Avoid vague names like `Table.tsx` or `Map.tsx` outside of `components/ui/`.
+- **Use Case-Based Naming**: File names should reflect what the code does, not where it runs.
+- **Logical Grouping**: Group related files in subfolders when they serve distinct purposes.
+- **Merge When Appropriate**: Consider merging small related files instead of grouping if it improves organization.

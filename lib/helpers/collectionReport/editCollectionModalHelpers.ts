@@ -6,19 +6,10 @@
  */
 
 import { updateMachineCollectionHistory } from '@/lib/helpers/cabinets';
-import type { CollectionReportData } from '@/lib/types/api';
-import type { CollectionDocument } from '@/lib/types/collections';
+import type { CollectionDocument } from '@/lib/types/collection';
 import axios from 'axios';
 
-/**
- * Fetch collection report by ID
- */
-export async function fetchCollectionReportById(
-  reportId: string
-): Promise<CollectionReportData> {
-  const res = await axios.get(`/api/collection-report/${reportId}`);
-  return res.data;
-}
+// Note: fetchCollectionReportById is exported from './fetching' to avoid duplication
 
 /**
  * Fetch collections by report ID
@@ -89,3 +80,4 @@ export function sortMachinesAlphabetically<
     return numAInt - numBInt;
   });
 }
+

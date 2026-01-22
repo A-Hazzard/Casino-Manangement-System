@@ -43,3 +43,4 @@ export const MEMBERS_ANIMATIONS = {
     exit: { opacity: 0, x: -20 },
   },
 } as const;
+

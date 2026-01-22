@@ -9,7 +9,7 @@
 
 import type { LogisticsEntry } from '@/lib/types/reports';
 import { MovementRequest } from '../models/movementrequests';
-import type { MovementRequestStatus } from '@/lib/types/movementRequests';
+import type { MovementRequestStatus } from '@/lib/types/movement';
 
 /**
  * Maps MovementRequestStatus to LogisticsEntry status
@@ -115,4 +115,5 @@ export async function getLogisticsData(
 
   return transformToLogisticsEntries(logisticsData);
 }
+
 

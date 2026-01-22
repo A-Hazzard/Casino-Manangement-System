@@ -1,7 +1,7 @@
 # Meters Report API
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025
+**Last Updated:** January 2025
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -99,7 +99,11 @@ This ensures that financial metrics and meter readings are calculated based on t
 }
 ```
 
-## Location Metrics
+### Performance Optimizations
+
+- **Optimized Batch Processing:** For `7d` and `30d` time periods, the API uses a single, highly optimized aggregation pipeline that processes all machines across all locations in one query. This is significantly faster than the batch-per-location approach used for shorter time periods.
+- **On-the-fly Filtering:** Gaming day range filtering for each location is applied in-memory after the main aggregation, ensuring both performance and accuracy.
+- **Cursor Usage:** The aggregation pipeline uses a cursor to stream results, preventing high memory usage for large datasets.
 
 ### GET `/api/metrics/locations`
 
@@ -997,7 +1001,7 @@ console.error('❌ Meters Report API Error:', {
 
 ---
 
-**Last Updated**: November 27, 2025  
+**Last Updated:** January 2025  
 **Version**: 1.2  
 **Maintained By**: Evolution One CMS Development Team
 

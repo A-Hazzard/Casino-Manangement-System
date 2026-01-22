@@ -1,7 +1,7 @@
 # Dashboard Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** December 29, 2025
+**Last Updated:** January 2025
 **Version:** 3.1.0
 
 ## Table of Contents
@@ -25,12 +25,13 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 ## File Information
 
-- **Main File:** `app/page.tsx`
+- **Main File:** `app/page.tsx` (wraps `DashboardPageContent`)
+- **Primary Logic Component:** `components/CMS/dashboard/DashboardPageContent.tsx` (handles data fetching, state management, and responsive layout rendering)
 - **URL Pattern:** `/`
 - **Authentication:** Required (ProtectedRoute)
 - **Access Level:** Developer, Admin, Manager (with assigned licensees)
 - **Licensee Filtering:** Supported
-- **Responsive:** Desktop (`PcLayout`) and Mobile (`MobileLayout`) layouts
+- **Responsive:** Desktop (`DashboardDesktopLayout`) and Mobile (`DashboardMobileLayout`) layouts
 
 ## Page Sections
 
@@ -40,8 +41,8 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 **Components:**
 
-- `components/dashboard/DashboardDateFilters.tsx` - Main filter component
-- `components/ui/ModernCalendar.tsx` - Calendar picker for custom dates
+- `components/shared/ui/common/DateFilters.tsx` - Main filter component
+- `components/shared/ui/ModernCalendar.tsx` - Calendar picker for custom dates
 
 **Functionality:**
 
@@ -69,7 +70,7 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 **Components:**
 
-- `components/ui/FinancialMetricsCards.tsx` - Card component displaying the three metrics
+- `components/shared/ui/FinancialMetricsCards.tsx` - Card component displaying the three metrics
 
 **API Endpoint:**
 
@@ -102,7 +103,7 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 **Components:**
 
-- `components/ui/dashboard/Chart.tsx` - Recharts-based chart component
+- `components/CMS/dashboard/DashboardChart.tsx` - Recharts-based chart component
 - Granularity selector dropdown (hourly/minute) - shown for Today/Yesterday/Custom periods
 
 **API Endpoint:**
@@ -131,6 +132,8 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 - Chart granularity selector only visible for Today, Yesterday, or Custom periods spanning ≤ 1 gaming day
 - Loading skeleton (`DashboardChartSkeleton`) shown during fetch
+- **Advanced X-Axis Formatting:** Dynamically formats X-axis labels based on selected `granularity` (minute, hourly, daily, weekly, monthly), including specific formatting for week numbers within months.
+- **Dynamic Y-Axis Domain:** Calculates Y-axis domain from actual data, adding 10% padding to the top and ensuring it doesn't go below 0 unless data is actually negative. Formats large numbers compactly (e.g., 'K', 'M', 'B', 'T') to prevent overflow.
 
 ---
 
@@ -140,7 +143,7 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 **Components:**
 
-- `components/ui/MapPreview.tsx` - Leaflet-based map component
+- `components/shared/ui/MapPreview.tsx` - Leaflet-based map component
 
 **API Endpoints:**
 
@@ -270,7 +273,7 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 **Components:**
 
-- `components/ui/MachineStatusWidget.tsx` - Status widget component
+- `components/shared/ui/MachineStatusWidget.tsx` - Status widget component
 
 **API Endpoint:**
 
@@ -278,14 +281,23 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 **Data Flow:**
 
-1. `MobileLayout` component fetches machine stats on mount
-2. Returns `{ totalMachines, onlineMachines, offlineMachines }`
-3. Widget displays counts with color-coded indicators
+
+
+1.  `DashboardMobileLayout` component fetches machine stats via `axios.get` from `GET /api/analytics/machines/stats` within a `useEffect` hook on mount.
+
+2.  Returns `{ totalMachines, onlineMachines, offlineMachines }`.
+
+3.  Widget displays counts with color-coded indicators.
+
+
 
 **Key Functions:**
 
-- Machine stats fetch handled in `MobileLayout.tsx` component's `useEffect`
-- Stats update automatically when component mounts
+
+
+-   Machine stats fetch handled in `DashboardMobileLayout.tsx` component's `useEffect` with local state for `machineStats` and `machineStatsLoading`.
+
+-   Stats update automatically when component mounts.
 
 **Notes:**
 

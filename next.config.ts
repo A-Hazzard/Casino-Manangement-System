@@ -1,19 +1,17 @@
 import type { NextConfig } from 'next';
 import type { Configuration } from 'webpack';
+import withBundleAnalyzer from '@next/bundle-analyzer';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   images: {
     loader: 'default',
   },
-  // Exclude folders from build output
-  // NOTE: Do NOT exclude '.next/**' as it contains Next.js runtime files needed for production
   outputFileTracingExcludes: {
     '*': [
       'scripts/**',
       'backup/**',
       'mongo-migration/**',
-      // Exclude node_modules but keep Next.js dependencies
       'node_modules/**/test/**',
       'node_modules/**/tests/**',
       'node_modules/**/*.test.js',
@@ -131,4 +129,9 @@ const nextConfig: NextConfig = {
   turbopack: {},
 };
 
-export default nextConfig;
+const withAnalyzer = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
+
+export default withAnalyzer(nextConfig);
+

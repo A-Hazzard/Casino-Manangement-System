@@ -41,7 +41,7 @@ Key features include:
 - **URL Pattern:** `/collection-report/report/[reportId]`
 - **Authentication:** Required (ProtectedRoute)
 - **Access Level:** All authenticated users with collection report access
-- **Main Component:** `CollectionReportDetailsPageContent` (`components/collectionReport/details/CollectionReportDetailsPageContent.tsx`)
+- **Main Component:** `CollectionReportDetailsPageContent` (`components/CMS/collectionReport/details/CollectionReportDetailsPageContent.tsx`)
 
 ## Page Sections
 
@@ -137,7 +137,7 @@ Key features include:
 
 **Components Used:**
 
-- `CollectionReportDetailsCollectionsTable` (`components/collectionReport/details/CollectionReportDetailsCollectionsTable.tsx`) - Main table component
+- `CollectionReportDetailsCollectionsTable` (`components/CMS/collectionReport/details/CollectionReportDetailsCollectionsTable.tsx`) - Main table component
 - Search input for filtering machines
 - Sort controls
 - Pagination controls
@@ -199,7 +199,7 @@ Key features include:
 
 **Components Used:**
 
-- `CollectionReportDetailsLocationMetricsTab` (`components/collectionReport/details/CollectionReportDetailsLocationMetricsTab.tsx`) - Location metrics display component
+- `CollectionReportDetailsLocationMetricsTab` (`components/CMS/collectionReport/details/CollectionReportDetailsLocationMetricsTab.tsx`) - Location metrics display component
 
 **API Endpoints:**
 
@@ -236,7 +236,7 @@ Key features include:
 
 **Components Used:**
 
-- `CollectionReportDetailsSasCompareTab` (`components/collectionReport/details/CollectionReportDetailsSasCompareTab.tsx`) - SAS comparison display component
+- `CollectionReportDetailsSasCompareTab` (`components/CMS/collectionReport/details/CollectionReportDetailsSasCompareTab.tsx`) - SAS comparison display component
 
 **API Endpoints:**
 
@@ -276,7 +276,7 @@ Key features include:
 **Components Used:**
 
 - Fix Report button (developer-only, in page header and report summary)
-- `CollectionReportIssueModal` (`components/collectionReport/modals/CollectionReportIssueModal.tsx`) - Issue details modal
+- `CollectionReportIssueModal` (`components/CMS/collectionReport/modals/CollectionReportIssueModal.tsx`) - Issue details modal
 - Fix confirmation dialog
 
 **API Endpoints:**

@@ -1,7 +1,7 @@
 # Analytics API
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** December 29, 2025
+**Last Updated:** January 2025
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -312,52 +312,60 @@ peakHour = MAX(revenue) BY hour
 
 ### What Happens When Trend Data Is Analyzed
 
-1. **Database Operations**:
-   - Queries `meters` collection with time period filters
-   - Groups data by specified period (daily, weekly, monthly)
-   - Calculates trend indicators and percentage changes
-   - Identifies growth patterns and anomalies
+1.  **Database Operations**:
+    *   Queries the `meters` collection with filters for time period, locations, and optionally machine status or game type.
+    *   Uses a flexible aggregation pipeline to group data by different time granularities (minute, hourly, daily, weekly, monthly).
+    *   Calculates key financial metrics for each group.
 
-2. **Trend Analysis Model Fields**:
+2.  **Data Processing**:
+    *   Determines the appropriate time granularity based on the user's request (e.g., 'Today' defaults to hourly, 'Quarterly' can be weekly or monthly).
+    *   Fetches gaming day offsets for each location to ensure time-based queries are accurate.
+    *   Applies currency conversion if the user is an Admin/Developer viewing "All Licensees".
 
-```typescript
-TrendAnalysis {
-  trends: [{
-    date: string;                 // Date of trend data point
-    handle: number;               // Total handle (money in)
-    jackpot: number;              // Jackpot amounts
-    winLoss: number;              // Win/loss amount
-    plays: number;                // Number of plays
-  }];
-  summary: {
-    trend: string;                // Trend direction (increasing, decreasing, stable)
-    percentageChange: number;     // Percentage change from previous period
-    averageValue: number;         // Average value across period
-  };
-}
-```
+3.  **Trend Analysis Model Fields**:
 
-3. **Trend Analysis Formulas**:
+    The primary output format for location trends is `LocationTrendData`, which is structured to be easily consumed by charting libraries.
 
-```javascript
-// Handle Trend Calculation
-handleTrend = Σ(movement.coinIn) BY date
+    ```typescript
+    // Represents a single point in time (e.g., an hour or a day)
+    type LocationTrendData = {
+      day: string; // Date (e.g., "2025-12-29") or Month ("2025-12")
+      time?: string; // Time (e.g., "14:00"), only for hourly/minute granularity
+      // Each location ID becomes a key in the object
+      [locationId: string]:
+        | {
+            handle: number; // Sum of movement.coinIn
+            winLoss: number; // Sum of (coinIn - coinOut)
+            jackpot: number; // Sum of movement.jackpot
+            plays: number; // Sum of movement.gamesPlayed
+            drop: number; // Sum of movement.drop (Money In)
+            totalCancelledCredits: number; // Sum of movement.totalCancelledCredits (Money Out)
+            gross: number; // drop - totalCancelledCredits
+          }
+        | string // For day/time fields
+        | undefined;
+    };
+    ```
 
-// Jackpot Trend Calculation
-jackpotTrend = Σ(movement.jackpot) BY date
+4.  **Trend Analysis Formulas & Aggregation Pipeline**:
 
-// Win/Loss Trend Calculation
-winLossTrend = Σ(movement.coinIn) - Σ(movement.coinOut) BY date
+    The aggregation pipeline is dynamically built based on the requested granularity.
 
-// Plays Trend Calculation
-playsTrend = Σ(movement.gamesPlayed) BY date
+    *   **Matching**: Filters `meters` documents by `readAt` within the correct gaming day range and for the specified `location` IDs.
+    *   **Grouping (`$group`)**:
+        *   The `_id` for the group is constructed dynamically. For hourly, it's `{ day: "YYYY-MM-DD", time: "HH:00", location: "$location" }`. For monthly, it's `{ day: "YYYY-MM", location: "$location" }`.
+        *   Metrics like `handle`, `winLoss`, `jackpot`, `plays`, `drop`, `totalCancelledCredits`, and `gross` are calculated using `$sum` on the corresponding `movement` fields.
+    *   **Sorting**: Results are sorted by day and time to ensure chronological order.
+    *   **Formatting**: The final data is reshaped into the `LocationTrendData` format, where each time slice contains metrics for all requested locations.
 
-// Percentage Change Calculation
-percentageChange = ((currentPeriod - previousPeriod) / previousPeriod) * 100
+5.  **Currency Conversion**:
+    *   If applicable, the system identifies the native currency of each location (based on its licensee or country).
+    *   It converts each metric from its native currency to USD.
+    *   Finally, it converts the USD value to the user's selected `displayCurrency`.
 
-// Trend Direction
-trendDirection = percentageChange > 5 ? "increasing" : percentageChange < -5 ? "decreasing" : "stable"
-```
+6.  **Data Padding/Formatting**:
+    *   For hourly, daily, weekly, and monthly trends, the system fills in any missing time intervals with zero-value data points to ensure a continuous timeline on charts.
+    *   For minute-level granularity, no padding is added; only the minutes with actual data are returned.
 
 ## API Endpoints
 

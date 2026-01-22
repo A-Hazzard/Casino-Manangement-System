@@ -6,4 +6,6 @@ import type {
 export type { CustomDate };
 export type { TimePeriod };
 
-export * from '@/lib/types/movementRequests';
+export * from '@/lib/types/movement';
+export * from './machines';
+

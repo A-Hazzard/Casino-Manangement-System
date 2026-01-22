@@ -1,9 +1,9 @@
 'use client'; // Need client for hooks
 
-import Header from '@/components/layout/Header';
+import Header from '@/components/shared/layout/Header';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { usePathname } from 'next/navigation';
-import NotFoundError from '@/components/ui/errors/NotFoundError';
+import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
 
 export default function CabinetDetailNotFound() {
   const pathname = usePathname();

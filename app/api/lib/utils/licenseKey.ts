@@ -30,3 +30,4 @@ export async function generateUniqueLicenseKey(): Promise<string> {
     .substring(2, 15)}`.toUpperCase();
   return fallbackKey;
 }
+

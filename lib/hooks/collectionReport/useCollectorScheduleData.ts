@@ -6,10 +6,12 @@
 
 'use client';
 
-import { fetchAndFormatCollectorSchedules } from '@/lib/helpers/collectorSchedules';
+import { fetchAndFormatCollectorSchedules } from '@/lib/helpers/collections';
 import type { CollectorSchedule } from '@/lib/types/components';
 import type { LocationSelectItem } from '@/lib/types/location';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+const ITEMS_PER_PAGE = 20;
 
 export function useCollectorScheduleData(
   selectedLicencee: string | null,
@@ -24,6 +26,19 @@ export function useCollectorScheduleData(
   const [collectorSchedules, setCollectorSchedules] = useState<CollectorSchedule[]>([]);
   const [collectors, setCollectors] = useState<string[]>([]);
   const [loadingCollectorSchedules, setLoadingCollectorSchedules] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+
+  // ============================================================================
+  // Computed Values (Pagination)
+  // ============================================================================
+  const totalPages = useMemo(() => {
+    return Math.ceil(collectorSchedules.length / ITEMS_PER_PAGE) || 1;
+  }, [collectorSchedules.length]);
+
+  const paginatedSchedules = useMemo(() => {
+    const skip = currentPage * ITEMS_PER_PAGE;
+    return collectorSchedules.slice(skip, skip + ITEMS_PER_PAGE);
+  }, [collectorSchedules, currentPage]);
 
   // ============================================================================
   // Handlers
@@ -41,6 +56,7 @@ export function useCollectorScheduleData(
 
       setCollectorSchedules(schedules);
       setCollectors(collectorList);
+      setCurrentPage(0); // Reset to page 1 (index 0) when data changes
     } catch (error) {
       console.error('Error fetching collector schedules:', error);
     } finally {
@@ -61,6 +77,13 @@ export function useCollectorScheduleData(
     fetchSchedules();
   }, [fetchSchedules]);
 
+  // Reset to page 1 (index 0) if current page index is beyond valid range
+  useEffect(() => {
+    if (currentPage >= totalPages && totalPages > 0) {
+      setCurrentPage(0);
+    }
+  }, [collectorSchedules.length, currentPage, totalPages]);
+
   return {
     locations,
     collectors,
@@ -72,6 +95,11 @@ export function useCollectorScheduleData(
     onStatusChange: setSelectedStatus,
     onResetFilters,
     collectorSchedules,
+    paginatedSchedules,
     loadingCollectorSchedules,
+    currentPage,
+    totalPages,
+    setCurrentPage,
   };
 }
+

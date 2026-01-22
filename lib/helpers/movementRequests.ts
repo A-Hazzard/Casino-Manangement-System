@@ -12,7 +12,7 @@
  * - Paginates movement requests for display.
  */
 
-import type { MovementRequest } from '@/lib/types/movementRequests';
+import type { MovementRequest } from '@/lib/types/movement';
 import axios from 'axios';
 
 // ============================================================================
@@ -68,3 +68,4 @@ export async function updateMovementRequest(
 export async function deleteMovementRequest(id: string): Promise<void> {
   await axios.delete(`/api/movement-requests/${id}`);
 }
+

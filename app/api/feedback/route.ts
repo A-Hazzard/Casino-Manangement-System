@@ -13,11 +13,11 @@
  */
 
 import { calculateChanges } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { ActivityLog } from '@/app/api/lib/models/activityLog';
 import { FeedbackModel } from '@/app/api/lib/models/feedback';
-import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipDetection';
+import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -948,4 +948,5 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
 

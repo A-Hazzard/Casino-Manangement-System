@@ -11,12 +11,12 @@
  * @module app/api/analytics/machines/stats/route
  */
 
-import { getMachineStatsForAnalytics } from '@/app/api/lib/helpers/analytics';
+import { getMachineStatsForAnalytics } from '@/app/api/lib/helpers/reports/analytics';
 import {
   getUserAccessibleLicenseesFromToken,
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -122,3 +122,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

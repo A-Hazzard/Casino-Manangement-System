@@ -153,8 +153,15 @@ X-RateLimit-Reset: 1640995200
       /* user object */
     },
     "requiresProfileUpdate": true,
-    "invalidProfileFields": ["firstName", "phone"],
-    "profileValidationReasons": ["Missing required fields"]
+    "invalidProfileFields": {
+      "firstName": true,
+      "emailAddress": false,
+      "phone": true
+    },
+    "invalidProfileReasons": {
+      "firstName": "First name is missing.",
+      "phone": "Phone number is invalid."
+    }
   }
 }
 ```
@@ -256,20 +263,28 @@ X-RateLimit-Reset: 1640995200
 {
   "firstName": "John",
   "lastName": "Doe",
+  "username": "johndoe",
+  "email": "johndoe@example.com",
   "phone": "+1234567890",
   "gender": "male",
   "dateOfBirth": "1990-01-01",
   "street": "123 Main St",
   "town": "Anytown",
   "region": "State",
-  "country": "US"
+  "country": "US",
+  "assignedLicensees": ["licensee_id_1", "licensee_id_2"],
+  "assignedLocations": ["location_id_1", "location_id_2"]
 }
 ```
 
 **Parameters:**
 
-- Profile fields vary based on user role and requirements
-- All fields are optional but some may be required for validation
+- Profile fields vary based on user role and requirements.
+- `username` (string, optional) - New username.
+- `email` (string, optional) - New email address.
+- `assignedLicensees` (string[], optional) - Array of licensee IDs the user is assigned to.
+- `assignedLocations` (string[], optional) - Array of location IDs the user is assigned to.
+- All other profile fields (firstName, lastName, etc.) are optional but some may be required for validation.
 
 **Response (Success - 200):**
 
@@ -279,16 +294,19 @@ X-RateLimit-Reset: 1640995200
   "data": {
     "_id": "user_id",
     "emailAddress": "email@example.com",
+    "username": "johndoe",
     "firstName": "John",
     "lastName": "Doe",
-    "phone": "+1234567890"
+    "phone": "+1234567890",
+    "assignedLicensees": ["licensee_id_1", "licensee_id_2"],
+    "assignedLocations": ["location_id_1", "location_id_2"]
   },
   "message": "Profile updated successfully"
 }
 ```
 
 **Used By:** Profile edit forms, validation completion
-**Notes:** Validates required fields, updates user record
+**Notes:** Validates required fields, updates user record. **Important:** Successfully updating a profile (especially roles or assignments) increments the user's `sessionVersion`. This invalidates all active JWT tokens for that user, requiring them to re-login immediately for security and to ensure the session reflects the new permissions.
 
 ## Data Models
 
@@ -303,6 +321,8 @@ interface User {
   emailAddress: string; // User's email address (login credential, unique, indexed)
   assignedLocations?: string[]; // Array of location IDs user has access to
   assignedLicensees?: string[]; // Array of licensee IDs user has access to
+  invalidProfileFields?: { [key: string]: boolean }; // Object indicating invalid profile fields
+  invalidProfileReasons?: { [key: string]: string }; // Object providing reasons for invalid profile fields
   profile?: {
     firstName?: string;
     lastName?: string;
@@ -317,16 +337,15 @@ interface User {
       postalCode?: string;
     };
     identification?: {
-      dateOfBirth?: Date | string;
+      dateOfBirth?: string; // ISO date string
       idType?: string;
       idNumber?: string;
       notes?: string;
     };
-    phoneNumber?: string;
+    phoneNumber?: string; // Top-level phone number
     notes?: string;
   };
-  profilePicture?: string;
-  password: string; // Hashed password (bcrypt)
+  profilePicture?: string; // URL to profile picture
   passwordUpdatedAt?: Date;
   sessionVersion?: number; // Session invalidation version (default: 1)
   loginCount?: number; // Number of successful logins
@@ -348,13 +367,10 @@ interface JWTPayload {
   roles?: string[]; // User's roles array (optional in payload for size optimization)
   assignedLocations?: string[]; // User's assigned locations
   assignedLicensees?: string[]; // User's assigned licensees
+  invalidProfileFields?: { [key: string]: boolean }; // Object indicating invalid profile fields
+  invalidProfileReasons?: { [key: string]: string }; // Object providing reasons for invalid profile fields
   sessionId: string; // Session identifier (user ID)
   sessionVersion?: number; // Session version for invalidation (default: 1)
-  dbContext: {
-    // Database context
-    connectionString: string;
-    timestamp: number;
-  };
   iat?: number; // Issued at timestamp
   exp?: number; // Expiration timestamp
 }
@@ -384,7 +400,14 @@ interface ProfileUpdateRequest {
   town?: string;
   region?: string;
   country?: string;
-  username?: string; // For profile validation
+  username?: string; // Optional: for updating username
+  email?: string; // Optional: for updating email
+  currentPassword?: string; // Optional: required if newPassword is provided
+  newPassword?: string; // Optional: for updating password
+  assignedLicensees?: string[]; // Optional: for updating assigned licensees
+  assignedLocations?: string[]; // Optional: for updating assigned locations
+  profilePicture?: string; // Optional: URL to profile picture
+  isEnabled?: boolean; // Optional: for enabling/disabling user
 }
 ```
 

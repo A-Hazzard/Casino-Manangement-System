@@ -14,7 +14,7 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import Scheduler from '@/app/api/lib/models/scheduler';
-import type { MongoDBQueryValue } from '@/lib/types/mongo';
+import type { MongoDBQueryValue } from '@/lib/types/common';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -80,11 +80,101 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Fetch schedulers from database
+    // STEP 4: Fetch schedulers from database with aggregated names
     // ============================================================================
-    const schedulers = await Scheduler.find(query)
-      .sort({ startTime: -1 })
-      .lean();
+    const schedulers = await Scheduler.aggregate([
+      { $match: query },
+      { $sort: { startTime: -1 } },
+      // Join with GamingLocations for location name
+      {
+        $lookup: {
+          from: 'gaminglocations',
+          localField: 'location',
+          foreignField: '_id',
+          as: 'locationInfo',
+        },
+      },
+      // Join with Users for collector name
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'collector',
+          foreignField: '_id',
+          as: 'collectorInfo',
+        },
+      },
+      // Join with Users for creator (manager) name
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'creator',
+          foreignField: '_id',
+          as: 'creatorInfo',
+        },
+      },
+      // Project fields to include names
+      {
+        $addFields: {
+          locationName: {
+            $ifNull: [{ $arrayElemAt: ['$locationInfo.name', 0] }, '$location'],
+          },
+          collectorName: {
+            $let: {
+              vars: { user: { $arrayElemAt: ['$collectorInfo', 0] } },
+              in: {
+                $cond: {
+                  if: {
+                    $and: [
+                      '$$user.profile.firstName',
+                      '$$user.profile.lastName',
+                    ],
+                  },
+                  then: {
+                    $concat: [
+                      '$$user.profile.firstName',
+                      ' ',
+                      '$$user.profile.lastName',
+                    ],
+                  },
+                  else: { $ifNull: ['$$user.username', '$collector'] },
+                },
+              },
+            },
+          },
+          creatorName: {
+            $let: {
+              vars: { user: { $arrayElemAt: ['$creatorInfo', 0] } },
+              in: {
+                $cond: {
+                  if: {
+                    $and: [
+                      '$$user.profile.firstName',
+                      '$$user.profile.lastName',
+                    ],
+                  },
+                  then: {
+                    $concat: [
+                      '$$user.profile.firstName',
+                      ' ',
+                      '$$user.profile.lastName',
+                    ],
+                  },
+                  else: { $ifNull: ['$$user.username', '$creator'] },
+                },
+              },
+            },
+          },
+        },
+      },
+      // Remove the join detail fields
+      {
+        $project: {
+          locationInfo: 0,
+          collectorInfo: 0,
+          creatorInfo: 0,
+        },
+      },
+    ]);
 
     // ============================================================================
     // STEP 5: Return schedulers list
@@ -106,3 +196,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

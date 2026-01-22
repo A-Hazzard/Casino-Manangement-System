@@ -15,13 +15,13 @@
 'use client';
 
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
-import { getMachineChartData } from '@/lib/helpers/machineChart';
+import { getMachineChartData } from '@/lib/helpers/machines';
 import { useCabinetDetailsData, useSmibConfiguration } from '@/lib/hooks/data';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { dashboardData } from '@/lib/types';
-import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
+import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -63,7 +63,7 @@ export function useCabinetPageData() {
   // ============================================================================
   // Chart State
   // ============================================================================
-  const [chartData, setChartData] = useState<dashboardData[]>([]);
+  const [chartData, setChartData] = useState<dashboardData[] | null>(null);
   const [loadingChart, setLoadingChart] = useState(true);
   const [chartGranularity, setChartGranularity] = useState<
     'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
@@ -99,6 +99,7 @@ export function useCabinetPageData() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // ============================================================================
   // Computed Values
@@ -213,6 +214,8 @@ export function useCabinetPageData() {
     setRefreshing(true);
     try {
       await fetchCabinetDetailsData();
+      // Trigger chart data refetch by incrementing the trigger
+      setRefreshTrigger(prev => prev + 1);
     } finally {
       setRefreshing(false);
     }
@@ -365,6 +368,7 @@ export function useCabinetPageData() {
     effectiveGranularity,
     makeChartRequest,
     chartGranularity,
+    refreshTrigger,
   ]);
 
   // SMIB Config Coordination
@@ -422,3 +426,4 @@ export function useCabinetPageData() {
     onLocationClick: (id: string) => router.push(`/locations/${id}`),
   };
 }
+

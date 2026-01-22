@@ -15,7 +15,7 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { Meters } from '@/app/api/lib/models/meters';
 import type { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
-import type { Db } from 'mongodb';
+// Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -137,7 +137,6 @@ function buildTopPerformerPipeline(
 /**
  * Fetches top performer for a location
  *
- * @param db - Database connection
  * @param locationId - Location ID to filter by
  * @param timePeriod - Time period
  * @param startDateParam - Optional custom start date
@@ -146,7 +145,6 @@ function buildTopPerformerPipeline(
  * @returns Top performer data or null
  */
 async function getTopPerformer(
-  db: Db,
   locationId: string,
   timePeriod: TimePeriod,
   startDateParam?: string | null,
@@ -233,7 +231,6 @@ export async function GET(req: NextRequest) {
     // STEP 3: Fetch top performer data
     // ============================================================================
     const topPerformer = await getTopPerformer(
-      db,
       locationId,
       timePeriod,
       startDateParam,

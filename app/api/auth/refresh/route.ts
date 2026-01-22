@@ -10,7 +10,7 @@
  * @module app/api/auth/refresh/route
  */
 
-import { refreshAccessToken } from '@/app/api/lib/helpers/auth';
+import { refreshAccessToken } from '@/app/api/lib/helpers/auth/auth';
 import { getFriendlyErrorMessage } from '@/lib/utils/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -100,3 +100,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

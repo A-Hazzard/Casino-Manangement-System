@@ -38,7 +38,7 @@ Key features include:
 - **URL Pattern:** `/collection-report`
 - **Authentication:** Required (ProtectedRoute)
 - **Access Level:** All authenticated users (except Technician - redirected to Cabinets)
-- **Main Component:** `CollectionReportPageContent` (`components/collectionReport/CollectionReportPageContent.tsx`)
+- **Main Component:** `CollectionReportPageContent` (`components/CMS/collectionReport/CollectionReportPageContent.tsx`)
 
 ## Page Sections
 
@@ -47,7 +47,7 @@ Key features include:
 **Purpose:** Tab navigation between different collection report views (Collection, Monthly, Collector, Manager).
 
 **Components Used:**
-- `CollectionNavigation` (`components/collectionReport/CollectionNavigation.tsx`) - Tab navigation component
+- `CollectionNavigation` (`components/CMS/collectionReport/CollectionNavigation.tsx`) - Tab navigation component
 - Tab configuration from `COLLECTION_TABS_CONFIG` constant
 
 **Data Flow:**
@@ -135,9 +135,9 @@ Key features include:
 - `GET /api/collectionReport` - Fetch monthly summary data (with `timePeriod` parameter)
 
 **Data Flow:**
-1. Component uses `useMonthlyReportData` hook
-2. Monthly data aggregated by location/licensee
-3. Data displayed in summary format
+1. Component uses `useMonthlyReportData` hook.
+2. Monthly data aggregated by location/licensee, filtered by 'location' and 'date range'.
+3. Data displayed in summary format.
 
 **Key Functions:**
 - `useMonthlyReportData` - Monthly data fetching hook
@@ -162,9 +162,9 @@ Key features include:
 - Collector schedule API endpoints (specific routes)
 
 **Data Flow:**
-1. Component uses `useCollectorScheduleData` hook
-2. Fetches collectors and their schedules
-3. Allows schedule management operations
+1. Component uses `useCollectorScheduleData` hook.
+2. Fetches collectors and their schedules, which can be filtered by 'location', 'status', and 'collector'.
+3. Allows schedule management operations.
 
 **Key Functions:**
 - `useCollectorScheduleData` - Collector schedule data hook
@@ -188,9 +188,9 @@ Key features include:
 - Manager schedule API endpoints (specific routes)
 
 **Data Flow:**
-1. Component uses `useManagerScheduleData` hook
-2. Fetches managers and schedules
-3. Allows schedule oversight operations
+1. Component uses `useManagerScheduleData` hook.
+2. Fetches managers and schedules, which can be filtered by 'location', 'status', and 'collector'.
+3. Allows schedule oversight operations.
 
 **Key Functions:**
 - `useManagerScheduleData` - Manager schedule data hook

@@ -15,8 +15,8 @@ import {
   buildCollectionReportsQuery,
   extractUserPermissions,
   type CollectionReportsQueryParams,
-} from '@/app/api/lib/helpers/collectionReports';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+} from '@/app/api/lib/helpers/collectionReport/reports';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
@@ -125,3 +125,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+

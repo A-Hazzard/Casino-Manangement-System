@@ -32,11 +32,12 @@ Key features include:
 
 ## File Information
 
-- **File:** `app/cabinets/[slug]/page.tsx`
-- **URL Pattern:** `/cabinets/[slug]` where `[slug]` is the machine/cabinet ID
+- **File:** `app/cabinets/[slug]/page.tsx` and `app/machines/[slug]/page.tsx`
+- **URL Pattern:** `/cabinets/[slug]` and `/machines/[slug]` where `[slug]` is the machine/cabinet ID
 - **Authentication:** Required (ProtectedRoute)
 - **Access Level:** All authenticated users (role-based features may vary)
-- **Main Component:** `CabinetsDetailsPageContent` (`components/cabinets/CabinetsDetailsPageContent.tsx`)
+- **Main Component:** `CabinetsDetailsPageContent` (`components/CMS/cabinets/CabinetsDetailsPageContent.tsx`) and `MachineDetailsPageContent` (`components/CMS/machines/MachineDetailsPageContent.tsx`)
+- **Note:** The `/machines/[slug]` route uses `MachineDetailsPageContent`, which is a simplified version that does not include the Chart Section and has limited SMIB management functionality. This documentation primarily covers the full-featured `/cabinets/[slug]` page.
 
 ## Page Sections
 
@@ -46,7 +47,7 @@ Key features include:
 
 **Components Used:**
 
-- `CabinetsDetailsSummarySection` (`components/cabinets/details/CabinetsDetailsSummarySection.tsx`)
+- `CabinetsDetailsSummarySection` (`components/CMS/cabinets/details/CabinetsDetailsSummarySection.tsx`)
 - Status indicators, location information, basic metrics
 
 **API Endpoints:**
@@ -71,50 +72,63 @@ Key features include:
 
 ---
 
-### Accounting Section
+### SMIB Management Section
 
-**Purpose:** Display financial metrics and accounting data for the machine.
+**Purpose:** Manage SMIB (Slot Machine Interface Board) communication and configuration.
 
 **Components Used:**
 
-- `CabinetsDetailsAccountingSection` (`components/cabinets/details/CabinetsDetailsAccountingSection.tsx`)
-- Financial metrics display, calculations
+- `CabinetsDetailsSMIBManagementSection` (`components/CMS/cabinets/details/CabinetsDetailsSMIBManagementSection.tsx`)
+- Configuration forms, status displays
 
 **API Endpoints:**
 
-- `GET /api/cabinets/[cabinetId]/metrics` - Fetch accounting metrics
+- `GET /api/cabinets/[cabinetId]/smib-config` - Fetch SMIB configuration
+- `PUT /api/cabinets/[cabinetId]/smib-config` - Update SMIB configuration
+- `POST /api/cabinets/[cabinetId]/smib-config/test` - Test SMIB connection
 
 **Data Flow:**
 
-1. Fetches financial data including handle, jackpot, points, etc.
-2. Calculates win/loss ratios and financial performance
-3. Displays formatted currency values
+1. Fetches current SMIB configuration
+2. Allows configuration updates
+3. Tests connectivity and communication
+4. Displays real-time status
 
 **Key Functions:**
 
-- `formatCurrency` - Currency formatting
-- Financial calculations and display
+- `fetchSmibConfiguration` - Fetch SMIB config
+- `saveConfiguration` - Save configuration changes
+- Connection testing and validation
+
+**State Management:**
+
+- `smibConfigExpanded` - Section expansion state
+- `mqttConfigData` - MQTT configuration data
+- `isConnectedToMqtt` - Connection status
+- `formData` - Configuration form data
+- `isEditMode` - Edit mode toggle
 
 **Notes:**
 
-- Shows handle, jackpot, cancelled credits, points
-- Calculates win/loss percentages
-- Real-time financial tracking
+- Supports MQTT communication configuration
+- Real-time connection status monitoring
+- Configuration validation and error handling
+- Expandable/collapsible section
 
 ---
 
 ### Chart Section
 
-**Purpose:** Display performance charts and historical data visualization.
+**Purpose:** Display performance charts and trends for the machine.
 
 **Components Used:**
 
-- `CabinetsDetailsChartSection` (`components/cabinets/details/CabinetsDetailsChartSection.tsx`)
-- Chart components, date filters
+- `CabinetsDetailsChartSection` (`components/CMS/cabinets/details/CabinetsDetailsChartSection.tsx`)
+- Chart visualization components
 
 **API Endpoints:**
 
-- `GET /api/cabinets/[cabinetId]/chart` - Fetch chart data
+- `GET /api/machines/[machineId]/chart` - Fetch chart data
 
 **Data Flow:**
 
@@ -132,6 +146,62 @@ Key features include:
 - Shows performance trends over time
 - Supports various time periods (Today, Yesterday, Last 7 days, etc.)
 - Interactive chart visualization
+- **Granularity Options**: Supports 'Minute', 'Hourly', 'Daily', 'Weekly', and 'Monthly' granularities. A selector is available to switch between these options.
+
+---
+
+### Accounting Section
+
+**Purpose:** Display financial metrics and accounting data with tabbed interface for different data views.
+
+**Components Used:**
+
+- `CabinetsDetailsAccountingSection` (`components/CMS/cabinets/details/CabinetsDetailsAccountingSection.tsx`)
+- `CabinetsDetailsAccountingDetails` (`components/CMS/cabinets/details/CabinetsDetailsAccountingDetails.tsx`)
+- Tab navigation and content display
+
+**Tabs:**
+
+- **Range Metrics**: Financial metrics display (money in, money out, gross, jackpot, cancelled credits)
+- **Live Metrics**: Real-time metrics monitoring
+- **Bill Validator**: Bill validator data with time period filtering
+- **Activity Log**: Activity logs and event history
+- **Collection History**: Collection history table
+- **Collection Settings**: Editable settings for the machine's collection parameters.
+
+**Collection Settings Tab:**
+- **Purpose**: Manage the machine's specific collection parameters.
+- **Features**: Allows editing 'Last Meters In', 'Last Meters Out', 'Last Collection Time', and 'Collector Denomination'.
+- **API Endpoint**: `PATCH /api/cabinets/[cabinetId]` to update the machine's collection settings.
+- **Notes**: Updates `collectionMeters.metersIn`, `collectionMeters.metersOut`, `collectionTime`, and `collectorDenomination` fields.
+
+**API Endpoints:**
+
+- `GET /api/cabinets/[cabinetId]/metrics` - Fetch accounting metrics
+- `GET /api/cabinets/[cabinetId]/activity` - Fetch activity logs
+- `GET /api/collections?machineId=[machineId]` - Fetch collection history
+
+**Data Flow:**
+
+1. Fetches financial data including handle, jackpot, points, etc.
+2. Calculates win/loss ratios and financial performance
+3. Displays formatted currency values
+4. Loads tab-specific data on demand
+
+**Key Functions:**
+
+- `formatCurrency` - Currency formatting
+- Financial calculations and display
+- Tab navigation and content switching
+
+**Notes:**
+
+- Shows handle, jackpot, cancelled credits, points
+- Tabbed interface for different data views
+- Date filtering applies to all tabs
+- Calculates win/loss percentages
+- Real-time financial tracking
+
 
 ---
 
@@ -141,7 +211,7 @@ Key features include:
 
 **Components Used:**
 
-- `CabinetsDetailsSMIBManagementSection` (`components/cabinets/details/CabinetsDetailsSMIBManagementSection.tsx`)
+- `CabinetsDetailsSMIBManagementSection` (`components/CMS/cabinets/details/CabinetsDetailsSMIBManagementSection.tsx`)
 - Configuration forms, status displays
 
 **API Endpoints:**
@@ -186,29 +256,28 @@ Key features include:
 
 **Components Used:**
 
-- Collection history table, collection settings forms
+- `CabinetsDetailsCollectionHistoryTable` (`components/CMS/cabinets/details/CabinetsDetailsCollectionHistoryTable.tsx`)
+- Collection history display
 
 **API Endpoints:**
 
 - `GET /api/collections?machineId=[machineId]` - Fetch collection history
-- `GET /api/collection-settings/[machineId]` - Fetch collection settings
 
 **Data Flow:**
 
-1. Fetches historical collection data
+1. Fetches historical collection data from machine's embedded collectionMetersHistory
 2. Displays collection records with dates, amounts, collectors
-3. Shows collection settings and configurations
+3. Shows meter readings and variance calculations
 
 **Key Functions:**
 
 - Collection history retrieval and display
-- Settings management
 
 **Notes:**
 
-- Shows past collections with financial data
-- Includes collection settings management
-- Historical tracking for auditing
+- Historical collection tracking from embedded machine data
+- Meter reading comparisons
+- Variance analysis
 
 ---
 
@@ -218,28 +287,25 @@ Key features include:
 
 **Components Used:**
 
-- Activity log table, event filters
-
-**API Endpoints:**
-
-- `GET /api/cabinets/[cabinetId]/activity` - Fetch activity logs
+- `CabinetsDetailsActivityLogTable` (`components/CMS/cabinets/details/CabinetsDetailsActivityLogTable.tsx`)
+- Activity log display with date filtering
 
 **Data Flow:**
 
-1. Fetches machine events and activities
-2. Filters events by type and date
-3. Displays chronological activity log
+1. Fetches activity log data
+2. Filters events by date range
+3. Displays chronological event history
 
 **Key Functions:**
 
 - Activity log fetching and filtering
-- Event type categorization
+- Date-based filtering
 
 **Notes:**
 
-- Shows machine events, commands, and activities
-- Timestamp-based chronological display
-- Event type filtering (errors, status changes, etc.)
+- System event tracking
+- Date-based filtering
+- Event categorization
 
 ---
 

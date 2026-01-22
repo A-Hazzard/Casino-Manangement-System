@@ -16,10 +16,10 @@
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
-  getUserLocationFilter,
+    getUserAccessibleLicenseesFromToken,
+    getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
@@ -65,7 +65,19 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
 
     // Get parameters from search params
-    const locationId = searchParams.get('locationId');
+    const locationIdsParam = searchParams.get('locationId') || searchParams.get('locationIds');
+    const locationIdArray = locationIdsParam 
+      ? locationIdsParam.split(',').filter(id => id && id !== 'all' && id !== 'null') 
+      : [];
+    
+    console.warn('[API] Parsed location IDs:', locationIdArray);
+    
+    // Support multiple game types
+    const gameTypesParam = searchParams.get('gameType') || searchParams.get('gameTypes');
+    const selectedGameTypes = gameTypesParam 
+      ? gameTypesParam.split(',').filter(type => type && type !== 'all' && type !== 'null') 
+      : [];
+
     const searchTerm = searchParams.get('search')?.trim() || '';
     // Support both 'licensee' and 'licencee' spelling for backwards compatibility
     const licensee =
@@ -73,6 +85,8 @@ export async function GET(req: NextRequest) {
     const timePeriod = searchParams.get('timePeriod');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
+    const rawOnlineStatus = searchParams.get('onlineStatus') || 'all';
+    const onlineStatus = rawOnlineStatus.toLowerCase();
 
     // Pagination parameters
     const pageParam = searchParams.get('page');
@@ -200,18 +214,20 @@ export async function GET(req: NextRequest) {
     };
 
     // Apply location filter based on user permissions
-    if (locationId) {
-      // Specific location requested - validate access
-      // Convert locationId to string for comparison
-      const locationIdStr = String(locationId);
-      if (
-        allowedLocationIds !== 'all' &&
-        !allowedLocationIds.some(id => String(id) === locationIdStr)
-      ) {
+    if (locationIdArray.length > 0) {
+      // Specific locations requested - validate access
+      const filteredLocationIds = locationIdArray.filter(locId => {
+        const idStr = String(locId);
+        return allowedLocationIds === 'all' || allowedLocationIds.some(id => String(id) === idStr);
+      });
+
+      if (filteredLocationIds.length === 0) {
+        console.warn('[API] No locations after permission filtering');
         return NextResponse.json({ success: true, data: [] });
       }
-      // Support both string and ObjectId matching
-      matchStage._id = { $in: [locationId, locationIdStr] };
+      
+      console.warn('[API] Filtered location IDs after permissions:', filteredLocationIds);
+      matchStage._id = { $in: filteredLocationIds };
     } else if (allowedLocationIds !== 'all') {
       // Apply allowed locations filter
       matchStage._id = { $in: allowedLocationIds };
@@ -219,8 +235,11 @@ export async function GET(req: NextRequest) {
 
     // Get all locations with their gameDayOffset
     const locations = await GamingLocations.find(matchStage).lean();
+    
+    console.warn('[API] Found locations:', locations.length, 'IDs:', locations.map(l => l._id));
 
     if (locations.length === 0) {
+      console.warn('[API] No locations found in database');
       return NextResponse.json({ success: true, data: [] });
     }
 
@@ -253,13 +272,75 @@ export async function GET(req: NextRequest) {
       const allLocationIds = locations.map(loc =>
         (loc._id as { toString: () => string }).toString()
       );
-      const allLocationMachines = await Machine.find({
+      
+      // Build machine match query with online/offline filter
+      const machineMatchQuery: Record<string, unknown> = {
         gamingLocation: { $in: allLocationIds },
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2025-01-01') } },
+        $and: [
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ],
+          },
         ],
-      }).lean();
+      };
+
+      // Apply game type filter if provided
+      if (selectedGameTypes.length > 0) {
+        console.warn(`[API] Filtering by game types: ${selectedGameTypes.join(', ')}`);
+        (machineMatchQuery.$and as Array<Record<string, unknown>>).push({
+          $or: [
+            { game: { $in: selectedGameTypes } },
+            {
+              $and: [
+                { $or: [{ game: null }, { game: '' }] },
+                { gameType: { $in: selectedGameTypes } }
+              ]
+            }
+          ]
+        });
+      }
+      
+      // Apply online/offline status filter at database level
+      if (onlineStatus !== 'all') {
+        const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+        if (onlineStatus === 'online') {
+          machineMatchQuery.lastActivity = { $gte: threeMinutesAgo };
+        } else if (onlineStatus === 'offline') {
+          const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
+          andArray.push({
+            $or: [
+              { lastActivity: { $lt: threeMinutesAgo } },
+              { lastActivity: { $exists: false } },
+            ],
+          });
+        }
+      }
+      
+      const allLocationMachines = await Machine.find(machineMatchQuery).lean();
+      
+      console.warn('[API] Found machines:', allLocationMachines.length, 'for locations:', allLocationIds);
+      if (allLocationMachines.length > 0) {
+        const locationCounts = allLocationMachines.reduce((acc, m) => {
+          const loc = String(m.gamingLocation);
+          acc[loc] = (acc[loc] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        console.warn('[API] Machines per location:', locationCounts);
+      }
+
+      if (onlineStatus !== 'all') {
+        console.warn('🔍 [API DEBUG] Filtering by onlineStatus:', onlineStatus);
+        console.warn('🔍 [API DEBUG] threeMinutesAgo:', new Date(Date.now() - 3 * 60 * 1000).toISOString());
+        console.warn('🔍 [API DEBUG] Query lastActivity constraint:', JSON.stringify(machineMatchQuery.lastActivity));
+        console.warn('🔍 [API DEBUG] Found machines count:', allLocationMachines.length);
+        if (allLocationMachines.length > 0) {
+           const firstMachine = allLocationMachines[0];
+           console.warn('🔍 [API DEBUG] First machine lastActivity:', firstMachine.lastActivity);
+           console.warn('🔍 [API DEBUG] Is valid?', new Date(firstMachine.lastActivity as Date) >= new Date(Date.now() - 3 * 60 * 1000));
+        }
+      }
 
       if (allLocationMachines.length > 0) {
         // Create machine-to-location map
@@ -416,8 +497,8 @@ export async function GET(req: NextRequest) {
             locationName: (location.name as string) || '(No Location)',
             assetNumber: finalSerialNumber,
             serialNumber: finalSerialNumber,
-            game: machine.game || '',
-            installedGame: machine.game || '',
+            game: String(machine.game || machine.gameType || ''),
+            installedGame: String(machine.game || machine.gameType || ''),
             denomination: machine.denomination || '',
             manufacturer: machine.manufacturer || '',
             model: machine.model || '',
@@ -471,13 +552,52 @@ export async function GET(req: NextRequest) {
         if (batchLocationIds.length === 0) continue;
 
         // Step 2: Get ALL machines for ALL locations in batch (1 query)
-        const batchAllMachines = await Machine.find({
+        // Build machine match query with online/offline filter
+        const batchMachineMatchQuery: Record<string, unknown> = {
           gamingLocation: { $in: batchLocationIds },
+          $and: [
+            {
               $or: [
                 { deletedAt: null },
                 { deletedAt: { $lt: new Date('2025-01-01') } },
               ],
-            }).lean();
+            },
+          ],
+        };
+
+        // Apply game type filter if provided
+        if (selectedGameTypes.length > 0) {
+          console.warn(`[API Batch] Filtering by game types: ${selectedGameTypes.join(', ')}`);
+          (batchMachineMatchQuery.$and as Array<Record<string, unknown>>).push({
+            $or: [
+              { game: { $in: selectedGameTypes } },
+              {
+                $and: [
+                  { $or: [{ game: null }, { game: '' }] },
+                  { gameType: { $in: selectedGameTypes } }
+                ]
+              }
+            ]
+          });
+        }
+        
+        // Apply online/offline status filter at database level
+        if (onlineStatus !== 'all') {
+          const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+          if (onlineStatus === 'online') {
+            batchMachineMatchQuery.lastActivity = { $gte: threeMinutesAgo };
+          } else if (onlineStatus === 'offline') {
+            const andArray = batchMachineMatchQuery.$and as Array<Record<string, unknown>>;
+            andArray.push({
+              $or: [
+                { lastActivity: { $lt: threeMinutesAgo } },
+                { lastActivity: { $exists: false } },
+              ],
+            });
+          }
+        }
+        
+        const batchAllMachines = await Machine.find(batchMachineMatchQuery).lean();
 
         if (batchAllMachines.length === 0) continue;
 
@@ -701,8 +821,8 @@ export async function GET(req: NextRequest) {
                 serialNumber: finalSerialNumber,
                 smbId: machine.relayId || '',
                 relayId: machine.relayId || '',
-                installedGame: machine.game || '',
-                game: machine.game || '',
+                installedGame: String(machine.game || machine.gameType || ''),
+                game: String(machine.game || machine.gameType || ''),
                 manufacturer:
                 machine.manufacturer || machine.manuf || 'Unknown Manufacturer',
                 status: machine.assetStatus || '',
@@ -937,7 +1057,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 11: Apply pagination
     // ============================================================================
-    interface DebugInfo {
+    type DebugInfo = {
       userAccessibleLicensees: string[] | 'all';
       userRoles: string[];
       userLocationPermissions: string[];
@@ -959,7 +1079,7 @@ export async function GET(req: NextRequest) {
       paginatedMachines = filteredMachines.slice(skip, skip + limit);
     }
 
-    interface ApiResponse {
+    type ApiResponse = {
       success: boolean;
       data: typeof paginatedMachines;
       pagination?: {
@@ -1031,3 +1151,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

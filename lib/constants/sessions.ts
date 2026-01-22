@@ -13,19 +13,4 @@ export const SESSION_SORT_OPTIONS = [
   { value: 'totalHandle', label: 'Handle' },
 ] as const;
 
-
-/**
- * Animation variants for sessions components
- */
-export const SESSIONS_ANIMATIONS = {
-  pageVariants: {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -20 },
-  },
-  cardVariants: {
-    initial: { opacity: 0, scale: 0.95 },
-    animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.95 },
-  },
-} as const;
+// SESSIONS_ANIMATIONS was removed - not used anywhere in the codebase

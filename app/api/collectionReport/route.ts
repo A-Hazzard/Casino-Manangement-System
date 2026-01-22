@@ -12,24 +12,24 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-  createCollectionReport,
-  sanitizeCollectionReportPayload,
-  validateCollectionReportPayload,
-} from '@/app/api/lib/helpers/collectionReportCreation';
+    calculateDateRangeForTimePeriod,
+    determineAllowedLocationIds,
+    fetchLocationsWithMachines,
+    getLocationNamesFromIds,
+    getMonthlyCollectionReportByLocation,
+    getMonthlyCollectionReportSummary,
+} from '@/app/api/lib/helpers/collectionReport/queries';
 import {
-  calculateDateRangeForTimePeriod,
-  determineAllowedLocationIds,
-  fetchLocationsWithMachines,
-  getLocationNamesFromIds,
-  getMonthlyCollectionReportByLocation,
-  getMonthlyCollectionReportSummary,
-} from '@/app/api/lib/helpers/collectionReportQueries';
-import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReportService';
+    createCollectionReport,
+    sanitizeCollectionReportPayload,
+    validateCollectionReportPayload,
+} from '@/app/api/lib/helpers/collectionReport/reportCreation';
+import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReport/service';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
-import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
+import { getLicenseeObjectId } from '@/lib/utils/licensee';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../lib/helpers/users';
 
@@ -101,6 +101,9 @@ export async function GET(req: NextRequest) {
     const startDateStr = searchParams.get('startDate');
     const endDateStr = searchParams.get('endDate');
     const locationName = searchParams.get('locationName') || undefined;
+    const locationId = searchParams.get('locationId') || undefined;
+    const locationIds = searchParams.get('locationIds')?.split(',') || undefined;
+    
     const rawLicenceeParam =
       searchParams.get('licensee') || searchParams.get('licencee') || undefined;
     const licencee =
@@ -112,13 +115,13 @@ export async function GET(req: NextRequest) {
       const summary = await getMonthlyCollectionReportSummary(
         new Date(startDateStr),
         new Date(endDateStr),
-        locationName,
+        locationName || (locationIds || (locationId ? [locationId] : undefined)),
         licencee
       );
       const details = await getMonthlyCollectionReportByLocation(
         new Date(startDateStr),
         new Date(endDateStr),
-        locationName,
+        locationName || (locationIds || (locationId ? [locationId] : undefined)),
         licencee
       );
       return NextResponse.json({ summary, details });
@@ -341,7 +344,9 @@ export async function POST(req: NextRequest) {
           },
         ];
 
-        const userId = currentUser._id as string | undefined;
+        const userId = (currentUser._id ||
+          currentUser.id ||
+          currentUser.sub) as string | undefined;
         const username =
           (currentUser.emailAddress as string | undefined) ||
           (currentUser.username as string | undefined);
@@ -358,10 +363,12 @@ export async function POST(req: NextRequest) {
           userId,
           username,
           metadata: {
-            userId: currentUser._id as string,
+            userId: (currentUser._id ||
+              currentUser.id ||
+              currentUser.sub) as string,
             userEmail: currentUser.emailAddress as string,
             userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'collection',
+            resource: 'collection-report',
             resourceId: result.report
               ? String(result.report._id)
               : sanitizedBody.locationReportId,
@@ -396,3 +403,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

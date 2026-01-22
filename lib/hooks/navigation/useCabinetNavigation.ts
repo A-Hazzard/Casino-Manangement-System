@@ -3,12 +3,12 @@
  * Handles section changes, URL synchronization, and navigation state
  */
 
-import type { CabinetSection } from '@/lib/constants/cabinets';
+import type { CabinetSection } from '@/lib/constants';
 import {
     getActiveSectionFromURL,
     handleSectionChange as handleSectionChangeHelper,
-} from '@/lib/helpers/cabinetsPage';
-import type { UseCabinetNavigationReturn } from '@/lib/types/cabinets';
+} from '@/lib/helpers/cabinets';
+import type { UseCabinetNavigationReturn } from '@/lib/types/cabinet';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -61,3 +61,4 @@ export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
     handleSectionChange,
   };
 };
+

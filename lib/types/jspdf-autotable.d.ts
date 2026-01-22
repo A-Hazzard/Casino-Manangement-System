@@ -8,7 +8,8 @@
 import 'jspdf-autotable';
 
 declare module 'jspdf' {
-  interface jsPDF {
+  type jsPDF = {
     autoTable: (...args: unknown[]) => jsPDF;
   }
 }
+

@@ -7,8 +7,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { filterCollectionReports } from '@/lib/helpers/collectionReportPageV2';
-import type { CollectionReportRow } from '@/lib/types/componentProps';
+import { filterCollectionReports } from '@/lib/helpers/collectionReport';
+import type { CollectionReportRow } from '@/lib/types/components';
 import type { LocationSelectItem } from '@/lib/types/location';
 
 export function useCollectionReportFilters(
@@ -103,5 +103,6 @@ export function useCollectionReportFilters(
     clearFilters,
   };
 }
+
 
 

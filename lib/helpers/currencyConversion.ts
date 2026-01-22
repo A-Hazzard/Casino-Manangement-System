@@ -21,3 +21,4 @@ export function shouldApplyCurrencyConversion(
 ): boolean {
   return shouldApplyConversion(licensee);
 }
+

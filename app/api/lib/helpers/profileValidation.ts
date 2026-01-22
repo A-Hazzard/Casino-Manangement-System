@@ -1,16 +1,15 @@
 import {
   containsEmailPattern,
   containsPhonePattern,
+  isPlaceholderEmail,
   normalizePhoneNumber,
   validateEmail,
   validateNameField,
+  validateOptionalGender,
   validatePasswordStrength,
   validatePhoneNumber,
-  isValidDateInput,
   validateProfileField,
-  validateOptionalGender,
-  validateUsername,
-  isPlaceholderEmail,
+  validateUsername
 } from '@/lib/utils/validation';
 
 type NullableString = string | undefined | null;
@@ -84,25 +83,7 @@ function extractPhone(profile?: ProfileLike['profile']): string {
   return phone ? phone.toString() : '';
 }
 
-function extractDateOfBirth(
-  identification?: { dateOfBirth?: Date | string | null }
-): string {
-  const value = identification?.dateOfBirth;
-  if (!value) return '';
 
-  const date =
-    value instanceof Date
-      ? value
-      : typeof value === 'string'
-        ? new Date(value)
-        : null;
-
-  if (!date || Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  return date.toISOString().split('T')[0];
-}
 
 type ValidationOptions = {
   rawPassword?: string;
@@ -134,7 +115,7 @@ export function getInvalidProfileFields(
   const gender = normalizeNullable(user.profile?.gender)?.toLowerCase();
   const emailAddress = normalizeNullable(user.emailAddress);
   const phone = extractPhone(user.profile);
-  const dateOfBirth = extractDateOfBirth(user.profile?.identification);
+  // const dateOfBirth = extractDateOfBirth(user.profile?.identification); // Removed
 
   const normalizedPhone = normalizePhoneNumber(phone || '');
 
@@ -215,6 +196,8 @@ export function getInvalidProfileFields(
     reasons.gender = 'Select a valid gender option.';
   }
 
+  // Date of birth validation removed as it's no longer required
+  /*
   if (!dateOfBirth || !isValidDateInput(dateOfBirth)) {
     invalidFields.dateOfBirth = true;
     reasons.dateOfBirth = !dateOfBirth
@@ -227,6 +210,7 @@ export function getInvalidProfileFields(
       reasons.dateOfBirth = 'Date of birth cannot be in the future.';
     }
   }
+  */
 
   if (
     !validateEmail(emailAddress) ||
@@ -321,4 +305,5 @@ export function hasInvalidProfileFields(
   if (!fields) return false;
   return Object.values(fields).some(Boolean);
 }
+
 

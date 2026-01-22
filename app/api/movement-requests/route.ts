@@ -11,7 +11,7 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { MovementRequest } from '@/app/api/lib/models/movementrequests';
@@ -276,3 +276,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

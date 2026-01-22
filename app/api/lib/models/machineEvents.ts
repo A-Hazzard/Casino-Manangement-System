@@ -67,3 +67,4 @@ machineEventSchema.index({ date: -1 }); // For date-based queries
  */
 export const MachineEvent =
   models.machineevents || model('machineevents', machineEventSchema);
+

@@ -179,3 +179,4 @@ memberSchema.index({ deletedAt: 1 });
  * Mongoose model for members, including profile information, account details, and gaming data.
  */
 export const Member = models.Member || model('Member', memberSchema, 'members');
+

@@ -16,8 +16,8 @@ import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type { dashboardData } from '@/lib/types';
 import { dateRange as DateRange } from '@/lib/types';
-import { getDefaultChartGranularity } from '@/lib/utils/chartGranularity';
-import { isAbortError } from '@/lib/utils/errorHandling';
+import { getDefaultChartGranularity } from '@/lib/utils/chart';
+import { isAbortError } from '@/lib/utils/errors';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { TimePeriod } from '@/shared/types/common';
 import axios from 'axios';
@@ -29,6 +29,8 @@ type UseLocationChartDataProps = {
   activeMetricsFilter: TimePeriod | null;
   customDateRange: DateRange | null;
   activeView: 'machines' | 'members';
+  status?: 'All' | 'Online' | 'Offline';
+  gameType?: string;
 };
 
 export function useLocationChartData({
@@ -37,6 +39,8 @@ export function useLocationChartData({
   activeMetricsFilter,
   customDateRange,
   activeView,
+  status,
+  gameType,
 }: UseLocationChartDataProps) {
   const { displayCurrency } = useCurrencyFormat();
   const makeChartRequest = useAbortableRequest();
@@ -44,7 +48,7 @@ export function useLocationChartData({
   // ============================================================================
   // State Management
   // ============================================================================
-  const [chartData, setChartData] = useState<dashboardData[]>([]);
+  const [chartData, setChartData] = useState<dashboardData[] | null>(null);
   const [loadingChartData, setLoadingChartData] = useState(true);
   const [chartGranularity, setChartGranularity] = useState<
     'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
@@ -289,6 +293,8 @@ export function useLocationChartData({
       customDateRange,
       displayCurrency,
       refreshTrigger,
+      status,
+      gameType,
       // Include granularity when it affects the data (short periods or monthly/weekly for long periods)
       ...(shouldIncludeInFetchKey ? { chartGranularity } : {}),
     });
@@ -314,6 +320,10 @@ export function useLocationChartData({
             ? chartGranularity
             : undefined;
 
+        // Ensure we default to daily if granularity is not specifically determined
+        // This prevents 400 errors for queries where the backend expects a granularity
+        const effectiveGranularity = granularity || 'daily';
+
         // Always use location-trends API (server-side aggregation) for all time periods
         // This replaces the previous client-side aggregation of individual machine charts
         const params: Record<string, string> = {
@@ -327,6 +337,16 @@ export function useLocationChartData({
 
         if (displayCurrency) {
           params.currency = displayCurrency;
+        }
+
+        // Add status filter
+        if (status && status !== 'All') {
+          params.status = status.toLowerCase();
+        }
+
+        // Add game type filter
+        if (gameType && gameType !== 'all') {
+          params.gameType = gameType;
         }
 
         // Add custom date range params only for Custom period
@@ -349,7 +369,9 @@ export function useLocationChartData({
         }
 
         // Always pass granularity if it's defined (calculated earlier based on period length)
-        if (granularity) {
+        if (effectiveGranularity) {
+          params.granularity = effectiveGranularity;
+        } else if (granularity) {
           params.granularity = granularity;
         }
 
@@ -372,6 +394,7 @@ export function useLocationChartData({
                   jackpot: number;
                   plays: number;
                   drop: number;
+                  totalCancelledCredits: number;
                   gross: number;
                 }
               | string
@@ -394,7 +417,7 @@ export function useLocationChartData({
               day: item.day,
               time: item.time,
               moneyIn: locationData.drop || 0,
-              moneyOut: locationData.handle || 0,
+              moneyOut: locationData.totalCancelledCredits || 0,
               gross: locationData.gross || 0,
             };
           }
@@ -506,6 +529,8 @@ export function useLocationChartData({
     activeView,
     makeChartRequest,
     refreshTrigger, // Include refreshTrigger in dependencies to trigger refetch when refresh button is clicked
+    status,
+    gameType,
   ]);
 
   // Note: When user manually changes granularity, the setChartGranularity function
@@ -542,3 +567,4 @@ export function useLocationChartData({
     refreshChart, // Expose refresh function
   };
 }
+

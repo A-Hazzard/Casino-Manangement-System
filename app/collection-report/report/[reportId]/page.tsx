@@ -7,8 +7,8 @@
  * @module app/collection-report/report/[reportId]/page
  */
 
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import CollectionReportDetailsPageContent from '@/components/collectionReport/details/CollectionReportDetailsPageContent';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
+import CollectionReportDetailsPageContent from '@/components/CMS/collectionReport/details/CollectionReportDetailsPageContent';
 
 export default function LocationReportDetailPage() {
   return (

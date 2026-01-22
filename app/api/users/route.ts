@@ -21,7 +21,7 @@ import {
   getDeletedUsers,
   getUserFromServer,
   updateUser as updateUserHelper,
-} from '@/app/api/lib/helpers/users';
+} from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { apiLogger } from '@/app/api/lib/utils/logger';
 import { validateEmail } from '@/app/api/lib/utils/validation';
@@ -759,3 +759,4 @@ export async function DELETE(request: NextRequest): Promise<Response> {
     );
   }
 }
+

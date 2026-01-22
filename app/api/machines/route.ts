@@ -16,7 +16,7 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -25,6 +25,7 @@ import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import type { GamingMachine } from '@/shared/types/entities';
+import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 // TODO: Move these to shared types or create new ones
@@ -788,6 +789,8 @@ export async function POST(request: NextRequest) {
           details: `Created new machine "${data.serialNumber}" with game "${data.game}"`,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
@@ -806,21 +809,48 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 10: Return created machine
     // ============================================================================
+    // Force revalidation of the cabinets and machines pages
+    revalidatePath('/cabinets');
+    revalidatePath('/machines');
+
     return NextResponse.json({
       success: true,
       data: convertResponseToTrinidadTime(newMachine),
     });
-  } catch (error) {
+  } catch (error: any) {
     const duration = Date.now() - startTime;
-    const errorMessage =
+    let errorMessage =
       error instanceof Error ? error.message : 'Failed to create new machine';
+    let status = 500;
+
+    // Handle MongoDB duplicate key error (code 11000)
+    if (error && typeof error === 'object' && error.code === 11000) {
+      let fieldName = 'field';
+      if (error.keyPattern) {
+        fieldName = Object.keys(error.keyPattern)[0];
+      } else if (error.message && error.message.includes('index:')) {
+        const match = error.message.match(/index: (.+?)_\d/);
+        if (match && match[1]) fieldName = match[1];
+      }
+
+      const friendlyFieldMap: Record<string, string> = {
+        serialNumber: 'Serial Number',
+        assetNumber: 'Asset Number',
+        relayId: 'Relay ID',
+      };
+
+      const displayField = friendlyFieldMap[fieldName] || fieldName;
+      errorMessage = `A machine with this ${displayField} already exists. Please use a unique value.`;
+      status = 400;
+    }
+
     console.error(
       `[Machines API POST] Error after ${duration}ms:`,
       errorMessage
     );
     return NextResponse.json(
       { success: false, error: errorMessage },
-      { status: 500 }
+      { status }
     );
   }
 }
@@ -1046,6 +1076,8 @@ export async function PUT(request: NextRequest) {
           details: `Updated machine "${originalMachine.serialNumber}" (${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''})`,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
@@ -1064,21 +1096,48 @@ export async function PUT(request: NextRequest) {
     // ============================================================================
     // STEP 9: Return updated machine
     // ============================================================================
+    // Force revalidation of the cabinets and machines pages
+    revalidatePath('/cabinets');
+    revalidatePath('/machines');
+
     return NextResponse.json({
       success: true,
       data: convertResponseToTrinidadTime(updatedMachine),
     });
-  } catch (error) {
+  } catch (error: any) {
     const duration = Date.now() - startTime;
-    const errorMessage =
+    let errorMessage =
       error instanceof Error ? error.message : 'Failed to update machine';
+    let status = 500;
+
+    // Handle MongoDB duplicate key error (code 11000)
+    if (error && typeof error === 'object' && error.code === 11000) {
+      let fieldName = 'field';
+      if (error.keyPattern) {
+        fieldName = Object.keys(error.keyPattern)[0];
+      } else if (error.message && error.message.includes('index:')) {
+        const match = error.message.match(/index: (.+?)_\d/);
+        if (match && match[1]) fieldName = match[1];
+      }
+
+      const friendlyFieldMap: Record<string, string> = {
+        serialNumber: 'Serial Number',
+        assetNumber: 'Asset Number',
+        relayId: 'Relay ID',
+      };
+
+      const displayField = friendlyFieldMap[fieldName] || fieldName;
+      errorMessage = `A machine with this ${displayField} already exists. Please use a unique value.`;
+      status = 400;
+    }
+
     console.error(
       `[Machines API PUT] Error after ${duration}ms:`,
       errorMessage
     );
     return NextResponse.json(
       { success: false, error: errorMessage },
-      { status: 500 }
+      { status }
     );
   }
 }
@@ -1230,6 +1289,8 @@ export async function DELETE(request: NextRequest) {
           }"`,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
@@ -1248,6 +1309,10 @@ export async function DELETE(request: NextRequest) {
     // ============================================================================
     // STEP 6: Return deletion result
     // ============================================================================
+    // Force revalidation of the cabinets and machines pages
+    revalidatePath('/cabinets');
+    revalidatePath('/machines');
+
     return NextResponse.json({
       success: true,
       message: 'Cabinet deleted successfully',
@@ -1266,3 +1331,4 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+

@@ -13,7 +13,7 @@
  * @module app/api/analytics/machine-hourly/route
  */
 
-import { getMachineHourlyData } from '@/app/api/lib/helpers/machineHourly';
+import { getMachineHourlyData } from '@/app/api/lib/helpers/trends/machineHourly';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { TimePeriod } from '@/shared/types';
@@ -68,7 +68,6 @@ export async function GET(req: NextRequest) {
     // STEP 3: Execute the core machine hourly fetching logic via helper
     // ============================================================================
     const machineHourlyData = await getMachineHourlyData(
-      db,
       locationIds,
       machineIds,
       timePeriod,
@@ -101,3 +100,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

@@ -21,3 +21,4 @@ export type ApiErrorResponse = {
   details?: Record<string, unknown>;
   timestamp: string;
 };
+

@@ -216,3 +216,4 @@ export function getChangesSummary(changes: ChangeItem[]): string {
   const fieldNames = changes.map(c => c.field).join(', ');
   return `${changes.length} changes: ${fieldNames}`;
 }
+

@@ -1,4 +1,4 @@
-import type { CollectionDocument } from '@/lib/types/collections';
+import type { CollectionDocument } from '@/lib/types/collection';
 import mongoose, { Schema } from 'mongoose';
 
 const sasMetersSchema = new Schema(
@@ -60,3 +60,4 @@ const collectionsSchema = new Schema(
 export const Collections =
   (mongoose.models?.Collections as mongoose.Model<CollectionDocument>) ||
   mongoose.model<CollectionDocument>('Collections', collectionsSchema);
+

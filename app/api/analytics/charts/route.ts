@@ -11,7 +11,7 @@
  * @module app/api/analytics/charts/route
  */
 
-import { getChartsData } from '@/app/api/lib/helpers/analytics';
+import { getChartsData } from '@/app/api/lib/helpers/reports/analytics';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
@@ -83,3 +83,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

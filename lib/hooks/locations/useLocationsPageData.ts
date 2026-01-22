@@ -19,10 +19,11 @@ import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
-import { isAbortError } from '@/lib/utils/errorHandling';
 import type { DashboardTotals } from '@/lib/types';
 import type { LocationFilter, LocationSortOption } from '@/lib/types/location';
+import { isAbortError } from '@/lib/utils/errors';
 import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
+import { useDebounce } from '@/lib/utils/hooks';
 import type { AggregatedLocation } from '@/shared/types';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -40,6 +41,8 @@ export function useLocationsPageData() {
   // ============================================================================
   const [selectedFilters, setSelectedFilters] = useState<LocationFilter[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
   const [refreshing, setRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [accumulatedLocations, setAccumulatedLocations] = useState<AggregatedLocation[]>([]);
@@ -65,7 +68,7 @@ export function useLocationsPageData() {
   });
 
   const machineTypeFilterString = useMemo(() => selectedFilters.join(','), [selectedFilters]);
-  const { machineStats, machineStatsLoading, refreshMachineStats } = useLocationMachineStats(undefined, machineTypeFilterString);
+  const { machineStats, machineStatsLoading, refreshMachineStats } = useLocationMachineStats(undefined, machineTypeFilterString, debouncedSearchTerm);
   const { membershipStats, membershipStatsLoading, refreshMembershipStats } = useLocationMembershipStats(undefined, machineTypeFilterString);
 
   // ============================================================================
@@ -125,6 +128,7 @@ export function useLocationsPageData() {
   // ============================================================================
   const handleRefresh = async () => {
     setRefreshing(true);
+    setAccumulatedLocations([]);
     await Promise.all([refreshMachineStats(), refreshMembershipStats(), fetchData()]);
     setRefreshing(false);
   };
@@ -181,19 +185,22 @@ export function useLocationsPageData() {
     setAccumulatedLocations([]);
   }, [selectedFilters, activeMetricsFilter, selectedLicencee, customDateRange]);
 
-  // Initial data fetch on mount
-  useEffect(() => {
-    if (activeMetricsFilter && filtersInitialized) {
-      void fetchData();
-    }
-  }, [activeMetricsFilter, filtersInitialized, fetchData]);
-
-  // Refetch location data when filters change
+  // Consolidated data fetch effect
+  // Triggers when filters, identity of fetchData, or custom date range changes
   useEffect(() => {
     if (filtersInitialized) {
+      // Clear accumulated locations whenever parameters change to ensure fresh metrics
+      setAccumulatedLocations([]);
       void fetchData();
     }
-  }, [selectedFilters, filtersInitialized, fetchData]);
+  }, [
+    selectedFilters, 
+    activeMetricsFilter, 
+    selectedLicencee, 
+    customDateRange,
+    filtersInitialized, 
+    fetchData
+  ]);
 
   // Metrics totals fetch
   useEffect(() => {
@@ -253,6 +260,7 @@ export function useLocationsPageData() {
     fetchData,
   };
 }
+
 
 
 

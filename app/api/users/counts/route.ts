@@ -10,9 +10,11 @@
  * @module app/api/users/counts/route
  */
 
-import { getAllUsers } from '@/app/api/lib/helpers/users';
+import {
+  getAllUsers,
+  getUserFromServer,
+} from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { NextRequest } from 'next/server';
 
 /**
@@ -85,7 +87,7 @@ export async function GET(request: NextRequest): Promise<Response> {
         const userLicensees = Array.isArray(user.assignedLicensees)
           ? user.assignedLicensees
           : [];
-        return userLicensees.some(userLic =>
+        return userLicensees.some((userLic: string) =>
           currentUserLicensees.includes(userLic)
         );
       });
@@ -94,9 +96,9 @@ export async function GET(request: NextRequest): Promise<Response> {
       const currentUserLocationPermissions = Array.isArray(
         (currentUser as { assignedLocations?: string[] })?.assignedLocations
       )
-        ? (currentUser as { assignedLocations: string[] }).assignedLocations.map(
-            id => String(id).trim()
-          )
+        ? (
+            currentUser as { assignedLocations: string[] }
+          ).assignedLocations.map((id: string) => String(id).trim())
         : [];
 
       if (currentUserLocationPermissions.length === 0) {
@@ -113,17 +115,15 @@ export async function GET(request: NextRequest): Promise<Response> {
             return true;
           }
 
-          const userLocationPermissions = Array.isArray(
-            user.assignedLocations
-          )
-            ? user.assignedLocations.map(id => String(id).trim())
+          const userLocationPermissions = Array.isArray(user.assignedLocations)
+            ? user.assignedLocations.map((id: string) => String(id).trim())
             : [];
 
           if (userLocationPermissions.length === 0) {
             return false;
           }
 
-          return userLocationPermissions.some(userLoc =>
+          return userLocationPermissions.some((userLoc: string) =>
             currentUserLocationPermissions.includes(userLoc)
           );
         });
@@ -189,7 +189,9 @@ export async function GET(request: NextRequest): Promise<Response> {
       JSON.stringify({
         success: false,
         message:
-          error instanceof Error ? error.message : 'Failed to fetch user counts',
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch user counts',
       }),
       { status: 500 }
     );

@@ -7,11 +7,11 @@
 
 'use client';
 
-import { fetchLicensees } from '@/lib/helpers/clientLicensees';
+import { fetchLicensees } from '@/lib/helpers/client';
 import { fetchCountries } from '@/lib/helpers/countries';
 import { useUserStore } from '@/lib/store/userStore';
-import type { Country } from '@/lib/types/country';
-import type { Licensee } from '@/lib/types/licensee';
+import type { Country } from '@/lib/types/common';
+import type { Licensee } from '@/lib/types/common';
 import type { AddLicenseeForm } from '@/lib/types/pages';
 import {
   detectChanges,
@@ -824,4 +824,5 @@ export function useAdministrationLicensees({
     getCountryNameById,
   };
 }
+
 

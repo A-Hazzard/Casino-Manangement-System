@@ -43,3 +43,4 @@ export async function handleDatabaseMismatch() {
   console.warn('Database mismatch detected - cleared user state and storage');
 }
 
+

@@ -10,12 +10,12 @@
  */
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Firmware } from '@/app/api/lib/models/firmware';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
-import { GridFSBucket } from 'mongodb';
+import { GridFSBucket, Db } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import { Readable } from 'stream';
 
@@ -92,7 +92,9 @@ export async function POST(request: NextRequest) {
     if (!db) {
       throw new Error('Database connection failed');
     }
-    const bucket = new GridFSBucket(db, { bucketName: 'firmwares' });
+    const bucket = new GridFSBucket(db as unknown as Db, {
+      bucketName: 'firmwares',
+    });
 
     const formData = await request.formData();
     const product = formData.get('product') as string;

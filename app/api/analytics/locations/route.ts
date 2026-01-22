@@ -12,7 +12,7 @@
  * @module app/api/analytics/locations/route
  */
 
-import { getTopLocationsAnalytics } from '@/app/api/lib/helpers/analytics';
+import { getTopLocationsAnalytics } from '@/app/api/lib/helpers/reports/analytics';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
@@ -60,7 +60,6 @@ export async function GET(request: NextRequest) {
     // STEP 3: Execute the core top locations fetching logic via helper
     // ============================================================================
     const locationsData = await getTopLocationsAnalytics(
-      db,
       licensee,
       displayCurrency
     );
@@ -91,3 +90,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

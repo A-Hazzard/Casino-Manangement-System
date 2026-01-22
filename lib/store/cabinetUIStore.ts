@@ -130,3 +130,4 @@ const dummyState: CabinetUIState = {
 // Use this store only on client side
 export const useCabinetUIStore =
   typeof window !== 'undefined' ? createStore() : () => dummyState;
+

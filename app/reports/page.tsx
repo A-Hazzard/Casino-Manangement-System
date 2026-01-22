@@ -3,9 +3,9 @@
 import { Suspense } from 'react';
 
 // Components
-import ReportsPageContent from '@/components/reports/ReportsPageContent';
-import { ReportsPageSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import ReportsPageContent from '@/components/CMS/reports/ReportsPageContent';
+import { ReportsPageSkeleton } from '@/components/shared/ui/skeletons/ReportsSkeletons';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 
 /**
  * Reports Page
@@ -28,3 +28,4 @@ export default function ReportsPage() {
     </ProtectedRoute>
   );
 }
+

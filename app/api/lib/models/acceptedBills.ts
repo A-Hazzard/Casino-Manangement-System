@@ -36,3 +36,4 @@ const acceptedBillSchema = new Schema(
  */
 export const AcceptedBill =
   models['acceptedbills'] ?? model('acceptedbills', acceptedBillSchema);
+

@@ -13,9 +13,9 @@
  * @module app/api/machines/by-id/events/route
  */
 
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import { Machine } from '@/app/api/lib/models/machines';
-import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -48,17 +48,18 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const machineId = searchParams.get('id');
     const eventType = searchParams.get('eventType');
+    const type = searchParams.get('type');
     const event = searchParams.get('event');
     const game = searchParams.get('game');
     const timePeriod = searchParams.get('timePeriod');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const page = parseInt(searchParams.get('page') || '1');
-    const requestedLimit = parseInt(searchParams.get('limit') || '20');
+    const requestedLimit = parseInt(searchParams.get('limit') || '100');
     const limit =
       Number.isFinite(requestedLimit) && requestedLimit > 0
-        ? Math.min(requestedLimit, 20)
-        : 20;
+        ? Math.min(requestedLimit, 100)
+        : 100;
 
     // ============================================================================
     // STEP 3: Validate machine ID parameter
@@ -79,6 +80,15 @@ export async function GET(request: NextRequest) {
     // Add other filters to the query
     if (eventType) {
       baseQuery['eventType'] = { $regex: eventType, $options: 'i' } as unknown;
+    }
+
+    if (type) {
+      // Support both "Warning" matches "WARN" and exact matches
+      if (type.toLowerCase() === 'warning') {
+        baseQuery['eventLogLevel'] = { $in: ['Warning', 'WARN', 'warning', 'warn'] } as unknown;
+      } else {
+        baseQuery['eventLogLevel'] = { $regex: type, $options: 'i' } as unknown;
+      }
     }
 
     if (event) {
@@ -103,28 +113,31 @@ export async function GET(request: NextRequest) {
     }
     // Handle predefined time periods
     else if (timePeriod && timePeriod !== 'All Time') {
-      // Use the same timezone-aware approach as the main API
       const tz = 'America/Port_of_Spain';
       const now = new Date();
+      
+      // Get current date parts in target timezone
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+      });
+      const parts = formatter.formatToParts(now);
+      const year = parseInt(parts.find(p => p.type === 'year')!.value);
+      const month = parseInt(parts.find(p => p.type === 'month')!.value) - 1;
+      const day = parseInt(parts.find(p => p.type === 'day')!.value);
 
       switch (timePeriod) {
         case 'Today':
-          dateFilterStart = new Date(
-            now.toLocaleDateString('en-CA', { timeZone: tz }) + 'T00:00:00.000Z'
-          );
-          dateFilterEnd = new Date(
-            dateFilterStart.getTime() + 24 * 60 * 60 * 1000 - 1
-          );
+          // AST 00:00:00 = UTC 04:00:00 (AST is UTC-4)
+          dateFilterStart = new Date(Date.UTC(year, month, day, 4, 0, 0, 0));
+          dateFilterEnd = new Date(Date.UTC(year, month, day + 1, 3, 59, 59, 999));
           break;
         case 'Yesterday':
-          const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          dateFilterStart = new Date(
-            yesterday.toLocaleDateString('en-CA', { timeZone: tz }) +
-              'T00:00:00.000Z'
-          );
-          dateFilterEnd = new Date(
-            dateFilterStart.getTime() + 24 * 60 * 60 * 1000 - 1
-          );
+          // AST 00:00:00 yesterday
+          dateFilterStart = new Date(Date.UTC(year, month, day - 1, 4, 0, 0, 0));
+          dateFilterEnd = new Date(Date.UTC(year, month, day, 3, 59, 59, 999));
           break;
         case '7d':
           dateFilterEnd = now;
@@ -135,7 +148,6 @@ export async function GET(request: NextRequest) {
           dateFilterStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           break;
         default:
-          // No time filtering - return all events
           break;
       }
     }
@@ -238,3 +250,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+

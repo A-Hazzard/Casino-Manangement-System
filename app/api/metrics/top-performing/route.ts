@@ -10,14 +10,14 @@
  * @module app/api/metrics/top-performing/route
  */
 
-import { shouldApplyCurrencyConversion } from '@/app/api/lib/helpers/currencyHelper';
-import { getTopPerformingMetrics } from '@/app/api/lib/helpers/top-performing';
-import type { TopPerformingItem } from '@/app/api/lib/helpers/topPerformingCurrencyConversion';
-import { convertTopPerformingCurrency } from '@/app/api/lib/helpers/topPerformingCurrencyConversion';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { shouldApplyCurrencyConversion } from '@/app/api/lib/helpers/currency/helper';
+import { getTopPerformingMetrics } from '@/app/api/lib/helpers/reports/topPerforming';
+import type { TopPerformingItem } from '@/app/api/lib/helpers/currency/topPerforming';
+import { convertTopPerformingCurrency } from '@/app/api/lib/helpers/currency/topPerforming';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
-import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
+import { getLicenseeObjectId } from '@/lib/utils/licensee';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -95,7 +95,6 @@ export async function GET(req: NextRequest) {
     // STEP 3: Fetch top performing metrics
     // ============================================================================
     const data = await getTopPerformingMetrics(
-      db,
       activeTab,
       timePeriod,
       licenseeForFilter,

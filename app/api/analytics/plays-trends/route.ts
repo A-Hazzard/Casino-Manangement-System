@@ -10,7 +10,7 @@
  * @module app/api/analytics/plays-trends/route
  */
 
-import { getPlaysTrends } from '@/app/api/lib/helpers/trends';
+import { getPlaysTrends } from '@/app/api/lib/helpers/trends/general';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -52,7 +52,6 @@ export async function GET(req: NextRequest) {
     // STEP 3: Fetch plays trends data
     // ============================================================================
     const playsTrends = await getPlaysTrends(
-      db,
       timePeriod,
       licencee,
       locationIds
@@ -82,3 +81,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+

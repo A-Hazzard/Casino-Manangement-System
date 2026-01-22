@@ -11,7 +11,7 @@
  * @module app/api/analytics/top-machines/route
  */
 
-import { getTopMachinesByLocation } from '@/app/api/lib/helpers/topMachines';
+import { getTopMachinesByLocation } from '@/app/api/lib/helpers/reports/topMachines';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -59,7 +59,6 @@ export async function GET(request: NextRequest) {
     // STEP 3: Fetch top machines data
     // ============================================================================
     const topMachines = await getTopMachinesByLocation(
-      db,
       locationId,
       timePeriod,
       startDate,
@@ -71,13 +70,17 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
-      console.warn(`[Analytics Top Machines GET API] Completed in ${duration}ms`);
+      console.warn(
+        `[Analytics Top Machines GET API] Completed in ${duration}ms`
+      );
     }
     return NextResponse.json(topMachines);
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =
-      error instanceof Error ? error.message : 'Failed to fetch top machines data';
+      error instanceof Error
+        ? error.message
+        : 'Failed to fetch top machines data';
     console.error(
       `[Top Machines Analytics GET API] Error after ${duration}ms:`,
       errorMessage

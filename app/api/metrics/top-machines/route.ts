@@ -11,7 +11,7 @@
  * @module app/api/metrics/top-machines/route
  */
 
-import { getTopMachinesDetailed } from '@/app/api/lib/helpers/topMachines';
+import { getTopMachinesDetailed } from '@/app/api/lib/helpers/reports/topMachines';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -54,7 +54,6 @@ export async function GET(req: NextRequest) {
     // STEP 3: Fetch top machines data
     // ============================================================================
     const topMachines = await getTopMachinesDetailed(
-      db,
       timePeriod,
       licencee,
       locationIds,
@@ -86,3 +85,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+

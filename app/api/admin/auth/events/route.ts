@@ -18,8 +18,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthEvents } from '@/app/api/lib/helpers/adminAuthEvents';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getAuthEvents } from '@/app/api/lib/helpers/auth/adminEvents';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 
 /**
@@ -91,3 +91,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

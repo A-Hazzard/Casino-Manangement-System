@@ -15,7 +15,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { fixAllCollectionHistoryData } from '../../lib/helpers/bulkCollectionHistoryFix';
+import { fixAllCollectionHistoryData } from '../../lib/helpers/collectionReport/bulkHistoryFix';
 import { getUserById, getUserIdFromServer } from '../../lib/helpers/users';
 import { connectDB } from '../../lib/middleware/db';
 
@@ -109,3 +109,4 @@ export async function POST() {
     );
   }
 }
+

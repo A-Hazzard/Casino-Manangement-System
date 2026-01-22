@@ -14,7 +14,7 @@
  */
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
 import { mqttService } from '@/app/api/lib/services/mqttService';
@@ -213,3 +213,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

@@ -43,10 +43,10 @@ Key features include:
 
 **Components Used:**
 
-- `LoginForm` (`components/auth/LoginForm.tsx`) - Main login form component
+- `LoginForm` (`components/shared/auth/LoginForm.tsx`) - Main login form component
 - `Input`, `Label`, `Button` - UI components
 - `Eye`, `EyeOff` icons (lucide-react) - Password visibility toggle
-- `LiquidGradient` (`components/ui/LiquidGradient.tsx`) - Background gradient
+- `LiquidGradient` (`components/shared/ui/LiquidGradient.tsx`) - Background gradient
 
 **API Endpoints:**
 
@@ -107,7 +107,7 @@ Key features include:
 
 **Components Used:**
 
-- `PasswordUpdateModal` (`components/ui/PasswordUpdateModal.tsx`)
+- `PasswordUpdateModal` (`components/shared/ui/PasswordUpdateModal.tsx`)
 
 **API Endpoints:**
 
@@ -129,38 +129,43 @@ Key features include:
 
 ### Profile Validation Modal
 
-**Purpose:** Require users to complete their profile.
+**Purpose:** To enforce users to complete or update their profile information to meet system requirements. This modal automatically appears and blocks user interaction until critical profile fields are valid.
 
 **Components Used:**
 
-- `ProfileValidationModal` (`components/ui/ProfileValidationModal.tsx`)
-- `ProfileValidationGate` (global provider in root layout)
+-   `ProfileValidationModal` (`components/shared/ui/ProfileValidationModal.tsx`)
+-   `ProfileValidationGate` (`components/shared/providers/ProfileValidationGate.tsx`) - A global provider typically in the root layout (`app/layout.tsx` or similar) that orchestrates the validation process.
 
 **API Endpoints:**
 
-- `PUT /api/profile` - Profile update
+-   `PUT /api/profile` - Profile update (used by `ProfileValidationModal` to submit changes)
 
 **Data Flow:**
 
-1. User authenticates but profile is invalid
-2. Modal automatically displayed (enforced)
-3. User must fill all invalid fields
-4. Real-time validation with debouncing
-5. Modal closes on success
+1.  **Gate Activation:** The `ProfileValidationGate` component, on mount or user data change, evaluates the `user.invalidProfileFields` and `user.invalidProfileReasons` flags received from the server (e.g., during login or `currentUser` refetch).
+2.  **Exemptions:** Users with 'admin' or 'developer' roles are automatically exempted from this validation. The `dateOfBirth` field is also exempted from triggering the modal.
+3.  **Password Re-validation:** If the `password` field is marked as invalid by the server, `ProfileValidationGate` attempts to re-validate the `lastLoginPassword` (stored temporarily in `useAuthSessionStore`). If it now meets strength requirements, the password invalidation is cleared, preventing the modal from prompting for a new password unnecessarily.
+4.  **Modal Display:** If any `invalidProfileFields` remain (excluding exempted ones), `ProfileValidationGate` automatically sets `open=true` to display the `ProfileValidationModal`.
+5.  **User Update:** The user must interact with `ProfileValidationModal` to correct the identified `invalidFields`. Real-time validation, toast notifications, and loading states are managed within the modal.
+6.  **Forced Re-login:** After a successful profile update via `PUT /api/profile`, the user is *always* forced to log out and re-login. This is because the `sessionVersion` is incremented on the server, invalidating the current JWT token to ensure security and consistency. A success toast informs the user, and they are redirected to the login page.
+7.  **Prevention of Re-opening:** A `justUpdatedRef` flag ensures that the `ProfileValidationGate` does not immediately re-evaluate and re-open the modal after a successful update and forced logout/redirect.
 
 **State Management:**
 
-- `showProfileValidationModal` - Modal visibility
-- `invalidProfileFields` - Invalid field names
-- `profileValidationReasons` - Validation failure reasons
-- `currentUserData` - Current user profile data
-- `profileUpdating` - Update operation loading
+-   `open` (state in `ProfileValidationGate`) - Controls modal visibility.
+-   `loading` (state in `ProfileValidationGate`) - Indicates profile update in progress.
+-   `invalidFields` (state in `ProfileValidationGate`) - Object mapping field names to boolean true if invalid.
+-   `fieldReasons` (state in `ProfileValidationGate`) - Object mapping field names to strings describing validation failures.
+-   `currentData` (state in `ProfileValidationGate`) - Populated with current user profile data for the modal form.
+-   `justUpdatedRef` (ref in `ProfileValidationGate`) - Prevents modal re-opening after a successful update.
+-   `lastLoginPassword` (from `useAuthSessionStore`) - Used for password re-validation.
 
 **Notes:**
 
-- Modal cannot be closed until all fields are valid
-- Required fields: username, firstName, lastName, emailAddress, phone, dateOfBirth, gender, otherName
-- Admin/developer can update licensee and location assignments
+-   The `ProfileValidationGate` acts as a crucial security measure to ensure data integrity and user compliance.
+-   The modal cannot be closed or bypassed until all *required* invalid fields are corrected, or the user logs out manually.
+-   The `context` prop (`CMS` | `VAULT`) on `ProfileValidationGate` is reserved for future use, allowing for differentiated validation rules between application contexts.
+-   Activity is logged for profile update actions.
 
 ---
 

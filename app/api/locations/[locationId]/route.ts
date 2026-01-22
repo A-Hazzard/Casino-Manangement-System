@@ -28,7 +28,7 @@ import {
   getCountryCurrency,
   getLicenseeCurrency,
 } from '@/lib/helpers/rates';
-import { TransformedCabinet } from '@/lib/types/mongo';
+import { TransformedCabinet } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import mongoose from 'mongoose';
@@ -181,6 +181,8 @@ export async function GET(request: NextRequest) {
     const displayCurrency =
       (url.searchParams.get('currency') as CurrencyCode) || 'USD';
 
+      const onlineStatus = url.searchParams.get('onlineStatus') || 'all';
+
     // Pagination parameters
     // When searching, limit may be undefined to fetch all results
     const limitParam = url.searchParams.get('limit');
@@ -295,25 +297,43 @@ export async function GET(request: NextRequest) {
     // 🚀 OPTIMIZED: Fetch machines first, then do single aggregation for all meters
     // This avoids N+1 query pattern from $lookup with nested pipeline
 
+    // Build machine match query with online/offline filter
+    const machineMatchQuery: Record<string, unknown> = {
+      $and: [
+        {
+          $or: [
+            { gamingLocation: locationId }, // String match
+            { gamingLocation: locationIdObj }, // ObjectId match
+          ],
+        },
+        {
+          // Include machines that are not deleted OR have sentinel deletedAt date
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
+          ],
+        },
+      ],
+    };
+    
+    // Apply online/offline status filter at database level
+    if (onlineStatus !== 'all') {
+      const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+      if (onlineStatus === 'online') {
+        machineMatchQuery.lastActivity = { $gte: threeMinutesAgo };
+      } else if (onlineStatus === 'offline') {
+        const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
+        andArray.push({
+          $or: [
+            { lastActivity: { $lt: threeMinutesAgo } },
+            { lastActivity: { $exists: false } },
+          ],
+        });
+      }
+    }
+    
     // First, fetch all machines for this location
-    const machines = await Machine.find(
-      {
-        $and: [
-          {
-            $or: [
-              { gamingLocation: locationId }, // String match
-              { gamingLocation: locationIdObj }, // ObjectId match
-            ],
-          },
-          {
-            // Include machines that are not deleted OR have sentinel deletedAt date
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          },
-        ],
-      },
+    const machines = await Machine.find(machineMatchQuery,
       {
         _id: 1,
         serialNumber: 1,

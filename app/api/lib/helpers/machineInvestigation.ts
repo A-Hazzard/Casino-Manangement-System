@@ -9,28 +9,10 @@
  * @module app/api/lib/helpers/machineInvestigation
  */
 
+import type { MachineWithHistory } from '../types';
 import { Collections } from '../models/collections';
 import { Machine } from '../models/machines';
 import { CollectionReport } from '../models/collectionReport';
-
-// Types
-type MachineWithHistory = {
-  _id: string;
-  serialNumber?: string;
-  origSerialNumber?: string;
-  custom?: { name?: string };
-  collectionMetersHistory: Array<{
-    _id: string;
-    metersIn: number;
-    metersOut: number;
-    prevMetersIn?: number;
-    prevMetersOut?: number;
-    prevIn?: number;
-    prevOut?: number;
-    timestamp: Date;
-    locationReportId?: string;
-  }>;
-};
 
 type HistoryAnalysisEntry = {
   entryIndex: number;
@@ -474,6 +456,7 @@ function matchCollectionsWithHistory(
     };
   });
 }
+
 
 
 

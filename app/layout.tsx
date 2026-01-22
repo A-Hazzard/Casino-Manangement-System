@@ -21,15 +21,11 @@
  */
 
 import type { Metadata } from 'next';
-import './globals.css';
 import { Montserrat } from 'next/font/google';
-import { Toaster } from 'sonner';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
-import GlobalErrorBoundary from '@/components/layout/GlobalErrorBoundary';
-import GlobalSidebarWrapper from '@/components/layout/GlobalSidebarWrapper';
-import ProfileValidationGate from '@/components/providers/ProfileValidationGate';
-import { CurrencyProvider } from '@/lib/contexts/CurrencyContext';
-import { QueryProvider } from '@/lib/providers/QueryProvider';
+import GlobalErrorBoundary from '../components/shared/layout/GlobalErrorBoundary';
+import LayoutWrapper from '../components/shared/layout/LayoutWrapper';
+import './globals.css';
+
 // Removed FeedbackButton - now included in FloatingActionButtons on individual pages
 // Removed AuthProvider and AuthGuard to prevent conflicts with ProtectedRoute
 
@@ -95,16 +91,7 @@ export default function RootLayout({
     >
       <body suppressHydrationWarning>
         <GlobalErrorBoundary>
-          <QueryProvider>
-          <CurrencyProvider>
-            <SidebarProvider>
-              <GlobalSidebarWrapper />
-              <ProfileValidationGate />
-              <SidebarInset>{children}</SidebarInset>
-            </SidebarProvider>
-            <Toaster position="top-right" />
-          </CurrencyProvider>
-          </QueryProvider>
+          <LayoutWrapper>{children}</LayoutWrapper>
         </GlobalErrorBoundary>
       </body>
     </html>

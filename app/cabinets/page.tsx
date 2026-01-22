@@ -8,9 +8,11 @@
  * @module app/cabinets/page
  */
 
-import CabinetsPageContent from '@/components/cabinets/CabinetsPageContent';
-import CabinetsCabinetTableSkeleton from '@/components/cabinets/CabinetsCabinetTableSkeleton';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+export const dynamic = 'force-dynamic';
+
+import CabinetsCabinetTableSkeleton from '@/components/CMS/cabinets/CabinetsCabinetTableSkeleton';
+import CabinetsPageContent from '@/components/CMS/cabinets/CabinetsPageContent';
+import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 import { Suspense } from 'react';
 
 export default function CabinetsPage() {

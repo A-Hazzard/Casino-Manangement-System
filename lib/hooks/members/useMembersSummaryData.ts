@@ -7,8 +7,8 @@
 
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 type UseMembersSummaryDataProps = {
@@ -87,10 +87,12 @@ export function useMembersSummaryData({
         params.append('location', locationFilter);
       }
 
+      const locationQuery = locationFilter && locationFilter !== 'all' ? `&location=${locationFilter}` : '';
+
       const [summaryRes, demographicsRes, trendsRes] = await Promise.allSettled([
         axios.get(`/api/members/summary?${params.toString()}`),
-        axios.get(`/api/members/demographics?licensee=${selectedLicencee}`),
-        axios.get(`/api/members/trends?licensee=${selectedLicencee}`),
+        axios.get(`/api/members/demographics?licensee=${selectedLicencee}${locationQuery}`),
+        axios.get(`/api/members/trends?licensee=${selectedLicencee}${locationQuery}`),
       ]);
 
       // Handle summary response
@@ -169,4 +171,5 @@ export function useMembersSummaryData({
     refreshData: fetchSummaryData,
   };
 }
+
 

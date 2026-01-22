@@ -83,3 +83,4 @@ export async function GET() {
     currentUri: process.env.MONGODB_URI ? 'Set' : 'Not set',
   });
 }
+

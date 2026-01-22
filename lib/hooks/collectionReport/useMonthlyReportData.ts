@@ -13,7 +13,7 @@ import {
 import type {
     MonthlyReportDetailsRow,
     MonthlyReportSummary
-} from '@/lib/types/componentProps';
+} from '@/lib/types/components';
 import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
@@ -23,7 +23,7 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
   // State Management
   // ============================================================================
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
-  const [monthlyLocation, setMonthlyLocation] = useState<string>('all');
+  const [monthlyLocation, setMonthlyLocation] = useState<string | string[]>('all');
   const [monthlyLoading, setMonthlyLoading] = useState(false);
   const [monthlySummary, setMonthlySummary] = useState<MonthlyReportSummary>({
     drop: '-',
@@ -32,7 +32,7 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
     sasGross: '-',
   });
   const [monthlyDetails, setMonthlyDetails] = useState<MonthlyReportDetailsRow[]>([]);
-  const [monthlyPage, setMonthlyPage] = useState(1);
+  const [monthlyPage, setMonthlyPage] = useState(0);
   const [pendingRange, setPendingRange] = useState<RDPDateRange | undefined>(() => {
     const end = endOfMonth(new Date());
     const start = startOfMonth(end);
@@ -40,7 +40,7 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
   });
 
   const paginationRef = useRef<HTMLDivElement>(null);
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 20;
 
   // ============================================================================
   // Handlers
@@ -53,13 +53,14 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
       const { summary, details } = await fetchMonthlyReportSummaryAndDetails({
         startDate: pendingRange.from,
         endDate: pendingRange.to,
-        locationName: monthlyLocation,
+        locationId: Array.isArray(monthlyLocation) ? undefined : (monthlyLocation === 'all' ? undefined : monthlyLocation),
+        locationIds: Array.isArray(monthlyLocation) ? monthlyLocation : undefined,
         licencee: selectedLicencee || undefined,
       });
       
       setMonthlySummary(summary);
       setMonthlyDetails(details);
-      setMonthlyPage(1);
+      setMonthlyPage(0);
     } catch (error) {
       console.error('Error fetching monthly report data:', error);
     } finally {
@@ -83,12 +84,12 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
   }, [monthlyDetails.length]);
 
   const monthlyCurrentItems = useMemo(() => {
-    const skip = (monthlyPage - 1) * ITEMS_PER_PAGE;
+    const skip = monthlyPage * ITEMS_PER_PAGE;
     return monthlyDetails.slice(skip, skip + ITEMS_PER_PAGE);
   }, [monthlyDetails, monthlyPage]);
 
-  const firstItemIndex = (monthlyPage - 1) * ITEMS_PER_PAGE + 1;
-  const lastItemIndex = Math.min(monthlyPage * ITEMS_PER_PAGE, monthlyDetails.length);
+  const firstItemIndex = monthlyPage * ITEMS_PER_PAGE + 1;
+  const lastItemIndex = Math.min((monthlyPage + 1) * ITEMS_PER_PAGE, monthlyDetails.length);
 
   // ============================================================================
   // Effects
@@ -123,3 +124,4 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
     monthlyLastItemIndex: lastItemIndex,
   };
 }
+

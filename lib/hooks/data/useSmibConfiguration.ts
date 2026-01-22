@@ -1340,3 +1340,4 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     fetchSmibConfiguration,
   };
 }
+

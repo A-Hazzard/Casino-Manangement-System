@@ -142,3 +142,4 @@ export const getDatesForTimePeriod = (timePeriod: TimePeriod): CustomDate => {
 
   return { startDate, endDate };
 };
+

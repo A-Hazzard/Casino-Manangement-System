@@ -1,7 +1,7 @@
 # Collection Report System - Backend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025  
+**Last Updated:** January 2025  
 **Version:** 2.5.0
 
 ## Recent Performance Optimizations (November 11th, 2025) 🚀
@@ -17,9 +17,9 @@
 
 **Solution:**
 
-- Server-side pagination (default 50 reports per page, max 100)
-- Query params: `page` (default 1), `limit` (default 50)
-- Returns paginated slice of filtered results
+- The API now performs pagination on the server. It fetches all relevant reports from the database into memory, and then sends a paginated slice of the results to the client.
+- Query params: `page` (default 1), `limit` (default 50, max 100)
+- This avoids sending a massive payload to the client, significantly improving frontend performance.
 
 **Performance:**
 
@@ -1021,18 +1021,24 @@ await Machine.findByIdAndUpdate(collectionToDelete.machineId, updateOperation);
 **Features**:
 
 - Time period filtering (Today, Yesterday, 7d, 30d, All Time, Custom)
-- **Gaming day offset support** - All time filters respect location's `gameDayOffset`
+- **Time period filtering** - All time filters use calendar days (midnight to midnight, Trinidad time), not the gaming day offset. This is because collection reports are tied to specific collection events rather than operational gaming days.
 - Location and licensee filtering
 - Monthly aggregation support
 - Locations with machines query for modal dropdowns
 
 **Query Parameters**:
 
-- `timePeriod`: Predefined time period (Today, Yesterday, 7d, 30d, All Time, Custom)
-- `startDate` & `endDate`: Custom date range (YYYY-MM-DD format)
-- `locationName`: Filter by specific location
-- `licencee`: Filter by licensee ObjectId
-- `locationsWithMachines=1`: Return locations with their machine lists
+- `page`: Page number for pagination (default: 1)
+- `limit`: Items per page (default: 50, max: 100)
+- `search`: Search term (optional)
+- `locationsWithMachines=1`: Return locations with their machine lists (optional)
+
+**Notes:**
+
+- The API supports pagination via `page` and `limit` query parameters, providing paginated results from the full dataset of reports.
+- Search filters by location name, report ID
+- Date filters support: Today, Yesterday, Last 7 Days, Last 30 Days, Custom range, All Time
+- Role-based filtering applies based on user's assigned locations/licensees
 
 **Special Query - Locations with Machines**:
 When `locationsWithMachines=1` is set:
@@ -1059,6 +1065,43 @@ When `locationsWithMachines=1` is set:
 - `getAllCollectionReportsWithMachineCounts` (`app/api/lib/helpers/collectionReportService.ts`)
 - `getMonthlyCollectionReportSummary` (`lib/helpers/collectionReport.ts`)
 - `getMonthlyCollectionReportByLocation` (`lib/helpers/collectionReport.ts`)
+
+### GET /api/schedulers
+
+**Purpose:** Fetch collection schedulers with filtering and human-readable names.
+
+**Query Parameters:**
+- `licencee` (string, optional) - Filter by licensee ID.
+- `location` (string, optional) - Filter by location ID.
+- `collector` (string, optional) - Filter by collector ID.
+- `status` (string, optional) - Filter by status ('pending', 'completed', 'canceled').
+- `startDate` (string, optional) - Start date for scheduler `startTime` (ISO format).
+- `endDate` (string, optional) - End date for scheduler `startTime` (ISO format).
+
+**Response (Success - 200):**
+```json
+[
+  {
+    "_id": "scheduler_id_1",
+    "collector": "collector_id_1",
+    "collectorName": "John Doe",
+    "location": "location_id_1",
+    "locationName": "Downtown Casino",
+    "creator": "creator_id_1",
+    "creatorName": "Jane Smith",
+    "startTime": "2025-01-20T08:00:00.000Z",
+    "endTime": "2025-01-20T10:00:00.000Z",
+    "status": "pending",
+    "createdAt": "2025-01-19T15:00:00.000Z",
+    "updatedAt": "2025-01-19T15:00:00.000Z"
+  }
+]
+```
+**Used By:** Collection Report Manager and Collector tabs for displaying and managing schedules.
+**Notes:**
+- Uses MongoDB aggregation with `$lookup` to enrich scheduler documents with `locationName`, `collectorName`, and `creatorName` from `gaminglocations` and `users` collections.
+- Supports date range filtering on `startTime`.
+- Filters are applied based on user's accessible locations/licensees.
 
 ### GET /api/collection-report/[reportId]
 

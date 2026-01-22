@@ -28,12 +28,12 @@ import {
   parseMetersReportParams,
   transformMeterData,
   type ParsedMetersReportParams,
-} from '@/app/api/lib/helpers/metersReport';
+} from '@/app/api/lib/helpers/reports/meters';
 import {
   applyCurrencyConversion,
   buildCurrencyMaps,
-} from '@/app/api/lib/helpers/metersReportCurrency';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+} from '@/app/api/lib/helpers/reports/metersCurrency';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -189,7 +189,7 @@ export async function GET(req: NextRequest) {
           ? []
           : allowedLocationIds;
 
-    const locationsData = await fetchLocationData(db, locationsToQuery);
+    const locationsData = await fetchLocationData(locationsToQuery);
 
     // Create location name map for quick lookup
     const locationMap = new Map<string, string>();
@@ -209,7 +209,6 @@ export async function GET(req: NextRequest) {
     // STEP 5: Fetch machines data
     // ============================================================================
     const machinesData = await fetchMachinesData(
-      db,
       locationList,
       params.licencee
     );
@@ -231,7 +230,6 @@ export async function GET(req: NextRequest) {
      * state at the end of the gaming day period.
      */
     const metersMap = await getLastMeterPerMachine(
-      db,
       machineIds,
       queryStartDate,
       queryEndDate
@@ -255,7 +253,6 @@ export async function GET(req: NextRequest) {
           : machineIds;
 
       hourlyChartData = await getHourlyChartData(
-        db,
         machineIdsForHourlyData,
         queryStartDate,
         queryEndDate,
@@ -325,7 +322,6 @@ export async function GET(req: NextRequest) {
 
     if (shouldConvert) {
       const { locationDetailsMap, licenseeMap } = await buildCurrencyMaps(
-        db,
         locationsData
       );
 
@@ -421,3 +417,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

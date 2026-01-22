@@ -7,13 +7,13 @@
 
 'use client';
 
-import type { MultiSelectOption } from '@/components/ui/common/MultiSelectDropdown';
-import { fetchLicensees } from '@/lib/helpers/clientLicensees';
+import type { MultiSelectOption } from '@/components/shared/ui/common/MultiSelectDropdown';
+import { fetchLicensees } from '@/lib/helpers/client';
 import { fetchCountries } from '@/lib/helpers/countries';
 import { useUserStore } from '@/lib/store/userStore';
 import type { User as AdminUser } from '@/lib/types/administration';
-import type { Country } from '@/lib/types/country';
-import type { Licensee } from '@/lib/types/licensee';
+import type { Country } from '@/lib/types/common';
+import type { Licensee } from '@/lib/types/common';
 import axios from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -449,3 +449,4 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     setValidationErrors,
   };
 }
+

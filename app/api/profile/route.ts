@@ -16,7 +16,7 @@ import {
   getInvalidProfileFields,
   hasInvalidProfileFields,
 } from '@/app/api/lib/helpers/profileValidation';
-import { getUserIdFromServer } from '@/app/api/lib/helpers/users';
+import { getUserIdFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
 import { comparePassword, hashPassword } from '@/app/api/lib/utils/validation';
@@ -490,3 +490,4 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+

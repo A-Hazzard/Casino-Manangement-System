@@ -27,7 +27,7 @@ The page features a tabbed interface with two main views:
 - **URL Pattern:** `/members`
 - **Authentication:** Required (ProtectedRoute)
 - **Access Level:** All authenticated users
-- **Main Component:** `MembersPageContent` (`components/members/MembersPageContent.tsx`)
+- **Main Component:** `MembersPageContent` (`components/CMS/members/MembersPageContent.tsx`)
 
 ## Page Sections
 

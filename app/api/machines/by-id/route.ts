@@ -111,3 +111,4 @@ export function PUT() {
 export function DELETE() {
   return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }
+

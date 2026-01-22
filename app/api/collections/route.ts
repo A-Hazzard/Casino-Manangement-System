@@ -16,19 +16,19 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-  calculateSasMetrics,
-  createCollectionWithCalculations,
-  getSasTimePeriod,
-} from '@/app/api/lib/helpers/collectionCreation';
+    calculateSasMetrics,
+    createCollectionWithCalculations,
+    getSasTimePeriod,
+} from '@/app/api/lib/helpers/collectionReport/creation';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import type {
-  CollectionDocument,
-  CreateCollectionPayload,
-} from '@/lib/types/collections';
+    CollectionDocument,
+    CreateCollectionPayload,
+} from '@/lib/types/collection';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
@@ -701,7 +701,9 @@ export async function PATCH(req: NextRequest) {
             resource: 'collection',
             resourceId: id,
             resourceName: `Machine ${originalCollection.machineId}`,
-            userId: currentUser._id as string,
+            userId: (currentUser._id ||
+              currentUser.id ||
+              currentUser.sub) as string,
             username: currentUser.emailAddress as string,
           },
         });
@@ -843,7 +845,9 @@ export async function DELETE(req: NextRequest) {
             resource: 'collection',
             resourceId: id,
             resourceName: `Machine ${collectionToDelete.machineId}`,
-            userId: currentUser._id as string,
+            userId: (currentUser._id ||
+              currentUser.id ||
+              currentUser.sub) as string,
             username: currentUser.emailAddress as string,
           },
         });
@@ -877,3 +881,4 @@ export async function DELETE(req: NextRequest) {
     );
   }
 }
+

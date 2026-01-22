@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-**Last Updated:** December 22nd, 2025
+**Last Updated:** January 2025
 
 ## 📚 Essential Documentation References
 
@@ -23,7 +23,7 @@ Before working on any part of the Collection Report system or making database ch
 - **[Database Models & Relationships](../Documentation/database-models.md)** - Core entity hierarchy, financial data flow, meter structure requirements, and database relationships
 - **[TypeScript Type Safety Rules](../Documentation/typescript-type-safety-rules.md)** - Type organization structure, type safety rules, and validation workflows
 - **[Financial Metrics Guide](../Documentation/financial-metrics-guide.md)** - All financial calculations, metrics definitions, data sources, and meter field mappings
-- **[Currency Conversion System](../Documentation/currency-conversion-system.md)** - Role-based currency conversion, exchange rates, and multi-currency support
+- **Currency Conversion System** - Role-based currency conversion, exchange rates, and multi-currency support (see Currency System section in this document)
 - **[Engineering Guidelines](../Documentation/ENGINEERING_GUIDELINES.md)** - Folder structure, code standards, security, and timezone handling
 
 ### Critical Guidelines
@@ -67,7 +67,7 @@ The Evolution One Casino Management System (CMS) is a comprehensive casino manag
 
 ### Technology Stack
 
-- **Frontend:** Next.js 15.3.0 with TypeScript, React, Tailwind CSS
+- **Frontend:** Next.js 16.0.7 with TypeScript, React, Tailwind CSS
 - **Backend:** Next.js API Routes with MongoDB
 - **Database:** MongoDB with Mongoose ODM
 - **State Management:** Zustand for global state, React Context for local state
@@ -81,25 +81,134 @@ The Evolution One Casino Management System (CMS) is a comprehensive casino manag
 ```
 evolution-one-cms/
 ├── app/                          # Next.js App Router
+│   ├── (auth)/                   # Authentication pages
+│   │   └── login/                # Login page
 │   ├── api/                     # Backend API routes
 │   │   ├── lib/                 # Shared backend utilities
-│   │   │   ├── models/          # Mongoose schemas
+│   │   │   ├── models/          # Mongoose schemas (20+ models)
 │   │   │   ├── helpers/         # Business logic helpers
-│   │   │   └── middleware/      # Database and auth middleware
-│   │   └── [endpoints]/         # API route handlers
-│   ├── [pages]/                 # Frontend pages
-│   └── layout.tsx               # Root layout
+│   │   │   │   ├── auth/        # Authentication helpers
+│   │   │   │   ├── collectionReport/  # Collection report logic
+│   │   │   │   ├── currency/    # Currency conversion
+│   │   │   │   ├── reports/     # Report generation
+│   │   │   │   ├── trends/      # Analytics trends
+│   │   │   │   ├── users/       # User management
+│   │   │   │   └── vault/       # Vault management
+│   │   │   ├── middleware/      # Database and auth middleware
+│   │   │   ├── services/        # External services (MQTT)
+│   │   │   ├── types/           # Backend-specific types
+│   │   │   └── utils/           # Backend utilities
+│   │   └── [endpoints]/         # 50+ API route handlers
+│   ├── administration/         # User & licensee management
+│   ├── cabinets/                # Cabinet management
+│   │   └── [slug]/              # Cabinet details
+│   ├── collection-report/       # Collection reports
+│   │   └── report/[reportId]/   # Report details
+│   ├── collections/             # Collections listing
+│   ├── locations/               # Location management
+│   │   └── [slug]/              # Location details
+│   ├── machines/                # Machine management
+│   │   └── [slug]/              # Machine details
+│   ├── members/                 # Member management
+│   │   └── [id]/                # Member details
+│   ├── reports/                 # Reports & analytics
+│   ├── sessions/                # Session tracking
+│   │   └── [sessionId]/[machineId]/events/  # Session events
+│   ├── unauthorized/            # Access denied page
+│   ├── vault/                   # Vault Management System
+│   │   ├── cashier/             # Cashier interface
+│   │   │   ├── payouts/         # Payout management
+│   │   │   ├── shifts/         # Shift management
+│   │   │   └── float-requests/ # Float requests
+│   │   └── management/          # Vault management
+│   │       ├── cash-desks/      # Cash desk management
+│   │       ├── expenses/        # Expense tracking
+│   │       ├── floats/          # Float management
+│   │       ├── reports/         # Vault reports
+│   │       ├── transactions/    # Transaction history
+│   │       └── transfers/       # Transfer management
+│   ├── layout.tsx               # Root layout
+│   └── page.tsx                 # Dashboard
 ├── components/                   # React components
-│   ├── ui/                      # Reusable UI components
-│   ├── layout/                  # Layout components
-│   └── [feature]/               # Feature-specific components
+│   ├── CMS/                     # CMS application components
+│   │   ├── administration/     # Admin components (31 files)
+│   │   ├── cabinets/            # Cabinet components (34 files)
+│   │   ├── collectionReport/    # Collection report components (53 files)
+│   │   ├── dashboard/           # Dashboard components (6 files)
+│   │   ├── locations/           # Location components (16 files)
+│   │   ├── machines/            # Machine components (2 files)
+│   │   ├── members/             # Member components (28 files)
+│   │   ├── reports/             # Report components (34 files)
+│   │   └── sessions/            # Session components (6 files)
+│   ├── shared/                  # Shared components
+│   │   ├── auth/                # Authentication components
+│   │   ├── layout/              # Layout components (14 files)
+│   │   ├── providers/           # Context providers
+│   │   └── ui/                  # Reusable UI components (100 files)
+│   │       ├── common/          # Common UI components
+│   │       ├── errors/          # Error components (7 files)
+│   │       ├── firmware/        # Firmware components (7 files)
+│   │       ├── movements/       # Movement components (6 files)
+│   │       ├── modals/          # Modal components
+│   │       └── skeletons/       # Skeleton loaders (18 files)
+│   └── VAULT/                   # Vault application components
+│       ├── cashier/             # Cashier components (6 files)
+│       ├── floats/              # Float components (5 files)
+│       ├── overview/            # Overview components (10 files)
+│       ├── reports/             # Report components (2 files)
+│       ├── transactions/        # Transaction components (3 files)
+│       ├── transfers/           # Transfer components (3 files)
+│       └── VaultUnauthorized.tsx
 ├── lib/                         # Shared utilities
-│   ├── helpers/                 # Frontend helpers
-│   ├── utils/                   # Utility functions
-│   ├── types/                   # TypeScript type definitions
-│   └── store/                   # Zustand stores
+│   ├── constants/               # Constants (16 files)
+│   │   └── navigation/         # Navigation constants
+│   ├── contexts/                # React contexts (CurrencyContext)
+│   ├── helpers/                 # Frontend helpers (43 files)
+│   │   ├── administration/     # Admin helpers
+│   │   ├── cabinets/            # Cabinet helpers
+│   │   ├── client/              # Client-side helpers
+│   │   ├── collectionReport/    # Collection report helpers (9 files)
+│   │   ├── collections/         # Collection helpers
+│   │   ├── machines/            # Machine helpers (6 files)
+│   │   └── reports/              # Report helpers (4 files)
+│   ├── hooks/                   # Custom React hooks (63 files)
+│   │   ├── administration/     # Admin hooks
+│   │   ├── auth/                # Auth hooks
+│   │   ├── cabinets/            # Cabinet hooks
+│   │   ├── collectionReport/    # Collection report hooks (10 files)
+│   │   ├── data/                # Data fetching hooks (24 files)
+│   │   ├── locations/           # Location hooks
+│   │   ├── machines/            # Machine hooks
+│   │   ├── members/             # Member hooks
+│   │   ├── navigation/         # Navigation hooks (6 files)
+│   │   └── reports/             # Report hooks
+│   ├── providers/               # React providers
+│   ├── store/                   # Zustand stores (12 files)
+│   ├── types/                   # TypeScript type definitions (58 files)
+│   └── utils/                   # Utility functions (59 files)
 ├── shared/                      # Shared types and utilities
-└── Documentation/               # System documentation
+│   ├── types/                   # Shared types (15 files)
+│   │   ├── analytics.ts
+│   │   ├── api.ts
+│   │   ├── auth.ts
+│   │   ├── billValidator.ts
+│   │   ├── common.ts
+│   │   ├── components.ts
+│   │   ├── currency.ts
+│   │   ├── dateFormat.ts
+│   │   ├── entities.ts
+│   │   ├── machines.ts
+│   │   ├── meters.ts
+│   │   ├── mongo.ts
+│   │   ├── users.ts
+│   │   ├── vault.ts
+│   │   └── index.ts
+│   └── utils/                   # Shared utilities
+│       └── dateFormat.ts
+└── Documentation/               # System documentation (74 files)
+    ├── backend/                 # Backend documentation
+    ├── frontend/                # Frontend documentation
+    └── [various guides]         # Feature-specific guides
 ```
 
 ## Core Business Logic
@@ -247,8 +356,8 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 
 1. **Content-Specific Skeletons:** Each page must have its own skeleton that matches the exact layout of the real content
 2. **Visual Accuracy:** Exact dimensions and spacing as the real content, proper visual hierarchy, all interactive elements represented
-3. **Implementation Standards:** Use Shadcn Skeleton component, create dedicated skeleton files in `components/ui/skeletons/`
-4. **File Organization:** Skeleton files in `components/ui/skeletons/[PageName]Skeletons.tsx`
+3. **Implementation Standards:** Use Shadcn Skeleton component, create dedicated skeleton files in `components/shared/ui/skeletons/`
+4. **File Organization:** Skeleton files in `components/shared/ui/skeletons/[PageName]Skeletons.tsx`
 5. **Mobile-Specific Requirements:** Every page and section must have mobile-specific loaders that match mobile layouts
 
 ### Security
@@ -262,7 +371,87 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 - **Activity Logging**: Complete audit trail for all user actions
 - **Account Security**: Failed login tracking and account locking
 
+## Application Pages & Routes
+
+### CMS Application Pages
+
+1. **Dashboard** (`/`) - Main dashboard with financial metrics and analytics
+2. **Administration** (`/administration`) - User and licensee management
+3. **Locations** (`/locations`) - Location listing and management
+   - **Location Details** (`/locations/[slug]`) - Individual location details
+4. **Cabinets** (`/cabinets`) - Cabinet/cabinet management
+   - **Cabinet Details** (`/cabinets/[slug]`) - Individual cabinet details with SMIB management
+5. **Machines** (`/machines`) - Machine listing
+   - **Machine Details** (`/machines/[slug]`) - Individual machine details
+6. **Collection Reports** (`/collection-report`) - Collection report management
+   - **Report Details** (`/collection-report/report/[reportId]`) - Individual report analysis
+7. **Reports** (`/reports`) - Comprehensive analytics and reporting (Locations, Machines, Meters tabs)
+8. **Members** (`/members`) - Member management
+   - **Member Details** (`/members/[id]`) - Individual member profile
+9. **Sessions** (`/sessions`) - Gaming session tracking
+   - **Session Events** (`/sessions/[sessionId]/[machineId]/events`) - Detailed session event log
+10. **Login** (`/login`) - Authentication page
+11. **Unauthorized** (`/unauthorized`) - Access denied page
+
+### Vault Management System Pages
+
+The Vault Management System is a separate application module for cash management operations:
+
+#### Vault Management Interface (`/vault/management`)
+
+- **Overview** (`/vault/management`) - Vault balance, cash desks, and transaction overview
+- **Cash Desks** (`/vault/management/cash-desks`) - Cash desk management
+- **Floats** (`/vault/management/floats`) - Float management
+- **Expenses** (`/vault/management/expenses`) - Expense tracking
+- **Transactions** (`/vault/management/transactions`) - Transaction history
+- **Transfers** (`/vault/management/transfers`) - Transfer management
+- **Reports** (`/vault/management/reports`)
+  - **End of Day** (`/vault/management/reports/end-of-day`) - End of day reports
+  - **Cash on Premises** (`/vault/management/reports/cash-on-premises`) - Cash on premises reports
+
+#### Cashier Interface (`/vault/cashier`)
+
+- **Payouts** (`/vault/cashier/payouts`) - Payout management
+- **Shifts** (`/vault/cashier/shifts`) - Shift management
+- **Float Requests** (`/vault/cashier/float-requests`) - Float request management
+
+**Note:** The Vault system requires special role-based access control. Users must have VAULT-related roles to access these pages.
+
 ## Key Features
+
+### Vault Management System ⭐ NEW FEATURE
+
+**Last Updated:** January 2025
+
+The Vault Management System is a comprehensive cash management module for casino operations:
+
+#### Core Features
+
+- **Vault Balance Tracking**: Real-time vault balance monitoring with cash desk status
+- **Cash Desk Management**: Individual cash desk tracking and management
+- **Float Management**: Float allocation and tracking across locations
+- **Expense Tracking**: Comprehensive expense recording and categorization
+- **Transaction History**: Complete audit trail of all vault transactions
+- **Transfer Management**: Inter-location and inter-desk transfer operations
+- **Reporting**: End-of-day and cash-on-premises reporting
+- **Cashier Interface**: Dedicated cashier interface for payouts, shifts, and float requests
+- **Role-Based Access**: Separate access control for vault managers and cashiers
+
+#### Technical Implementation
+
+- **Component Structure**: Separate `VAULT/` component directory for vault-specific components
+- **API Endpoints**: Dedicated `/api/vault/` endpoints for all vault operations
+- **Authorization**: `hasVaultAccess()` utility for role-based access control
+- **State Management**: Zustand stores for vault state management
+- **Types**: Shared vault types in `shared/types/vault.ts`
+
+#### Database Models
+
+- **Cash Desks**: Cash desk management and tracking
+- **Floats**: Float allocation and history
+- **Transactions**: Complete transaction audit trail
+- **Shifts**: Cashier shift management
+- **Payouts**: Payout tracking and management
 
 ### Gaming Day Offset System ⭐ CRITICAL
 
@@ -313,25 +502,107 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 
 ## API Patterns
 
+### API Structure Overview
+
+The application has **50+ API endpoints** organized by feature:
+
+#### Core API Endpoints
+
+- **Authentication** (`/api/auth/`): login, logout, refresh, current-user, forgot-password
+- **Users** (`/api/users/`): User CRUD operations
+- **Profile** (`/api/profile/`): Profile management and validation
+- **Licensees** (`/api/licensees/`): Licensee management
+- **Locations** (`/api/locations/`): Location CRUD, search, aggregation
+- **Machines** (`/api/machines/`): Machine CRUD, aggregation, search
+- **Cabinets** (`/api/cabinets/`): Cabinet management, SMIB operations
+- **Collections** (`/api/collections/`): Collection CRUD operations
+- **Collection Reports** (`/api/collection-reports/`): Report management, fixes, validation
+- **Collection Report** (`/api/collection-report/[reportId]/`): Individual report operations
+- **Members** (`/api/members/`): Member management
+- **Sessions** (`/api/sessions/`): Session tracking and queries
+- **Reports** (`/api/reports/`): Analytics and reporting
+- **Analytics** (`/api/analytics/`): Advanced analytics (16 endpoints)
+- **Metrics** (`/api/metrics/`): Financial metrics (6 endpoints)
+- **Dashboard** (`/api/dashboard/`): Dashboard data aggregation
+- **Activity Logs** (`/api/activity-logs/`): Audit trail queries
+- **Vault** (`/api/vault/`): Vault management operations (9 endpoints)
+
+#### Specialized API Endpoints
+
+- **SMIB** (`/api/smib/`): SMIB restart, meters, reset-meters, ota-update
+- **Firmwares** (`/api/firmwares/`): Firmware upload, list, serve
+- **MQTT** (`/api/mqtt/`): MQTT discovery and operations (6 endpoints)
+- **Bill Validator** (`/api/bill-validator/[machineId]/`): Bill validator calculations
+- **Movement Requests** (`/api/movement-requests/`): Cabinet movement workflow
+- **Schedulers** (`/api/schedulers/`): Collection scheduling
+- **Collectors** (`/api/collectors/`): Collector management
+- **Countries** (`/api/countries/`): Country data
+- **Manufacturers** (`/api/manufacturers/`): Manufacturer data
+- **Rates** (`/api/rates/`): Exchange rates
+- **Feedback** (`/api/feedback/`): User feedback
+- **Accounting Details** (`/api/accounting-details/`): Accounting data
+
+#### Admin API Endpoints
+
+- **Admin** (`/api/admin/`): Admin operations
+  - `/api/admin/auth/` - Admin authentication
+  - `/api/admin/create-indexes/` - Database index creation
+  - `/api/admin/reconnect-db/` - Database reconnection
+  - `/api/admin/repair-sas-times/` - SAS time repair operations
+
 ### Standard Endpoint Structure
 
 ```typescript
-// GET endpoints with filtering
-export async function GET(req: NextRequest) {
-  await connectDB();
-  const { searchParams } = new URL(req.url);
-  const filter = buildFilter(searchParams);
-  const results = await Model.find(filter).lean();
-  return NextResponse.json(results);
-}
+/**
+ * [Route Name] API Route
+ *
+ * This route handles [brief description].
+ * It supports:
+ * - Feature 1
+ * - Feature 2
+ *
+ * @module app/api/[path]/route
+ */
 
-// POST endpoints with validation
-export async function POST(req: NextRequest) {
-  await connectDB();
-  const data = await req.json();
-  const validated = validateData(data);
-  const created = await Model.create(validated);
-  return NextResponse.json(created);
+import { helper1, helper2 } from '@/app/api/lib/helpers/[feature]';
+import { type Type1, type Type2 } from '@/app/api/lib/types';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Main GET handler for [route name]
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Authenticate user and check permissions
+ * 3. [Step 3 description]
+ * 4. [Step 4 description]
+ */
+export async function GET(req: NextRequest) {
+  const startTime = Date.now(); // Performance tracking
+
+  try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
+    const { searchParams } = new URL(req.url);
+    const params = parseParams(searchParams);
+
+    // ============================================================================
+    // STEP 2: Connect to database and authenticate user
+    // ============================================================================
+    const db = await connectDB();
+    const user = await getUserFromServer();
+
+    // ============================================================================
+    // STEP 3: [Next step description]
+    // ============================================================================
+    // Implementation
+
+    return NextResponse.json(response);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Server Error';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  }
 }
 ```
 
@@ -424,7 +695,7 @@ export default function Component() {
 }
 
 // Confirmation Dialog Pattern (for non-destructive actions)
-import { InfoConfirmationDialog } from "@/components/ui/InfoConfirmationDialog";
+import { InfoConfirmationDialog } from "@/components/shared/ui/InfoConfirmationDialog";
 
 const [showConfirmation, setShowConfirmation] = useState(false);
 
@@ -669,7 +940,7 @@ The complete SMIB (Slot Machine Interface Board) management system has been impl
 - **User Experience**: Context-aware error messages with guidance to contact manager or customer support
 - **Error Detection**: Frontend helpers detect 403 errors and re-throw with `isUnauthorized` flag for proper UI handling
 - **Pages Protected**: Cabinet details, machine details, location details, and collection report detail pages all show proper unauthorized messages instead of generic errors
-- **Files**: `components/ui/errors/UnauthorizedError.tsx`, `app/api/lib/helpers/licenseeFilter.ts`, `lib/helpers/cabinets.ts`, `lib/helpers/collectionReport.ts`
+- **Files**: `components/shared/ui/errors/UnauthorizedError.tsx`, `app/api/lib/helpers/licenseeFilter.ts`, `lib/helpers/cabinets.ts`, `lib/helpers/collectionReport.ts`
 
 ### User Management Enhancements ✅ (December 2025)
 
@@ -1008,7 +1279,7 @@ Native Currency (TTD $20)
 - **Error Boundaries**: Graceful error handling throughout the application
 - **Activity Logging**: Complete audit trail for all user actions
 
-## Current System Status (October 27th, 2025)
+## Current System Status (January 2025)
 
 ### Build System Status ✅
 
@@ -1128,7 +1399,7 @@ Native Currency (TTD $20)
 - **`Documentation/backend/sas-gross-calculation-system.md`**: SAS GROSS implementation
 - **`Documentation/backend/gaming-day-offset-system.md`**: Gaming day offset details
 - **`Documentation/backend/bill-validator-calculation-system.md`**: Bill validator system
-- **`Documentation/currency-converter-system.md`**: Currency conversion system
+- **Currency Conversion System**: Documented in application context (see Currency System section) - Role-based currency conversion, exchange rates, and multi-currency support
 - **`Documentation/frontend/database-relationships.md`**: Database schema relationships
 - **`.cursor/collection-reports-guidelines.md`**: **CRITICAL** - Collection Reports system rules and debugging guide
 
@@ -1146,7 +1417,7 @@ Native Currency (TTD $20)
 
 This context file provides a comprehensive overview of the Evolution One Casino Management System. Use this as reference when working on any part of the system to maintain consistency and understand the broader context of your changes.
 
-**Last Major Update:** December 22nd, 2025 - Complete Frontend Refactoring (All components over 1000 lines refactored), Page Refactoring (All app/ pages refactored), Infinite Loop Fixes, ESLint Compliance, Session Management Fix (Multi-Device Support), Machine Status Widgets, Currency Auto-Set for Single-Licensee Users
+**Last Major Update:** January 2025 - Application Context Update (Next.js 16.0.7, Vault Management System, Complete API Structure, Component Organization, All Pages Documented)
 
 ### Recent Updates (December 2025)
 
@@ -1234,7 +1505,7 @@ This context file provides a comprehensive overview of the Evolution One Casino 
 - **Locations Page**: Added machine status widget showing online/total format (e.g., "37/40 Online")
 - **Cabinets Page**: Added machine status widget on Cabinets tab
 - **Location Details Page**: Added machine status widget alongside date filters
-- **Component**: `components/ui/MachineStatusWidget.tsx` - Reusable widget with `showTotal` prop
+- **Component**: `components/shared/ui/MachineStatusWidget.tsx` - Reusable widget with `showTotal` prop
 - **Removed**: Redundant "Total Machines" count badges (now handled by widget)
 
 #### Currency Auto-Set for Single-Licensee Users ✅

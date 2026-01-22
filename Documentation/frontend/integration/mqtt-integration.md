@@ -1,7 +1,7 @@
 # MQTT Integration - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025
+**Last Updated:** January 2025
 
 ## Quick Search Guide
 
@@ -23,7 +23,7 @@ The frontend MQTT integration provides real-time communication with SMIB devices
 ### Key Components
 
 - **SMIB Configuration Hook** (`lib/hooks/data/useSmibConfiguration.ts`)
-- **SMIB Management Tab** (`components/cabinets/SMIBManagementTab.tsx`)
+- **SMIB Management Tab** (`components/CMS/cabinets/CabinetsSMIBManagementTab.tsx`)
 - **Cabinet Details Page** (`app/cabinets/[slug]/page.tsx`)
 - **SSE Connection Management** (EventSource API)
 - **Configuration Forms** (Network, MQTT, COMS with updatedAt tracking)
@@ -84,42 +84,42 @@ type UseSmibConfigurationReturn = {
   isEditMode: boolean;
   communicationMode: string;
   firmwareVersion: string;
-  
+
   // Connection State
   isConnectedToMqtt: boolean;
   isLoadingMqttConfig: boolean;
   hasReceivedRealSmibData: boolean;
   isManuallyFetching: boolean;
   hasConfigBeenFetched: boolean;
-  
+
   // Configuration Data
   mqttConfigData: MqttConfigData | null;
   formData: FormData;
   originalData: FormData;
-  
+
   // UI Actions
   toggleSmibConfig: () => void;
   setEditMode: (edit: boolean) => void;
   updateFormData: (field: string, value: string) => void;
   resetFormData: () => void;
-  
+
   // Configuration Management
   setCommunicationModeFromData: (data: CabinetDetail) => void;
   setFirmwareVersionFromData: (data: CabinetDetail) => void;
   saveConfiguration: (cabinetId: string, machineControl?: string) => Promise<boolean>;
-  
+
   // Database Operations
   fetchMqttConfig: (cabinetId: string) => Promise<void>;
   fetchSmibConfiguration: (relayId: string) => Promise<void>;
-  
+
   // SSE Connection Management
   connectToConfigStream: (relayId: string) => void;
   disconnectFromConfigStream: () => void;
-  
+
   // MQTT Operations
   requestLiveConfig: (relayId: string, component: string) => Promise<void>;
   publishConfigUpdate: (relayId: string, config: object) => Promise<void>;
-  
+
   // Component-Specific Updates
   updateNetworkConfig: (relayId: string, networkData: {...}) => Promise<void>;
   updateMqttConfig: (relayId: string, mqttData: {...}) => Promise<void>;
@@ -137,7 +137,7 @@ type FormData = {
   networkSSID: string;
   networkPassword: string;
   networkChannel: string;
-  
+
   // Communication Configuration
   communicationMode: string;
   comsMode: string;
@@ -145,10 +145,10 @@ type FormData = {
   comsRateMs: string;
   comsRTE: string;
   comsGPC: string;
-  
+
   // Firmware
   firmwareVersion: string;
-  
+
   // MQTT Configuration
   mqttHost: string;
   mqttPort: string;
@@ -170,6 +170,7 @@ type FormData = {
 #### When Connection is Established
 
 The SSE connection is established when:
+
 1. Cabinet details page loads
 2. Valid relayId is available
 3. SMIB configuration section is accessed
@@ -257,9 +258,9 @@ const connectToConfigStream = useCallback((relayId: string) => {
   );
 
   // Handle messages
-  eventSource.onmessage = (event) => {
+  eventSource.onmessage = event => {
     const message = JSON.parse(event.data);
-    
+
     if (message.type === 'heartbeat') {
       // Update heartbeat timestamp
       lastHeartbeatRef.current = Date.now();
@@ -275,9 +276,9 @@ const connectToConfigStream = useCallback((relayId: string) => {
     if (message.type === 'config_update' && message.data) {
       // Process configuration update
       const configData = message.data;
-      
+
       // Check if this is real SMIB data
-      const hasRealData = 
+      const hasRealData =
         (configData.comp === 'net' && configData.netStaSSID) ||
         (configData.comp === 'coms' && configData.comsMode !== undefined) ||
         (configData.comp === 'mqtt' && configData.mqttURI);
@@ -290,7 +291,7 @@ const connectToConfigStream = useCallback((relayId: string) => {
   };
 
   // Handle errors
-  eventSource.onerror = (error) => {
+  eventSource.onerror = error => {
     console.error('❌ [HOOK] EventSource error:', error);
     setIsConnectedToMqtt(false);
   };
@@ -320,7 +321,7 @@ const requestLiveConfig = async (relayId: string, component: string) => {
   const response = await fetch('/api/mqtt/config/request', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ relayId, component })
+    body: JSON.stringify({ relayId, component }),
   });
 
   if (!response.ok) {
@@ -374,7 +375,7 @@ const updateMqttConfig = async (
   const config = {
     typ: 'cfg',
     comp: 'mqtt',
-    ...mqttData
+    ...mqttData,
   };
 
   await publishConfigUpdate(relayId, config);
@@ -384,7 +385,7 @@ const publishConfigUpdate = async (relayId: string, config: object) => {
   const response = await fetch('/api/mqtt/config/publish', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ relayId, config })
+    body: JSON.stringify({ relayId, config }),
   });
 
   if (!response.ok) {
@@ -423,10 +424,10 @@ await Promise.all([
 ```typescript
 const fetchMqttConfig = async (cabinetId: string) => {
   setIsLoadingMqttConfig(true);
-  
+
   const response = await fetch(`/api/mqtt/config?cabinetId=${cabinetId}`);
   const data = await response.json();
-  
+
   if (data.success) {
     // Update form with database values
     setFormData(prev => ({
@@ -437,7 +438,7 @@ const fetchMqttConfig = async (cabinetId: string) => {
     }));
     setMqttConfigData(data.data);
   }
-  
+
   setIsLoadingMqttConfig(false);
 };
 ```
@@ -448,7 +449,7 @@ const fetchMqttConfig = async (cabinetId: string) => {
 // In SSE message handler
 if (message.type === 'config_update') {
   const configData = message.data;
-  
+
   if (configData.comp === 'mqtt') {
     setFormData(prev => ({
       ...prev,
@@ -458,7 +459,7 @@ if (message.type === 'config_update') {
       // ... other MQTT fields
     }));
   }
-  
+
   if (configData.comp === 'net') {
     setFormData(prev => ({
       ...prev,
@@ -467,7 +468,7 @@ if (message.type === 'config_update') {
       networkChannel: configData.netStaChan?.toString() || prev.networkChannel,
     }));
   }
-  
+
   if (configData.comp === 'coms') {
     setFormData(prev => ({
       ...prev,
@@ -516,7 +517,7 @@ const saveConfiguration = async (
     const response = await fetch(`/api/cabinets/${cabinetId}/smib-config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ smibConfig, machineControl })
+      body: JSON.stringify({ smibConfig, machineControl }),
     });
 
     const result = await response.json();
@@ -533,16 +534,19 @@ const saveConfiguration = async (
 ### SSE Connection States
 
 #### 1. Disconnected
+
 - Initial state
 - SSE connection not established
 - No live updates available
 
 #### 2. Connected
+
 - SSE connection established
 - Receiving heartbeat messages
 - Ready to receive config updates
 
 #### 3. Received Real Data
+
 - Connected AND received actual SMIB data
 - SMIB device is online and responsive
 - Configuration data is current
@@ -573,7 +577,7 @@ if (!isConnectedToMqtt) {
 heartbeatCheckIntervalRef.current = setInterval(() => {
   const now = Date.now();
   const timeSinceLastHeartbeat = now - lastHeartbeatRef.current;
-  
+
   // Consider disconnected if no heartbeat for 15 seconds
   if (timeSinceLastHeartbeat > 15000 && isConnectedToMqttRef.current) {
     console.warn('⚠️ [HOOK] No heartbeat for 15s - marking as disconnected');
@@ -599,7 +603,7 @@ const updateNetworkConfig = async (
     typ: 'cfg',
     comp: 'net',
     netMode: 0, // WiFi Station mode
-    ...networkData
+    ...networkData,
   };
 
   await publishConfigUpdate(relayId, config);
@@ -624,7 +628,7 @@ const updateMqttConfig = async (
   const config = {
     typ: 'cfg',
     comp: 'mqtt',
-    ...mqttData
+    ...mqttData,
   };
 
   await publishConfigUpdate(relayId, config);
@@ -647,7 +651,7 @@ const updateComsConfig = async (
   const config = {
     typ: 'cfg',
     comp: 'coms',
-    ...comsData
+    ...comsData,
   };
 
   await publishConfigUpdate(relayId, config);
@@ -666,7 +670,7 @@ const updateOtaConfig = async (
   const config = {
     typ: 'cfg',
     comp: 'ota',
-    ...otaData
+    ...otaData,
   };
 
   await publishConfigUpdate(relayId, config);
@@ -753,13 +757,13 @@ useEffect(() => {
 ### SSE Connection Errors
 
 ```typescript
-eventSource.onerror = (error) => {
+eventSource.onerror = error => {
   console.error('❌ [HOOK] EventSource error:', error);
   setIsConnectedToMqtt(false);
-  
+
   // Toast notification
   toast.error('Lost connection to MQTT stream');
-  
+
   // Attempt reconnection after delay
   setTimeout(() => {
     if (currentRelayIdRef.current) {
@@ -875,11 +879,13 @@ await requestLiveConfig(relayId, 'mqtt'); // May throw unhandled error
 **Symptoms:** `isConnectedToMqtt` stays false
 
 **Causes:**
+
 - Invalid relayId
 - API endpoint not responding
 - Network connectivity issues
 
 **Solutions:**
+
 - Check relayId value in cabinet data
 - Verify `/api/mqtt/config/subscribe` endpoint is accessible
 - Check browser Network tab for SSE request
@@ -889,11 +895,13 @@ await requestLiveConfig(relayId, 'mqtt'); // May throw unhandled error
 **Symptoms:** `hasReceivedRealSmibData` stays false
 
 **Causes:**
+
 - SMIB device offline
 - MQTT broker connectivity issues
 - Incorrect topic configuration
 
 **Solutions:**
+
 - Check SMIB device status
 - Verify MQTT broker is accessible
 - Check MQTT topics configuration
@@ -903,11 +911,13 @@ await requestLiveConfig(relayId, 'mqtt'); // May throw unhandled error
 **Symptoms:** Save button doesn't update configuration
 
 **Causes:**
+
 - API endpoint errors
 - Invalid configuration values
 - MQTT publishing failures
 
 **Solutions:**
+
 - Check browser console for API errors
 - Validate all form field values
 - Check MQTT service connection status
@@ -938,4 +948,3 @@ The hook includes comprehensive logging:
 - [MQTT Protocols](../backend/mqtt-protocols.md) - Protocol and message formats
 - [Cabinet Details](./machine-details.md) - Cabinet details page documentation
 - [SMIB Configuration](../backend/cabinets-api.md) - Backend API documentation
-

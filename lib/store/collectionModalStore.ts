@@ -12,7 +12,7 @@
  * @returns Zustand hook for accessing and updating collection modal state.
  */
 import { create } from 'zustand';
-import type { CollectionDocument } from '@/lib/types/collections';
+import type { CollectionDocument } from '@/lib/types/collection';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 
 // ============================================================================
@@ -204,3 +204,4 @@ const getClientStore = () => {
 // Use this store only on client side
 export const useCollectionModalStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);
+

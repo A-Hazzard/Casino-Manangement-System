@@ -9,7 +9,7 @@
  * @module app/api/collection-reports/check-all-issues/route
  */
 
-import { checkAllIssues } from '@/app/api/lib/helpers/checkAllIssues';
+import { checkAllIssues } from '@/app/api/lib/helpers/collectionReport/fixes/checkAllIssues';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '../../lib/middleware/db';
 
@@ -86,3 +86,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

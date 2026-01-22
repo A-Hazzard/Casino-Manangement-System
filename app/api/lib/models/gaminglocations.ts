@@ -9,8 +9,6 @@ const GamingLocationsSchema = new Schema(
     name: {
       type: String,
       required: true,
-      unique: true,
-      index: true,
     },
     country: String,
     address: {
@@ -65,7 +63,10 @@ const GamingLocationsSchema = new Schema(
     },
     createdAt: Date,
     updatedAt: Date,
-    deletedAt: Date,
+    deletedAt: {
+      type: Date,
+      default: () => new Date(-1),
+    },
     status: String,
     statusHistory: [Schema.Types.Mixed],
     noSMIBLocation: Boolean,
@@ -73,6 +74,17 @@ const GamingLocationsSchema = new Schema(
   {
     timestamps: true,
     versionKey: false,
+  }
+);
+
+// Unique index for name only for active locations
+// This allows soft-deleted locations to have the same name as new active ones
+GamingLocationsSchema.index(
+  { name: 1 },
+  {
+    name: 'unique_active_location_name',
+    unique: true,
+    partialFilterExpression: { deletedAt: { $lt: new Date('2025-01-01') } },
   }
 );
 
@@ -90,3 +102,4 @@ GamingLocationsSchema.index({
  */
 export const GamingLocations =
   models.GamingLocations || model('GamingLocations', GamingLocationsSchema);
+

@@ -1,13 +1,15 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { DashBoardStore } from '@/lib/types/store';
 import type { CurrencyCode } from '@/shared/types/currency';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 // Define a no-op version for SSR
 const dummyState: DashBoardStore = {
   initialLoading: true,
-  loadingChartData: false,
-  loadingTopPerforming: false,
+  loadingChartData: true,
+  loadingTotals: true,
+  loadingLocations: true,
+  loadingTopPerforming: true,
   refreshing: false,
   pieChartSortIsOpen: false,
   showDatePicker: false,
@@ -22,7 +24,7 @@ const dummyState: DashBoardStore = {
   activeMetricsFilter: 'Today',
   activePieChartFilter: 'Today',
   totals: null,
-  chartData: [],
+  chartData: null,
   gamingLocations: [],
   selectedLicencee: '',
   sortBy: 'totalDrop',
@@ -37,6 +39,8 @@ const dummyState: DashBoardStore = {
   topPerformingData: [],
   setInitialLoading: () => {},
   setLoadingChartData: () => {},
+  setLoadingTotals: () => {},
+  setLoadingLocations: () => {},
   setLoadingTopPerforming: () => {},
   setRefreshing: () => {},
   setPieChartSortIsOpen: () => {},
@@ -64,8 +68,10 @@ const createStore = () => {
     persist<DashBoardStore>(
       set => ({
         initialLoading: true,
-        loadingChartData: false,
-        loadingTopPerforming: false,
+        loadingChartData: true,
+        loadingTotals: true,
+        loadingLocations: true,
+        loadingTopPerforming: true,
         refreshing: false,
         pieChartSortIsOpen: false,
         showDatePicker: false,
@@ -80,7 +86,7 @@ const createStore = () => {
         activeMetricsFilter: 'Today',
         activePieChartFilter: 'Today',
         totals: null,
-        chartData: [],
+        chartData: null,
         gamingLocations: [],
   selectedLicencee: '',
   sortBy: 'totalDrop',
@@ -95,6 +101,8 @@ const createStore = () => {
 
         setInitialLoading: initialLoading => set({ initialLoading }),
         setLoadingChartData: loadingChartData => set({ loadingChartData }),
+        setLoadingTotals: loadingTotals => set({ loadingTotals }),
+        setLoadingLocations: loadingLocations => set({ loadingLocations }),
         setLoadingTopPerforming: loadingTopPerforming =>
           set({ loadingTopPerforming }),
         setRefreshing: refreshing => set({ refreshing }),
@@ -153,6 +161,14 @@ const createStore = () => {
             ...cur,
             ...persisted,
             ...(revivedRange ? { customDateRange: revivedRange } : {}),
+            // Force reset loading states and chartData to ensure consistent initial load
+            initialLoading: true,
+            loadingChartData: true,
+            loadingTotals: true,
+            loadingLocations: true,
+            loadingTopPerforming: true,
+            chartData: null,
+            totals: null,
           } as DashBoardStore;
         },
       }
@@ -183,3 +199,4 @@ const getClientStore = () => {
 // Use this store only on client side
 export const useDashBoardStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);
+

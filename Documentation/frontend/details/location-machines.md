@@ -104,7 +104,7 @@ Key features include:
 **Purpose:** Display machines in table or card format based on screen size.
 
 **Components Used:**
-- `LocationsDetailsCabinetsSection` (`components/locations/sections/LocationsDetailsCabinetsSection.tsx`)
+- `LocationsDetailsCabinetsSection` (`components/CMS/locations/sections/LocationsDetailsCabinetsSection.tsx`)
 - Desktop table view with all columns
 - Mobile card view with essential information
 
@@ -176,7 +176,7 @@ Key features include:
 **Purpose:** Display machine online/offline status summary.
 
 **Components Used:**
-- `MachineStatusWidget` (`components/ui/MachineStatusWidget.tsx`)
+- `MachineStatusWidget` (`components/shared/ui/MachineStatusWidget.tsx`)
 - Status calculation components
 
 **API Endpoints:**
@@ -207,7 +207,7 @@ Key features include:
 **Purpose:** Handle pagination for large machine datasets.
 
 **Components Used:**
-- `PaginationControls` (`components/ui/PaginationControls.tsx`)
+- `PaginationControls` (`components/shared/ui/PaginationControls.tsx`)
 - Page navigation buttons
 
 **Data Flow:**
@@ -236,9 +236,9 @@ Key features include:
 **Purpose:** Handle create, edit, and delete machine operations.
 
 **Components Used:**
-- `NewCabinetModal` (`components/ui/cabinets/NewCabinetModal.tsx`) - Create machine
-- `EditCabinetModal` (`components/ui/cabinets/EditCabinetModal.tsx`) - Edit machine
-- `DeleteCabinetModal` (`components/ui/cabinets/DeleteCabinetModal.tsx`) - Delete machine
+- `NewCabinetModal` (`components/CMS/cabinets/modals/NewCabinetModal.tsx`) - Create machine
+- `EditCabinetModal` (`components/CMS/cabinets/EditCabinetModal/EditCabinetModal.tsx`) - Edit machine
+- `DeleteCabinetModal` (`components/CMS/cabinets/modals/DeleteCabinetModal.tsx`) - Delete machine
 
 **API Endpoints:**
 - `POST /api/cabinets` - Create new machine

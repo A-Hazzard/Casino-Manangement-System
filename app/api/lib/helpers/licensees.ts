@@ -444,3 +444,4 @@ export async function deleteLicensee(_id: string, request: NextRequest) {
 
   return deleted;
 }
+

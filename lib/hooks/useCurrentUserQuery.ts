@@ -152,3 +152,4 @@ export function useCurrentUserQuery() {
     hasData: !!data?.success,
   };
 }
+

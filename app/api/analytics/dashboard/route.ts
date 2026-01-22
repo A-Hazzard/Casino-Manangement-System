@@ -10,7 +10,7 @@
  * @module app/api/analytics/dashboard/route
  */
 
-import { getDashboardAnalytics } from '@/app/api/lib/helpers/analytics';
+import { getDashboardAnalytics } from '@/app/api/lib/helpers/reports/analytics';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
@@ -111,3 +111,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

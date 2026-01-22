@@ -46,26 +46,29 @@ Key features include:
 **Components Used:**
 
 - Location name and ID display
-- Back navigation button
+- Back navigation button (to `/locations`)
 - Refresh button with loading state
-- Action buttons (conditional based on permissions)
+- Create Machine button (conditional based on user permissions and active view)
+- Missing Coordinates indicator (`MapPinOff` icon)
 
 **Data Flow:**
 
-- Fetches location data on mount
-- Displays location name and basic information
-- Provides navigation back to locations list
+- Fetches location data on mount via `useLocationCabinetsData` hook.
+- Displays location name, back navigation, and action buttons.
+- The location ID is extracted from URL parameters (`params.slug`).
 
 **Key Functions:**
 
-- `onBack` - Navigate back to locations list
-- `handleRefresh` - Refresh all location data
+- `handleRefresh` (from `LocationsDetailsPageContent`) - Refreshes all data for the active view.
+- `openCabinetModal` (from `useNewCabinetStore`) - Opens the modal to create a new machine for this location.
 
 **Notes:**
 
-- Shows location identifier and basic info
-- Includes navigation and refresh controls
-- Action buttons vary by user permissions
+- Displays the location name (or "Location Details" during loading).
+- Back button navigates to the main `/locations` page.
+- Refresh button triggers a full data refresh for the currently active view.
+- A "Create Machine" button is displayed conditionally based on user permissions (`canManageMachines`) and if the 'Machines' view is active.
+- An `MapPinOff` icon is displayed next to the location name if the location has missing geographic coordinates.
 
 ---
 
@@ -80,25 +83,26 @@ Key features include:
 
 **Data Flow:**
 
-1. User clicks Machines or Members tab
-2. Updates `activeView` state
-3. URL parameter updated (`?view=machines` or `?view=members`)
-4. Content switches between machines and members views
+1.  User clicks "Machines" or "Members" tab.
+2.  Updates `activeView` state within `LocationsDetailsPageContent`.
+3.  URL parameter updated (`?tab=members` or `tab` parameter removed for 'Machines' view).
+4.  Content switches between machines and members views via conditional rendering.
 
 **Key Functions:**
 
-- `setActiveView` - Update active view state
-- URL synchronization logic
+-   `handleViewChange` - Updates active view state and synchronizes with URL.
 
 **State Management:**
 
-- `activeView` - Current active view ('machines' | 'members')
+-   `activeView` - Current active view ('machines' | 'members').
+-   `showMembersTab` - Computed value determining if 'Members' tab should be visible, based on `locationMembershipEnabled` and `membershipStats` (count > 0 or still loading).
 
 **Notes:**
 
-- Members tab only available if location has membership enabled
-- URL persistence for view state
-- Automatic fallback to machines view if members not available
+-   The "Members" tab is only available if the location has membership enabled *and* either there are members or membership stats are still loading.
+-   URL persistence for view state uses the `tab` query parameter (`?tab=members`).
+-   Automatic fallback to "Machines" view if the "Members" tab is manually accessed (e.g., via URL) but membership is not enabled or no members are found.
+-   The members tab leverages `useMembersNavigation` for its internal tab management if the location supports it.
 
 ---
 
@@ -108,36 +112,46 @@ Key features include:
 
 **Components Used:**
 
-- `LocationsDetailsCabinetsSection` (`components/locations/sections/LocationsDetailsCabinetsSection.tsx`)
-- Machine table/card display
-- Search and filter controls
-- Pagination controls
-- Machine status widget
+-   `LocationsDetailsCabinetsSection` (`components/CMS/locations/sections/LocationsDetailsCabinetsSection.tsx`) - Main component for machines display, including:
+    *   `FinancialMetricsCards` (`components/shared/ui/FinancialMetricsCards.tsx`)
+    *   `DashboardChart` (`components/CMS/dashboard/DashboardChart.tsx`)
+    *   `MachineStatusWidget` (`components/shared/ui/MachineStatusWidget.tsx`)
+    *   Machine table/card display (within `LocationsDetailsCabinetsSection`)
+    *   Search and filter controls (within `LocationsDetailsCabinetsSection`)
+    *   Pagination controls (within `LocationsDetailsCabinetsSection`)
 
 **API Endpoints:**
 
-- `GET /api/locations/[locationId]/cabinets` - Fetch location machines
-- `GET /api/locationAggregation/[locationId]` - Fetch location metrics
+-   `GET /api/locations/[locationId]/cabinets` - Fetch location machines (via `useLocationCabinetsData`)
+-   `GET /api/locationAggregation/[locationId]` - Fetch location metrics (via `useLocationCabinetsData` for financial totals)
+-   `GET /api/machines/by-id/metrics` - Fetch chart data for individual machines (aggregated by `useLocationChartData`)
+-   `GET /api/analytics/location-trends` - Fetch aggregated location trend data (for chart, via `useLocationChartData`)
+-   `GET /api/analytics/machines/stats` - Fetch machine status statistics (via `useLocationMachineStats`)
+-   `GET /api/analytics/membership/stats` - Fetch membership statistics (via `useLocationMembershipStats` for `showMembersTab` logic)
 
 **Data Flow:**
 
-1. Fetches machines data for the location
-2. Applies search and filter criteria
-3. Displays machines in table/card format
-4. Shows financial metrics and status widgets
+1.  `useLocationCabinetsData` hook fetches machines data, financial totals, and manages search/filter state for the location.
+2.  `useLocationChartData` fetches and aggregates chart data (either per-machine or location trends) based on selected filters and granularity.
+3.  `useLocationMachineStats` fetches online/offline machine counts.
+4.  `FinancialMetricsCards` displays totals.
+5.  `DashboardChart` visualizes trends.
+6.  `MachineStatusWidget` shows machine online/offline summary.
+7.  Machines are displayed in a table/card format with search, filtering, and pagination.
 
 **Key Functions:**
 
-- `useLocationCabinetsData` (`lib/hooks/locations/useLocationCabinetsData.ts`) - Machines data fetching
-- `handleFilterChange` - Update filter criteria
-- `setCurrentPage` - Handle pagination
+-   `useLocationCabinetsData` - Main hook for machines data, search, filters, and pagination.
+-   `useLocationChartData` - Hook for fetching and managing chart data, including granularity.
+-   `useLocationMachineStats` - Hook for machine online/offline status.
+-   `handleFilterChange` - Updates status filter for machines.
+-   `handleRefresh` - Refreshes all data in the current view.
 
 **State Management:**
 
-- `cabinetsData` - Machines data and state
-- `currentPage` - Current pagination page
-- `searchTerm` - Search filter
-- `selectedStatus` - Online/offline filter
+-   `cabinetsData` (from `useLocationCabinetsData`) - Contains all state and handlers for machine data, filters, and pagination.
+-   `chartDataHook` (from `useLocationChartData`) - Contains chart data, loading states, and granularity settings.
+-   `machineStats` (from `useLocationMachineStats`) - Machine online/offline counts.
 
 **Notes:**
 
@@ -155,33 +169,36 @@ Key features include:
 
 **Components Used:**
 
-- `MembersNavigation` (`components/members/common/MembersNavigation.tsx`)
-- `MembersListTab` (`components/members/tabs/MembersListTab.tsx`)
-- `MembersSummaryTab` (`components/members/tabs/MembersSummaryTab.tsx`)
-- Members context and handlers
+-   `LocationMembersContent` (a nested component within `LocationsDetailsPageContent.tsx`) which wraps:
+    *   `MembersNavigation` (`components/CMS/members/common/MembersNavigation.tsx`)
+    *   `MembersListTab` (`components/CMS/members/tabs/MembersListTab.tsx`)
+    *   `MembersSummaryTab` (`components/CMS/members/tabs/MembersSummaryTab.tsx`)
+    *   `MembersHandlersProvider` (`components/CMS/members/context/MembersHandlersContext.tsx`)
 
 **API Endpoints:**
 
-- `GET /api/members?locationId=[locationId]` - Fetch location members
-- `GET /api/members/summary?locationId=[locationId]` - Fetch member summary data
+-   `GET /api/members?locationId=[locationId]` - Fetch location members (via `MembersListTab`)
+-   `GET /api/members/summary?locationId=[locationId]` - Fetch member summary data (via `MembersSummaryTab`)
 
 **Data Flow:**
 
-1. Checks if location has membership enabled
-2. Loads members navigation with Members/Summary tabs
-3. Fetches member data filtered by location
-4. Displays members in list or summary format
+1.  Checks if location has membership enabled and members exist (or are loading).
+2.  `LocationMembersContent` component is rendered when `activeView` is 'members'.
+3.  `MembersHandlersProvider` provides context for member operations specific to this location.
+4.  `MembersNavigation` displays tabs for "Members" and "Summary Report".
+5.  `MembersListTab` or `MembersSummaryTab` are rendered, receiving `forcedLocationId` to filter data by the current location.
+6.  `onRefreshReady` callback from `LocationMembersContent` exposes the members-specific refresh handler to `LocationsDetailsPageContent`.
 
 **Key Functions:**
 
-- `useMembersNavigation` (`lib/hooks/navigation.ts`) - Tab navigation
-- `MembersHandlersProvider` - Context for member operations
-- Location-specific member filtering
+-   `useMembersNavigation` - Tab navigation within the members view.
+-   `useMembersHandlers` - Provides member CRUD operations and refresh functionality.
+-   `membersRefreshHandlerRef` - A ref in `LocationsDetailsPageContent` to hold the members view's refresh function, allowing the parent to trigger it.
 
 **State Management:**
 
-- `activeTab` - Current members tab ('members' | 'summary-report')
-- Members context state for CRUD operations
+-   `activeTab` (from `useMembersNavigation`) - Current active tab ('members' | 'summary-report') within the members view.
+-   Members context state for CRUD operations, managed by `MembersHandlersProvider`.
 
 **Notes:**
 
@@ -198,29 +215,27 @@ Key features include:
 
 **Components Used:**
 
-- `FinancialMetricsCards` (`components/ui/FinancialMetricsCards.tsx`)
-- Metric calculation and display components
+-   `FinancialMetricsCards` (`components/shared/ui/FinancialMetricsCards.tsx`) - Used within `LocationsDetailsCabinetsSection`.
 
 **API Endpoints:**
 
-- `GET /api/locations/[locationId]/metrics` - Fetch location financial metrics
+-   `GET /api/locationAggregation/[locationId]` - Fetches aggregated financial data for the specific location, based on the selected date range and licensee (handled by `useLocationCabinetsData`).
 
 **Data Flow:**
 
-1. Fetches financial data for the location
-2. Calculates metrics (handle, win/loss, revenue, etc.)
-3. Displays formatted financial cards
+1.  `useLocationCabinetsData` hook fetches aggregated financial data (`financialTotals`) for the specific `locationId` and currently selected `activeMetricsFilter`/`customDateRange`/`selectedLicencee`.
+2.  `FinancialMetricsCards` displays these `financialTotals` (Money In, Money Out, Gross).
 
 **Key Functions:**
 
-- Financial metric calculations
-- Currency formatting and display
+-   Financial metric calculations are handled upstream by the API and within the `useLocationCabinetsData` hook.
+-   Currency formatting and display are handled by the `FinancialMetricsCards` component.
 
 **Notes:**
 
-- Shows key financial performance indicators
-- Real-time data updates
-- Formatted currency display
+-   Shows key financial performance indicators for the selected location.
+-   Data updates with changes in date filters.
+-   Formatted currency display.
 
 ---
 
@@ -230,34 +245,36 @@ Key features include:
 
 **Components Used:**
 
-- `MachineStatusWidget` (`components/ui/MachineStatusWidget.tsx`)
-- Status calculation components
+-   `MachineStatusWidget` (`components/shared/ui/MachineStatusWidget.tsx`) - Used within `LocationsDetailsCabinetsSection`.
 
 **API Endpoints:**
 
-- `GET /api/locations/[locationId]/machine-status` - Fetch machine status data
+-   `GET /api/analytics/machines/stats` - Fetches machine status statistics, filtered by `locationId`, optional `gameType`, and `searchTerm`.
 
 **Data Flow:**
 
-1. Fetches machine status data
-2. Calculates online/offline counts
-3. Displays status summary (e.g., "37/40 Online")
+1.  `useLocationMachineStats` hook fetches online/offline machine counts and total machines for the specific `locationId`.
+2.  Data can be further filtered by `selectedGameType` and `searchTerm` from the machines filter bar.
+3.  `MachineStatusWidget` displays the `onlineCount`, `offlineCount`, and `totalCount` from `machineStats`.
 
 **Key Functions:**
 
-- `useLocationMachineStats` (`lib/hooks/data.ts`) - Machine status data
-- Status calculation and formatting
+-   `useLocationMachineStats` - Hook for fetching and managing machine status statistics.
+-   `refreshMachineStats` - Function provided by the hook to manually refresh the stats.
 
-**State Management:**
+**Notes:**
 
-- `machineStats` - Machine status counts
-- `machineStatsLoading` - Loading state
+-   Shows total machines, online count, and offline count for the selected location.
+-   Updates with date filter changes and machine filter changes.
+-   Responsive design for mobile and desktop.
+-   Online status is determined by recent activity (3-minute threshold) in the backend.
 
 **Notes:**
 
 - Shows total machines and online count
 - Updates with date filter changes
 - Responsive design for mobile and desktop
+- Online status is determined by recent activity (3-minute threshold)
 
 ---
 
@@ -265,82 +282,82 @@ Key features include:
 
 ### Location Data
 
-- **GET `/api/locations/[locationId]`**
-  - **Purpose:** Fetch detailed location information
-  - **Response:** `{ success: true, data: Location }`
-  - **Used By:** Page header and basic location data
+-   **GET `/api/locations/[locationId]`**
+    *   **Purpose:** Fetch detailed location information.
+    *   **Response:** `{ success: true, data: Location }`
+    *   **Used By:** `useLocationCabinetsData` hook to fetch basic location details and display the location name in the header.
 
 ### Machines/Cabinets
 
-- **GET `/api/locations/[locationId]/cabinets`**
-  - **Purpose:** Fetch machines for specific location
-  - **Query Parameters:** `page`, `limit`, `search`, `status`, `sortBy`, `sortOrder`
-  - **Response:** `{ success: true, data: Cabinet[], pagination: PaginationData }`
-  - **Used By:** Machines view
+-   **GET `/api/locations/[locationId]/cabinets`**
+    *   **Purpose:** Fetch machines for specific location.
+    *   **Query Parameters:** `page`, `limit`, `search`, `status`, `sortBy`, `sortOrder`, `gameType`, `timePeriod`, `startDate`, `endDate`, `currency`, `licensee`
+    *   **Response:** `{ success: true, data: Cabinet[], pagination: PaginationData }`
+    *   **Used By:** `useLocationCabinetsData` hook.
 
-- **POST `/api/cabinets`**
-  - **Purpose:** Create new machine for location
-  - **Body:** Cabinet creation data
-  - **Response:** `{ success: true, data: Cabinet }`
-  - **Used By:** Create machine modal
+-   **POST `/api/cabinets`**
+    *   **Purpose:** Create new machine for location.
+    *   **Body:** Cabinet creation data
+    *   **Response:** `{ success: true, data: Cabinet }`
+    *   **Used By:** Create machine modal.
 
-- **PUT `/api/cabinets/[cabinetId]`**
-  - **Purpose:** Update machine information
-  - **Body:** Cabinet update data
-  - **Response:** `{ success: true, data: Cabinet }`
-  - **Used By:** Edit machine modal
+-   **PUT `/api/cabinets/[cabinetId]`**
+    *   **Purpose:** Update machine information.
+    *   **Body:** Cabinet update data
+    *   **Response:** `{ success: true, data: Cabinet }`
+    *   **Used By:** Edit machine modal.
 
-- **DELETE `/api/cabinets/[cabinetId]`**
-  - **Purpose:** Delete machine
-  - **Response:** `{ success: true }`
-  - **Used By:** Delete machine confirmation
+-   **DELETE `/api/cabinets/[cabinetId]`**
+    *   **Purpose:** Delete machine.
+    *   **Response:** `{ success: true }`
+    *   **Used By:** Delete machine confirmation.
 
 ### Members (Location-Specific)
 
-- **GET `/api/members?locationId=[locationId]`**
-  - **Purpose:** Fetch members for specific location
-  - **Query Parameters:** `page`, `limit`, `search`, `sortBy`, `sortOrder`
-  - **Response:** `{ success: true, data: Member[], pagination: PaginationData }`
-  - **Used By:** Members view
+-   **GET `/api/members?locationId=[locationId]`**
+    *   **Purpose:** Fetch members for specific location.
+    *   **Query Parameters:** `page`, `limit`, `search`, `sortBy`, `sortOrder`
+    *   **Response:** `{ success: true, data: Member[], pagination: PaginationData }`
+    *   **Used By:** Members view (`MembersListTab`).
 
-- **GET `/api/members/summary?locationId=[locationId]`**
-  - **Purpose:** Fetch member summary data for location
-  - **Response:** `{ success: true, data: MemberSummary }`
-  - **Used By:** Members summary tab
+-   **GET `/api/members/summary?locationId=[locationId]`**
+    *   **Purpose:** Fetch member summary data for location.
+    *   **Response:** `{ success: true, data: MemberSummary }`
+    *   **Used By:** Members summary tab (`MembersSummaryTab`).
 
 ### Metrics and Analytics
 
-- **GET `/api/locations/[locationId]/metrics`**
-  - **Purpose:** Fetch financial metrics for location
-  - **Response:** `{ success: true, data: LocationMetrics }`
-  - **Used By:** Financial metrics cards
+-   **GET `/api/locationAggregation/[locationId]`**
+    *   **Purpose:** Fetch aggregated financial data for a specific location.
+    *   **Query Parameters:** `timePeriod`, `startDate`, `endDate`, `currency`, `licensee`
+    *   **Response:** `{ success: true, data: LocationAggregation }`
+    *   **Used By:** `useLocationCabinetsData` for financial totals displayed in `FinancialMetricsCards`.
 
-- **GET `/api/locations/[locationId]/machine-status`**
-  - **Purpose:** Fetch machine status counts for location
-  - **Response:** `{ success: true, data: MachineStatusCounts }`
-  - **Used By:** Machine status widget
+-   **GET `/api/analytics/machines/stats`**
+    *   **Purpose:** Fetch machine online/offline status counts for a location.
+    *   **Query Parameters:** `locationId`, `gameType`, `searchTerm`, `licensee`
+    *   **Response:** `{ success: true, data: MachineStatusCounts }`
+    *   **Used By:** `useLocationMachineStats` hook for the `MachineStatusWidget`.
 
-- **GET `/api/locationAggregation/[locationId]`**
-  - **Purpose:** Fetch aggregated location data
-  - **Query Parameters:** `startDate`, `endDate`, `timePeriod`
-  - **Response:** `{ success: true, data: LocationAggregation }`
-  - **Used By:** Chart data and advanced analytics
+-   **GET `/api/analytics/membership/stats`**
+    *   **Purpose:** Fetch membership statistics for a location.
+    *   **Query Parameters:** `locationId`, `licensee`
+    *   **Response:** `{ success: true, data: MembershipStats }`
+    *   **Used By:** `useLocationMembershipStats` hook to determine `membershipCount` for the 'Members' tab visibility.
 
 ### Charts and Trends
 
-- **GET `/api/analytics/location-trends`**
-  - **Purpose:** Fetch aggregated location trend data (used for Custom date ranges and Quarterly/All Time with monthly/weekly granularity)
-  - **Query Parameters:** `locationIds`, `timePeriod`, `licencee`, `startDate`, `endDate`, `currency`, `granularity`
-  - **Response:** `{ success: true, trends: Array<{ day, time, [locationId]: { handle, winLoss, jackpot, plays, drop, gross } }> }`
-  - **Used By:** Location chart when Custom period selected or Quarterly/All Time with monthly/weekly granularity
-  - **Data Transformation:** Response transformed from `trends` array to `dashboardData[]` format
+-   **GET `/api/analytics/location-trends`**
+    *   **Purpose:** Fetch aggregated location trend data.
+    *   **Query Parameters:** `locationId` (plural `locationIds` is used in Dashboard context, here it's singular), `timePeriod`, `licensee`, `startDate`, `endDate`, `currency`, `granularity`, `status`, `gameType`
+    *   **Response:** `{ success: true, trends: Array<{ day, time, handle, winLoss, jackpot, plays, drop, gross }> }`
+    *   **Used By:** `useLocationChartData` when `activeMetricsFilter` is 'Custom' or for long periods (Quarterly/All Time) with monthly/weekly granularity.
 
-- **GET `/api/machines/[machineId]/chart`**
-  - **Purpose:** Fetch chart data for individual machines (used for Today/Yesterday/7d/30d periods)
-  - **Query Parameters:** `timePeriod`, `startDate`, `endDate`, `currency`, `licensee`, `granularity`
-  - **Response:** `{ success: true, data: Array<{ day, time, drop, totalCancelledCredits, gross }>, dataSpan?: { minDate, maxDate } }`
-  - **Used By:** Location chart for non-Custom periods (fetches data per machine and aggregates)
-  - **Note:** For location-level aggregation, data is fetched for all machines in the location and combined
+-   **GET `/api/machines/[machineId]/chart`**
+    *   **Purpose:** Fetch chart data for individual machines.
+    *   **Query Parameters:** `timePeriod`, `startDate`, `endDate`, `currency`, `licensee`, `granularity`, `machineId`
+    *   **Response:** `{ success: true, data: Array<{ day, time, drop, totalCancelledCredits, gross }>, dataSpan?: { minDate, maxDate } }`
+    *   **Used By:** `useLocationChartData` for non-'Custom' `activeMetricsFilter` periods (Today, Yesterday, 7d, 30d). Data is fetched for all machines in the location and then aggregated client-side to form the location-level chart.
 
 ---
 
@@ -348,133 +365,147 @@ Key features include:
 
 ### Hooks
 
-- **`useLocationCabinetsData`** (`lib/hooks/locations/useLocationCabinetsData.ts`)
-  - Fetches and manages machines data for location
-  - Handles pagination, filtering, search
-  - Provides: `cabinetsData`, `loading`, `refreshCabinets`, `setCurrentPage`
+-   **`useLocationCabinetsData`** (`lib/hooks/locations/useLocationCabinetsData.ts`)
+    *   **Parameters:** `locationId`, `selectedLicencee`, `activeMetricsFilter`, `customDateRange`, `dateFilterInitialized`, `filtersInitialized`, `isAdminUser`, `setDateFilterInitialized`, `setFiltersInitialized`.
+    *   **Purpose:** Fetches and manages the list of machines/cabinets for the specified `locationId`, including their aggregated financial data.
+    *   **Features:** Handles pagination, search, game type, and status filtering. Manages internal loading states and initial data fetching to ensure filters are applied correctly. Provides `locationName`, `locationMembershipEnabled`, `financialTotals`, `filteredCabinets`, `gameTypes`, `locations`, and various filter states and setters.
+    *   **Provides:** `financialTotals`, `filteredCabinets`, `gameTypes`, `locationName`, `locationMembershipEnabled`, `loading`, `cabinetsLoading`, `refreshing`, filter states, setters, and `refreshCabinets` function.
 
-- **`useLocationChartData`** (`lib/hooks/locations/useLocationChartData.ts`)
-  - Manages chart data fetching with abort controller support
-  - Handles granularity detection and auto-update (hourly/minute for short periods)
-  - Supports multiple API endpoints:
-    - `/api/analytics/location-trends` for Custom periods and Quarterly/All Time with monthly/weekly granularity
-    - `/api/machines/[machineId]/chart` for Today/Yesterday/7d/30d periods (per-machine aggregation)
-  - Provides: `chartData`, `loadingChartData`, `chartGranularity`, `setChartGranularity`, `showGranularitySelector`, `availableGranularityOptions`, `refreshChart`
-  - Features:
-    - Request deduplication to prevent duplicate API calls
-    - Abort error handling (silently handles filter changes)
-    - Auto-granularity detection based on data span
-    - Manual granularity override (user can manually set granularity)
-    - Refresh functionality via `refreshChart()` function
+-   **`useLocationChartData`** (`lib/hooks/locations/useLocationChartData.ts`)
+    *   **Parameters:** `locationId`, `selectedLicencee`, `activeMetricsFilter`, `customDateRange`, `activeView`, `status`, `gameType`.
+    *   **Purpose:** Manages fetching and processing chart data for the location.
+    *   **Features:** Dynamically selects API endpoints based on `activeMetricsFilter` and `granularity`. Includes abort controller support for request cancellation, granularity detection, and manual override options. Filters chart data based on machine `status` and `gameType` from the machines filter bar.
+    *   **Provides:** `chartData`, `loadingChartData`, `chartGranularity`, `setChartGranularity`, `showGranularitySelector`, `availableGranularityOptions`, `refreshChart` function.
 
-- **`useLocationMachineStats`** (`lib/hooks/data.ts`)
-  - Fetches machine status statistics
-  - Provides: `machineStats`, `machineStatsLoading`, `refreshMachineStats`
+-   **`useLocationMachineStats`** (`lib/hooks/data/useLocationMachineStats.ts`)
+    *   **Parameters:** `locationId`, `gameType` (optional), `searchTerm` (optional).
+    *   **Purpose:** Fetches online/offline machine statistics for the specified location, with optional filtering by game type and search term.
+    *   **Provides:** `machineStats` (`{ totalMachines, onlineMachines, offlineMachines }`), `machineStatsLoading`, `refreshMachineStats` function.
 
-- **`useLocationMembershipStats`** (`lib/hooks/data.ts`)
-  - Fetches membership statistics for location
-  - Provides: `membershipStats`, `membershipStatsLoading`, `refreshMembershipStats`
+-   **`useLocationMembershipStats`** (`lib/hooks/data/useLocationMembershipStats.ts`)
+    *   **Parameters:** `locationId`.
+    *   **Purpose:** Fetches membership statistics for the specified `locationId`.
+    *   **Provides:** `membershipStats` (`{ membershipCount }`), `membershipStatsLoading`, `refreshMembershipStats` function. Used to determine the visibility of the "Members" tab.
 
-- **`useMembersNavigation`** (`lib/hooks/navigation.ts`)
-  - Manages members tab navigation
-  - Provides: `activeTab`, `handleTabClick`
+-   **`useMembersNavigation`** (`lib/hooks/navigation.ts`)
+    *   **Parameters:** `MEMBERS_TABS_CONFIG`, `disableUrlSync` (set to `true` for this page to prevent conflicts).
+    *   **Purpose:** Manages internal tab navigation for the "Members" view.
+    *   **Provides:** `activeTab`, `handleTabClick`.
 
 ### Stores
 
-- **`useDashBoardStore`** (`lib/store/dashboardStore.ts`) - Zustand store
-  - `selectedLicencee` - Selected licensee filter
-  - `activeMetricsFilter` - Active date filter type
-  - `customDateRange` - Custom date range
-  - `setSelectedLicencee` - Licensee selection setter
+-   **`useDashBoardStore`** (`lib/store/dashboardStore.ts`) - Zustand store
+    *   `selectedLicencee` - Selected licensee filter.
+    *   `activeMetricsFilter` - Active date filter type.
+    *   `customDateRange` - Custom date range.
+    *   `setSelectedLicencee` - Licensee selection setter.
 
-- **`useUserStore`** (`lib/store/userStore.ts`) - Zustand store
-  - `user` - Current user object
-  - Used for role-based permissions
+-   **`useUserStore`** (`lib/store/userStore.ts`) - Zustand store
+    *   `user` - Current user object.
+    *   Used for role-based permissions (`isAdminUser`, `canManageMachines`).
+
+-   **`useNewCabinetStore`** (`lib/store/newCabinetStore.ts`) - Zustand store
+    *   `openCabinetModal` - Function to open the create new machine modal.
 
 ### State Properties
 
-**From main component:**
+**From main component (`LocationsDetailsPageContent.tsx`):**
 
-- `activeView` - Current view ('machines' | 'members')
-- `locationId` - Current location ID from URL params
-- `cabinetsData` - Machines data and state
-- `chartData` - Chart data for visualization (from `useLocationChartData`)
-- `chartGranularity` - Current chart granularity ('hourly' | 'minute' | 'daily' | 'weekly' | 'monthly')
-- `showGranularitySelector` - Whether granularity selector should be shown
-- `availableGranularityOptions` - Available granularity options based on time period
-- `machineStats` - Machine status counts
-- `membershipStats` - Membership statistics
-- `activeTab` - Members navigation tab
-- `membersRefreshHandlerRef` - Reference to members refresh function
+-   `activeView` - Current active view ('machines' | 'members').
+-   `locationId` - Current location ID from URL params.
+-   `isAdminUser` - Computed boolean for admin/developer roles.
+-   `canManageMachines` - Computed boolean for machine management permissions.
+-   `showMembersTab` - Computed boolean indicating if the 'Members' tab should be shown.
+-   `membersRefreshHandlerRef` - React ref to store the refresh handler for the members view.
 
-**From `useLocationCabinetsData`:**
+**From `useLocationCabinetsData` (`cabinetsData` object):**
 
-- `cabinetsData.locationMembershipEnabled` - Whether location supports membership
-- `currentPage` - Current pagination page
-- `totalReports` - Total machine count
-- `locations` - Available locations list
-- `locationsWithMachines` - Locations with machine counts
+-   `locationName` - Name of the current location.
+-   `locationData` - Full location data object.
+-   `financialTotals` - Aggregated financial metrics for the location.
+-   `filteredCabinets` - Paginated and filtered list of machines for the location.
+-   `gameTypes` - Available game types for filtering.
+-   `loading`, `cabinetsLoading`, `refreshing` - Various loading states related to cabinets data.
+-   `error` - Error state for cabinets data.
+-   `searchTerm`, `selectedStatus`, `selectedGameType` - Current filter values.
+-   `sortOption`, `sortOrder`, `currentPage`, `effectiveTotalPages` - Pagination and sorting states.
+-   `locationMembershipEnabled` - Boolean indicating if membership is enabled for this location.
+-   `setSearchTerm`, `setSelectedStatus`, `setSelectedGameType`, `setSortOption`, `setSortOrder`, `setCurrentPage` - Setters for filter and pagination states.
+-   `refreshCabinets` - Function to refresh cabinets data.
+
+**From `useLocationChartData` (`chartDataHook` object):**
+
+-   `chartData` - Chart time-series data.
+-   `loadingChartData` - Loading state for chart data.
+-   `chartGranularity` - Current chart granularity ('hourly' | 'minute' | 'daily' | 'weekly' | 'monthly').
+-   `showGranularitySelector` - Boolean indicating if the granularity selector should be shown.
+-   `availableGranularityOptions` - Array of available granularity options.
+-   `setChartGranularity` - Setter for chart granularity.
+-   `refreshChart` - Function to refresh chart data.
+
+**From `useLocationMachineStats`:**
+
+-   `machineStats` - Object containing online/offline/total machine counts.
+-   `machineStatsLoading` - Loading state for machine statistics.
+-   `refreshMachineStats` - Function to refresh machine statistics.
+
+**From `useLocationMembershipStats`:**
+
+-   `membershipStats` - Object containing `membershipCount`.
+-   `membershipStatsLoading` - Loading state for membership statistics.
+-   `refreshMembershipStats` - Function to refresh membership statistics.
+
+**From `useMembersNavigation` (when `activeView` is 'members'):**
+
+-   `activeTab` - Current active tab within the members view ('members' | 'summary-report').
+-   `handleTabClick` - Function to change the active tab within the members view.
 
 ---
 
 ## Key Functions
 
-### Data Fetching
 
-- **`fetchLocationData`** (location data functions)
-  - Fetches basic location information
-  - Loads location name and basic details
-
-- **`fetchLocationCabinets`** (`useLocationCabinetsData` hook)
-  - Fetches machines for the location
-  - Applies search and filter criteria
-
-- **`fetchLocationMembers`** (members data functions)
-  - Fetches members for membership-enabled locations
-  - Location-specific member filtering
 
 ### Navigation and UI
 
-- **`handleTabChange`** (main component)
-  - Handles view toggle between machines and members
-  - Updates URL and state
+-   **`handleViewChange`** (main component)
+    *   **Purpose:** Handles the toggle between 'machines' and 'members' views.
+    *   **Features:** Updates the `activeView` state and synchronizes the URL (`?tab=members`).
 
-- **`handleRefresh`** (main component)
-  - Refreshes all location data
-  - Updates machines, charts, and statistics
-  - Calls `chartDataHook.refreshChart()` to refresh chart data
-  - Calls `refreshMachineStats()` and `refreshMembershipStats()` for stats
-  - Calls `cabinetsData.refreshCabinets()` for machines data
+-   **`handleRefresh`** (main component)
+    *   **Purpose:** Refreshes all data for the currently active view.
+    *   **Features:**
+        *   If 'members' view is active, calls the `membersRefreshHandlerRef.current()` function.
+        *   If 'machines' view is active, calls `refreshMachineStats()`, `refreshMembershipStats()`, `cabinetsData.refreshCabinets()`, and `chartDataHook.refreshChart()`.
 
-- **`onBack`** (navigation function)
-  - Navigates back to locations list
-  - Uses router navigation
+-   **Back Navigation**
+    *   **Purpose:** Navigates back to the main `/locations` page.
+    *   **Implementation:** Handled by a `<Link href="/locations">` component.
 
 ### Machine Management
 
-- **`handleFilterChange`** (filter functions)
-  - Updates machine filters (online/offline, search)
-  - Triggers data refresh
+-   **`handleFilterChange`** (main component)
+    *   **Purpose:** Updates the `selectedStatus` filter for machines displayed in the Machines view.
+    *   **Features:** Triggers a data refresh for the machines list. Implemented via `cabinetsData.setSelectedStatus`.
 
-- **`openCabinetModal`** (from `useNewCabinetStore`)
-  - Opens create machine modal
-  - Pre-fills location data
+-   **`openCabinetModal`** (from `useNewCabinetStore`)
+    *   **Purpose:** Opens the modal to create a new machine.
+    *   **Features:** Pre-fills the `locationId` of the current location into the modal.
 
 ### Members Management
 
-- **`MembersHandlersProvider`** (context provider)
-  - Provides member CRUD operation handlers
-  - Manages member state for the location
+-   `MembersHandlersProvider` (context provider)
+    *   **Purpose:** Provides a React context for member CRUD operations and managing member-related state. This is used by child components within the Members view.
+
+-   **`onRefresh`** (from `useMembersHandlers`)
+    *   **Purpose:** Triggers a refresh of the member list and summary data.
+    *   **Implementation:** Provided by the `useMembersHandlers` hook.
 
 ### Utility Functions
 
-- **`hasMissingCoordinates`** (`lib/utils/locationsPageUtils.ts`)
-  - Checks if location has missing coordinate data
-  - Used for map display validation
-
-- **`calculateLocationTotal`** (calculation helpers)
-  - Calculates financial totals for location
-  - Aggregates machine data
+-   **`hasMissingCoordinates`** (`lib/utils/locationsPageUtils.ts`)
+    *   **Purpose:** Checks if a location has missing geographic coordinate data.
+    *   **Features:** Used to display a visual indicator in the page header if coordinates are missing.
 
 ---
 
@@ -514,24 +545,24 @@ Key features include:
 
 ### Chart Granularity Options
 
-**Available Granularities:**
+**Available Granularities:** (Determined by `useLocationChartData` hook based on `activeMetricsFilter`)
 
-- **Hourly**: Default for Today/Yesterday and Custom periods ≤ 2 days
-- **Minute**: Available for Today/Yesterday and Custom periods ≤ 2 days
-- **Daily**: Default for 7d/30d periods
-- **Weekly**: Available for Quarterly/All Time periods (requires server aggregation)
-- **Monthly**: Available for Quarterly/All Time periods (requires server aggregation)
+-   **Minute**: Available for Today/Yesterday and Custom periods spanning less than 24 hours.
+-   **Hourly**: Default for Today/Yesterday and Custom periods spanning less than 24 hours.
+-   **Daily**: Default for 7d/30d periods and Custom periods spanning more than 24 hours but less than 30 days.
+-   **Weekly**: Available for Custom periods spanning more than 7 days, and Quarterly/All Time periods.
+-   **Monthly**: Available for Custom periods spanning more than 30 days, and Quarterly/All Time periods.
 
-**Granularity Selector Visibility:**
+**Granularity Selector Visibility:** (Determined by `showGranularitySelector` from `useLocationChartData` hook)
 
-- Shown for: Today, Yesterday, Custom periods ≤ 2 days, Quarterly/All Time (when data span ≥ 1 week)
-- Hidden for: 7d, 30d, Custom periods > 2 days
+-   **Shown for:** Today, Yesterday, and Custom periods (as well as Quarterly/All Time when data span is large enough to support weekly/monthly).
+-   **Hidden for:** Fixed periods like 7d, 30d (which default to daily granularity).
 
 **Auto-Detection:**
 
-- Automatically detects if data span > 5 hours and defaults to hourly
-- User can manually override granularity selection
-- Once manually set, auto-update is disabled
+-   The chart automatically detects the most appropriate default granularity based on the selected time period (e.g., minute/hourly for short periods, daily for medium, weekly/monthly for long periods).
+-   Users can manually override the auto-detected granularity using the selector when visible.
+-   Once a user manually sets the granularity, auto-update is disabled for that session.
 
 ### Responsive Design
 

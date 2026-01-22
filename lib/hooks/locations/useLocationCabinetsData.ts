@@ -15,15 +15,18 @@
 
 'use client';
 
-import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets';
+import {
+    fetchCabinetsForLocation
+} from '@/lib/helpers/cabinets';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { dateRange as DateRange } from '@/lib/types';
 import { getAuthHeaders } from '@/lib/utils/auth';
-import { isAbortError } from '@/lib/utils/errorHandling';
+import { isAbortError } from '@/lib/utils/errors';
 import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
 import { useDebounce } from '@/lib/utils/hooks';
+import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { filterAndSortCabinets } from '@/lib/utils/ui';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import axios from 'axios';
@@ -101,6 +104,8 @@ export function useLocationCabinetsData({
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Add isFilterResetting state to handle transitions without "No Data" flash
+  const [isFilterResetting, setIsFilterResetting] = useState(false);
 
   // Refs for preventing duplicate requests
   const cabinetsRequestInProgress = useRef(false);
@@ -119,8 +124,11 @@ export function useLocationCabinetsData({
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const financialTotals = useMemo(
-    () => calculateCabinetFinancialTotals(allCabinets),
-    [allCabinets]
+    () =>
+      filteredCabinets.length > 0
+        ? calculateCabinetFinancialTotals(filteredCabinets)
+        : null,
+    [filteredCabinets]
   );
 
   const gameTypes = useMemo(() => {
@@ -182,17 +190,9 @@ export function useLocationCabinetsData({
       });
     }
 
-    // Apply status filter
-    if (selectedStatus && selectedStatus !== 'All') {
-      filtered = filtered.filter(cabinet => {
-        if (selectedStatus === 'Online') {
-          return cabinet.online === true;
-        } else if (selectedStatus === 'Offline') {
-          return cabinet.online === false;
-        }
-        return true;
-      });
-    }
+    // Filter out machines with N/A identifier to match the grid display
+    // and ensure financial totals only reflect visible machines
+    filtered = filtered.filter(cabinet => getSerialNumberIdentifier(cabinet) !== 'N/A');
 
     setFilteredCabinets(filtered);
   }, [sourceCabinets, sortOption, sortOrder, selectedStatus, selectedGameType]);
@@ -219,9 +219,17 @@ export function useLocationCabinetsData({
   }, [debouncedSearchTerm]);
 
   // Update allCabinets when accumulatedCabinets changes
+  // Update allCabinets when accumulatedCabinets changes
   useEffect(() => {
-    setAllCabinets(accumulatedCabinets);
-  }, [accumulatedCabinets]);
+    // Only update if we have data or if filters are actively resetting
+    // This prevents clearing allCabinets unnecessarily during intermediate states
+    if (accumulatedCabinets.length > 0) {
+      setAllCabinets(accumulatedCabinets);
+    } else if (isFilterResetting && accumulatedCabinets.length === 0) {
+      // If we cleared accumulatedCabinets explicitly (filter change), reflect that
+      setAllCabinets([]);
+    }
+  }, [accumulatedCabinets, isFilterResetting]);
 
   // ============================================================================
   // Effects - Batch Loading
@@ -242,6 +250,16 @@ export function useLocationCabinetsData({
       if (debouncedSearchTerm?.trim()) {
         return;
       }
+
+      // Convert selectedStatus to onlineStatus format for API
+      const onlineStatus =
+        selectedStatus === 'All'
+          ? 'all'
+          : selectedStatus === 'Online'
+            ? 'online'
+            : selectedStatus === 'Offline'
+              ? 'offline'
+              : 'all';
 
       fetchCabinetsForLocation(
         locationId,
@@ -270,7 +288,8 @@ export function useLocationCabinetsData({
                 : undefined,
         nextBatchNumber,
         itemsPerBatch,
-        displayCurrency
+        displayCurrency,
+        onlineStatus
       ).then(result => {
         if (result.data.length > 0) {
           setLoadedBatches(prev => new Set([...prev, nextBatchNumber]));
@@ -291,6 +310,16 @@ export function useLocationCabinetsData({
       if (debouncedSearchTerm?.trim()) {
         return;
       }
+
+      // Convert selectedStatus to onlineStatus format for API
+      const onlineStatus =
+        selectedStatus === 'All'
+          ? 'all'
+          : selectedStatus === 'Online'
+            ? 'online'
+            : selectedStatus === 'Offline'
+              ? 'offline'
+              : 'all';
 
       fetchCabinetsForLocation(
         locationId,
@@ -319,7 +348,8 @@ export function useLocationCabinetsData({
                 : undefined,
         currentBatch,
         itemsPerBatch,
-        displayCurrency
+        displayCurrency,
+        onlineStatus
       ).then(result => {
         if (result.data.length > 0) {
           setLoadedBatches(prev => new Set([...prev, currentBatch]));
@@ -346,6 +376,7 @@ export function useLocationCabinetsData({
     pagesPerBatch,
     debouncedSearchTerm,
     displayCurrency,
+    selectedStatus,
   ]);
 
   // ============================================================================
@@ -357,7 +388,16 @@ export function useLocationCabinetsData({
       activeMetricsFilter === 'Custom' && customDateRange
         ? JSON.stringify(customDateRange)
         : 'none';
-    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}`;
+    // Convert selectedStatus to onlineStatus for fetch key
+    const onlineStatus =
+      selectedStatus === 'All'
+        ? 'all'
+        : selectedStatus === 'Online'
+          ? 'online'
+          : selectedStatus === 'Offline'
+            ? 'offline'
+            : 'all';
+    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}-${onlineStatus}`;
 
     const fetchData = async () => {
       // Only proceed if filters are initialized
@@ -519,6 +559,16 @@ export function useLocationCabinetsData({
             ? undefined
             : itemsPerBatch;
 
+          // Convert selectedStatus to onlineStatus format for API
+          const onlineStatus =
+            selectedStatus === 'All'
+              ? 'all'
+              : selectedStatus === 'Online'
+                ? 'online'
+                : selectedStatus === 'Offline'
+                  ? 'offline'
+                  : 'all';
+
           const result = await makeCabinetsRequest(async signal => {
             return await fetchCabinetsForLocation(
               locationId,
@@ -548,6 +598,7 @@ export function useLocationCabinetsData({
               effectivePage,
               effectiveLimit,
               displayCurrency,
+              onlineStatus,
               signal
             );
           });
@@ -600,9 +651,12 @@ export function useLocationCabinetsData({
           }
         }
       } finally {
-        setLoading(false);
-        setCabinetsLoading(false);
-        cabinetsRequestInProgress.current = false;
+        // Only turn off loading if the request completed and wasn't aborted/superseded
+        if (cabinetsRequestInProgress.current && prevCabinetsFetchKey.current === fetchKey) {
+          setLoading(false);
+          setCabinetsLoading(false);
+          cabinetsRequestInProgress.current = false;
+        }
       }
     };
 
@@ -615,7 +669,17 @@ export function useLocationCabinetsData({
     dateFilterInitialized,
     makeCabinetsRequest,
     filtersInitialized,
+    debouncedSearchTerm,
+    displayCurrency,
+    selectedStatus,
   ]);
+  
+  // Clear isFilterResetting when new data arrives
+  useEffect(() => {
+    if (allCabinets.length > 0) {
+      setIsFilterResetting(false);
+    }
+  }, [allCabinets]);
 
   // Initialize filters flag
   useEffect(() => {
@@ -648,8 +712,8 @@ export function useLocationCabinetsData({
   return {
     // State
     filteredCabinets,
-    loading,
-    cabinetsLoading,
+    loading: loading || cabinetsLoading || isFilterResetting,
+    cabinetsLoading: cabinetsLoading || isFilterResetting,
     searchTerm,
     locationName,
     locationMembershipEnabled,
@@ -666,14 +730,18 @@ export function useLocationCabinetsData({
     selectedLocationId,
     error,
     refreshing,
-    financialTotals,
     gameTypes,
     effectiveTotalPages,
     paginatedCabinets,
     debouncedSearchTerm,
+    financialTotals,
     // Setters
     setSearchTerm,
-    setSelectedStatus,
+    setSelectedStatus: useCallback((status: 'All' | 'Online' | 'Offline') => {
+      setIsFilterResetting(true);
+      setAccumulatedCabinets([]);
+      setSelectedStatus(status);
+    }, []),
     setSelectedGameType,
     setSortOrder,
     setSortOption,
@@ -683,4 +751,5 @@ export function useLocationCabinetsData({
     refreshCabinets,
   };
 }
+
 

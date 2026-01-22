@@ -17,7 +17,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { fixReportIssues } from '../../lib/helpers/fixReportOperations';
+import { fixReportIssues } from '../../lib/helpers/collectionReport/fixOperations';
 import { getUserById, getUserIdFromServer } from '../../lib/helpers/users';
 import { connectDB } from '../../lib/middleware/db';
 
@@ -117,3 +117,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

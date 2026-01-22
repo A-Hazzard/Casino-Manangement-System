@@ -14,15 +14,15 @@
  */
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { recalculateMachineCollections } from '@/app/api/lib/helpers/collectionRecalculation';
+import { recalculateMachineCollections } from '@/app/api/lib/helpers/collectionReport/recalculation';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import type { PreviousCollectionMeters } from '@/lib/types/collections';
+import type { PreviousCollectionMeters } from '@/lib/types/collection';
 import { getClientIP } from '@/lib/utils/ipAddress';
-import { calculateMovement } from '@/lib/utils/movementCalculation';
+import { calculateMovement } from '@/lib/utils/movement';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -219,7 +219,7 @@ export async function PATCH(
               );
 
               const { getSasTimePeriod, calculateSasMetrics } = await import(
-                '../../lib/helpers/collectionCreation'
+                '@/app/api/lib/helpers/collectionReport/creation'
               );
 
               // Get new SAS time range based on new collection timestamp

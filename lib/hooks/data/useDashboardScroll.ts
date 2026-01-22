@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { UseDashboardScrollReturn } from '@/lib/types/dashboardScroll';
+import type { UseDashboardScrollReturn } from '@/lib/types/dashboard';
 
 export function useDashboardScroll(
   initialThreshold: number = 200
@@ -46,3 +46,4 @@ export function useDashboardScroll(
     resetScrollState,
   };
 }
+

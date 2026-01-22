@@ -1,7 +1,7 @@
 # Cabinets API Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 27th, 2025  
+**Last Updated:** January 2025  
 **Version:** 2.2.0
 
 ## Quick Search Guide
@@ -961,7 +961,7 @@ const customBillData = await response.json();
 
 ---
 
-**Last Updated:** October 20th, 2025
+**Last Updated:** January 2025
 
 ### 🧪 **Testing & Validation**
 
@@ -1185,18 +1185,27 @@ if (machineControl && relayId) {
 
 ### POST `/api/locations/[locationId]/smib-meters`
 
-**Purpose:** Request meter data from all SMIBs at location
+**Purpose:** Request meter data from all SMIBs at a specific location
 
 **Response:**
-
 ```json
 {
   "success": true,
   "message": "Meter requests sent to 5 machines",
-  "successCount": 5,
-  "failureCount": 0
+  "results": {
+    "total": 5,
+    "successful": 5,
+    "failed": 0,
+    "errors": []
+  }
 }
 ```
+
+**Features:**
+- Finds all machines with SMIBs at the specified location.
+- Processes meter requests in parallel batches of 10.
+- Logs the activity, including the number of successful and failed requests.
+- Returns a summary of the operation.
 
 ### POST `/api/locations/[locationId]/smib-ota`
 

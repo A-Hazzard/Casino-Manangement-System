@@ -13,7 +13,7 @@
  * @module app/api/analytics/location-trends/route
  */
 
-import { getLocationTrends } from '@/app/api/lib/helpers/locationTrends';
+import { getLocationTrends } from '@/app/api/lib/helpers/trends/locations';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { TimePeriod } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -55,13 +55,9 @@ export async function GET(req: NextRequest) {
     const endDateParam = searchParams.get('endDate');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
-    const granularity = searchParams.get('granularity') as
-      | 'hourly'
-      | 'minute'
-      | 'daily'
-      | 'weekly'
-      | 'monthly'
-      | null;
+    const granularity = searchParams.get('granularity') as  'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
+    const status = searchParams.get('status') as 'Online' | 'Offline' | 'All' | null;
+    const gameType = searchParams.get('gameType');
 
     if (!locationIds) {
       return NextResponse.json(
@@ -70,18 +66,21 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const effectiveGranularity = granularity || 'daily';
+
     // ============================================================================
     // STEP 3: Execute the core location trends fetching logic via helper
     // ============================================================================
     const trendsData = await getLocationTrends(
-      db,
       locationIds,
       timePeriod,
       licencee,
       startDateParam,
       endDateParam,
       displayCurrency,
-      (granularity as 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly' | undefined) || undefined
+      effectiveGranularity,
+      status,
+      gameType
     );
 
     // ============================================================================

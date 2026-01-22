@@ -54,3 +54,4 @@ declare module '@/components/cabinetDetails/AccountingDetails' {
   export const AccountingDetails: React.FC<AccountingDetailsProps>;
   export default AccountingDetails;
 }
+

@@ -68,16 +68,24 @@ X-RateLimit-Reset: 1640995200
 
 ### GET /api/locations
 
-**Purpose:** Retrieve paginated list of locations with filtering and search capabilities
+**Purpose:** Retrieve a list of gaming locations, with results automatically filtered based on the user's roles and permissions. Supports minimal data projection for performance.
 
 **Query Parameters:**
-- `licensee` (string, optional) - Filter by licensee ID
-- `status` (string, optional) - Filter by status ('active', 'inactive')
-- `page` (number, optional) - Page number (default: 1)
-- `limit` (number, optional) - Items per page (default: 20, max: 100)
-- `search` (string, optional) - Search by location name or address
-- `sortBy` (string, optional) - Sort field (default: 'name')
-- `sortOrder` (string, optional) - Sort order: 'asc' | 'desc' (default: 'asc')
+- `licensee` (string, optional) - Filter locations by a specific licensee ID.
+- `minimal` (boolean, optional) - If `true`, returns a minimal projection of location data (`_id`, `name`, `geoCoords`, `rel.licencee`).
+- `showAll` (boolean, optional) - If `true`, includes all locations, but still respects user permissions.
+- `forceAll` (boolean, optional) - If `true` and user is an admin/developer, bypasses all licensee/location filters to return all locations in the system.
+- `page` (number, optional) - Page number for pagination (default: 1).
+- `limit` (number, optional) - Items per page (default: 20, max: 100).
+- `search` (string, optional) - Search by location name or address.
+- `sortBy` (string, optional) - Sort field (default: 'name').
+- `sortOrder` (string, optional) - Sort order: 'asc' | 'desc' (default: 'asc').
+
+**Security & Filtering Logic:**
+- **Admin/Developer:** Can see all locations by default. Can use `forceAll=true` to bypass all filters.
+- **Manager:** Sees all locations within their `assignedLicensees`.
+- **Collector/Technician/Location Admin:** Sees only the specific locations listed in their `assignedLocations`.
+- If a `licensee` is specified, the results are further filtered to that licensee, but always within the bounds of the user's permissions.
 
 **Response (Success - 200):**
 ```json
@@ -347,9 +355,9 @@ X-RateLimit-Reset: 1640995200
 ### Location Model
 ```typescript
 interface Location {
-  _id: string;                    // Unique location identifier
-  name: string;                   // Location display name
-  licensee: string;               // Associated licensee ID
+  _id: string;
+  name: string;
+  country: string;
   address: {
     street?: string;
     town?: string;
@@ -360,19 +368,53 @@ interface Location {
       longitude: number;
     };
   };
-  status: 'active' | 'inactive';  // Location operational status
-  profitShare: number;            // Profit share percentage (0-100)
-  gameDayOffset: number;          // Hours offset from UTC for gaming day
-  collectionSettings: {
-    balanceThreshold: number;     // Auto-collection threshold
-    autoCollection: boolean;      // Enable auto-collection
-    collectionSchedule?: string;  // Collection frequency
+  rel: {
+    licencee: string;
   };
-  billValidatorSettings: {
-    acceptedDenominations: number[]; // Accepted bill values
+  profitShare: number;
+  collectionBalance: number;
+  previousCollectionTime: Date;
+  gameDayOffset: number;
+  isLocalServer: boolean;
+  billValidatorOptions: {
+    denom1: boolean;
+    denom2: boolean;
+    denom5: boolean;
+    denom10: boolean;
+    denom20: boolean;
+    denom50: boolean;
+    denom100: boolean;
+    denom200: boolean;
+    denom500: boolean;
+    denom1000: boolean;
+    denom2000: boolean;
+    denom5000: boolean;
+    denom10000: boolean;
   };
-  createdAt: Date;                // Creation timestamp
-  updatedAt: Date;                // Last modification timestamp
+  geoCoords: {
+    latitude: number;
+    longitude: number;
+  };
+  membershipEnabled: boolean;
+  locationMembershipSettings: {
+    enableFreePlays: boolean;
+    pointsRatioMethod: string;
+    gamesPlayedRatio: number;
+    wagerRatio: number;
+    pointMethodValue: number;
+    pointsMethodGameTypes: string[];
+    freePlayGameTypes: string[];
+    freePlayAmount: number;
+    enablePoints: boolean;
+    freePlayCreditsTimeout: number;
+    locationLimit: number;
+  };
+  status: 'active' | 'inactive';
+  statusHistory: any[];
+  noSMIBLocation: boolean;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 

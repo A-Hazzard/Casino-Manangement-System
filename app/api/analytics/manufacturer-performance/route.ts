@@ -12,7 +12,7 @@
  * @module app/api/analytics/manufacturer-performance/route
  */
 
-import { getManufacturerPerformance } from '@/app/api/lib/helpers/manufacturerPerformance';
+import { getManufacturerPerformance } from '@/app/api/lib/helpers/reports/manufacturerPerformance';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -63,7 +63,6 @@ export async function GET(request: NextRequest) {
     // STEP 3: Fetch manufacturer performance data
     // ============================================================================
     const result = await getManufacturerPerformance(
-      db,
       locationId,
       timePeriod,
       startDate,
@@ -76,7 +75,9 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
-      console.warn(`[Analytics Manufacturer Performance GET API] Completed in ${duration}ms`);
+      console.warn(
+        `[Analytics Manufacturer Performance GET API] Completed in ${duration}ms`
+      );
     }
     return NextResponse.json(result);
   } catch (error) {

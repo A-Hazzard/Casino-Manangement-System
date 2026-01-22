@@ -149,7 +149,7 @@ export function useLocationData({
       const fetchKey = `${debouncedSearchTerm}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeForFetch?.from?.getTime()}-${dateRangeForFetch?.to?.getTime()}-${displayCurrency}-${page}-${limit}-${currentFilters}`;
 
       // Mark this as the current active fetch generation
-      const currentFetchId = Date.now();
+      const currentFetchId = performance.now();
       lastFetchRef.current = currentFetchId;
       currentRequestFiltersRef.current = currentFilters;
 
@@ -171,6 +171,8 @@ export function useLocationData({
       console.log('[useLocationData] Starting fetch:', {
         fetchId: currentFetchId,
         fetchKey,
+        filter: activeMetricsFilter,
+        hasCustomDate: !!dateRangeForFetch
       });
 
       const result = await makeRequest(async signal => {
@@ -187,7 +189,8 @@ export function useLocationData({
             dateRangeForFetch
               ? { from: dateRangeForFetch.from, to: dateRangeForFetch.to }
               : undefined,
-            signal
+            signal,
+            currentFilters
           );
           return { data: searchData, pagination: undefined };
         }
@@ -275,3 +278,4 @@ export function useLocationData({
     fetchBatch,
   };
 }
+

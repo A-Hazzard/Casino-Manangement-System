@@ -74,3 +74,4 @@ const tailwindConfig = {
 } satisfies Config;
 
 export default tailwindConfig;
+

@@ -551,14 +551,6 @@ export type MemberSession = {
   duration?: number;
 };
 
-export type SessionInfo = {
-  _id: string;
-  memberId: string;
-  locationMembershipSettings?: LocationMembershipSettings;
-  memberFirstName?: string;
-  memberLastName?: string;
-};
-
 // Members UI types
 export type MembersView = 'members' | 'summary-report';
 
@@ -617,3 +609,4 @@ export type CollectionIssueDetails = {
     affectedReports: number;
   };
 };
+

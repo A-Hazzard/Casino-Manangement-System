@@ -3,7 +3,7 @@
  * Handles section changes, URL synchronization, and navigation state
  */
 
-import type { AdministrationSection } from '@/lib/constants/administration';
+import type { AdministrationSection } from '@/lib/constants';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -76,3 +76,4 @@ export const useAdministrationNavigation = () => {
     handleSectionChange,
   };
 };
+

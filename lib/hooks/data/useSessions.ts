@@ -14,7 +14,7 @@
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { PaginationData, Session } from '@/lib/types/sessions';
-import { isAbortError } from '@/lib/utils/errorHandling';
+import { isAbortError } from '@/lib/utils/errors';
 import { useDebounce } from '@/lib/utils/hooks';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -41,15 +41,17 @@ export function useSessions() {
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
   const [pagination, setPagination] = useState<PaginationData | null>(null);
 
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
+  const [currentBatch, setCurrentBatch] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  const itemsPerPage = 20;
+  const itemsPerBatch = 100;
 
   // ============================================================================
   // Data Fetching
   // ============================================================================
   const fetchSessions = useCallback(
-    async (batch: number = 1) => {
+    async (batch: number = 1, append: boolean = false) => {
       setLoading(true);
       await makeRequest(async signal => {
         const params = new URLSearchParams({
@@ -164,21 +166,20 @@ export function useSessions() {
           if (response.data.success) {
             const { sessions, pagination: paginationData } = response.data.data;
             setPagination(paginationData);
+            setHasMore(paginationData.hasNextPage);
 
             setAllSessions(prev => {
-              // If it's the first batch (e.g. new filter/search), replace entirely
-              if (batch === 1) return sessions;
-
-              // Otherwise append new sessions, avoiding duplicates
-              const existingIds = new Set(prev.map(s => s._id));
-              const newSessions = sessions.filter((s: Session) => !existingIds.has(s._id));
-              return [...prev, ...newSessions];
+              if (append) {
+                const existingIds = new Set(prev.map(s => s._id));
+                const newSessions = sessions.filter((s: Session) => !existingIds.has(s._id));
+                return [...prev, ...newSessions];
+              }
+              return sessions;
             });
 
             setError(null);
           }
         } catch (err) {
-          // Silently handle aborted requests - this is expected behavior when switching filters
           if (isAbortError(err)) {
             return;
           }
@@ -187,10 +188,6 @@ export function useSessions() {
             err instanceof Error ? err.message : 'Failed to fetch sessions';
           setError(errorMessage);
           toast.error(errorMessage);
-          // Only clear sessions on error if strict mode caused double fetch
-          // But usually we don't want to clear if just one batch failed?
-          // For now, cleaner to just clear or keep old data. 
-          // If first batch fails, clear sessions.
           if (batch === 1) {
             setAllSessions([]);
           }
@@ -217,9 +214,12 @@ export function useSessions() {
   // Initial load or filter change
   useEffect(() => {
     setCurrentPage(0);
+    setCurrentBatch(1);
     setAllSessions([]);
     setLoadedBatches(new Set([1]));
-    fetchSessions(1);
+    
+    // Initial load: fetch first batch to get 100 items (5 pages)
+    fetchSessions(1, false);
   }, [
     selectedLicencee,
     activeMetricsFilter,
@@ -231,46 +231,54 @@ export function useSessions() {
     fetchSessions,
   ]);
 
-  // Batch loading logic
-  useEffect(() => {
-    if (loading) return;
-    const currentBatch = Math.floor(currentPage / pagesPerBatch) + 1;
-    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
-    const nextBatch = currentBatch + 1;
-
-    // Check if we need to load the next batch
-    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
-      // Check if we actually have more pages on server before fetching
-      if (pagination && pagination.hasNextPage) {
-        setLoadedBatches(prev => new Set([...prev, nextBatch]));
-        fetchSessions(nextBatch);
-      }
-    }
-  }, [currentPage, loading, loadedBatches, fetchSessions, pagesPerBatch, pagination]);
+  // Batch loading logic (removed)
 
   // ============================================================================
   // Computed Values
   // ============================================================================
   const sessions = useMemo(() => {
-    // Calculate start/end indices based on total accumulated items
     const start = currentPage * itemsPerPage;
     const end = start + itemsPerPage;
     return allSessions.slice(start, end);
   }, [allSessions, currentPage, itemsPerPage]);
+
+  const totalPages = useMemo(() => {
+    if (!allSessions.length) return 0;
+    return Math.ceil(allSessions.length / itemsPerPage);
+  }, [allSessions, itemsPerPage]);
 
   // ============================================================================
   // Handlers
   // ============================================================================
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  }, []);
+    
+    // If we are moving to the last page of loaded data and there's more on the server,
+    // fetch the next batch in the background.
+    if (page >= totalPages - 1 && hasMore && !loading) {
+      const nextBatch = currentBatch + 1;
+      if (!loadedBatches.has(nextBatch)) {
+        void fetchSessions(nextBatch, true);
+        setLoadedBatches(prev => new Set(prev).add(nextBatch));
+        setCurrentBatch(nextBatch);
+      }
+    }
+  }, [totalPages, hasMore, loading, currentBatch, loadedBatches, fetchSessions]);
 
   const refreshSessions = useCallback(async () => {
     setCurrentPage(0);
+    setCurrentBatch(1);
     setAllSessions([]);
     setLoadedBatches(new Set([1]));
-    await fetchSessions(1);
+    await fetchSessions(1, false);
   }, [fetchSessions]);
+
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loading) return;
+    const nextBatch = currentBatch + 1;
+    setCurrentBatch(nextBatch);
+    await fetchSessions(nextBatch, true);
+  }, [hasMore, loading, currentBatch, fetchSessions]);
 
   // ============================================================================
   // Return
@@ -281,8 +289,11 @@ export function useSessions() {
     error,
     pagination,
     currentPage,
+    totalPages,
     handlePageChange,
     refreshSessions,
+    loadMore,
+    hasMore,
     // Filter controls
     searchTerm,
     sortBy,
@@ -298,3 +309,4 @@ export function useSessions() {
     getSortIcon: filterControls.getSortIcon,
   };
 }
+

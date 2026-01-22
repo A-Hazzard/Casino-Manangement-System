@@ -112,6 +112,11 @@ export async function POST(
           details: `Location-wide SMIB restart: ${results.successful} successful, ${results.failed} failed`,
           ipAddress: clientIP || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username:
+            (currentUser.emailAddress as string) ||
+            (currentUser.username as string) ||
+            'unknown',
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,

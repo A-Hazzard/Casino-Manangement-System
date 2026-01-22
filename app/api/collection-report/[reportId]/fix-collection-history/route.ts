@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/middleware/db';
 import { getUserIdFromServer, getUserById } from '../../../lib/helpers/users';
-import { fixCollectionHistoryForReport } from '@/app/api/lib/helpers/sasTimesFix';
+import { fixCollectionHistoryForReport } from '@/app/api/lib/helpers/collectionReport/fixes/sasTimes';
 
 /**
  * Main POST handler for fixing collection history

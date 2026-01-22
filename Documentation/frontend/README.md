@@ -14,8 +14,8 @@
 This directory contains comprehensive documentation for all frontend pages, components, and integrations in the Evolution One Casino Management System. The documentation is organized into logical categories for improved navigation and maintainability.
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** December 29, 2025
-**Version:** 2.4.0 - Documentation Synchronization
+**Last Updated:** January 2025
+**Version:** 2.5.0 - Documentation Structure Update
 
 ## Documentation Structure
 
@@ -35,6 +35,7 @@ Documentation/frontend/
 │   ├── collection-report.md           # Collection reporting
 │   ├── reports.md                     # Reports page with evaluation tab
 │   ├── login.md                       # Authentication page
+│   ├── vault.md                       # Vault Management System pages
 │   ├── pages-overview.md              # High-level page overview
 │   └── redirect-pages.md              # Routing and redirects
 │
@@ -49,9 +50,6 @@ Documentation/frontend/
 │
 ├── guidelines/                        # Development guidelines
 │   └── FRONTEND_GUIDELINES.md         # Frontend development standards
-│
-├── trackers/                          # Project tracking files
-│   └── [Various tracker files]         # Development and refactoring trackers
 │
 └── _archive/                          # Archived documentation
     └── Reports FRD.md                 # Legacy requirements document
@@ -189,7 +187,7 @@ Documentation/frontend/
 
 ### Consistent Architecture
 
-- **Next.js 15+ App Router** with TypeScript
+- **Next.js 16.0.7 App Router** with TypeScript
 - **Zustand** for global state management
 - **Tailwind CSS** for styling
 - **Radix UI** for accessible components
@@ -293,9 +291,9 @@ Each page documentation file follows a standardized structure:
 
 ### System Documentation
 
-- **[Project Guide](../../PROJECT_GUIDE.md)** - Overall project documentation
-- **[Performance Guide](../../PERFORMANCE_OPTIMIZATION_GUIDE.md)** - Performance optimization
-- **[Engineering Guidelines](../../ENGINEERING_GUIDELINES.md)** - Development standards
+- **[Project Guide](../PROJECT_GUIDE.md)** - Overall project documentation
+- **[Performance Guide](../PERFORMANCE_OPTIMIZATION_GUIDE.md)** - Performance optimization
+- **[Engineering Rules](../.cursor/rules/nextjs-rules.mdc)** - Development standards (see `.cursor/rules/nextjs-rules.mdc`)
 
 ### Development Resources
 

@@ -15,7 +15,7 @@
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { repairSasTimesForCollections } from '@/app/api/lib/helpers/adminRepairSasTimes';
+import { repairSasTimesForCollections } from '@/app/api/lib/helpers/collectionReport/fixes/adminRepair';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -96,3 +96,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

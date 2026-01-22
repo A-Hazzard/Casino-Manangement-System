@@ -29,3 +29,4 @@ LicenceeSchema.index({ status: 1 });
 
 export const Licencee =
   models.Licencee || model('Licencee', LicenceeSchema, 'licencees');
+

@@ -7,11 +7,11 @@
 
 'use client';
 
-import { loginUser } from '@/lib/helpers/clientAuth';
+import { loginUser } from '@/lib/helpers/client';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useAuthSessionStore } from '@/lib/store/authSessionStore';
 import { useUserStore } from '@/lib/store/userStore';
-import type { ProfileValidationModalData } from '@/lib/types/profileValidation';
+import type { ProfileValidationModalData } from '@/lib/types/auth';
 import { getDefaultRedirectPathFromRoles } from '@/lib/utils/roleBasedRedirect';
 import type {
   InvalidProfileFields,
@@ -19,6 +19,7 @@ import type {
 } from '@/shared/types/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { UserRole } from '../../constants/roles';
 
 export type ProfileUpdateResult = {
   success: boolean;
@@ -110,8 +111,9 @@ export function useLoginPageData() {
           setMessageType('success');
           setRedirecting(true);
 
-          const path = getDefaultRedirectPathFromRoles(res.user?.roles || []);
-          window.location.href = path; // Force hard redirect for cookies
+          const path = getDefaultRedirectPathFromRoles(res.user?.roles as UserRole[] || []);
+
+          window.location.href = path;
         } else {
           setMessage(res.message || 'Invalid credentials');
           setMessageType('error');

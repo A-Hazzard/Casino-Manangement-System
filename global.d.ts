@@ -88,3 +88,4 @@ declare module '@/components/cabinetDetails/AccountingDetails' {
   const component: typeof AccountingDetails;
   export default component;
 }
+
