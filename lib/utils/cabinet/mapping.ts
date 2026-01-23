@@ -60,6 +60,8 @@ export function mapToCabinetProps(cabinet: Cabinet): CabinetProps {
     isCronosMachine: cabinet.isCronosMachine || false,
     cabinetType: cabinet.cabinetType || '',
     custom: { name: cabinet.serialNumber || cabinet._id || 'Unknown' },
+    offlineTimeLabel: cabinet.offlineTimeLabel,
+    actualOfflineTime: cabinet.actualOfflineTime,
   };
 }
 

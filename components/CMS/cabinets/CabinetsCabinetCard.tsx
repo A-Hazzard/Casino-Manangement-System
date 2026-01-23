@@ -87,7 +87,12 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
   };
 
   // Determine if cabinet is online (you may need to adjust this based on your data structure)
-  const isOnline = props.status === 'functional' || props.online === true;
+  const isOnline = props.online !== undefined ? props.online : (props.status === 'functional' || props.online === true);
+  const lastOnlineText = props.offlineTimeLabel || (props.lastOnline
+    ? formatDistanceToNow(new Date(props.lastOnline), {
+        addSuffix: true,
+      })
+    : 'Never');
   const smbId = props.smbId || '';
 
   return (
@@ -168,9 +173,16 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
       
       {/* Offline Status - Show when offline */}
       {!isOnline && (
-        <div className="mb-3 flex items-center gap-1.5 text-xs text-red-600 font-medium">
-          <Clock className="h-3 w-3" />
-          <span>{props.lastOnline ? `Offline ${formatDistanceToNow(new Date(props.lastOnline), { addSuffix: true })}` : 'Never Online'}</span>
+        <div className="mb-3 flex flex-col gap-1 text-xs text-red-600 font-medium">
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-3 w-3" />
+            <span>{lastOnlineText === 'Never' ? 'Never Online' : `Offline ${lastOnlineText}`}</span>
+          </div>
+          {props.actualOfflineTime && props.actualOfflineTime !== lastOnlineText && (
+            <div className="ml-[18px] text-[10px] opacity-70 italic text-gray-500">
+              (Actual Offline Time: {props.actualOfflineTime})
+            </div>
+          )}
         </div>
       )}
 

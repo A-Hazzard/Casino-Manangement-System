@@ -115,6 +115,8 @@ export default function ReportsMachinesTab() {
     allOfflineMachines,
     allMachines,
     locations,
+    overviewTotalCount,
+    offlineTotalCount,
     statsLoading,
     overviewLoading,
     offlineLoading,
@@ -446,8 +448,8 @@ export default function ReportsMachinesTab() {
   }, [allOverviewMachines, overviewCurrentPage]);
 
   const overviewTotalPages = useMemo(() => {
-    return Math.max(1, Math.ceil(allOverviewMachines.length / ITEMS_PER_PAGE));
-  }, [allOverviewMachines.length]);
+    return Math.max(1, Math.ceil(overviewTotalCount / ITEMS_PER_PAGE));
+  }, [overviewTotalCount]);
 
   const paginatedOfflineMachines = useMemo(() => {
     // Clone and sort first
@@ -482,8 +484,8 @@ export default function ReportsMachinesTab() {
   }, [allOfflineMachines, offlineCurrentPage, sortConfig]);
 
   const offlineTotalPages = useMemo(() => {
-    return Math.max(1, Math.ceil(allOfflineMachines.length / ITEMS_PER_PAGE));
-  }, [allOfflineMachines.length]);
+    return Math.max(1, Math.ceil(offlineTotalCount / ITEMS_PER_PAGE));
+  }, [offlineTotalCount]);
 
   // ============================================================================
   // Handlers
@@ -861,7 +863,7 @@ export default function ReportsMachinesTab() {
             pagination={{
               page: overviewCurrentPage + 1,
               limit: ITEMS_PER_PAGE,
-              totalCount: allOverviewMachines.length,
+              totalCount: overviewTotalCount,
               totalPages: overviewTotalPages,
               hasNextPage: overviewCurrentPage < overviewTotalPages - 1,
               hasPrevPage: overviewCurrentPage > 0,
@@ -928,7 +930,7 @@ export default function ReportsMachinesTab() {
             offlinePagination={{
               page: offlineCurrentPage + 1,
               limit: ITEMS_PER_PAGE,
-              totalCount: allOfflineMachines.length,
+              totalCount: offlineTotalCount,
               totalPages: offlineTotalPages,
               hasNextPage: offlineCurrentPage < offlineTotalPages - 1,
               hasPrevPage: offlineCurrentPage > 0,

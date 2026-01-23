@@ -35,12 +35,11 @@ import {
     SelectValue,
 } from '@/components/shared/ui/select';
 import { MachinesOfflineSkeleton } from '@/components/shared/ui/skeletons/ReportsSkeletons';
-import { calculateOfflineDurationHours } from '@/lib/helpers/machines';
 import type { MachineData, ReportsMachinesOfflineProps } from '@/lib/types/reports';
 import { getFinancialColorClass } from '@/lib/utils/financial';
 import deleteIcon from '@/public/deleteIcon.svg';
 import editIcon from '@/public/editIcon.svg';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import {
     ChevronDown,
     ChevronUp,
@@ -435,7 +434,6 @@ export const ReportsMachinesOffline = ({
                 </thead>
                 <tbody>
                   {offlineMachines.map(machine => {
-                    const hoursOffline = calculateOfflineDurationHours(machine.lastActivity);
                     const lastOnlineDate = machine.lastActivity ? new Date(machine.lastActivity) : null;
 
                     return (
@@ -481,34 +479,16 @@ export const ReportsMachinesOffline = ({
                           {lastOnlineDate ? format(lastOnlineDate, 'MMM d, yyyy h:mm a') : 'Never'}
                         </td>
                         <td className="p-3 text-left">
-                              {(!machine.lastActivity || machine.lastActivity === '') ? (
-                                <Badge variant="outline" className="border-gray-500 text-gray-500">
-                                  Never Online
-                                </Badge>
-                              ) : (
-                                <Badge
-                                  variant="outline"
-                                  className={
-                                    hoursOffline >= 168
-                                      ? 'border-red-600 text-red-600' // 7+ days
-                                      : hoursOffline >= 24
-                                        ? 'border-orange-600 text-orange-600' // 24+ hours
-                                        : hoursOffline >= 4
-                                          ? 'border-yellow-600 text-yellow-600' // 4+ hours
-                                          : 'border-green-600 text-green-600' // Less than 4 hours
-                                  }
-                                >
-                                  {hoursOffline >= 168
-                                    ? `${Math.floor(hoursOffline / 24)}d`
-                                    : hoursOffline >= 24
-                                      ? `${Math.floor(hoursOffline)}h`
-                                      : hoursOffline >= 1
-                                        ? `${Math.floor(hoursOffline)}h`
-                                        : hoursOffline * 60 >= 1
-                                          ? `${Math.floor(hoursOffline * 60)}m`
-                                          : 'less than a minute ago'}
-                                </Badge>
-                              )}
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-900">
+                              {machine.offlineTimeLabel || (machine.lastActivity ? formatDistanceToNow(new Date(machine.lastActivity), { addSuffix: true }) : 'Never')}
+                            </span>
+                            {machine.actualOfflineTime && machine.actualOfflineTime !== machine.offlineTimeLabel && (
+                              <span className="ml-2 text-[10px] italic text-gray-500 opacity-80">
+                                Actual Offline Time: {machine.actualOfflineTime}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="p-3 text-left">
                           <span className={getFinancialColorClass(machine.coinIn)}>
@@ -564,7 +544,6 @@ export const ReportsMachinesOffline = ({
               {/* Mobile Card View */}
               <div className="grid grid-cols-1 gap-4 lg:hidden">
                 {offlineMachines.map(machine => {
-                  const hoursOffline = calculateOfflineDurationHours(machine.lastActivity);
                   const lastOnlineDate = machine.lastActivity ? new Date(machine.lastActivity) : null;
 
                   return (
@@ -574,35 +553,17 @@ export const ReportsMachinesOffline = ({
                     >
                       {/* Header */}
                       <div className="mb-4 flex flex-col border-b border-gray-100 pb-3">
-                        <div className="mb-2 flex items-center justify-between">
-                            {(!machine.lastActivity || machine.lastActivity === '') ? (
-                                <Badge variant="outline" className="border-gray-500 text-gray-500">
-                                  Never Online
-                                </Badge>
-                              ) : (
-                                <Badge
-                                  variant="outline"
-                                  className={
-                                    hoursOffline >= 168
-                                      ? 'border-red-600 text-red-600' // 7+ days
-                                      : hoursOffline >= 24
-                                        ? 'border-orange-600 text-orange-600' // 24+ hours
-                                        : hoursOffline >= 4
-                                          ? 'border-yellow-600 text-yellow-600' // 4+ hours
-                                          : 'border-green-600 text-green-600' // Less than 4 hours
-                                  }
-                                >
-                                  {hoursOffline >= 168
-                                    ? `${Math.floor(hoursOffline / 24)}d`
-                                    : hoursOffline >= 24
-                                      ? `${Math.floor(hoursOffline)}h`
-                                      : hoursOffline >= 1
-                                        ? `${Math.floor(hoursOffline)}h`
-                                        : hoursOffline * 60 >= 1
-                                          ? `${Math.floor(hoursOffline * 60)}m`
-                                          : 'less than a minute ago'}
-                                </Badge>
-                              )}
+                        <div className="mb-2 flex flex-col">
+                            <div className="flex items-center">
+                              <span className="text-sm font-semibold text-gray-900">
+                                {machine.offlineTimeLabel || (machine.lastActivity ? formatDistanceToNow(new Date(machine.lastActivity), { addSuffix: true }) : 'Never')}
+                              </span>
+                            </div>
+                            {machine.actualOfflineTime && machine.actualOfflineTime !== machine.offlineTimeLabel && (
+                              <span className="ml-[18px] text-[10px] italic text-gray-500 opacity-80">
+                                Actual Offline Time: {machine.actualOfflineTime}
+                              </span>
+                            )}
                         </div>
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">

@@ -115,9 +115,20 @@ function CabinetCardMobile({
       
       {/* Offline Status - Show when offline */}
       {!cabinet.isOnline && (
-        <div className="mb-2 flex items-center gap-1.5 text-xs text-red-600 font-medium">
-          <Clock className="h-3 w-3" />
-          <span>{cabinet.lastOnline ? `Offline ${formatDistanceToNow(new Date(cabinet.lastOnline), { addSuffix: true })}` : 'Never Online'}</span>
+        <div className="mb-3 flex flex-col gap-1 text-xs text-red-600 font-medium">
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-3 w-3" />
+            <span>
+              {cabinet.offlineTimeLabel 
+                ? (cabinet.offlineTimeLabel === 'Never' ? 'Never Online' : `Offline ${cabinet.offlineTimeLabel}`)
+                : (cabinet.lastOnline ? `Offline ${formatDistanceToNow(new Date(cabinet.lastOnline), { addSuffix: true })}` : 'Never Online')}
+            </span>
+          </div>
+          {cabinet.actualOfflineTime && cabinet.actualOfflineTime !== (cabinet.offlineTimeLabel || (cabinet.lastOnline ? formatDistanceToNow(new Date(cabinet.lastOnline), { addSuffix: true }) : 'Never')) && (
+            <div className="ml-[18px] text-[10px] opacity-70 italic text-gray-500">
+              (Actual Offline Time: {cabinet.actualOfflineTime})
+            </div>
+          )}
         </div>
       )}
       <p className="mb-1 text-sm text-gray-600">

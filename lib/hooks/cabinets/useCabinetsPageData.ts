@@ -15,9 +15,9 @@
 
 import { getMetrics } from '@/lib/helpers/metrics';
 import {
-  useCabinetData,
-  useCabinetSorting,
-  useLocationMachineStats,
+    useCabinetData,
+    useCabinetSorting,
+    useLocationMachineStats,
 } from '@/lib/hooks/data';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -157,8 +157,15 @@ export function useCabinetsPageData() {
     } else if (selectedStatus === 'OfflineShortest') {
       setSortOption('offlineTime');
       setSortOrder('asc');
+    } else if (selectedStatus === 'All' || selectedStatus === 'all' || selectedStatus === 'Online') {
+      // If we are currently sorting by offlineTime but switched away from offline status,
+      // reset to default moneyIn-desc sort to ensure Online machines have priority again
+      if (sortOption === 'offlineTime') {
+        setSortOption('moneyIn');
+        setSortOrder('desc');
+      }
     }
-  }, [selectedStatus, setSortOption, setSortOrder]);
+  }, [selectedStatus, sortOption, setSortOption, setSortOrder]);
 
   // ============================================================================
   // Cabinet Data & Sorting
@@ -276,6 +283,11 @@ export function useCabinetsPageData() {
     }
   }, [selectedStatus, selectedLocation, selectedGameType, activeSection, activeMetricsFilter, customDateRange, loadCabinets, fetchChartData]);
 
+  // Reset to first page when ANY filter changes
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [selectedStatus, selectedLocation, selectedGameType, activeMetricsFilter, customDateRange, setCurrentPage]);
+
   // Batch loading effect
   useEffect(() => {
     if (loading || !activeMetricsFilter || searchTerm.trim()) return;
@@ -329,18 +341,20 @@ export function useCabinetsPageData() {
     setIsFilterResetting(true);
     setLoadedBatches(new Set()); // Reset loaded batches to allow fresh fetch
     setAccumulatedCabinets([]);
+    setCurrentPage(0); // Reset to first page when filter changes
     setSelectedStatus(status);
-  }, []);
+  }, [setCurrentPage]);
 
   const handleSetSelectedLocation = useCallback((location: string | string[]) => {
     console.warn('[useCabinetsPageData] handleSetSelectedLocation called with:', location);
     setIsFilterResetting(true);
     setLoadedBatches(new Set()); // Reset loaded batches to allow fresh fetch
     setAccumulatedCabinets([]);
+    setCurrentPage(0); // Reset to first page when filter changes
     const locationArray = Array.isArray(location) ? location : [location];
     console.warn('[useCabinetsPageData] Setting selectedLocation to:', locationArray);
     setSelectedLocation(locationArray);
-  }, []);
+  }, [setCurrentPage]);
 
   const handleSetSelectedGameType = useCallback((gameType: string | string[]) => {
     // Note: We don't necessarily need to reset accumulated cabinets for game type 
@@ -348,9 +362,10 @@ export function useCabinetsPageData() {
     setIsFilterResetting(true);
     setLoadedBatches(new Set()); // Reset loaded batches to allow fresh fetch
     setAccumulatedCabinets([]);
+    setCurrentPage(0); // Reset to first page when filter changes
     const gameTypeArray = Array.isArray(gameType) ? gameType : [gameType];
     setSelectedGameType(gameTypeArray);
-  }, []);
+  }, [setCurrentPage]);
 
   // isFilterResetting is cleared in the effect above when new data arrives
   // This is more reliable than depending on loading state timing

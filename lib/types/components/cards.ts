@@ -29,6 +29,9 @@ export type CabinetCardProps = {
   onDelete?: (cabinet: CabinetCardProps) => void;
   canEditMachines?: boolean; // If false, hide edit button
   canDeleteMachines?: boolean; // If false, hide delete button
+  timePeriod?: string;
+  offlineTimeLabel?: string;
+  actualOfflineTime?: string;
 };
 
 

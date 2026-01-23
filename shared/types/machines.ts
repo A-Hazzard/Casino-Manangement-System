@@ -32,6 +32,8 @@ export type MachineData = {
   currentCredits?: number;
   gamesWon?: number;
   offlineDurationHours?: number; // Calculated from lastActivity for offline machines
+  offlineTimeLabel?: string;
+  actualOfflineTime?: string;
 };
 
 // Machine statistics for dashboard cards

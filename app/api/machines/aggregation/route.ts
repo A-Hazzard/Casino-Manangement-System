@@ -30,6 +30,7 @@ import { convertFromUSD } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { MachineAggregationMatchStage } from '@/shared/types/mongo';
+import { formatDistanceToNow } from 'date-fns';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -260,7 +261,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // 🚀 OPTIMIZED: For 30d periods, use single aggregation across all machines
     // For shorter periods, use parallel batch processing per location
-    const allMachines: Array<Record<string, unknown>> = [];
+    let allMachines: Array<Record<string, unknown>> = [];
     const useSingleAggregation = timePeriod === '30d' || timePeriod === '7d';
 
     if (useSingleAggregation) {
@@ -865,6 +866,84 @@ export async function GET(req: NextRequest) {
         allMachines.push(...(batchResults as typeof allMachines));
       }
     }
+
+    // ============================================================================
+    // STEP 8.5: Refine Offline Status Filter and Calculate Labels
+    // ============================================================================
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+    
+    // Process all machines to add offline labels and apply refined filtering if needed
+    let refinedMachines = allMachines.map(machine => {
+        const lastActivity = (machine as any).lastActivity ? new Date((machine as any).lastActivity) : null;
+        const isOnline = lastActivity && lastActivity > threeMinutesAgo;
+        
+        let offlineTimeLabel : string | undefined = undefined;
+        let actualOfflineTime : string | undefined = undefined;
+
+        if (!isOnline && lastActivity) {
+            const actualDuration = formatDistanceToNow(lastActivity, { addSuffix: true });
+            actualOfflineTime = actualDuration;
+
+            const locationId = (machine as any).locationId;
+            const range = gamingDayRanges.get(String(locationId));
+
+            if (range) {
+                // If it went offline BEFORE the range start, we clamp the label for 7d/30d/Custom
+                if (lastActivity < range.rangeStart && (timePeriod === '7d' || timePeriod === '30d' || timePeriod === 'Custom' || timePeriod === 'last7days' || timePeriod === 'last30days')) {
+                    const days = (timePeriod === '7d' || timePeriod === 'last7days') ? '7' : (timePeriod === '30d' || timePeriod === 'last30days') ? '30' : undefined;
+                    if (days) {
+                        offlineTimeLabel = `within the last ${days} days`;
+                    } else {
+                        // For Custom, use distance to rangeStart? 
+                        // Let's just say "within the selected period"
+                        const diffMs = range.rangeEnd.getTime() - range.rangeStart.getTime();
+                        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                        offlineTimeLabel = `within the last ${diffDays} days`;
+                    }
+                } else {
+                    offlineTimeLabel = actualDuration;
+                }
+            }
+        } else if (!isOnline && !lastActivity) {
+            actualOfflineTime = 'Never';
+            offlineTimeLabel = 'Never';
+        }
+
+        return {
+            ...machine,
+            online: isOnline,
+            offlineTimeLabel,
+            actualOfflineTime
+        };
+    });
+
+    // Apply strict filtering for 'offline' status if requested
+    if (onlineStatus.startsWith('offline')) {
+        refinedMachines = refinedMachines.filter(machine => {
+            const lastActivity = (machine as any).lastActivity ? new Date((machine as any).lastActivity) : null;
+            const isOnline = lastActivity && lastActivity > threeMinutesAgo;
+            
+            // 1. Must be currently offline
+            if (isOnline) return false;
+
+            // 2. Apply period-based rules
+            const locationId = (machine as any).locationId;
+            const range = gamingDayRanges.get(String(locationId));
+            if (!range) return true;
+
+            if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
+                // Strict: Only show if it went offline DURING this gaming day
+                if (!lastActivity) return false; // Never online isn't "offline today"
+                return lastActivity >= range.rangeStart && lastActivity <= range.rangeEnd;
+            } else {
+                // Less strict for 7d/30d/Custom: Show if offline at the end of the period (including long-term)
+                return !lastActivity || lastActivity <= range.rangeEnd;
+            }
+        });
+    }
+
+    // Update allMachines for the next steps
+    allMachines = refinedMachines;
 
     // ============================================================================
     // STEP 9: Apply search filter

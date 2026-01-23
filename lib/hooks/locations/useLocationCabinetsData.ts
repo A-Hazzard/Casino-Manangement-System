@@ -110,8 +110,15 @@ export function useLocationCabinetsData({
     } else if (selectedStatus === 'OfflineShortest') {
       setSortOption('offlineTime');
       setSortOrder('asc');
+    } else if (selectedStatus === 'All' || selectedStatus === 'all' || selectedStatus === 'Online') {
+      // If we are currently sorting by offlineTime but switched away from offline status,
+      // reset to default moneyIn-desc sort to ensure Online machines have priority again
+      if (sortOption === 'offlineTime') {
+        setSortOption('moneyIn');
+        setSortOrder('desc');
+      }
     }
-  }, [selectedStatus]);
+  }, [selectedStatus, sortOption]);
 
   const [locations, setLocations] = useState<{ id: string; name: string }[]>(
     []
@@ -216,7 +223,7 @@ export function useLocationCabinetsData({
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(0);
-  }, [sortOption, sortOrder, selectedStatus, selectedGameType]);
+  }, [sortOption, sortOrder, selectedStatus, selectedGameType, activeMetricsFilter, customDateRange]);
 
   // Reset to default view when search is cleared
   useEffect(() => {
@@ -745,6 +752,7 @@ export function useLocationCabinetsData({
     setSelectedStatus: useCallback((status: string) => {
       setIsFilterResetting(true);
       setAccumulatedCabinets([]);
+      setCurrentPage(0); // Reset to first page
       setSelectedStatus(status);
     }, []),
     setSelectedGameType,

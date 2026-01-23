@@ -98,14 +98,21 @@ export const useCabinetSorting = ({
       // Special handling for offlineTime sorting
       if (sortOption === 'offlineTime') {
         const now = Date.now();
-        const fiveMinutesAgo = now - 5 * 60 * 1000;
+        const threeMinutesAgo = now - 3 * 60 * 1000;
         
-        // Determine if machines are online (lastActivity within last 5 minutes)
+        // Determine if machines are online
+        // Use backend provided 'online' flag if available, otherwise calculate
         const firstLastActivity = firstCabinet.lastActivity || firstCabinet.lastOnline;
         const secondLastActivity = secondCabinet.lastActivity || secondCabinet.lastOnline;
-        
-        const firstIsOnline = firstLastActivity && new Date(firstLastActivity).getTime() > fiveMinutesAgo;
-        const secondIsOnline = secondLastActivity && new Date(secondLastActivity).getTime() > fiveMinutesAgo;
+
+        const firstIsOnline = firstCabinet.online !== undefined ? firstCabinet.online : (
+          firstLastActivity && 
+          new Date(firstLastActivity).getTime() > threeMinutesAgo
+        );
+        const secondIsOnline = secondCabinet.online !== undefined ? secondCabinet.online : (
+          secondLastActivity && 
+          new Date(secondLastActivity).getTime() > threeMinutesAgo
+        );
         
         // If both online or both offline, compare by offline time
         if (firstIsOnline && secondIsOnline) {

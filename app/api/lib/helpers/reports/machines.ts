@@ -8,6 +8,7 @@
  */
 
 import { Countries } from '@/app/api/lib/models/countries';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -16,7 +17,9 @@ import {
     convertToUSD,
     getCountryCurrency,
 } from '@/lib/helpers/rates';
+import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
+import { formatDistanceToNow } from 'date-fns';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 import type { PipelineStage } from 'mongoose';
 import { NextResponse } from 'next/server';
@@ -348,8 +351,13 @@ export async function getOverviewMachines(
   limit: number,
   skip: number,
   startDate: Date | undefined,
-  endDate: Date | undefined
+  endDate: Date | undefined,
+  timePeriod: string = 'Today'
 ) {
+  // Fetch locations to get gaming day ranges
+  const locationsWithOffset = await GamingLocations.find(locationMatchStage).select('gameDayOffset _id').lean();
+  const gamingDayRanges = getGamingDayRangesForLocations(locationsWithOffset as any, timePeriod, startDate, endDate);
+
   const aggregationPipeline: PipelineStage[] = [
     { $match: machineMatchStage },
     {
@@ -484,10 +492,46 @@ export async function getOverviewMachines(
     machines.push(doc);
   }
 
+  const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+
   const transformedMachines = machines.map(machine => {
     const gameConfig = machine.gameConfig as
       | { theoreticalRtp?: number }
       | undefined;
+    
+    // Calculate offline labels
+    const lastActivity = machine.lastActivity ? new Date(machine.lastActivity as string) : null;
+    const isOnline = !!(lastActivity && lastActivity > threeMinutesAgo);
+    
+    let offlineTimeLabel : string | undefined = undefined;
+    let actualOfflineTime : string | undefined = undefined;
+
+    if (!isOnline && lastActivity) {
+        const actualDuration = formatDistanceToNow(lastActivity, { addSuffix: true });
+        actualOfflineTime = actualDuration;
+
+        const locationId = machine.gamingLocation;
+        const range = gamingDayRanges.get(String(locationId));
+
+        if (range) {
+            if (lastActivity < range.rangeStart && (timePeriod === '7d' || timePeriod === '30d' || timePeriod === 'Custom' || timePeriod === 'last7days' || timePeriod === 'last30days')) {
+                const days = (timePeriod === '7d' || timePeriod === 'last7days') ? '7' : (timePeriod === '30d' || timePeriod === 'last30days') ? '30' : undefined;
+                if (days) {
+                    offlineTimeLabel = `within the last ${days} days`;
+                } else {
+                    const diffMs = range.rangeEnd.getTime() - range.rangeStart.getTime();
+                    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                    offlineTimeLabel = `within the last ${diffDays} days`;
+                }
+            } else {
+                offlineTimeLabel = actualDuration;
+            }
+        }
+    } else if (!isOnline && !lastActivity) {
+        actualOfflineTime = 'Never';
+        offlineTimeLabel = 'Never';
+    }
+
     return {
       machineId: (machine._id as string).toString(),
       machineName:
@@ -506,12 +550,10 @@ export async function getOverviewMachines(
         (machine.manufacturer as string) ||
         (machine.manuf as string) ||
         'Unknown Manufacturer',
-      isOnline: !!(
-        machine.lastActivity &&
-        new Date(machine.lastActivity as string) >=
-          new Date(Date.now() - 3 * 60 * 1000)
-      ),
+      isOnline,
       lastActivity: machine.lastActivity as string,
+      offlineTimeLabel,
+      actualOfflineTime,
       isSasEnabled: (machine.isSasMachine as boolean) || false,
       drop: Math.round((Number(machine.drop) || 0) * 100) / 100,
       totalCancelledCredits:
@@ -796,8 +838,13 @@ export async function getOfflineMachines(
   skip: number,
   startDate: Date | undefined,
   endDate: Date | undefined,
-  locationMatchStage: Record<string, unknown>
+  locationMatchStage: Record<string, unknown>,
+  timePeriod: string = 'Today'
 ) {
+  // Fetch locations to get gaming day ranges
+  const locationsWithOffset = await GamingLocations.find(locationMatchStage).select('gameDayOffset _id').lean();
+  const gamingDayRanges = getGamingDayRangesForLocations(locationsWithOffset as any, timePeriod, startDate, endDate);
+
   const searchTerm = searchParams.get('search');
   const locationId = searchParams.get('locationId');
   const durationFilter =
@@ -1017,6 +1064,40 @@ export async function getOfflineMachines(
     const gameConfig = machine.gameConfig as
       | { theoreticalRtp?: number }
       | undefined;
+
+    // Calculate offline labels
+    const lastActivity = machine.lastActivity ? new Date(machine.lastActivity as string) : null;
+    const isOnline = !!(lastActivity && lastActivity > threeMinutesAgo);
+    
+    let offlineTimeLabel : string | undefined = undefined;
+    let actualOfflineTime : string | undefined = undefined;
+
+    if (!isOnline && lastActivity) {
+        const actualDuration = formatDistanceToNow(lastActivity, { addSuffix: true });
+        actualOfflineTime = actualDuration;
+
+        const locationId = machine.gamingLocation;
+        const range = gamingDayRanges.get(String(locationId));
+
+        if (range) {
+            if (lastActivity < range.rangeStart && (timePeriod === '7d' || timePeriod === '30d' || timePeriod === 'Custom' || timePeriod === 'last7days' || timePeriod === 'last30days')) {
+                const days = (timePeriod === '7d' || timePeriod === 'last7days') ? '7' : (timePeriod === '30d' || timePeriod === 'last30days') ? '30' : undefined;
+                if (days) {
+                    offlineTimeLabel = `within the last ${days} days`;
+                } else {
+                    const diffMs = range.rangeEnd.getTime() - range.rangeStart.getTime();
+                    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                    offlineTimeLabel = `within the last ${diffDays} days`;
+                }
+            } else {
+                offlineTimeLabel = actualDuration;
+            }
+        }
+    } else if (!isOnline && !lastActivity) {
+        actualOfflineTime = 'Never';
+        offlineTimeLabel = 'Never';
+    }
+
     return {
       machineId: (machine._id as string).toString(),
       serialNumber:
@@ -1035,8 +1116,10 @@ export async function getOfflineMachines(
         (machine.manufacturer as string) ||
         (machine.manuf as string) ||
         'Unknown Manufacturer',
-      isOnline: false,
+      isOnline,
       lastActivity: machine.lastActivity as string,
+      offlineTimeLabel,
+      actualOfflineTime,
       isSasEnabled: (machine.isSasMachine as boolean) || false,
       drop: Math.round((Number(machine.drop) || 0) * 100) / 100,
       totalCancelledCredits:

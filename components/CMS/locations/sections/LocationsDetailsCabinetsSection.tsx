@@ -414,7 +414,7 @@ export default function LocationsDetailsCabinetsSection({
                   handleFilterChange(value)
                 }
                 options={[
-                  { value: 'All', label: 'All Machines' },
+                  { value: 'All', label: 'All Status' },
                   { value: 'Online', label: 'Online' },
                   { value: 'OfflineLongest', label: 'Offline (Longest First)' },
                   { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
@@ -489,7 +489,7 @@ export default function LocationsDetailsCabinetsSection({
                   handleFilterChange(value)
                 }
                 options={[
-                  { value: 'All', label: 'All Machines' },
+                  { value: 'All', label: 'All Status' },
                   { value: 'Online', label: 'Online' },
                   { value: 'OfflineLongest', label: 'Offline (Longest First)' },
                   { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
@@ -579,7 +579,7 @@ export default function LocationsDetailsCabinetsSection({
                 placeholder="Sort by"
                 className="w-full"
                 triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm whitespace-nowrap"
-                searchable={true}
+                searchable={false}
                 emptyMessage="No sort options found"
               />
             </div>

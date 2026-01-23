@@ -322,7 +322,8 @@ export function getGamingDayRangesForLocations(
       customEndDate,
       timezoneOffset
     );
-    ranges.set(location._id, range);
+    // Coerce to string for consistent Map lookup
+    ranges.set(String(location._id), range);
   }
 
   return ranges;

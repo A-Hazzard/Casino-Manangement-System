@@ -221,7 +221,8 @@ export async function GET(req: NextRequest) {
           limit,
           skip,
           startDate,
-          endDate
+          endDate,
+          timePeriod
         );
         break;
       case 'all':
@@ -240,7 +241,8 @@ export async function GET(req: NextRequest) {
           skip,
           startDate,
           endDate,
-          locationMatchStage
+          locationMatchStage,
+          timePeriod
         );
         break;
       default:
@@ -251,7 +253,8 @@ export async function GET(req: NextRequest) {
           limit,
           skip,
           startDate,
-          endDate
+          endDate,
+          timePeriod
         );
     }
 

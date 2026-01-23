@@ -1,10 +1,10 @@
 // Shared entity types used across frontend and backend
 import { Types } from 'mongoose';
 import type {
-  BillValidatorData,
-  CollectionMetersHistoryEntry,
-  MeterData,
-  SasMeters,
+    BillValidatorData,
+    CollectionMetersHistoryEntry,
+    MeterData,
+    SasMeters,
 } from './common';
 
 // Location types
@@ -307,6 +307,9 @@ export type GamingMachine = {
   locationId?: string;
   locationName?: string;
   gameDayOffset?: number;
+  timePeriod?: string;
+  offlineTimeLabel?: string;
+  actualOfflineTime?: string;
 };
 
 export type SmibConfig = {
