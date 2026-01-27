@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-**Last Updated:** January 2025  
+**Last Updated:** January 2026  
 **Version:** 2.1.0
 
 ## Recent Performance Optimizations (November 11th, 2025) 🚀
@@ -69,245 +69,52 @@
 - **SAS Evaluation**: `sasEvaluationOnly=true` - Filter for SAS locations only
 - **Financial Data**: Default shows all locations with financial data
 
-**Last Updated:** January 2025  
-**Version:** 2.1.0
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Base URLs](#base-urls)
-3. [Core Endpoints](#core-endpoints)
-4. [Data Models](#data-models)
-5. [Business Logic](#business-logic)
-6. [Error Handling](#error-handling)
-7. [Security Features](#security-features)
-8. [Performance Considerations](#performance-considerations)
-
-## Overview
-
-The Reports API provides comprehensive data aggregation and analytics capabilities for the Evolution One CMS system. It handles location aggregation, machine performance analysis, financial reporting, and SAS machine determination with advanced filtering and real-time analytics.
-
-### System Architecture
-
-- **Database**: MongoDB with Mongoose ODM
-- **Authentication**: JWT-based authentication
-- **Timezone**: Trinidad time (UTC-4) with gaming day logic
-- **Caching**: In-memory caching with 5-minute TTL
-
-## Location Aggregation API
-
-### GET `/api/locationAggregation`
-
-**Purpose**: Aggregates location-level metrics including machine counts, SAS status, and financial data
-
-**How Money In, Money Out, and Gross Are Calculated:**
-
-The Location Aggregation API calculates financial metrics by aggregating meter data from the `meters` collection. The process:
-
-1. **Location Processing**: For each accessible location (filtered by user permissions and licensee):
-   - Fetches all machines at that location from `machines` collection
-   - Calculates gaming day range based on location's `gameDayOffset`
-   - Queries `meters` collection for all meter readings matching:
-     - `machine` field matches any machine ID at the location
-     - `readAt` timestamp within the location's gaming day range
-
-2. **Meter Aggregation** (in `app/api/lib/helpers/locationAggregation.ts`):
-
-   ```javascript
-   // Aggregate meters for all machines at location
-   const metersAggregation = await db.collection('meters').aggregate([
-     {
-       $match: {
-         machine: { $in: machineIds }, // All machine IDs for this location
-         readAt: {
-           $gte: gamingDayRange.rangeStart,
-           $lte: gamingDayRange.rangeEnd,
-         },
-       },
-     },
-     {
-       $group: {
-         _id: null,
-         totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-         totalMoneyOut: {
-           $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-         },
-       },
-     },
-   ]);
-
-   // Calculate gross
-   gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut;
-   ```
-
-3. **Response**: Returns location objects with:
-   - `moneyIn`: Sum of `movement.drop` from all meters for all machines at location
-   - `moneyOut`: Sum of `movement.totalCancelledCredits` from all meters for all machines at location
-   - `gross`: `moneyIn - moneyOut`
-
-**Key Points:**
-
-- Uses **sum of deltas** method: Sums all `movement.drop` and `movement.totalCancelledCredits` values from meter readings
-- Respects **gaming day offset** per location when calculating date ranges
-- Filters by **user permissions** and **licensee** before aggregating
-- Processes locations in **parallel** for performance
-
-**Query Parameters:**
-
-- `timePeriod` - "Today", "Yesterday", "7d", "30d", "All Time", "Custom"
-- `startDate` - Custom start date (ISO format)
-- `endDate` - Custom end date (ISO format)
-- `licencee` - Filter by licensee
-- `machineTypeFilter` - Comma-separated list: "LocalServersOnly", "SMIBLocationsOnly", "NoSMIBLocation", "MembershipOnly" (uses OR logic - locations matching ANY selected filter are returned). Note: "MembershipOnly" filter checks both `membershipEnabled` and `enableMembership` fields for backward compatibility using: `$or: [{ membershipEnabled: true }, { enableMembership: true }]`
-- `showAllLocations` - Include locations without metrics
-- `basicList` - If false, returns all locations with financial data
-- `page` - Pagination page number
-- `limit` - Items per page
-- `clearCache` - Clear cache for testing
-- `sasEvaluationOnly` - Filter for SAS locations only
-- `selectedLocations` - Array of location IDs to filter by
-
-**Response Fields:**
-
-```json
-{
-  "data": [
-    {
-      "location": "location_id", // Location ID
-      "locationName": "Downtown Casino", // Location name
-      "moneyIn": 150000, // Total drop amount
-      "moneyOut": 5000, // Total cancelled credits
-      "gross": 145000, // Net revenue (moneyIn - moneyOut)
-      "totalMachines": 100, // Total machines at location
-      "onlineMachines": 95, // Machines online (lastActivity < 3 min ago)
-      "sasMachines": 80, // Count of SAS machines (isSasMachine = true)
-      "nonSasMachines": 20, // Count of non-SAS machines (isSasMachine = false)
-      "hasSasMachines": true, // Derived: sasMachines > 0
-      "hasNonSasMachines": true, // Derived: nonSasMachines > 0
-      "isLocalServer": false, // Location server type
-      "noSMIBLocation": false, // Backward compatibility: !hasSasMachines
-      "hasSmib": true // Backward compatibility: hasSasMachines
-    }
-  ],
-  "totalCount": 1,
-  "page": 1,
-  "limit": 50,
-  "hasMore": false
-}
-```
-
-### Default All Locations Behavior
-
-**Purpose**: The API defaults to showing all locations with financial data before any location selection
-
-**Implementation Logic:**
-
-### Key Features
-
-- **Location Aggregation**: Comprehensive location-level metrics and analytics
-- **Machine Performance**: Detailed machine performance analysis and reporting
-- **Financial Analytics**: Revenue analysis and financial performance tracking
-- **SAS Integration**: SAS machine determination and evaluation
-- **Advanced Filtering**: Time-based and location-based filtering capabilities
-
-### System Integration
-
-- **Dashboard Analytics**: Real-time data for dashboard components
-- **Collection Systems**: Integration with collection and reporting systems
-- **Location Management**: Connection to location and machine management
-- **Financial Systems**: Seamless integration with financial calculations
-
-## Base URLs
-
-```
-/api/locationAggregation
-/api/reports
-/api/analytics
-```
-
 ## Core Endpoints
 
 ### 1. Location Aggregation API
-
 **Endpoint:** `GET /api/locationAggregation`
 
 #### Purpose
-
-Aggregates location-level metrics including machine counts, SAS status, and financial data. Defaults to showing all locations with financial data before any location selection.
+Aggregates location-level metrics including machine counts, SAS status, and financial data.
 
 #### Query Parameters
+- `timePeriod`: "Today", "Yesterday", "7d", "30d", "All Time", "Custom"
+- `startDate`: ISO date string for custom range
+- `endDate`: ISO date string for custom range
+- `licencee`: Filter by licensee ID or name
+- `machineTypeFilter`: Comma-separated categories:
+  - `LocalServersOnly`, `SMIBLocationsOnly`, `NoSMIBLocation`, `MembershipOnly`
+  - `MissingCoordinates`, `HasCoordinates`
+- `sasEvaluationOnly`: Only returns locations with SAS machines
+- `page`: Page number
+- `limit`: Items per page
 
-```typescript
-type LocationAggregationParams = {
-  timePeriod?: TimePeriod; // "Today", "Yesterday", "7d", "30d", "All Time"
-  startDate?: string; // ISO date string for custom range
-  endDate?: string; // ISO date string for custom range
-  licencee?: string; // Filter by licensee
-  machineTypeFilter?: string; // Comma-separated: "LocalServersOnly", "SMIBLocationsOnly", "NoSMIBLocation", "MembershipOnly" (OR logic - matches ANY filter). Note: "MembershipOnly" checks both `membershipEnabled` and `enableMembership` fields for backward compatibility
-  showAllLocations?: boolean; // Include locations without metrics
-  basicList?: boolean; // If false, returns all locations with financial data
-  page?: number; // Pagination page number
-  limit?: number; // Items per page
-  clearCache?: boolean; // Clear cache for testing
-  sasEvaluationOnly?: boolean; // Filter for SAS locations only
-  selectedLocations?: string[]; // Array of location IDs to filter by
-};
-```
-
-#### Response Structure
-
-```typescript
-type LocationAggregationResponse = {
-  data: AggregatedLocation[];
-  totalCount: number;
-  page: number;
-  limit: number;
-  hasMore: boolean;
-};
-```
-
-#### Aggregated Location Data
-
-```typescript
-type AggregatedLocation = {
-  location: string; // Location ID
-  locationName: string; // Location name
-  moneyIn: number; // Total drop amount
-  moneyOut: number; // Total cancelled credits
-  gross: number; // Net revenue (moneyIn - moneyOut)
-  totalMachines: number; // Total machines at location
-  onlineMachines: number; // Machines online (lastActivity < 3 min ago)
-  sasMachines: number; // Count of SAS machines (isSasMachine = true)
-  nonSasMachines: number; // Count of non-SAS machines (isSasMachine = false)
-  hasSasMachines: boolean; // Derived: sasMachines > 0
-  hasNonSasMachines: boolean; // Derived: nonSasMachines > 0
-  isLocalServer: boolean; // Location server type
-  noSMIBLocation: boolean; // Backward compatibility: !hasSasMachines
-  hasSmib: boolean; // Backward compatibility: hasSasMachines
-};
-```
-
-### 2. Default All Locations Behavior
+### 2. Machine Reports API
+**Endpoint:** `GET /api/reports/machines`
 
 #### Purpose
+Provides detailed machine performance analysis.
 
-The API now defaults to showing all locations with financial data before any location selection, providing a better user experience for the SAS Evaluation and Revenue Analysis tabs.
+#### Query Parameters
+- `type`: `overview` (default), `stats`, `all`, `offline`
+- `timePeriod`: Today, Yesterday, 7d, 30d, Custom
+- `onlineStatus`: `online`, `offline`, `all`
+- `search`: Search term for machine ID or name
+- `locationId`: Filter by location(s)
+- `licencee`: Filter by licensee
 
-#### Implementation Logic
+### 3. Location Reports API
+**Endpoint:** `GET /api/reports/locations`
 
-```typescript
-// Default behavior: Show all locations with financial data
-if (!basicList && !selectedLocations) {
-  // Return all locations that have financial data (gross > 0 or moneyIn > 0)
-  // This provides immediate value to users before they select specific locations
-}
+#### Purpose
+Aggregates performance metrics at the location level with detailed breakdown.
 
-// When locations are selected, filter to only those locations
-if (selectedLocations && selectedLocations.length > 0) {
-  // Filter aggregation to only include selected location IDs
-  const locationFilter = { _id: { $in: selectedLocations } };
-}
-```
+#### Query Parameters
+- `timePeriod`: Today, Yesterday, 7d, 30d, Custom
+- `licencee`: Filter by licensee
+- `search`: Search by location name
+- `machineTypeFilter`: Status filters
+- `summary`: If true, returns simplified summary data
 
 ## SAS Machine Determination Logic
 

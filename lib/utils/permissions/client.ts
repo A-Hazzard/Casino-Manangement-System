@@ -32,7 +32,10 @@ export type PageName =
   | 'collection-report'
   | 'reports'
   | 'sessions'
-  | 'administration';
+  | 'administration'
+  | 'vault-management'
+  | 'vault-cashier'
+  | 'vault-role-selection';
 
 /**
  * Check if user has access to a specific page
@@ -67,6 +70,28 @@ export const hasPageAccess = (
     reports: ['developer', 'admin', 'manager', 'location admin'], // ✅ Restricted to developer, admin, manager, and location admin
     sessions: ['developer', 'admin'], // ✅ Restricted to developer and admin
     administration: ['developer', 'admin', 'manager', 'location admin'],
+    'vault-management': [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'vault-manager',
+    ],
+    'vault-cashier': [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'cashier',
+    ],
+    'vault-role-selection': [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'vault-manager',
+      'cashier',
+    ],
   };
 
   const requiredRoles = pagePermissions[page] || [];
@@ -153,6 +178,31 @@ export const shouldShowNavigationLink = (
   // does not change actual route access rules handled by hasPageAccess.
   if (page === 'sessions' || page === 'members') {
     return userRoles.includes('developer') || userRoles.includes('admin');
+  }
+
+  // Hide vault links unless the user has authorized roles
+  if (page === 'vault-management') {
+    return (
+      userRoles.includes('developer') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('manager') ||
+      userRoles.includes('location admin') ||
+      userRoles.includes('vault-manager')
+    );
+  }
+
+  if (page === 'vault-cashier') {
+    return (
+      userRoles.includes('developer') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('manager') ||
+      userRoles.includes('location admin') ||
+      userRoles.includes('cashier')
+    );
+  }
+
+  if (page === 'vault-role-selection') {
+    return false; // Accessed via role selection logic
   }
 
   return hasPageAccess(userRoles, page);

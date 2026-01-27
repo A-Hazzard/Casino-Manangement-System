@@ -1,8 +1,8 @@
 # API Overview
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** January 2025
-**Version:** 2.2.0
+**Last Updated:** January 2026
+**Version:** 3.0.0
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -16,10 +16,12 @@
 - **administration** - Admin functions and system config
 - **meters** - Meter data and analytics APIs
 - **operations** - Operational APIs (movements, schedules)
+- **smib** - SMIB device management and operations
+- **vault** - Vault operations and cashier management
 
 ## Overview
 
-The Evolution One Casino Management System provides comprehensive REST APIs for managing casino operations, financial tracking, and reporting.
+The Evolution One Casino Management System provides comprehensive REST APIs for managing casino operations, financial tracking, reporting, and vault operations.
 
 ## Authentication
 
@@ -441,13 +443,14 @@ All APIs follow a consistent response format:
 | `/collectionReport/locations`    | GET    | Location collection data | Location reports        |
 | `/collections`                   | GET    | Collection management    | Collection page         |
 
-### 8. System Configuration
+### 8. System Configuration & Firmware
 
 **Base URLs:** `/api/firmwares`, `/api/licensees`, `/api/countries`, `/api/collectors`
 
 | Endpoint                   | Method | Description            | Used By              |
 | -------------------------- | ------ | ---------------------- | -------------------- |
 | `/firmwares`               | GET    | List firmware versions | Firmware management  |
+| `/firmwares`               | POST   | Upload new firmware    | Firmware management  |
 | `/firmwares/[id]`          | GET    | Firmware details       | Firmware details     |
 | `/firmwares/[id]/download` | GET    | Download firmware      | Firmware updates     |
 | `/firmwares/migrate`       | POST   | Firmware migration     | System updates       |
@@ -465,7 +468,34 @@ All APIs follow a consistent response format:
 | `/movement-requests/[id]` | GET    | Movement request details | Request details     |
 | `/schedulers`             | GET    | Scheduled tasks          | Task scheduling     |
 
-### 10. Metrics & Performance
+### 10. SMIB Management & Operations
+
+**Base URL:** `/api/smib`, `/api/mqtt`
+
+| Endpoint                      | Method | Description                 | Used By               |
+| ----------------------------- | ------ | --------------------------- | --------------------- |
+| `/smib/restart`               | POST   | Restart single SMIB         | Cabinet details       |
+| `/smib/meters`                | POST   | Request meter data          | Cabinet details       |
+| `/smib/ota-update`            | POST   | Initiate firmware update    | Cabinet details       |
+| `/locations/[id]/smib-restart`| POST   | Restart all SMIBs           | Location management   |
+| `/mqtt/config/subscribe`      | GET    | SSE stream for live updates | Cabinet details page  |
+| `/mqtt/discover-smibs`        | GET    | Discover devices on MQTT    | SMIB Discovery        |
+
+### 11. Vault Management
+
+**Base URL:** `/api/vault`
+
+| Endpoint                      | Method | Description                 | Used By               |
+| ----------------------------- | ------ | --------------------------- | --------------------- |
+| `/vault/cash-monitoring`      | GET    | Cash on premises status     | Vault Overview        |
+| `/vault/float-requests/[id]`  | GET/PUT| Manage float requests       | Cashier/Manager       |
+| `/vault/payouts/[id]`         | GET/PUT| Manage cashier payouts      | Cashier               |
+| `/vault/shifts/[id]`          | GET/PUT| Manage cashier shifts       | Cashier               |
+| `/vault/end-of-day`           | GET/POST| End of day reporting       | Vault Manager         |
+
+**Documentation:** [vault-api.md](vault-api.md)
+
+### 12. Metrics & Performance
 
 **Base URL:** `/api/metrics`
 
@@ -477,7 +507,7 @@ All APIs follow a consistent response format:
 | `/metrics/top-machines`   | GET    | Top machine performance   | Performance ranking    |
 | `/metrics/top-performers` | GET    | Top performing entities   | Performance analysis   |
 
-### 11. MQTT & Real-Time Communication
+### 13. MQTT & Real-Time Communication
 
 **Base URL:** `/api/mqtt`
 
@@ -717,4 +747,4 @@ WebSocket Connection → Event Monitoring → Real-time Data Push → UI Update
 
 ---
 
-**Last Updated:** January 2025
+**Last Updated:** January 2026

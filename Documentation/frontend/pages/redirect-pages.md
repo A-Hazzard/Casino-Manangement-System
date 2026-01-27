@@ -15,7 +15,7 @@
 The redirect pages ensure that legacy URLs and alternative naming conventions continue to work by automatically redirecting users to the correct pages. This maintains a good user experience while allowing the system to evolve with consistent URL structures.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 2025  
+**Last Updated:** January 2026  
 **Version:** 2.0.0
 
 ## Overview

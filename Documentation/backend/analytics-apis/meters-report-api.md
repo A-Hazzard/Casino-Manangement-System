@@ -1,7 +1,7 @@
 # Meters Report API
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 2025
+**Last Updated:** January 2026
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -359,10 +359,6 @@ Average Wager = Handle / Games Played
 
 The Meters Report API provides detailed machine-level meter readings and performance data for casino slot machines. This endpoint displays raw meter data with specific field mappings that differ from other financial reports in the system.
 
-## API Endpoint
-
-### GET /api/reports/meters
-
 **Purpose**: Retrieves paginated meter readings for selected gaming locations with machine-specific performance data.
 
 ## Query Parameters
@@ -373,14 +369,125 @@ type MetersReportParams = {
   startDate?: string;             // ISO date string for date filtering
   endDate?: string;               // ISO date string for date filtering
   page?: number;                  // Pagination page number (default: 1)
-  limit?: number;                 // Items per page (default: 10, max: 10)
+  limit?: number;                 // Items per page (default: 10, max: 100)
   search?: string;                // Search term for machine ID, location name, serial number, or custom name
   licencee?: string;              // Filter by licensee ID (triggers location refetch)
   includeHourlyData?: boolean;    // Include hourly chart data in response
   hourlyDataMachineIds?: string;  // Comma-separated machine IDs for filtered hourly chart data
   currency?: string;              // Display currency code (USD, TTD, GYD, BBD)
 }
-````
+```
+
+## Response Structure
+
+```typescript
+type MetersReportResponse = {
+  data: MetersReportData[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  limit: number;
+  locations: string[];
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  pagination: {
+    page: number;
+    limit: number;
+    totalCount: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+};
+
+type MetersReportData = {
+  machineId: string; // Machine identifier (formatted: "CustomName (SerialNumber)" or "SerialNumber")
+  metersIn: number; // Coin In (total bets placed)
+  metersOut: number; // Coin Out (automatic payouts)
+  jackpot: number; // Jackpot payouts
+  billIn: number; // Drop (physical money inserted)
+  voucherOut: number; // Net cancelled credits
+  attPaidCredits: number; // Hand paid cancelled credits
+  gamesPlayed: number; // Total games played
+  location: string; // Location name
+  locationId: string; // Location ID for navigation
+  machineDocumentId: string; // Machine document ID for navigation
+  game?: string; // Game name (if available)
+  createdAt: string; // Last activity timestamp
+};
+```
+
+## Column Calculations & Field Mappings
+
+The meters report uses **specific field mappings** that differ from other financial reports in the system:
+
+| **Column**                      | **Display Name**              | **Data Source**                                                                             | **Calculation**                       | **Casino Context**                              |
+| ------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------- | ----------------------------------------------- |
+| **Machine ID**                  | "Machine ID"                  | `machine.serialNumber \|\| machine.custom.name \|\| machine._id`                            | Direct field lookup                   | Unique machine identifier                       |
+| **Location**                    | "Location"                    | Location name via `gamingLocation` lookup                                                   | Gaming location name resolution       | Physical location of machine                    |
+| **Meters In**                   | "Meters In"                   | `latestMeterReading.coinIn`                                                                 | Direct field (validated ≥ 0)          | **Total bets placed by players**                |
+| **Money Won**                   | "Money Won"                   | `latestMeterReading.totalWonCredits`                                                        | Direct field (validated ≥ 0)          | **Total winnings paid to players**              |
+| **Jackpot**                     | "Jackpot"                     | `latestMeterReading.jackpot`                                                                | Direct field (validated ≥ 0)          | **Special jackpot payouts**                     |
+| **Bill In**                     | "Bill In"                     | `latestMeterReading.drop`                                                                   | Direct field (validated ≥ 0)          | **Physical cash inserted into machine**         |
+| **Voucher Out**                 | "Voucher Out"                 | `latestMeterReading.totalCancelledCredits - latestMeterReading.totalHandPaidCancelledCredits` | Calculated difference (validated ≥ 0) | **Net cancelled credits (excluding hand-paid)** |
+| **Hand Paid Cancelled Credits** | "Hand Paid Cancelled Credits" | `latestMeterReading.totalHandPaidCancelledCredits`                                           | Direct field (validated ≥ 0)          | **Manual attendant payouts**                    |
+| **Games Played**                | "Games Played"                | `latestMeterReading.gamesPlayed`                                                             | Direct field (validated ≥ 0)          | **Total number of games played**                |
+| **Date**                        | "Date"                        | `machine.lastActivity`                                                                      | Formatted date display                | **Last machine activity timestamp**             |
+
+## Important Field Mapping Notes
+
+### ⚠️ **Critical Differences from Other Reports**
+
+The meters report uses **different field mappings** compared to other financial reports in the system:
+
+1. **Meters In = Coin In**: Unlike other reports that use `movement.drop` for "Money In", the meters report displays `coinIn` (total bets placed)
+
+2. **Money Won = Coin Out**: Shows `coinOut` (automatic payouts) rather than manual cancelled credits
+
+3. **Bill In = Drop**: Uses top-level `drop` field from meters collection representing physical cash inserted
+
+4. **Voucher Out = Net Cancelled Credits**: Calculated as `totalCancelledCredits - totalHandPaidCancelledCredits` to show voucher-based payouts only
+
+5. **Hand Paid Credits**: Shows `totalHandPaidCancelledCredits` for manual attendant payouts
+
+## Data Sources & Processing
+
+### Primary Data Sources
+
+The API uses **different data sources** based on the date range:
+
+#### For Recent Data (Today/Yesterday):
+
+1. **Machines Collection** (`sasMeters` field):
+   - `coinIn` → Meters In (total bets placed)
+   - `totalWonCredits` → Money Won (total winnings paid to players)
+   - `jackpot` → Jackpot (jackpot payouts)
+   - `drop` → Bill In (physical cash inserted)
+   - `totalCancelledCredits` → Used in Voucher Out calculation
+   - `totalHandPaidCancelledCredits` → Hand Paid Cancelled Credits
+   - `gamesPlayed` → Games Played
+
+#### For Historical Data (7 days, 30 days, custom ranges):
+
+1. **Meters Collection** (using `readAt` field):
+   - Gets **latest meter reading** within gaming day range using specification-compliant approach
+   - Uses `readAt` field with `$gte` and `$lte` operators for date range filtering
+   - **Gaming Day Logic**: Each location has a `gameDayOffset` (e.g., 8 = gaming day starts at 8:00 AM Trinidad time)
+   - **Timezone Handling**: Works in Trinidad time (UTC-4), converts to range timestamps
+   - **Query Pattern**: Aggregates meters for machines, sorts by `readAt` descending, and takes `$first` result
+   - **Range Calculation**: Uses gaming day boundaries per location
+   - **Fallback Logic**: If no meter data found, falls back to `machine.sasMeters` values
+   - Field mappings (from latest meter reading):
+     - `coinIn` → Meters In (total bets placed as of cutoff)
+     - `totalWonCredits` → Money Won (total winnings paid as of cutoff)
+     - `jackpot` → Jackpot (jackpot payouts as of cutoff)
+     - `drop` → Bill In (physical cash inserted as of cutoff)
+     - `totalCancelledCredits` → Used in Voucher Out calculation
+     - `totalHandPaidCancelledCredits` → Hand Paid Cancelled Credits
+     - `gamesPlayed` → Games Played (total games as of cutoff)
+`
 
 ## Response Structure
 

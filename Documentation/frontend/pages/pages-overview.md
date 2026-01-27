@@ -11,7 +11,7 @@
 
 This document provides an overview of all pages in the Evolution One CMS frontend application. Each page has detailed documentation following a standardized structure.
 
-**Last Updated:** January 2025
+**Last Updated:** January 2026
 
 ## Documentation Structure
 

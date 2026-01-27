@@ -1,7 +1,7 @@
 # Role-Based Access Control - High Level Overview
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 10, 2025
+**Last Updated:** January 2026
 
 ## System Overview
 
@@ -9,15 +9,16 @@ The Evolution One Casino Management System implements a hierarchical role-based 
 
 ## Role Hierarchy
 
-The system uses seven distinct roles arranged in priority order:
+The system uses eight distinct roles arranged in priority order:
 
 1. **Developer** - Full platform access with all permissions
 2. **Admin** - High-level administrative functions with most system access
 3. **Manager** - Operational oversight with management-level permissions
 4. **Location Admin** - Location-specific management within assigned locations
-5. **Technician** - Technical operations focused on machines and systems
-6. **Collector** - Collection operations focused on money collection
-7. **Collector Meters** - Meter-specific collection operations
+5. **Vault Manager** - Vault management operations
+6. **Cashier** - Cashier operations
+7. **Technician** - Technical operations focused on machines and systems
+8. **Collector** - Collection operations focused on money collection
 
 ## Access Control Philosophy
 
@@ -39,7 +40,7 @@ The system uses seven distinct roles arranged in priority order:
 ### **Dashboard Access**
 
 - **Allowed**: Developer, Admin, Manager, Location Admin
-- **Restricted**: Technician, Collector, Collector Meters
+- **Restricted**: Vault Manager, Cashier, Technician, Collector
 - **Rationale**: Operational roles focus on specific tasks rather than overview
 
 ### **Machines Page**
@@ -50,46 +51,55 @@ The system uses seven distinct roles arranged in priority order:
 
 ### **Locations Page**
 
-- **Allowed**: Developer, Admin, Manager, Location Admin, Collector, Collector Meters
-- **Restricted**: Technician
+- **Allowed**: Developer, Admin, Manager, Location Admin, Collector
+- **Restricted**: Vault Manager, Cashier, Technician
 - **Direct Link Access**: Technicians can access location details via direct links
 - **Rationale**: Collectors need to view their assigned locations; location management is administrative
-- **Note**: November 10, 2025 - Added Collector and Collector Meters to allowed roles
 
 ### **Members Page**
 
 - **Allowed**: Developer, Admin, Manager
-- **Restricted**: Location Admin, Technician, Collector, Collector Meters
+- **Restricted**: Location Admin, Vault Manager, Cashier, Technician, Collector
 - **Direct Link Access**: Location Admin and Technicians can access member details via direct links
 - **Rationale**: Member management is high-level administrative function
 
 ### **Collection Reports Page**
 
-- **Allowed**: Developer, Admin, Manager, Location Admin, Collector, Collector Meters
-- **Restricted**: Technician
+- **Allowed**: Developer, Admin, Manager, Location Admin, Collector
+- **Restricted**: Vault Manager, Cashier, Technician
 - **Rationale**: Collection operations are specialized functions
 
 ### **Sessions Page**
 
 - **Allowed**: Developer, Admin, Manager, Location Admin, Technician
-- **Restricted**: Collector, Collector Meters
+- **Restricted**: Vault Manager, Cashier, Collector
 - **Rationale**: Session monitoring is operational oversight function
 
 ### **Administration Page**
 
 - **Allowed**: Developer, Admin, Manager
 - **Rationale**: System administration requires high security clearance
-- **Note**: November 10, 2025 - Added Manager role with licensee-scoped filtering
+
+### **Vault Management Page**
+
+- **Allowed**: Developer, Admin, Manager, Location Admin, Vault Manager
+- **Restricted**: Cashier, Technician, Collector
+- **Rationale**: Cash management and oversight require specialized vault permissions
+
+### **Vault Cashier Page**
+
+- **Allowed**: Developer, Admin, Manager, Location Admin, Vault Manager, Cashier
+- **Restricted**: Technician, Collector
+- **Rationale**: Day-to-day cash handling operations for designated cashiers
 
 ## Tab-Level Access Control
 
 ### **Administration Page Tabs**
 
 - **Users Tab**: Developer, Admin, Manager (with licensee-scoped filtering)
-- **Licensees Tab**: Developer only
-- **Activity Logs Tab**: Developer, Manager (with licensee-scoped filtering)
+- **Licensees Tab**: Developer, Admin
+- **Activity Logs Tab**: Developer, Admin, Manager (with licensee-scoped filtering)
 - **Rationale**: Different administrative functions require different clearance levels
-- **Note**: November 10, 2025 - Managers can view/edit users and activity logs for their assigned licensees only
 
 ### **Collection Reports Page Tabs**
 
@@ -98,6 +108,16 @@ The system uses seven distinct roles arranged in priority order:
 - **Manager Schedules**: Developer, Admin, Manager
 - **Collector Schedules**: Developer, Admin, Manager, Location Admin
 - **Rationale**: Different reporting functions serve different operational needs
+
+### **Vault Management Tabs**
+
+- **Overview**: Developer, Admin, Manager, Location Admin, Vault Manager
+- **Cash Desks**: Developer, Admin, Manager, Vault Manager
+- **Floats**: Developer, Admin, Manager, Vault Manager
+- **Expenses**: Developer, Admin, Manager, Vault Manager
+- **Transactions**: Developer, Admin, Manager, Vault Manager
+- **Transfers**: Developer, Admin, Manager, Vault Manager
+- **Reports**: Developer, Admin, Manager, Vault Manager
 
 ## Licensee Filtering Strategy
 
@@ -229,6 +249,7 @@ All pages are protected using the `ProtectedRoute` component with specific acces
 - **Reports**: `requiredPage="reports"`
 - **Sessions**: `requiredPage="sessions"`
 - **Administration**: `requireAdminAccess={true}`
+- **Vault Management**: Special role-based protection
 
 ### **Navigation Control**
 

@@ -31,7 +31,7 @@ import { ArrowLeftRight, CheckCircle2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type TransferSortOption =
-  | 'dateTime'
+  | 'date'
   | 'from'
   | 'to'
   | 'amount'
@@ -89,10 +89,10 @@ export default function VaultTransfersTable({
                 'relative cursor-pointer select-none font-semibold text-white',
                 onSort && 'hover:bg-button/90'
               )}
-              onClick={onSort ? () => onSort('dateTime') : undefined}
+              onClick={onSort ? () => onSort('date') : undefined}
             >
               Date/Time
-              {sortOption === 'dateTime' && (
+              {sortOption === 'date' && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                   {sortOrder === 'desc' ? '▼' : '▲'}
                 </span>
@@ -185,7 +185,9 @@ export default function VaultTransfersTable({
             </TableHead>
             <TableHead className="font-semibold text-white">Notes</TableHead>
             {showActions && (
-              <TableHead className="font-semibold text-white">Actions</TableHead>
+              <TableHead className="font-semibold text-white">
+                Actions
+              </TableHead>
             )}
           </TableRow>
         </TableHeader>
@@ -194,9 +196,15 @@ export default function VaultTransfersTable({
             const isCompleted = transfer.status === 'completed';
 
             return (
-              <TableRow key={transfer.id} className="transition-colors hover:bg-muted/30">
+              <TableRow
+                key={transfer._id}
+                className="transition-colors hover:bg-muted/30"
+              >
                 <TableCell isFirstColumn className="font-medium">
-                  {transfer.dateTime}
+                  {transfer.date ||
+                    (transfer.createdAt
+                      ? new Date(transfer.createdAt).toLocaleDateString()
+                      : '-')}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -236,20 +244,22 @@ export default function VaultTransfersTable({
                     {transfer.status === 'completed' ? 'Completed' : 'Pending'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-sm text-gray-600">{transfer.notes || '-'}</TableCell>
+                <TableCell className="text-sm text-gray-600">
+                  {transfer.notes || '-'}
+                </TableCell>
                 {showActions && (
                   <TableCell>
                     {!isCompleted && (
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => onApprove?.(transfer.id)}
+                          onClick={() => onApprove?.(transfer._id)}
                           className="flex h-8 w-8 items-center justify-center rounded-full bg-button text-white hover:bg-button/90"
                           title="Approve"
                         >
                           <CheckCircle2 className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => onReject?.(transfer.id)}
+                          onClick={() => onReject?.(transfer._id)}
                           className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-600/90"
                           title="Reject"
                         >

@@ -64,13 +64,23 @@ export default function VaultTransfersMobileCards({
           const isCompleted = transfer.status === 'completed';
 
           return (
-            <Card key={transfer.id} className="overflow-hidden rounded-lg bg-container shadow-md">
+            <Card
+              key={transfer._id}
+              className="overflow-hidden rounded-lg bg-container shadow-md"
+            >
               <CardContent className="p-4">
                 {/* Header: Date and Status */}
                 <div className="mb-3 flex items-start justify-between border-b pb-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{transfer.dateTime}</p>
-                    <p className="text-xs text-gray-500">Initiated by: {transfer.initiatedBy}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {transfer.date ||
+                        (transfer.createdAt
+                          ? new Date(transfer.createdAt).toLocaleDateString()
+                          : '-')}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Initiated by: {transfer.initiatedBy}
+                    </p>
                   </div>
                   <Badge
                     className={cn(
@@ -89,12 +99,16 @@ export default function VaultTransfersMobileCards({
                   <div className="flex items-center gap-2">
                     <div className="flex flex-1 items-center gap-2 rounded border border-gray-200 bg-gray-50 p-2">
                       <ArrowLeftRight className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-900">{transfer.from}</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {transfer.from}
+                      </span>
                     </div>
                     <ArrowLeftRight className="h-4 w-4 text-gray-400" />
                     <div className="flex flex-1 items-center gap-2 rounded border border-gray-200 bg-gray-50 p-2">
                       <ArrowLeftRight className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-900">{transfer.to}</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {transfer.to}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -111,7 +125,9 @@ export default function VaultTransfersMobileCards({
                 {transfer.approvedBy && (
                   <div className="mb-3">
                     <p className="text-xs text-gray-500">Approved By</p>
-                    <p className="text-sm font-medium text-gray-900">{transfer.approvedBy}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {transfer.approvedBy}
+                    </p>
                   </div>
                 )}
 
@@ -127,7 +143,7 @@ export default function VaultTransfersMobileCards({
                 {showActions && !isCompleted && (
                   <div className="mt-3 flex gap-2 border-t pt-3">
                     <Button
-                      onClick={() => onApprove?.(transfer.id)}
+                      onClick={() => onApprove?.(transfer._id)}
                       size="sm"
                       className="flex-1 bg-button text-white hover:bg-button/90"
                     >
@@ -135,7 +151,7 @@ export default function VaultTransfersMobileCards({
                       Approve
                     </Button>
                     <Button
-                      onClick={() => onReject?.(transfer.id)}
+                      onClick={() => onReject?.(transfer._id)}
                       size="sm"
                       variant="destructive"
                       className="flex-1"

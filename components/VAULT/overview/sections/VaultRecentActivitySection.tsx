@@ -14,7 +14,10 @@
 
 import { Badge } from '@/components/shared/ui/badge';
 import VaultTransactionsTable from '@/components/VAULT/transactions/tables/VaultTransactionsTable';
-import type { VaultTransaction, VaultTransactionType } from '@/shared/types/vault';
+import type {
+  VaultTransaction,
+  VaultTransactionType,
+} from '@/shared/types/vault';
 import { ArrowDown, ArrowUp, Receipt } from 'lucide-react';
 
 type VaultRecentActivitySectionProps = {
@@ -29,7 +32,7 @@ type VaultRecentActivitySectionProps = {
  * @returns Badge component with appropriate styling
  */
 function getTransactionTypeBadge(type: VaultTransactionType) {
-  if (type === 'Treasury Deposit' || type === 'Machine Drop' || type === 'Drop') {
+  if (type === 'soft_count' || type === 'machine_collection') {
     return (
       <Badge className="bg-button text-white hover:bg-button/90">
         <ArrowUp className="mr-1 h-3 w-3" />
@@ -37,7 +40,11 @@ function getTransactionTypeBadge(type: VaultTransactionType) {
       </Badge>
     );
   }
-  if (type === 'Bank Transfer' || type === 'Float Increase' || type === 'Float Decrease') {
+  if (
+    type === 'vault_close' ||
+    type === 'float_increase' ||
+    type === 'float_decrease'
+  ) {
     return (
       <Badge className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90">
         <ArrowDown className="mr-1 h-3 w-3" />
@@ -45,7 +52,7 @@ function getTransactionTypeBadge(type: VaultTransactionType) {
       </Badge>
     );
   }
-  if (type === 'Expense') {
+  if (type === 'expense') {
     return (
       <Badge className="bg-red-600 text-white hover:bg-red-600/90">
         <Receipt className="mr-1 h-3 w-3" />

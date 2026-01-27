@@ -52,13 +52,17 @@ export default function VaultCashierFloatsMobileCards({
     <div className="block lg:hidden">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {floats.map(float => (
-          <Card key={float.id} className="overflow-hidden rounded-lg bg-container shadow-md">
+          <Card
+            key={float._id}
+            className="overflow-hidden rounded-lg bg-container shadow-md"
+          >
             <CardContent className="p-4">
               {/* Header: Cashier and Status */}
               <div className="mb-3 flex items-start justify-between border-b pb-3">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{float.cashier}</p>
-                  <p className="text-xs text-gray-500">Station: {float.station}</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {float.cashierName}
+                  </p>
                 </div>
                 <Badge
                   className={cn(
@@ -76,7 +80,7 @@ export default function VaultCashierFloatsMobileCards({
               <div>
                 <p className="text-xs text-gray-500">Current Float</p>
                 <p className="text-xl font-bold text-orangeHighlight">
-                  {formatAmount(float.currentFloat)}
+                  {formatAmount(float.balance)}
                 </p>
               </div>
             </CardContent>

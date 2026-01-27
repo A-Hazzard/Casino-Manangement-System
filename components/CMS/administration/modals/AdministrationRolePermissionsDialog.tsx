@@ -40,6 +40,9 @@ const PAGE_DISPLAY_NAMES: Record<PageName, string> = {
   reports: 'Reports',
   sessions: 'Sessions',
   administration: 'Administration',
+  'vault-management': 'Vault Management',
+  'vault-cashier': 'Vault Cashier',
+  'vault-role-selection': 'Vault Role Selection',
 };
 
 /**
@@ -55,8 +58,8 @@ export function AdministrationRolePermissionsDialog({
   // Computed Values
   // ============================================================================
   // Get all pages this role has access to
-  const accessiblePages = Object.keys(PAGE_DISPLAY_NAMES).filter(
-    (page) => hasPageAccess([role as UserRole], page as PageName)
+  const accessiblePages = Object.keys(PAGE_DISPLAY_NAMES).filter(page =>
+    hasPageAccess([role as UserRole], page as PageName)
   ) as PageName[];
 
   // ============================================================================
@@ -64,7 +67,7 @@ export function AdministrationRolePermissionsDialog({
   // ============================================================================
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Info className="h-5 w-5 text-blue-600" />
@@ -79,7 +82,7 @@ export function AdministrationRolePermissionsDialog({
         <div className="mt-4">
           {accessiblePages.length > 0 ? (
             <div className="space-y-2">
-              {accessiblePages.map((page) => (
+              {accessiblePages.map(page => (
                 <div
                   key={page}
                   className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 p-3 transition-colors hover:bg-gray-100"
@@ -108,4 +111,3 @@ export function AdministrationRolePermissionsDialog({
     </Dialog>
   );
 }
-

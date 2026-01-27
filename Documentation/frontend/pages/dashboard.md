@@ -1,7 +1,7 @@
 # Dashboard Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** January 2025
+**Last Updated:** January 2026
 **Version:** 3.1.0
 
 ## Table of Contents
@@ -74,7 +74,7 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 **API Endpoint:**
 
-- `GET /api/dashboard/totals` - Fetches aggregated financial totals
+- `GET /api/locationAggregation` - Fetches aggregated financial totals
 
 **Data Flow:**
 
@@ -310,10 +310,10 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 ### Primary Endpoints
 
-1. **`GET /api/dashboard/totals`**
-   - Returns aggregated financial totals (money in, money out, gross)
+1. **`GET /api/locationAggregation`**
+   - Returns aggregated financial totals (money in, money out, gross) or map data
    - Parameters: `timePeriod`, `licencee`, `startDate`, `endDate`, `currency`
-   - Used by: `fetchDashboardTotals` function
+   - Used by: `fetchDashboardTotals` and `PcLayout` (map)
 
 2. **`GET /api/dashboard/chart`**
    - Returns time-series chart data
@@ -389,7 +389,7 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
    - Calls: `fetchDashboardTotals` and `switchFilter` in parallel
 
 2. **`fetchDashboardTotals`**
-   - Fetches financial totals from `/api/dashboard/totals`
+   - Fetches financial totals from `/api/locationAggregation`
    - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicencee`, `setTotals`, `displayCurrency`, `signal`
    - Updates Zustand store via `setTotals`
 

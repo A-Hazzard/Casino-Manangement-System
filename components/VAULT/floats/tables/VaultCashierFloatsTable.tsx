@@ -29,7 +29,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type { CashierFloat } from '@/shared/types/vault';
 import { cn } from '@/lib/utils';
 
-export type CashierFloatSortOption = 'cashier' | 'station' | 'currentFloat' | 'status';
+export type CashierFloatSortOption = 'cashierName' | 'balance' | 'status';
 
 type VaultCashierFloatsTableProps = {
   floats: CashierFloat[];
@@ -75,24 +75,10 @@ export default function VaultCashierFloatsTable({
                 'relative cursor-pointer select-none font-semibold text-white',
                 onSort && 'hover:bg-button/90'
               )}
-              onClick={onSort ? () => onSort('cashier') : undefined}
+              onClick={onSort ? () => onSort('cashierName') : undefined}
             >
               Cashier
-              {sortOption === 'cashier' && (
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
-                  {sortOrder === 'desc' ? '▼' : '▲'}
-                </span>
-              )}
-            </TableHead>
-            <TableHead
-              className={cn(
-                'relative cursor-pointer select-none font-semibold text-white',
-                onSort && 'hover:bg-button/90'
-              )}
-              onClick={onSort ? () => onSort('station') : undefined}
-            >
-              Station
-              {sortOption === 'station' && (
+              {sortOption === 'cashierName' && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                   {sortOrder === 'desc' ? '▼' : '▲'}
                 </span>
@@ -103,10 +89,10 @@ export default function VaultCashierFloatsTable({
                 'relative cursor-pointer select-none text-right font-semibold text-white',
                 onSort && 'hover:bg-button/90'
               )}
-              onClick={onSort ? () => onSort('currentFloat') : undefined}
+              onClick={onSort ? () => onSort('balance') : undefined}
             >
               Current Float
-              {sortOption === 'currentFloat' && (
+              {sortOption === 'balance' && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                   {sortOrder === 'desc' ? '▼' : '▲'}
                 </span>
@@ -130,13 +116,15 @@ export default function VaultCashierFloatsTable({
         </TableHeader>
         <TableBody>
           {floats.map(float => (
-            <TableRow key={float.id} className="transition-colors hover:bg-muted/30">
+            <TableRow
+              key={float._id}
+              className="transition-colors hover:bg-muted/30"
+            >
               <TableCell isFirstColumn className="font-medium">
-                {float.cashier}
+                {float.cashierName}
               </TableCell>
-              <TableCell>{float.station}</TableCell>
               <TableCell className="text-right font-semibold">
-                {formatAmount(float.currentFloat)}
+                {formatAmount(float.balance)}
               </TableCell>
               <TableCell>
                 <Badge

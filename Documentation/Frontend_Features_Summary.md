@@ -1,7 +1,7 @@
 # Evolution One CMS - Frontend Feature Summary
 
 **Author:** Aaron Hazzard
-**Date:** 5th of Jan 2026
+**Date:** January 2026
 **Position:** Senior Full-Stack Software Engineer
 
 ---

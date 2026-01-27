@@ -28,7 +28,10 @@ import {
 } from '@/components/shared/ui/table';
 import { Badge } from '@/components/shared/ui/badge';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import type { ExtendedVaultTransaction, VaultTransactionType } from '@/shared/types/vault';
+import type {
+  ExtendedVaultTransaction,
+  VaultTransactionType,
+} from '@/shared/types/vault';
 import { cn } from '@/lib/utils';
 
 export type TransactionSortOption =
@@ -165,19 +168,24 @@ export default function VaultTransactionsTable({
                 </span>
               )}
             </TableHead>
-            <TableHead className="font-semibold text-white">Denominations</TableHead>
+            <TableHead className="font-semibold text-white">
+              Denominations
+            </TableHead>
             <TableHead className="font-semibold text-white">Notes</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {transactions.map(tx => {
             const isPositive = tx.amount > 0;
-            const isCompleted = tx.status === 'completed';
+            const isCompleted = !tx.isVoid;
 
             return (
-              <TableRow key={tx.id} className="transition-colors hover:bg-muted/30">
+              <TableRow
+                key={tx._id}
+                className="transition-colors hover:bg-muted/30"
+              >
                 <TableCell isFirstColumn className="font-medium">
-                  {tx.date}
+                  {new Date(tx.timestamp).toLocaleString()}
                 </TableCell>
                 <TableCell>{getTransactionTypeBadge(tx.type)}</TableCell>
                 <TableCell>
@@ -191,8 +199,8 @@ export default function VaultTransactionsTable({
                     {formatAmount(Math.abs(tx.amount))}
                   </span>
                 </TableCell>
-                <TableCell>{tx.source || '-'}</TableCell>
-                <TableCell>{tx.destination || '-'}</TableCell>
+                <TableCell>{tx.fromName || tx.from.type || '-'}</TableCell>
+                <TableCell>{tx.toName || tx.to.type || '-'}</TableCell>
                 <TableCell>
                   <Badge
                     className={cn(
@@ -202,11 +210,19 @@ export default function VaultTransactionsTable({
                         : 'bg-orangeHighlight text-white hover:bg-orangeHighlight/90'
                     )}
                   >
-                    {tx.status === 'completed' ? 'Completed' : 'Pending'}
+                    {isCompleted ? 'Completed' : 'Voided'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-sm text-gray-600">{tx.denominations || '-'}</TableCell>
-                <TableCell className="text-sm text-gray-600">{tx.notes || '-'}</TableCell>
+                <TableCell className="text-sm text-gray-600">
+                  {tx.denominations && tx.denominations.length > 0
+                    ? tx.denominations
+                        .map(d => `$${d.denomination}x${d.quantity}`)
+                        .join(', ')
+                    : '-'}
+                </TableCell>
+                <TableCell className="text-sm text-gray-600">
+                  {tx.notes || '-'}
+                </TableCell>
               </TableRow>
             );
           })}

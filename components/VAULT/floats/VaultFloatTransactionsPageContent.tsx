@@ -7,22 +7,18 @@
  * - Summary metrics cards
  * - Issue Float and Receive Float action buttons
  * - Current Cashier Floats table
- * - Float Transaction History table
+ * - Float Transaction History table with pagination
  *
  * @module components/VAULT/pages/VaultFloatTransactionsPageContent
  */
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import {
-  mockCashierFloats,
-  mockFloatTransactions,
-  mockVaultBalance,
-} from '@/components/VAULT/overview/data/mockData';
+import { useUserStore } from '@/lib/store/userStore';
 import type { CashierFloat } from '@/shared/types/vault';
 import type { CashierFloatSortOption } from './tables/VaultCashierFloatsTable';
 import type { FloatTransactionSortOption } from './tables/VaultFloatTransactionsTable';
@@ -30,19 +26,83 @@ import VaultCashierFloatsTable from './tables/VaultCashierFloatsTable';
 import VaultCashierFloatsMobileCards from './cards/VaultCashierFloatsMobileCards';
 import VaultFloatTransactionsTable from './tables/VaultFloatTransactionsTable';
 import VaultFloatTransactionsMobileCards from './cards/VaultFloatTransactionsMobileCards';
-import { Plus, Minus, Users } from 'lucide-react';
+import { Plus, Minus, Users, RefreshCw, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import {
+  DEFAULT_CASHIER_FLOATS,
+  DEFAULT_VAULT_BALANCE,
+} from '@/components/VAULT/overview/data/defaults';
+import {
+  fetchFloatTransactionsData,
+  handleApproveFloatTransaction,
+  handleRejectFloatTransaction,
+} from '@/lib/helpers/vaultHelpers';
+import VaultFloatTransactionsSkeleton from '@/components/ui/skeletons/VaultFloatTransactionsSkeleton';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
 
 export default function VaultFloatTransactionsPageContent() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
-  const [floatSortOption, setFloatSortOption] = useState<CashierFloatSortOption>('cashier');
+  const { user } = useUserStore();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [floatSortOption, setFloatSortOption] =
+    useState<CashierFloatSortOption>('cashierName');
   const [floatSortOrder, setFloatSortOrder] = useState<'asc' | 'desc'>('asc');
   const [transactionSortOption, setTransactionSortOption] =
-    useState<FloatTransactionSortOption>('dateTime');
-  const [transactionSortOrder, setTransactionSortOrder] = useState<'asc' | 'desc'>('desc');
+    useState<FloatTransactionSortOption>('timestamp');
+  const [transactionSortOrder, setTransactionSortOrder] = useState<
+    'asc' | 'desc'
+  >('desc');
+
+  const [cashierFloats, setCashierFloats] = useState<CashierFloat[]>(
+    DEFAULT_CASHIER_FLOATS
+  );
+  const [floatTransactions, setFloatTransactions] = useState<any[]>([]);
+  const [vaultBalance, setVaultBalance] = useState(DEFAULT_VAULT_BALANCE);
+  const [floatRequests, setFloatRequests] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // ============================================================================
+  // Data Fetching
+  // ============================================================================
+  const fetchData = async () => {
+    const locationId = user?.assignedLocations?.[0];
+    if (!locationId) {
+      setError('No location assigned');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchFloatTransactionsData(
+        locationId,
+        currentPage + 1,
+        20
+      );
+      setCashierFloats(data.cashierFloats);
+      setVaultBalance(data.vaultBalance);
+      setFloatTransactions(data.floatTransactions);
+      setFloatRequests(data.floatRequests);
+      setTotalPages(data.totalPages);
+    } catch (error) {
+      console.error('Failed to fetch float data:', error);
+      setError('Failed to load float data');
+      toast.error('Failed to load float data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchData();
+  }, [user?.assignedLocations, currentPage]);
 
   // ============================================================================
   // Computed Values
@@ -50,42 +110,40 @@ export default function VaultFloatTransactionsPageContent() {
   /**
    * Sum of all cashier float amounts
    */
-  const totalCashierFloat = mockCashierFloats.reduce(
-    (sum: number, float: CashierFloat) => sum + float.currentFloat,
-    0
+  const totalCashierFloat = useMemo(
+    () => cashierFloats.reduce((sum, float) => sum + (float.balance || 0), 0),
+    [cashierFloats]
   );
 
   /**
    * Count of active cashiers
    */
-  const activeCashiers = mockCashierFloats.filter((f: CashierFloat) => f.status === 'active').length;
+  const activeCashiers = useMemo(
+    () => cashierFloats.filter(f => f.status === 'active').length,
+    [cashierFloats]
+  );
 
   /**
    * Count of pending float transaction requests
    */
-  const pendingRequests = mockFloatTransactions.filter(tx => tx.status === 'pending')
-    .length;
+  const pendingRequests = floatRequests.length;
 
   /**
    * Sort cashier floats based on sort option and order
    */
   const sortedCashierFloats = useMemo(() => {
-    const sorted = [...mockCashierFloats].sort((a, b) => {
+    const sorted = [...cashierFloats].sort((a, b) => {
       let aValue: string | number;
       let bValue: string | number;
 
       switch (floatSortOption) {
-        case 'cashier':
-          aValue = a.cashier.toLowerCase();
-          bValue = b.cashier.toLowerCase();
+        case 'cashierName':
+          aValue = (a.cashierName || '').toLowerCase();
+          bValue = (b.cashierName || '').toLowerCase();
           break;
-        case 'station':
-          aValue = a.station.toLowerCase();
-          bValue = b.station.toLowerCase();
-          break;
-        case 'currentFloat':
-          aValue = a.currentFloat;
-          bValue = b.currentFloat;
+        case 'balance':
+          aValue = a.balance;
+          bValue = b.balance;
           break;
         case 'status':
           aValue = a.status;
@@ -101,24 +159,24 @@ export default function VaultFloatTransactionsPageContent() {
     });
 
     return sorted;
-  }, [floatSortOption, floatSortOrder]);
+  }, [cashierFloats, floatSortOption, floatSortOrder]);
 
   /**
    * Sort float transactions based on sort option and order
    */
   const sortedFloatTransactions = useMemo(() => {
-    const sorted = [...mockFloatTransactions].sort((a, b) => {
-      let aValue: string | number;
-      let bValue: string | number;
+    const sorted = [...floatTransactions].sort((a, b) => {
+      let aValue: string | number | boolean;
+      let bValue: string | number | boolean;
 
       switch (transactionSortOption) {
-        case 'dateTime':
-          aValue = new Date(a.dateTime).getTime();
-          bValue = new Date(b.dateTime).getTime();
+        case 'timestamp':
+          aValue = new Date(a.timestamp).getTime();
+          bValue = new Date(b.timestamp).getTime();
           break;
-        case 'cashier':
-          aValue = a.cashier.toLowerCase();
-          bValue = b.cashier.toLowerCase();
+        case 'performedByName':
+          aValue = (a.performedByName || '').toLowerCase();
+          bValue = (b.performedByName || '').toLowerCase();
           break;
         case 'type':
           aValue = a.type;
@@ -128,13 +186,13 @@ export default function VaultFloatTransactionsPageContent() {
           aValue = Math.abs(a.amount);
           bValue = Math.abs(b.amount);
           break;
-        case 'reason':
-          aValue = a.reason.toLowerCase();
-          bValue = b.reason.toLowerCase();
+        case 'notes':
+          aValue = (a.notes || '').toLowerCase();
+          bValue = (b.notes || '').toLowerCase();
           break;
-        case 'status':
-          aValue = a.status;
-          bValue = b.status;
+        case 'isVoid':
+          aValue = a.isVoid;
+          bValue = b.isVoid;
           break;
         default:
           return 0;
@@ -146,52 +204,71 @@ export default function VaultFloatTransactionsPageContent() {
     });
 
     return sorted;
-  }, [transactionSortOption, transactionSortOrder]);
+  }, [floatTransactions, transactionSortOption, transactionSortOrder]);
 
   // ============================================================================
   // Event Handlers
   // ============================================================================
   /**
-   * Handle issue float button click
-   * Placeholder for future modal implementation
+   * Handle refresh data
    */
-  const handleIssueFloat = () => {
+  const handleRefresh = () => {
+    fetchData();
+    toast.success('Data refreshed');
+  };
+
+  /**
+   * Handle issue float button click
+   */
+  const handleIssueFloatClick = () => {
     toast.info('Issue Float modal will be implemented');
   };
 
   /**
    * Handle receive float button click
-   * Placeholder for future modal implementation
    */
-  const handleReceiveFloat = () => {
+  const handleReceiveFloatClick = () => {
     toast.info('Receive Float modal will be implemented');
   };
 
   /**
    * Handle approve transaction action
-   * Placeholder for future API integration
-   *
-   * @param transactionId - ID of transaction to approve
    */
-  const handleApprove = (transactionId: string) => {
-    toast.success(`Transaction ${transactionId} approved`);
+  const handleApprove = async (transactionId: string) => {
+    try {
+      const result = await handleApproveFloatTransaction(transactionId);
+      if (result.success) {
+        toast.success('Transaction approved');
+        fetchData(); // Refresh data
+      } else {
+        toast.error(result.error || 'Failed to approve transaction');
+      }
+    } catch (error) {
+      console.error('Error approving transaction:', error);
+      toast.error('An error occurred while approving transaction');
+    }
   };
 
   /**
    * Handle reject transaction action
-   * Placeholder for future API integration
-   *
-   * @param transactionId - ID of transaction to reject
    */
-  const handleReject = (transactionId: string) => {
-    toast.error(`Transaction ${transactionId} rejected`);
+  const handleReject = async (transactionId: string) => {
+    try {
+      const result = await handleRejectFloatTransaction(transactionId);
+      if (result.success) {
+        toast.error('Transaction rejected');
+        fetchData(); // Refresh data
+      } else {
+        toast.error(result.error || 'Failed to reject transaction');
+      }
+    } catch (error) {
+      console.error('Error rejecting transaction:', error);
+      toast.error('An error occurred while rejecting transaction');
+    }
   };
 
   /**
    * Handle cashier float table column sort
-   * Toggles sort order if clicking the same column, otherwise sets new sort column
-   *
-   * @param column - Column to sort by
    */
   const handleFloatSort = (column: CashierFloatSortOption) => {
     if (floatSortOption === column) {
@@ -204,9 +281,6 @@ export default function VaultFloatTransactionsPageContent() {
 
   /**
    * Handle float transaction table column sort
-   * Toggles sort order if clicking the same column, otherwise sets new sort column
-   *
-   * @param column - Column to sort by
    */
   const handleTransactionSort = (column: FloatTransactionSortOption) => {
     if (transactionSortOption === column) {
@@ -220,128 +294,210 @@ export default function VaultFloatTransactionsPageContent() {
   // ============================================================================
   // Render
   // ============================================================================
+  if (loading && floatTransactions.length === 0) {
+    return (
+      <PageLayout showHeader={false}>
+        <VaultFloatTransactionsSkeleton />
+      </PageLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageLayout showHeader={false}>
+        <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center">
+          <AlertTriangle className="mb-4 h-12 w-12 text-red-500" />
+          <h2 className="text-xl font-semibold text-gray-900">{error}</h2>
+          <Button onClick={fetchData} variant="outline" className="mt-4">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Try Again
+          </Button>
+        </div>
+      </PageLayout>
+    );
+  }
+
   return (
     <PageLayout showHeader={false}>
       <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Float Transactions</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Manage float increases and decreases.
-        </p>
-      </div>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              Float Transactions
+            </h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Manage float increases and decreases.
+            </p>
+          </div>
+          <Button
+            onClick={handleRefresh}
+            disabled={loading}
+            variant="outline"
+            size="sm"
+            className="border-gray-300"
+          >
+            <RefreshCw
+              className={cn('mr-2 h-4 w-4', loading && 'animate-spin')}
+            />
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="rounded-lg bg-container shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Cashier Float</p>
-                <p className="break-words text-xl font-bold text-orangeHighlight sm:text-2xl">
-                  {formatAmount(totalCashierFloat)}
-                </p>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="rounded-lg bg-container shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Cashier Float
+                  </p>
+                  <p className="break-words text-xl font-bold text-orangeHighlight sm:text-2xl">
+                    {formatAmount(totalCashierFloat)}
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-lg bg-container shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active Cashiers</p>
-                <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">{activeCashiers}</p>
+          <Card className="rounded-lg bg-container shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    Active Cashiers
+                  </p>
+                  <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">
+                    {activeCashiers}
+                  </p>
+                </div>
+                <Users className="h-8 w-8 text-gray-400" />
               </div>
-              <Users className="h-8 w-8 text-gray-400" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-lg bg-container shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending Requests</p>
-                <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">{pendingRequests}</p>
+          <Card className="rounded-lg bg-container shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    Pending Requests
+                  </p>
+                  <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">
+                    {pendingRequests}
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-lg bg-container shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Vault Available</p>
-                <p className="break-words text-xl font-bold text-lighterBlueHighlight sm:text-2xl">
-                  {formatAmount(mockVaultBalance.balance)}
-                </p>
+          <Card className="rounded-lg bg-container shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    Vault Available
+                  </p>
+                  <p className="break-words text-xl font-bold text-lighterBlueHighlight sm:text-2xl">
+                    {formatAmount(vaultBalance.balance)}
+                  </p>
+                </div>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <Button
+            onClick={handleIssueFloatClick}
+            className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
+            size="lg"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Issue Float
+          </Button>
+          <Button
+            onClick={handleReceiveFloatClick}
+            className="bg-button text-white hover:bg-button/90"
+            size="lg"
+          >
+            <Minus className="mr-2 h-5 w-5" />
+            Receive Float
+          </Button>
+        </div>
+
+        {/* Current Cashier Floats: Responsive Views */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Current Cashier Floats
+          </h2>
+
+          {/* Desktop Table View - lg and above */}
+          <div className={loading ? 'pointer-events-none opacity-50' : ''}>
+            <VaultCashierFloatsTable
+              floats={sortedCashierFloats}
+              sortOption={floatSortOption}
+              sortOrder={floatSortOrder}
+              onSort={handleFloatSort}
+            />
+          </div>
+
+          {/* Mobile/Tablet Card View - below lg */}
+          <div
+            className={
+              loading ? 'pointer-events-none opacity-50' : 'block lg:hidden'
+            }
+          >
+            <VaultCashierFloatsMobileCards floats={sortedCashierFloats} />
+          </div>
+        </div>
+
+        {/* Float Transaction History: Responsive Views */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Float Transaction History
+          </h2>
+
+          {/* Desktop Table View - lg and above */}
+          <div className={loading ? 'pointer-events-none opacity-50' : ''}>
+            <VaultFloatTransactionsTable
+              transactions={sortedFloatTransactions}
+              sortOption={transactionSortOption}
+              sortOrder={transactionSortOrder}
+              onSort={handleTransactionSort}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              showActions={true}
+            />
+          </div>
+
+          {/* Mobile/Tablet Card View - below lg */}
+          <div
+            className={
+              loading ? 'pointer-events-none opacity-50' : 'block lg:hidden'
+            }
+          >
+            <VaultFloatTransactionsMobileCards
+              transactions={sortedFloatTransactions}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              showActions={true}
+            />
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="mt-4">
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                setCurrentPage={setCurrentPage}
+              />
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <Button
-          onClick={handleIssueFloat}
-          className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
-          size="lg"
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          Issue Float
-        </Button>
-        <Button
-          onClick={handleReceiveFloat}
-          className="bg-button text-white hover:bg-button/90"
-          size="lg"
-        >
-          <Minus className="mr-2 h-5 w-5" />
-          Receive Float
-        </Button>
-      </div>
-
-      {/* Current Cashier Floats: Responsive Views */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Current Cashier Floats</h2>
-
-        {/* Desktop Table View - lg and above */}
-        <VaultCashierFloatsTable
-          floats={sortedCashierFloats}
-          sortOption={floatSortOption}
-          sortOrder={floatSortOrder}
-          onSort={handleFloatSort}
-        />
-
-        {/* Mobile/Tablet Card View - below lg */}
-        <VaultCashierFloatsMobileCards floats={sortedCashierFloats} />
-      </div>
-
-      {/* Float Transaction History: Responsive Views */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Float Transaction History</h2>
-
-        {/* Desktop Table View - lg and above */}
-        <VaultFloatTransactionsTable
-          transactions={sortedFloatTransactions}
-          sortOption={transactionSortOption}
-          sortOrder={transactionSortOrder}
-          onSort={handleTransactionSort}
-          onApprove={handleApprove}
-          onReject={handleReject}
-          showActions={true}
-        />
-
-        {/* Mobile/Tablet Card View - below lg */}
-        <VaultFloatTransactionsMobileCards
-          transactions={sortedFloatTransactions}
-          onApprove={handleApprove}
-          onReject={handleReject}
-          showActions={true}
-        />
-      </div>
+          )}
+        </div>
       </div>
     </PageLayout>
   );

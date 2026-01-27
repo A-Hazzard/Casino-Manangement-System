@@ -1,0 +1,160 @@
+/**
+ * Remove Cash from Vault API
+ *
+ * POST /api/vault/remove-cash
+ *
+ * Removes cash from the vault to an external destination (e.g. Bank Deposit).
+ * Creates a transaction and updates the vault balance.
+ *
+ * @module app/api/vault/remove-cash/route */
+
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import VaultShiftModel from '@/app/api/lib/models/vaultShift';
+import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import { nanoid } from 'nanoid';
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+
+/**
+ * POST /api/vault/remove-cash
+ *
+ * Handler flow:
+ * 1. Performance tracking and authentication
+ * 2. Parse and validate request body
+ * 3. Licensee/location filtering via vault shift
+ * 4. Database connection
+ * 5. Get active vault shift
+ * 6. Create transaction and update balance
+ * 7. Save and return response
+ */
+export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  try {
+    // ============================================================================
+    // STEP 1: Authentication & Authorization
+    // ============================================================================
+    const userPayload = await getUserFromServer();
+    if (!userPayload) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    const vaultManagerId = userPayload.userId;
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const hasVMAccess = userRoles.some(role =>
+      ['developer', 'admin', 'manager', 'vault-manager'].includes(
+        role.toLowerCase()
+      )
+    );
+    if (!hasVMAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 2: Parse and validate request body
+    // ============================================================================
+    const body = await request.json();
+    const { destination, amount, denominations, notes } = body;
+
+    if (!destination || !amount || !denominations) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 3: Database connection
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 4: Get active vault shift
+    // ============================================================================
+    const activeVaultShift = await VaultShiftModel.findOne({
+      vaultManagerId,
+      status: 'active',
+    });
+
+    if (!activeVaultShift) {
+      return NextResponse.json(
+        { success: false, error: 'No active vault shift found' },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 5: Licensee/location filtering
+    // ============================================================================
+    const allowedLocationIds = await getUserLocationFilter(
+      (userPayload?.assignedLicensees as string[]) || [],
+      undefined,
+      (userPayload?.assignedLocations as string[]) || [],
+      (userPayload?.roles as string[]) || []
+    );
+
+    if (
+      allowedLocationIds !== 'all' &&
+      !allowedLocationIds.includes(activeVaultShift.locationId)
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied for this vault location' },
+        { status: 403 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 6: Create transaction
+    // ============================================================================
+    const transactionId = nanoid();
+    const now = new Date();
+
+    const vaultTransaction = new VaultTransactionModel({
+      _id: transactionId,
+      locationId: activeVaultShift.locationId,
+      timestamp: now,
+      type: 'vault_close', // Using vault_close for removal or add generic 'removal' enum later
+      from: { type: 'vault' },
+      to: { type: 'external', id: destination },
+      amount,
+      denominations,
+      vaultBalanceBefore:
+        activeVaultShift.closingBalance || activeVaultShift.openingBalance,
+      vaultBalanceAfter:
+        (activeVaultShift.closingBalance || activeVaultShift.openingBalance) -
+        amount,
+      vaultShiftId: activeVaultShift._id,
+      performedBy: vaultManagerId,
+      notes: `Cash removed to ${destination}${notes ? `: ${notes}` : ''}`,
+    });
+
+    // ============================================================================
+    // STEP 7: Save and Update Balance
+    // ============================================================================
+    await vaultTransaction.save();
+
+    activeVaultShift.closingBalance = vaultTransaction.vaultBalanceAfter;
+    await activeVaultShift.save();
+
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`Remove cash API took ${duration}ms`);
+    }
+
+    return NextResponse.json({
+      success: true,
+      transaction: vaultTransaction,
+    });
+  } catch (error) {
+    console.error('Error removing cash:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

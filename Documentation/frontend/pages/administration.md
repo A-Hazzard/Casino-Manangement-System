@@ -1,7 +1,7 @@
 # Administration Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** January 2025
+**Last Updated:** January 2026
 **Version:** 3.1.0
 
 ## Table of Contents
@@ -463,7 +463,7 @@ The Administration page provides comprehensive user and licensee management func
    - Body: User creation payload
    - Used by: `AddUserModal` component
 
-5. **`PUT /api/users`**
+5. **`PATCH /api/users/:id`**
    - Updates existing user
    - Body: User update payload (only changed fields)
    - Used by: `UserModal` component

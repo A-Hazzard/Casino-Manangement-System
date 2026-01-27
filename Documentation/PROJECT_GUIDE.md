@@ -1,9 +1,8 @@
 # Evolution One CMS - Complete Project Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** January 2025
+**Last Updated:** January 2026  
 **Version:** 4.1.0
-
 ## Table of Contents
 
 1. [Project Overview](#project-overview)
@@ -17,13 +16,14 @@
 9. [Role-Based Access Control](#role-based-access-control)
 10. [Performance Optimization Strategies](#performance-optimization-strategies)
 11. [Auditing and Logging](#auditing-and-logging)
-12. [Development Guidelines](#development-guidelines)
+12. [Vault Management System](#vault-management-system)
+13. [Development Guidelines](#development-guidelines)
 
 ---
 
 ## Project Overview
 
-The Evolution One Casino Management System is a comprehensive Next.js-based platform for managing casino operations, including machine monitoring, financial reporting, collection management, and player tracking.
+The Evolution One Casino Management System is a comprehensive Next.js-based platform for managing casino operations, including machine monitoring, financial reporting, collection management, player tracking, and vault operations.
 
 ### Technology Stack
 
@@ -44,6 +44,8 @@ The Evolution One Casino Management System is a comprehensive Next.js-based plat
 - Role-based access control with hierarchical permissions
 - Gaming day offset system for flexible business day boundaries
 - Audit logging for regulatory compliance
+- **Vault Management**: Comprehensive cash handling and cashier oversight
+- **SMIB Management**: OTA firmware updates and real-time device control
 
 ---
 
@@ -64,9 +66,12 @@ evolution-one-cms/
 │   ├── locations/               # Location pages
 │   ├── cabinets/                # Cabinet/machine pages
 │   ├── reports/                 # Reports pages
+│   ├── vault/                   # Vault management pages
 │   └── ...
 ├── components/                   # React components
-│   └── ui/                      # Reusable UI components
+│   ├── CMS/                     # CMS-specific components
+│   ├── VAULT/                   # Vault-specific components
+│   └── shared/                  # Reusable UI components
 ├── lib/                         # Frontend libraries
 │   ├── helpers/                 # Frontend data fetching
 │   ├── utils/                   # Pure utilities
@@ -103,6 +108,8 @@ Types used across both frontend and backend:
 - `shared/types/common.ts` - Common utility types (TimePeriod, DateRange, etc.)
 - `shared/types/auth.ts` - Authentication types
 - `shared/types/analytics.ts` - Analytics and dashboard types
+- `shared/types/smib.ts` - SMIB management types
+- `shared/types/vault.ts` - Vault operations types
 - `shared/types/index.ts` - Central export point
 
 #### 2. Frontend Types (`lib/types/`)
@@ -156,7 +163,12 @@ Licencee (licencee.ts)
 │   ├── Collection (collections.ts) - Collection reports
 │   └── CollectionReport (collectionReport.ts) - Financial summaries
 ├── User (user.ts) - Authentication & permissions
-└── Member (members.ts) - Player management
+├── Member (members.ts) - Player management
+├── Vault (vault-related collections)
+│   ├── FloatRequest (floatRequests.ts)
+│   ├── Payout (cashDeskPayouts.ts)
+│   └── Shift (shifts.ts)
+└── Firmware (firmware.ts) - Firmware management
 ```
 
 ### Key Models
@@ -169,6 +181,12 @@ Machine {
   serialNumber: string;
   gamingLocation: string;         // Links to GamingLocation
   status: "online" | "offline";
+  relayId: string;               // SMIB controller identifier
+  smibConfig: SmibConfig;        // Device configuration
+  smibVersion: {
+    firmware: string;
+    version: string;
+  };
 
   // Financial Data (Primary UI Source)
   sasMeters: {
@@ -184,6 +202,7 @@ Machine {
     metersIn: number;
     metersOut: number;
     timestamp: Date;
+    locationReportId: string;
   }];
 }
 ```
@@ -208,7 +227,7 @@ Meter {
     coinIn: number;               // Handle - betting activity
     jackpot: number;              // Jackpot payouts
     gamesPlayed: number;          // Game activity
-    gamesWon: number;             // Games won count
+    gamesWon: number;             // Games won count (for member sessions)
     currentCredits: number;       // Current credits in machine
     totalWonCredits: number;      // Total credits won
     totalHandPaidCancelledCredits: number; // Hand-paid credits
@@ -221,6 +240,8 @@ Meter {
   totalCancelledCredits: number;
   jackpot: number;
   gamesPlayed: number;
+  lastSasMeterAt?: Date;
+  lastBillMeterAt?: Date;
 }
 ```
 
@@ -730,9 +751,10 @@ The system implements a hierarchical role-based access control (RBAC) system whe
 2. **Admin** - High-level administrative functions with most system access
 3. **Manager** - Operational oversight with management-level permissions
 4. **Location Admin** - Location-specific management within assigned locations
-5. **Technician** - Technical operations focused on machines and systems
-6. **Collector** - Collection operations focused on money collection
-7. **Collector Meters** - Meter-specific collection operations
+5. **Vault Manager** - Vault management operations
+6. **Cashier** - Cashier operations
+7. **Technician** - Technical operations focused on machines and systems
+8. **Collector** - Collection operations focused on money collection
 
 ### Access Control Philosophy
 
@@ -753,39 +775,49 @@ The system implements a hierarchical role-based access control (RBAC) system whe
 #### Dashboard Access
 
 - **Allowed**: Developer, Admin, Manager, Location Admin
-- **Restricted**: Technician, Collector, Collector Meters
+- **Restricted**: Vault Manager, Cashier, Technician, Collector
 
 #### Machines Page
 
-- **Allowed**: All roles
+- **Allowed**: Developer, Admin, Manager, Location Admin, Technician, Collector
 - **Rationale**: Machine data is needed for collections and technical operations
 
 #### Locations Page
 
-- **Allowed**: Developer, Admin, Manager, Location Admin, Collector, Collector Meters
-- **Restricted**: Technician
+- **Allowed**: Developer, Admin, Manager, Location Admin, Collector
+- **Restricted**: Vault Manager, Cashier, Technician
 - **Direct Link Access**: Technicians can access location details via direct links
 
 #### Members Page
 
 - **Allowed**: Developer, Admin, Manager
-- **Restricted**: Location Admin, Technician, Collector, Collector Meters
+- **Restricted**: Location Admin, Vault Manager, Cashier, Technician, Collector
 - **Direct Link Access**: Location Admin and Technicians can access member details via direct links
 
 #### Collection Reports Page
 
-- **Allowed**: Developer, Admin, Manager, Location Admin, Collector, Collector Meters
-- **Restricted**: Technician
+- **Allowed**: Developer, Admin, Manager, Location Admin, Collector
+- **Restricted**: Vault Manager, Cashier, Technician
 
 #### Sessions Page
 
 - **Allowed**: Developer, Admin, Manager, Location Admin, Technician
-- **Restricted**: Collector, Collector Meters
+- **Restricted**: Vault Manager, Cashier, Collector
 
 #### Administration Page
 
 - **Allowed**: Developer, Admin, Manager
 - **Rationale**: System administration requires high security clearance
+
+#### Vault Management Page
+
+- **Allowed**: Developer, Admin, Manager, Location Admin, Vault Manager
+- **Restricted**: Cashier, Technician, Collector
+
+#### Vault Cashier Page
+
+- **Allowed**: Developer, Admin, Manager, Location Admin, Vault Manager, Cashier
+- **Restricted**: Technician, Collector
 
 ### Licensee Filtering Strategy
 
@@ -843,6 +875,334 @@ All pages are protected using the `ProtectedRoute` component:
 ---
 
 ## Performance Optimization Strategies
+
+### Critical Performance Rules
+
+#### 1. Cursor Usage for Meters Aggregations
+
+**MANDATORY**: All `Meters.aggregate()` calls MUST use `.cursor({ batchSize: 1000 })` instead of `.exec()`
+
+**Why:**
+
+- Prevents loading large result sets into memory at once
+- Significantly improves performance for 7d/30d periods
+- Reduces memory usage and prevents timeouts
+
+**Implementation:**
+
+```typescript
+// ✅ CORRECT - Use cursor for Meters aggregations
+const results: Array<Record<string, unknown>> = [];
+const cursor = Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
+
+for await (const doc of cursor) {
+  results.push(doc as Record<string, unknown>);
+}
+
+// ❌ INCORRECT - Don't use exec() for Meters
+const results = await Meters.aggregate(pipeline).exec();
+```
+
+#### 2. Location Field Direct Access
+
+**MANDATORY**: When aggregating Meters by location, use the `location` field directly
+
+**Why:**
+
+- Eliminates expensive `$lookup` operations from meters → machines → locations
+- Uses existing index: `{ location: 1, readAt: 1 }`
+- 10-20x performance improvement for 7d/30d periods
+
+**Implementation:**
+
+```typescript
+// ✅ CORRECT - Use location field directly
+const pipeline: PipelineStage[] = [
+  {
+    $match: {
+      location: { $in: allLocationIds }, // Filter by location directly (uses index)
+      readAt: { $gte: globalStart, $lte: globalEnd },
+    },
+  },
+  {
+    $group: {
+      _id: '$location', // Group by location field directly (no lookup needed!)
+      totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+      totalCancelledCredits: {
+        $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+      },
+    },
+  },
+];
+
+// ❌ INCORRECT - Expensive $lookup operation
+const pipeline: PipelineStage[] = [
+  {
+    $match: {
+      machine: { $in: allMachineIds },
+      readAt: { $gte: globalStart, $lte: globalEnd },
+    },
+  },
+  {
+    $lookup: {
+      from: 'machines',
+      localField: 'machine',
+      foreignField: '_id',
+      as: 'machineDetails',
+    },
+  },
+  { $unwind: '$machineDetails' },
+  {
+    $addFields: { locationId: { $toString: '$machineDetails.gamingLocation' } },
+  },
+  {
+    $group: {
+      _id: '$locationId', // Much slower!
+    },
+  },
+];
+```
+
+#### 3. N+1 Query Pattern Elimination
+
+**MANDATORY**: Consolidate multiple sequential queries into single aggregations
+
+**Pattern to Avoid:**
+
+```typescript
+// ❌ INCORRECT - N+1 query pattern
+for (const location of locations) {
+  const machines = await Machine.find({ gamingLocation: location._id });
+  const machineIds = machines.map(m => m._id);
+  const metrics = await Meters.aggregate([... { machine: { $in: machineIds } } ...]);
+}
+```
+
+**Correct Pattern:**
+
+```typescript
+// ✅ CORRECT - Batch queries
+const allLocationIds = locations.map(loc => loc._id);
+const allMachines = await Machine.find({ gamingLocation: { $in: allLocationIds } }).lean();
+const allMachineIds = allMachines.map(m => m._id);
+const allMetrics = await Meters.aggregate([... { machine: { $in: allMachineIds } } ...]);
+// Combine results in memory
+```
+
+#### 4. Gaming Day Offset Handling
+
+For per-location gaming day offsets:
+
+1. **Aggregate globally** with a wide date range
+2. **Filter in memory** by location-specific gaming day ranges
+3. **Avoid per-location aggregations** in loops
+
+```typescript
+// ✅ CORRECT - Global aggregation + in-memory filtering
+const globalStart = earliestGamingDayStart;
+const globalEnd = latestGamingDayEnd;
+
+const aggregation = await Meters.aggregate([
+  {
+    $match: {
+      location: { $in: allLocationIds },
+      readAt: { $gte: globalStart, $lte: globalEnd },
+    },
+  },
+  {
+    $group: {
+      _id: '$location',
+      totalDrop: { $sum: '$movement.drop' },
+      minReadAt: { $min: '$readAt' },
+      maxReadAt: { $max: '$readAt' },
+    },
+  },
+]);
+
+// Filter by gaming day ranges in memory
+for (const agg of aggregation) {
+  const locationId = String(agg._id);
+  const gamingDayRange = gamingDayRanges.get(locationId);
+  if (!gamingDayRange) continue;
+
+  // Check overlap between aggregated range and location's gaming day range
+  const hasOverlap =
+    agg.minReadAt <= gamingDayRange.rangeEnd &&
+    agg.maxReadAt >= gamingDayRange.rangeStart;
+  if (hasOverlap) {
+    // Use this aggregation result
+  }
+}
+```
+
+### Performance Targets
+
+- **7d period**: <10 seconds (target: 5-10s)
+- **30d period**: <15 seconds (target: 10-15s)
+- **No timeouts**: All queries should complete within maxTimeMS limits
+- **Memory efficiency**: Use cursors to prevent memory issues
+
+### Query Optimization Checklist
+
+When optimizing an API:
+
+1. ✅ Use `.cursor({ batchSize: 1000 })` for all `Meters.aggregate()` calls
+2. ✅ Use `location` field directly instead of `$lookup` to machines
+3. ✅ Eliminate N+1 patterns with batch queries
+4. ✅ Use `.lean()` for read-only queries
+5. ✅ Use proper indexes (verify `{ location: 1, readAt: 1 }` exists on Meters)
+6. ✅ Set appropriate `maxTimeMS` (120000ms for complex aggregations)
+7. ✅ Use `allowDiskUse: true` for large aggregations
+
+---
+
+## Auditing and Logging
+
+### API Logging Standards
+
+#### Required Implementation
+
+- **Use `APILogger` utility** (`app/api/lib/utils/logger.ts`) for all API endpoints
+- **Log all CRUD operations** with success/failure status, duration, and context
+- **Include user identification** when available for audit trail
+- **Log security-relevant events** (login attempts, permission changes, data access)
+
+#### Log Format
+
+```
+[timestamp] [level] [METHOD endpoint] duration - message [context]
+```
+
+#### Example Implementation
+
+```typescript
+import { apiLogger } from '@/app/api/lib/utils/logger';
+
+export async function GET(request: NextRequest) {
+  const context = apiLogger.createContext(request, '/api/users');
+  apiLogger.startLogging();
+
+  try {
+    const users = await getUsersFromDatabase();
+    apiLogger.logSuccess(context, 'Users retrieved successfully', {
+      count: users.length,
+    });
+    return NextResponse.json({ users });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    apiLogger.logError(context, 'Failed to retrieve users', errorMessage);
+    return NextResponse.json(
+      { error: 'Failed to retrieve users' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+---
+
+## Vault Management System
+
+### Overview
+
+The Vault Management System (VMS) is a specialized module for cash handling, float management, and cashier oversight. It operates in parallel with the CMS but uses a different layout and navigation context.
+
+### Key Components
+
+- **Vault Layout Wrapper**: `VaultLayoutWrapper.tsx` provides VAULT-specific navigation
+- **Float Management**: Tracking increase/decrease requests for cash desks
+- **Shift Management**: Cashier shift opening, closing, and reconciliation
+- **Cash Monitoring**: Real-time tracking of cash on premises and denominations
+- **Payouts**: Processing player payouts through the vault system
+
+---
+
+## Development Guidelines
+
+### Code Organization
+
+#### File Structure
+
+- **API routes**: `app/api/[path]/route.ts` - Maximum 400-500 lines
+- **Helper functions**: `app/api/lib/helpers/[feature].ts` - Extract complex logic
+- **Components**: `components/[feature]/[ComponentName].tsx` - Maximum 400-500 lines
+- **Custom hooks**: `lib/hooks/[feature].ts` - Reusable stateful logic
+- **Utilities**: `lib/utils/[utility].ts` - Pure functions
+
+#### Separation of Concerns
+
+- **API logic** → `app/api/lib/helpers/`
+- **Frontend data fetching** → `lib/helpers/`
+- **Pure utilities** → `lib/utils/` or `utils/`
+- **UI components** → `components/`
+- **Reusable UI** → `components/ui/`
+
+### Code Quality Standards
+
+#### TypeScript
+
+- **Strict mode enabled** - All type errors must be resolved
+- **No `any` types** - Create proper type definitions
+- **No underscore prefixes** - Never prefix variables with underscores
+- **Type organization** - All types in appropriate directories
+
+#### ESLint
+
+- **Never ignore ESLint rule violations**
+- **Address all warnings and errors immediately**
+- **Run `pnpm lint` regularly**
+- **Use auto-fix when possible**: `pnpm lint --fix`
+
+#### Comments & Documentation
+
+- **File-level JSDoc** for all API routes, pages, and complex components
+- **Step-by-Step Comments** in API routes with visual separators
+- **Section comments** in components for organization
+- **Remove redundant comments** that restate well-named code
+
+### Security Guidelines
+
+- **No secrets in client code** - All sensitive configuration in environment variables
+- **Input validation and sanitization** - Validate all input on server side
+- **Route protection** - Use middleware for authentication and authorization
+- **HTTPS enforcement** - All communications must use secure protocols
+- **Session management** - Secure JWT token handling with proper expiration
+
+### Performance Standards
+
+- **Memoize expensive computations** - Use `useMemo` for calculated values
+- **Debounce user input** - Prevent excessive API calls
+- **Avoid rendering waterfalls** - Batch network requests when possible
+- **Track performance metrics** - Log slow operations (>1000ms)
+- **Use proper code-splitting** - Lazy load large components
+- **Implement proper cleanup** - Remove event listeners, timeouts, subscriptions
+
+### Loading States & Skeleton Loaders
+
+**MANDATORY**: Every page and component with async data MUST use specific skeleton loaders
+
+- **Content-specific skeletons** - Each page/tab has its own skeleton matching exact layout
+- **Visual accuracy** - Exact dimensions, spacing, and structure as real content
+- **Use Shadcn Skeleton component** - Located in `components/shared/ui/skeletons/`
+- **NO generic loading states** - Never use "Loading..." text or generic spinners
+
+---
+
+## Related Documentation
+
+For detailed implementation guidelines, refer to:
+
+- **Frontend Guidelines**: `Documentation/frontend/FRONTEND_GUIDELINES.md`
+- **Backend Guidelines**: `Documentation/backend/BACKEND_GUIDELINES.md`
+- **Performance Optimization Guide**: `Documentation/PERFORMANCE_OPTIMIZATION_GUIDE.md`
+- **Next.js Rules**: `.cursor/rules/nextjs-rules.mdc`
+
+---
+
+**Last Updated**: January 2026  
+**Version**: 5.0.0  
+**Maintained By**: Evolution One CMS Development Team
 
 ### Critical Performance Rules
 
@@ -1183,6 +1543,6 @@ For detailed implementation guidelines, refer to:
 
 ---
 
-**Last Updated**: January 2025  
-**Version**: 4.0.0  
+**Last Updated**: January 2026  
+**Version**: 4.1.0  
 **Maintained By**: Evolution One CMS Development Team

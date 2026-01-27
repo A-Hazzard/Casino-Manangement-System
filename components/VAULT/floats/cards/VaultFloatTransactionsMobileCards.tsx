@@ -61,18 +61,23 @@ export default function VaultFloatTransactionsMobileCards({
     <div className="block lg:hidden">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {transactions.map(tx => {
-          const isIncrease = tx.type === 'Increase';
-          const isCompleted = tx.status === 'completed';
+          const isIncrease = tx.type === 'float_increase';
+          const isCompleted = !tx.isVoid;
 
           return (
-            <Card key={tx.id} className="overflow-hidden rounded-lg bg-container shadow-md">
+            <Card
+              key={tx._id}
+              className="overflow-hidden rounded-lg bg-container shadow-md"
+            >
               <CardContent className="p-4">
                 {/* Header: Date and Status */}
                 <div className="mb-3 flex items-start justify-between border-b pb-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{tx.dateTime}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {new Date(tx.timestamp).toLocaleString()}
+                    </p>
                     <p className="text-xs text-gray-500">
-                      {tx.cashier} / {tx.station}
+                      {isIncrease ? tx.toName : tx.fromName}
                     </p>
                   </div>
                   <Badge
@@ -138,14 +143,14 @@ export default function VaultFloatTransactionsMobileCards({
                 {/* Reason */}
                 <div className="mb-3 border-t pt-3">
                   <p className="text-xs text-gray-500">Reason</p>
-                  <p className="text-sm text-gray-700">{tx.reason}</p>
+                  <p className="text-sm text-gray-700">{tx.notes}</p>
                 </div>
 
                 {/* Actions */}
                 {showActions && !isCompleted && (
                   <div className="mt-3 flex gap-2 border-t pt-3">
                     <Button
-                      onClick={() => onApprove?.(tx.id)}
+                      onClick={() => onApprove?.(tx._id)}
                       size="sm"
                       className="flex-1 bg-button text-white hover:bg-button/90"
                     >
@@ -153,7 +158,7 @@ export default function VaultFloatTransactionsMobileCards({
                       Approve
                     </Button>
                     <Button
-                      onClick={() => onReject?.(tx.id)}
+                      onClick={() => onReject?.(tx._id)}
                       size="sm"
                       variant="destructive"
                       className="flex-1"

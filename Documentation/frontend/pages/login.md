@@ -1,6 +1,7 @@
 # Login Page
 
-## Table of Contents
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** January 2026
 
 - [Overview](#overview)
 - [File Information](#file-information)

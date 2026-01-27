@@ -1,5 +1,8 @@
 # Collection Report Page
 
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** January 2026
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -270,13 +273,13 @@ Key features include:
   - **Response:** `{ success: true, data: CollectionReport }`
   - **Used By:** Create collection modals
 
-- **PUT `/api/collectionReport/[reportId]`**
+- **PATCH /api/collection-report/[reportId]**
   - **Purpose:** Update collection report
   - **Body:** Updated collection report data
   - **Response:** `{ success: true, data: CollectionReport }`
   - **Used By:** Edit collection modals
 
-- **DELETE `/api/collectionReport/[reportId]`**
+- **DELETE /api/collection-report/[reportId]**
   - **Purpose:** Delete collection report
   - **Response:** `{ success: true }`
   - **Used By:** Delete confirmation dialog

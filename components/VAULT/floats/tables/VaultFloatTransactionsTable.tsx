@@ -34,12 +34,12 @@ import { CheckCircle2, Clock, Minus, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type FloatTransactionSortOption =
-  | 'dateTime'
-  | 'cashier'
+  | 'timestamp'
+  | 'performedByName'
   | 'type'
   | 'amount'
-  | 'reason'
-  | 'status';
+  | 'notes'
+  | 'isVoid';
 
 type VaultFloatTransactionsTableProps = {
   transactions: FloatTransaction[];
@@ -91,10 +91,10 @@ export default function VaultFloatTransactionsTable({
                 'relative cursor-pointer select-none font-semibold text-white',
                 onSort && 'hover:bg-button/90'
               )}
-              onClick={onSort ? () => onSort('dateTime') : undefined}
+              onClick={onSort ? () => onSort('timestamp') : undefined}
             >
               Date/Time
-              {sortOption === 'dateTime' && (
+              {sortOption === 'timestamp' && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                   {sortOrder === 'desc' ? '▼' : '▲'}
                 </span>
@@ -105,10 +105,10 @@ export default function VaultFloatTransactionsTable({
                 'relative cursor-pointer select-none font-semibold text-white',
                 onSort && 'hover:bg-button/90'
               )}
-              onClick={onSort ? () => onSort('cashier') : undefined}
+              onClick={onSort ? () => onSort('performedByName') : undefined}
             >
               Cashier
-              {sortOption === 'cashier' && (
+              {sortOption === 'performedByName' && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                   {sortOrder === 'desc' ? '▼' : '▲'}
                 </span>
@@ -147,10 +147,10 @@ export default function VaultFloatTransactionsTable({
                 'relative cursor-pointer select-none font-semibold text-white',
                 onSort && 'hover:bg-button/90'
               )}
-              onClick={onSort ? () => onSort('reason') : undefined}
+              onClick={onSort ? () => onSort('notes') : undefined}
             >
               Reason
-              {sortOption === 'reason' && (
+              {sortOption === 'notes' && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                   {sortOrder === 'desc' ? '▼' : '▲'}
                 </span>
@@ -161,32 +161,37 @@ export default function VaultFloatTransactionsTable({
                 'relative cursor-pointer select-none font-semibold text-white',
                 onSort && 'hover:bg-button/90'
               )}
-              onClick={onSort ? () => onSort('status') : undefined}
+              onClick={onSort ? () => onSort('isVoid') : undefined}
             >
               Status
-              {sortOption === 'status' && (
+              {sortOption === 'isVoid' && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                   {sortOrder === 'desc' ? '▼' : '▲'}
                 </span>
               )}
             </TableHead>
             {showActions && (
-              <TableHead className="font-semibold text-white">Actions</TableHead>
+              <TableHead className="font-semibold text-white">
+                Actions
+              </TableHead>
             )}
           </TableRow>
         </TableHeader>
         <TableBody>
           {transactions.map(tx => {
-            const isIncrease = tx.type === 'Increase';
-            const isCompleted = tx.status === 'completed';
+            const isIncrease = tx.type === 'float_increase';
+            const isCompleted = !tx.isVoid;
 
             return (
-              <TableRow key={tx.id} className="transition-colors hover:bg-muted/30">
+              <TableRow
+                key={tx._id}
+                className="transition-colors hover:bg-muted/30"
+              >
                 <TableCell isFirstColumn className="font-medium">
-                  {tx.dateTime}
+                  {new Date(tx.timestamp).toLocaleString()}
                 </TableCell>
                 <TableCell>
-                  {tx.cashier} / {tx.station}
+                  {tx.performedByName} / {isIncrease ? tx.toName : tx.fromName}
                 </TableCell>
                 <TableCell>
                   <Badge
@@ -221,7 +226,9 @@ export default function VaultFloatTransactionsTable({
                     {formatAmount(Math.abs(tx.amount))}
                   </span>
                 </TableCell>
-                <TableCell className="text-sm text-gray-600">{tx.reason}</TableCell>
+                <TableCell className="text-sm text-gray-600">
+                  {tx.notes}
+                </TableCell>
                 <TableCell>
                   <Badge
                     className={cn(
@@ -249,14 +256,14 @@ export default function VaultFloatTransactionsTable({
                     {!isCompleted && (
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => onApprove?.(tx.id)}
+                          onClick={() => onApprove?.(tx._id)}
                           className="flex h-8 w-8 items-center justify-center rounded-full bg-button text-white hover:bg-button/90"
                           title="Approve"
                         >
                           <CheckCircle2 className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => onReject?.(tx.id)}
+                          onClick={() => onReject?.(tx._id)}
                           className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-600/90"
                           title="Reject"
                         >

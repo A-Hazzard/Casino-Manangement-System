@@ -1,9 +1,8 @@
 # Reports Page Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 2025  
+**Last Updated:** January 2026
 **Version:** 2.0.0
-
 ## Table of Contents
 
 1. [Overview](#overview)

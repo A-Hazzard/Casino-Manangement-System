@@ -19,14 +19,20 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/shared/ui/card';
+import { Button } from '@/components/shared/ui/button';
 import type { VaultBalance } from '@/shared/types/vault';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { RefreshCw } from 'lucide-react';
 
 type VaultBalanceCardProps = {
   balance: VaultBalance;
+  onReconcile?: () => void;
 };
 
-export default function VaultBalanceCard({ balance }: VaultBalanceCardProps) {
+export default function VaultBalanceCard({
+  balance,
+  onReconcile,
+}: VaultBalanceCardProps) {
   // ============================================================================
   // Hooks
   // ============================================================================
@@ -37,10 +43,21 @@ export default function VaultBalanceCard({ balance }: VaultBalanceCardProps) {
   // ============================================================================
   return (
     <Card className="w-full rounded-lg bg-container shadow-md">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg text-gray-700 sm:text-xl">
           Vault Status
         </CardTitle>
+        {onReconcile && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onReconcile}
+            className="h-8 gap-2 text-orangeHighlight hover:text-orangeHighlight/80"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Reconcile
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-4 md:flex-row md:gap-6">

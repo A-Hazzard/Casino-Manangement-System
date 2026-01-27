@@ -1,5 +1,9 @@
 # Query Results Explanation
 
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** January 2026  
+**Version:** 1.0.0
+
 ## Overview
 
 The query results show machines from the database, but most have **zero metrics** and **"Unknown Manufacturer"** because:

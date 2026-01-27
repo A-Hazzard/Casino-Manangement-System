@@ -106,6 +106,8 @@ export type PaginationControlsProps = {
   currentPage: number;
   totalPages: number;
   setCurrentPage: (page: number) => void;
+  totalCount?: number;
+  limit?: number;
 };
 
 export type LocationsCabinetGridProps = {
@@ -161,4 +163,3 @@ export type CollectorSchedule = {
   createdAt: string;
   updatedAt: string;
 };
-

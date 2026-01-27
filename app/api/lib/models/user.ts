@@ -67,6 +67,7 @@ const UserSchema = new Schema(
     roles: [
       {
         type: String,
+        enum: ALLOWED_ROLES,
         validate: [roleValidator],
       },
     ],

@@ -1,38 +1,109 @@
 /**
  * Vault Transfers Page Content Component
  *
- * Transfers page for the Vault Management application.
+ * Transfers page for Vault Management application.
  *
  * Features:
  * - Summary metrics cards
  * - New Transfer button
  * - Pending Transfers table
- * - Transfer History table
+ * - Transfer History table with pagination
  *
  * @module components/VAULT/pages/VaultTransfersPageContent
  */
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import VaultTransfersSkeleton from '@/components/ui/skeletons/VaultTransfersSkeleton';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { mockVaultTransfers, mockVaultBalance } from '@/components/VAULT/overview/data/mockData';
-import type { VaultTransfer } from '@/shared/types/vault';
+import { DEFAULT_VAULT_BALANCE } from '@/components/VAULT/overview/data/defaults';
+import type {
+  VaultTransfer,
+  Denomination,
+  VaultBalance,
+} from '@/shared/types/vault';
 import type { TransferSortOption } from './tables/VaultTransfersTable';
 import VaultTransfersTable from './tables/VaultTransfersTable';
 import VaultTransfersMobileCards from './cards/VaultTransfersMobileCards';
+import InterLocationTransferForm from './InterLocationTransferForm';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/shared/ui/dialog';
 import { Plus, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { useUserStore } from '@/lib/store/userStore';
+import {
+  fetchVaultTransfers,
+  fetchVaultBalance,
+  handleTransferSubmit,
+  handleApproveTransfer,
+  handleRejectTransfer,
+  sortTransfers,
+} from '@/lib/helpers/vaultHelpers';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
 
 export default function VaultTransfersPageContent() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
+  const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
-  const [sortOption, setSortOption] = useState<TransferSortOption>('dateTime');
+  const [loading, setLoading] = useState(true);
+  const [sortOption, setSortOption] = useState<TransferSortOption>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transfers, setTransfers] = useState<VaultTransfer[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [vaultBalance, setVaultBalance] = useState<VaultBalance>(
+    DEFAULT_VAULT_BALANCE
+  );
+  const [submittingTransfer, setSubmittingTransfer] = useState(false);
+
+  // Fetch data
+  const fetchData = async () => {
+    const locationId = user?.assignedLocations?.[0];
+    if (!locationId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const [transfersResult, balanceData] = await Promise.all([
+        fetchVaultTransfers(locationId, currentPage + 1, 20),
+        fetchVaultBalance(locationId),
+      ]);
+
+      setTransfers(transfersResult.transfers);
+      setTotalPages(transfersResult.totalPages);
+      setTotalItems(transfersResult.total);
+
+      if (balanceData) {
+        setVaultBalance({
+          ...balanceData,
+          managerOnDuty: user?.username || 'Loading...',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch data', error);
+      toast.error('Failed to load transfers data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [user?.assignedLocations, user?.username, currentPage]);
 
   // ============================================================================
   // Computed Values
@@ -40,69 +111,35 @@ export default function VaultTransfersPageContent() {
   /**
    * Filter transfers with pending status
    */
-  const pendingTransfers = mockVaultTransfers.filter((t: VaultTransfer) => t.status === 'pending');
+  const pendingTransfers = useMemo(() => {
+    return transfers.filter(t => t.status === 'pending');
+  }, [transfers]);
 
   /**
    * Sum of amounts for all pending transfers
    */
-  const pendingAmount = pendingTransfers.reduce((sum: number, t: VaultTransfer) => sum + t.amount, 0);
+  const pendingAmount = useMemo(() => {
+    return pendingTransfers.reduce((sum, t) => sum + t.amount, 0);
+  }, [pendingTransfers]);
 
   /**
    * Count of transfers completed today
-   * Filters by status and date string match
    */
-  const completedToday = mockVaultTransfers.filter(
-    (t: VaultTransfer) => t.status === 'completed' && t.dateTime.includes('20/01/2024')
-  ).length;
+  const completedToday = useMemo(() => {
+    return transfers.filter(t => {
+      if (t.status !== 'completed' && t.status !== 'approved') return false;
+      const transferDate = new Date(t.date || t.createdAt || '');
+      const today = new Date();
+      return transferDate.toDateString() === today.toDateString();
+    }).length;
+  }, [transfers]);
 
   /**
    * Sort all transfers based on sort option and order
    */
   const sortedTransfers = useMemo(() => {
-    const sorted = [...mockVaultTransfers].sort((a, b) => {
-      let aValue: string | number;
-      let bValue: string | number;
-
-      switch (sortOption) {
-        case 'dateTime':
-          aValue = new Date(a.dateTime).getTime();
-          bValue = new Date(b.dateTime).getTime();
-          break;
-        case 'from':
-          aValue = a.from.toLowerCase();
-          bValue = b.from.toLowerCase();
-          break;
-        case 'to':
-          aValue = a.to.toLowerCase();
-          bValue = b.to.toLowerCase();
-          break;
-        case 'amount':
-          aValue = a.amount;
-          bValue = b.amount;
-          break;
-        case 'initiatedBy':
-          aValue = a.initiatedBy.toLowerCase();
-          bValue = b.initiatedBy.toLowerCase();
-          break;
-        case 'approvedBy':
-          aValue = (a.approvedBy || '').toLowerCase();
-          bValue = (b.approvedBy || '').toLowerCase();
-          break;
-        case 'status':
-          aValue = a.status;
-          bValue = b.status;
-          break;
-        default:
-          return 0;
-      }
-
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    return sorted;
-  }, [sortOption, sortOrder]);
+    return sortTransfers(transfers, sortOption, sortOrder);
+  }, [sortOption, sortOrder, transfers]);
 
   /**
    * Sort pending transfers
@@ -116,37 +153,76 @@ export default function VaultTransfersPageContent() {
   // ============================================================================
   /**
    * Handle new transfer button click
-   * Placeholder for future modal implementation
    */
   const handleNewTransfer = () => {
-    toast.info('New Transfer modal will be implemented');
+    setIsTransferModalOpen(true);
+  };
+
+  /**
+   * Handle inter-location transfer submission
+   */
+  const handleTransferSubmitModal = async (
+    fromLocation: string,
+    toLocation: string,
+    amount: number,
+    denominations: Denomination[],
+    notes?: string
+  ) => {
+    setSubmittingTransfer(true);
+    try {
+      const result = await handleTransferSubmit(
+        fromLocation,
+        toLocation,
+        amount,
+        denominations,
+        notes
+      );
+
+      if (result.success) {
+        toast.success(
+          `Transfer request submitted: $${amount.toLocaleString()}`
+        );
+        setIsTransferModalOpen(false);
+        fetchData(); // Refresh list
+      } else {
+        toast.error(result.error || 'Failed to submit transfer');
+      }
+    } catch (error) {
+      console.error('Error submitting transfer:', error);
+      toast.error('An error occurred while submitting transfer');
+    } finally {
+      setSubmittingTransfer(false);
+    }
   };
 
   /**
    * Handle approve transfer action
-   * Placeholder for future API integration
-   *
-   * @param transferId - ID of transfer to approve
    */
-  const handleApprove = (transferId: string) => {
-    toast.success(`Transfer ${transferId} approved`);
+  const handleApprove = async (transferId: string) => {
+    const result = await handleApproveTransfer(transferId);
+    if (result.success) {
+      toast.success('Transfer approved');
+      fetchData(); // Refresh data for consistency
+    } else {
+      toast.error(result.error || 'Failed to approve transfer');
+    }
   };
 
   /**
    * Handle reject transfer action
-   * Placeholder for future API integration
-   *
-   * @param transferId - ID of transfer to reject
    */
-  const handleReject = (transferId: string) => {
-    toast.error(`Transfer ${transferId} rejected`);
+  const handleReject = async (transferId: string) => {
+    const result = await handleRejectTransfer(transferId);
+    if (result.success) {
+      toast.error('Transfer rejected');
+      fetchData(); // Refresh data
+    } else {
+      toast.error(result.error || 'Failed to reject transfer');
+    }
   };
 
   /**
    * Handle table column sort
-   * Toggles sort order if clicking the same column, otherwise sets new sort column
-   *
-   * @param column - Column to sort by
    */
   const handleSort = (column: TransferSortOption) => {
     if (sortOption === column) {
@@ -157,132 +233,198 @@ export default function VaultTransfersPageContent() {
     }
   };
 
+  // Show skeleton while loading
+  if (loading && transfers.length === 0) {
+    return (
+      <PageLayout showHeader={false}>
+        <VaultTransfersSkeleton />
+      </PageLayout>
+    );
+  }
+
   // ============================================================================
   // Render
   // ============================================================================
   return (
     <PageLayout showHeader={false}>
       <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Transfers</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Transfer funds between vaults, cash desks, and banks
-        </p>
-      </div>
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Transfers</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Transfer funds between vaults, cash desks, and banks
+          </p>
+        </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="rounded-lg bg-container shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Vault Balance</p>
-                <p className="break-words text-xl font-bold text-orangeHighlight sm:text-2xl">
-                  {formatAmount(mockVaultBalance.balance)}
-                </p>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="rounded-lg bg-container shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    Vault Balance
+                  </p>
+                  <p className="break-words text-xl font-bold text-orangeHighlight sm:text-2xl">
+                    {formatAmount(vaultBalance.balance)}
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-lg bg-container shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending Transfers</p>
-                <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">
-                  {pendingTransfers.length}
-                </p>
+          <Card className="rounded-lg bg-container shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    Pending Transfers
+                  </p>
+                  <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">
+                    {pendingTransfers.length}
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-lg bg-container shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending Amount</p>
-                <p className="break-words text-xl font-bold text-button sm:text-2xl">
-                  {formatAmount(pendingAmount)}
-                </p>
+          <Card className="rounded-lg bg-container shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    Pending Amount
+                  </p>
+                  <p className="break-words text-xl font-bold text-button sm:text-2xl">
+                    {formatAmount(pendingAmount)}
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-lg bg-container shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Completed Today</p>
-                <p className="text-2xl font-bold text-gray-900">{completedToday}</p>
+          <Card className="rounded-lg bg-container shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    Completed Today
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {completedToday}
+                  </p>
+                </div>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* New Transfer Button */}
+        <div>
+          <Button
+            onClick={handleNewTransfer}
+            className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
+            size="lg"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            New Transfer
+          </Button>
+        </div>
+
+        {/* Pending Transfers Section */}
+        {sortedPendingTransfers.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-orangeHighlight" />
+              <h2 className="text-lg font-semibold text-gray-900">
+                Pending Transfers ({sortedPendingTransfers.length})
+              </h2>
             </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* New Transfer Button */}
-      <div>
-        <Button
-          onClick={handleNewTransfer}
-          className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
-          size="lg"
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          New Transfer
-        </Button>
-      </div>
+            {/* Desktop Table View - lg and above */}
+            <div className={loading ? 'pointer-events-none opacity-50' : ''}>
+              <VaultTransfersTable
+                transfers={sortedPendingTransfers}
+                sortOption={sortOption}
+                sortOrder={sortOrder}
+                onSort={handleSort}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                showActions={true}
+              />
+            </div>
 
-      {/* Pending Transfers Section */}
-      {sortedPendingTransfers.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-orangeHighlight" />
-            <h2 className="text-lg font-semibold text-gray-900">
-              Pending Transfers ({sortedPendingTransfers.length})
-            </h2>
+            {/* Mobile/Tablet Card View - below lg */}
+            <div
+              className={
+                loading ? 'pointer-events-none opacity-50' : 'block lg:hidden'
+              }
+            >
+              <VaultTransfersMobileCards
+                transfers={sortedPendingTransfers}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                showActions={true}
+              />
+            </div>
           </div>
+        )}
+
+        {/* Transfer History Section */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Transfer History
+          </h2>
 
           {/* Desktop Table View - lg and above */}
-          <VaultTransfersTable
-            transfers={sortedPendingTransfers}
-            sortOption={sortOption}
-            sortOrder={sortOrder}
-            onSort={handleSort}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            showActions={true}
-          />
+          <div className={loading ? 'pointer-events-none opacity-50' : ''}>
+            <VaultTransfersTable
+              transfers={sortedTransfers}
+              sortOption={sortOption}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+            />
+          </div>
 
           {/* Mobile/Tablet Card View - below lg */}
-          <VaultTransfersMobileCards
-            transfers={sortedPendingTransfers}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            showActions={true}
-          />
+          <div
+            className={
+              loading ? 'pointer-events-none opacity-50' : 'block lg:hidden'
+            }
+          >
+            <VaultTransfersMobileCards transfers={sortedTransfers} />
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="mt-4">
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                setCurrentPage={setCurrentPage}
+                totalCount={totalItems}
+                limit={20}
+              />
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Transfer History Section */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Transfer History</h2>
-
-        {/* Desktop Table View - lg and above */}
-        <VaultTransfersTable
-          transfers={sortedTransfers}
-          sortOption={sortOption}
-          sortOrder={sortOrder}
-          onSort={handleSort}
-        />
-
-        {/* Mobile/Tablet Card View - below lg */}
-        <VaultTransfersMobileCards transfers={sortedTransfers} />
       </div>
-      </div>
+
+      {/* Inter-Location Transfer Modal */}
+      <Dialog open={isTransferModalOpen} onOpenChange={setIsTransferModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>New Inter-Location Transfer</DialogTitle>
+            <DialogDescription>
+              Initiate a cash transfer request between locations.
+            </DialogDescription>
+          </DialogHeader>
+          <InterLocationTransferForm
+            onSubmit={handleTransferSubmitModal}
+            loading={submittingTransfer}
+          />
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }

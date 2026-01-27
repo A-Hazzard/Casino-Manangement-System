@@ -18,7 +18,10 @@
 import { Badge } from '@/components/shared/ui/badge';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import type { ExtendedVaultTransaction, VaultTransactionType } from '@/shared/types/vault';
+import type {
+  ExtendedVaultTransaction,
+  VaultTransactionType,
+} from '@/shared/types/vault';
 import { cn } from '@/lib/utils';
 
 type VaultTransactionsMobileCardsProps = {
@@ -55,26 +58,32 @@ export default function VaultTransactionsMobileCards({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {transactions.map(tx => {
           const isPositive = tx.amount > 0;
-          const isCompleted = tx.status === 'completed';
 
           return (
-            <Card key={tx.id} className="overflow-hidden rounded-lg bg-container shadow-md">
+            <Card
+              key={tx._id}
+              className="overflow-hidden rounded-lg bg-container shadow-md"
+            >
               <CardContent className="p-4">
                 {/* Header: Date and Status */}
                 <div className="mb-3 flex items-start justify-between border-b pb-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{tx.date}</p>
-                    <p className="text-xs text-gray-500">{tx.user}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {new Date(tx.timestamp).toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {tx.performedByName || 'System'}
+                    </p>
                   </div>
                   <Badge
                     className={cn(
                       'px-2 py-1 text-xs',
-                      isCompleted
+                      !tx.isVoid
                         ? 'bg-button text-white hover:bg-button/90'
                         : 'bg-orangeHighlight text-white hover:bg-orangeHighlight/90'
                     )}
                   >
-                    {tx.status === 'completed' ? 'Completed' : 'Pending'}
+                    {!tx.isVoid ? 'Completed' : 'Voided'}
                   </Badge>
                 </div>
 
@@ -99,19 +108,27 @@ export default function VaultTransactionsMobileCards({
                 <div className="mb-3 grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-xs text-gray-500">Source</p>
-                    <p className="font-medium text-gray-900">{tx.source || '-'}</p>
+                    <p className="font-medium text-gray-900">
+                      {tx.fromName || tx.from.type || '-'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Destination</p>
-                    <p className="font-medium text-gray-900">{tx.destination || '-'}</p>
+                    <p className="font-medium text-gray-900">
+                      {tx.toName || tx.to.type || '-'}
+                    </p>
                   </div>
                 </div>
 
                 {/* Denominations */}
-                {tx.denominations && (
+                {tx.denominations && tx.denominations.length > 0 && (
                   <div className="mb-3">
                     <p className="text-xs text-gray-500">Denominations</p>
-                    <p className="text-sm font-medium text-gray-900">{tx.denominations}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {tx.denominations
+                        .map(d => `$${d.denomination}x${d.quantity}`)
+                        .join(', ')}
+                    </p>
                   </div>
                 )}
 

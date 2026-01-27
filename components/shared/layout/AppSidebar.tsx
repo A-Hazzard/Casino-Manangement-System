@@ -25,13 +25,14 @@
 import ProfileModal from '@/components/shared/layout/ProfileModal';
 import { ClientOnly } from '@/components/shared/ui/ClientOnly';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/shared/ui/select';
 import { SidebarContainer, useSidebar } from '@/components/shared/ui/sidebar';
+import { cmsNavigationConfig } from '@/lib/constants';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { logoutUser } from '@/lib/helpers/client';
 import { fetchUserId } from '@/lib/helpers/user';
@@ -48,7 +49,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { cmsNavigationConfig } from '@/lib/constants';
 const DEFAULT_AVATAR = '/defaultAvatar.svg';
 
 // ============================================================================
@@ -147,6 +147,17 @@ export default function AppSidebar({
             pageName = 'machines';
           }
 
+          // Map vault pages
+          if (pageName.startsWith('vault/management')) {
+            pageName = 'vault-management';
+          }
+          if (pageName.startsWith('vault/cashier')) {
+            pageName = 'vault-cashier';
+          }
+          if (pageName === 'vault/role-selection') {
+            pageName = 'vault-role-selection';
+          }
+
           // Only check permissions for known CMS pages
           const cmsPages = [
             'dashboard',
@@ -157,6 +168,9 @@ export default function AppSidebar({
             'reports',
             'sessions',
             'administration',
+            'vault-management',
+            'vault-cashier',
+            'vault-role-selection',
           ] as const;
 
           if (cmsPages.includes(pageName as (typeof cmsPages)[number])) {
@@ -170,6 +184,9 @@ export default function AppSidebar({
                 | 'reports'
                 | 'sessions'
                 | 'administration'
+                | 'vault-management'
+                | 'vault-cashier'
+                | 'vault-role-selection'
             );
             return { href: item.href, hasAccess };
           }

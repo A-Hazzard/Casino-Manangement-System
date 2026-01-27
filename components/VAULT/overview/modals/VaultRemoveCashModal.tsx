@@ -35,7 +35,10 @@ import {
   SelectValue,
 } from '@/components/shared/ui/select';
 import { Textarea } from '@/components/shared/ui/textarea';
-import type { CashDestination, DenominationBreakdown } from '@/shared/types/vault';
+import type {
+  CashDestination,
+  DenominationBreakdown,
+} from '@/shared/types/vault';
 
 type VaultRemoveCashModalProps = {
   open: boolean;
@@ -69,8 +72,8 @@ const DENOMINATIONS = [
  */
 const CASH_DESTINATIONS: CashDestination[] = [
   'Bank Deposit',
-  'Owner Draw',
-  'Float Increase',
+  'Owner Drawing',
+  'ATM Fill',
 ];
 
 export default function VaultRemoveCashModal({
@@ -135,13 +138,13 @@ export default function VaultRemoveCashModal({
     const numValue = parseInt(value, 10) || 0;
     if (numValue < 0) return;
 
-    setBreakdown(prev => ({
+    setBreakdown((prev: DenominationBreakdown) => ({
       ...prev,
       [key]: numValue,
     }));
     // Clear error for this field
     if (errors[key]) {
-      setErrors(prev => {
+      setErrors((prev: Record<string, string>) => {
         const newErrors = { ...prev };
         delete newErrors[key];
         return newErrors;

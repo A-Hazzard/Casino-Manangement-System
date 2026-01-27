@@ -1,0 +1,195 @@
+/**
+ * Soft Count Form Component
+ *
+ * Form for Vault Manager to record soft count cash removal from machines during operation.
+ * Allows replenishing vault float without ending the day.
+ *
+ * @module components/VAULT/machine/SoftCountForm
+ */
+
+'use client';
+
+import { useState } from 'react';
+import { Button } from '@/components/shared/ui/button';
+import { Input } from '@/components/shared/ui/input';
+import { Label } from '@/components/shared/ui/label';
+import { Textarea } from '@/components/shared/ui/textarea';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import type { Denomination } from '@/shared/types/vault';
+import { cn } from '@/lib/utils';
+import { RefreshCw } from 'lucide-react';
+
+type SoftCountFormProps = {
+  onSubmit: (
+    machineId: string,
+    amount: number,
+    denominations: Denomination[],
+    notes?: string
+  ) => Promise<void>;
+  loading?: boolean;
+};
+
+const DEFAULT_DENOMINATIONS: Denomination['denomination'][] = [
+  1, 5, 10, 20, 50, 100,
+];
+
+export default function SoftCountForm({
+  onSubmit,
+  loading = false,
+}: SoftCountFormProps) {
+  const { formatAmount } = useCurrencyFormat();
+  const [machineId, setMachineId] = useState('');
+  const [notes, setNotes] = useState('');
+  const [denominations, setDenominations] = useState<Denomination[]>(
+    DEFAULT_DENOMINATIONS.map(denom => ({ denomination: denom, quantity: 0 }))
+  );
+
+  const totalAmount = denominations.reduce(
+    (sum, d) => sum + d.denomination * d.quantity,
+    0
+  );
+
+  const updateQuantity = (index: number, quantity: number) => {
+    if (quantity < 0) return;
+    const newDenominations = [...denominations];
+    newDenominations[index] = { ...newDenominations[index], quantity };
+    setDenominations(newDenominations as Denomination[]);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!machineId.trim()) {
+      alert('Please enter a machine ID');
+      return;
+    }
+    if (totalAmount === 0) {
+      alert('Please specify at least one denomination with quantity > 0');
+      return;
+    }
+    const filteredDenominations = denominations.filter(d => d.quantity > 0);
+    try {
+      await onSubmit(
+        machineId.trim(),
+        totalAmount,
+        filteredDenominations,
+        notes.trim() || undefined
+      );
+      setMachineId('');
+      setNotes('');
+      setDenominations(
+        DEFAULT_DENOMINATIONS.map(denom => ({
+          denomination: denom,
+          quantity: 0,
+        }))
+      );
+    } catch {
+      // Error handled by parent
+    }
+  };
+
+  return (
+    <Card className="rounded-lg bg-container shadow-md">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+          <RefreshCw className="h-5 w-5" />
+          Soft Count
+        </CardTitle>
+        <p className="text-sm text-gray-600">
+          Mid-day cash removal to replenish vault float
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label
+              htmlFor="machineId"
+              className="text-sm font-medium text-gray-700"
+            >
+              Machine ID *
+            </Label>
+            <Input
+              id="machineId"
+              type="text"
+              value={machineId}
+              onChange={e => setMachineId(e.target.value)}
+              placeholder="Enter machine ID"
+              className="mt-1"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">
+              Cash Removed
+            </Label>
+            <div className="grid grid-cols-2 gap-4">
+              {denominations.map((denom, index) => (
+                <div key={denom.denomination} className="space-y-2">
+                  <Label className="text-xs text-gray-600">
+                    ${denom.denomination} Bills
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={denom.quantity}
+                    onChange={e =>
+                      updateQuantity(index, parseInt(e.target.value) || 0)
+                    }
+                    className="text-center"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <Label
+              htmlFor="notes"
+              className="text-sm font-medium text-gray-700"
+            >
+              Notes
+            </Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Optional notes about the soft count"
+              className="mt-1"
+              rows={2}
+            />
+          </div>
+
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">
+                Total Removed:
+              </span>
+              <span
+                className={cn(
+                  'text-lg font-bold',
+                  totalAmount > 0 ? 'text-orangeHighlight' : 'text-gray-500'
+                )}
+              >
+                {formatAmount(totalAmount)}
+              </span>
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={loading || !machineId.trim() || totalAmount === 0}
+            className="w-full bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
+          >
+            {loading ? 'Recording...' : 'Record Soft Count'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}

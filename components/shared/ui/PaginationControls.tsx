@@ -27,6 +27,8 @@ export default function PaginationControls({
   currentPage,
   totalPages,
   setCurrentPage,
+  totalCount,
+  limit = 20,
 }: PaginationControlsProps) {
   if (totalPages <= 0) {
     return null; // Don't render pagination if there are no pages
@@ -46,13 +48,22 @@ export default function PaginationControls({
     setCurrentPage(val - 1);
   };
 
+  const startItem = currentPage * limit + 1;
+  const endItem = Math.min((currentPage + 1) * limit, totalCount || 0);
+
   return (
-    <>
-      {/* Mobile Pagination */}
-      <div className="mt-8 flex flex-col space-y-3 sm:hidden">
-        <div className="text-center text-xs text-gray-600">
-          Page {currentPage + 1} of {totalPages}
+    <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+      {totalCount !== undefined && (
+        <div className="text-sm text-gray-600">
+          Showing <span className="font-medium text-gray-900">{startItem}</span>{' '}
+          to <span className="font-medium text-gray-900">{endItem}</span> of{' '}
+          <span className="font-medium text-gray-900">{totalCount}</span>{' '}
+          results
         </div>
+      )}
+
+      {/* Mobile Pagination */}
+      <div className="flex w-full flex-col space-y-3 sm:hidden">
         <div className="flex items-center justify-center space-x-2">
           <Button
             variant="outline"
@@ -111,7 +122,7 @@ export default function PaginationControls({
       </div>
 
       {/* Desktop Pagination */}
-      <div className="mt-8 hidden items-center justify-center space-x-2 sm:flex">
+      <div className="hidden items-center justify-center space-x-2 sm:flex">
         <Button
           variant="outline"
           size="icon"
@@ -166,7 +177,6 @@ export default function PaginationControls({
           <DoubleArrowRightIcon className="h-4 w-4" />
         </Button>
       </div>
-    </>
+    </div>
   );
 }
-

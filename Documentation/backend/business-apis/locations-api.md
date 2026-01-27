@@ -1,6 +1,7 @@
 # Locations API
 
-## Table of Contents
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** January 2026
 
 - [Overview](#overview)
 - [Base URL](#base-url)

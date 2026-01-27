@@ -38,7 +38,7 @@ export default function VaultCashDeskCard({
   /**
    * Check if cash desk is currently open
    */
-  const isOpen = cashDesk.status === 'open';
+  const isOpen = cashDesk.status === 'active';
 
   // ============================================================================
   // Render
@@ -66,15 +66,17 @@ export default function VaultCashDeskCard({
 
           {/* Cashier */}
           <div>
-            <p className="text-sm font-medium text-gray-600">Cashier</p>
-            <p className="break-words text-base text-gray-900">{cashDesk.cashier}</p>
+            <p className="text-sm font-medium text-gray-600">Manager on Duty</p>
+            <p className="break-words text-base text-gray-900">
+              {cashDesk.managerOnDuty}
+            </p>
           </div>
 
           {/* Float */}
           <div className="border-t border-gray-200 pt-4">
-            <p className="text-sm font-medium text-gray-600">Float</p>
+            <p className="text-sm font-medium text-gray-600">Balance</p>
             <p className="break-words text-xl font-bold text-gray-900">
-              {formatAmount(cashDesk.float)}
+              {formatAmount(cashDesk.balance)}
             </p>
           </div>
         </div>

@@ -1,7 +1,7 @@
 # Locations Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer
-**Last Updated:** January 2025
+**Last Updated:** January 2026
 **Version:** 3.1.0
 
 ## Table of Contents
@@ -61,7 +61,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 - `components/ui/FinancialMetricsCards.tsx` - Reusable metrics cards component
 
 **Data Sources:**
-1. **Metrics Totals:** Fetched from `GET /api/dashboard/totals` (if available)
+1. **Metrics Totals:** Fetched from `GET /api/locationAggregation` (if available)
 2. **Financial Totals:** Calculated client-side from location data (fallback)
 
 **Data Flow:**
@@ -268,7 +268,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
    - Used by: `useLocationData` hook
    - Returns: Location array with financial metrics, pagination info, currency info
 
-2. **`GET /api/dashboard/totals`**
+2. **`GET /api/locationAggregation`**
    - Returns aggregated financial totals
    - Parameters: `timePeriod`, `licensee`, `currency`, `startDate`, `endDate`
    - Used by: Financial metrics cards (if available)

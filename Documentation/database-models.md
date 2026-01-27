@@ -1,8 +1,8 @@
 # Database Models & Relationships
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 2025  
-**Version:** 2.3.0
+**Last Updated:** January 2026  
+**Version:** 3.0.0
 
 ## Table of Contents
 
@@ -44,7 +44,12 @@ Licencee (licencee.ts)
 │   ├── Collection (collections.ts) - Collection reports
 │   └── CollectionReport (collectionReport.ts) - Financial summaries
 ├── User (user.ts) - Authentication & permissions
-└── Member (members.ts) - Player management
+├── Member (members.ts) - Player management
+├── Vault (vault-related collections)
+│   ├── FloatRequest (floatRequests.ts)
+│   ├── Payout (cashDeskPayouts.ts)
+│   └── Shift (shifts.ts)
+└── Firmware (firmware.ts) - Firmware management
 ```
 
 ## Key Models Used in UI
@@ -61,6 +66,12 @@ Machine {
   serialNumber: string;           // Machine identification
   gamingLocation: string;         // Links to GamingLocation
   status: "online" | "offline";   // Machine status for UI display
+  relayId: string;               // SMIB controller identifier
+  smibConfig: SmibConfig;        // Device configuration
+  smibVersion: {
+    firmware: string;
+    version: string;
+  };
 
   // Financial Data (Primary UI Source)
   sasMeters: {
@@ -75,7 +86,10 @@ Machine {
   collectionMetersHistory: [{
     metersIn: number;             // Money in at collection start
     metersOut: number;            // Money in at collection end
+    prevMetersIn: number;         // Baseline for deltas
+    prevMetersOut: number;        // Baseline for deltas
     timestamp: Date;              // Collection timestamp
+    locationReportId: string;     // Reference to report
   }];
 
   // Machine Configuration
@@ -111,7 +125,7 @@ Meter {
     coinIn: number;               // Handle - betting activity
     jackpot: number;              // Jackpot payouts
     gamesPlayed: number;          // Game activity
-    gamesWon: number;             // Games won count (for member sessions, retrieved from endMeters.movement.gamesWon)
+    gamesWon: number;             // Games won count (for member sessions)
     currentCredits: number;       // Current credits in machine
     totalWonCredits: number;      // Total credits won
     totalHandPaidCancelledCredits: number; // Hand-paid credits
@@ -124,64 +138,12 @@ Meter {
   totalCancelledCredits: number;
   jackpot: number;
   gamesPlayed: number;
-  gamesWon: number;
-  currentCredits: number;
-  totalWonCredits: number;
-  totalHandPaidCancelledCredits: number;
-
-  // SAS Meters (embedded SAS data)
-  sasMeters: {
-    drop: number;
-    coinIn: number;
-    coinOut: number;
-    totalCancelledCredits: number;
-    jackpot: number;
-    gamesPlayed: number;
-    // ... other SAS fields
-  };
-
-  // Bill Validator Meters
-  billMeters: {
-    dollar1: number;
-    dollar2: number;
-    dollar5: number;
-    // ... other denominations
-    dollarTotal: number;
-  };
+  lastSasMeterAt?: Date;
+  lastBillMeterAt?: Date;
 
   createdAt: Date;
   updatedAt: Date;
 }
-```
-
-**API Query Pattern**:
-
-```typescript
-// ✅ CORRECT - How aggregation APIs query meters
-db.collection('meters').aggregate([
-  {
-    $match: {
-      machine: { $in: machineIds },
-      readAt: { $gte: startDate, $lte: endDate }, // Use readAt, not timestamp
-    },
-  },
-  {
-    $group: {
-      _id: '$machine',
-      moneyIn: { $sum: '$movement.drop' }, // Use movement field
-      moneyOut: { $sum: '$movement.totalCancelledCredits' },
-    },
-  },
-]);
-
-// ❌ INCORRECT - Will return $0 if missing movement field
-db.collection('meters').aggregate([
-  {
-    $group: {
-      moneyIn: { $sum: '$sasMeters.drop' }, // Wrong - aggregation uses movement
-    },
-  },
-]);
 ```
 
 ### 3. GamingLocation Model (Location Management)
@@ -201,121 +163,40 @@ GamingLocation {
     latitude: number;
     longitude: number;
   };
+  membershipEnabled: boolean;
+  isLocalServer: boolean;
   deletedAt?: Date;               // Soft delete flag
 }
 ```
 
-### 4. CollectionReport Model (Financial Summaries)
+### 4. Vault Models (Cash Management)
 
-**Purpose**: Aggregates collection data for financial reporting.
+**Purpose**: Manages cash handling, float requests, and cashier shifts.
 
-**Key Fields Used in UI**:
+**Key Models**:
 
 ```typescript
-CollectionReport {
+FloatRequest {
   _id: string;
-  location: string;               // Links to GamingLocation
-  date: string;                   // Report date
+  type: "FLOAT_INCREASE" | "FLOAT_DECREASE";
+  cashierId: string;
+  requestedDenom: Record<string, number>;
+  requestedTotalAmount: number;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  locationId: string;
+  shiftId: string;
+}
 
-  // Financial Summary (UI Display)
-  totalDrop: number;              // Total money in across location
-  totalGross: number;             // Total gross revenue
-  amountCollected: number;        // Total collected amount
-  variance: number;               // Any discrepancies
+Shift {
+  _id: string;
+  userId: string;
+  locationId: string;
+  startDenom: Record<string, number>;
+  endDenom?: Record<string, number>;
+  status: "OPEN" | "CLOSED";
+  startedShiftAt: Date;
 }
 ```
-
-## Financial Data Flow
-
-### Primary Financial Flow: Machine → Meters → UI
-
-```
-Machine (machines.ts)
-├── sasMeters - Current financial state (fallback data)
-│   ├── drop → Money In (UI: Financial Metrics Cards)
-│   ├── totalCancelledCredits → Money Out (UI: Financial Metrics Cards)
-│   ├── coinIn → Handle (UI: Machine Evaluation)
-│   └── jackpot → Jackpot (UI: Location Tables)
-└── collectionMetersHistory - Collection data (UI: Collection Reports)
-    ├── metersIn → Collection start amount
-    └── metersOut → Collection end amount
-
-Meter (meters.ts) - Primary data source
-├── movement - Financial metrics (primary UI data)
-│   ├── drop → Money In (UI: Dashboard, Reports)
-│   ├── totalCancelledCredits → Money Out (UI: Dashboard, Reports)
-│   ├── coinIn → Handle (UI: Machine Performance)
-│   └── jackpot → Jackpot (UI: Location Performance)
-└── readAt → Date filtering for reports
-
-CollectionReport (collectionReport.ts) - Aggregated summaries
-├── totalDrop → Location total Money In
-├── totalGross → Location total Gross Revenue
-└── amountCollected → Total collections
-```
-
-## Important Relationships
-
-### 1. **Licencee → GamingLocation → Machine**
-
-- **Purpose**: Multi-tenant architecture for casino management
-- **UI Usage**: Location filtering and machine organization
-- **Key Fields**: `rel.licencee` → `gamingLocation` → `_id`
-
-### 2. **Machine → Meter (Financial Data)**
-
-- **Purpose**: Primary financial metrics for UI components
-- **UI Usage**: Dashboard, Reports, Machine Performance
-- **Key Fields**: `machine._id` → `meter.machine`
-- **Data Flow**: `meter.movement` → UI financial calculations
-
-### 3. **Machine → CollectionMetersHistory (Collection Data)**
-
-- **Purpose**: Collection-specific financial tracking
-- **UI Usage**: Collection Reports and accounting details
-- **Key Fields**: Embedded in `machine.collectionMetersHistory`
-- **Data Flow**: Collection timestamps and meter readings
-
-### 4. **GamingLocation → CollectionReport (Financial Summaries)**
-
-- **Purpose**: Location-wide financial aggregation
-- **UI Usage**: Location performance and financial summaries
-- **Key Fields**: `location` → `collectionReport.location`
-- **Data Flow**: Aggregated totals for location reporting
-
-## Summary
-
-This focused documentation covers the essential database models and relationships that drive the Evolution One Casino Management System UI:
-
-### Key Models
-
-- **Machines**: Primary UI data source with financial metrics and status
-- **Meters**: Financial metrics source with movement data
-- **GamingLocation**: Location management and organization
-- **CollectionReport**: Financial summaries and aggregated data
-
-### Core Financial Fields
-
-- **Money In**: `movement.drop` (primary) / `sasMeters.drop` (fallback)
-- **Money Out**: `movement.totalCancelledCredits` (primary) / `sasMeters.totalCancelledCredits` (fallback)
-- **Gross Revenue**: Money In - Money Out
-- **Handle**: `movement.coinIn` for betting activity
-- **Jackpot**: `movement.jackpot` for large payouts
-
-### UI Data Flow
-
-- **Dashboard**: Financial Metrics Cards using Money In/Out/Gross
-- **Reports**: Location and Machine performance with aggregated metrics
-- **Collection Reports**: Collection-specific meter readings and history
-
-### Critical Relationships
-
-- **Licencee → GamingLocation → Machine**: Multi-tenant architecture
-- **Machine → Meter**: Primary financial data source
-- **Machine → CollectionMetersHistory**: Collection tracking
-- **GamingLocation → CollectionReport**: Location aggregation
-- **User → GamingLocation**: Access control and permissions
-- **User → Licencee**: Multi-tenant user management
 
 ## User Model (user.ts)
 
@@ -328,7 +209,7 @@ The User model manages authentication, authorization, and user profile data for 
 interface User {
   _id: string;              // Unique user identifier (string-based UUID)
   isEnabled: boolean;       // Account enabled status (default: true)
-  roles: string[];          // User roles: ['developer', 'admin', 'manager', 'location admin', 'technician', 'collector']
+  roles: string[];          // User roles: ['developer', 'admin', 'manager', 'location admin', 'vault-manager', 'cashier', 'technician', 'collector']
   username: string;         // Required username (unique, indexed)
   emailAddress: string;     // Email address (unique, indexed, required)
   assignedLocations?: string[];  // Array of location IDs user has access to
@@ -360,7 +241,7 @@ interface User {
   profilePicture?: string;   // Profile picture URL
   password: string;          // Hashed password (bcrypt)
   passwordUpdatedAt?: Date;  // Last password update timestamp
-  sessionVersion?: number;   // Session invalidation version (default: 1)
+  sessionVersion?: number;   // Session invalidation version (default: 1);
   loginCount?: number;       // Number of successful logins
   lastLoginAt?: Date;        // Last successful login timestamp
   deletedAt?: Date;          // Soft delete timestamp
@@ -368,94 +249,3 @@ interface User {
   updatedAt: Date;           // Last modification timestamp
 }
 ```
-
-### Key Features
-
-#### Authentication Fields
-- **Password Security**: Bcrypt-hashed passwords with salt rounds
-- **Session Management**: Version-based session invalidation for security
-- **Login Tracking**: Audit trail with login counts and timestamps
-
-#### Authorization Fields
-- **Role-Based Access**: Hierarchical permission system
-- **Location Access**: Granular location-based permissions
-- **Licensee Access**: Multi-tenant licensee-based restrictions
-
-#### Profile Management
-- **Comprehensive Profile**: Support for personal, contact, and identification data
-- **Validation Rules**: Strict validation for required profile fields
-- **Address Management**: Structured address storage with validation
-
-### Relationships
-
-#### With Gaming Locations
-```javascript
-// User has access to specific locations
-{
-  _id: "user-123",
-  assignedLocations: ["location-1", "location-2"],
-  assignedLicensees: ["licensee-a"]
-}
-```
-
-#### With Licensees
-```javascript
-// Multi-tenant user access
-{
-  _id: "user-123",
-  assignedLicensees: ["licensee-a", "licensee-b"],
-  // Inherits access to all locations under assigned licensees
-}
-```
-
-### Database Optimizations
-
-#### Indexes
-- `username`: Unique, ascending - Fast username lookups
-- `emailAddress`: Unique, ascending - Fast email lookups
-- Compound indexes for common query patterns
-
-#### Query Patterns
-- **Authentication**: `findOne({ emailAddress })` or `findOne({ username })`
-- **Permission Checks**: `findOne({ _id, assignedLocations: { $in: [...] } })`
-- **Licensee Filtering**: `findOne({ assignedLicensees: { $in: [...] } })`
-
-### TypeScript Integration
-
-#### Lean Object Handling
-```typescript
-// Database queries return lean objects for performance
-const user = await UserModel.findOne({ emailAddress }).lean() as LeanUserDocument | null;
-
-// Type-safe property access
-const userData = {
-  id: user._id,
-  email: user.emailAddress,
-  roles: user.roles,
-  locations: user.assignedLocations
-};
-```
-
-#### Type Definitions
-- `UserDocument`: Full Mongoose document interface
-- `LeanUserDocument`: Optimized lean query result interface
-- `UserAuthPayload`: Authentication response payload
-
-### Security Considerations
-
-#### Password Management
-- Bcrypt hashing with configurable salt rounds
-- Password update tracking for security policies
-- Password strength validation gates
-
-#### Session Security
-- JWT tokens with configurable expiration
-- Session version invalidation on security events
-- HTTP-only cookie storage for tokens
-
-#### Access Control
-- Role-based permissions with hierarchical access
-- Location-based data filtering
-- Licensee-based multi-tenancy enforcement
-
-This focused approach ensures developers understand exactly which database fields and relationships drive the UI components and how to implement them correctly.

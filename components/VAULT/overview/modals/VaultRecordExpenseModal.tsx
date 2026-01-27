@@ -55,10 +55,11 @@ type VaultRecordExpenseModalProps = {
  * Available expense categories for recording vault expenses
  */
 const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  'Stationery',
-  'Cleaning',
-  'Maintenance',
-  'F&B',
+  'Supplies',
+  'Repairs',
+  'Bills',
+  'Licenses',
+  'Other',
 ];
 
 export default function VaultRecordExpenseModal({
@@ -108,9 +109,7 @@ export default function VaultRecordExpenseModal({
     // Prevent multiple decimal points
     const parts = cleaned.split('.');
     const formatted =
-      parts.length > 2
-        ? parts[0] + '.' + parts.slice(1).join('')
-        : cleaned;
+      parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned;
     setAmount(formatted);
     if (errors.amount) {
       setErrors(prev => {

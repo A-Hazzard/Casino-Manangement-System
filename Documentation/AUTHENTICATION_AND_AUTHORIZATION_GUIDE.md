@@ -1,8 +1,8 @@
 # Authentication and Authorization Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 2025  
-**Version:** 1.0.0
+**Last Updated:** January 2026  
+**Version:** 1.1.0
 
 ## Table of Contents
 
@@ -51,8 +51,10 @@ The system supports the following roles (in priority order):
 2. **Admin** - High-level administrative functions with most system access
 3. **Manager** - Operational oversight with management-level permissions
 4. **Location Admin** - Location-specific management within assigned locations
-5. **Technician** - Technical operations focused on machines and systems
-6. **Collector** - Collection operations focused on money collection
+5. **Vault Manager** - Vault and cash management operations
+6. **Cashier** - Cash handling and payout operations
+7. **Technician** - Technical operations focused on machines and systems
+8. **Collector** - Collection operations focused on money collection
 
 ### Role Hierarchy
 
@@ -61,6 +63,8 @@ Higher roles inherit permissions from lower roles:
 - **Developer/Admin**: Can access everything
 - **Manager**: Can access most pages except admin-only features
 - **Location Admin**: Can access location-specific pages
+- **Vault Manager**: Specialized access to vault management
+- **Cashier**: Access to cashier-specific operations
 - **Technician**: Can access machines and location details
 - **Collector**: Can only access collection reports
 
@@ -110,14 +114,16 @@ export default function YourPage() {
 - `"reports"` - Reports page
 - `"sessions"` - Sessions page
 - `"administration"` - Administration page
+- `"vault-management"` - Vault management overview
+- `"vault-cashier"` - Cashier operation pages
 
 **Page Permissions (from `lib/utils/permissions.ts`):**
 
 ```typescript
 const pagePermissions: Record<PageName, string[]> = {
   dashboard: ['developer', 'admin', 'manager', 'location admin'],
-  machines: ['developer', 'admin', 'manager', 'location admin', 'technician'],
-  locations: ['developer', 'admin', 'manager', 'location admin'],
+  machines: ['developer', 'admin', 'manager', 'location admin', 'technician', 'collector'],
+  locations: ['developer', 'admin', 'manager', 'location admin', 'collector'],
   'location-details': [
     'developer',
     'admin',
@@ -125,8 +131,8 @@ const pagePermissions: Record<PageName, string[]> = {
     'location admin',
     'technician',
   ],
-  members: ['developer', 'admin'], // Admin-only
-  'member-details': ['developer', 'admin'], // Admin-only
+  members: ['developer', 'admin', 'manager'], 
+  'member-details': ['developer', 'admin', 'manager', 'location admin', 'technician'], 
   'collection-report': [
     'developer',
     'admin',
@@ -135,8 +141,10 @@ const pagePermissions: Record<PageName, string[]> = {
     'collector',
   ],
   reports: ['developer', 'admin', 'manager', 'location admin'],
-  sessions: ['developer', 'admin'], // Admin-only
-  administration: ['developer', 'admin', 'manager', 'location admin'],
+  sessions: ['developer', 'admin', 'manager', 'location admin', 'technician'], 
+  administration: ['developer', 'admin', 'manager'],
+  'vault-management': ['developer', 'admin', 'manager', 'location admin', 'vault-manager'],
+  'vault-cashier': ['developer', 'admin', 'manager', 'location admin', 'vault-manager', 'cashier'],
 };
 ```
 

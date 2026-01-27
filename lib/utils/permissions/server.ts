@@ -11,10 +11,10 @@
  * - Role priority determination
  */
 
-import { useUserStore } from '@/lib/store/userStore';
-import { PageName } from './client';
 import { UserRole } from '@/lib/constants';
+import { useUserStore } from '@/lib/store/userStore';
 import { CACHE_KEYS, fetchUserWithCache } from '../userCache';
+import { PageName } from './client';
 
 // ============================================================================
 // Type Definitions
@@ -146,6 +146,28 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
     reports: ['developer', 'admin', 'manager', 'location admin'], // ✅ Restricted to developer, admin, manager, and location admin
     sessions: ['developer', 'admin'],
     administration: ['developer', 'admin', 'manager', 'location admin'],
+    'vault-management': [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'vault-manager',
+    ],
+    'vault-cashier': [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'cashier',
+    ],
+    'vault-role-selection': [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'vault-manager',
+      'cashier',
+    ],
   };
 
   const allowedRoles = pagePermissions[page] || [];

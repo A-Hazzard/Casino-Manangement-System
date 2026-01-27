@@ -1,6 +1,7 @@
 # Sessions Page
 
-## Table of Contents
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** January 2026
 
 - [Overview](#overview)
 - [File Information](#file-information)
@@ -123,7 +124,7 @@ The page allows users to:
 **Key Functions:**
 - `useSessions` (`lib/hooks/data/useSessions.ts`) - Fetches and manages sessions data
 - `handleViewEvents` (`SessionsPageContent`) - Navigates to session events page
-- `formatDate`, `formatDuration`, `formatCurrency`, `formatPoints` (`lib/helpers/sessions.ts`) - Formatting utilities
+- `formatDate`, `formatDuration`, `formatCurrency`, `formatPoints` - Formatting utilities
 - `formatMachineDisplayNameWithBold` (`lib/utils/machineDisplay.ts`) - Machine name formatting
 
 **Table Columns:**
@@ -131,7 +132,7 @@ The page allows users to:
 - **Machine**: Machine serial number (with custom name and game), machine ID (with external link icon)
 - **Start Time**: Formatted session start date/time
 - **Duration**: Formatted session duration (hours:minutes:seconds)
-- **Handle**: Formatted currency amount
+- **Handle**: Formatted currency amount (totalHandle)
 - **Jackpot**: Formatted currency amount
 - **Points**: Formatted points earned
 - **Actions**: "View Events" button
@@ -190,7 +191,7 @@ The page allows users to:
     - `page` - Page number (default: 1)
     - `limit` - Items per page (default: 10)
     - `search` - Search term (searches session ID, machine ID, member ID)
-    - `sortBy` - Sort field (startTime, handle, won, gamesPlayed, duration, etc.)
+    - `sortBy` - Sort field (startTime, totalHandle, won, gamesPlayed, duration, etc.)
     - `sortOrder` - Sort direction (asc, desc)
     - `licencee` - Licensee filter (optional)
     - `dateFilter` - Date filter type (today, yesterday, week, month, custom)

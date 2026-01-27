@@ -441,21 +441,33 @@ Publishes configuration updates to SMIB device via MQTT.
 }
 ```
 
+**Note:** Can also use `POST /api/cabinets/[cabinetId]/smib-config` to update database and MQTT simultaneously.
+
+### 6. SMIB NVS Actions
+
+**POST** `/api/smib/nvs-action`
+
+Performs Non-Volatile Storage (NVS) cleanup actions on the SMIB.
+
+#### Request Body
+
+```json
+{
+  "relayId": "e831cdfa8384",
+  "action": "clear_nvs" // clear_nvs, clear_meters, clear_bv, clear_door
+}
+```
+
 #### Response
 
 ```json
 {
   "success": true,
-  "message": "Config update published for mqtt to relayId: e831cdfa8384",
-  "relayId": "e831cdfa8384",
-  "config": {
-    /* sent config */
-  },
-  "timestamp": "2025-10-26T10:30:00.000Z"
+  "message": "NVS action clear_nvs sent successfully"
 }
 ```
 
-### 6. MQTT Config Subscribe (SSE)
+### 7. MQTT Config Subscribe (SSE)
 
 **GET** `/api/mqtt/config/subscribe?relayId=[relayId]`
 

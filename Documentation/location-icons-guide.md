@@ -1,5 +1,9 @@
 # Location Icons Guide
 
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** January 2026  
+**Version:** 1.0.0
+
 ## Overview
 
 Locations can display up to 5 different icons next to their name:

@@ -1,58 +1,24 @@
 /**
- * VAULT Application Types
+ * Vault System Type Definitions
  *
- * Type definitions for Vault Management application components and data structures.
+ * Shared types for vault management, cashier operations, and transactions.
+ * These types align with the Mongoose models and FRD requirements.
  */
 
-/**
- * Vault transaction types
- */
-export type VaultTransactionType =
-  | 'Drop'
-  | 'Machine Drop'
-  | 'Float Increase'
-  | 'Float Decrease'
-  | 'Expense'
-  | 'Bank Transfer'
-  | 'Treasury Deposit';
+// ============================================================================
+// Common Types
+// ============================================================================
 
-/**
- * Transaction status
- */
-export type TransactionStatus = 'completed' | 'pending';
-
-/**
- * Cash desk status
- */
-export type CashDeskStatus = 'open' | 'closed';
-
-/**
- * Vault transaction data structure
- */
-export type VaultTransaction = {
-  id: string;
-  date: string;
-  type: VaultTransactionType;
-  user: string;
-  amount: number;
-  status: TransactionStatus;
-  notes?: string;
+export type Denomination = {
+  denomination: 1 | 5 | 10 | 20 | 50 | 100;
+  quantity: number;
 };
 
-/**
- * Cash desk data structure
- */
-export type CashDesk = {
-  id: string;
-  name: string;
-  cashier: string;
-  float: number;
-  status: CashDeskStatus;
+export type MovementEndpoint = {
+  type: 'vault' | 'cashier' | 'machine' | 'external';
+  id?: string;
 };
 
-/**
- * Denomination breakdown for cash movements
- */
 export type DenominationBreakdown = {
   hundred: number;
   fifty: number;
@@ -62,100 +28,502 @@ export type DenominationBreakdown = {
   one: number;
 };
 
-/**
- * Cash movement source types
- */
-export type CashSource =
-  | 'Bank Withdrawal'
-  | 'Owner Injection'
-  | 'Machine Drop';
-
-/**
- * Cash movement destination types
- */
-export type CashDestination =
-  | 'Bank Deposit'
-  | 'Owner Draw'
-  | 'Float Increase';
-
-/**
- * Expense category types
- */
+export type CashSource = 'Bank Withdrawal' | 'Owner Injection' | 'Machine Drop';
+export type CashDestination = 'Bank Deposit' | 'Owner Drawing' | 'ATM Fill';
 export type ExpenseCategory =
-  | 'Stationery'
-  | 'Cleaning'
-  | 'Maintenance'
-  | 'F&B';
+  | 'Supplies'
+  | 'Repairs'
+  | 'Bills'
+  | 'Licenses'
+  | 'Other';
 
-/**
- * Vault balance information
- */
+// ============================================================================
+// Vault Shift Types (VM-1)
+// ============================================================================
+
+export type VaultShiftStatus = 'active' | 'closed';
+
+export type VaultReconciliation = {
+  timestamp: Date;
+  previousBalance: number;
+  newBalance: number;
+  denominations: Denomination[];
+  reason: string;
+  comment: string; // Mandatory for audit
+};
+
+export type VaultShift = {
+  _id: string;
+  locationId: string;
+  vaultManagerId: string;
+  status: VaultShiftStatus;
+  openedAt: Date;
+  closedAt?: Date;
+  openingBalance: number;
+  openingDenominations: Denomination[];
+  closingBalance?: number;
+  closingDenominations?: Denomination[];
+  reconciliations: VaultReconciliation[];
+  canClose: boolean; // BR-01
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+// ============================================================================
+// Cashier Shift Types (C-1, C-4)
+// ============================================================================
+
+export type CashierShiftStatus = 'active' | 'closed' | 'pending_review';
+
+export type CashierShift = {
+  _id: string;
+  locationId: string;
+  cashierId: string;
+  vaultShiftId: string;
+  status: CashierShiftStatus;
+  openedAt: Date;
+  closedAt?: Date;
+
+  // Opening
+  openingBalance: number;
+  openingDenominations: Denomination[];
+
+  // Closing - Blind Close (C-4)
+  cashierEnteredBalance?: number;
+  cashierEnteredDenominations?: Denomination[];
+  expectedClosingBalance?: number;
+  closingBalance?: number;
+  closingDenominations?: Denomination[];
+
+  // Discrepancy
+  discrepancy?: number;
+  discrepancyResolved: boolean;
+  vmReviewNotes?: string;
+  vmAdjustedBalance?: number;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+
+  // Metrics
+  payoutsTotal: number;
+  payoutsCount: number;
+  floatAdjustmentsTotal: number;
+
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+// ============================================================================
+// Transaction Types (BR-03)
+// ============================================================================
+
+export type TransactionType =
+  | 'vault_open'
+  | 'vault_close'
+  | 'vault_reconciliation'
+  | 'cashier_shift_open'
+  | 'cashier_shift_close'
+  | 'float_increase'
+  | 'float_decrease'
+  | 'payout'
+  | 'machine_collection'
+  | 'soft_count'
+  | 'expense';
+
+export type VaultTransaction = {
+  _id: string;
+  locationId: string;
+  timestamp: Date;
+  type: TransactionType;
+
+  // Movement
+  from: MovementEndpoint;
+  to: MovementEndpoint;
+
+  amount: number;
+  denominations: Denomination[];
+
+  // Balance tracking
+  vaultBalanceBefore?: number;
+  vaultBalanceAfter?: number;
+  cashierBalanceBefore?: number;
+  cashierBalanceAfter?: number;
+
+  // References
+  vaultShiftId?: string;
+  cashierShiftId?: string;
+  floatRequestId?: string;
+  payoutId?: string;
+
+  // Audit
+  performedBy: string;
+  notes?: string;
+  auditComment?: string;
+
+  // Immutability
+  isVoid: boolean;
+  voidReason?: string;
+  voidedBy?: string;
+  voidedAt?: Date;
+
+  createdAt: Date;
+};
+
+// Machine collection creation
+export type CreateMachineCollectionRequest = {
+  machineId: string;
+  machineName?: string;
+  amount: number;
+  denominations: Denomination[];
+  notes?: string;
+};
+
+export type CreateMachineCollectionResponse = {
+  success: boolean;
+  collection: MachineCollection;
+  transaction: VaultTransaction;
+};
+
+// Soft count creation
+export type CreateSoftCountRequest = {
+  amount: number;
+  denominations: Denomination[];
+  notes?: string;
+};
+
+export type CreateSoftCountResponse = {
+  success: boolean;
+  softCount: SoftCount;
+  transaction: VaultTransaction;
+};
+
+// Inter-location transfer creation
+export type CreateInterLocationTransferRequest = {
+  fromLocationId: string;
+  toLocationId: string;
+  amount: number;
+  denominations: Denomination[];
+  notes?: string;
+};
+
+export type CreateInterLocationTransferResponse = {
+  success: boolean;
+  transfer: InterLocationTransfer;
+};
+
+// Transfer approval
+export type ApproveInterLocationTransferRequest = {
+  transferId: string;
+  approved: boolean;
+  notes?: string;
+};
+
+export type ApproveInterLocationTransferResponse = {
+  success: boolean;
+  transfer: InterLocationTransfer;
+  transaction?: VaultTransaction;
+};
+
+export type FloatRequestType = 'increase' | 'decrease';
+export type FloatRequestStatus = 'pending' | 'approved' | 'denied' | 'edited';
+
+export type FloatRequest = {
+  _id: string;
+  locationId: string;
+  cashierId: string;
+  cashierShiftId: string;
+  vaultShiftId: string;
+
+  type: FloatRequestType;
+
+  // Request
+  requestedAmount: number;
+  requestedDenominations: Denomination[];
+  requestNotes?: string;
+  requestedAt: Date;
+
+  // Approval
+  status: FloatRequestStatus;
+  approvedAmount?: number;
+  approvedDenominations?: Denomination[];
+  processedBy?: string;
+  processedAt?: Date;
+  vmNotes?: string;
+
+  // Transaction reference
+  transactionId?: string;
+
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+// ============================================================================
+// Payout Types (C-2)
+// ============================================================================
+
+export type PayoutType = 'ticket' | 'hand_pay';
+
+export type Payout = {
+  _id: string;
+  locationId: string;
+  cashierId: string;
+  cashierShiftId: string;
+
+  type: PayoutType;
+  amount: number;
+
+  // Ticket redemption
+  ticketNumber?: string;
+  ticketBarcode?: string;
+
+  // Hand pay
+  machineId?: string;
+  machineName?: string;
+  jackpotType?: string;
+
+  // Validation
+  validated: boolean;
+  validationMethod?: string;
+
+  // Audit
+  timestamp: Date;
+  cashierFloatBefore: number;
+  cashierFloatAfter: number;
+
+  // Transaction reference
+  transactionId: string;
+
+  notes?: string;
+  createdAt: Date;
+};
+
+// ============================================================================
+// Machine Collections & Soft Counts Types (VM-4)
+// ============================================================================
+
+export type MachineCollection = {
+  _id: string;
+  locationId: string;
+  machineId: string;
+  machineName?: string;
+  collectedAt: Date;
+  amount: number;
+  denominations: Denomination[];
+  collectedBy: string;
+  transactionId: string;
+  notes?: string;
+  createdAt: Date;
+};
+
+export type SoftCount = {
+  _id: string;
+  locationId: string;
+  countedAt: Date;
+  amount: number;
+  denominations: Denomination[];
+  countedBy: string;
+  transactionId: string;
+  notes?: string;
+  createdAt: Date;
+};
+
+// ============================================================================
+// Inter-Location Transfers Types
+// ============================================================================
+
+export type InterLocationTransfer = {
+  _id: string;
+  fromLocationId: string;
+  toLocationId: string;
+  fromLocationName: string;
+  toLocationName: string;
+  amount: number;
+  denominations: Denomination[];
+  status: 'pending' | 'approved' | 'completed' | 'cancelled';
+  requestedBy: string;
+  approvedBy?: string;
+  approvedAt?: Date;
+  completedAt?: Date;
+  transactionId?: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+// Vault initialization
+export type InitializeVaultRequest = {
+  locationId: string;
+  openingBalance: number;
+  denominations: Denomination[];
+  notes?: string;
+};
+
+export type InitializeVaultResponse = {
+  success: boolean;
+  vaultShift: VaultShift;
+  transaction: VaultTransaction;
+};
+
+// Vault shift open
+export type OpenVaultShiftRequest = {
+  locationId: string;
+  openingBalance: number;
+  denominations: Denomination[];
+};
+
+// Vault shift close
+export type CloseVaultShiftRequest = {
+  vaultShiftId: string;
+  closingBalance: number;
+  denominations: Denomination[];
+};
+
+// Vault reconciliation
+export type ReconcileVaultRequest = {
+  vaultShiftId: string;
+  newBalance: number;
+  denominations: Denomination[];
+  reason: string;
+  comment: string; // Mandatory
+};
+
+// Cashier shift open
+export type OpenCashierShiftRequest = {
+  locationId: string;
+  requestedFloat: number;
+  denominations: Denomination[];
+};
+
+// Cashier shift close (Blind Close - C-4)
+export type CloseCashierShiftRequest = {
+  shiftId: string;
+  physicalCount: number;
+  denominations: Denomination[];
+};
+
+export type CloseCashierShiftResponse = {
+  success: boolean;
+  status: 'closed' | 'pending_review';
+  message: string;
+  // CRITICAL: DO NOT include expected balance or discrepancy amount
+};
+
+// Float request approval
+export type ApproveFloatRequest = {
+  floatRequestId: string;
+  status: 'approved' | 'denied' | 'edited';
+  approvedAmount?: number;
+  approvedDenominations?: Denomination[];
+  vmNotes?: string;
+};
+
+// Payout creation
+export type CreatePayoutRequest = {
+  cashierShiftId: string;
+  type: PayoutType;
+  amount: number;
+  ticketNumber?: string;
+  ticketBarcode?: string;
+  machineId?: string;
+  machineName?: string;
+  jackpotType?: string;
+  notes?: string;
+};
+
+// ============================================================================
+// Dashboard/UI Types
+// ============================================================================
+
 export type VaultBalance = {
+  balance: number;
+  denominations: Denomination[];
+  lastReconciliation?: Date;
+  activeShiftId?: string;
+  lastAudit?: string;
+  managerOnDuty?: string;
+};
+
+export type CashDesk = {
+  _id: string;
+  locationId: string;
+  name: string;
   balance: number;
   lastAudit: string;
   managerOnDuty: string;
-};
-
-/**
- * Vault metrics data
- */
-export type VaultMetrics = {
-  vaultBalance: number;
-  machineCash: number;
-  deskFloat: number;
-  totalOnPremises: number;
-};
-
-/**
- * Extended transaction type for transaction history page
- */
-export type ExtendedVaultTransaction = VaultTransaction & {
-  source?: string;
-  destination?: string;
-  denominations?: string;
-};
-
-/**
- * Float transaction type
- */
-export type FloatTransactionType = 'Increase' | 'Decrease';
-
-/**
- * Float transaction data structure
- */
-export type FloatTransaction = {
-  id: string;
-  dateTime: string;
-  cashier: string;
-  station: string;
-  type: FloatTransactionType;
-  amount: number;
-  reason: string;
-  status: TransactionStatus;
-};
-
-/**
- * Cashier float data structure
- */
-export type CashierFloat = {
-  id: string;
-  cashier: string;
-  station: string;
-  currentFloat: number;
   status: 'active' | 'inactive';
 };
 
-/**
- * Transfer data structure
- */
+export type CashierFloat = {
+  _id: string;
+  cashierId: string;
+  cashierName: string;
+  balance: number;
+  lastActivity: string;
+  shiftStartTime: string;
+  status: 'active' | 'inactive';
+};
+
 export type VaultTransfer = {
-  id: string;
-  dateTime: string;
+  _id: string;
+  date: string;
+  createdAt?: string;
   from: string;
   to: string;
   amount: number;
+  status: 'completed' | 'pending' | 'approved' | 'rejected' | 'cancelled';
   initiatedBy: string;
   approvedBy?: string;
-  status: TransactionStatus;
   notes?: string;
+};
+
+export type VaultMetrics = {
+  totalCashIn: number;
+  totalCashOut: number;
+  netCashFlow: number;
+  payouts: number;
+  drops: number;
+  fills: number;
+};
+
+// This seems to be a more detailed version of VaultTransaction
+export type ExtendedVaultTransaction = VaultTransaction & {
+  fromName?: string;
+  toName?: string;
+  performedByName?: string;
+};
+
+// This seems to be the same as ExtendedVaultTransaction but with a different name
+export type FloatTransaction = ExtendedVaultTransaction;
+
+// This seems to be a more detailed version of VaultTransaction
+export type VaultTransactionType = TransactionType;
+
+export type ActiveCashierInfo = {
+  cashierId: string;
+  cashierName: string;
+  shiftId: string;
+  currentFloat: number;
+  shiftStartTime: Date;
+  payoutsCount: number;
+  payoutsTotal: number;
+};
+
+export type PendingFloatRequestInfo = {
+  requestId: string;
+  cashierId: string;
+  cashierName: string;
+  type: FloatRequestType;
+  requestedAmount: number;
+  requestedDenominations: Denomination[];
+  requestedAt: Date;
+  requestNotes?: string;
+};
+
+export type UnbalancedShiftInfo = {
+  shiftId: string;
+  cashierId: string;
+  cashierName: string;
+  expectedBalance: number;
+  enteredBalance: number;
+  discrepancy: number;
+  closedAt: Date;
 };

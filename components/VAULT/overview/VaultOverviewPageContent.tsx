@@ -16,7 +16,7 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import VaultBalanceCard from './cards/VaultBalanceCard';
 import VaultMetricCard from './cards/VaultMetricCard';
@@ -26,33 +26,107 @@ import VaultRecentActivitySection from './sections/VaultRecentActivitySection';
 import VaultAddCashModal from './modals/VaultAddCashModal';
 import VaultRemoveCashModal from './modals/VaultRemoveCashModal';
 import VaultRecordExpenseModal from './modals/VaultRecordExpenseModal';
-import {
-  mockVaultBalance,
-  mockVaultMetrics,
-  mockCashDesks,
-  mockTransactions,
-} from './data/mockData';
+import VaultReconcileModal from './modals/VaultReconcileModal';
+import ShiftReviewPanel from './ShiftReviewPanel';
+import NotificationBell from '@/components/shared/ui/NotificationBell';
+import VaultOverviewSkeleton from '@/components/ui/skeletons/VaultOverviewSkeleton';
+import { DEFAULT_VAULT_BALANCE, DEFAULT_VAULT_METRICS } from './data/defaults';
 import { CreditCard, DollarSign, TrendingUp, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { useUserStore } from '@/lib/store/userStore';
+import {
+  fetchVaultOverviewData,
+  fetchVaultBalance,
+  handleAddCash,
+  handleRemoveCash,
+  handleRecordExpense,
+  handleReconcile,
+  handleShiftResolve,
+  handleNotificationClick,
+} from '@/lib/helpers/vaultHelpers';
+import type {
+  VaultBalance,
+  VaultTransaction,
+  UnbalancedShiftInfo,
+  VaultMetrics,
+  CashDesk,
+  Denomination,
+} from '@/shared/types/vault';
+import type { NotificationItem } from '@/components/shared/ui/NotificationBell';
 
 export default function VaultOverviewPageContent() {
+  const router = useRouter();
+  const { user } = useUserStore();
+
   // ============================================================================
   // Hooks & State
   // ============================================================================
+  const [loading, setLoading] = useState(true);
+  const [vaultBalance, setVaultBalance] = useState<VaultBalance>(
+    DEFAULT_VAULT_BALANCE
+  );
+  const [metrics, setMetrics] = useState<VaultMetrics>(DEFAULT_VAULT_METRICS);
+  const [cashDesks, setCashDesks] = useState<CashDesk[]>([]);
+  const [transactions, setTransactions] = useState<VaultTransaction[]>([]);
+  const [pendingShifts, setPendingShifts] = useState<UnbalancedShiftInfo[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
   const [addCashOpen, setAddCashOpen] = useState(false);
   const [removeCashOpen, setRemoveCashOpen] = useState(false);
   const [recordExpenseOpen, setRecordExpenseOpen] = useState(false);
+  const [reconcileOpen, setReconcileOpen] = useState(false);
+  const [shiftReviewLoading, setShiftReviewLoading] = useState(false);
+
+  // Fetch real data
+  useEffect(() => {
+    const fetchData = async () => {
+      const locationId = user?.assignedLocations?.[0];
+      if (!locationId) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const data = await fetchVaultOverviewData(locationId, user?.username);
+        setVaultBalance(data.vaultBalance);
+        setMetrics(data.metrics);
+        setTransactions(data.transactions);
+        setPendingShifts(data.pendingShifts);
+        setCashDesks(data.cashDesks);
+        setNotifications(data.notifications);
+      } catch (error) {
+        console.error('Failed to fetch vault data', error);
+        toast.error('Failed to load vault data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user?.assignedLocations, user?.username]);
 
   // ============================================================================
   // Event Handlers
   // ============================================================================
+
+  const handleManageCashiers = () => {
+    router.push('/vault/management/cashiers');
+  };
+
+  const handleMachineCollection = () => {
+    router.push('/vault/management/collections');
+  };
+
+  const handleSoftCount = () => {
+    router.push('/vault/management/soft-counts');
+  };
+
   /**
    * Handle add cash confirmation from modal
-   * Placeholder for future API integration
-   *
-   * @param data - Cash addition data with source, breakdown, total amount, and notes
    */
-  const handleAddCash = async (data: {
+  const handleAddCashConfirm = async (data: {
     source: string;
     breakdown: {
       hundred: number;
@@ -65,19 +139,30 @@ export default function VaultOverviewPageContent() {
     totalAmount: number;
     notes?: string;
   }) => {
-    // Mock API call - will be replaced with actual API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast.success(`Added ${data.totalAmount.toLocaleString()} to vault`);
-    console.log('Add Cash:', data);
+    const locationId = user?.assignedLocations?.[0];
+    if (!locationId) {
+      toast.error('No location assigned');
+      return;
+    }
+
+    const result = await handleAddCash(data, locationId);
+    if (result.success) {
+      toast.success(`Added ${data.totalAmount.toLocaleString()} to vault`);
+      setAddCashOpen(false);
+      // Refresh balance
+      const balanceData = await fetchVaultBalance(locationId);
+      if (balanceData) {
+        setVaultBalance(prev => ({ ...prev, ...balanceData }));
+      }
+    } else {
+      toast.error(result.error || 'Failed to add cash');
+    }
   };
 
   /**
    * Handle remove cash confirmation from modal
-   * Placeholder for future API integration
-   *
-   * @param data - Cash removal data with destination, breakdown, total amount, and notes
    */
-  const handleRemoveCash = async (data: {
+  const handleRemoveCashConfirm = async (data: {
     destination: string;
     breakdown: {
       hundred: number;
@@ -90,29 +175,127 @@ export default function VaultOverviewPageContent() {
     totalAmount: number;
     notes?: string;
   }) => {
-    // Mock API call - will be replaced with actual API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast.success(`Removed ${data.totalAmount.toLocaleString()} from vault`);
-    console.log('Remove Cash:', data);
+    const locationId = user?.assignedLocations?.[0];
+    if (!locationId) {
+      toast.error('No location assigned');
+      return;
+    }
+
+    const result = await handleRemoveCash(data, locationId);
+    if (result.success) {
+      toast.success(`Removed ${data.totalAmount.toLocaleString()} from vault`);
+      setRemoveCashOpen(false);
+      // Refresh balance
+      const balanceData = await fetchVaultBalance(locationId);
+      if (balanceData) {
+        setVaultBalance(prev => ({ ...prev, ...balanceData }));
+      }
+    } else {
+      toast.error(result.error || 'Failed to remove cash');
+    }
   };
 
   /**
    * Handle record expense confirmation from modal
-   * Placeholder for future API integration
-   *
-   * @param data - Expense data with category, amount, description, and date
    */
-  const handleRecordExpense = async (data: {
+  const handleRecordExpenseConfirm = async (data: {
     category: string;
     amount: number;
     description: string;
     date: Date;
   }) => {
-    // Mock API call - will be replaced with actual API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast.success(`Recorded expense: ${data.amount.toLocaleString()}`);
-    console.log('Record Expense:', data);
+    const locationId = user?.assignedLocations?.[0];
+    if (!locationId) {
+      toast.error('No location assigned');
+      return;
+    }
+
+    const result = await handleRecordExpense(data, locationId);
+    if (result.success) {
+      toast.success(`Recorded expense: ${data.amount.toLocaleString()}`);
+      setRecordExpenseOpen(false);
+      // Refresh balance
+      const balanceData = await fetchVaultBalance(locationId);
+      if (balanceData) {
+        setVaultBalance(prev => ({ ...prev, ...balanceData }));
+      }
+    } else {
+      toast.error(result.error || 'Failed to record expense');
+    }
   };
+
+  /**
+   * Handle reconcile confirmation
+   */
+  const handleReconcileConfirm = async (data: {
+    newBalance: number;
+    denominations: Denomination[];
+    reason: string;
+    comment: string;
+  }) => {
+    if (!vaultBalance.activeShiftId) {
+      toast.error('No active vault shift found');
+      return;
+    }
+
+    const result = await handleReconcile(data, vaultBalance.activeShiftId);
+    if (result.success) {
+      toast.success('Vault reconciled successfully');
+      setReconcileOpen(false);
+      // Refresh balance
+      const locationId = user?.assignedLocations?.[0];
+      if (locationId) {
+        const balanceData = await fetchVaultBalance(locationId);
+        if (balanceData) {
+          setVaultBalance(prev => ({ ...prev, ...balanceData }));
+        }
+      }
+    } else {
+      toast.error(result.error || 'Failed to reconcile');
+    }
+  };
+
+  /**
+   * Handle shift review resolution
+   */
+  const handleShiftResolveConfirm = async (
+    shiftId: string,
+    finalBalance: number,
+    auditComment: string
+  ) => {
+    setShiftReviewLoading(true);
+    const result = await handleShiftResolve(
+      shiftId,
+      finalBalance,
+      auditComment
+    );
+    if (result.success) {
+      toast.success(`Shift resolved with final balance: ${finalBalance}`);
+      setPendingShifts(prev => prev.filter(s => s.shiftId !== shiftId));
+    } else {
+      toast.error(result.error || 'Failed to resolve shift');
+    }
+    setShiftReviewLoading(false);
+  };
+
+  const handleMarkNotificationAsRead = (notificationId: string) => {
+    setNotifications(prev =>
+      prev.filter(notification => notification.id !== notificationId)
+    );
+  };
+
+  const handleMarkAllNotificationsAsRead = () => {
+    setNotifications([]);
+  };
+
+  // Show skeleton while loading
+  if (loading) {
+    return (
+      <PageLayout showHeader={false}>
+        <VaultOverviewSkeleton />
+      </PageLayout>
+    );
+  }
 
   // ============================================================================
   // Render
@@ -120,100 +303,135 @@ export default function VaultOverviewPageContent() {
   return (
     <PageLayout showHeader={false}>
       <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Vault Manager</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            {new Date().toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <p className="text-sm text-gray-600">Manager On Shift</p>
-            <p className="font-semibold text-gray-900">
-              {mockVaultBalance.managerOnDuty}
+        {/* Header Section */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              Vault Manager
+            </h1>
+            <p className="mt-1 text-sm text-gray-600">
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
             </p>
           </div>
+          <div className="flex items-center gap-3">
+            <NotificationBell
+              notifications={notifications}
+              onMarkAsRead={handleMarkNotificationAsRead}
+              onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+              onNotificationClick={handleNotificationClick}
+            />
+            <div className="text-right">
+              <p className="text-sm text-gray-600">Manager On Shift</p>
+              <p className="font-semibold text-gray-900">
+                {vaultBalance.managerOnDuty}
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Vault Balance Card */}
-      <VaultBalanceCard balance={mockVaultBalance} />
+        {/* Shift Review Panel - Show when there are pending reviews */}
+        {pendingShifts.length > 0 && (
+          <ShiftReviewPanel
+            pendingShifts={pendingShifts}
+            onResolve={handleShiftResolveConfirm}
+            loading={shiftReviewLoading}
+          />
+        )}
 
-      {/* Metric Cards Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <VaultMetricCard
-          title="Vault Balance"
-          value={mockVaultMetrics.vaultBalance}
-          icon={Wallet}
-          iconColor="text-blue-600"
-          iconBgColor="bg-blue-100"
+        {/* Vault Balance Card */}
+        <VaultBalanceCard
+          balance={vaultBalance}
+          onReconcile={() => setReconcileOpen(true)}
         />
-        <VaultMetricCard
-          title="Machine Cash"
-          value={mockVaultMetrics.machineCash}
-          icon={CreditCard}
-          iconColor="text-blue-600"
-          iconBgColor="bg-blue-100"
-        />
-        <VaultMetricCard
-          title="Desk Float"
-          value={mockVaultMetrics.deskFloat}
-          icon={DollarSign}
-          iconColor="text-orange-600"
-          iconBgColor="bg-orange-100"
-        />
-        <VaultMetricCard
-          title="Total On Premises"
-          value={mockVaultMetrics.totalOnPremises}
-          icon={TrendingUp}
-          iconColor="text-purple-600"
-          iconBgColor="bg-purple-100"
-        />
-      </div>
 
-      {/* Cash Desks Status Section */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Cash Desks Status</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {mockCashDesks.map(cashDesk => (
-            <VaultCashDeskCard key={cashDesk.id} cashDesk={cashDesk} />
-          ))}
+        {/* Metric Cards Row */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <VaultMetricCard
+            title="Total Cash In"
+            value={metrics.totalCashIn}
+            icon={Wallet}
+            iconColor="text-blue-600"
+            iconBgColor="bg-blue-100"
+          />
+          <VaultMetricCard
+            title="Total Cash Out"
+            value={metrics.totalCashOut}
+            icon={CreditCard}
+            iconColor="text-blue-600"
+            iconBgColor="bg-blue-100"
+          />
+          <VaultMetricCard
+            title="Net Cash Flow"
+            value={metrics.netCashFlow}
+            icon={DollarSign}
+            iconColor="text-orange-600"
+            iconBgColor="bg-orange-100"
+          />
+          <VaultMetricCard
+            title="Payouts"
+            value={metrics.payouts}
+            icon={TrendingUp}
+            iconColor="text-purple-600"
+            iconBgColor="bg-purple-100"
+          />
         </div>
-      </div>
 
-      {/* Quick Actions Section */}
-      <VaultQuickActionsSection
-        onAddCash={() => setAddCashOpen(true)}
-        onRemoveCash={() => setRemoveCashOpen(true)}
-        onRecordExpense={() => setRecordExpenseOpen(true)}
-      />
+        {/* Cash Desks Status Section */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Cash Desks Status
+          </h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {cashDesks.length > 0 ? (
+              cashDesks.map(cashDesk => (
+                <VaultCashDeskCard key={cashDesk._id} cashDesk={cashDesk} />
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">No active cash desks.</p>
+            )}
+          </div>
+        </div>
 
-      {/* Recent Activity Section */}
-      <VaultRecentActivitySection transactions={mockTransactions} />
+        {/* Quick Actions Section */}
+        <VaultQuickActionsSection
+          onAddCash={() => setAddCashOpen(true)}
+          onRemoveCash={() => setRemoveCashOpen(true)}
+          onRecordExpense={() => setRecordExpenseOpen(true)}
+          onManageCashiers={handleManageCashiers}
+          onMachineCollection={handleMachineCollection}
+          onSoftCount={handleSoftCount}
+        />
 
-      {/* Modals */}
-      <VaultAddCashModal
-        open={addCashOpen}
-        onClose={() => setAddCashOpen(false)}
-        onConfirm={handleAddCash}
-      />
-      <VaultRemoveCashModal
-        open={removeCashOpen}
-        onClose={() => setRemoveCashOpen(false)}
-        onConfirm={handleRemoveCash}
-      />
-      <VaultRecordExpenseModal
-        open={recordExpenseOpen}
-        onClose={() => setRecordExpenseOpen(false)}
-        onConfirm={handleRecordExpense}
-      />
+        {/* Recent Activity Section */}
+        <VaultRecentActivitySection transactions={transactions} />
+
+        {/* Modals */}
+        <VaultAddCashModal
+          open={addCashOpen}
+          onClose={() => setAddCashOpen(false)}
+          onConfirm={handleAddCashConfirm}
+        />
+        <VaultRemoveCashModal
+          open={removeCashOpen}
+          onClose={() => setRemoveCashOpen(false)}
+          onConfirm={handleRemoveCashConfirm}
+        />
+        <VaultRecordExpenseModal
+          open={recordExpenseOpen}
+          onClose={() => setRecordExpenseOpen(false)}
+          onConfirm={handleRecordExpenseConfirm}
+        />
+        <VaultReconcileModal
+          open={reconcileOpen}
+          onClose={() => setReconcileOpen(false)}
+          onConfirm={handleReconcileConfirm}
+          currentBalance={vaultBalance.balance}
+        />
       </div>
     </PageLayout>
   );

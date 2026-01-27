@@ -2,7 +2,7 @@
  * Cashier Shifts Page
  *
  * Shifts page for the Cashier interface in the Vault Management application.
- * This page will display and manage cashier shifts.
+ * This page displays and manages cashier shifts.
  *
  * Features:
  * - Shift history
@@ -11,35 +11,12 @@
  *
  * @module app/vault/cashier/shifts/page
  */
-'use client';
 
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
-import { hasCashierAccess } from '@/lib/utils/vault/authorization';
-import { useUserStore } from '@/lib/store/userStore';
-import VaultUnauthorized from '@/components/VAULT/VaultUnauthorized';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import PageErrorBoundary from '@/components/shared/ui/errors/PageErrorBoundary';
 
-/**
- * Cashier Shifts Page Content
- * Handles authorization check and renders appropriate content
- */
 function CashierShiftsPageContent() {
-  // ============================================================================
-  // Hooks & State
-  // ============================================================================
-  const { user } = useUserStore();
-
-  // ============================================================================
-  // Authorization Check
-  // ============================================================================
-  // Check if user has cashier access
-  if (!hasCashierAccess(user?.roles)) {
-    return <VaultUnauthorized />;
-  }
-
-  // ============================================================================
-  // Render - Placeholder
-  // ============================================================================
   return (
     <PageLayout showHeader={false}>
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
@@ -54,14 +31,12 @@ function CashierShiftsPageContent() {
   );
 }
 
-/**
- * Cashier Shifts Page
- * Wrapper component with authentication and error handling
- */
 export default function CashierShiftsPage() {
   return (
-    <ProtectedRoute>
-      <CashierShiftsPageContent />
+    <ProtectedRoute requiredPage="vault-cashier">
+      <PageErrorBoundary>
+        <CashierShiftsPageContent />
+      </PageErrorBoundary>
     </ProtectedRoute>
   );
 }
