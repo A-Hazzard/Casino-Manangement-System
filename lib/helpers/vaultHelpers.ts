@@ -7,22 +7,22 @@
  * @module lib/helpers/vaultHelpers
  */
 
-import type {
-  VaultBalance,
-  VaultMetrics,
-  VaultTransaction,
-  CashierShift,
-  UnbalancedShiftInfo,
-  CashDesk,
-  FloatRequest,
-  CashierFloat,
-  Denomination,
-} from '@/shared/types/vault';
 import type { NotificationItem } from '@/components/shared/ui/NotificationBell';
 import {
   DEFAULT_CASHIER_FLOATS,
   DEFAULT_VAULT_BALANCE,
 } from '@/components/VAULT/overview/data/defaults';
+import type {
+  CashDesk,
+  CashierFloat,
+  CashierShift,
+  Denomination,
+  FloatRequest,
+  UnbalancedShiftInfo,
+  VaultBalance,
+  VaultMetrics,
+  VaultTransaction,
+} from '@/shared/types/vault';
 
 // ============================================================================
 // API Data Fetching Functions
@@ -409,12 +409,18 @@ export async function fetchVaultTransfers(
 export async function fetchVaultTransactions(
   locationId: string,
   page: number = 1,
-  limit: number = 20
+  limit: number = 20,
+  type?: string,
+  status?: string,
+  search?: string
 ): Promise<{ transactions: any[]; total: number; totalPages: number }> {
   try {
-    const response = await fetch(
-      `/api/vault/transactions?locationId=${locationId}&page=${page}&limit=${limit}`
-    );
+    let url = `/api/vault/transactions?locationId=${locationId}&page=${page}&limit=${limit}`;
+    if (type && type !== 'all') url += `&type=${type}`;
+    if (status && status !== 'all') url += `&status=${status}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+
+    const response = await fetch(url);
     if (response.ok) {
       const data = await response.json();
       if (data.success) {
@@ -667,8 +673,15 @@ export async function fetchCashiersData(
   limit: number = 20
 ): Promise<{ users: any[]; total: number; totalPages: number }> {
   try {
+    // Include authentication cookies for authorization
     const response = await fetch(
-      `/api/users?role=cashier&page=${page}&limit=${limit}`
+      `/api/users?role=cashier&page=${page}&limit=${limit}`,
+      {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
     );
     if (response.ok) {
       const data = await response.json();
@@ -1100,24 +1113,85 @@ export async function handleRejectFloatTransaction(
 
 /**
  * Handle create cashier operation
+ *
+ * @param cashierData - Object containing cashier details
+ * @param cashierData.firstName - Cashier's first name
+ * @param cashierData.lastName - Cashier's last name
+ * @param cashierData.email - Cashier's email address
+ * @param cashierData.password - Optional password (auto-generated if not provided)
+ * @param cashierData.assignedLicensees - Optional array of licensee IDs
+ * @param cashierData.assignedLocations - Optional array of location IDs
+ * @returns Promise with success status, error message, and temporary password if successful
  */
 export async function handleCreateCashier(cashierData: {
-  name: string;
+  username: string;
+  firstName: string;
+  lastName: string;
   email: string;
+  password?: string;
+  assignedLicensees?: string[];
+  assignedLocations?: string[];
 }): Promise<{ success: boolean; error?: string; tempPassword?: string }> {
-  try {
-    const response = await fetch('/api/admin/cashiers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cashierData),
-    });
+    let data;
+    let tempPassword = '';
+    try {
+      // Generate a temporary password if not provided
+      tempPassword = cashierData.password || generateTempPassword();
 
-    const data = await response.json();
-    return {
-      success: data.success,
-      error: data.error || 'Failed to create cashier',
-      tempPassword: data.tempPassword,
-    };
+      const firstName = cashierData.firstName;
+      const lastName = cashierData.lastName;
+      const username = cashierData.username;
+
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: username,
+          emailAddress: cashierData.email,
+          password: tempPassword,
+          roles: ['cashier'],
+          profile: {
+            firstName,
+            lastName,
+          },
+          assignedLicensees: cashierData.assignedLicensees || [],
+          assignedLocations: cashierData.assignedLocations || [],
+          isEnabled: true,
+        }),
+      });
+
+      data = await response.json();
+
+    // If user creation succeeded, send welcome email via API
+    if (data.success && tempPassword) {
+      try {
+        const emailResponse = await fetch('/api/email/send-welcome', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firstName,
+            lastName,
+            username,
+            email: cashierData.email,
+            tempPassword,
+            loginUrl:
+              process.env.NEXT_PUBLIC_LOGIN_URL ||
+              'https://your-domain.com/login',
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          console.error(
+            'Failed to send cashier welcome email:',
+            await emailResponse.text()
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send cashier welcome email:', emailError);
+        // Don't fail the operation, just log the error
+      }
+    }
   } catch (error) {
     console.error('Error creating cashier:', error);
     return {
@@ -1125,6 +1199,25 @@ export async function handleCreateCashier(cashierData: {
       error: 'An error occurred while creating cashier',
     };
   }
+
+  return {
+    success: data.success,
+    error: data.error || data.message || 'Failed to create cashier',
+    tempPassword: data.success ? tempPassword : undefined,
+  };
+}
+
+/**
+ * Generate a temporary password
+ */
+function generateTempPassword(): string {
+  const chars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let password = '';
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
 }
 
 /**

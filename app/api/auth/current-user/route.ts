@@ -12,8 +12,8 @@
  */
 
 import {
-  getInvalidProfileFields,
-  hasInvalidProfileFields,
+    getInvalidProfileFields,
+    hasInvalidProfileFields,
 } from '@/app/api/lib/helpers/profileValidation';
 import { getUserById, getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -86,6 +86,7 @@ export async function GET() {
         assignedLicensees: dbUser.assignedLicensees || undefined,
         createdAt: dbUser.createdAt || new Date(),
         updatedAt: dbUser.updatedAt || new Date(),
+        tempPasswordChanged: dbUser.tempPasswordChanged ?? true,
         requiresProfileUpdate,
         invalidProfileFields: invalidFields,
         invalidProfileReasons: reasons,

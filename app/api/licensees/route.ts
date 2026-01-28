@@ -22,7 +22,7 @@ import {
   updateLicensee as updateLicenseeHelper,
 } from '@/app/api/lib/helpers/licensees';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { apiLogger } from '@/app/api/lib/utils/logger';
+import { apiLogger } from '../lib/services/loggerService';
 import { NextRequest } from 'next/server';
 
 /**

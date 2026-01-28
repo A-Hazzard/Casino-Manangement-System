@@ -211,21 +211,27 @@ export function validateUsername(value: string): boolean {
 }
 
 /**
- * Validates if a string contains only letters and spaces (for names).
+ * Validates if a string contains only letters, spaces, hyphens and apostrophes (for names).
  * Also checks for phone number patterns.
  *
  * @param value - The string to validate.
- * @returns True if valid (only letters and spaces, no phone patterns), false otherwise.
+ * @returns True if valid (only letters, spaces, hyphens, apostrophes, no phone patterns), false otherwise.
  */
 export function validateNameField(value: string): boolean {
-  // Allow only letters and spaces
-  const allowedPattern = /^[a-zA-Z\s]+$/;
+  if (!value) return false;
+  // Allow letters, spaces, hyphens, and apostrophes
+  const allowedPattern = /^[a-zA-Z\s\-']+$/;
 
-  // Check for phone number patterns
+  // Check for phone number patterns (avoid names that look like phone numbers)
   const phonePattern =
     /^[\+]?[1-9][\d]{0,15}$|^[\+]?[(]?[\d\s\-\(\)]{7,}$|^[\+]?[1-9][\d\s\-\(\)]{6,}$/;
 
-  return allowedPattern.test(value) && !phonePattern.test(value.trim());
+  const trimmed = value.trim();
+  return (
+    trimmed.length >= 2 &&
+    allowedPattern.test(trimmed) &&
+    !phonePattern.test(trimmed)
+  );
 }
 
 function validateGender(
@@ -298,13 +304,19 @@ export function containsPhonePattern(value: string): boolean {
 
 /**
  * Validates phone numbers for required profile fields.
- * Allows digits, spaces, hyphens, parentheses, and leading plus.
+ * Allows digits, spaces, hyphens, parentheses, plus, and dots.
  */
 export function validatePhoneNumber(value: string | undefined | null): boolean {
   if (!value) return false;
   const trimmed = value.trim();
-  if (trimmed.length < 7) return false;
-  const phoneRegex = /^[\+]?[0-9\s\-().]{7,20}$/;
+
+  // Strip all non-digit characters to check for minimum digit count
+  const digitCount = trimmed.replace(/\D/g, '').length;
+  if (digitCount < 7) return false;
+
+  // More permissive regex allowing digits, spaces, hyphens, parentheses, plus, and dots
+  // length checked after trim is between 7 and 25
+  const phoneRegex = /^[+0-9\s\-().]{7,25}$/;
   if (!phoneRegex.test(trimmed)) {
     return false;
   }
@@ -312,10 +324,10 @@ export function validatePhoneNumber(value: string | undefined | null): boolean {
 }
 
 /**
- * Normalizes phone numbers by stripping spaces and common delimiters.
+ * Normalizes phone numbers by stripping everything except digits.
  */
 export function normalizePhoneNumber(value: string): string {
-  return value.replace(/[\s\-().]/g, '');
+  return value.replace(/\D/g, '');
 }
 
 /**

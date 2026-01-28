@@ -33,8 +33,8 @@ const CashierShiftSchema = new Schema(
 
     status: {
       type: String,
-      enum: ['active', 'closed', 'pending_review'],
-      default: 'active',
+      enum: ['pending_start', 'active', 'closed', 'pending_review'],
+      default: 'pending_start',
       required: true,
     },
 

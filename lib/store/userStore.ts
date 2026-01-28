@@ -38,7 +38,7 @@
  * @module lib/store/userStore
  */
 
-import { clearUserCache } from '@/lib/utils/userCache';
+import { clearUserCache } from '@/lib/services/userCacheService';
 import type { UserAuthPayload } from '@/shared/types/auth';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -102,13 +102,13 @@ let storeInstance: ReturnType<typeof createStore> | null = null;
 
 /**
  * Get or create the client-side store instance (singleton pattern)
- * 
+ *
  * Why this pattern is needed:
  * - Zustand stores should be singletons (one instance per application)
  * - Prevents multiple store instances from being created
  * - Ensures all components share the same store state
  * - Required for proper state synchronization across the app
- * 
+ *
  * @returns The singleton store instance
  */
 const getClientStore = () => {
@@ -120,11 +120,11 @@ const getClientStore = () => {
 
 /**
  * User Store Hook
- * 
+ *
  * SSR-safe hook that returns the appropriate store based on environment:
  * - Client-side: Returns the singleton store instance (with persistence)
  * - Server-side: Returns a no-op store (prevents SSR errors)
- * 
+ *
  * Usage:
  * ```tsx
  * const { user, setUser, clearUser } = useUserStore();
@@ -141,4 +141,3 @@ export const useUserStore =
         clearUser: () => {},
         setInitialized: () => {},
       }));
-

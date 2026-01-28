@@ -1,25 +1,23 @@
 /**
- * Get Current Cashier Shift API
- *
+ * Current Cashier Shift API
+ * 
  * GET /api/cashier/shift/current
- *
- * Retrieves the currently active shift for the logged-in cashier.
- * Used for populating the cashier dashboard.
- *
+ * 
+ * Retrieve the current active or pending shift for the logged-in cashier.
+ * Used to populate the cashier dashboard.
+ * 
  * @module app/api/cashier/shift/current/route
  */
 
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
-import type { CashierShift } from '@/shared/types/vault';
+import { calculateExpectedBalance } from '@/lib/helpers/vault/calculations';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(_request: NextRequest) {
   try {
-    // ============================================================================
-    // STEP 1: Authentication & Authorization
-    // ============================================================================
+    // STEP 1: Authorization
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -27,44 +25,44 @@ export async function GET(_request: NextRequest) {
         { status: 401 }
       );
     }
-    const cashierId = userPayload.userId;
+    const userId = userPayload._id as string;
 
-    // ============================================================================
-    // STEP 2: Find active shift for the current cashier
-    // ============================================================================
+    // STEP 2: Find latest relevant shift
     await connectDB();
-    const activeShift = await CashierShiftModel.findOne({
-      cashierId,
-      status: 'active',
-    }).lean<CashierShift | null>();
+    
+    // We look for any shift that is NOT closed, or closed very recently?
+    // Mainly active, pending_start, pending_review.
+    const shift = await CashierShiftModel.findOne({
+      cashierId: userId,
+      status: { $in: ['active', 'pending_start', 'pending_review'] },
+    }).sort({ createdAt: -1 });
 
-    // ============================================================================
-    // STEP 3: Return shift data or indicate no active shift
-    // ============================================================================
-    if (!activeShift) {
+    if (!shift) {
       return NextResponse.json({
         success: true,
-        data: {
-          activeShift: null,
-          message: 'No active shift found for this cashier.',
-        },
+        shift: null,
       });
     }
 
-    const currentBalance =
-      activeShift.openingBalance +
-      activeShift.floatAdjustmentsTotal -
-      activeShift.payoutsTotal;
+    // STEP 3: Calculate current balance if active
+    let currentBalance = 0;
+    if (shift.status === 'active') {
+      currentBalance = calculateExpectedBalance(
+        shift.openingBalance,
+        shift.payoutsTotal,
+        shift.floatAdjustmentsTotal
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      data: {
-        activeShift,
-        currentBalance,
-      },
+      shift: shift.toObject(),
+      currentBalance, // Only relevant for active shifts
+      status: shift.status,
     });
+
   } catch (error) {
-    console.error('Error fetching current cashier shift:', error);
+    console.error('Error fetching current shift:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

@@ -23,50 +23,51 @@
 
 import { Button } from '@/components/shared/ui/button';
 import MultiSelectDropdown, {
-    type MultiSelectOption,
+  type MultiSelectOption,
 } from '@/components/shared/ui/common/MultiSelectDropdown';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import { fetchLicensees, logoutUser } from '@/lib/helpers/client';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
-    ProfileValidationFormData,
-    ProfileValidationModalData,
+  ProfileValidationFormData,
+  ProfileValidationModalData,
 } from '@/lib/types/auth';
 import { cn } from '@/lib/utils';
 import {
-    containsEmailPattern,
-    containsPhonePattern,
-    isPlaceholderEmail,
-    normalizePhoneNumber,
-    validateEmail,
-    validateNameField,
-    validateOptionalGender,
-    validatePasswordStrength,
-    validatePhoneNumber,
-    validateProfileField,
+  containsEmailPattern,
+  containsPhonePattern,
+  isPlaceholderEmail,
+  normalizePhoneNumber,
+  validateEmail,
+  validateNameField,
+  validateOptionalGender,
+  validatePasswordStrength,
+  validatePhoneNumber,
+  validateProfileField,
 } from '@/lib/utils/validation';
 import type {
-    InvalidProfileFields,
-    ProfileValidationReasons,
+  InvalidProfileFields,
+  ProfileValidationReasons,
 } from '@/shared/types/auth';
 import { AlertTriangle, Loader2, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import * as React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type ProfileValidationModalProps = {
@@ -111,6 +112,11 @@ export default function ProfileValidationModal({
     authUser?.roles?.map(role => role.toLowerCase()) || [];
   const canManageAssignments =
     normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+
+  // Check if user is a cashier and hasn't changed temp password
+  const isCashier = normalizedRoles.includes('cashier');
+  const needsPasswordChange =
+    isCashier && authUser?.tempPasswordChanged === false;
 
   const [formData, setFormData] = useState<ProfileValidationFormData>({
     username: currentData.username,
@@ -367,7 +373,8 @@ export default function ProfileValidationModal({
     });
   }, [canManageAssignments, formData.licenseeIds, locationOptionMap]);
 
-  const passwordRequired = Boolean(invalidFields?.password);
+  const passwordRequired =
+    Boolean(invalidFields?.password) || needsPasswordChange;
 
   const passwordFeedback = useMemo(() => {
     if (!formData.newPassword) {
@@ -504,7 +511,7 @@ export default function ProfileValidationModal({
     }
 
     if (passwordRequired) {
-      if (!formData.currentPassword) {
+      if (!needsPasswordChange && !formData.currentPassword) {
         newErrors.currentPassword = 'Current password is required.';
       }
       if (!formData.newPassword) {
@@ -646,19 +653,23 @@ export default function ProfileValidationModal({
         </DialogHeader>
 
         {/* Validation Reasons Section */}
-        {Object.keys(reasons || {}).length > 0 && (
-          <div className="mt-4 space-y-1 rounded-md bg-amber-50 p-3 text-xs text-amber-900">
-            <p className="font-semibold text-amber-900">
-              Issues you need to fix:
-            </p>
-            <ul className="space-y-2">
-              {Object.entries(reasons)
-                .filter(
-                  ([key]) =>
-                    key !== 'dateOfBirth' &&
-                    invalidFields[key as keyof InvalidProfileFields]
-                )
-                .map(([field, reason]) => {
+        {(() => {
+          const filteredReasons = Object.entries(reasons || {}).filter(
+            ([key]) =>
+              key !== 'dateOfBirth' &&
+              !(key === 'password' && needsPasswordChange) &&
+              invalidFields[key as keyof InvalidProfileFields]
+          );
+
+          if (filteredReasons.length === 0) return null;
+
+          return (
+            <div className="mt-4 space-y-1 rounded-md bg-amber-50 p-3 text-xs text-amber-900">
+              <p className="font-semibold text-amber-900">
+                Issues you need to fix:
+              </p>
+              <ul className="space-y-2">
+                {filteredReasons.map(([field, reason]) => {
                   if (!reason) return null;
                   const currentValue =
                     currentData[field as keyof ProfileValidationModalData];
@@ -697,16 +708,32 @@ export default function ProfileValidationModal({
                     </li>
                   );
                 })}
-            </ul>
-          </div>
-        )}
+              </ul>
+            </div>
+          );
+        })()}
 
         {/* Server Error Message */}
-        {serverError && (
+        {(serverError || Object.keys(errors).length > 0) && (
           <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3">
             <p className="text-sm font-medium text-red-600" role="alert">
-              {serverError}
+              {serverError || 'Please fix the following issues to continue:'}
             </p>
+            {Object.entries(errors).length > 0 && (
+              <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-red-500">
+                {Object.entries(errors).map(([field, message]) => {
+                  // If the field isn't in invalidFields, it's not rendered in the form,
+                  // so we must show its error here so the user knows what's wrong.
+                  // For fields that ARE rendered, we show it here too just in case as a summary.
+                  const fieldLabel = field.replace(/([A-Z])/g, ' $1');
+                  return (
+                    <li key={field}>
+                      <span className="font-semibold capitalize">{fieldLabel}:</span> {message}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         )}
 
@@ -969,32 +996,34 @@ export default function ProfileValidationModal({
 
           {passwordRequired && (
             <div className="space-y-3 rounded-md border border-border p-3">
-              <div>
-                <Label htmlFor="currentPassword">Current Password</Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  value={formData.currentPassword}
-                  onChange={e =>
-                    setFormData(prev => ({
-                      ...prev,
-                      currentPassword: e.target.value,
-                    }))
-                  }
-                  className={cn(
-                    INPUT_CLASS,
-                    errors.currentPassword && 'border-red-500'
+                  {!needsPasswordChange && (
+                    <div>
+                      <Label htmlFor="currentPassword">Current Password</Label>
+                      <Input
+                        id="currentPassword"
+                        type="password"
+                        value={formData.currentPassword}
+                        onChange={e =>
+                          setFormData(prev => ({
+                            ...prev,
+                            currentPassword: e.target.value,
+                          }))
+                        }
+                        className={cn(
+                          INPUT_CLASS,
+                          errors.currentPassword && 'border-red-500'
+                        )}
+                        autoComplete="current-password"
+                        disabled={loading}
+                      />
+                      {reasons.password && (
+                        <p className="text-xs text-muted-foreground">
+                          Why this is required: {reasons.password}
+                        </p>
+                      )}
+                      {renderFieldError('currentPassword')}
+                    </div>
                   )}
-                  autoComplete="current-password"
-                  disabled={loading}
-                />
-                {reasons.password && (
-                  <p className="text-xs text-muted-foreground">
-                    Why this is required: {reasons.password}
-                  </p>
-                )}
-                {renderFieldError('currentPassword')}
-              </div>
 
               <div>
                 <Label htmlFor="newPassword">New Password</Label>
@@ -1140,4 +1169,3 @@ export default function ProfileValidationModal({
     </Dialog>
   );
 }
-

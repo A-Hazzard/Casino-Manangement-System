@@ -102,6 +102,7 @@ export type UserAuthPayload = {
   isLocked?: boolean;
   lockedUntil?: Date;
   failedLoginAttempts?: number;
+  tempPasswordChanged?: boolean;
   // Validation flags
   requiresPasswordUpdate?: boolean;
   requiresProfileUpdate?: boolean;
@@ -166,4 +167,3 @@ export type LoginFormProps = {
   redirecting: boolean;
   handleLogin: (e: React.FormEvent) => void;
 };
-

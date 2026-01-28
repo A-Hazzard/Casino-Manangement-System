@@ -4,165 +4,168 @@
  * Main dashboard for cashiers showing current shift status, float information,
  * and quick actions for payouts and float requests.
  *
+ * Integrates with useCashierShift hook for API interactions.
+ *
  * @module components/VAULT/cashier/CashierDashboardPageContent
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
-import { Badge } from '@/components/shared/ui/badge';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useAuth } from '@/lib/hooks/useAuth';
 import {
-  Clock,
-  Plus,
-  Minus,
-  Receipt,
-  HandCoins,
-  TrendingUp,
-  AlertCircle,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
+import { useCashierShift } from '@/lib/hooks/useCashierShift';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import type { CreatePayoutRequest, Denomination } from '@/shared/types/vault';
+import {
+    AlertCircle,
+    Clock,
+    HandCoins,
+    Loader2,
+    Lock,
+    Minus,
+    Plus,
+    Receipt,
+    TrendingUp
+} from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import HandPayForm from './payouts/HandPayForm';
+import TicketRedemptionForm from './payouts/TicketRedemptionForm';
+import BlindCloseModal from './shifts/BlindCloseModal';
 import CashierShiftOpenModal from './shifts/CashierShiftOpenModal';
 import FloatRequestModal, {
-  type FloatRequestData,
+    type FloatRequestData,
 } from './shifts/FloatRequestModal';
-import TicketRedemptionForm from './payouts/TicketRedemptionForm';
-import HandPayForm from './payouts/HandPayForm';
-import PasswordUpdateModal from '@/components/shared/ui/PasswordUpdateModal';
-import type { Denomination } from '@/shared/types/vault';
 
-// Mock data for current shift
-const mockCurrentShift = {
-  id: 'shift_123',
-  status: 'active',
-  openedAt: '2024-01-25T09:00:00Z',
-  currentFloat: 8500,
-  openingFloat: 8000,
-  payoutsTotal: 1250,
-  payoutsCount: 8,
-  lastActivity: '2024-01-25T14:30:00Z',
+type TicketRedemptionData = {
+  ticketNumber: string;
+  amount: number;
 };
-
-const mockRecentPayouts = [
-  {
-    id: '1',
-    type: 'ticket',
-    amount: 500,
-    time: '14:25',
-    ticketNumber: 'T123456',
-  },
-  {
-    id: '2',
-    type: 'hand_pay',
-    amount: 250,
-    time: '14:15',
-    machineId: 'SLOT-07',
-  },
-  {
-    id: '3',
-    type: 'ticket',
-    amount: 300,
-    time: '13:45',
-    ticketNumber: 'T123455',
-  },
-];
 
 export default function CashierDashboardPageContent() {
   const { formatAmount } = useCurrencyFormat();
-  const { user } = useAuth();
+    const { 
+    shift, 
+    status, 
+    currentBalance, 
+    loading: shiftLoading, 
+    openShift, 
+    closeShift,
+    refresh 
+  } = useCashierShift();
+
   const [showShiftOpen, setShowShiftOpen] = useState(false);
+  const [showShiftClose, setShowShiftClose] = useState(false);
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [showHandPayForm, setShowHandPayForm] = useState(false);
   const [showFloatRequest, setShowFloatRequest] = useState(false);
-  const [floatRequestType, setFloatRequestType] = useState<
-    'increase' | 'decrease'
-  >('increase');
-  const [showPasswordUpdate, setShowPasswordUpdate] = useState(false);
-  const [passwordUpdateLoading, setPasswordUpdateLoading] = useState(false);
-
-  // Check if user requires password update (first login)
-  useEffect(() => {
-    if (user?.requiresPasswordUpdate) {
-      setShowPasswordUpdate(true);
+  const [floatRequestType, setFloatRequestType] = useState<'increase' | 'decrease'>('increase');
+  const [actionLoading, setActionLoading] = useState(false);
+  
+  // Handlers
+  const handleShiftOpen = async (denominations: Denomination[]) => {
+    const totalAmount = denominations.reduce((sum, d) => sum + (d.denomination * d.quantity), 0);
+    const success = await openShift(denominations, totalAmount);
+    if (success) {
+      setShowShiftOpen(false);
     }
-  }, [user]);
-
-  const handleShiftOpen = async (_denominations: Denomination[]) => {
-    // TODO: Call API to open shift with float request
-    toast.success('Shift opened successfully with requested float');
-    setShowShiftOpen(false);
   };
 
-  const handleTicketRedemption = async (_ticketData: any) => {
-    // TODO: Call payout API
-    toast.success('Ticket redeemed successfully');
-    setShowTicketForm(false);
+  const handleShiftClose = async (physicalCount: number, denominations: Denomination[]) => {
+    const success = await closeShift(physicalCount, denominations);
+    if (success) {
+      setShowShiftClose(false);
+    }
   };
 
-  const handleHandPay = async (_handPayData: any) => {
-    // TODO: Call payout API
-    toast.success('Hand pay processed successfully');
-    setShowHandPayForm(false);
+  const handlePayout = async (data: CreatePayoutRequest) => {
+    if (!shift?._id) return;
+    setActionLoading(true);
+    try {
+        const res = await fetch('/api/cashier/payout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+            toast.success('Payout processed successfully');
+            setShowTicketForm(false);
+            setShowHandPayForm(false);
+            refresh(); // Refresh balance
+        } else {
+            toast.error(result.error || 'Failed to process payout');
+        }
+    } catch (error) {
+        console.error('Payout failed', error);
+        toast.error('Connection error');
+    } finally {
+        setActionLoading(false);
+    }
   };
 
-  const handleFloatRequest = (type: 'increase' | 'decrease') => {
-    setFloatRequestType(type);
-    setShowFloatRequest(true);
+  const handleTicketRedemption = async (ticketData: TicketRedemptionData) => {
+    await handlePayout({
+        cashierShiftId: shift?._id || '',
+        type: 'ticket',
+        amount: ticketData.amount,
+        ticketNumber: ticketData.ticketNumber,
+        notes: `Ticket ${ticketData.ticketNumber}`
+    });
   };
 
-  const handleFloatRequestSubmit = async (_requestData: FloatRequestData) => {
-    // TODO: Call float request API
-    toast.success(
-      `${floatRequestType === 'increase' ? 'Increase' : 'Decrease'} float request submitted`
-    );
+  // Adapter for Ticket Form that matches its prop signature (ticketNumber, amount, barcode)
+  const onTicketSubmit = async (ticketNumber: string, amount: number, _barcode?: string) => {
+      await handleTicketRedemption({ ticketNumber, amount });
+  };
+
+  const handleHandPay = async (amount: number, machineId?: string, machineName?: string, jackpotType?: string) => {
+    await handlePayout({
+        cashierShiftId: shift?._id || '',
+        type: 'hand_pay',
+        amount: amount,
+        machineId: machineId,
+        notes: `Handpay: ${machineId || 'Unknown'} - ${jackpotType || 'Standard'}`
+    });
+  };
+  
+  const handleFloatRequestSubmit = async (_data: FloatRequestData) => {
+    toast.info("Mid-shift float requests are coming in Phase 2.");
     setShowFloatRequest(false);
   };
+  
+  // Render Helpers
+  if (shiftLoading) {
+     return (
+        <PageLayout showHeader={false}>
+            <div className="flex justify-center items-center min-h-[50vh]">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400"/>
+            </div>
+        </PageLayout>
+     );
+  }
 
-  const handlePasswordUpdate = async (_newPassword: string) => {
-    setPasswordUpdateLoading(true);
-    try {
-      // TODO: Call password update API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success('Password updated successfully');
-      setShowPasswordUpdate(false);
-      // TODO: Update user state to clear requiresPasswordUpdate
-    } finally {
-      setPasswordUpdateLoading(false);
-    }
-  };
-
-  const isShiftActive = mockCurrentShift.status === 'active';
-  const requiresPasswordUpdate = user?.requiresPasswordUpdate;
+  const isShiftActive = status === 'active';
+  const isPendingStart = status === 'pending_start';
+  const isPendingReview = status === 'pending_review';
 
   return (
     <PageLayout showHeader={false}>
-      {/* Password Update Modal for First Login */}
-      <PasswordUpdateModal
-        open={showPasswordUpdate}
-        onClose={() => setShowPasswordUpdate(false)}
-        onUpdate={handlePasswordUpdate}
-        loading={passwordUpdateLoading}
-      />
-
-      {/* Main Dashboard Content - Only show if password update not required */}
-      {!requiresPasswordUpdate && (
-        <div className="space-y-6">
+      <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -173,8 +176,10 @@ export default function CashierDashboardPageContent() {
                 Manage your shift, process payouts, and monitor your float
               </p>
             </div>
-            {!isShiftActive && (
-              <Button
+            
+            {/* Start / Close Buttons based on Status */}
+            {(!shift || (!isShiftActive && !isPendingStart && !isPendingReview)) && (
+               <Button
                 onClick={() => setShowShiftOpen(true)}
                 className="bg-green-600 text-white hover:bg-green-700"
               >
@@ -182,149 +187,153 @@ export default function CashierDashboardPageContent() {
                 Start Shift
               </Button>
             )}
+            
+            {isShiftActive && (
+               <Button
+                onClick={() => setShowShiftClose(true)}
+                className="bg-red-600 text-white hover:bg-red-700"
+              >
+                <Lock className="mr-2 h-4 w-4" />
+                End Shift
+              </Button>
+            )}
           </div>
 
-          {/* Shift Status */}
-          <Card className="border-l-4 border-l-green-500">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Current Shift
-                </CardTitle>
-                <Badge variant={isShiftActive ? 'default' : 'secondary'}>
-                  {isShiftActive ? 'Active' : 'Not Started'}
-                </Badge>
+          {/* Status Banners */}
+          {isPendingStart && (
+             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <Clock className="h-5 w-5 text-yellow-400" aria-hidden="true" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-700">
+                      Your shift request is <strong>Waiting for Approval</strong> from the Vault Manager.
+                      <br/>
+                      Total Requested: {formatAmount(shift?.openingBalance || 0)}
+                    </p>
+                    <Button variant="link" size="sm" onClick={refresh} className="mt-2 text-yellow-800 p-0 h-auto">
+                        Check Status
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              {isShiftActive ? (
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Current Float</p>
-                    <p className="text-xl font-bold text-green-600">
-                      {formatAmount(mockCurrentShift.currentFloat)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Opening Float</p>
-                    <p className="text-lg font-semibold">
-                      {formatAmount(mockCurrentShift.openingFloat)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Total Payouts</p>
-                    <p className="text-lg font-semibold text-red-600">
-                      {formatAmount(mockCurrentShift.payoutsTotal)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Started At</p>
-                    <p className="font-mono text-sm">
-                      {new Date(mockCurrentShift.openedAt).toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-600">
-                  No active shift. Click "Start Shift" to begin your cashier
-                  session.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          {isShiftActive && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                  <Button
-                    variant="outline"
-                    className="flex h-20 flex-col gap-2"
-                    onClick={() => setShowTicketForm(true)}
-                  >
-                    <Receipt className="h-6 w-6" />
-                    <span className="text-xs">Ticket Redemption</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex h-20 flex-col gap-2"
-                    onClick={() => setShowHandPayForm(true)}
-                  >
-                    <HandCoins className="h-6 w-6" />
-                    <span className="text-xs">Hand Pay</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex h-20 flex-col gap-2"
-                    onClick={() => handleFloatRequest('increase')}
-                  >
-                    <TrendingUp className="h-6 w-6" />
-                    <span className="text-xs">Request More Float</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex h-20 flex-col gap-2 border-orange-200 text-orange-600 hover:bg-orange-50"
-                    onClick={() => handleFloatRequest('decrease')}
-                  >
-                    <Minus className="h-6 w-6" />
-                    <span className="text-xs">Return Float</span>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           )}
 
-          {/* Recent Activity */}
-          {isShiftActive && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5" />
-                  Recent Payouts
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {mockRecentPayouts.map(payout => (
-                    <div
-                      key={payout.id}
-                      className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        {payout.type === 'ticket' ? (
-                          <Receipt className="h-4 w-4 text-blue-500" />
-                        ) : (
-                          <HandCoins className="h-4 w-4 text-green-500" />
-                        )}
-                        <div>
-                          <p className="text-sm font-medium">
-                            {payout.type === 'ticket'
-                              ? 'Ticket Redemption'
-                              : 'Hand Pay'}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            {payout.type === 'ticket'
-                              ? `Ticket: ${payout.ticketNumber}`
-                              : `Machine: ${payout.machineId}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-red-600">
-                          -{formatAmount(payout.amount)}
+          {isPendingReview && (
+              <div className="bg-orange-50 border-l-4 border-orange-400 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <AlertCircle className="h-5 w-5 text-orange-400" aria-hidden="true" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-orange-700">
+                      Your shift is <strong>Under Review</strong>.
+                      <br/>
+                      Please contact your Vault Manager to resolve any discrepancies.
+                    </p>
+                    <Button variant="link" size="sm" onClick={refresh} className="mt-2 text-orange-800 p-0 h-auto">
+                        Check Status
+                    </Button>
+                  </div>
+                </div>
+              </div>
+          )}
+
+          {/* Active Shift Dashboard */}
+          {isShiftActive && shift && (
+            <>
+              {/* Shift Status Card */}
+              <Card className="border-l-4 border-l-green-500">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="h-5 w-5" />
+                      Current Shift
+                    </CardTitle>
+                    <Badge variant="default">Active</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Current Float</p>
+                        <p className="text-xl font-bold text-green-600">
+                          {formatAmount(currentBalance)}
                         </p>
-                        <p className="text-xs text-gray-500">{payout.time}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Opening Float</p>
+                        <p className="text-lg font-semibold">
+                          {formatAmount(shift.openingBalance)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Total Payouts</p>
+                        <p className="text-lg font-semibold text-red-600">
+                          {formatAmount(shift.payoutsTotal)}
+                        </p>
+                        <p className="text-xs text-gray-500">count: {shift.payoutsCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Started At</p>
+                        <p className="font-mono text-sm">
+                          {new Date(shift.openedAt).toLocaleTimeString()}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              {/* Quick Actions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                    <Button
+                      variant="outline"
+                      className="flex h-20 flex-col gap-2"
+                      onClick={() => setShowTicketForm(true)}
+                    >
+                      <Receipt className="h-6 w-6" />
+                      <span className="text-xs">Ticket Redemption</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex h-20 flex-col gap-2"
+                      onClick={() => setShowHandPayForm(true)}
+                    >
+                      <HandCoins className="h-6 w-6" />
+                      <span className="text-xs">Hand Pay</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex h-20 flex-col gap-2"
+                      onClick={() => {
+                        setFloatRequestType('increase');
+                        setShowFloatRequest(true);
+                      }}
+                    >
+                      <TrendingUp className="h-6 w-6" />
+                      <span className="text-xs">Request More Float</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex h-20 flex-col gap-2 border-orange-200 text-orange-600 hover:bg-orange-50"
+                      onClick={() => {
+                        setFloatRequestType('decrease');
+                        setShowFloatRequest(true);
+                      }}
+                    >
+                      <Minus className="h-6 w-6" />
+                      <span className="text-xs">Return Float</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
           )}
 
           {/* Modals */}
@@ -332,9 +341,16 @@ export default function CashierDashboardPageContent() {
             open={showShiftOpen}
             onClose={() => setShowShiftOpen(false)}
             onSubmit={handleShiftOpen}
+            loading={shiftLoading}
+          />
+          
+          <BlindCloseModal
+            open={showShiftClose}
+            onClose={() => setShowShiftClose(false)}
+            onSubmit={handleShiftClose}
+            loading={shiftLoading}
           />
 
-          {/* Ticket Redemption Modal */}
           <Dialog open={showTicketForm} onOpenChange={setShowTicketForm}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
@@ -343,11 +359,13 @@ export default function CashierDashboardPageContent() {
                   Process ticket redemption for the customer.
                 </DialogDescription>
               </DialogHeader>
-              <TicketRedemptionForm onSubmit={handleTicketRedemption} />
+              <TicketRedemptionForm 
+                 onSubmit={onTicketSubmit}
+                 loading={actionLoading} 
+               />
             </DialogContent>
           </Dialog>
 
-          {/* Hand Pay Modal */}
           <Dialog open={showHandPayForm} onOpenChange={setShowHandPayForm}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
@@ -356,19 +374,20 @@ export default function CashierDashboardPageContent() {
                   Process a hand pay payout for machine jackpot or lock-up.
                 </DialogDescription>
               </DialogHeader>
-              <HandPayForm onSubmit={handleHandPay} />
+              <HandPayForm 
+                onSubmit={handleHandPay} 
+                loading={actionLoading}
+              />
             </DialogContent>
           </Dialog>
 
-          {/* Float Request Modal */}
           <FloatRequestModal
             open={showFloatRequest}
             onClose={() => setShowFloatRequest(false)}
             onSubmit={handleFloatRequestSubmit}
             type={floatRequestType}
           />
-        </div>
-      )}
+      </div>
     </PageLayout>
   );
 }

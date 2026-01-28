@@ -73,7 +73,7 @@ export type VaultShift = {
 // Cashier Shift Types (C-1, C-4)
 // ============================================================================
 
-export type CashierShiftStatus = 'active' | 'closed' | 'pending_review';
+export type CashierShiftStatus = 'pending_start' | 'active' | 'closed' | 'pending_review';
 
 export type CashierShift = {
   _id: string;
@@ -400,12 +400,9 @@ export type CloseCashierShiftRequest = {
   denominations: Denomination[];
 };
 
-export type CloseCashierShiftResponse = {
-  success: boolean;
-  status: 'closed' | 'pending_review';
-  message: string;
-  // CRITICAL: DO NOT include expected balance or discrepancy amount
-};
+export type CloseCashierShiftResponse = 
+  | { success: true; status: 'closed' | 'pending_review'; message: string; }
+  | { success: false; error: string; };
 
 // Float request approval
 export type ApproveFloatRequest = {

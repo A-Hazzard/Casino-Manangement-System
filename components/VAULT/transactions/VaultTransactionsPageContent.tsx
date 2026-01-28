@@ -12,33 +12,32 @@
  */
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
 import PageLayout from '@/components/shared/layout/PageLayout';
-import VaultTransactionsSkeleton from '@/components/ui/skeletons/VaultTransactionsSkeleton';
-import { Input } from '@/components/shared/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/shared/ui/select';
+import { Badge } from '@/components/shared/ui/badge';
 import { Card, CardContent } from '@/components/shared/ui/card';
+import { Input } from '@/components/shared/ui/input';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/shared/ui/select';
+import VaultTransactionsSkeleton from '@/components/ui/skeletons/VaultTransactionsSkeleton';
+import {
+    fetchVaultTransactions,
+    getTransactionTypeBadge
+} from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useUserStore } from '@/lib/store/userStore';
+import type { ExtendedVaultTransaction } from '@/shared/types/vault';
+import { ArrowDown, ArrowUp, FileText, Receipt, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import VaultTransactionsMobileCards from './cards/VaultTransactionsMobileCards';
 import type { TransactionSortOption } from './tables/VaultTransactionsTable';
 import VaultTransactionsTable from './tables/VaultTransactionsTable';
-import VaultTransactionsMobileCards from './cards/VaultTransactionsMobileCards';
-import { Search, ArrowUp, ArrowDown, Receipt, FileText } from 'lucide-react';
-import { Badge } from '@/components/shared/ui/badge';
-import { useUserStore } from '@/lib/store/userStore';
-import {
-  fetchVaultTransactions,
-  getTransactionTypeBadge,
-  filterAndSortTransactions,
-} from '@/lib/helpers/vaultHelpers';
-import type { ExtendedVaultTransaction } from '@/shared/types/vault';
-import { toast } from 'sonner';
-import PaginationControls from '@/components/shared/ui/PaginationControls';
 
 export default function VaultTransactionsPageContent() {
   // ============================================================================
@@ -72,7 +71,10 @@ export default function VaultTransactionsPageContent() {
       const data = await fetchVaultTransactions(
         locationId,
         currentPage + 1,
-        20
+        20,
+        selectedType,
+        selectedStatus,
+        searchTerm
       );
       setTransactions(data.transactions);
       setTotalPages(data.totalPages);
@@ -85,9 +87,14 @@ export default function VaultTransactionsPageContent() {
     }
   };
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [searchTerm, selectedType, selectedStatus]);
+
   useEffect(() => {
     fetchData();
-  }, [user?.assignedLocations, currentPage]);
+  }, [user?.assignedLocations, currentPage, searchTerm, selectedType, selectedStatus]);
 
   // ============================================================================
   // Computed Values
@@ -95,19 +102,34 @@ export default function VaultTransactionsPageContent() {
   /**
    * Filter and sort transactions based on search term, type, status filters, and sort options
    */
+  /**
+   * Sort transactions for the current page
+   * (Filtering is now handled server-side)
+   */
   const filteredAndSortedTransactions = useMemo(() => {
-    return filterAndSortTransactions(
-      transactions,
-      searchTerm,
-      selectedType,
-      selectedStatus,
-      sortOption,
-      sortOrder
-    );
+    // Only sort the current page data
+    return [...transactions].sort((a, b) => {
+        const getField = (obj: any, field: string) => {
+            switch(field) {
+                case 'date': return new Date(obj.timestamp).getTime();
+                case 'user': return (obj.performedByName || obj.performedBy || '').toLowerCase();
+                case 'source': return (obj.fromName || '').toLowerCase();
+                case 'destination': return (obj.toName || '').toLowerCase();
+                case 'amount': return Math.abs(obj.amount);
+                case 'type': return (obj.type || '').toLowerCase();
+                case 'status': return (obj.isVoid ? 'voided' : 'completed');
+                default: return obj[field];
+            }
+        };
+
+        const aValue = getField(a, sortOption);
+        const bValue = getField(b, sortOption);
+
+        if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+    });
   }, [
-    searchTerm,
-    selectedType,
-    selectedStatus,
     sortOption,
     sortOrder,
     transactions,

@@ -1076,7 +1076,7 @@ When optimizing an API:
 #### Example Implementation
 
 ```typescript
-import { apiLogger } from '@/app/api/lib/utils/logger';
+import { apiLogger } from '../lib/services/loggerService';
 
 export async function GET(request: NextRequest) {
   const context = apiLogger.createContext(request, '/api/users');
@@ -1404,7 +1404,7 @@ When optimizing an API:
 #### Example Implementation
 
 ```typescript
-import { apiLogger } from '@/app/api/lib/utils/logger';
+import { apiLogger } from '../lib/services/loggerService';
 
 export async function GET(request: NextRequest) {
   const context = apiLogger.createContext(request, '/api/users');

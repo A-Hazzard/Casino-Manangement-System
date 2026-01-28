@@ -25,11 +25,11 @@
 import ProfileModal from '@/components/shared/layout/ProfileModal';
 import { ClientOnly } from '@/components/shared/ui/ClientOnly';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import { SidebarContainer, useSidebar } from '@/components/shared/ui/sidebar';
 import { cmsNavigationConfig } from '@/lib/constants';
@@ -42,7 +42,10 @@ import type { NavigationConfig } from '@/lib/types/layout/navigation';
 import { cn } from '@/lib/utils';
 import { shouldShowNoRoleMessage } from '@/lib/utils/licensee';
 import { shouldShowNavigationLinkDb } from '@/lib/utils/permissions';
-import { CACHE_KEYS, fetchUserWithCache } from '@/lib/utils/userCache';
+import {
+  CACHE_KEYS,
+  fetchUserWithCache,
+} from '@/lib/services/userCacheService';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { ChevronDown, ChevronUp, PanelLeft } from 'lucide-react';
 import Image from 'next/image';
@@ -530,307 +533,321 @@ export default function AppSidebar({
                             />
                           </button>
                           {/* Children items */}
-                          {((isExpanded && !collapsed) || (isExpanded && collapsed)) && item.children && (
-                            <div
-                              className={cn(
-                                'mt-1 space-y-1',
-                                collapsed
-                                  ? 'ml-2 md:ml-0 md:space-y-2'
-                                  : 'ml-4 border-l-2 border-gray-200 pl-2'
-                              )}
-                            >
-                              {item.children
-                                .filter(child => {
-                                  // Check child permissions
-                                  if (child.permissionCheck && user?.roles) {
-                                    return child.permissionCheck(user.roles);
-                                  }
-                                  return (
-                                    navigationPermissions[child.href] ?? true
-                                  );
-                                })
-                                //TODO Review
-
-                                .map(child => {
-                                  // Find the original index of this child in the item.children array for stable keys
-                                  const childIndex = item.children?.indexOf(child) ?? 0;
-                                  const ChildIcon = child.icon;
-                                  const hasGrandchildren =
-                                    child.children && child.children.length > 0;
-                                  const childUniqueKey = `${item.label}-${index}-${child.label}-${childIndex}`;
-                                  const isChildExpanded =
-                                    expandedSections.has(childUniqueKey);
-
-                                  // Check if any grandchild is active
-                                  const isGrandchildActive = hasGrandchildren
-                                    ? child.children?.some(
-                                        grandchild =>
-                                          pathname === grandchild.href ||
-                                          pathname.startsWith(
-                                            grandchild.href + '/'
-                                          )
-                                      )
-                                    : false;
-
-                                  const childActive =
-                                    pathname === child.href ||
-                                    pathname.startsWith(child.href + '/') ||
-                                    isGrandchildActive;
-
-                                  // If child has its own children (nested), render as expandable
-                                  if (hasGrandchildren) {
+                          {((isExpanded && !collapsed) ||
+                            (isExpanded && collapsed)) &&
+                            item.children && (
+                              <div
+                                className={cn(
+                                  'mt-1 space-y-1',
+                                  collapsed
+                                    ? 'ml-2 md:ml-0 md:space-y-2'
+                                    : 'ml-4 border-l-2 border-gray-200 pl-2'
+                                )}
+                              >
+                                {item.children
+                                  .filter(child => {
+                                    // Check child permissions
+                                    if (child.permissionCheck && user?.roles) {
+                                      return child.permissionCheck(user.roles);
+                                    }
                                     return (
-                                      <div
-                                        key={childUniqueKey}
-                                        className="relative"
-                                      >
-                                        <button
-                                          type="button"
-                                          onClick={e => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            setExpandedSections(prev => {
-                                              const newSet = new Set(prev);
-                                              if (newSet.has(childUniqueKey)) {
-                                                newSet.delete(childUniqueKey);
-                                              } else {
-                                                newSet.add(childUniqueKey);
-                                              }
-                                              return newSet;
-                                            });
-                                          }}
-                                          className={cn(
-                                            'relative flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                                            childActive
-                                              ? 'bg-buttonActive font-medium text-white'
-                                              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800',
-                                            collapsed &&
-                                              'md:justify-center md:gap-0'
-                                          )}
-                                          onMouseEnter={e => {
-                                            if (collapsed) {
-                                              const rect =
-                                                e.currentTarget.getBoundingClientRect();
-                                              setTooltipPosition({
-                                                top: rect.top + rect.height / 2,
-                                                left: rect.right + 8,
-                                              });
-                                              setHoveredItem(childUniqueKey);
-                                              setHoveredItemLabel(child.label);
-                                            }
-                                          }}
-                                          onMouseLeave={() => {
-                                            if (collapsed) {
-                                              setHoveredItem(null);
-                                              setHoveredItemLabel(null);
-                                              setTooltipPosition(null);
-                                            }
-                                          }}
+                                      navigationPermissions[child.href] ?? true
+                                    );
+                                  })
+                                  //TODO Review
+
+                                  .map(child => {
+                                    // Find the original index of this child in the item.children array for stable keys
+                                    const childIndex =
+                                      item.children?.indexOf(child) ?? 0;
+                                    const ChildIcon = child.icon;
+                                    const hasGrandchildren =
+                                      child.children &&
+                                      child.children.length > 0;
+                                    const childUniqueKey = `${item.label}-${index}-${child.label}-${childIndex}`;
+                                    const isChildExpanded =
+                                      expandedSections.has(childUniqueKey);
+
+                                    // Check if any grandchild is active
+                                    const isGrandchildActive = hasGrandchildren
+                                      ? child.children?.some(
+                                          grandchild =>
+                                            pathname === grandchild.href ||
+                                            pathname.startsWith(
+                                              grandchild.href + '/'
+                                            )
+                                        )
+                                      : false;
+
+                                    const childActive =
+                                      pathname === child.href ||
+                                      pathname.startsWith(child.href + '/') ||
+                                      isGrandchildActive;
+
+                                    // If child has its own children (nested), render as expandable
+                                    if (hasGrandchildren) {
+                                      return (
+                                        <div
+                                          key={childUniqueKey}
+                                          className="relative"
                                         >
-                                          <div className="flex items-center gap-3">
-                                            <ChildIcon
+                                          <button
+                                            type="button"
+                                            onClick={e => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              setExpandedSections(prev => {
+                                                const newSet = new Set(prev);
+                                                if (
+                                                  newSet.has(childUniqueKey)
+                                                ) {
+                                                  newSet.delete(childUniqueKey);
+                                                } else {
+                                                  newSet.add(childUniqueKey);
+                                                }
+                                                return newSet;
+                                              });
+                                            }}
+                                            className={cn(
+                                              'relative flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                                              childActive
+                                                ? 'bg-buttonActive font-medium text-white'
+                                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800',
+                                              collapsed &&
+                                                'md:justify-center md:gap-0'
+                                            )}
+                                            onMouseEnter={e => {
+                                              if (collapsed) {
+                                                const rect =
+                                                  e.currentTarget.getBoundingClientRect();
+                                                setTooltipPosition({
+                                                  top:
+                                                    rect.top + rect.height / 2,
+                                                  left: rect.right + 8,
+                                                });
+                                                setHoveredItem(childUniqueKey);
+                                                setHoveredItemLabel(
+                                                  child.label
+                                                );
+                                              }
+                                            }}
+                                            onMouseLeave={() => {
+                                              if (collapsed) {
+                                                setHoveredItem(null);
+                                                setHoveredItemLabel(null);
+                                                setTooltipPosition(null);
+                                              }
+                                            }}
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              <ChildIcon
+                                                className={cn(
+                                                  'flex-shrink-0',
+                                                  collapsed
+                                                    ? 'md:h-5 md:w-5'
+                                                    : 'h-4 w-4'
+                                                )}
+                                              />
+                                              <span
+                                                className={cn(
+                                                  'truncate',
+                                                  collapsed ? 'md:hidden' : ''
+                                                )}
+                                              >
+                                                {child.label}
+                                              </span>
+                                            </div>
+                                            <ChevronUp
                                               className={cn(
-                                                'flex-shrink-0',
-                                                collapsed
-                                                  ? 'md:h-5 md:w-5'
-                                                  : 'h-4 w-4'
+                                                'h-4 w-4 flex-shrink-0 transition-transform',
+                                                isChildExpanded
+                                                  ? ''
+                                                  : 'rotate-180'
                                               )}
                                             />
-                                            <span
-                                              className={cn(
-                                                'truncate',
-                                                collapsed ? 'md:hidden' : ''
-                                              )}
-                                            >
-                                              {child.label}
-                                            </span>
-                                          </div>
-                                          <ChevronUp
-                                            className={cn(
-                                              'h-4 w-4 flex-shrink-0 transition-transform',
-                                              isChildExpanded
-                                                ? ''
-                                                : 'rotate-180'
-                                            )}
-                                          />
-                                        </button>
-                                        {/* Grandchildren items */}
-                                        {isChildExpanded && child.children && (
-                                          <div
-                                            className={cn(
-                                              'mt-1 space-y-1',
-                                              collapsed
-                                                ? 'ml-2 md:ml-0 md:space-y-2'
-                                                : 'ml-6 border-l-2 border-gray-200 pl-2'
-                                            )}
-                                          >
-                                            {child.children
-                                              .filter(grandchild => {
-                                                if (
-                                                  grandchild.permissionCheck &&
-                                                  user?.roles
-                                                ) {
-                                                  return grandchild.permissionCheck(
-                                                    user.roles
-                                                  );
-                                                }
-                                                return (
-                                                  navigationPermissions[
-                                                    grandchild.href
-                                                  ] ?? true
-                                                );
-                                              })
-                                              .map(grandchild => {
-                                                const GrandchildIcon =
-                                                  grandchild.icon;
-                                                const grandchildActive =
-                                                  pathname ===
-                                                    grandchild.href ||
-                                                  pathname.startsWith(
-                                                    grandchild.href + '/'
-                                                  );
+                                          </button>
+                                          {/* Grandchildren items */}
+                                          {isChildExpanded &&
+                                            child.children && (
+                                              <div
+                                                className={cn(
+                                                  'mt-1 space-y-1',
+                                                  collapsed
+                                                    ? 'ml-2 md:ml-0 md:space-y-2'
+                                                    : 'ml-6 border-l-2 border-gray-200 pl-2'
+                                                )}
+                                              >
+                                                {child.children
+                                                  .filter(grandchild => {
+                                                    if (
+                                                      grandchild.permissionCheck &&
+                                                      user?.roles
+                                                    ) {
+                                                      return grandchild.permissionCheck(
+                                                        user.roles
+                                                      );
+                                                    }
+                                                    return (
+                                                      navigationPermissions[
+                                                        grandchild.href
+                                                      ] ?? true
+                                                    );
+                                                  })
+                                                  .map(grandchild => {
+                                                    const GrandchildIcon =
+                                                      grandchild.icon;
+                                                    const grandchildActive =
+                                                      pathname ===
+                                                        grandchild.href ||
+                                                      pathname.startsWith(
+                                                        grandchild.href + '/'
+                                                      );
 
-                                                return (
-                                                  <Link
-                                                    key={grandchild.href}
-                                                    href={grandchild.href}
-                                                    className={cn(
-                                                      'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                                                      grandchildActive
-                                                        ? 'bg-buttonActive font-medium text-white'
-                                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800',
-                                                      collapsed &&
-                                                        'md:justify-center md:gap-0'
-                                                    )}
-                                                    onClick={() => {
-                                                      if (
-                                                        typeof window !==
-                                                          'undefined' &&
-                                                        window.innerWidth < 768
-                                                      ) {
-                                                        setIsOpen(false);
-                                                      }
-                                                    }}
-                                                    onMouseEnter={e => {
-                                                      if (collapsed) {
-                                                        const rect =
-                                                          e.currentTarget.getBoundingClientRect();
-                                                        setTooltipPosition({
-                                                          top:
-                                                            rect.top +
-                                                            rect.height / 2,
-                                                          left: rect.right + 8,
-                                                        });
-                                                        setHoveredItem(
-                                                          grandchild.href
-                                                        );
-                                                        setHoveredItemLabel(
-                                                          grandchild.label
-                                                        );
-                                                      }
-                                                    }}
-                                                    onMouseLeave={() => {
-                                                      if (collapsed) {
-                                                        setHoveredItem(null);
-                                                        setHoveredItemLabel(
-                                                          null
-                                                        );
-                                                        setTooltipPosition(
-                                                          null
-                                                        );
-                                                      }
-                                                    }}
-                                                  >
-                                                    <GrandchildIcon
-                                                      className={cn(
-                                                        'flex-shrink-0',
-                                                        collapsed
-                                                          ? 'md:h-5 md:w-5'
-                                                          : 'h-4 w-4'
-                                                      )}
-                                                    />
-                                                    <span
-                                                      className={cn(
-                                                        'truncate',
-                                                        collapsed
-                                                          ? 'md:hidden'
-                                                          : ''
-                                                      )}
-                                                    >
-                                                      {grandchild.label}
-                                                    </span>
-                                                  </Link>
-                                                );
-                                              })}
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  }
+                                                    return (
+                                                      <Link
+                                                        key={grandchild.href}
+                                                        href={grandchild.href}
+                                                        className={cn(
+                                                          'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                                                          grandchildActive
+                                                            ? 'bg-buttonActive font-medium text-white'
+                                                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800',
+                                                          collapsed &&
+                                                            'md:justify-center md:gap-0'
+                                                        )}
+                                                        onClick={() => {
+                                                          if (
+                                                            typeof window !==
+                                                              'undefined' &&
+                                                            window.innerWidth <
+                                                              768
+                                                          ) {
+                                                            setIsOpen(false);
+                                                          }
+                                                        }}
+                                                        onMouseEnter={e => {
+                                                          if (collapsed) {
+                                                            const rect =
+                                                              e.currentTarget.getBoundingClientRect();
+                                                            setTooltipPosition({
+                                                              top:
+                                                                rect.top +
+                                                                rect.height / 2,
+                                                              left:
+                                                                rect.right + 8,
+                                                            });
+                                                            setHoveredItem(
+                                                              grandchild.href
+                                                            );
+                                                            setHoveredItemLabel(
+                                                              grandchild.label
+                                                            );
+                                                          }
+                                                        }}
+                                                        onMouseLeave={() => {
+                                                          if (collapsed) {
+                                                            setHoveredItem(
+                                                              null
+                                                            );
+                                                            setHoveredItemLabel(
+                                                              null
+                                                            );
+                                                            setTooltipPosition(
+                                                              null
+                                                            );
+                                                          }
+                                                        }}
+                                                      >
+                                                        <GrandchildIcon
+                                                          className={cn(
+                                                            'flex-shrink-0',
+                                                            collapsed
+                                                              ? 'md:h-5 md:w-5'
+                                                              : 'h-4 w-4'
+                                                          )}
+                                                        />
+                                                        <span
+                                                          className={cn(
+                                                            'truncate',
+                                                            collapsed
+                                                              ? 'md:hidden'
+                                                              : ''
+                                                          )}
+                                                        >
+                                                          {grandchild.label}
+                                                        </span>
+                                                      </Link>
+                                                    );
+                                                  })}
+                                              </div>
+                                            )}
+                                        </div>
+                                      );
+                                    }
 
-                                  // Regular child link (no grandchildren)
-                                  return (
-                                    <Link
-                                      key={child.href}
-                                      href={child.href}
-                                      className={cn(
-                                        'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                                        childActive
-                                          ? 'bg-buttonActive font-medium text-white'
-                                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800',
-                                        collapsed &&
-                                          'md:justify-center md:gap-0'
-                                      )}
-                                      onClick={() => {
-                                        // Close sidebar on mobile when a link is clicked
-                                        if (
-                                          typeof window !== 'undefined' &&
-                                          window.innerWidth < 768
-                                        ) {
-                                          setIsOpen(false);
-                                        }
-                                      }}
-                                      onMouseEnter={e => {
-                                        if (collapsed) {
-                                          const rect =
-                                            e.currentTarget.getBoundingClientRect();
-                                          setTooltipPosition({
-                                            top: rect.top + rect.height / 2,
-                                            left: rect.right + 8,
-                                          });
-                                          setHoveredItem(childUniqueKey);
-                                          setHoveredItemLabel(child.label);
-                                        }
-                                      }}
-                                      onMouseLeave={() => {
-                                        if (collapsed) {
-                                          setHoveredItem(null);
-                                          setHoveredItemLabel(null);
-                                          setTooltipPosition(null);
-                                        }
-                                      }}
-                                    >
-                                      <ChildIcon
+                                    // Regular child link (no grandchildren)
+                                    return (
+                                      <Link
+                                        key={child.href}
+                                        href={child.href}
                                         className={cn(
-                                          'flex-shrink-0',
-                                          collapsed
-                                            ? 'md:h-5 md:w-5'
-                                            : 'h-4 w-4'
+                                          'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                                          childActive
+                                            ? 'bg-buttonActive font-medium text-white'
+                                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800',
+                                          collapsed &&
+                                            'md:justify-center md:gap-0'
                                         )}
-                                      />
-                                      <span
-                                        className={cn(
-                                          'truncate',
-                                          collapsed ? 'md:hidden' : ''
-                                        )}
+                                        onClick={() => {
+                                          // Close sidebar on mobile when a link is clicked
+                                          if (
+                                            typeof window !== 'undefined' &&
+                                            window.innerWidth < 768
+                                          ) {
+                                            setIsOpen(false);
+                                          }
+                                        }}
+                                        onMouseEnter={e => {
+                                          if (collapsed) {
+                                            const rect =
+                                              e.currentTarget.getBoundingClientRect();
+                                            setTooltipPosition({
+                                              top: rect.top + rect.height / 2,
+                                              left: rect.right + 8,
+                                            });
+                                            setHoveredItem(childUniqueKey);
+                                            setHoveredItemLabel(child.label);
+                                          }
+                                        }}
+                                        onMouseLeave={() => {
+                                          if (collapsed) {
+                                            setHoveredItem(null);
+                                            setHoveredItemLabel(null);
+                                            setTooltipPosition(null);
+                                          }
+                                        }}
                                       >
-                                        {child.label}
-                                      </span>
-                                    </Link>
-                                  );
-                                })}
-                            </div>
-                          )}
+                                        <ChildIcon
+                                          className={cn(
+                                            'flex-shrink-0',
+                                            collapsed
+                                              ? 'md:h-5 md:w-5'
+                                              : 'h-4 w-4'
+                                          )}
+                                        />
+                                        <span
+                                          className={cn(
+                                            'truncate',
+                                            collapsed ? 'md:hidden' : ''
+                                          )}
+                                        >
+                                          {child.label}
+                                        </span>
+                                      </Link>
+                                    );
+                                  })}
+                              </div>
+                            )}
                         </>
                       ) : (
                         // Regular navigation item
@@ -1110,7 +1127,9 @@ export default function AppSidebar({
               // Show parent label and list of children
               return (
                 <div className="space-y-1">
-                  <div className="font-medium whitespace-nowrap">{hoveredItemLabel}</div>
+                  <div className="whitespace-nowrap font-medium">
+                    {hoveredItemLabel}
+                  </div>
                   <div className="space-y-0.5 border-t border-gray-700 pt-1">
                     {hoveredItemData.children
                       .filter(child => {
@@ -1120,7 +1139,10 @@ export default function AppSidebar({
                         return navigationPermissions[child.href] ?? true;
                       })
                       .map((child, idx) => (
-                        <div key={idx} className="text-xs text-gray-300 whitespace-nowrap">
+                        <div
+                          key={idx}
+                          className="whitespace-nowrap text-xs text-gray-300"
+                        >
                           {child.label}
                         </div>
                       ))}
@@ -1129,9 +1151,7 @@ export default function AppSidebar({
               );
             }
             // Regular tooltip for single items or expanded parents
-            return (
-              <div className="whitespace-nowrap">{hoveredItemLabel}</div>
-            );
+            return <div className="whitespace-nowrap">{hoveredItemLabel}</div>;
           })()}
           <div className="absolute right-full top-1/2 h-0 w-0 -translate-y-1/2 border-y-4 border-r-4 border-y-transparent border-r-gray-900"></div>
         </div>

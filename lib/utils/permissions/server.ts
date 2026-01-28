@@ -13,7 +13,10 @@
 
 import { UserRole } from '@/lib/constants';
 import { useUserStore } from '@/lib/store/userStore';
-import { CACHE_KEYS, fetchUserWithCache } from '../userCache';
+import {
+  CACHE_KEYS,
+  fetchUserWithCache,
+} from '@/lib/services/userCacheService';
 import { PageName } from './client';
 
 // ============================================================================
@@ -119,13 +122,7 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'technician',
       'collector',
     ],
-    locations: [
-      'developer',
-      'admin',
-      'manager',
-      'location admin',
-      'collector',
-    ],
+    locations: ['developer', 'admin', 'manager', 'location admin', 'collector'],
     'location-details': [
       'developer',
       'admin',
@@ -202,4 +199,3 @@ export async function shouldShowNavigationLinkDb(
 ): Promise<boolean> {
   return await hasPageAccessDb(page);
 }
-

@@ -3,7 +3,7 @@
  *
  * This route handles user management operations including fetching, creating, updating, and deleting users.
  * It supports:
- * - Role-based access control (Admin, Manager, Location Admin)
+ * - Role-based access control (Admin, Manager, Location Admin, Vault Manager, Cashier & Developer)
  * - Licensee-based filtering
  * - Location permission filtering
  * - Search functionality (username, email, _id, or all)
@@ -14,19 +14,26 @@
  * @module app/api/users/route
  */
 
+// Helpers
 import {
   createUser as createUserHelper,
   deleteUser as deleteUserHelper,
   getAllUsers,
-  getDeletedUsers,
   getUserFromServer,
+  handleAllUsersRequest,
+  handleCashiersRequest,
+  handleDeletedUsersRequest,
   updateUser as updateUserHelper,
 } from '@/app/api/lib/helpers/users/users';
+// Types
+// Utilities
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { apiLogger } from '@/app/api/lib/utils/logger';
-import { validateEmail } from '@/app/api/lib/utils/validation';
-import { validatePasswordStrength } from '@/lib/utils/validation';
+import {
+  validateEmail,
+  validatePasswordStrength,
+} from '@/lib/utils/validation';
 import { NextRequest } from 'next/server';
+import { apiLogger } from '../lib/services/loggerService';
 
 /**
  * Main GET handler for fetching users
@@ -34,16 +41,10 @@ import { NextRequest } from 'next/server';
  * Flow:
  * 1. Initialize API logging
  * 2. Connect to database
- * 3. Parse query parameters (licensee, search, searchMode, status, role, pagination)
- * 4. Get current user and permissions
- * 5. Fetch users from database (based on status filter)
- * 6. Apply role-based filtering (Manager, Location Admin)
- * 7. Apply status filtering (Active, Disabled, Deleted)
- * 8. Apply role filtering (if role parameter provided)
- * 9. Apply licensee filtering
- * 10. Apply search filtering
- * 11. Apply pagination
- * 12. Return paginated user list
+ * 3. Get current user and permissions
+ * 4. Parse query parameters (licensee, search, searchMode, status, role, pagination)
+ * 5. Route to appropriate handler based on request purpose
+ * 6. Return paginated user list
  */
 export async function GET(request: NextRequest): Promise<Response> {
   const startTime = Date.now();
@@ -51,57 +52,39 @@ export async function GET(request: NextRequest): Promise<Response> {
   apiLogger.startLogging();
 
   try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
     await connectDB();
 
     // ============================================================================
-    // STEP 2: Parse query parameters
-    // ============================================================================
-    if (!getAllUsers) {
-      console.error('getAllUsers function is not available');
-      return new Response(
-        JSON.stringify({ success: false, message: 'Service not available' }),
-        { status: 500 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
-    const licensee = searchParams.get('licensee');
-    const search = searchParams.get('search');
-    const searchMode = searchParams.get('searchMode') || 'username'; // 'username', 'email', '_id', or 'all'
-    const status = searchParams.get('status') || 'all'; // 'all', 'active', 'disabled', 'deleted'
-    const role = searchParams.get('role'); // Optional role filter
-
-    // ============================================================================
-    // STEP 3: Get current user and permissions
+    // STEP 1: Get current user and permissions
     // ============================================================================
     const currentUser = await getUserFromServer();
     const currentUserRoles = (currentUser?.roles as string[]) || [];
-    // Use only new fields
+
+    // Check if the assignedLicensees field exists and is a valid array before assigning
     let currentUserLicensees: string[] = [];
-    if (
-      Array.isArray(
-        (currentUser as { assignedLicensees?: string[] })?.assignedLicensees
-      )
-    ) {
-      currentUserLicensees = (currentUser as { assignedLicensees: string[] })
-        .assignedLicensees;
+    if (Array.isArray(currentUser?.assignedLicensees)) {
+      currentUserLicensees = currentUser?.assignedLicensees;
     }
 
+    // Check if the assignedLocations field exists and is a valid array before assigning
     let currentUserLocationPermissionsRaw: unknown[] = [];
-    if (
-      Array.isArray(
-        (currentUser as { assignedLocations?: string[] })?.assignedLocations
-      )
-    ) {
-      currentUserLocationPermissionsRaw = (
-        currentUser as { assignedLocations: string[] }
-      ).assignedLocations;
+    if (Array.isArray(currentUser?.assignedLocations)) {
+      currentUserLocationPermissionsRaw = currentUser?.assignedLocations;
     }
     const currentUserLocationPermissions =
       currentUserLocationPermissionsRaw.map(id => String(id));
+
+    // ============================================================================
+    // STEP 2: Determine user roles and permissions
+    // ============================================================================
+    const isAdmin =
+      currentUserRoles.includes('admin') ||
+      currentUserRoles.includes('developer');
+    const isManager = currentUserRoles.includes('manager') && !isAdmin;
+    const isLocationAdmin =
+      currentUserRoles.includes('location admin') && !isAdmin && !isManager;
+    const isVaultManager =
+      currentUserRoles.includes('vault-manager') && !isAdmin && !isManager;
 
     console.warn('[USERS API] Current User Info:', {
       username: currentUser?.username,
@@ -109,294 +92,84 @@ export async function GET(request: NextRequest): Promise<Response> {
       licensees: currentUserLicensees,
       locationPermissionsRaw: currentUserLocationPermissionsRaw,
       locationPermissions: currentUserLocationPermissions,
+      isAdmin,
+      isManager,
+      isLocationAdmin,
+      isVaultManager,
     });
 
-    const isAdmin =
-      currentUserRoles.includes('admin') ||
-      currentUserRoles.includes('developer');
-    const isManager = currentUserRoles.includes('manager') && !isAdmin;
-    const isLocationAdmin =
-      currentUserRoles.includes('location admin') && !isAdmin && !isManager;
+    // ============================================================================
+    // STEP 3: Parse query parameters
+    // ============================================================================
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status') || 'all'; // 'all', 'active', 'disabled', 'deleted'
+    const role = searchParams.get('role'); // Optional role filter
+
+    // Validate service availability
+    if (!getAllUsers) {
+      console.error('[Function:getAllUsers] No Users Found');
+      return new Response(
+        JSON.stringify({ success: false, message: 'Service not available' }),
+        { status: 500 }
+      );
+    }
 
     // ============================================================================
-    // STEP 4: Fetch users from database based on status filter
+    // STEP 4: Route to appropriate handler based on request purpose
     // ============================================================================
-    let users;
+
+    // PURPOSE: Get deleted users
     if (status === 'deleted') {
-      // For deleted status, query deleted users from 2025 and later
-      users = await getDeletedUsers();
-    } else {
-      // For all, active, or disabled, use getAllUsers (which excludes deleted)
-      users = await getAllUsers();
-    }
-
-    let result = users.map(user => {
-      return {
-        _id: user._id,
-        name: `${user.profile?.firstName ?? ''} ${
-          user.profile?.lastName ?? ''
-        }`.trim(),
-        username: user.username,
-        email: user.emailAddress,
-        enabled: user.isEnabled,
-        roles: user.roles,
-        profilePicture: user.profilePicture ?? null,
-        profile: user.profile,
-        assignedLocations: user.assignedLocations || undefined,
-        assignedLicensees: user.assignedLicensees || undefined,
-        loginCount: user.loginCount,
-        lastLoginAt: user.lastLoginAt,
-        sessionVersion: user.sessionVersion,
-      };
-    });
-
-    // ============================================================================
-    // STEP 5: Apply role-based filtering (Manager, Location Admin)
-    // ============================================================================
-    if (isManager && !isAdmin) {
-      // Managers can only see users with same licensees
-      const beforeManagerFilter = result.length;
-      result = result.filter(user => {
-        const userLicensees = Array.isArray(user.assignedLicensees)
-          ? user.assignedLicensees
-          : [];
-        // User must have at least one licensee in common with the manager
-        const hasCommonLicensee = userLicensees.some(userLic =>
-          currentUserLicensees.includes(userLic)
+      // Only admins, managers, and developers can access deleted users
+      if (!isAdmin && !isManager && !isLocationAdmin) {
+        return new Response(
+          JSON.stringify({ success: false, message: 'Access denied' }),
+          { status: 403 }
         );
-
-        return hasCommonLicensee;
-      });
-
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('[USERS API] Manager filter result:', {
-          beforeFilter: beforeManagerFilter,
-          afterFilter: result.length,
-          currentUserLicensees,
-        });
       }
-    } else if (isLocationAdmin) {
-      // Location admins can only see users who have access to at least one of their assigned locations
-      const currentUserId = currentUser?._id ? String(currentUser._id) : null;
-
-      console.warn('[USERS API] Location Admin Filter:', {
-        currentUserId,
+      return handleDeletedUsersRequest(
+        currentUser,
+        currentUserRoles,
+        currentUserLicensees,
         currentUserLocationPermissions,
-        currentUserLocationPermissionsCount:
-          currentUserLocationPermissions.length,
-        totalUsersBeforeFilter: result.length,
-      });
+        searchParams,
+        startTime,
+        context
+      );
+    }
 
-      if (currentUserLocationPermissions.length === 0) {
-        console.warn(
-          '[USERS API] Location Admin has no location permissions - returning empty array'
+    // PURPOSE: Get cashiers only
+    if (role === 'cashier') {
+      if (!isAdmin && !isManager && !isVaultManager && !isLocationAdmin) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message:
+              'Access denied - only admins, managers, and vault managers can access cashiers',
+          }),
+          { status: 403 }
         );
-        result = [];
-      } else {
-        // Normalize current user's location IDs for comparison (trim only, IDs are case-sensitive)
-        const normalizedCurrentLocs = currentUserLocationPermissions.map(loc =>
-          String(loc).trim()
-        );
-
-        result = result.filter(user => {
-          // Handle both ObjectId and String _id formats
-          const userId = user._id?.toString
-            ? user._id.toString()
-            : String(user._id);
-          const isCurrentUser = currentUserId && userId === currentUserId;
-
-          // Always include the current user (location admin themselves)
-          if (isCurrentUser) {
-            if (process.env.NODE_ENV === 'development') {
-              console.warn(
-                '[USERS API] Including current user (location admin):',
-                {
-                  username: user.username,
-                  userId,
-                }
-              );
-            }
-            return true;
-          }
-
-          let userLocationPermissionsRaw: unknown[] = [];
-          const userWithNewFields = user as { assignedLocations?: string[] };
-          if (
-            Array.isArray(userWithNewFields.assignedLocations) &&
-            userWithNewFields.assignedLocations.length > 0
-          ) {
-            userLocationPermissionsRaw = userWithNewFields.assignedLocations;
-          }
-
-          // Convert all location IDs to normalized strings for comparison (trim only, IDs are case-sensitive)
-          // Handle both string IDs and ObjectId objects
-          const userLocationPermissions = userLocationPermissionsRaw
-            .map(id => {
-              // Handle ObjectId objects (from MongoDB)
-              if (id && typeof id === 'object' && 'toString' in id) {
-                return (id as { toString: () => string }).toString().trim();
-              }
-              return String(id).trim();
-            })
-            .filter(id => id.length > 0);
-
-          // User must have at least one location in common with the location admin
-          if (userLocationPermissions.length === 0) {
-            return false; // Users with no location permissions are not visible to location admins
-          }
-
-          // Check if user has any location that matches the location admin's locations
-          const hasMatchingLocation = userLocationPermissions.some(userLoc =>
-            normalizedCurrentLocs.includes(userLoc)
-          );
-
-          return hasMatchingLocation;
-        });
       }
-
-      console.warn('[USERS API] Location Admin Filter Result:', {
-        usersAfterFilter: result.length,
-        usernames: result.map(u => u.username),
-        userIds: result.map(u => u._id),
-      });
+      return handleCashiersRequest(
+        currentUser,
+        currentUserRoles,
+        currentUserLicensees,
+        currentUserLocationPermissions,
+        searchParams,
+        startTime,
+        context
+      );
     }
 
-    // ============================================================================
-    // STEP 5.5: Apply status filtering (Active, Disabled, Deleted)
-    // ============================================================================
-    if (status !== 'all') {
-      if (status === 'active') {
-        // Active: isEnabled === true and not deleted (already filtered by getAllUsers)
-        result = result.filter(user => user.enabled === true);
-      } else if (status === 'disabled') {
-        // Disabled: isEnabled === false and not deleted (already filtered by getAllUsers)
-        result = result.filter(user => user.enabled === false);
-      }
-      // For 'deleted' status, users are already filtered by getDeletedUsers query above
-    }
-
-    // ============================================================================
-    // STEP 5.6: Apply role filtering
-    // ============================================================================
-    if (role && role !== 'all') {
-      result = result.filter(user => {
-        const userRoles = Array.isArray(user.roles) ? user.roles : [];
-        return userRoles.some(
-          userRole =>
-            typeof userRole === 'string' &&
-            userRole.toLowerCase() === role.toLowerCase()
-        );
-      });
-    }
-
-    // ============================================================================
-    // STEP 6: Apply licensee filtering
-    // ============================================================================
-    if (licensee && licensee !== 'all') {
-      result = result.filter(user => {
-        const userLicensees = Array.isArray(user.assignedLicensees)
-          ? user.assignedLicensees
-          : [];
-        return userLicensees.includes(licensee);
-      });
-    }
-
-    // ============================================================================
-    // STEP 7: Apply search filtering
-    // ============================================================================
-    if (search && search.trim()) {
-      const lowerSearchValue = search.toLowerCase().trim();
-      const beforeSearchCount = result.length;
-      result = result.filter(user => {
-        if (searchMode === 'all') {
-          // Search all fields: username, email, and _id
-          const username = (user.username || '').toLowerCase();
-          const email = (user.email || '').toLowerCase();
-          const userId = String(user._id || '').toLowerCase();
-          const matches =
-            username.includes(lowerSearchValue) ||
-            email.includes(lowerSearchValue) ||
-            userId.includes(lowerSearchValue);
-
-          return matches;
-        } else if (searchMode === 'username') {
-          const username = user.username || '';
-          return username.toLowerCase().includes(lowerSearchValue);
-        } else if (searchMode === 'email') {
-          // Check both email and emailAddress fields (API returns email, but user object has emailAddress)
-          const email = user.email || '';
-          return email.toLowerCase().includes(lowerSearchValue);
-        } else if (searchMode === '_id') {
-          const userId = String(user._id || '').toLowerCase();
-          return userId.includes(lowerSearchValue);
-        }
-        return false;
-      });
-
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('[USERS API] Search filter:', {
-          searchTerm: lowerSearchValue,
-          searchMode,
-          beforeSearchCount,
-          afterSearchCount: result.length,
-          usernames: result.slice(0, 10).map(u => u.username),
-        });
-      }
-    }
-
-    // ============================================================================
-    // STEP 7.5: Filter out current user from results
-    // ============================================================================
-    const currentUserId = currentUser?._id ? String(currentUser._id) : null;
-    if (currentUserId) {
-      result = result.filter(user => {
-        const userId = user._id?.toString
-          ? user._id.toString()
-          : String(user._id);
-        return userId !== currentUserId;
-      });
-    }
-
-    // ============================================================================
-    // STEP 8: Apply pagination
-    // ============================================================================
-    const page = parseInt(searchParams.get('page') || '1');
-    const requestedLimit = parseInt(searchParams.get('limit') || '50');
-    const limit = Math.min(requestedLimit, 100); // Cap at 100 for performance
-    const skip = (page - 1) * limit;
-
-    const totalCount = result.length;
-    const paginatedUsers = result.slice(skip, skip + limit);
-
-    // ============================================================================
-    // STEP 9: Return paginated user list
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    if (duration > 2000) {
-      console.warn(`[Users API] GET completed in ${duration}ms`);
-    }
-
-    apiLogger.logSuccess(
-      context,
-      `Successfully fetched ${totalCount} users (returning ${paginatedUsers.length} on page ${page})`
-    );
-    return new Response(
-      JSON.stringify({
-        success: true,
-        users: paginatedUsers,
-        pagination: {
-          page,
-          limit,
-          total: totalCount,
-          totalPages: Math.ceil(totalCount / limit),
-        },
-      }),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    // PURPOSE: Get all users (default case)
+    return handleAllUsersRequest(
+      currentUser,
+      currentUserRoles,
+      currentUserLicensees,
+      currentUserLocationPermissions,
+      searchParams,
+      startTime,
+      context
     );
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -759,4 +532,3 @@ export async function DELETE(request: NextRequest): Promise<Response> {
     );
   }
 }
-

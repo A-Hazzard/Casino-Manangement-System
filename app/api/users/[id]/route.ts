@@ -11,12 +11,12 @@
  */
 
 import {
-  getUserById,
-  updateUser as updateUserHelper,
+    getUserById,
+    updateUser as updateUserHelper,
 } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { apiLogger } from '@/app/api/lib/utils/logger';
 import { NextRequest, NextResponse } from 'next/server';
+import { apiLogger } from '../../lib/services/loggerService';
 
 /**
  * Main GET handler for fetching user by ID

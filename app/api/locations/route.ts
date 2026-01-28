@@ -16,20 +16,20 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-  getUserAccessibleLicenseesFromToken,
-  getUserLocationFilter,
+    getUserAccessibleLicenseesFromToken,
+    getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
-import { apiLogger } from '@/app/api/lib/utils/logger';
 import { UpdateLocationData } from '@/lib/types/location';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
+import { apiLogger } from '../lib/services/loggerService';
 
 /**
  * Main GET handler for fetching locations

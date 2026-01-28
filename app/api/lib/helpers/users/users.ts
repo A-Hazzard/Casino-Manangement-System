@@ -1,23 +1,16 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
-import { comparePassword, hashPassword } from '@/app/api/lib/utils/validation';
 import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
 import { getClientIP } from '@/lib/utils/ipAddress';
-import {
-    isValidDateInput,
-    validateAlphabeticField,
-    validateNameField,
-    validateOptionalGender,
-} from '@/lib/utils/validation';
-import type { LeanUserDocument } from '@/shared/types/auth';
-import type {
-    CurrentUser,
-    OriginalUserType,
-} from '@/shared/types/users';
 import { JWTPayload, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 import { logActivity } from '../activityLogger';
+import { isValidDateInput, validateAlphabeticField, validateNameField, validateOptionalGender } from '@/lib/utils/validation';
+import { comparePassword, hashPassword } from '../../utils/validation';
+import { CurrentUser, OriginalUserType } from '../../../../../shared/types/users';
+import { apiLogger } from '../../services/loggerService';
+import { LeanUserDocument } from '../../../../../shared/types/auth';
 
 /**
  * Validates database context from JWT token
@@ -268,7 +261,6 @@ export async function getUserIdFromServer(): Promise<string | null> {
   return user ? (user._id as string) : null;
 }
 
-
 /**
  * Retrieves all users from database
  */
@@ -282,7 +274,7 @@ export async function getAllUsers() {
       ],
     },
     '-password'
-  ).lean(); // Use lean() to get plain JavaScript objects instead of Mongoose documents
+  ).lean(); // Get plain JavaScript objects instead of Mongoose documents
 }
 
 /**
@@ -304,20 +296,28 @@ export async function getDeletedUsers() {
  * Note: _id is stored as String in the schema, not ObjectId
  * Uses .lean() to return a plain JavaScript object with all fields preserved
  */
-export async function getUserByEmail(email: string): Promise<LeanUserDocument | null> {
+export async function getUserByEmail(
+  email: string
+): Promise<LeanUserDocument | null> {
   try {
     await connectDB();
-    return await UserModel.findOne({ emailAddress: email }).lean() as LeanUserDocument | null;
+    return (await UserModel.findOne({
+      emailAddress: email,
+    }).lean()) as LeanUserDocument | null;
   } catch (error) {
     console.error('Error getting user by email:', error);
     throw error;
   }
 }
 
-export async function getUserByUsername(username: string): Promise<LeanUserDocument | null> {
+export async function getUserByUsername(
+  username: string
+): Promise<LeanUserDocument | null> {
   try {
     await connectDB();
-    return await UserModel.findOne({ username }).lean() as LeanUserDocument | null;
+    return (await UserModel.findOne({
+      username,
+    }).lean()) as LeanUserDocument | null;
   } catch (error) {
     console.error('Error getting user by username:', error);
     throw error;
@@ -396,6 +396,12 @@ export async function createUser(
     );
   }
 
+  const isVaultManager =
+    requestingUserRoles.includes('vault-manager') &&
+    !isAdmin &&
+    !isManager &&
+    !isDeveloper;
+
   // Check role assignment permissions
   if (isManager) {
     // Manager can only assign: location admin, technician, collector
@@ -408,22 +414,32 @@ export async function createUser(
         `Managers can only assign roles: ${managerAllowedRoles.join(', ')}`
       );
     }
+  } else if (isVaultManager) {
+    // Vault manager can only create cashiers
+    const vaultManagerAllowedRoles = ['cashier'];
+    const unauthorizedRoles = normalizedRoles.filter(
+      r => !vaultManagerAllowedRoles.includes(r)
+    );
+    if (unauthorizedRoles.length > 0) {
+      throw new Error(`Vault managers can only create cashiers`);
+    }
   } else if (isAdmin) {
     // Admin can assign all roles except developer
     if (normalizedRoles.includes('developer')) {
       throw new Error('Admins cannot assign the developer role');
     }
-  } else if (!isDeveloper && !isAdmin && !isManager) {
-    // Only developer/admin/manager can create users
+  } else if (!isDeveloper && !isAdmin && !isManager && !isVaultManager) {
+    // Only developer/admin/manager/vault-manager can create users
     console.error('[createUser] Permission check failed:', {
       requestingUserRoles,
       isDeveloper,
       isAdmin,
       isManager,
+      isVaultManager,
       userId: requestingUser._id,
     });
     throw new Error(
-      'Insufficient permissions to create users. Only developers, admins, and managers can create users.'
+      'Insufficient permissions to create users. Only developers, admins, managers, and vault managers can create users.'
     );
   }
 
@@ -474,6 +490,7 @@ export async function createUser(
       // Old fields removed - only using assignedLocations and assignedLicensees
       assignedLocations: finalAssignedLocations,
       assignedLicensees: finalAssignedLicensees,
+      tempPasswordChanged: false, // New cashiers must change password on first login
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
     });
   } catch (dbError: unknown) {
@@ -579,6 +596,7 @@ export async function updateUser(
   let isAdmin = false;
   let isManager = false;
   let isLocationAdmin = false;
+  let isVaultManager = false;
 
   if (!isDevMode) {
     // Get current user to check permissions (early check for manager restrictions)
@@ -590,6 +608,11 @@ export async function updateUser(
       requestingUserRoles.includes('manager') && !isAdmin && !isDeveloper;
     isLocationAdmin =
       requestingUserRoles.includes('location admin') &&
+      !isAdmin &&
+      !isManager &&
+      !isDeveloper;
+    isVaultManager =
+      requestingUserRoles.includes('vault-manager') &&
       !isAdmin &&
       !isManager &&
       !isDeveloper;
@@ -659,8 +682,17 @@ export async function updateUser(
       if (normalizedRoles.includes('developer')) {
         throw new Error('Admins cannot assign the developer role');
       }
-    } else if (!isDeveloper) {
-      // Only developer/admin/manager can update roles
+    } else if (isVaultManager) {
+      // Vault manager can only assign 'cashier' role
+      const vaultManagerAllowedRoles = ['cashier'];
+      const unauthorizedRoles = normalizedRoles.filter(
+        r => !vaultManagerAllowedRoles.includes(r)
+      );
+      if (unauthorizedRoles.length > 0) {
+        throw new Error(`Vault managers can only assign the cashier role`);
+      }
+    } else if (!isDeveloper && !isAdmin && !isVaultManager) {
+      // Only developer/admin/manager/vault-manager can update roles
       throw new Error('Insufficient permissions to update user roles');
     }
 
@@ -973,9 +1005,8 @@ export async function updateUser(
       }
 
       // Validate new password strength
-      const { validatePasswordStrength } = await import(
-        '@/lib/utils/validation'
-      );
+      const { validatePasswordStrength } =
+        await import('@/lib/utils/validation');
       const passwordValidation = validatePasswordStrength(passwordObj.new);
       if (!passwordValidation.isValid) {
         throw new Error(
@@ -990,9 +1021,8 @@ export async function updateUser(
       updateFields.passwordUpdatedAt = new Date();
     } else if (typeof updateFields.password === 'string') {
       // Legacy support: if password is a string, validate and hash it
-      const { validatePasswordStrength } = await import(
-        '@/lib/utils/validation'
-      );
+      const { validatePasswordStrength } =
+        await import('@/lib/utils/validation');
       const passwordValidation = validatePasswordStrength(
         updateFields.password
       );
@@ -1435,3 +1465,438 @@ function calculateUserChanges(
   return changes;
 }
 
+// ============================================================================
+// User List Helpers - Extracted from route.ts for better organization
+// ============================================================================
+
+/**
+ * Handle request for deleted users
+ *
+ * @param currentUser - Current user object
+ * @param currentUserRoles - Current user roles array
+ * @param currentUserLicensees - Current user assigned licensees
+ * @param currentUserLocationPermissions - Current user assigned locations
+ * @param searchParams - URL search parameters
+ * @param startTime - Request start time for performance tracking
+ * @param context - API logger context
+ * @returns Promise<Response> - Formatted API response with deleted users
+ */
+export async function handleDeletedUsersRequest(
+  currentUser: any,
+  currentUserRoles: string[],
+  currentUserLicensees: string[],
+  currentUserLocationPermissions: string[],
+  searchParams: URLSearchParams,
+  startTime: number,
+  context: any
+): Promise<Response> {
+  const search = searchParams.get('search');
+  const searchMode = searchParams.get('searchMode') || 'username';
+  const licensee = searchParams.get('licensee');
+
+  // Fetch deleted users
+  const users = await getDeletedUsers();
+
+  let result = users.map(user => ({
+    _id: user._id,
+    name: `${user.profile?.firstName ?? ''} ${user.profile?.lastName ?? ''}`.trim(),
+    username: user.username,
+    email: user.emailAddress,
+    enabled: user.isEnabled,
+    roles: user.roles,
+    profilePicture: user.profilePicture ?? null,
+    profile: user.profile,
+    assignedLocations: user.assignedLocations || undefined,
+    assignedLicensees: user.assignedLicensees || undefined,
+    loginCount: user.loginCount,
+    lastLoginAt: user.lastLoginAt,
+    sessionVersion: user.sessionVersion,
+  }));
+
+  // Apply filters
+  result = applyRoleBasedFiltering(
+    result,
+    currentUser,
+    currentUserRoles,
+    currentUserLicensees,
+    currentUserLocationPermissions
+  );
+
+  if (licensee && licensee !== 'all') {
+    result = result.filter(user => {
+      const userLicensees = Array.isArray(user.assignedLicensees)
+        ? user.assignedLicensees
+        : [];
+      return userLicensees.includes(licensee);
+    });
+  }
+
+  if (search && search.trim()) {
+    result = applySearchFilter(result, search, searchMode);
+  }
+
+  return paginateAndRespond(result, searchParams, startTime, context);
+}
+
+/**
+ * Handle request for cashiers only
+ *
+ * @param currentUser - Current user object
+ * @param currentUserRoles - Current user roles array
+ * @param currentUserLicensees - Current user assigned licensees
+ * @param currentUserLocationPermissions - Current user assigned locations
+ * @param searchParams - URL search parameters
+ * @param startTime - Request start time for performance tracking
+ * @param context - API logger context
+ * @returns Promise<Response> - Formatted API response with cashiers
+ */
+export async function handleCashiersRequest(
+  currentUser: any,
+  currentUserRoles: string[],
+  currentUserLicensees: string[],
+  currentUserLocationPermissions: string[],
+  searchParams: URLSearchParams,
+  startTime: number,
+  context: any
+): Promise<Response> {
+  const search = searchParams.get('search');
+  const searchMode = searchParams.get('searchMode') || 'username';
+  const licensee = searchParams.get('licensee');
+
+  // Fetch all users and filter for cashiers
+  const users = await getAllUsers();
+
+  let result = users
+    .filter(user => {
+      const userRoles = Array.isArray(user.roles) ? user.roles : [];
+      return userRoles.some(
+        userRole =>
+          typeof userRole === 'string' && userRole.toLowerCase() === 'cashier'
+      );
+    })
+    .map(user => ({
+      _id: user._id,
+      name: `${user.profile?.firstName ?? ''} ${user.profile?.lastName ?? ''}`.trim(),
+      username: user.username,
+      email: user.emailAddress,
+      enabled: user.isEnabled,
+      roles: user.roles,
+      profilePicture: user.profilePicture ?? null,
+      profile: user.profile,
+      assignedLocations: user.assignedLocations || undefined,
+      assignedLicensees: user.assignedLicensees || undefined,
+      loginCount: user.loginCount,
+      lastLoginAt: user.lastLoginAt,
+      sessionVersion: user.sessionVersion,
+    }));
+
+  // Apply role-based filtering
+  result = applyRoleBasedFiltering(
+    result,
+    currentUser,
+    currentUserRoles,
+    currentUserLicensees,
+    currentUserLocationPermissions
+  );
+
+  if (licensee && licensee !== 'all') {
+    result = result.filter(user => {
+      const userLicensees = Array.isArray(user.assignedLicensees)
+        ? user.assignedLicensees
+        : [];
+      return userLicensees.includes(licensee);
+    });
+  }
+
+  if (search && search.trim()) {
+    result = applySearchFilter(result, search, searchMode);
+  }
+
+  return paginateAndRespond(result, searchParams, startTime, context);
+}
+
+/**
+ * Handle request for all users (default case)
+ *
+ * @param currentUser - Current user object
+ * @param currentUserRoles - Current user roles array
+ * @param currentUserLicensees - Current user assigned licensees
+ * @param currentUserLocationPermissions - Current user assigned locations
+ * @param searchParams - URL search parameters
+ * @param startTime - Request start time for performance tracking
+ * @param context - API logger context
+ * @returns Promise<Response> - Formatted API response with all users
+ */
+export async function handleAllUsersRequest(
+  currentUser: any,
+  currentUserRoles: string[],
+  currentUserLicensees: string[],
+  currentUserLocationPermissions: string[],
+  searchParams: URLSearchParams,
+  startTime: number,
+  context: any
+): Promise<Response> {
+  const search = searchParams.get('search');
+  const searchMode = searchParams.get('searchMode') || 'username';
+  const status = searchParams.get('status') || 'all';
+  const role = searchParams.get('role');
+  const licensee = searchParams.get('licensee');
+
+  // Fetch all users
+  const users = await getAllUsers();
+
+  let result = users.map(user => ({
+    _id: user._id,
+    name: `${user.profile?.firstName ?? ''} ${user.profile?.lastName ?? ''}`.trim(),
+    username: user.username,
+    email: user.emailAddress,
+    enabled: user.isEnabled,
+    roles: user.roles,
+    profilePicture: user.profilePicture ?? null,
+    profile: user.profile,
+    assignedLocations: user.assignedLocations || undefined,
+    assignedLicensees: user.assignedLicensees || undefined,
+    loginCount: user.loginCount,
+    lastLoginAt: user.lastLoginAt,
+    sessionVersion: user.sessionVersion,
+  }));
+
+  // Apply role-based filtering
+  result = applyRoleBasedFiltering(
+    result,
+    currentUser,
+    currentUserRoles,
+    currentUserLicensees,
+    currentUserLocationPermissions
+  );
+
+  // Apply status filtering
+  if (status !== 'all') {
+    if (status === 'active') {
+      result = result.filter(user => user.enabled === true);
+    } else if (status === 'disabled') {
+      result = result.filter(user => user.enabled === false);
+    }
+  }
+
+  // Apply role filtering
+  if (role && role !== 'all') {
+    result = result.filter(user => {
+      const userRoles = Array.isArray(user.roles) ? user.roles : [];
+      return userRoles.some(
+        userRole =>
+          typeof userRole === 'string' &&
+          userRole.toLowerCase() === role.toLowerCase()
+      );
+    });
+  }
+
+  // Apply licensee filtering
+  if (licensee && licensee !== 'all') {
+    result = result.filter(user => {
+      const userLicensees = Array.isArray(user.assignedLicensees)
+        ? user.assignedLicensees
+        : [];
+      return userLicensees.includes(licensee);
+    });
+  }
+
+  // Apply search filtering
+  if (search && search.trim()) {
+    result = applySearchFilter(result, search, searchMode);
+  }
+
+  return paginateAndRespond(result, searchParams, startTime, context);
+}
+
+/**
+ * Apply role-based filtering based on current user permissions
+ *
+ * @param users - Array of users to filter
+ * @param currentUser - Current user object
+ * @param currentUserRoles - Current user roles array
+ * @param currentUserLicensees - Current user assigned licensees
+ * @param currentUserLocationPermissions - Current user assigned locations
+ * @returns Filtered array of users based on role-based access control
+ */
+function applyRoleBasedFiltering(
+  users: any[],
+  currentUser: any,
+  currentUserRoles: string[],
+  currentUserLicensees: string[],
+  currentUserLocationPermissions: string[]
+): any[] {
+  const isAdmin =
+    currentUserRoles.includes('admin') ||
+    currentUserRoles.includes('developer');
+  const isManager = currentUserRoles.includes('manager') && !isAdmin;
+  const isLocationAdmin =
+    currentUserRoles.includes('location admin') && !isAdmin && !isManager;
+
+  let result = [...users];
+
+  if (isManager && !isAdmin) {
+    // Managers can only see users with same licensees
+    result = result.filter(user => {
+      const userLicensees = Array.isArray(user.assignedLicensees)
+        ? user.assignedLicensees
+        : [];
+      return userLicensees.some((userLic: string) =>
+        currentUserLicensees.includes(userLic)
+      );
+    });
+  } else if (isLocationAdmin) {
+    // Location admins can only see users who have access to at least one of their assigned locations
+    const currentUserId = currentUser?._id ? String(currentUser._id) : null;
+
+    if (currentUserLocationPermissions.length === 0) {
+      result = [];
+    } else {
+      const normalizedCurrentLocs = currentUserLocationPermissions.map(loc =>
+        String(loc).trim()
+      );
+
+      result = result.filter(user => {
+        const userId = user._id?.toString
+          ? user._id.toString()
+          : String(user._id);
+        const isCurrentUser = currentUserId && userId === currentUserId;
+
+        if (isCurrentUser) {
+          return true;
+        }
+
+        let userLocationPermissionsRaw: unknown[] = [];
+        const userWithNewFields = user as { assignedLocations?: string[] };
+        if (
+          Array.isArray(userWithNewFields.assignedLocations) &&
+          userWithNewFields.assignedLocations.length > 0
+        ) {
+          userLocationPermissionsRaw = userWithNewFields.assignedLocations;
+        }
+
+        const userLocationPermissions = userLocationPermissionsRaw
+          .map(id => {
+            if (id && typeof id === 'object' && 'toString' in id) {
+              return (id as { toString: () => string }).toString().trim();
+            }
+            return String(id).trim();
+          })
+          .filter(id => id.length > 0);
+
+        if (userLocationPermissions.length === 0) {
+          return false;
+        }
+
+        return userLocationPermissions.some(userLoc =>
+          normalizedCurrentLocs.includes(userLoc)
+        );
+      });
+    }
+  }
+
+  // Filter out current user from results
+  const currentUserId = currentUser?._id ? String(currentUser._id) : null;
+  if (currentUserId) {
+    result = result.filter(user => {
+      const userId = user._id?.toString
+        ? user._id.toString()
+        : String(user._id);
+      return userId !== currentUserId;
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Apply search filtering to user results
+ *
+ * @param users - Array of users to filter
+ * @param search - Search term
+ * @param searchMode - Search mode ('username', 'email', '_id', 'all')
+ * @returns Filtered array of users matching search criteria
+ */
+function applySearchFilter(
+  users: any[],
+  search: string,
+  searchMode: string
+): any[] {
+  const lowerSearchValue = search.toLowerCase().trim();
+
+  return users.filter(user => {
+    if (searchMode === 'all') {
+      const username = (user.username || '').toLowerCase();
+      const email = (user.email || '').toLowerCase();
+      const userId = String(user._id || '').toLowerCase();
+      return (
+        username.includes(lowerSearchValue) ||
+        email.includes(lowerSearchValue) ||
+        userId.includes(lowerSearchValue)
+      );
+    } else if (searchMode === 'username') {
+      const username = user.username || '';
+      return username.toLowerCase().includes(lowerSearchValue);
+    } else if (searchMode === 'email') {
+      const email = user.email || '';
+      return email.toLowerCase().includes(lowerSearchValue);
+    } else if (searchMode === '_id') {
+      const userId = String(user._id || '').toLowerCase();
+      return userId.includes(lowerSearchValue);
+    }
+    return false;
+  });
+}
+
+/**
+ * Apply pagination and return formatted response
+ *
+ * @param users - Array of users to paginate
+ * @param searchParams - URL search parameters for pagination
+ * @param startTime - Request start time for performance tracking
+ * @param context - API logger context
+ * @returns Formatted Response object with paginated data
+ */
+function paginateAndRespond(
+  users: any[],
+  searchParams: URLSearchParams,
+  startTime: number,
+  context: any
+): Response {
+  const page = parseInt(searchParams.get('page') || '1');
+  const requestedLimit = parseInt(searchParams.get('limit') || '50');
+  const limit = Math.min(requestedLimit, 100);
+  const skip = (page - 1) * limit;
+
+  const totalCount = users.length;
+  const paginatedUsers = users.slice(skip, skip + limit);
+
+  const duration = Date.now() - startTime;
+  if (duration > 2000) {
+    console.warn(`[Users API] GET completed in ${duration}ms`);
+  }
+
+  apiLogger.logSuccess(
+    context,
+    `Successfully fetched ${totalCount} users (returning ${paginatedUsers.length} on page ${page})`
+  );
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      users: paginatedUsers,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      },
+    }),
+    {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+}

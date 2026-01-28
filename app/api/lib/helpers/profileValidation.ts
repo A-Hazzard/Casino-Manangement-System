@@ -1,15 +1,15 @@
 import {
-  containsEmailPattern,
-  containsPhonePattern,
-  isPlaceholderEmail,
-  normalizePhoneNumber,
-  validateEmail,
-  validateNameField,
-  validateOptionalGender,
-  validatePasswordStrength,
-  validatePhoneNumber,
-  validateProfileField,
-  validateUsername
+    containsEmailPattern,
+    containsPhonePattern,
+    isPlaceholderEmail,
+    normalizePhoneNumber,
+    validateEmail,
+    validateNameField,
+    validateOptionalGender,
+    validatePasswordStrength,
+    validatePhoneNumber,
+    validateProfileField,
+    validateUsername
 } from '@/lib/utils/validation';
 
 type NullableString = string | undefined | null;
@@ -63,6 +63,7 @@ type ProfileLike = {
     };
   };
   passwordUpdatedAt?: Date | string | null;
+  tempPasswordChanged?: boolean;
 };
 
 function normalizeNullable(value: NullableString): string {
@@ -273,7 +274,7 @@ export function getInvalidProfileFields(
     ? validatePasswordStrength(options.rawPassword)
     : null;
 
-  if (!user.passwordUpdatedAt) {
+  if (!user.passwordUpdatedAt || user.tempPasswordChanged === false) {
     if (passwordValidation && passwordValidation.isValid) {
       // Treat as valid if we can confirm current password meets strength rules
       // No action needed, but note for caller
@@ -285,9 +286,11 @@ export function getInvalidProfileFields(
     } else {
       invalidFields.password = true;
       reasons.password =
-        passwordValidation && !passwordValidation.isValid
-          ? passwordValidation.feedback.join(', ')
-          : 'Password must be updated to meet current strength requirements.';
+        user.tempPasswordChanged === false
+          ? 'You are using a temporary password and must change it to continue.'
+          : passwordValidation && !passwordValidation.isValid
+            ? passwordValidation.feedback.join(', ')
+            : 'Password must be updated to meet current strength requirements.';
     }
   } else if (passwordValidation && !passwordValidation.isValid) {
     invalidFields.password = true;

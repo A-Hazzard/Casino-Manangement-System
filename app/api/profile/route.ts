@@ -13,23 +13,23 @@
  */
 
 import {
-  getInvalidProfileFields,
-  hasInvalidProfileFields,
+    getInvalidProfileFields,
+    hasInvalidProfileFields,
 } from '@/app/api/lib/helpers/profileValidation';
 import { getUserIdFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
 import { comparePassword, hashPassword } from '@/app/api/lib/utils/validation';
 import {
-  containsEmailPattern,
-  isValidDateInput,
-  normalizePhoneNumber,
-  validateEmail,
-  validateNameField,
-  validateOptionalGender,
-  validatePasswordStrength,
-  validatePhoneNumber,
-  validateUsername,
+    containsEmailPattern,
+    isValidDateInput,
+    normalizePhoneNumber,
+    validateEmail,
+    validateNameField,
+    validateOptionalGender,
+    validatePasswordStrength,
+    validatePhoneNumber,
+    validateUsername,
 } from '@/lib/utils/validation';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -102,7 +102,20 @@ export async function PUT(request: NextRequest) {
     const currentPassword = body.currentPassword?.trim() || '';
 
     // ============================================================================
-    // STEP 4: Validate all profile fields
+    // STEP 4: Fetch user for validation and security checks
+    // ============================================================================
+    const user = await UserModel.findOne({ _id: userId }).select('+password');
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    const isTemporaryPassword = user.tempPasswordChanged === false;
+
+    // ============================================================================
+    // STEP 5: Validate all profile fields
     // ============================================================================
     if (!validateUsername(username)) {
       errors.username =
@@ -162,7 +175,8 @@ export async function PUT(request: NextRequest) {
       !!newPassword || !!confirmPassword || !!currentPassword;
 
     if (passwordChangeRequested) {
-      if (!currentPassword) {
+      // REQUIRE current password ONLY if it's NOT a temporary password change
+      if (!isTemporaryPassword && !currentPassword) {
         errors.currentPassword = 'Current password is required.';
       }
       if (!newPassword) {
@@ -178,16 +192,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // ============================================================================
-    // STEP 5: Fetch user for duplicate checks and password verification
-    // ============================================================================
-    const user = await UserModel.findOne({ _id: userId }).select('+password');
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'User not found' },
-        { status: 404 }
-      );
-    }
+
 
     const normalizeIdArray = (value: unknown): string[] | undefined => {
       if (!Array.isArray(value)) return undefined;
@@ -300,9 +305,9 @@ export async function PUT(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 7: Verify current password if changing password
+    // STEP 7: Verify current password if changing password (skip for temp password)
     // ============================================================================
-    if (passwordChangeRequested) {
+    if (passwordChangeRequested && !isTemporaryPassword) {
       const matches = await comparePassword(
         currentPassword,
         user.password || ''
@@ -375,6 +380,7 @@ export async function PUT(request: NextRequest) {
     if (passwordChangeRequested && newPassword) {
       updateSet.password = await hashPassword(newPassword);
       updateSet.passwordUpdatedAt = new Date();
+      updateSet.tempPasswordChanged = true;
       incrementSession = true;
     } else if (!user.passwordUpdatedAt) {
       // Force user to set a new password if never set before
@@ -471,6 +477,7 @@ export async function PUT(request: NextRequest) {
         isEnabled: updatedObject.isEnabled,
         assignedLocations: updatedObject.assignedLocations || undefined,
         assignedLicensees: updatedObject.assignedLicensees || undefined,
+        tempPasswordChanged: updatedObject.tempPasswordChanged,
         requiresProfileUpdate,
         invalidProfileFields: invalidFields,
         invalidProfileReasons: reasons,

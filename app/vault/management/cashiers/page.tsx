@@ -27,14 +27,6 @@ export default function CashierManagementPage() {
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               </Link>
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">
-                  Manage Cashiers
-                </h1>
-                <p className="mt-1 text-sm text-gray-600">
-                  Create and manage cashier accounts for your location
-                </p>
-              </div>
             </div>
 
             <CashierManagementPanel />

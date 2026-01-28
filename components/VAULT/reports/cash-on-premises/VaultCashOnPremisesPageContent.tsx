@@ -14,7 +14,6 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
@@ -26,20 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/shared/ui/table';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useUserStore } from '@/lib/store/userStore';
-import {
-  RefreshCw,
-  Download,
-  Printer,
-  Wallet,
-  Monitor,
-  Users,
-  AlertTriangle,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
-import type { CashierFloat } from '@/shared/types/vault';
+import VaultCashOnPremisesSkeleton from '@/components/ui/skeletons/VaultCashOnPremisesSkeleton';
 import {
   DEFAULT_CASHIER_FLOATS,
   DEFAULT_VAULT_BALANCE,
@@ -48,7 +34,21 @@ import {
   fetchCashOnPremisesData,
   fetchLocationDetails,
 } from '@/lib/helpers/vaultHelpers';
-import VaultCashOnPremisesSkeleton from '@/components/ui/skeletons/VaultCashOnPremisesSkeleton';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useUserStore } from '@/lib/store/userStore';
+import { cn } from '@/lib/utils';
+import type { CashierFloat } from '@/shared/types/vault';
+import {
+  AlertTriangle,
+  Download,
+  Monitor,
+  Printer,
+  RefreshCw,
+  Users,
+  Wallet,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 export default function VaultCashOnPremisesPageContent() {
   // ============================================================================
@@ -65,7 +65,8 @@ export default function VaultCashOnPremisesPageContent() {
   const [locationLimit, setLocationLimit] = useState(0); // Default fallback to 0
 
   // Constants
-  const machineBalance = 0; // Placeholder for meters API
+  const [machineBalance, setMachineBalance] = useState(0);
+
   const cashDeskFloatsTotal = cashierFloats.reduce(
     (sum: number, f: CashierFloat) => sum + (f.balance || 0),
     0
@@ -98,9 +99,10 @@ export default function VaultCashOnPremisesPageContent() {
     setLoading(true);
     setError(null);
     try {
-      const [cashData, locDetails] = await Promise.all([
+      const [cashData, locDetails, metricsRes] = await Promise.all([
         fetchCashOnPremisesData(locationId),
         fetchLocationDetails(locationId),
+        fetch(`/api/vault/metrics?locationId=${locationId}`) // Fetch metrics for machine balance
       ]);
 
       if (cashData) {
@@ -112,6 +114,13 @@ export default function VaultCashOnPremisesPageContent() {
         setLocationLimit(locDetails.locationMembershipSettings.locationLimit);
       } else {
         setLocationLimit(0);
+      }
+
+      if (metricsRes.ok) {
+          const mData = await metricsRes.json();
+          if (mData.success && mData.metrics) {
+              setMachineBalance(mData.metrics.totalMachineBalance || 0);
+          }
       }
     } catch (err) {
       console.error('Failed to fetch cash data:', err);

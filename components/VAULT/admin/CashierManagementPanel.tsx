@@ -9,24 +9,13 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/shared/ui/button';
-import { Input } from '@/components/shared/ui/input';
-import { Label } from '@/components/shared/ui/label';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from '@/components/shared/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/shared/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -35,35 +24,52 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/shared/ui/dialog';
+import { Input } from '@/components/shared/ui/input';
+import { Label } from '@/components/shared/ui/label';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-  Plus,
-  RotateCcw,
-  User,
-  AlertTriangle,
-  Copy,
-  Check,
-  RefreshCw,
-} from 'lucide-react';
-import { toast } from 'sonner';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/shared/ui/table';
+import CashierManagementSkeleton from '@/components/ui/skeletons/CashierManagementSkeleton';
 import {
   fetchCashiersData,
   handleCreateCashier,
   handleResetCashierPassword,
 } from '@/lib/helpers/vaultHelpers';
-import CashierManagementSkeleton from '@/components/ui/skeletons/CashierManagementSkeleton';
-import PaginationControls from '@/components/shared/ui/PaginationControls';
+import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
+import {
+  AlertTriangle,
+  Check,
+  Copy,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  User,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface Cashier {
   _id: string;
-  name: string;
-  email: string;
-  enabled: boolean;
+  profile?: {
+    firstName: string;
+    lastName: string;
+  };
+  username: string;
+  emailAddress: string;
+  isEnabled: boolean;
   lastLoginAt?: string;
   roles: string[];
 }
 
 export default function CashierManagementPanel() {
+  const { user } = useUserStore();
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -77,10 +83,12 @@ export default function CashierManagementPanel() {
 
   const [selectedCashier, setSelectedCashier] = useState<Cashier | null>(null);
   const [newCashier, setNewCashier] = useState({
-    name: '',
+    username: '',
+    firstName: '',
+    lastName: '',
     email: '',
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -106,18 +114,29 @@ export default function CashierManagementPanel() {
   };
 
   const handleCreateCashierClick = async () => {
-    if (!newCashier.name.trim() || !newCashier.email.trim()) {
+    if (
+      !newCashier.username.trim() ||
+      !newCashier.firstName.trim() ||
+      !newCashier.lastName.trim() ||
+      !newCashier.email.trim()
+    ) {
       toast.error('Please fill in all fields');
       return;
     }
 
     setLoading(true);
     try {
-      const result = await handleCreateCashier(newCashier);
+      const result = await handleCreateCashier({
+        ...newCashier,
+        assignedLicensees: user?.assignedLicensees,
+        assignedLocations: user?.assignedLocations,
+      });
 
       if (result.success) {
-        toast.success(`Cashier ${newCashier.name} created successfully`);
-        setNewCashier({ name: '', email: '' });
+        toast.success(
+          `Cashier ${newCashier.firstName} ${newCashier.lastName} created successfully`
+        );
+        setNewCashier({ username: '', firstName: '', lastName: '', email: '' });
         setIsCreateModalOpen(false);
         fetchCashiers(); // Refresh list
 
@@ -146,7 +165,13 @@ export default function CashierManagementPanel() {
       const result = await handleResetCashierPassword(selectedCashier._id);
 
       if (result.success) {
-        toast.success(`Password reset for ${selectedCashier.name}`);
+        toast.success(
+          `Password reset for ${
+            selectedCashier.profile
+              ? `${selectedCashier.profile.firstName} ${selectedCashier.profile.lastName}`
+              : selectedCashier.username
+          }`
+        );
         setIsResetModalOpen(false);
 
         // Show temp password
@@ -264,18 +289,20 @@ export default function CashierManagementPanel() {
                   cashiers.map(cashier => (
                     <TableRow key={cashier._id}>
                       <TableCell className="font-medium">
-                        {cashier.name}
+                        {cashier.profile
+                          ? `${cashier.profile.firstName} ${cashier.profile.lastName}`
+                          : cashier.username}
                       </TableCell>
-                      <TableCell>{cashier.email}</TableCell>
+                      <TableCell>{cashier.emailAddress}</TableCell>
                       <TableCell>
                         <span
                           className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                            cashier.enabled
+                            cashier.isEnabled
                               ? 'bg-green-100 text-green-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}
                         >
-                          {cashier.enabled ? 'Active' : 'Inactive'}
+                          {cashier.isEnabled ? 'Active' : 'Inactive'}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -326,15 +353,42 @@ export default function CashierManagementPanel() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="name"
-                value={newCashier.name}
+                id="username"
+                value={newCashier.username}
                 onChange={e =>
-                  setNewCashier(prev => ({ ...prev, name: e.target.value }))
+                  setNewCashier(prev => ({ ...prev, username: e.target.value }))
                 }
-                placeholder="Enter full name"
+                placeholder="Enter username"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  value={newCashier.firstName}
+                  onChange={e =>
+                    setNewCashier(prev => ({
+                      ...prev,
+                      firstName: e.target.value,
+                    }))
+                  }
+                  placeholder="First name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  value={newCashier.lastName}
+                  onChange={e =>
+                    setNewCashier(prev => ({ ...prev, lastName: e.target.value }))
+                  }
+                  placeholder="Last name"
+                />
+              </div>
             </div>
             <div>
               <Label htmlFor="email">Email Address</Label>
@@ -373,13 +427,18 @@ export default function CashierManagementPanel() {
             </DialogTitle>
             <DialogDescription>
               This will generate a new temporary password for{' '}
-              {selectedCashier?.email}.
+              {selectedCashier?.emailAddress}.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-gray-600">
               Are you sure you want to reset the password for{' '}
-              <strong>{selectedCashier?.name}</strong>?
+              <strong>
+                {selectedCashier?.profile
+                  ? `${selectedCashier.profile.firstName} ${selectedCashier.profile.lastName}`
+                  : selectedCashier?.username}
+              </strong>
+              ?
             </p>
           </div>
           <DialogFooter>

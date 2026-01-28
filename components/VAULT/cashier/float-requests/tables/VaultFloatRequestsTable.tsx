@@ -21,16 +21,16 @@
 
 import { Badge } from '@/components/shared/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { CheckCircle2, Minus, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CheckCircle2, Minus, Plus, X } from 'lucide-react';
 
 type FloatRequest = {
   id: string;
@@ -44,7 +44,7 @@ type FloatRequest = {
   requested?: string;
   processed?: string;
   processedBy?: string;
-  status?: 'completed' | 'pending';
+  status?: 'approved' | 'rejected' | 'pending';
 };
 
 export type FloatRequestSortOption =
@@ -232,7 +232,9 @@ export default function VaultFloatRequestsTable({
         <TableBody>
           {requests.map(request => {
             const isIncrease = request.type === 'Increase';
-            const isCompleted = request.status === 'completed';
+            const isApproved = request.status === 'approved';
+            const isRejected = request.status === 'rejected';
+            const isPending = !isApproved && !isRejected;
 
             return (
               <TableRow key={request.id} className="transition-colors hover:bg-muted/30">
@@ -303,19 +305,26 @@ export default function VaultFloatRequestsTable({
                         <Badge
                           className={cn(
                             'px-2 py-1',
-                            isCompleted
+                            isApproved
                               ? 'bg-button text-white hover:bg-button/90'
-                              : 'bg-orangeHighlight text-white hover:bg-orangeHighlight/90'
+                              : isRejected
+                                ? 'bg-red-600 text-white hover:bg-red-600/90'
+                                : 'bg-orangeHighlight text-white hover:bg-orangeHighlight/90'
                           )}
                         >
-                          {isCompleted ? (
+                          {isApproved && (
                             <>
                               <CheckCircle2 className="mr-1 h-3 w-3" />
                               Approved
                             </>
-                          ) : (
-                            'Pending'
                           )}
+                          {isRejected && (
+                            <>
+                              <X className="mr-1 h-3 w-3" />
+                              Rejected
+                            </>
+                          )}
+                          {isPending && 'Pending'}
                         </Badge>
                       )}
                     </TableCell>
@@ -323,7 +332,7 @@ export default function VaultFloatRequestsTable({
                 )}
                 {showActions && (
                   <TableCell>
-                    {!isCompleted && (
+                    {isPending && (
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => onApprove?.(request.id)}

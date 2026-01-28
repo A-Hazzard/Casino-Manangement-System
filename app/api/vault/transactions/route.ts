@@ -64,13 +64,48 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 4: Fetch transactions
     // ============================================================================
-    const transactions = await VaultTransactionModel.find({ locationId })
+    // Build query
+    const query: any = { locationId };
+
+    const type = searchParams.get('type');
+    const status = searchParams.get('status');
+    const search = searchParams.get('search');
+
+    if (type && type !== 'all') {
+      query.type = type;
+    }
+    
+    // Status filter - mapped to transaction properties
+    if (status && status !== 'all') {
+      if (status === 'voided') {
+        query.isVoid = true;
+      } else if (status === 'completed') {
+        query.isVoid = false;
+      }
+    }
+
+    if (search) {
+       // Basic search on notes or amount
+       const searchRegex = { $regex: search, $options: 'i' };
+       query.$or = [
+          { notes: searchRegex },
+          { auditComment: searchRegex },
+          { performedBy: searchRegex }
+       ];
+       // Try numeric search if possible
+       const numSearch = parseFloat(search);
+       if (!isNaN(numSearch)) {
+          query.$or.push({ amount: numSearch });
+       }
+    }
+
+    const transactions = await VaultTransactionModel.find(query)
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    const total = await VaultTransactionModel.countDocuments({ locationId });
+    const total = await VaultTransactionModel.countDocuments(query);
 
     // ============================================================================
     // STEP 5: Return success response

@@ -15,12 +15,12 @@
  * - User data transformation
  */
 
-import { useUserStore } from '@/lib/store/userStore';
 import {
-  CACHE_KEYS,
-  fetchUserWithCache,
-  userCache,
-} from '@/lib/utils/userCache';
+    CACHE_KEYS,
+    fetchUserWithCache,
+    userCache,
+} from '@/lib/services/userCacheService';
+import { useUserStore } from '@/lib/store/userStore';
 import type { UserAuthPayload } from '@/shared/types/auth';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
@@ -42,6 +42,7 @@ type CurrentUserResponse = {
     requiresProfileUpdate?: boolean;
     invalidProfileFields?: UserAuthPayload['invalidProfileFields'];
     invalidProfileReasons?: UserAuthPayload['invalidProfileReasons'];
+    tempPasswordChanged?: boolean;
   };
 };
 
@@ -112,6 +113,7 @@ export function useCurrentUserQuery() {
         requiresProfileUpdate: dbUser.requiresProfileUpdate,
         invalidProfileFields: dbUser.invalidProfileFields,
         invalidProfileReasons: dbUser.invalidProfileReasons,
+        tempPasswordChanged: dbUser.tempPasswordChanged,
       };
 
       // Only update store if data has changed
@@ -152,4 +154,3 @@ export function useCurrentUserQuery() {
     hasData: !!data?.success,
   };
 }
-

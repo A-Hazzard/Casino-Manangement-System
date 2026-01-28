@@ -236,6 +236,7 @@ const UserSchema = new Schema(
     sessionVersion: { type: Number, default: 1 },
     loginCount: { type: Number, default: 0 },
     lastLoginAt: { type: Date, default: null },
+    tempPasswordChanged: { type: Boolean, default: false },
     deletedAt: { type: Schema.Types.Mixed, default: null }, // allow for { $date: { $numberLong: "-1" } }
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date },
@@ -262,4 +263,3 @@ const UserModel = mongoose.models?.users || model('users', UserSchema);
  */
 
 export default UserModel;
-

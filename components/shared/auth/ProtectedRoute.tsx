@@ -219,19 +219,8 @@ export default function ProtectedRoute({
     hasWaitedForRoles,
   ]);
 
-  // ============================================================================
-  // Render - Loading, No Role, or Protected Content
-  // ============================================================================
-
   // Show loading while checking authentication
-  if (isLoading || isChecking) {
-    return <></>;
-    // return (
-    //   <div className="flex min-h-screen items-center justify-center">
-    //     <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-gray-900"></div>
-    //   </div>
-    // );
-  }
+  if (isLoading || isChecking) return <></>;
 
   // Show NoRoleAssigned message if user has no roles
   if (shouldShowNoRoleMessage(user as UserAuthPayload)) {

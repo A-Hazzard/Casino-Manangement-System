@@ -9,20 +9,20 @@
 
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/shared/ui/card';
 import { Ticket } from 'lucide-react';
+import { useState } from 'react';
 
 type TicketRedemptionFormProps = {
-  onSubmit: (ticketNumber: string, barcode?: string) => Promise<void>;
+  onSubmit: (ticketNumber: string, amount: number, barcode?: string) => Promise<void>;
   loading?: boolean;
 };
 
@@ -31,6 +31,7 @@ export default function TicketRedemptionForm({
   loading = false,
 }: TicketRedemptionFormProps) {
   const [ticketNumber, setTicketNumber] = useState('');
+  const [amount, setAmount] = useState('');
   const [barcode, setBarcode] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,9 +40,16 @@ export default function TicketRedemptionForm({
       alert('Please enter a ticket number');
       return;
     }
+    const numAmount = parseFloat(amount);
+    if (!amount || isNaN(numAmount) || numAmount <= 0) {
+        alert('Please enter a valid amount');
+        return;
+    }
+
     try {
-      await onSubmit(ticketNumber.trim(), barcode.trim() || undefined);
+      await onSubmit(ticketNumber.trim(), numAmount, barcode.trim() || undefined);
       setTicketNumber('');
+      setAmount('');
       setBarcode('');
     } catch {
       // Error handled by parent
@@ -74,6 +82,21 @@ export default function TicketRedemptionForm({
               className="mt-1"
               required
             />
+          </div>
+
+          <div>
+             <Label htmlFor="amount" className="text-sm font-medium text-gray-700">Amount *</Label>
+             <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Enter ticket amount"
+                className="mt-1"
+                required
+             />
           </div>
 
           <div>

@@ -56,12 +56,26 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     await connectDB();
 
-    const query: { status: string; locationId?: string } = {
-      status: 'pending',
-    };
+    const status = searchParams.get('status');
+
+    await connectDB();
+
+    const query: any = {};
     if (locationId) {
       query.locationId = locationId;
     }
+    if (status && status !== 'all') {
+      // Support comma separated status? No, single status for now or 'all'
+      query.status = status;
+    } else if (!status) {
+        // Default to pending if not specified? Or all?
+        // Original code defaulted to pending. Let's keep that default for safety/compat?
+        // Or change default to all?
+        // Let's default to 'pending' to match previous behavior if no status passed.
+        // But if client wants history, they pass status=all or status=approved.
+        query.status = 'pending'; 
+    }
+    // If status === 'all', we don't set query.status, so it returns all.
 
     const pendingRequests = await FloatRequestModel.find(query)
       .sort({ createdAt: 1 })
