@@ -18,36 +18,36 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button } from '@/components/shared/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/shared/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/shared/ui/table';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import type { ActivityLog } from '@/app/api/lib/types/activityLog';
 import { Badge } from '@/components/shared/ui/badge';
+import { Button } from '@/components/shared/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import { DatePicker } from '@/components/shared/ui/date-picker';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/shared/ui/select';
 import { Skeleton } from '@/components/shared/ui/skeleton';
-import { ArrowUpDown, Activity, Copy, Check } from 'lucide-react';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/shared/ui/table';
 import { formatDate } from '@/lib/utils/formatting';
+import { Activity, ArrowUpDown, Check, Copy } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import AdministrationActivityLogsSearchBar from '../AdministrationActivityLogsSearchBar';
 import AdministrationActivityLogCard from '../cards/AdministrationActivityLogCard';
-import AdministrationActivityLogCardSkeleton from '../skeletons/AdministrationActivityLogCardSkeleton';
 import AdministrationActivityLogDescriptionDialog from '../modals/AdministrationActivityLogDescriptionDialog';
-import { DatePicker } from '@/components/shared/ui/date-picker';
-import PaginationControls from '@/components/shared/ui/PaginationControls';
-import type { ActivityLog } from '@/app/api/lib/types/activityLog';
+import AdministrationActivityLogCardSkeleton from '../skeletons/AdministrationActivityLogCardSkeleton';
 
 type AdministrationActivityLogsTableProps = {
   className?: string;
@@ -405,6 +405,10 @@ function AdministrationActivityLogsTable({
         return 'bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-200 font-medium';
       case 'session':
         return 'bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-200 font-medium';
+      case 'vault':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200 font-medium';
+      case 'cashier_shift':
+        return 'bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-200 font-medium';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-medium';
     }
@@ -479,6 +483,8 @@ function AdministrationActivityLogsTable({
                 <SelectItem value="licensee">Licensee</SelectItem>
                 <SelectItem value="member">Member</SelectItem>
                 <SelectItem value="session">Session</SelectItem>
+                <SelectItem value="vault">Vault</SelectItem>
+                <SelectItem value="cashier_shift">Cashier Shift</SelectItem>
               </SelectContent>
             </Select>
 

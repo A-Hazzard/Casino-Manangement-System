@@ -9,11 +9,12 @@
  * @module app/api/vault/soft-counts/route
  */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { SoftCountModel } from '@/app/api/lib/models/softCount';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { SoftCountModel } from '@/app/api/lib/models/softCount';
 import type { CreateSoftCountRequest } from '@/shared/types/vault';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
@@ -30,10 +31,11 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    const vaultManagerId = userPayload.userId;
+    const vaultManagerId = userPayload._id as string;
+    const username = (userPayload.username || userPayload.emailAddress) as string;
     const userRoles = (userPayload?.roles as string[]) || [];
     const hasVMAccess = userRoles.some(role =>
-      ['developer', 'admin', 'manager'].includes(role.toLowerCase())
+      ['developer', 'admin', 'manager', 'vault-manager'].includes(role.toLowerCase())
     );
     if (!hasVMAccess) {
       return NextResponse.json(
@@ -132,7 +134,23 @@ export async function POST(request: NextRequest) {
     await activeVaultShift.save();
 
     // ============================================================================
-    // STEP 9: Return success response
+    // STEP 9: Audit Activity
+    // ============================================================================
+    await logActivity({
+      userId: vaultManagerId,
+      username,
+      action: 'create',
+      details: `Recorded soft count removal: $${amount}`,
+      metadata: {
+        resource: 'vault',
+        resourceId: locationId,
+        transactionId,
+        notes,
+      },
+    });
+
+    // ============================================================================
+    // STEP 10: Return success response
     // ============================================================================
     return NextResponse.json({
       success: true,

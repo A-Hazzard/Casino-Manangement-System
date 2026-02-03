@@ -9,27 +9,29 @@
 
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import type { Denomination } from '@/shared/types/vault';
 import { cn } from '@/lib/utils';
-import { Plus, Minus } from 'lucide-react';
+import type { Denomination } from '@/shared/types/vault';
+import { AlertTriangle, Minus, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 type CashierShiftOpenModalProps = {
   open: boolean;
   onClose: () => void;
   onSubmit: (denominations: Denomination[]) => Promise<void>;
+  hasActiveVaultShift: boolean;
   loading?: boolean;
 };
 
@@ -41,6 +43,7 @@ export default function CashierShiftOpenModal({
   open,
   onClose,
   onSubmit,
+  hasActiveVaultShift,
   loading = false,
 }: CashierShiftOpenModalProps) {
   const { formatAmount } = useCurrencyFormat();
@@ -62,6 +65,11 @@ export default function CashierShiftOpenModal({
   };
 
   const handleSubmit = async () => {
+    if (!hasActiveVaultShift) {
+      toast.error('No shifts enabled for manager. Please contact your Vault Manager.');
+      return;
+    }
+
     const filteredDenominations = denominations.filter(d => d.quantity > 0);
     if (filteredDenominations.length === 0) {
       alert('Please specify at least one denomination with quantity > 0');
@@ -91,6 +99,15 @@ export default function CashierShiftOpenModal({
             Request your opening float by specifying the denominations you need.
           </DialogDescription>
         </DialogHeader>
+
+        {!hasActiveVaultShift && (
+          <div className="flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700 border border-red-100 mb-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <p>
+              <strong>Cannot Start Shift:</strong> No active Vault Manager shift found at this location.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -159,7 +176,10 @@ export default function CashierShiftOpenModal({
             type="button"
             onClick={handleSubmit}
             disabled={loading || totalAmount === 0}
-            className="bg-button text-white hover:bg-button/90"
+            className={cn(
+              "bg-button text-white hover:bg-button/90",
+              !hasActiveVaultShift && "opacity-50 cursor-not-allowed"
+            )}
           >
             {loading ? 'Requesting...' : 'Request Float'}
           </Button>

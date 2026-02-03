@@ -13,47 +13,48 @@
  */
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
 import PageLayout from '@/components/shared/layout/PageLayout';
-import VaultTransfersSkeleton from '@/components/ui/skeletons/VaultTransfersSkeleton';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/shared/ui/dialog';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
+import VaultTransfersSkeleton from '@/components/ui/skeletons/VaultTransfersSkeleton';
 import { DEFAULT_VAULT_BALANCE } from '@/components/VAULT/overview/data/defaults';
+import {
+    fetchVaultBalance,
+    fetchVaultTransfers,
+    handleApproveTransfer,
+    handleRejectTransfer,
+    handleTransferSubmit,
+    sortTransfers,
+} from '@/lib/helpers/vaultHelpers';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useUserStore } from '@/lib/store/userStore';
+import { cn } from '@/lib/utils';
 import type {
-  VaultTransfer,
-  Denomination,
-  VaultBalance,
+    Denomination,
+    VaultBalance,
+    VaultTransfer,
 } from '@/shared/types/vault';
-import type { TransferSortOption } from './tables/VaultTransfersTable';
-import VaultTransfersTable from './tables/VaultTransfersTable';
+import { Clock, Plus } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import VaultTransfersMobileCards from './cards/VaultTransfersMobileCards';
 import InterLocationTransferForm from './InterLocationTransferForm';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/shared/ui/dialog';
-import { Plus, Clock } from 'lucide-react';
-import { toast } from 'sonner';
-import { useUserStore } from '@/lib/store/userStore';
-import {
-  fetchVaultTransfers,
-  fetchVaultBalance,
-  handleTransferSubmit,
-  handleApproveTransfer,
-  handleRejectTransfer,
-  sortTransfers,
-} from '@/lib/helpers/vaultHelpers';
-import PaginationControls from '@/components/shared/ui/PaginationControls';
+import type { TransferSortOption } from './tables/VaultTransfersTable';
+import VaultTransfersTable from './tables/VaultTransfersTable';
 
 export default function VaultTransfersPageContent() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
-  const { user } = useUserStore();
+  const { user, hasActiveVaultShift } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
   const [loading, setLoading] = useState(true);
   const [sortOption, setSortOption] = useState<TransferSortOption>('date');
@@ -155,6 +156,12 @@ export default function VaultTransfersPageContent() {
    * Handle new transfer button click
    */
   const handleNewTransfer = () => {
+    if (!hasActiveVaultShift) {
+      toast.error('Operation Blocked', {
+        description: 'You must start a vault shift before initiating a transfer.'
+      });
+      return;
+    }
     setIsTransferModalOpen(true);
   };
 
@@ -323,7 +330,10 @@ export default function VaultTransfersPageContent() {
         <div>
           <Button
             onClick={handleNewTransfer}
-            className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
+            className={cn(
+              "bg-orangeHighlight text-white hover:bg-orangeHighlight/90",
+              !hasActiveVaultShift && "opacity-40 cursor-not-allowed"
+            )}
             size="lg"
           >
             <Plus className="mr-2 h-5 w-5" />

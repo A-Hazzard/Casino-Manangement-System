@@ -9,15 +9,16 @@
  *
  * @module app/api/vault/reconcile/route */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { validateDenominations } from '@/lib/helpers/vault/calculations';
-import type { ReconcileVaultRequest } from '@/shared/types/vault';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import { validateDenominations } from '@/lib/helpers/vault/calculations';
+import type { ReconcileVaultRequest } from '@/shared/types/vault';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 
 /**
  * POST /api/vault/reconcile
@@ -47,7 +48,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = userPayload.userId;
+    const userId = userPayload._id as string;
+    const username = userPayload.username as string;
     const userRoles = (userPayload?.roles as string[]) || [];
 
     const hasVaultAccess = userRoles.some((role: string) =>
@@ -185,6 +187,12 @@ export async function POST(request: NextRequest) {
       reason,
       comment,
     });
+
+    
+    // Update live state
+    vaultShift.currentDenominations = denominations;
+    vaultShift.closingBalance = newBalance;
+
     vaultShift.updatedAt = now;
     await vaultShift.save();
 
@@ -217,6 +225,23 @@ export async function POST(request: NextRequest) {
     // STEP 10: Performance tracking and return success response
     // ============================================================================
     const duration = Date.now() - startTime;
+    // STEP 10: Audit Activity
+    await logActivity({
+      userId,
+      username,
+      action: 'update',
+      details: `Reconciled vault balance. New Balance: $${newBalance} (Adjustment: $${adjustmentAmount})`,
+      metadata: {
+        resource: 'vault',
+        resourceId: vaultShift.locationId,
+        resourceName: 'Vault',
+        transactionId,
+        shiftId: vaultShift._id.toString(),
+        reason,
+        comment,
+      },
+    });
+
     if (duration > 1000) {
       console.warn(`Vault reconcile API took ${duration}ms`);
     }

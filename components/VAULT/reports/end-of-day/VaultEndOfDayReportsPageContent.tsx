@@ -16,67 +16,67 @@
 
 'use client';
 
-import { useState } from 'react';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
-import { Badge } from '@/components/shared/ui/badge';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useUserStore } from '@/lib/store/userStore';
-import type {
-  CashierFloat,
-  FloatRequest,
-  VaultMetrics,
-} from '@/shared/types/vault';
+import VaultEndOfDayReportsSkeleton from '@/components/ui/skeletons/VaultEndOfDayReportsSkeleton';
 import {
-  Calendar,
-  Download,
-  FileText,
-  Printer,
-  Wallet,
-  Monitor,
-  Users,
-  AlertTriangle,
-  CheckCircle2,
-  RefreshCw,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
-import {
-  DEFAULT_REPORT_DENOMINATIONS,
-  DEFAULT_REPORT_SLOTS,
-  DEFAULT_CASHIER_FLOATS,
-  DEFAULT_VAULT_BALANCE,
-  DEFAULT_VAULT_METRICS,
+    DEFAULT_CASHIER_FLOATS,
+    DEFAULT_REPORT_DENOMINATIONS,
+    DEFAULT_REPORT_SLOTS,
+    DEFAULT_VAULT_BALANCE,
+    DEFAULT_VAULT_METRICS,
 } from '@/components/VAULT/overview/data/defaults';
 import {
-  fetchEndOfDayReportData,
-  calculateEndOfDayMetrics,
-  handleExportPDF,
-  handleExportCSV,
-  handlePrint,
+    calculateEndOfDayMetrics,
+    fetchEndOfDayReportData,
 } from '@/lib/helpers/vaultHelpers';
-import VaultEndOfDayReportsSkeleton from '@/components/ui/skeletons/VaultEndOfDayReportsSkeleton';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useUserStore } from '@/lib/store/userStore';
+import { cn } from '@/lib/utils';
+import type {
+    CashierFloat,
+    FloatRequest,
+    VaultMetrics,
+} from '@/shared/types/vault';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import {
+    AlertTriangle,
+    Calendar,
+    CheckCircle2,
+    Download,
+    FileText,
+    Monitor,
+    Printer,
+    RefreshCw,
+    Users,
+    Wallet
+} from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 export default function VaultEndOfDayReportsPageContent() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
-  const { user } = useUserStore();
+  const { user, hasActiveVaultShift } = useUserStore();
   const [reportGenerated, setReportGenerated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,9 +144,115 @@ export default function VaultEndOfDayReportsPageContent() {
     toast.success('Report data refreshed');
   };
 
+  /**
+   * Handle CSV export
+   */
+  const handleExportCSV = () => {
+    try {
+      const data = [
+        { Section: 'Daily Activity Summary', Metric: 'Total Inflows', Value: metrics.totalInflows },
+        { Section: 'Daily Activity Summary', Metric: 'Total Outflows', Value: metrics.totalOutflows },
+        { Section: 'Daily Activity Summary', Metric: 'Expenses', Value: metrics.totalExpenses },
+        { Section: 'Daily Activity Summary', Metric: 'Player Payouts', Value: metrics.totalPayouts },
+        { Section: 'Denomination Breakdown', Metric: 'Total Value', Value: metrics.totalDenominationValue },
+        { Section: 'Location Breakdown', Metric: 'Vault Balance', Value: metrics.systemBalance },
+        { Section: 'Location Breakdown', Metric: 'Machine Balance', Value: metrics.totalMachineBalance },
+        { Section: 'Location Breakdown', Metric: 'Cash Desk Floats', Value: metrics.totalCashDeskFloat },
+        { Section: 'Location Breakdown', Metric: 'Total on Premises', Value: metrics.totalOnPremises },
+        { Section: 'Variance', Metric: 'System Balance', Value: metrics.systemBalance },
+        { Section: 'Variance', Metric: 'Physical Count', Value: metrics.physicalCount },
+        { Section: 'Variance', Metric: 'Discrepancy', Value: metrics.variance },
+      ];
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'End of Day Report');
+      XLSX.writeFile(workbook, `End_of_Day_Report_${new Date().toISOString().split('T')[0]}.csv`);
+      toast.success('CSV exported successfully');
+    } catch (error) {
+      console.error('CSV export failed:', error);
+      toast.error('Failed to export CSV');
+    }
+  };
+
+  /**
+   * Handle PDF export
+   */
+  const handleExportPDF = () => {
+    try {
+      const doc = new jsPDF();
+      doc.setFontSize(20);
+      doc.text('End-of-Day Closing Report', 14, 22);
+      
+      doc.setFontSize(10);
+      doc.text(`Location: ${user?.assignedLocations?.[0] || 'N/A'}`, 14, 30);
+      doc.text(`Manager: ${user?.username || 'N/A'}`, 14, 35);
+      doc.text(`Date: ${new Date().toLocaleString()}`, 14, 40);
+
+      autoTable(doc, {
+        startY: 50,
+        head: [['Section', 'Metric', 'Value']],
+        body: [
+          ['Activity', 'Total Inflows', formatAmount(metrics.totalInflows)],
+          ['Activity', 'Total Outflows', formatAmount(metrics.totalOutflows)],
+          ['Activity', 'Expenses', formatAmount(metrics.totalExpenses)],
+          ['Activity', 'Payouts', formatAmount(metrics.totalPayouts)],
+          ['Locations', 'Vault', formatAmount(metrics.systemBalance)],
+          ['Locations', 'Slot Machines', formatAmount(metrics.totalMachineBalance)],
+          ['Locations', 'Cash Desks', formatAmount(metrics.totalCashDeskFloat)],
+          ['Locations', 'Total on Premises', formatAmount(metrics.totalOnPremises)],
+          ['Verification', 'System Balance', formatAmount(metrics.systemBalance)],
+          ['Verification', 'Physical Count', formatAmount(metrics.physicalCount)],
+          ['Verification', 'Variance', formatAmount(metrics.variance)],
+        ],
+      });
+
+      doc.save(`End_of_Day_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      toast.error('Failed to export PDF');
+    }
+  };
+
+  /**
+   * Handle print
+   */
+  const handlePrint = () => {
+    window.print();
+  };
+
   // ============================================================================
   // Render
   // ============================================================================
+  if (hasActiveVaultShift) {
+    return (
+      <PageLayout showHeader={false}>
+        <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
+          <Card className="w-full max-w-md rounded-lg bg-container shadow-md">
+            <CardContent className="flex flex-col items-center justify-center p-8 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orangeHighlight/10">
+                <AlertTriangle className="h-8 w-8 text-orangeHighlight" />
+              </div>
+              <h2 className="mb-2 text-xl font-bold text-gray-900">
+                Access Restricted
+              </h2>
+              <p className="mb-6 text-sm text-gray-600">
+                The End-of-Day Report is only available after the vault shift has been closed. Please close your shift to view this report.
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => window.location.href = '/vault/management'}
+              >
+                Return to Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </PageLayout>
+    );
+  }
+
   if (!reportGenerated) {
     return (
       <PageLayout showHeader={false}>
@@ -257,56 +363,146 @@ export default function VaultEndOfDayReportsPageContent() {
           </div>
         </div>
 
-        {/* Daily Activity Summary */}
-        <Card className="rounded-lg bg-container shadow-md">
+        {/* Summary Statistics */}
+        <Card className="rounded-lg bg-container shadow-md border-t-4 border-orangeHighlight">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900">
-              Daily Activity Summary
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg font-semibold text-gray-900">
+                Summary Statistics
+              </CardTitle>
+              <div className="text-xs font-medium text-gray-400 uppercase">Real-time queried data</div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Total Inflows
-                </p>
-                <p className="mt-1 text-xl font-bold text-button">
-                  +{formatAmount(metrics.totalInflows)}
-                </p>
+            <div className="grid grid-cols-2 gap-6 sm:grid-cols-4 lg:grid-cols-6">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Total Managed</p>
+                <p className="text-xl font-bold text-gray-900">{formatAmount(metrics.totalOnPremises)}</p>
+                <p className="text-[10px] text-gray-400">Sum of Vault, Machines, Floats</p>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Total Outflows
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Net Flow</p>
+                <p className={cn(
+                  "text-xl font-bold",
+                  (metrics.totalInflows - metrics.totalOutflows) >= 0 ? "text-button" : "text-red-600"
+                )}>
+                  {formatAmount(metrics.totalInflows - metrics.totalOutflows)}
                 </p>
-                <p className="mt-1 text-xl font-bold text-red-600">
-                  -{formatAmount(metrics.totalOutflows)}
-                </p>
+                <p className="text-[10px] text-gray-400">Total In - Total Out</p>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Expenses</p>
-                <p className="mt-1 text-xl font-bold text-red-600">
-                  -{formatAmount(metrics.totalExpenses)}
-                </p>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Expenses</p>
+                <p className="text-xl font-bold text-red-600">{formatAmount(metrics.totalExpenses)}</p>
+                <p className="text-[10px] text-gray-400">Current day expenses</p>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Player Payouts
-                </p>
-                <p className="mt-1 text-xl font-bold text-lighterBlueHighlight">
-                  {formatAmount(metrics.totalPayouts)}
-                </p>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Payouts</p>
+                <p className="text-xl font-bold text-lighterBlueHighlight">{formatAmount(metrics.totalPayouts)}</p>
+                <p className="text-[10px] text-gray-400">Handpays & Redemptions</p>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Float Requests
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Variance</p>
+                <p className={cn(
+                  "text-xl font-bold",
+                  metrics.variance === 0 ? "text-button" : "text-orangeHighlight"
+                )}>
+                  {formatAmount(metrics.variance)}
                 </p>
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  {metrics.floatRequestsCount}
-                </p>
+                <p className="text-[10px] text-gray-400">System vs Physical</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Requests</p>
+                <p className="text-xl font-bold text-gray-900">{metrics.floatRequestsCount}</p>
+                <p className="text-[10px] text-gray-400">Pending float approvals</p>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Location Breakdown */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Visual Distribution */}
+          <Card className="rounded-lg bg-container shadow-md lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-gray-900">
+                Visual Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-600">Vault</span>
+                  <span className="font-bold text-gray-900">{((metrics.systemBalance / metrics.totalOnPremises) * 100).toFixed(1)}%</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-gray-100">
+                  <div className="h-full rounded-full bg-orangeHighlight" style={{ width: `${(metrics.systemBalance / metrics.totalOnPremises) * 100}%` }} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-600">Slot Machines</span>
+                  <span className="font-bold text-gray-900">{((metrics.totalMachineBalance / metrics.totalOnPremises) * 100).toFixed(1)}%</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-gray-100">
+                  <div className="h-full rounded-full bg-lighterBlueHighlight" style={{ width: `${(metrics.totalMachineBalance / metrics.totalOnPremises) * 100}%` }} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-600">Cashier Floats</span>
+                  <span className="font-bold text-gray-900">{((metrics.totalCashDeskFloat / metrics.totalOnPremises) * 100).toFixed(1)}%</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-gray-100">
+                  <div className="h-full rounded-full bg-button" style={{ width: `${(metrics.totalCashDeskFloat / metrics.totalOnPremises) * 100}%` }} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Detailed Distribution Table */}
+          <Card className="rounded-lg bg-container shadow-md lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-gray-900">
+                Detailed Distribution
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead isFirstColumn>Point of Holding</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell isFirstColumn className="font-medium">Main Vault</TableCell>
+                    <TableCell className="text-xs uppercase text-gray-500">Vault</TableCell>
+                    <TableCell className="text-right font-bold text-orangeHighlight">{formatAmount(metrics.systemBalance)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell isFirstColumn className="font-medium">Slot Floor (Drops)</TableCell>
+                    <TableCell className="text-xs uppercase text-gray-500">Machines</TableCell>
+                    <TableCell className="text-right font-bold text-lighterBlueHighlight">{formatAmount(metrics.totalMachineBalance)}</TableCell>
+                  </TableRow>
+                  {reportData.cashierFloats.map((float: any) => (
+                    <TableRow key={float._id}>
+                      <TableCell isFirstColumn className="font-medium">{float.cashierName || 'Unknown Cashier'}</TableCell>
+                      <TableCell className="text-xs uppercase text-gray-500">Cashier Float</TableCell>
+                      <TableCell className="text-right font-bold text-button">{formatAmount(float.currentBalance || float.balance || 0)}</TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="bg-gray-50/50">
+                    <TableCell isFirstColumn className="font-bold">Total On Premises</TableCell>
+                    <TableCell />
+                    <TableCell className="text-right font-bold text-orangeHighlight text-lg">{formatAmount(metrics.totalOnPremises)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Closing Float - Denomination Breakdown */}
         <Card className="rounded-lg bg-container shadow-md">

@@ -8,12 +8,12 @@
  *
  * @module app/api/cashier/shift/resolve/route
  */
-
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    const vaultManagerId = userPayload.userId;
+    const vaultManagerId = userPayload._id as string;
     const userRoles = (userPayload?.roles as string[]) || [];
     const hasVMAccess = userRoles.some(role =>
       ['developer', 'admin', 'manager', 'vault-manager'].includes(
@@ -136,8 +136,27 @@ export async function POST(request: NextRequest) {
       createdAt: now,
     });
 
+
+    
+    // STEP 8: Audit Activity
+    await logActivity({
+      userId: vaultManagerId as string,
+      username: userPayload.username as string,
+      action: 'update',
+      details: `Resolved shift discrepancy. Final Balance: $${finalBalance}. Comment: ${auditComment}`,
+      metadata: {
+        resource: 'cashier_shift',
+        resourceId: shiftId,
+        resourceName: 'Cashier Shift',
+        transactionId,
+        vaultShiftId: cashierShift.vaultShiftId,
+        vmAdjustedBalance: finalBalance,
+        comment: auditComment,
+      },
+    });
+
     // ============================================================================
-    // STEP 7: Update Vault Shift canClose status
+    // STEP 9: Update Vault Shift canClose status
     // ============================================================================
     await updateVaultCanClose(cashierShift.vaultShiftId);
 

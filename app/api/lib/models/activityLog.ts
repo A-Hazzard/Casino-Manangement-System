@@ -28,6 +28,7 @@ const ActivityLogSchema = new Schema(
         'password_reset',
         'account_locked',
         'account_unlocked',
+        'cancel',
       ],
     },
     resource: {
@@ -47,6 +48,10 @@ const ActivityLogSchema = new Schema(
         'collection-report',
         'report',
         'system',
+        'vault',
+        'cashier_shift',
+        'smib',
+        'movement_request',
       ],
     },
     resourceId: { type: String, required: true },

@@ -1,28 +1,19 @@
-/**
- * Float Request Modal Component
- *
- * Modal for cashiers to request float increases or decreases during their shift.
- * Includes denomination breakdown and reason for request.
- *
- * @module components/VAULT/cashier/shifts/FloatRequestModal
- */
-
-'use client';
-
-import { useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
-import { Input } from '@/components/shared/ui/input';
+import DenominationInputGrid from '@/components/shared/ui/DenominationInputGrid';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/shared/ui/dialog';
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/shared/ui/dialog';
-import { TrendingUp, Minus } from 'lucide-react';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import type { Denomination } from '@/shared/types/vault';
+import { Minus, TrendingUp } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 type FloatRequestModalProps = {
   open: boolean;
@@ -36,11 +27,17 @@ export type FloatRequestData = {
   type: 'increase' | 'decrease';
   amount: number;
   reason: string;
-  denominations?: Array<{
-    denomination: number;
-    count: number;
-  }>;
+  denominations?: Denomination[];
 };
+
+const INITIAL_DENOMINATIONS: Denomination[] = [
+  { denomination: 100, quantity: 0 },
+  { denomination: 50, quantity: 0 },
+  { denomination: 20, quantity: 0 },
+  { denomination: 10, quantity: 0 },
+  { denomination: 5, quantity: 0 },
+  { denomination: 1, quantity: 0 },
+];
 
 export default function FloatRequestModal({
   open,
@@ -49,209 +46,111 @@ export default function FloatRequestModal({
   type,
   loading = false,
 }: FloatRequestModalProps) {
-  const [amount, setAmount] = useState<string>('');
+  const { formatAmount } = useCurrencyFormat();
   const [reason, setReason] = useState('');
-  const [denominations, setDenominations] = useState<
-    Array<{ denomination: number; count: number }>
-  >([]);
+  const [denominations, setDenominations] = useState<Denomination[]>(INITIAL_DENOMINATIONS);
+
+  const totalAmount = useMemo(() => {
+    return denominations.reduce((sum, d) => sum + (d.denomination * d.quantity), 0);
+  }, [denominations]);
+
+  const isFormValid = totalAmount > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      alert('Please enter a valid amount');
-      return;
-    }
-    if (!reason.trim()) {
-      alert('Please provide a reason for the float request');
-      return;
-    }
+    if (!isFormValid) return;
 
     try {
       await onSubmit({
         type,
-        amount: numAmount,
-        reason: reason.trim(),
-        denominations: denominations.length > 0 ? denominations : undefined,
+        amount: totalAmount,
+        reason: reason.trim() || (type === 'increase' ? 'Float Increase Request' : 'Float Return Request'),
+        denominations: denominations.filter(d => d.quantity > 0),
       });
       // Reset form
-      setAmount('');
       setReason('');
-      setDenominations([]);
+      setDenominations(INITIAL_DENOMINATIONS);
       onClose();
     } catch {
       // Error handled by parent
     }
   };
 
-  const addDenomination = () => {
-    setDenominations([...denominations, { denomination: 0, count: 0 }]);
-  };
-
-  const updateDenomination = (
-    index: number,
-    field: 'denomination' | 'count',
-    value: number
-  ) => {
-    const updated = [...denominations];
-    updated[index][field] = value;
-    setDenominations(updated);
-  };
-
-  const removeDenomination = (index: number) => {
-    setDenominations(denominations.filter((_, i) => i !== index));
-  };
-
   const Icon = type === 'increase' ? TrendingUp : Minus;
+  const accentColor = type === 'increase' ? 'emerald' : 'orange';
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="sm:max-w-[600px] gap-0 p-0 overflow-hidden">
+        <DialogHeader className={`p-6 bg-${accentColor}-50 border-b border-${accentColor}-100`}>
+          <DialogTitle className={`flex items-center gap-2 text-${accentColor}-900`}>
             <Icon className="h-5 w-5" />
             {type === 'increase'
               ? 'Request Float Increase'
               : 'Request Float Decrease'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className={`text-${accentColor}-700/80`}>
             {type === 'increase'
-              ? 'Request additional float to handle increased customer activity.'
-              : 'Request to return excess float to the vault.'}
+              ? 'Request additional float for your stash.'
+              : 'Return excess float from your stash back to the vault.'}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label
-                htmlFor="amount"
-                className="text-sm font-medium text-gray-700"
-              >
-                Amount *
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Denomination Breakdown */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold text-gray-900">
+                Breakdown *
               </Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="Enter amount"
-                className="mt-1"
-                required
-              />
-            </div>
-
-            <div>
-              <Label
-                htmlFor="reason"
-                className="text-sm font-medium text-gray-700"
-              >
-                Reason *
-              </Label>
-              <Input
-                id="reason"
-                type="text"
-                value={reason}
-                onChange={e => setReason(e.target.value)}
-                placeholder="Brief reason"
-                className="mt-1"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <Label className="text-sm font-medium text-gray-700">
-                Denomination Breakdown (Optional)
-              </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addDenomination}
-              >
-                Add Denomination
-              </Button>
-            </div>
-
-            {denominations.length > 0 && (
-              <div className="space-y-2">
-                {denominations.map((denom, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      placeholder="Denom"
-                      value={denom.denomination || ''}
-                      onChange={e =>
-                        updateDenomination(
-                          index,
-                          'denomination',
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
-                      className="w-24"
-                    />
-                    <span className="text-sm text-gray-600">×</span>
-                    <Input
-                      type="number"
-                      placeholder="Count"
-                      value={denom.count || ''}
-                      onChange={e =>
-                        updateDenomination(
-                          index,
-                          'count',
-                          parseInt(e.target.value) || 0
-                        )
-                      }
-                      className="w-24"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeDenomination(index)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
+              <div className="text-sm font-medium text-gray-500">
+                Total: <span className={`text-${accentColor}-600 font-bold`}>{formatAmount(totalAmount)}</span>
               </div>
-            )}
+            </div>
+            
+            <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+              <DenominationInputGrid
+                denominations={denominations}
+                onChange={setDenominations}
+                disabled={loading}
+              />
+            </div>
           </div>
 
-          <div>
-            <Label
-              htmlFor="detailedReason"
-              className="text-sm font-medium text-gray-700"
-            >
-              Detailed Reason (Optional)
+          {/* Reason Field */}
+          <div className="space-y-2">
+            <Label htmlFor="reason" className="text-sm font-semibold text-gray-900">
+              Reason (Optional)
             </Label>
             <Textarea
-              id="detailedReason"
+              id="reason"
               value={reason}
-              onChange={e => setReason(e.target.value)}
-              placeholder="Provide more details about why you need this float adjustment..."
-              className="mt-1"
-              rows={3}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={type === 'increase' 
+                ? "Why do you need more float? (e.g., Busy weekend, machine drop scheduled)" 
+                : "Why are you returning float? (e.g., Shift end, excess cash)"
+              }
+              className="resize-none focus-visible:ring-offset-0 min-h-[80px]"
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+          <DialogFooter className="pt-2">
+            <Button 
+                type="button" 
+                variant="ghost" 
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-900"
+            >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={loading || !amount || !reason.trim()}
-              className={
+              disabled={loading || !isFormValid}
+              className={`px-8 ${
                 type === 'increase'
-                  ? 'bg-green-600 hover:bg-green-700'
+                  ? 'bg-emerald-600 hover:bg-emerald-700'
                   : 'bg-orange-600 hover:bg-orange-700'
-              }
+              } text-white`}
             >
               {loading ? 'Submitting...' : 'Submit Request'}
             </Button>

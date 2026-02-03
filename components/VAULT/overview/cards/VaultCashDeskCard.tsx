@@ -1,85 +1,100 @@
 /**
- * Vault Cash Desk Card Component
+ * Vault Cash Desk Card
  *
- * Card component for displaying cash desk status with open/closed indicators.
+ * Displays individual cash desk status, assigned cashier, and current balance.
  *
- * Features:
- * - Cash desk name
- * - Cashier name
- * - Float amount
- * - Status indicator (open/closed)
- * - Color-coded status badges
- *
- * @module components/VAULT/cards/VaultCashDeskCard
+ * @module components/VAULT/overview/cards/VaultCashDeskCard
  */
 'use client';
 
-import { Card, CardContent } from '@/components/shared/ui/card';
 import { Badge } from '@/components/shared/ui/badge';
+import { Button } from '@/components/shared/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/shared/ui/card';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/shared/ui/tooltip';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import type { CashDesk } from '@/shared/types/vault';
 import { cn } from '@/lib/utils';
+import type { CashDesk } from '@/shared/types/vault';
+import { AlertCircle, Eye, User } from 'lucide-react';
 
 type VaultCashDeskCardProps = {
   cashDesk: CashDesk;
+  onViewDenominations: () => void;
 };
 
-export default function VaultCashDeskCard({
-  cashDesk,
-}: VaultCashDeskCardProps) {
-  // ============================================================================
-  // Hooks
-  // ============================================================================
+export default function VaultCashDeskCard({ cashDesk, onViewDenominations }: VaultCashDeskCardProps) {
   const { formatAmount } = useCurrencyFormat();
 
-  // ============================================================================
-  // Computed Values
-  // ============================================================================
-  /**
-   * Check if cash desk is currently open
-   */
-  const isOpen = cashDesk.status === 'active';
+  const isActive = cashDesk.status === 'active';
 
-  // ============================================================================
-  // Render
-  // ============================================================================
   return (
-    <Card className="w-full rounded-lg bg-container shadow-md transition-shadow hover:shadow-md">
-      <CardContent className="p-4 sm:p-6">
-        <div className="space-y-4">
-          {/* Header with Name and Status */}
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="min-w-0 break-words text-lg font-semibold text-gray-900">
-              {cashDesk.name}
-            </h3>
-            <Badge
-              className={cn(
-                'flex-shrink-0 px-3 py-1',
-                isOpen
-                  ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                  : 'bg-red-100 text-red-800 hover:bg-red-100'
-              )}
-            >
-              {isOpen ? 'OPEN' : 'CLOSED'}
-            </Badge>
+    <Card className={cn(
+      "overflow-hidden transition-all duration-200 border-l-4",
+      isActive ? "border-l-emerald-500" : "border-l-gray-300"
+    )}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 pt-4">
+        <div className="flex flex-col">
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            {isActive ? 'Cashier On Duty' : 'Status'}
+          </span>
+          <div className="flex items-center gap-2 mt-1">
+             <div className={cn(
+               "flex h-8 w-8 items-center justify-center rounded-full",
+               isActive ? "bg-emerald-100 text-emerald-600" : "bg-gray-100 text-gray-500"
+             )}>
+                <User className="h-4 w-4" />
+             </div>
+             <div>
+                <h3 className="flex items-center gap-2 font-medium text-gray-900">
+                   {cashDesk.cashierName || 'Unassigned'}
+                   {/* If we had a username, we'd display it here */}
+                </h3>
+             </div>
           </div>
-
-          {/* Cashier */}
+        </div>
+        <Badge variant={isActive ? 'success' : 'secondary'}>
+          {isActive ? 'Active' : 'Closed'}
+        </Badge>
+      </CardHeader>
+      
+      <CardContent className="px-4 pb-4 pt-2">
+        <div className="mt-2 flex items-center justify-between rounded-lg bg-gray-50 p-3">
           <div>
-            <p className="text-sm font-medium text-gray-600">Manager on Duty</p>
-            <p className="break-words text-base text-gray-900">
-              {cashDesk.managerOnDuty}
-            </p>
-          </div>
-
-          {/* Float */}
-          <div className="border-t border-gray-200 pt-4">
-            <p className="text-sm font-medium text-gray-600">Balance</p>
-            <p className="break-words text-xl font-bold text-gray-900">
+            <p className="text-xs text-gray-500">Current Balance</p>
+            <p className="text-lg font-bold text-gray-900">
               {formatAmount(cashDesk.balance)}
             </p>
           </div>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-gray-500 hover:text-gray-900"
+                  onClick={onViewDenominations}
+                >
+                   <Eye className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>View Denominations</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
+
+        {cashDesk.lastAudit && (
+           <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
+             <AlertCircle className="h-3 w-3" />
+             <span>Last Audit: {new Date(cashDesk.lastAudit).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+           </div>
+        )}
       </CardContent>
     </Card>
   );

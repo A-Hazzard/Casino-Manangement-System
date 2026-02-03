@@ -222,6 +222,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       profilePicture = null,
       assignedLocations,
       assignedLicensees,
+      tempPassword,
     } = body;
 
     // ============================================================================
@@ -306,6 +307,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         profilePicture,
         assignedLocations,
         assignedLicensees,
+        tempPassword,
       },
       request
     );

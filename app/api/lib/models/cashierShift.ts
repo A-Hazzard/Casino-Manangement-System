@@ -33,7 +33,7 @@ const CashierShiftSchema = new Schema(
 
     status: {
       type: String,
-      enum: ['pending_start', 'active', 'closed', 'pending_review'],
+      enum: ['pending_start', 'active', 'closed', 'pending_review', 'cancelled'],
       default: 'pending_start',
       required: true,
     },
@@ -60,7 +60,11 @@ const CashierShiftSchema = new Schema(
     reviewedBy: { type: String }, // VM user ID
     reviewedAt: { type: Date },
 
-    // Metrics
+    // Live tracking
+    currentBalance: { type: Number, required: true, default: 0 },
+    lastSyncedDenominations: [DenominationSchema],
+
+    // Metrics (Can be derived from transactions)
     payoutsTotal: { type: Number, default: 0, min: 0 },
     payoutsCount: { type: Number, default: 0, min: 0 },
     floatAdjustmentsTotal: { type: Number, default: 0 },

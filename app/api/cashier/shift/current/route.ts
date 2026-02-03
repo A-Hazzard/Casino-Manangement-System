@@ -12,6 +12,8 @@
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
+import FloatRequestModel from '@/app/api/lib/models/floatRequest';
+import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import { calculateExpectedBalance } from '@/lib/helpers/vault/calculations';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -37,28 +39,54 @@ export async function GET(_request: NextRequest) {
       status: { $in: ['active', 'pending_start', 'pending_review'] },
     }).sort({ createdAt: -1 });
 
+    // STEP 3: Check for active vault shift at user's location
+    const locationId = (userPayload.assignedLocations as string[])?.[0];
+    let hasActiveVaultShift = false;
+    if (locationId) {
+      const activeVaultShift = await VaultShiftModel.findOne({
+        locationId,
+        status: 'active',
+      });
+      hasActiveVaultShift = !!activeVaultShift;
+    }
+
     if (!shift) {
       return NextResponse.json({
         success: true,
         shift: null,
+        hasActiveVaultShift,
       });
     }
 
-    // STEP 3: Calculate current balance if active
+    // STEP 4: Get current balance tracking
     let currentBalance = 0;
     if (shift.status === 'active') {
-      currentBalance = calculateExpectedBalance(
+      currentBalance = shift.currentBalance ?? calculateExpectedBalance(
         shift.openingBalance,
         shift.payoutsTotal,
         shift.floatAdjustmentsTotal
       );
     }
+    
+    // STEP 5: Check for pending float movements (dual-approval flow)
+    const pendingVmApproval = await FloatRequestModel.findOne({
+        cashierId: userId,
+        status: 'approved_vm',
+    }).sort({ updatedAt: -1 });
+
+    const pendingRequest = await FloatRequestModel.findOne({
+        cashierId: userId,
+        status: 'pending',
+    }).sort({ createdAt: -1 });
 
     return NextResponse.json({
       success: true,
       shift: shift.toObject(),
       currentBalance, // Only relevant for active shifts
       status: shift.status,
+      hasActiveVaultShift,
+      pendingVmApproval: pendingVmApproval ? pendingVmApproval.toObject() : null,
+      pendingRequest: pendingRequest ? pendingRequest.toObject() : null,
     });
 
   } catch (error) {

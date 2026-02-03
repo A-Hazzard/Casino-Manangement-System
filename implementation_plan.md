@@ -115,6 +115,9 @@ Tracks individual cashier shifts with blind closing support.
 }
 ```
 
+#### **User Management Rules**
+- **BR-07 (Inheritance)**: When a Vault Manager creates a cashier account, the cashier automatically inherits the `assignedLocations` and `assignedLicensees` of the creating manager. This is enforced at the API level (helper `createUser`).
+
 ---
 
 #### **Collection: `vaultTransactions`**
@@ -379,10 +382,13 @@ Open cashier shift (creates float request).
 ```
 
 **Flow:**
-1. Create float request
-2. Notify VM
-3. Wait for VM approval
-4. Create shift when approved
+1. Validate that the requesting user is the cashier (Vault Manager cannot start for them)
+2. Check for active Vault Manager shift at the specified location (BR-06)
+3. Ensure the cashier is actually assigned to that location
+4. Create float request
+5. Notify VM
+6. Wait for VM approval
+7. Create shift when approved
 
 ---
 

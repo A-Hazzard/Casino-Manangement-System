@@ -10,6 +10,7 @@
  * @module app/api/cashier/shift/open/route
  */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = userPayload._id as string;
+    const username = userPayload.username as string;
     const userRoles = (userPayload.roles as string[]) || [];
 
     const hasCashierAccess = userRoles.some((role: string) =>
@@ -103,6 +105,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // STEP 5.5: Ensure cashier is assigned to this location
+    const assignedLocations = (userPayload.assignedLocations as string[]) || [];
+    if (!assignedLocations.includes(locationId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'You are not assigned to this location.',
+        },
+        { status: 403 }
+      );
+    }
+
     // STEP 6: Check if cashier already has an active or pending shift
     const existingShift = await CashierShiftModel.findOne({
       cashierId: userId,
@@ -157,7 +171,36 @@ export async function POST(request: NextRequest) {
       updatedAt: now,
     });
 
-    // TODO: Create notification for Vault Manager
+    // STEP 9: Audit Activity
+    await logActivity({
+      userId,
+      username,
+      action: 'create',
+      details: `Cashier shift opened (pending approval) for location ${locationId} with float $${requestedFloat}`,
+      metadata: {
+        resource: 'cashier_shift',
+        resourceId: shiftId,
+        resourceName: 'Cashier Shift',
+        locationId: locationId,
+        floatRequestId: requestId,
+      },
+    });
+
+    // STEP 10: Create notification for Vault Manager
+    try {
+      const { createFloatRequestNotification } = await import('@/lib/helpers/vault/notifications');
+      // Target the VM who opened the vault shift
+      if (vaultShift.vaultManagerId) {
+        await createFloatRequestNotification(
+          floatRequest.toObject(),
+          username, // Using username as cashierName for now
+          vaultShift.vaultManagerId
+        );
+      }
+    } catch (notifError) {
+      console.error('Failed to create notification but shift request was created:', notifError);
+      // We don't fail the whole request if only notification fails
+    }
 
     return NextResponse.json(
       {

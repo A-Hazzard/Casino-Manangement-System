@@ -53,8 +53,9 @@ This document outlines the functional requirements for the Vault and Cashier man
 ### **C-2: Payout Operations**
 
 * **Requirement:** Support two payout methods:  
-  1. **Ticket Redemption:** Validating and paying out printed tickets.  
-  2. **Hand Pay:** Processing payouts for machine lock-ups/jackpots visible on the system.
+  1. **Ticket Redemption:** recording ticket details (Number, Manual Amount, and Printed Date).  
+  2. **Hand Pay:** Processing payouts for machine jackpots/lock-ups by selecting the machine ID and entering a manual amount and reason.
+* **Simplified Accounting:** Cashiers operate like a standard cash register for payouts—they enter the total dollar amount without specifying bill denominations. This speeds up front-facing operations.
 
 ### **C-3: Float Management**
 
@@ -75,9 +76,12 @@ This document outlines the functional requirements for the Vault and Cashier man
 | ID | Rule Description |
 | :---- | :---- |
 | **BR-01** | **Shift Dependency:** A Vault Manager cannot close their shift if any Cashier shifts are currently "Active" or "Pending Review." |
-| **BR-02** | **Denomination Tracking:** The system must track the quantity of every specific bill denomination for every transaction (Vault initialization, float requests, and closing counts). |
+| **BR-02** | **Denomination Tracking:** The system must track bill quantities for **Liquidity Movements** (Vault Initialization, Float Requests/Adjustments, and Closing Counts). Individual **Payouts** (Ticket/Hand Pay) are tracked by total amount only to simplify cashier workflow. |
 | **BR-03** | **Shift History:** All shifts must generate an immutable activity log (audit trail) detailing every transaction performed during that window. |
 | **BR-04** | **Float Independence:** Cashiers working the same shift cannot share floats; each drawer is an isolated accounting unit. |
+| **BR-05** | **Self-Service Shifts:** A Vault Manager cannot start a shift for a cashier. Cashiers must initiate their own starting float requests. |
+| **BR-06** | **Shift Hierarchy:** A cashier can only start a shift if a Vault Manager shift is already active at that location. |
+| **BR-07** | **Assignment Inheritance:** Cashiers created by a Vault Manager automatically inherit the manager's assigned locations and licensees. |
 
 ## 
 

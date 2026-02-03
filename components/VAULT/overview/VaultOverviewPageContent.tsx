@@ -1,436 +1,545 @@
 /**
- * Vault Overview Page Content Component
+ * Vault Overview Page Content
  *
- * Main dashboard content for the Vault Management application.
- * Orchestrates all dashboard sections and components.
+ * Main dashboard for Vault Managers. Displays vault status, metrics,
+ * cashier shift requests, and quick actions for cash movements.
  *
- * Features:
- * - Vault balance card
- * - Metric cards (Machine Cash, Desk Float, Total On Premises)
- * - Cash desk status cards
- * - Quick actions section
- * - Recent activity table
- * - Modal management
- *
- * @module components/VAULT/VaultOverviewPageContent
+ * @module components/VAULT/overview/VaultOverviewPageContent
  */
+
 'use client';
 
-import { useState, useEffect } from 'react';
-import PageLayout from '@/components/shared/layout/PageLayout';
-import VaultBalanceCard from './cards/VaultBalanceCard';
-import VaultMetricCard from './cards/VaultMetricCard';
-import VaultCashDeskCard from './cards/VaultCashDeskCard';
-import VaultQuickActionsSection from './sections/VaultQuickActionsSection';
-import VaultRecentActivitySection from './sections/VaultRecentActivitySection';
-import VaultAddCashModal from './modals/VaultAddCashModal';
-import VaultRemoveCashModal from './modals/VaultRemoveCashModal';
-import VaultRecordExpenseModal from './modals/VaultRecordExpenseModal';
-import VaultReconcileModal from './modals/VaultReconcileModal';
-import ShiftReviewPanel from './ShiftReviewPanel';
-import NotificationBell from '@/components/shared/ui/NotificationBell';
-import VaultOverviewSkeleton from '@/components/ui/skeletons/VaultOverviewSkeleton';
-import { DEFAULT_VAULT_BALANCE, DEFAULT_VAULT_METRICS } from './data/defaults';
-import { CreditCard, DollarSign, TrendingUp, Wallet } from 'lucide-react';
-import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
-import { useUserStore } from '@/lib/store/userStore';
 import {
-  fetchVaultOverviewData,
-  fetchVaultBalance,
-  handleAddCash,
-  handleRemoveCash,
-  handleRecordExpense,
-  handleReconcile,
-  handleShiftResolve,
-  handleNotificationClick,
-} from '@/lib/helpers/vaultHelpers';
-import type {
-  VaultBalance,
-  VaultTransaction,
-  UnbalancedShiftInfo,
-  VaultMetrics,
-  CashDesk,
-  Denomination,
+    DEFAULT_VAULT_BALANCE,
+    DEFAULT_VAULT_METRICS,
+} from '@/components/VAULT/overview/data/defaults';
+import PageLayout from '@/components/shared/layout/PageLayout';
+import { Button } from '@/components/shared/ui/button';
+import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
+import { fetchVaultOverviewData } from '@/lib/helpers/vaultHelpers';
+import { useUserStore } from '@/lib/store/userStore';
+import type { GamingMachine } from '@/shared/types/entities';
+import {
+    type CashDesk,
+    type Denomination,
+    type FloatRequest,
+    type UnbalancedShiftInfo,
+    type VaultBalance,
+    type VaultMetrics,
+    type VaultTransaction,
 } from '@/shared/types/vault';
-import type { NotificationItem } from '@/components/shared/ui/NotificationBell';
+import { FileText } from 'lucide-react';
+import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
+// Skeleton & Base UI
+import { TableSkeleton } from '@/components/shared/ui/skeletons/CommonSkeletons';
+import VaultOverviewSkeleton from '@/components/ui/skeletons/VaultOverviewSkeleton';
+
+// Panel Components
+import ShiftReviewPanel from '@/components/VAULT/overview/ShiftReviewPanel';
+import VaultFloatRequestsPanel from '@/components/VAULT/overview/VaultFloatRequestsPanel';
+import VaultBalanceCard from '@/components/VAULT/overview/cards/VaultBalanceCard';
+import VaultInventoryCard from '@/components/VAULT/overview/cards/VaultInventoryCard';
+import VaultQuickActionsSection from '@/components/VAULT/overview/sections/VaultQuickActionsSection';
+import VaultRecentActivitySection from '@/components/VAULT/overview/sections/VaultRecentActivitySection';
+
+// Extracted Sections
+import VaultCashDesksSection from './sections/VaultCashDesksSection';
+import VaultHeader from './sections/VaultHeader';
+import VaultHealthGrid from './sections/VaultHealthGrid';
+import VaultModals from './sections/VaultModals';
+import VaultShiftPromotion from './sections/VaultShiftPromotion';
+
+// Hooks
+import { useNotifications } from '@/lib/hooks/vault/useNotifications';
+
+/**
+ * Vault Overview Component
+ */
 export default function VaultOverviewPageContent() {
-  const router = useRouter();
-  const { user } = useUserStore();
-
+   const { user, setHasActiveVaultShift } = useUserStore();
+  
   // ============================================================================
-  // Hooks & State
+  // STATE & HOOKS
   // ============================================================================
-  const [loading, setLoading] = useState(true);
-  const [vaultBalance, setVaultBalance] = useState<VaultBalance>(
-    DEFAULT_VAULT_BALANCE
-  );
+  
+  // Data State
+  const [vaultBalance, setVaultBalance] = useState<VaultBalance>(DEFAULT_VAULT_BALANCE);
   const [metrics, setMetrics] = useState<VaultMetrics>(DEFAULT_VAULT_METRICS);
-  const [cashDesks, setCashDesks] = useState<CashDesk[]>([]);
   const [transactions, setTransactions] = useState<VaultTransaction[]>([]);
   const [pendingShifts, setPendingShifts] = useState<UnbalancedShiftInfo[]>([]);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-
-  const [addCashOpen, setAddCashOpen] = useState(false);
-  const [removeCashOpen, setRemoveCashOpen] = useState(false);
-  const [recordExpenseOpen, setRecordExpenseOpen] = useState(false);
-  const [reconcileOpen, setReconcileOpen] = useState(false);
+  const [floatRequests, setFloatRequests] = useState<FloatRequest[]>([]);
+  const [cashDesks, setCashDesks] = useState<CashDesk[]>([]);
+  const [machines, setMachines] = useState<GamingMachine[]>([]);
+  
+  // Loading States
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [shiftReviewLoading, setShiftReviewLoading] = useState(false);
 
-  // Fetch real data
-  useEffect(() => {
-    const fetchData = async () => {
-      const locationId = user?.assignedLocations?.[0];
-      if (!locationId) {
-        setLoading(false);
-        return;
-      }
+  // Modal Visibility State
+  const [modals, setModals] = useState({
+    addCash: false,
+    removeCash: false,
+    recordExpense: false,
+    reconcile: false,
+    initialize: false,
+    collection: false,
+    softCount: false,
+    viewDenominations: false,
+    closeShift: false
+  });
 
-      setLoading(true);
-      try {
-        const data = await fetchVaultOverviewData(locationId, user?.username);
-        setVaultBalance(data.vaultBalance);
-        setMetrics(data.metrics);
-        setTransactions(data.transactions);
-        setPendingShifts(data.pendingShifts);
-        setCashDesks(data.cashDesks);
-        setNotifications(data.notifications);
-      } catch (error) {
-        console.error('Failed to fetch vault data', error);
-        toast.error('Failed to load vault data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [user?.assignedLocations, user?.username]);
-
-  // ============================================================================
-  // Event Handlers
-  // ============================================================================
-
-  const handleManageCashiers = () => {
-    router.push('/vault/management/cashiers');
-  };
-
-  const handleMachineCollection = () => {
-    router.push('/vault/management/collections');
-  };
-
-  const handleSoftCount = () => {
-    router.push('/vault/management/soft-counts');
-  };
-
-  /**
-   * Handle add cash confirmation from modal
-   */
-  const handleAddCashConfirm = async (data: {
-    source: string;
-    breakdown: {
-      hundred: number;
-      fifty: number;
-      twenty: number;
-      ten: number;
-      five: number;
-      one: number;
-    };
-    totalAmount: number;
-    notes?: string;
-  }) => {
-    const locationId = user?.assignedLocations?.[0];
-    if (!locationId) {
-      toast.error('No location assigned');
-      return;
-    }
-
-    const result = await handleAddCash(data, locationId);
-    if (result.success) {
-      toast.success(`Added ${data.totalAmount.toLocaleString()} to vault`);
-      setAddCashOpen(false);
-      // Refresh balance
-      const balanceData = await fetchVaultBalance(locationId);
-      if (balanceData) {
-        setVaultBalance(prev => ({ ...prev, ...balanceData }));
-      }
-    } else {
-      toast.error(result.error || 'Failed to add cash');
-    }
-  };
-
-  /**
-   * Handle remove cash confirmation from modal
-   */
-  const handleRemoveCashConfirm = async (data: {
-    destination: string;
-    breakdown: {
-      hundred: number;
-      fifty: number;
-      twenty: number;
-      ten: number;
-      five: number;
-      one: number;
-    };
-    totalAmount: number;
-    notes?: string;
-  }) => {
-    const locationId = user?.assignedLocations?.[0];
-    if (!locationId) {
-      toast.error('No location assigned');
-      return;
-    }
-
-    const result = await handleRemoveCash(data, locationId);
-    if (result.success) {
-      toast.success(`Removed ${data.totalAmount.toLocaleString()} from vault`);
-      setRemoveCashOpen(false);
-      // Refresh balance
-      const balanceData = await fetchVaultBalance(locationId);
-      if (balanceData) {
-        setVaultBalance(prev => ({ ...prev, ...balanceData }));
-      }
-    } else {
-      toast.error(result.error || 'Failed to remove cash');
-    }
-  };
-
-  /**
-   * Handle record expense confirmation from modal
-   */
-  const handleRecordExpenseConfirm = async (data: {
-    category: string;
-    amount: number;
-    description: string;
-    date: Date;
-  }) => {
-    const locationId = user?.assignedLocations?.[0];
-    if (!locationId) {
-      toast.error('No location assigned');
-      return;
-    }
-
-    const result = await handleRecordExpense(data, locationId);
-    if (result.success) {
-      toast.success(`Recorded expense: ${data.amount.toLocaleString()}`);
-      setRecordExpenseOpen(false);
-      // Refresh balance
-      const balanceData = await fetchVaultBalance(locationId);
-      if (balanceData) {
-        setVaultBalance(prev => ({ ...prev, ...balanceData }));
-      }
-    } else {
-      toast.error(result.error || 'Failed to record expense');
-    }
-  };
-
-  /**
-   * Handle reconcile confirmation
-   */
-  const handleReconcileConfirm = async (data: {
-    newBalance: number;
+  const [viewDenomsData, setViewDenomsData] = useState<{
+    title: string;
     denominations: Denomination[];
-    reason: string;
-    comment: string;
-  }) => {
-    if (!vaultBalance.activeShiftId) {
-      toast.error('No active vault shift found');
+    total: number;
+  } | null>(null);
+
+  // Notifications Hook
+  const {
+    notifications,
+    markAsRead,
+    dismissNotification,
+    refresh: refreshNotifications
+  } = useNotifications(user?.assignedLocations?.[0]);
+
+  // ============================================================================
+  // DATA FETCHING
+  // ============================================================================
+
+  /**
+   * Fetch all vault data for the current location
+   */
+  const fetchData = useCallback(async (isSilent = false) => {
+    const locationId = user?.assignedLocations?.[0];
+    if (!locationId) {
+      setLoading(false);
       return;
     }
 
-    const result = await handleReconcile(data, vaultBalance.activeShiftId);
-    if (result.success) {
-      toast.success('Vault reconciled successfully');
-      setReconcileOpen(false);
-      // Refresh balance
-      const locationId = user?.assignedLocations?.[0];
-      if (locationId) {
-        const balanceData = await fetchVaultBalance(locationId);
-        if (balanceData) {
-          setVaultBalance(prev => ({ ...prev, ...balanceData }));
+    if (!isSilent) setLoading(true);
+    else setRefreshing(true);
+
+    try {
+      const data = await fetchVaultOverviewData(locationId, user?.username || '');
+      setVaultBalance(data.vaultBalance);
+      setMetrics(data.metrics);
+      setTransactions(data.transactions);
+      setPendingShifts(data.pendingShifts);
+      setFloatRequests(data.floatRequests);
+      setCashDesks(data.cashDesks);
+      
+      // Fetch machines for selection
+      try {
+        const machinesData = await fetchCabinetsForLocation(
+            locationId, 
+            undefined, 
+            'All Time' // We just need the list, time period isn't critical for selection
+        );
+        if (machinesData && machinesData.data) {
+             setMachines(machinesData.data);
         }
+      } catch (err) {
+         console.error("Failed to fetch machines for vault", err);
       }
-    } else {
-      toast.error(result.error || 'Failed to reconcile');
+
+      refreshNotifications();
+    } catch (error) {
+      console.error('Failed to fetch vault data', error);
+      toast.error('Failed to load vault data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.assignedLocations, user?.username, refreshNotifications]);
+
+  useEffect(() => {
+    fetchData(false);
+
+    // STEP: Periodic refresh for float requests and notifications
+    const interval = setInterval(() => {
+        fetchData(true); // Silent refresh
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  // ============================================================================
+  // ACTIONS HANDLERS
+  // ============================================================================
+
+  /**
+   * Approve/Deny/Edit Float Requests
+   */
+  const handleFloatApprove = async (requestId: string, approvedAmount?: number, approvedDenominations?: Denomination[]) => {
+    try {
+      const res = await fetch('/api/vault/float-request/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, status: 'approved', approvedAmount, approvedDenominations })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Float request approved');
+        fetchData(true);
+      } else {
+        toast.error(data.error || 'Failed to approve request');
+      }
+    } catch {
+      toast.error('Network error');
+    }
+  };
+
+  const handleFloatDeny = async (requestId: string, reason?: string) => {
+    try {
+      const res = await fetch('/api/vault/float-request/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, status: 'denied', vmNotes: reason })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Float request denied');
+        fetchData(true);
+      } else {
+        toast.error(data.error || 'Failed to deny request');
+      }
+    } catch {
+      toast.error('Network error');
+    }
+  };
+
+  const handleFloatEdit = async (requestId: string, amount: number, denominations: Denomination[], notes?: string) => {
+    try {
+      const res = await fetch('/api/vault/float-request/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, status: 'edited', approvedAmount: amount, approvedDenominations: denominations, vmNotes: notes })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Float request updated');
+        fetchData(true);
+      } else {
+        toast.error(data.error || 'Failed to update request');
+      }
+    } catch {
+      toast.error('Network error');
+    }
+  };
+
+  const handleFloatConfirm = async (requestId: string) => {
+    try {
+      const res = await fetch('/api/vault/float-request/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Float return confirmed and vault updated');
+        fetchData(true);
+      } else {
+        toast.error(data.error || 'Failed to confirm receipt');
+      }
+    } catch {
+      toast.error('Network error');
     }
   };
 
   /**
-   * Handle shift review resolution
+   * Resolve Shift Discrepancies
    */
-  const handleShiftResolveConfirm = async (
-    shiftId: string,
-    finalBalance: number,
-    auditComment: string
-  ) => {
+  const handleShiftResolveConfirm = async (shiftId: string, finalBalance: number, auditComment: string) => {
     setShiftReviewLoading(true);
-    const result = await handleShiftResolve(
-      shiftId,
-      finalBalance,
-      auditComment
-    );
-    if (result.success) {
-      toast.success(`Shift resolved with final balance: ${finalBalance}`);
-      setPendingShifts(prev => prev.filter(s => s.shiftId !== shiftId));
-    } else {
-      toast.error(result.error || 'Failed to resolve shift');
+    try {
+      const res = await fetch('/api/cashier/shift/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shiftId, finalBalance, auditComment })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Shift discrepancy resolved');
+        fetchData(true);
+      } else {
+        toast.error(data.error || 'Failed to resolve shift');
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setShiftReviewLoading(false);
     }
-    setShiftReviewLoading(false);
   };
 
-  const handleMarkNotificationAsRead = (notificationId: string) => {
-    setNotifications(prev =>
-      prev.filter(notification => notification.id !== notificationId)
-    );
+  /**
+   * Generic Modal Confirm Handlers
+   */
+  const handleModalConfirm = async (type: string, data?: any) => {
+    let endpoint = '';
+    const method = 'POST';
+
+    // Base request body
+    const requestPayload: any = {
+      ...(data || {}),
+      locationId: user?.assignedLocations?.[0]
+    };
+    
+    switch (type) {
+      case 'addCash': endpoint = '/api/vault/add-cash'; break;
+      case 'removeCash': endpoint = '/api/vault/remove-cash'; break;
+      case 'recordExpense': endpoint = '/api/vault/expense'; break;
+      case 'reconcile': 
+        endpoint = '/api/vault/reconcile'; 
+        requestPayload.vaultShiftId = vaultBalance.activeShiftId || null; // Ensure vaultShiftId is added
+        break;
+      case 'initialize': endpoint = '/api/vault/initialize'; break;
+      case 'collection': endpoint = '/api/vault/machine-collections'; break;
+      case 'softCount': endpoint = '/api/vault/soft-counts'; break;
+      case 'closeShift': 
+        endpoint = '/api/vault/shift/close'; 
+        requestPayload.vaultShiftId = vaultBalance.activeShiftId || null; // Ensure vaultShiftId is added
+        break;
+    }
+
+    if (!endpoint) return;
+
+    try {
+
+      // Transform data for Initialize Vault
+      if (type === 'initialize') {
+         // API expects openingBalance, modal provides totalAmount
+         requestPayload.openingBalance = data.totalAmount;
+         // Ensure denominations property exists (it should from modal)
+      }
+
+      let requestBody = JSON.stringify(requestPayload);
+
+      // Transform data for Add/Remove Cash
+      // The modal returns { breakdown: { hundred: 2, ... }, totalAmount: 200 }
+      // The API expects { denominations: [{ denomination: 100, quantity: 2 }, ...], amount: 200 }
+      if (type === 'addCash' || type === 'removeCash') {
+         const { breakdown, totalAmount, ...rest } = data;
+         
+         const denominationMap: Record<string, number> = {
+            hundred: 100,
+            fifty: 50,
+            twenty: 20,
+            ten: 10,
+            five: 5,
+            one: 1
+         };
+
+         const breakdownObj = breakdown || {};
+         const denominationsArray = Object.keys(breakdownObj).map((key) => ({
+             denomination: denominationMap[key] || 0,
+             quantity: Number(breakdownObj[key as keyof typeof breakdownObj])
+         })).filter(d => d.denomination > 0 && d.quantity > 0);
+
+         requestBody = JSON.stringify({
+            ...rest,
+            amount: totalAmount,
+            denominations: denominationsArray,
+            locationId: user?.assignedLocations?.[0]
+         });
+      }
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: requestBody
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success(result.message || 'Action completed');
+        setModals(prev => ({ ...prev, [type]: false }));
+        if (type === 'closeShift') {
+          // If vault closed, maybe redirect or just refresh
+          fetchData(false);
+        } else {
+          fetchData(true);
+        }
+      } else {
+        toast.error(result.error || 'Action failed');
+      }
+    } catch {
+      toast.error('Network error');
+    }
   };
 
-  const handleMarkAllNotificationsAsRead = () => {
-    setNotifications([]);
+  // ============================================================================
+  // HELPERS
+  // ============================================================================
+  
+   const isShiftActive = !!vaultBalance.activeShiftId;
+ 
+   useEffect(() => {
+     setHasActiveVaultShift(isShiftActive);
+   }, [isShiftActive, setHasActiveVaultShift]);
+
+  const checkShiftStarted = useCallback(() => {
+    if (!isShiftActive) {
+      toast.error('Operation Blocked', {
+        description: 'You must start a vault shift before performing this operation.'
+      });
+      return false;
+    }
+    return true;
+  }, [isShiftActive]);
+
+  const handleAction = (actionKey: keyof typeof modals) => {
+    if (!checkShiftStarted()) return;
+    setModals(prev => ({ ...prev, [actionKey]: true }));
   };
 
-  // Show skeleton while loading
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+
   if (loading) {
-    return (
-      <PageLayout showHeader={false}>
-        <VaultOverviewSkeleton />
-      </PageLayout>
-    );
+     return (
+        <PageLayout showHeader={false}>
+            <VaultOverviewSkeleton />
+        </PageLayout>
+     );
   }
 
-  // ============================================================================
-  // Render
-  // ============================================================================
+  // Map notifications to NotificationItem format for the Bell component
+  const bellNotifications = notifications.map(n => ({
+    id: n._id,
+    type: n.type,
+    title: n.title,
+    message: n.message,
+    timestamp: new Date(n.createdAt),
+    urgent: n.urgent,
+    status: n.status,
+    relatedEntityId: n.relatedEntityId, // Ensure this ID is passed correctly
+    metadata: n.metadata
+  }));
+
   return (
     <PageLayout showHeader={false}>
       <div className="space-y-6">
-        {/* Header Section */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Vault Manager
-            </h1>
-            <p className="mt-1 text-sm text-gray-600">
-              {new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <NotificationBell
-              notifications={notifications}
-              onMarkAsRead={handleMarkNotificationAsRead}
-              onMarkAllAsRead={handleMarkAllNotificationsAsRead}
-              onNotificationClick={handleNotificationClick}
-            />
-            <div className="text-right">
-              <p className="text-sm text-gray-600">Manager On Shift</p>
-              <p className="font-semibold text-gray-900">
-                {vaultBalance.managerOnDuty}
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Header with Title & Notifications */}
+        <VaultHeader 
+          bellNotifications={bellNotifications}
+          denominations={vaultBalance.denominations}
+          refreshing={refreshing}
+          onRefresh={() => fetchData(true)}
+          onMarkAsRead={markAsRead}
+          onMarkAllAsRead={() => markAsRead(notifications.filter(n => n.status === 'unread').map(n => n._id))}
+          onNotificationClick={() => {}} // Could open details
+          onDismiss={dismissNotification}
+          onApprove={handleFloatApprove}
+          onDeny={handleFloatDeny}
+          isShiftActive={isShiftActive}
+          onCloseDay={() => handleAction('closeShift')}
+        />
+        
+        {/* Helper for viewing denominations from desks */}
+        {/* This bit is handled by the state and passed to VaultModals */}
 
-        {/* Shift Review Panel - Show when there are pending reviews */}
-        {pendingShifts.length > 0 && (
-          <ShiftReviewPanel
+        {/* Actionable Panels */}
+        <ShiftReviewPanel
             pendingShifts={pendingShifts}
             onResolve={handleShiftResolveConfirm}
             loading={shiftReviewLoading}
+        />
+
+        <VaultShiftPromotion 
+            activeShiftId={vaultBalance.activeShiftId}
+            onStartShift={() => setModals(m => ({ ...m, initialize: true }))}
+        />
+        
+        {!isShiftActive && (
+          <div className="flex justify-end">
+            <Link href="/vault/management/reports/end-of-day">
+              <Button variant="outline" className="gap-2 border-orangeHighlight text-orangeHighlight hover:bg-orangeHighlight/10">
+                <FileText className="h-4 w-4" />
+                View End-of-Day Report
+              </Button>
+            </Link>
+          </div>
+        )}
+
+        {/* Balance Card Section */}
+        {loading ? (
+           <div className="h-40 w-full rounded-lg bg-gray-100 animate-pulse" />
+        ) : (
+          <VaultBalanceCard
+            balance={vaultBalance}
+            onReconcile={() => setModals(m => ({ ...m, reconcile: true }))}
           />
         )}
 
-        {/* Vault Balance Card */}
-        <VaultBalanceCard
-          balance={vaultBalance}
-          onReconcile={() => setReconcileOpen(true)}
+        {/* Float Requests Panel */}
+        {floatRequests.length > 0 && (
+          <VaultFloatRequestsPanel
+            floatRequests={floatRequests}
+            onApprove={handleFloatApprove}
+            onDeny={handleFloatDeny}
+            onEdit={handleFloatEdit}
+            onConfirm={handleFloatConfirm}
+          />
+        )}
+
+        {/* Metrics Grid */}
+        <VaultHealthGrid metrics={metrics} refreshing={refreshing && !loading} />
+
+        {/* Inventory Table */}
+        <VaultInventoryCard denominations={vaultBalance.denominations} isLoading={loading} />
+
+        {/* Cash Desks Interface */}
+        <VaultCashDesksSection 
+          cashDesks={cashDesks} 
+          refreshing={refreshing && !loading} 
+          onViewDenominations={(desk) => {
+            setViewDenomsData({
+              title: `Denominations - ${desk.cashierName || desk.name}`,
+              denominations: desk.denominations || [],
+              total: desk.balance
+            });
+            setModals(m => ({ ...m, viewDenominations: true }));
+          }}
         />
 
-        {/* Metric Cards Row */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <VaultMetricCard
-            title="Total Cash In"
-            value={metrics.totalCashIn}
-            icon={Wallet}
-            iconColor="text-blue-600"
-            iconBgColor="bg-blue-100"
-          />
-          <VaultMetricCard
-            title="Total Cash Out"
-            value={metrics.totalCashOut}
-            icon={CreditCard}
-            iconColor="text-blue-600"
-            iconBgColor="bg-blue-100"
-          />
-          <VaultMetricCard
-            title="Net Cash Flow"
-            value={metrics.netCashFlow}
-            icon={DollarSign}
-            iconColor="text-orange-600"
-            iconBgColor="bg-orange-100"
-          />
-          <VaultMetricCard
-            title="Payouts"
-            value={metrics.payouts}
-            icon={TrendingUp}
-            iconColor="text-purple-600"
-            iconBgColor="bg-purple-100"
-          />
-        </div>
-
-        {/* Cash Desks Status Section */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Cash Desks Status
-          </h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {cashDesks.length > 0 ? (
-              cashDesks.map(cashDesk => (
-                <VaultCashDeskCard key={cashDesk._id} cashDesk={cashDesk} />
-              ))
-            ) : (
-              <p className="text-sm text-gray-500">No active cash desks.</p>
-            )}
-          </div>
-        </div>
-
-        {/* Quick Actions Section */}
+        {/* Action Area & History */}
         <VaultQuickActionsSection
-          onAddCash={() => setAddCashOpen(true)}
-          onRemoveCash={() => setRemoveCashOpen(true)}
-          onRecordExpense={() => setRecordExpenseOpen(true)}
-          onManageCashiers={handleManageCashiers}
-          onMachineCollection={handleMachineCollection}
-          onSoftCount={handleSoftCount}
+          isShiftActive={isShiftActive}
+          onAddCash={() => handleAction('addCash')}
+          onRemoveCash={() => handleAction('removeCash')}
+          onRecordExpense={() => handleAction('recordExpense')}
+          onManageCashiers={() => {
+            // Manage Cashiers might be allowed? 
+            // But user said "block all operations". 
+            // Usually manage cashiers is administrative.
+            // I'll block it too for consistency.
+            if (!checkShiftStarted()) return;
+            window.location.href = '/vault/management/cashiers';
+          }}
+          onMachineCollection={() => handleAction('collection')}
+          onSoftCount={() => handleAction('softCount')}
         />
 
-        {/* Recent Activity Section */}
-        <VaultRecentActivitySection transactions={transactions} />
+        {loading ? (
+          <TableSkeleton rows={5} cols={6} />
+        ) : (
+          <VaultRecentActivitySection transactions={transactions} />
+        )}
 
-        {/* Modals */}
-        <VaultAddCashModal
-          open={addCashOpen}
-          onClose={() => setAddCashOpen(false)}
-          onConfirm={handleAddCashConfirm}
-        />
-        <VaultRemoveCashModal
-          open={removeCashOpen}
-          onClose={() => setRemoveCashOpen(false)}
-          onConfirm={handleRemoveCashConfirm}
-        />
-        <VaultRecordExpenseModal
-          open={recordExpenseOpen}
-          onClose={() => setRecordExpenseOpen(false)}
-          onConfirm={handleRecordExpenseConfirm}
-        />
-        <VaultReconcileModal
-          open={reconcileOpen}
-          onClose={() => setReconcileOpen(false)}
-          onConfirm={handleReconcileConfirm}
-          currentBalance={vaultBalance.balance}
+        {/* All Vault Modals */}
+        <VaultModals 
+          modals={modals}
+          vaultBalance={vaultBalance.balance}
+          onClose={(key) => setModals(m => ({ ...m, [key]: false }))}
+          onConfirm={handleModalConfirm}
+          machines={machines}
+          viewDenomsData={viewDenomsData}
+          canCloseVault={vaultBalance.canClose}
+          closeVaultBlockReason={vaultBalance.blockReason}
         />
       </div>
     </PageLayout>

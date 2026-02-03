@@ -4,15 +4,14 @@
  * Defines navigation items for the Vault Management application.
  */
 
-import {
-  BarChart3,
-  Calendar,
-  FileText,
-  Receipt,
-  TrendingUp,
-  Wallet,
-} from 'lucide-react';
 import type { NavigationConfig } from '@/lib/types/layout/navigation';
+import {
+    BarChart3,
+    FileText,
+    Receipt,
+    TrendingUp,
+    Wallet
+} from 'lucide-react';
 
 export const vaultNavigationConfig: NavigationConfig = {
   items: [
@@ -40,11 +39,6 @@ export const vaultNavigationConfig: NavigationConfig = {
       label: 'Cash on Premises',
       href: '/vault/management/reports/cash-on-premises',
       icon: FileText,
-    },
-    {
-      label: 'End-of-Day Reports',
-      href: '/vault/management/reports/end-of-day',
-      icon: Calendar,
     },
     {
       label: 'Expenses',

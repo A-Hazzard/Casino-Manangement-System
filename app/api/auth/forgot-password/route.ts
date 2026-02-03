@@ -11,11 +11,9 @@
  * @features Password Reset, Email Sending, Authentication
  */
 
-import { sendPasswordResetEmail } from '../../lib/helpers/auth';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '../../lib/middleware/db';
 import { validateEmail } from '../../lib/utils/validation';
-import type { AuthResult } from '@/shared/types';
-import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main POST handler for password reset requests
@@ -60,9 +58,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Send password reset email
+    // STEP 4: Send password reset email (DISABLED)
     // ============================================================================
-    const result: AuthResult = await sendPasswordResetEmail(email);
+    // const result: AuthResult = await sendPasswordResetEmail(email);
+    console.log(`[Forgot Password] Reset requested for ${email}, but email services are disabled.`);
 
     // ============================================================================
     // STEP 5: Return result
@@ -72,17 +71,10 @@ export async function POST(request: NextRequest) {
       console.warn(`[Forgot Password POST API] Completed in ${duration}ms`);
     }
 
-    if (result.success) {
-      return NextResponse.json({
-        success: true,
-        message: 'Reset instructions sent.',
-      });
-    } else {
-      return NextResponse.json(
-        { success: false, message: result.message || 'Failed to send email.' },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Password reset functionality via email is currently disabled. Please contact your administrator.',
+    });
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =

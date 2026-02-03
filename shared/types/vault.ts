@@ -61,6 +61,7 @@ export type VaultShift = {
   closedAt?: Date;
   openingBalance: number;
   openingDenominations: Denomination[];
+  currentDenominations?: Denomination[]; // Tracks live inventory
   closingBalance?: number;
   closingDenominations?: Denomination[];
   reconciliations: VaultReconciliation[];
@@ -73,7 +74,7 @@ export type VaultShift = {
 // Cashier Shift Types (C-1, C-4)
 // ============================================================================
 
-export type CashierShiftStatus = 'pending_start' | 'active' | 'closed' | 'pending_review';
+export type CashierShiftStatus = 'pending_start' | 'active' | 'closed' | 'pending_review' | 'cancelled';
 
 export type CashierShift = {
   _id: string;
@@ -103,13 +104,20 @@ export type CashierShift = {
   reviewedBy?: string;
   reviewedAt?: Date;
 
-  // Metrics
+  // Denomination tracking (Synced only on float movements)
+  lastSyncedDenominations?: Denomination[];
+  currentBalance: number;
+
+  // Metrics (Synced from model)
   payoutsTotal: number;
   payoutsCount: number;
   floatAdjustmentsTotal: number;
 
+  notes?: string; // Additional notes for shift resolution or denial
   createdAt: Date;
   updatedAt: Date;
+  cashierName?: string;
+  cashierUsername?: string;
 };
 
 // ============================================================================
@@ -159,6 +167,10 @@ export type VaultTransaction = {
   notes?: string;
   auditComment?: string;
 
+  // Attachments
+  attachmentId?: string;
+  attachmentName?: string;
+
   // Immutability
   isVoid: boolean;
   voidReason?: string;
@@ -166,6 +178,7 @@ export type VaultTransaction = {
   voidedAt?: Date;
 
   createdAt: Date;
+
 };
 
 // Machine collection creation
@@ -224,7 +237,7 @@ export type ApproveInterLocationTransferResponse = {
 };
 
 export type FloatRequestType = 'increase' | 'decrease';
-export type FloatRequestStatus = 'pending' | 'approved' | 'denied' | 'edited';
+export type FloatRequestStatus = 'pending' | 'approved' | 'approved_vm' | 'denied' | 'edited' | 'cancelled';
 
 export type FloatRequest = {
   _id: string;
@@ -271,14 +284,13 @@ export type Payout = {
   type: PayoutType;
   amount: number;
 
-  // Ticket redemption
   ticketNumber?: string;
   ticketBarcode?: string;
+  printedAt?: Date; // Date on the physical ticket
 
   // Hand pay
   machineId?: string;
-  machineName?: string;
-  jackpotType?: string;
+  reason?: string;
 
   // Validation
   validated: boolean;
@@ -419,10 +431,9 @@ export type CreatePayoutRequest = {
   type: PayoutType;
   amount: number;
   ticketNumber?: string;
-  ticketBarcode?: string;
+  printedAt?: string; // ISO date string
   machineId?: string;
-  machineName?: string;
-  jackpotType?: string;
+  reason?: string;
   notes?: string;
 };
 
@@ -437,15 +448,22 @@ export type VaultBalance = {
   activeShiftId?: string;
   lastAudit?: string;
   managerOnDuty?: string;
+  canClose: boolean;
+  blockReason?: string;
+  totalCashOnPremises?: number;
+  machineMoneyIn?: number;
+  cashierFloats?: number;
 };
 
 export type CashDesk = {
   _id: string;
   locationId: string;
   name: string;
+  cashierName?: string;
   balance: number;
+  denominations?: Denomination[];
   lastAudit: string;
-  managerOnDuty: string;
+  managerOnDuty?: string;
   status: 'active' | 'inactive';
 };
 

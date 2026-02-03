@@ -22,11 +22,11 @@ const PayoutSchema = new Schema(
     // Ticket redemption (C-2.1)
     ticketNumber: { type: String },
     ticketBarcode: { type: String },
+    printedAt: { type: Date }, // Date on the physical ticket
 
     // Hand pay (C-2.2)
     machineId: { type: String },
-    machineName: { type: String },
-    jackpotType: { type: String },
+    reason: { type: String },
 
     // Validation
     validated: { type: Boolean, default: false },

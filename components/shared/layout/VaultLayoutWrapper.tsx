@@ -19,17 +19,17 @@ import GlobalSidebarWrapper from '@/components/shared/layout/GlobalSidebarWrappe
 import ProfileValidationGate from '@/components/shared/providers/ProfileValidationGate';
 import { SidebarInset, SidebarProvider } from '@/components/shared/ui/sidebar';
 import {
-  cashierNavigationConfig,
-  getCmsNavigationConfig,
-  vaultNavigationConfig,
+    cashierNavigationConfig,
+    getCmsNavigationConfig,
+    vaultNavigationConfig,
 } from '@/lib/constants';
 import { CurrencyProvider } from '@/lib/contexts/CurrencyContext';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { useUserStore } from '@/lib/store/userStore';
 import {
-  hasCmsAccess,
-  isCashierOnly,
-  isVaultManagerOnly,
+    hasCmsAccess,
+    isCashierOnly,
+    isVaultManagerOnly,
 } from '@/lib/utils/permissions/client';
 import { useMemo } from 'react';
 import { Toaster } from 'sonner';
@@ -44,32 +44,37 @@ export default function VaultLayoutWrapper({
   // ============================================================================
   // Hooks & State
   // ============================================================================
-  const { user } = useUserStore();
+  const { user, hasActiveVaultShift } = useUserStore();
 
   // ============================================================================
   // Computed Values - Navigation Selection
   // ============================================================================
+  /**
+   * Filter navigation items based on shift status
+   */
+   /**
+    * Filter navigation items based on shift status
+    */
+   const filterNavItems = (config: any) => {
+     // Currently no complex filtering needed as end-of-day is handled via dashboard
+     return config;
+   };
+
   // Select navigation config based on user's roles
   const navConfig = useMemo(() => {
-    // CMS users (developer, admin, manager, location admin) get full CMS navigation
-    // which includes both CMS links and vault/cashier links grouped in toggle sections
+    let config;
     if (hasCmsAccess(user?.roles)) {
-      return getCmsNavigationConfig(user?.roles as string[]);
+      config = getCmsNavigationConfig(user?.roles as string[]);
+    } else if (isCashierOnly(user?.roles)) {
+      config = cashierNavigationConfig;
+    } else if (isVaultManagerOnly(user?.roles)) {
+      config = vaultNavigationConfig;
+    } else {
+      config = getCmsNavigationConfig(user?.roles as string[]);
     }
 
-    // Cashier-only users get cashier navigation
-    if (isCashierOnly(user?.roles)) {
-      return cashierNavigationConfig;
-    }
-
-    // Vault-manager-only users get vault navigation
-    if (isVaultManagerOnly(user?.roles)) {
-      return vaultNavigationConfig;
-    }
-
-    // Default fallback: CMS navigation (flat structure for safety)
-    return getCmsNavigationConfig(user?.roles as string[]);
-  }, [user?.roles]);
+    return filterNavItems(config);
+  }, [user?.roles, hasActiveVaultShift]);
 
   return (
     // React Query provider for data fetching and caching

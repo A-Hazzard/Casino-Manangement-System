@@ -23,47 +23,47 @@
 
 import { Button } from '@/components/shared/ui/button';
 import MultiSelectDropdown, {
-  type MultiSelectOption,
+    type MultiSelectOption,
 } from '@/components/shared/ui/common/MultiSelectDropdown';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/shared/ui/select';
 import { fetchLicensees, logoutUser } from '@/lib/helpers/client';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
-  ProfileValidationFormData,
-  ProfileValidationModalData,
+    ProfileValidationFormData,
+    ProfileValidationModalData,
 } from '@/lib/types/auth';
 import { cn } from '@/lib/utils';
 import {
-  containsEmailPattern,
-  containsPhonePattern,
-  isPlaceholderEmail,
-  normalizePhoneNumber,
-  validateEmail,
-  validateNameField,
-  validateOptionalGender,
-  validatePasswordStrength,
-  validatePhoneNumber,
-  validateProfileField,
+    containsEmailPattern,
+    containsPhonePattern,
+    isPlaceholderEmail,
+    normalizePhoneNumber,
+    validateEmail,
+    validateNameField,
+    validateOptionalGender,
+    validatePasswordStrength,
+    validatePhoneNumber,
+    validateProfileField,
 } from '@/lib/utils/validation';
 import type {
-  InvalidProfileFields,
-  ProfileValidationReasons,
+    InvalidProfileFields,
+    ProfileValidationReasons,
 } from '@/shared/types/auth';
 import { AlertTriangle, Loader2, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -652,59 +652,117 @@ export default function ProfileValidationModal({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Validation Reasons Section */}
+        {/* Unified Validation Alert Section */}
         {(() => {
-          const filteredReasons = Object.entries(reasons || {}).filter(
+          const activeFieldErrors = Object.entries(errors);
+          const relevantReasons = Object.entries(reasons || {}).filter(
             ([key]) =>
               key !== 'dateOfBirth' &&
               !(key === 'password' && needsPasswordChange) &&
               invalidFields[key as keyof InvalidProfileFields]
           );
 
-          if (filteredReasons.length === 0) return null;
+          if (
+            activeFieldErrors.length === 0 &&
+            relevantReasons.length === 0 &&
+            !serverError
+          )
+            return null;
+
+          const hasCriticalErrors =
+            serverError || activeFieldErrors.length > 0;
+          const uniqueIssueFields = Array.from(
+            new Set([
+              ...relevantReasons.map(([key]) => key),
+              ...activeFieldErrors.map(([key]) => key),
+            ])
+          );
 
           return (
-            <div className="mt-4 space-y-1 rounded-md bg-amber-50 p-3 text-xs text-amber-900">
-              <p className="font-semibold text-amber-900">
-                Issues you need to fix:
-              </p>
+            <div
+              className={cn(
+                'mt-4 rounded-md p-3 text-xs shadow-sm border',
+                hasCriticalErrors
+                  ? 'bg-red-50 border-red-200 text-red-900'
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              )}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle
+                  className={cn(
+                    'h-4 w-4',
+                    hasCriticalErrors ? 'text-red-500' : 'text-amber-500'
+                  )}
+                />
+                <p className="font-semibold">
+                  {hasCriticalErrors
+                    ? 'Please fix the following issues to continue:'
+                    : 'Information required to continue:'}
+                </p>
+              </div>
+
+              {serverError && (
+                <p className="mb-3 text-sm font-medium text-red-700 bg-white/50 p-2 rounded border border-red-100">
+                  {serverError}
+                </p>
+              )}
+
               <ul className="space-y-2">
-                {filteredReasons.map(([field, reason]) => {
-                  if (!reason) return null;
+                {uniqueIssueFields.map(fieldKey => {
+                  const errorMsg = errors[fieldKey];
+                  const reasonMsg =
+                    reasons[fieldKey as keyof ProfileValidationReasons];
+                  const fieldLabel = fieldKey.replace(/([A-Z])/g, ' $1');
                   const currentValue =
-                    currentData[field as keyof ProfileValidationModalData];
-                  const isMissing =
+                    currentData[fieldKey as keyof ProfileValidationModalData];
+                  const isInitiallyMissing =
                     typeof currentValue === 'string' &&
                     currentValue.trim() === '';
+
                   return (
                     <li
-                      key={field}
-                      className="rounded-md border border-amber-200 bg-white/70 p-2 shadow-sm"
+                      key={fieldKey}
+                      className={cn(
+                        'rounded border p-2 shadow-sm transition-colors',
+                        errors[fieldKey]
+                          ? 'bg-white/90 border-red-100'
+                          : 'bg-white/70 border-amber-100'
+                      )}
                     >
-                      <p className="font-medium capitalize text-amber-900">
-                        {field.replace(/([A-Z])/g, ' $1')}:
-                      </p>
-                      <p className="text-amber-800">
-                        {reason}
-                        {isMissing ? (
-                          <>
-                            {' '}
-                            <span className="font-semibold text-amber-900">
-                              (you haven&apos;t provided this yet)
-                            </span>
-                          </>
-                        ) : (
-                          typeof currentValue === 'string' &&
-                          currentValue.trim() !== '' && (
-                            <>
-                              {' '}
-                              <span className="font-semibold text-amber-900">
-                                (current: &quot;{currentValue}&quot;)
-                              </span>
-                            </>
-                          )
+                      <p
+                        className={cn(
+                          'font-bold capitalize mb-0.5',
+                          errors[fieldKey] ? 'text-red-900' : 'text-amber-900'
                         )}
+                      >
+                        {fieldLabel}:
                       </p>
+
+                      {/* Show current validation error if it exists */}
+                      {errorMsg && (
+                        <p className="text-red-700 font-medium">
+                          {errorMsg}
+                        </p>
+                      )}
+
+                      {/* Show initial reason if no error, or if error is different from reason */}
+                      {!errorMsg && reasonMsg && (
+                        <p className="text-amber-800">
+                          {reasonMsg}
+                          {isInitiallyMissing ? (
+                            <span className="font-bold ml-1">
+                              (missing detail)
+                            </span>
+                          ) : (
+                            typeof currentValue === 'string' &&
+                            currentValue.trim() !== '' && (
+                              <span className="italic ml-1 opacity-70">
+                                (current: {currentValue})
+                              </span>
+                            )
+                          )}
+                        </p>
+                      )}
                     </li>
                   );
                 })}
@@ -712,30 +770,6 @@ export default function ProfileValidationModal({
             </div>
           );
         })()}
-
-        {/* Server Error Message */}
-        {(serverError || Object.keys(errors).length > 0) && (
-          <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3">
-            <p className="text-sm font-medium text-red-600" role="alert">
-              {serverError || 'Please fix the following issues to continue:'}
-            </p>
-            {Object.entries(errors).length > 0 && (
-              <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-red-500">
-                {Object.entries(errors).map(([field, message]) => {
-                  // If the field isn't in invalidFields, it's not rendered in the form,
-                  // so we must show its error here so the user knows what's wrong.
-                  // For fields that ARE rendered, we show it here too just in case as a summary.
-                  const fieldLabel = field.replace(/([A-Z])/g, ' $1');
-                  return (
-                    <li key={field}>
-                      <span className="font-semibold capitalize">{fieldLabel}:</span> {message}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        )}
 
         {/* Informational Notice */}
         <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3">

@@ -187,7 +187,7 @@ export default function CashierCreationModal({
           </DialogTitle>
           <DialogDescription>
             Create a new cashier account with login credentials. A temporary
-            password will be generated and sent to their email.
+            password will be generated for you to share with the cashier.
           </DialogDescription>
         </DialogHeader>
 
@@ -195,13 +195,13 @@ export default function CashierCreationModal({
           <div className="mb-6 rounded-lg border-2 border-green-500 bg-green-50 p-6 text-center">
             <div className="mb-4">
               <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-500">
-                <Mail className="h-6 w-6 text-white" />
+                <Key className="h-6 w-6 text-white" />
               </div>
               <h3 className="mb-2 text-lg font-semibold text-green-800">
                 Cashier Account Created Successfully!
               </h3>
               <p className="mb-4 text-green-700">
-                Login credentials have been sent to the cashier's email address.
+                Please provide the following credentials to the cashier.
               </p>
             </div>
 
@@ -321,7 +321,7 @@ export default function CashierCreationModal({
                   • A secure temporary password will be automatically generated
                 </li>
                 <li>
-                  • The password will be sent to the cashier's email address
+                  • You must provide this password to the cashier manually
                 </li>
                 <li>
                   • Cashier will be required to change password on first login

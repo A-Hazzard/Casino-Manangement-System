@@ -64,24 +64,24 @@ git clone https://gitlab.com/sunny-group/sas/evolution-one-cms.git
 cd "evolution-one-cms"
 ```
 
-### 2️⃣ Install pnpm (if you don't have it)
+### 2️⃣ Install bun (if you don't have it)
 
-If you don't have pnpm installed globally, run:
+If you don't have bun installed globally, run:
 
 ```sh
-npm i -g pnpm@latest
+npm i -g bun@latest
 ```
 
 ### 3️⃣ Install Dependencies
 
 ```sh
-pnpm install
+bun install
 ```
 
 ### 4️⃣ Run the Development Server
 
 ```sh
-pnpm run dev
+bun run dev
 ```
 
 Open http://localhost:3000 to see the application.
@@ -146,11 +146,11 @@ docker run --rm -p 3000:3000 \
 
 | Command               | Description                  |
 | --------------------- | ---------------------------- |
-| `pnpm run dev`        | Start development server     |
-| `pnpm run build`      | Build production app         |
-| `pnpm run start`      | Start production server      |
-| `pnpm run lint`       | Check for linting issues     |
-| `pnpm run type-check` | Run TypeScript type checking |
+| `bun run dev`        | Start development server     |
+| `bun run build`      | Build production app         |
+| `bun run start`      | Start production server      |
+| `bun run lint`       | Check for linting issues     |
+| `bun run type-check` | Run TypeScript type checking |
 
 ## 🧪 Testing & Development Tools
 
@@ -211,11 +211,11 @@ go run main.go
 
 ### Package Management & Build Integrity
 
-- **Use `pnpm` exclusively** for all package management
-- Always run `pnpm build` after code changes
+- **Use `bun` exclusively** for all package management
+- Always run `bun build` after code changes
 - Fix build errors immediately and re-run until clean build
-- Run `pnpm type-check` to verify TypeScript types
-- Run `pnpm lint` to check code style
+- Run `bun type-check` to verify TypeScript types
+- Run `bun lint` to check code style
 
 ### TypeScript & Code Organization
 
@@ -257,7 +257,7 @@ go run main.go
 ### Code Quality
 
 - **Never ignore ESLint rule violations** - Address all warnings and errors immediately
-- Run `pnpm lint` regularly and use `pnpm lint --fix` when possible
+- Run `bun lint` regularly and use `bun lint --fix` when possible
 - Document complex business logic with clear explanations
 - Use proper error handling in components, especially for async operations
 - **Every function should have JSDoc** describing purpose, parameters, and return value

@@ -15,7 +15,7 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { Minus, Plus, Receipt, Users, Monitor, RefreshCw } from 'lucide-react';
+import { Landmark, Minus, Monitor, Plus, Receipt, RefreshCw, Users } from 'lucide-react';
 
 type VaultQuickActionsSectionProps = {
   onAddCash: () => void;
@@ -24,6 +24,8 @@ type VaultQuickActionsSectionProps = {
   onManageCashiers?: () => void;
   onMachineCollection?: () => void;
   onSoftCount?: () => void;
+  onCloseVault?: () => void;
+  isShiftActive?: boolean;
 };
 
 export default function VaultQuickActionsSection({
@@ -33,7 +35,12 @@ export default function VaultQuickActionsSection({
   onManageCashiers,
   onMachineCollection,
   onSoftCount,
+  onCloseVault,
+  isShiftActive = false,
 }: VaultQuickActionsSectionProps) {
+  // Common style for disabled state
+  const disabledClasses = !isShiftActive ? "opacity-40 cursor-not-allowed" : "";
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -48,7 +55,7 @@ export default function VaultQuickActionsSection({
         {/* Add Cash Button - Green for positive action */}
         <Button
           onClick={onAddCash}
-          className="h-auto min-h-[80px] flex-col gap-2 bg-button py-4 text-white hover:bg-button/90"
+          className={`h-auto min-h-[80px] flex-col gap-2 bg-button py-4 text-white hover:bg-button/90 ${disabledClasses}`}
           size="lg"
         >
           <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -58,7 +65,7 @@ export default function VaultQuickActionsSection({
         {/* Remove Cash Button - Orange for withdrawal action */}
         <Button
           onClick={onRemoveCash}
-          className="h-auto min-h-[80px] flex-col gap-2 bg-orangeHighlight py-4 text-white hover:bg-orangeHighlight/90"
+          className={`h-auto min-h-[80px] flex-col gap-2 bg-orangeHighlight py-4 text-white hover:bg-orangeHighlight/90 ${disabledClasses}`}
           size="lg"
         >
           <Minus className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -70,7 +77,7 @@ export default function VaultQuickActionsSection({
         {/* Record Expense Button - Blue for informational action */}
         <Button
           onClick={onRecordExpense}
-          className="h-auto min-h-[80px] flex-col gap-2 bg-lighterBlueHighlight py-4 text-white hover:bg-lighterBlueHighlight/90"
+          className={`h-auto min-h-[80px] flex-col gap-2 bg-lighterBlueHighlight py-4 text-white hover:bg-lighterBlueHighlight/90 ${disabledClasses}`}
           size="lg"
         >
           <Receipt className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -83,7 +90,7 @@ export default function VaultQuickActionsSection({
         {onMachineCollection && (
           <Button
             onClick={onMachineCollection}
-            className="h-auto min-h-[80px] flex-col gap-2 bg-purple-600 py-4 text-white hover:bg-purple-700"
+            className={`h-auto min-h-[80px] flex-col gap-2 bg-purple-600 py-4 text-white hover:bg-purple-700 ${disabledClasses}`}
             size="lg"
           >
             <Monitor className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -97,7 +104,7 @@ export default function VaultQuickActionsSection({
         {onSoftCount && (
           <Button
             onClick={onSoftCount}
-            className="h-auto min-h-[80px] flex-col gap-2 bg-indigo-600 py-4 text-white hover:bg-indigo-700"
+            className={`h-auto min-h-[80px] flex-col gap-2 bg-indigo-600 py-4 text-white hover:bg-indigo-700 ${disabledClasses}`}
             size="lg"
           >
             <RefreshCw className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -111,12 +118,26 @@ export default function VaultQuickActionsSection({
         {onManageCashiers && (
           <Button
             onClick={onManageCashiers}
-            className="h-auto min-h-[80px] flex-col gap-2 bg-teal-600 py-4 text-white hover:bg-teal-700"
+            className={`h-auto min-h-[80px] flex-col gap-2 bg-teal-600 py-4 text-white hover:bg-teal-700 ${disabledClasses}`}
             size="lg"
           >
             <Users className="h-5 w-5 sm:h-6 sm:w-6" />
             <span className="text-sm font-semibold sm:text-base">
               Manage Cashiers
+            </span>
+          </Button>
+        )}
+
+        {/* Close Vault Button - Orange highlight for end of day */}
+        {onCloseVault && (
+          <Button
+            onClick={onCloseVault}
+            className={`h-auto min-h-[80px] flex-col gap-2 bg-orange-600 py-4 text-white hover:bg-orange-700 ${disabledClasses}`}
+            size="lg"
+          >
+            <Landmark className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="text-sm font-semibold sm:text-base">
+              Close Day
             </span>
           </Button>
         )}

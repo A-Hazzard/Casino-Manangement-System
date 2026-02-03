@@ -8,13 +8,14 @@
  *
  * @module app/api/vault/remove-cash/route */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 
 /**
  * POST /api/vault/remove-cash
@@ -41,7 +42,8 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    const vaultManagerId = userPayload.userId;
+    const vaultManagerId = userPayload._id as string;
+    const username = userPayload.username as string;
     const userRoles = (userPayload?.roles as string[]) || [];
     const hasVMAccess = userRoles.some(role =>
       ['developer', 'admin', 'manager', 'vault-manager'].includes(
@@ -136,10 +138,60 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 7: Save and Update Balance
     // ============================================================================
+    // ============================================================================
+    // STEP 7: Save and Update Balance & Inventory
+    // ============================================================================
     await vaultTransaction.save();
 
+    // Update Balance
     activeVaultShift.closingBalance = vaultTransaction.vaultBalanceAfter;
+
+    // Update Inventory (currentDenominations)
+    const currentInventory =
+      activeVaultShift.currentDenominations &&
+      activeVaultShift.currentDenominations.length > 0
+        ? activeVaultShift.currentDenominations
+        : activeVaultShift.openingDenominations;
+
+    const newInventoryMap = new Map<number, number>();
+    
+    // Initialize with current
+    currentInventory.forEach((d: { denomination: number; quantity: number }) => {
+      newInventoryMap.set(d.denomination, d.quantity);
+    });
+
+    // Remove cash
+    denominations.forEach((d: { denomination: number; quantity: number }) => {
+      const currentQty = newInventoryMap.get(d.denomination) || 0;
+      // Ensure we don't go below zero (schema constraint)
+      const newQty = Math.max(0, currentQty - d.quantity);
+      newInventoryMap.set(d.denomination, newQty);
+    });
+
+    // Convert back to array
+    activeVaultShift.currentDenominations = Array.from(
+      newInventoryMap.entries()
+    ).map(([denomination, quantity]) => ({
+      denomination,
+      quantity,
+    }));
+
     await activeVaultShift.save();
+
+    // STEP 8: Audit Activity
+    await logActivity({
+      userId: vaultManagerId,
+      username,
+      action: 'create',
+      details: `Removed cash to ${destination}: $${amount}`,
+      metadata: {
+        resource: 'vault',
+        resourceId: activeVaultShift.locationId,
+        resourceName: 'Vault',
+        transactionId,
+        destination,
+      },
+    });
 
     const duration = Date.now() - startTime;
     if (duration > 1000) {

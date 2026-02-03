@@ -49,6 +49,8 @@ type UserStore = {
   clearUser: () => void;
   isInitialized: boolean;
   setInitialized: (initialized: boolean) => void;
+  hasActiveVaultShift: boolean;
+  setHasActiveVaultShift: (active: boolean) => void;
 };
 
 /**
@@ -62,6 +64,7 @@ const createStore = () => {
       set => ({
         user: null,
         isInitialized: false,
+        hasActiveVaultShift: false,
         setUser: user => {
           set({ user });
           // Clear cache when user data changes to ensure fresh data
@@ -70,11 +73,12 @@ const createStore = () => {
           }
         },
         clearUser: () => {
-          set({ user: null, isInitialized: false });
+          set({ user: null, isInitialized: false, hasActiveVaultShift: false });
           // Clear cache when user is logged out
           clearUserCache();
         },
         setInitialized: initialized => set({ isInitialized: initialized }),
+        setHasActiveVaultShift: active => set({ hasActiveVaultShift: active }),
       }),
       {
         name: 'user-auth-store', // Customize this name
@@ -137,7 +141,9 @@ export const useUserStore =
         // Server-side: return no-op store to prevent SSR errors
         user: null,
         isInitialized: false,
+        hasActiveVaultShift: false,
         setUser: () => {},
         clearUser: () => {},
         setInitialized: () => {},
+        setHasActiveVaultShift: () => {},
       }));

@@ -1151,8 +1151,8 @@ The Vault Management System (VMS) is a specialized module for cash handling, flo
 
 - **Never ignore ESLint rule violations**
 - **Address all warnings and errors immediately**
-- **Run `pnpm lint` regularly**
-- **Use auto-fix when possible**: `pnpm lint --fix`
+- **Run `bun lint` regularly**
+- **Use auto-fix when possible**: `bun lint --fix`
 
 #### Comments & Documentation
 
@@ -1494,8 +1494,8 @@ export async function GET(request: NextRequest) {
 
 - **Never ignore ESLint rule violations**
 - **Address all warnings and errors immediately**
-- **Run `pnpm lint` regularly**
-- **Use auto-fix when possible**: `pnpm lint --fix`
+- **Run `bun lint` regularly**
+- **Use auto-fix when possible**: `bun lint --fix`
 
 #### Comments & Documentation
 

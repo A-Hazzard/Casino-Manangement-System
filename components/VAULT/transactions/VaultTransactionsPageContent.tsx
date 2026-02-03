@@ -249,13 +249,17 @@ export default function VaultTransactionsPageContent() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="machine_collection">
-                Machine Collection
-              </SelectItem>
+              <SelectItem value="vault_open">Vault Open</SelectItem>
+              <SelectItem value="vault_close">Vault Close</SelectItem>
+              <SelectItem value="cashier_shift_open">Cashier Shift Open</SelectItem>
+              <SelectItem value="cashier_shift_close">Cashier Shift Close</SelectItem>
+              <SelectItem value="machine_collection">Machine Collection</SelectItem>
               <SelectItem value="float_increase">Float Increase</SelectItem>
               <SelectItem value="float_decrease">Float Decrease</SelectItem>
               <SelectItem value="payout">Payout</SelectItem>
               <SelectItem value="expense">Expense</SelectItem>
+              <SelectItem value="vault_reconciliation">Reconciliation</SelectItem>
+              <SelectItem value="soft_count">Soft Count</SelectItem>
             </SelectContent>
           </Select>
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>

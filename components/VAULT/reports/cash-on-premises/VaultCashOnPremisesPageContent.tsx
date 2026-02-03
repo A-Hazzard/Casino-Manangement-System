@@ -18,37 +18,40 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
 import VaultCashOnPremisesSkeleton from '@/components/ui/skeletons/VaultCashOnPremisesSkeleton';
 import {
-  DEFAULT_CASHIER_FLOATS,
-  DEFAULT_VAULT_BALANCE,
+    DEFAULT_CASHIER_FLOATS,
+    DEFAULT_VAULT_BALANCE,
 } from '@/components/VAULT/overview/data/defaults';
 import {
-  fetchCashOnPremisesData,
-  fetchLocationDetails,
+    fetchCashOnPremisesData,
+    fetchLocationDetails,
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { CashierFloat } from '@/shared/types/vault';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
-  AlertTriangle,
-  Download,
-  Monitor,
-  Printer,
-  RefreshCw,
-  Users,
-  Wallet,
+    AlertTriangle,
+    Download,
+    Monitor,
+    Printer,
+    RefreshCw,
+    Users,
+    Wallet,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 export default function VaultCashOnPremisesPageContent() {
   // ============================================================================
@@ -181,14 +184,70 @@ export default function VaultCashOnPremisesPageContent() {
    * Handle CSV export action
    */
   const handleExportCSV = () => {
-    toast.info('CSV export will be implemented');
+    try {
+      const data = locationBreakdown.map(item => ({
+        Location: item.location,
+        Type: item.type,
+        Balance: item.balance,
+        'Percent of Total': `${item.percentOfTotal.toFixed(1)}%`
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Cash on Premises');
+      
+      // Auto-size columns
+      const maxWidths = [{ wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 }];
+      worksheet['!cols'] = maxWidths;
+
+      XLSX.writeFile(workbook, `Cash_on_Premises_${new Date().toISOString().split('T')[0]}.csv`);
+      toast.success('CSV exported successfully');
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export CSV');
+    }
   };
 
   /**
    * Handle PDF export action
    */
   const handleExportPDF = () => {
-    toast.info('PDF export will be implemented');
+    try {
+      const doc = new jsPDF();
+      
+      // Add Title
+      doc.setFontSize(18);
+      doc.text('Cash on Premises Report', 14, 22);
+      
+      // Add Summary
+      doc.setFontSize(11);
+      doc.text(`Total Cash on Premises: ${formatAmount(totalOnPremises)}`, 14, 32);
+      doc.text(`Location Limit: ${formatAmount(locationLimit)}`, 14, 38);
+      doc.text(`Utilization: ${utilization.toFixed(1)}%`, 14, 44);
+      doc.text(`Date: ${new Date().toLocaleString()}`, 14, 50);
+
+      // Add Table
+      const tableData = locationBreakdown.map(item => [
+        item.location,
+        item.type,
+        formatAmount(item.balance),
+        `${item.percentOfTotal.toFixed(1)}%`
+      ]);
+
+      autoTable(doc, {
+        startY: 60,
+        head: [['Location', 'Type', 'Balance', '% of Total']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [247, 148, 29] } // Orange highlight for header
+      });
+
+      doc.save(`Cash_on_Premises_${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export PDF');
+    }
   };
 
   // ============================================================================

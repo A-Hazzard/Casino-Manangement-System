@@ -89,6 +89,11 @@ const VaultTransactionSchema = new Schema(
     notes: { type: String },
     auditComment: { type: String }, // Mandatory for reconciliations
 
+    // Attachments
+    attachmentId: { type: Schema.Types.ObjectId }, // GridFS file ID
+    attachmentName: { type: String },
+
+
     // Immutability - transactions cannot be deleted, only voided
     isVoid: { type: Boolean, default: false },
     voidReason: { type: String },

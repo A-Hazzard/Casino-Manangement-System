@@ -47,7 +47,7 @@ const FloatRequestSchema = new Schema(
     // Approval workflow
     status: {
       type: String,
-      enum: ['pending', 'approved', 'denied', 'edited'],
+      enum: ['pending', 'approved', 'approved_vm', 'denied', 'edited', 'cancelled'],
       default: 'pending',
       required: true,
       index: true,
@@ -57,9 +57,39 @@ const FloatRequestSchema = new Schema(
     processedBy: { type: String }, // VM user ID
     processedAt: { type: Date },
     vmNotes: { type: String },
-
+    
     // Transaction reference
     transactionId: { type: String }, // Link to vaultTransactions
+
+    // Notification tracking
+    notificationSent: { type: Boolean, default: false },
+    notificationSentAt: { type: Date },
+    notificationReadAt: { type: Date },
+    notificationDismissedAt: { type: Date },
+
+    // Audit trail
+    auditLog: [
+      {
+        action: {
+          type: String,
+          enum: [
+            'created',
+            'approved',
+            'denied',
+            'edited',
+            'viewed',
+            'failed',
+            'cancelled',
+            'confirmed',
+          ],
+          required: true,
+        },
+        performedBy: { type: String, required: true },
+        timestamp: { type: Date, required: true, default: Date.now },
+        notes: { type: String },
+        metadata: { type: Schema.Types.Mixed },
+      },
+    ],
 
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date },

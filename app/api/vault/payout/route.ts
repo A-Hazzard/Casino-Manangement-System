@@ -8,6 +8,8 @@
  *
  * @module app/api/vault/payout/route */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
@@ -16,7 +18,6 @@ import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import type { CreatePayoutRequest } from '@/shared/types/vault';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 
 /**
  * POST /api/vault/payout
@@ -43,7 +44,8 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    const cashierId = userPayload.userId;
+    const cashierId = userPayload._id as string;
+    const username = userPayload.username as string;
     const userRoles = (userPayload?.roles as string[]) || [];
     const hasCashierAccess = userRoles.some(role =>
       ['developer', 'admin', 'manager', 'cashier'].includes(role.toLowerCase())
@@ -116,11 +118,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const cashierFloatBefore =
-      cashierShift.openingBalance +
-      cashierShift.floatAdjustmentsTotal -
-      cashierShift.payoutsTotal;
-    if (cashierFloatBefore < amount) {
+    const currentBalance = cashierShift.currentBalance || 0;
+    if (currentBalance < amount) {
       return NextResponse.json(
         { success: false, error: 'Insufficient float for this payout' },
         { status: 400 }
@@ -134,31 +133,31 @@ export async function POST(request: NextRequest) {
     const payoutId = nanoid();
     const transactionId = nanoid();
 
-    const payout = await PayoutModel.create({
+    const payoutData: any = {
       _id: payoutId,
       locationId: cashierShift.locationId,
       cashierId,
       cashierShiftId,
       type,
       amount,
-      ...(type === 'ticket'
-        ? { ticketNumber: body.ticketNumber, ticketBarcode: body.ticketBarcode }
-        : {}),
-      ...(type === 'hand_pay'
-        ? {
-            machineId: body.machineId,
-            machineName: body.machineName,
-            jackpotType: body.jackpotType,
-          }
-        : {}),
-      validated: true, // Assuming validation happens before this call
+      validated: true,
       timestamp: now,
-      cashierFloatBefore,
-      cashierFloatAfter: cashierFloatBefore - amount,
+      cashierFloatBefore: currentBalance,
+      cashierFloatAfter: currentBalance - amount,
       transactionId,
       notes,
       createdAt: now,
-    });
+    };
+
+    if (type === 'ticket') {
+      payoutData.ticketNumber = body.ticketNumber;
+      if (body.printedAt) payoutData.printedAt = new Date(body.printedAt);
+    } else if (type === 'hand_pay') {
+      payoutData.machineId = body.machineId;
+      payoutData.reason = body.reason;
+    }
+
+    const payout = await PayoutModel.create(payoutData);
 
     const transaction = await VaultTransactionModel.create({
       _id: transactionId,
@@ -183,10 +182,27 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     cashierShift.payoutsTotal += amount;
     cashierShift.payoutsCount += 1;
+    cashierShift.currentBalance -= amount;
     await cashierShift.save();
+ 
+    // STEP 7: Audit Activity
+    await logActivity({
+      userId: cashierId,
+      username,
+      action: 'create',
+      details: `Processed ${type} payout: $${amount}`,
+      metadata: {
+        resource: 'machine', // Payouts are often machine linked if handpay
+        resourceId: (body as any).machineId || cashierShift.locationId,
+        resourceName: type === 'ticket' ? 'Ticket Redemption' : 'Hand Pay',
+        payoutId,
+        transactionId,
+        cashierShiftId,
+      },
+    });
 
     // ============================================================================
-    // STEP 7: Performance tracking and return response
+    // STEP 8: Performance tracking and return response
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {

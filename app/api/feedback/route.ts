@@ -17,8 +17,8 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { ActivityLog } from '@/app/api/lib/models/activityLog';
 import { FeedbackModel } from '@/app/api/lib/models/feedback';
-import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
 import { generateMongoId } from '@/lib/utils/id';
+import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -144,128 +144,7 @@ export async function POST(request: NextRequest) {
     await feedback.save();
 
     // ============================================================================
-    // STEP 7: Send email notification via SendGrid
-    // ============================================================================
-    try {
-      const { sendEmail } = await import('@/app/api/lib/utils/email');
-      const emailUser = process.env.EMAIL_USER || '';
-      
-      if (emailUser) {
-        const categoryLabels: Record<string, string> = {
-          bug: '🐛 Bug Report',
-          suggestion: '💡 Suggestion',
-          'general-review': '⭐ General Review',
-          'feature-request': '✨ Feature Request',
-          performance: '⚡ Performance Issue',
-          'ui-ux': '🎨 UI/UX Feedback',
-          other: '📝 Other',
-        };
-
-        const categoryLabel = categoryLabels[category] || category;
-        const submitterEmail = finalEmail;
-        const submitterName = finalUsername || finalEmail;
-        const subject = `New Feedback: ${categoryLabel} from ${submitterName}`;
-        
-        const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Feedback Submission</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #ECF0F9;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #ECF0F9; padding: 20px;">
-    <tr>
-      <td align="center" style="padding: 20px 0;">
-        <table role="presentation" style="width: 100%; max-width: 600px; background-color: #FFFFFF; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #5119E9; padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
-              <h1 style="margin: 0; color: #FFFFFF; font-size: 24px; font-weight: 600;">New Feedback Submission</h1>
-            </td>
-          </tr>
-          
-          <!-- Content -->
-          <tr>
-            <td style="padding: 32px 24px;">
-              <table role="presentation" style="width: 100%; border-collapse: collapse;">
-                <!-- Category -->
-                <tr>
-                  <td style="padding-bottom: 16px;">
-                    <strong style="color: #707070; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Category</strong>
-                    <p style="margin: 8px 0 0 0; color: #1F2937; font-size: 16px; font-weight: 500;">${categoryLabel}</p>
-                  </td>
-                </tr>
-                
-                <!-- From -->
-                <tr>
-                  <td style="padding-bottom: 16px;">
-                    <strong style="color: #707070; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">From</strong>
-                    <p style="margin: 8px 0 0 0; color: #1F2937; font-size: 16px;">${submitterName}</p>
-                    <p style="margin: 4px 0 0 0; color: #6B7280; font-size: 14px;">${submitterEmail}</p>
-                    ${finalUserId ? `<p style="margin: 4px 0 0 0; color: #6B7280; font-size: 14px;">User ID: ${finalUserId}</p>` : ''}
-                  </td>
-                </tr>
-                
-                <!-- Submitted At -->
-                <tr>
-                  <td style="padding-bottom: 24px;">
-                    <strong style="color: #707070; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Submitted</strong>
-                    <p style="margin: 8px 0 0 0; color: #1F2937; font-size: 16px;">${new Date(feedback.submittedAt).toLocaleString()}</p>
-                  </td>
-                </tr>
-                
-                <!-- Description -->
-                <tr>
-                  <td style="padding-top: 24px; border-top: 2px solid #E5E7EB;">
-                    <strong style="color: #707070; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Description</strong>
-                    <div style="margin-top: 16px; padding: 16px; background-color: #F9FAFB; border-radius: 6px; border-left: 4px solid #5119E9;">
-                      <p style="margin: 0; color: #1F2937; font-size: 15px; line-height: 1.6; white-space: pre-wrap;">${description.trim()}</p>
-                    </div>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 24px; background-color: #F9FAFB; border-radius: 0 0 8px 8px; border-top: 1px solid #E5E7EB; text-align: center;">
-              <p style="margin: 0; color: #6B7280; font-size: 12px;">This is an automated notification from Evolution CMS</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-        `;
-
-        const text = `New Feedback Submission
-
-Category: ${categoryLabel}
-From: ${submitterName}
-Email: ${submitterEmail}
-${finalUserId ? `User ID: ${finalUserId}\n` : ''}Submitted: ${new Date(feedback.submittedAt).toLocaleString()}
-
-Description:
-${description.trim()}
-
----
-This is an automated notification from Evolution CMS
-        `;
-
-        await sendEmail(emailUser, subject, text, html, submitterEmail);
-      }
-    } catch (emailError) {
-      console.error('Error sending feedback email notification:', emailError);
-      // Don't fail the request if email fails
-    }
-
-    // ============================================================================
-    // STEP 8: Log activity for feedback creation
+    // STEP 7: Log activity for feedback creation
     // ============================================================================
     try {
       const ipInfo = getIPInfo(request);

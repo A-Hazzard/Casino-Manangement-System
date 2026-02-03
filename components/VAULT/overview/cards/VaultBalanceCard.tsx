@@ -13,15 +13,15 @@
  */
 'use client';
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/shared/ui/card';
 import { Button } from '@/components/shared/ui/button';
-import type { VaultBalance } from '@/shared/types/vault';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import type { VaultBalance } from '@/shared/types/vault';
 import { RefreshCw } from 'lucide-react';
 
 type VaultBalanceCardProps = {
@@ -93,6 +93,23 @@ export default function VaultBalanceCard({
             <p className="mt-1 text-lg font-semibold text-gray-900">
               {balance.managerOnDuty}
             </p>
+          </div>
+
+          {/* Vertical Divider - Desktop Only */}
+          <div className="hidden border-l border-gray-200 md:block"></div>
+          {/* Horizontal Divider - Mobile Only */}
+          <div className="border-t border-gray-200 pt-4 md:hidden"></div>
+
+          {/* Premises Metrics */}
+          <div className="flex-1 md:pt-0">
+            <p className="text-sm font-medium text-orangeHighlight">Cash on Premises</p>
+            <p className="mt-1 text-2xl font-bold text-gray-900">
+              {formatAmount(balance.totalCashOnPremises || balance.balance)}
+            </p>
+            <div className="mt-1 flex gap-3 text-[10px] uppercase tracking-wider text-gray-500 font-mono">
+              <span title="Machine Money In">M: {formatAmount(balance.machineMoneyIn || 0)}</span>
+              <span title="Total Active Cashier Floats">F: {formatAmount(balance.cashierFloats || 0)}</span>
+            </div>
           </div>
         </div>
       </CardContent>

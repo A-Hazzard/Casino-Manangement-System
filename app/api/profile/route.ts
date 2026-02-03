@@ -381,6 +381,7 @@ export async function PUT(request: NextRequest) {
       updateSet.password = await hashPassword(newPassword);
       updateSet.passwordUpdatedAt = new Date();
       updateSet.tempPasswordChanged = true;
+      unsetMap.tempPassword = ''; // Delete plain text temp password after first password change
       incrementSession = true;
     } else if (!user.passwordUpdatedAt) {
       // Force user to set a new password if never set before

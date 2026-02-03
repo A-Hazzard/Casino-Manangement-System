@@ -1,16 +1,17 @@
-import { connectDB } from '@/app/api/lib/middleware/db';
+import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import UserModel from '@/app/api/lib/models/user';
 import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import { isValidDateInput, validateAlphabeticField, validateNameField, validateOptionalGender } from '@/lib/utils/validation';
 import { JWTPayload, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
-import { logActivity } from '../activityLogger';
-import { isValidDateInput, validateAlphabeticField, validateNameField, validateOptionalGender } from '@/lib/utils/validation';
-import { comparePassword, hashPassword } from '../../utils/validation';
-import { CurrentUser, OriginalUserType } from '../../../../../shared/types/users';
-import { apiLogger } from '../../services/loggerService';
 import { LeanUserDocument } from '../../../../../shared/types/auth';
+import { CurrentUser, OriginalUserType } from '../../../../../shared/types/users';
+import { connectDB } from '../../middleware/db';
+import { apiLogger } from '../../services/loggerService';
+import { comparePassword, hashPassword } from '../../utils/validation';
+import { logActivity } from '../activityLogger';
 
 /**
  * Validates database context from JWT token
@@ -342,6 +343,7 @@ export async function createUser(
     profilePicture?: string | null;
     assignedLocations?: string[];
     assignedLicensees?: string[];
+    tempPassword?: string;
   },
   request: NextRequest
 ) {
@@ -355,6 +357,7 @@ export async function createUser(
     profilePicture = null,
     assignedLocations,
     assignedLicensees,
+    tempPassword,
   } = data;
 
   // Get current user to check permissions for role assignment
@@ -424,9 +427,12 @@ export async function createUser(
       throw new Error(`Vault managers can only create cashiers`);
     }
   } else if (isAdmin) {
-    // Admin can assign all roles except developer
+    // Admin can assign all roles except developer and cashier
     if (normalizedRoles.includes('developer')) {
       throw new Error('Admins cannot assign the developer role');
+    }
+    if (normalizedRoles.includes('cashier')) {
+      throw new Error('Only Vault Managers can assign the cashier role');
     }
   } else if (!isDeveloper && !isAdmin && !isManager && !isVaultManager) {
     // Only developer/admin/manager/vault-manager can create users
@@ -472,8 +478,23 @@ export async function createUser(
   let newUser;
   try {
     // Use only new fields - no longer writing to old fields
-    const finalAssignedLicensees = assignedLicensees || [];
-    const finalAssignedLocations = assignedLocations || [];
+    let finalAssignedLicensees = assignedLicensees || [];
+    let finalAssignedLocations = assignedLocations || [];
+
+    // ENFORCEMENT: Managers and Vault Managers can ONLY create users within their own licensees and locations
+    if (isManager || isVaultManager) {
+      finalAssignedLicensees = (requestingUser.assignedLicensees as string[]) || [];
+      finalAssignedLocations = (requestingUser.assignedLocations as string[]) || [];
+      
+      console.log(`[createUser] Auto-assigning licensees/locations for new user ${username} based on creator ${requestingUser._id}`);
+    }
+
+    // ENFORCEMENT: Vault Managers must have exactly 1 licensee and 1 location
+    if (normalizedRoles.includes('vault-manager')) {
+      if (finalAssignedLicensees.length !== 1 || finalAssignedLocations.length !== 1) {
+        throw new Error('Vault Managers must be assigned to exactly one licensee and one location');
+      }
+    }
 
     newUser = await UserModel.create({
       _id: new (
@@ -491,6 +512,7 @@ export async function createUser(
       assignedLocations: finalAssignedLocations,
       assignedLicensees: finalAssignedLicensees,
       tempPasswordChanged: false, // New cashiers must change password on first login
+      tempPassword: tempPassword || null, // Store plain text temp password
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
     });
   } catch (dbError: unknown) {
@@ -691,6 +713,11 @@ export async function updateUser(
       if (unauthorizedRoles.length > 0) {
         throw new Error(`Vault managers can only assign the cashier role`);
       }
+    } else if (isAdmin) {
+      // Admin cannot assign 'cashier' role
+      if (normalizedRoles.includes('cashier')) {
+        throw new Error('Only Vault Managers can assign the cashier role');
+      }
     } else if (!isDeveloper && !isAdmin && !isVaultManager) {
       // Only developer/admin/manager/vault-manager can update roles
       throw new Error('Insufficient permissions to update user roles');
@@ -698,6 +725,18 @@ export async function updateUser(
 
     // Normalize roles before saving
     updateFields.roles = normalizedRoles;
+
+    // ENFORCEMENT: Vault Managers must have exactly 1 licensee and 1 location
+    if (normalizedRoles.includes('vault-manager')) {
+      const licensees = (updateFields.assignedLicensees as string[]) || (user.assignedLicensees as string[]) || [];
+      const locations = (updateFields.assignedLocations as string[]) || (user.assignedLocations as string[]) || [];
+
+      if (licensees.length !== 1 || locations.length !== 1) {
+        throw new Error(
+          'Vault Managers must be assigned to exactly one licensee and one location'
+        );
+      }
+    }
   }
 
   // Prevent managers from changing licensee assignments
@@ -1563,23 +1602,44 @@ export async function handleCashiersRequest(
   const searchMode = searchParams.get('searchMode') || 'username';
   const licensee = searchParams.get('licensee');
 
+  // STEP 1: Connect to database to ensure we can fetch shifts
+  await connectDB();
+
   // Fetch all users and filter for cashiers
-  const users = await getAllUsers();
+  const [users, allActiveShifts] = await Promise.all([
+    getAllUsers(),
+    CashierShiftModel.find({ 
+      status: { $in: ['active', 'pending_review', 'pending_start'] } 
+    }).lean()
+  ]);
+
+  // Create a map of active shift data by cashier ID
+  const shiftMap = new Map<string, { status: string; balance: number; denominations: any[] }>();
+  allActiveShifts.forEach((shift: Record<string, any>) => {
+    shiftMap.set(String(shift.cashierId), {
+      status: String(shift.status),
+      balance: shift.currentBalance ?? shift.openingBalance ?? 0,
+      denominations: shift.lastSyncedDenominations ?? shift.openingDenominations ?? []
+    });
+  });
 
   let result = users
-    .filter(user => {
+    .filter((user: Record<string, any>) => {
       const userRoles = Array.isArray(user.roles) ? user.roles : [];
       return userRoles.some(
-        userRole =>
+        (userRole: unknown) =>
           typeof userRole === 'string' && userRole.toLowerCase() === 'cashier'
       );
     })
-    .map(user => ({
+    .map((user: Record<string, any>) => ({
       _id: user._id,
       name: `${user.profile?.firstName ?? ''} ${user.profile?.lastName ?? ''}`.trim(),
       username: user.username,
-      email: user.emailAddress,
-      enabled: user.isEnabled,
+      emailAddress: user.emailAddress,
+      isEnabled: user.isEnabled,
+      shiftStatus: (shiftMap.get(String(user._id))?.status || 'inactive') as 'active' | 'pending_review' | 'pending_start' | 'closed' | 'inactive',
+      currentBalance: shiftMap.get(String(user._id))?.balance || 0,
+      denominations: shiftMap.get(String(user._id))?.denominations || [],
       roles: user.roles,
       profilePicture: user.profilePicture ?? null,
       profile: user.profile,
@@ -1588,6 +1648,8 @@ export async function handleCashiersRequest(
       loginCount: user.loginCount,
       lastLoginAt: user.lastLoginAt,
       sessionVersion: user.sessionVersion,
+      tempPassword: user.tempPassword,
+      tempPasswordChanged: user.tempPasswordChanged,
     }));
 
   // Apply role-based filtering
@@ -1600,7 +1662,7 @@ export async function handleCashiersRequest(
   );
 
   if (licensee && licensee !== 'all') {
-    result = result.filter(user => {
+    result = result.filter((user: Record<string, any>) => {
       const userLicensees = Array.isArray(user.assignedLicensees)
         ? user.assignedLicensees
         : [];
@@ -1645,12 +1707,12 @@ export async function handleAllUsersRequest(
   // Fetch all users
   const users = await getAllUsers();
 
-  let result = users.map(user => ({
+  let result = users.map((user: Record<string, any>) => ({
     _id: user._id,
     name: `${user.profile?.firstName ?? ''} ${user.profile?.lastName ?? ''}`.trim(),
     username: user.username,
-    email: user.emailAddress,
-    enabled: user.isEnabled,
+    emailAddress: user.emailAddress,
+    isEnabled: user.isEnabled,
     roles: user.roles,
     profilePicture: user.profilePicture ?? null,
     profile: user.profile,
@@ -1659,6 +1721,8 @@ export async function handleAllUsersRequest(
     loginCount: user.loginCount,
     lastLoginAt: user.lastLoginAt,
     sessionVersion: user.sessionVersion,
+    tempPassword: user.tempPassword,
+    tempPasswordChanged: user.tempPasswordChanged,
   }));
 
   // Apply role-based filtering
@@ -1673,18 +1737,18 @@ export async function handleAllUsersRequest(
   // Apply status filtering
   if (status !== 'all') {
     if (status === 'active') {
-      result = result.filter(user => user.enabled === true);
+      result = result.filter((user: Record<string, any>) => user.isEnabled === true);
     } else if (status === 'disabled') {
-      result = result.filter(user => user.enabled === false);
+      result = result.filter((user: Record<string, any>) => user.isEnabled === false);
     }
   }
 
   // Apply role filtering
   if (role && role !== 'all') {
-    result = result.filter(user => {
+    result = result.filter((user: Record<string, any>) => {
       const userRoles = Array.isArray(user.roles) ? user.roles : [];
       return userRoles.some(
-        userRole =>
+        (userRole: any) =>
           typeof userRole === 'string' &&
           userRole.toLowerCase() === role.toLowerCase()
       );
@@ -1693,7 +1757,7 @@ export async function handleAllUsersRequest(
 
   // Apply licensee filtering
   if (licensee && licensee !== 'all') {
-    result = result.filter(user => {
+    result = result.filter((user: Record<string, any>) => {
       const userLicensees = Array.isArray(user.assignedLicensees)
         ? user.assignedLicensees
         : [];

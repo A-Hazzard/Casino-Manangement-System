@@ -8,11 +8,12 @@
  * @module app/api/vault/transfers/approve/route
  */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { InterLocationTransferModel } from '@/app/api/lib/models/interLocationTransfer';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { InterLocationTransferModel } from '@/app/api/lib/models/interLocationTransfer';
 import type { ApproveInterLocationTransferRequest } from '@/shared/types/vault';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    const vaultManagerId = userPayload.userId;
+    const vaultManagerId = userPayload._id as string;
     const userRoles = (userPayload?.roles as string[]) || [];
     const hasVMAccess = userRoles.some(role =>
       ['developer', 'admin', 'manager'].includes(role.toLowerCase())
@@ -149,6 +150,22 @@ export async function POST(request: NextRequest) {
     // STEP 7: Save transfer
     // ============================================================================
     await transfer.save();
+
+    // Audit Activity
+    await logActivity({
+      userId: vaultManagerId as string,
+      username: userPayload.username as string,
+      action: 'update',
+      details: `${approved ? 'Approved' : 'Denied'} transfer from ${transferDoc.fromLocationId} to ${transferDoc.toLocationId}: $${transferDoc.amount}`,
+      metadata: {
+        resource: 'vault',
+        resourceId: transferDoc.toLocationId,
+        resourceName: 'Inter-Location Transfer',
+        transferId: transferDoc._id,
+        status: approved ? 'approved' : 'denied',
+        amount: transferDoc.amount
+      },
+    });
 
     // ============================================================================
     // STEP 8: Return success response

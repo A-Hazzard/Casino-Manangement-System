@@ -38,6 +38,7 @@ import {
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
 import {
+    AlertCircle,
     Camera,
     Edit3,
     Info,
@@ -62,7 +63,6 @@ const ROLE_OPTIONS = [
   { label: 'Manager', value: 'manager' },
   { label: 'Location Admin', value: 'location admin' },
   { label: 'Vault Manager', value: 'vault-manager' },
-  { label: 'Cashier', value: 'cashier' },
   { label: 'Technician', value: 'technician' },
   { label: 'Collector', value: 'collector' },
 ];
@@ -116,6 +116,18 @@ export default function AdministrationUserModal({
   );
   const canEditLicensees = isDeveloper || isAdmin; // Only admins/developers can edit licensee assignments
 
+  const currentUserLicenseeIds = useMemo(
+    () =>
+      (Array.isArray(currentUser?.assignedLicensees)
+        ? currentUser.assignedLicensees
+        : []
+      ).map(id => String(id)),
+    [currentUser?.assignedLicensees]
+  );
+  
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [roles, setRoles] = useState<string[]>([]);
+
   // Filter available roles based on editor's permissions
   const availableRoles = useMemo(() => {
     if (isDeveloper) {
@@ -129,27 +141,23 @@ export default function AdministrationUserModal({
           'technician',
           'collector',
           'vault-manager',
-          'cashier',
         ].includes(role.value)
       );
     } else if (isLocationAdmin) {
       return ROLE_OPTIONS.filter(role =>
-        ['technician', 'collector', 'vault-manager', 'cashier'].includes(
+        ['technician', 'collector', 'vault-manager'].includes(
           role.value
         )
       );
     }
+    
+    // If we are editing and not one of the above, just return current roles
+    if (isEditMode && roles.length > 0) {
+      return ROLE_OPTIONS.filter(role => roles.includes(role.value));
+    }
+    
     return [];
-  }, [isDeveloper, isAdmin, isManager, isLocationAdmin]);
-
-  const currentUserLicenseeIds = useMemo(
-    () =>
-      (Array.isArray(currentUser?.assignedLicensees)
-        ? currentUser.assignedLicensees
-        : []
-      ).map(id => String(id)),
-    [currentUser?.assignedLicensees]
-  );
+  }, [isDeveloper, isAdmin, isManager, isLocationAdmin, isEditMode, roles]);
 
   const currentUserLocationPermissions = useMemo(
     () =>
@@ -165,7 +173,6 @@ export default function AdministrationUserModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Modal state
-  const [isEditMode, setIsEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCropOpen, setIsCropOpen] = useState(false);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
@@ -201,7 +208,6 @@ export default function AdministrationUserModal({
     {}
   );
 
-  // Form state for roles and permissions
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordStrength, setPasswordStrength] = useState({
@@ -216,7 +222,7 @@ export default function AdministrationUserModal({
       special: false,
     },
   });
-  const [roles, setRoles] = useState<string[]>([]);
+  const isVaultManagerSelected = roles.includes('vault-manager');
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
@@ -902,9 +908,26 @@ export default function AdministrationUserModal({
   };
 
   const handleRoleChange = (role: string, checked: boolean) => {
-    setRoles(prev =>
-      checked ? [...prev, role] : prev.filter(r => r !== role)
-    );
+    const newRoles = checked ? [...roles, role] : roles.filter(r => r !== role);
+    setRoles(newRoles);
+
+    // Enforce single selection if vault-manager is selected
+    if (checked && role === 'vault-manager') {
+      if (selectedLicenseeIds.length > 1) {
+        setSelectedLicenseeIds([selectedLicenseeIds[0]]);
+        toast.info(
+          'Vault Managers are limited to a single licensee. Assignments have been adjusted.'
+        );
+      }
+      if (selectedLocationIds.length > 1) {
+        setSelectedLocationIds([selectedLocationIds[0]]);
+        toast.info(
+          'Vault Managers are limited to a single location. Assignments have been adjusted.'
+        );
+      }
+      setAllLicenseesSelected(false);
+      setAllLocationsSelected(false);
+    }
   };
 
   const availableLocations = useMemo(() => {
@@ -931,6 +954,10 @@ export default function AdministrationUserModal({
   ]);
 
   const handleAllLocationsChange = (checked: boolean) => {
+    if (isVaultManagerSelected && checked) {
+      toast.error('Vault Managers cannot be assigned to all locations');
+      return;
+    }
     setAllLocationsSelected(checked);
     if (checked) {
       setSelectedLocationIds(availableLocations.map(loc => loc._id));
@@ -950,9 +977,15 @@ export default function AdministrationUserModal({
   }));
 
   const handleLicenseeChange = (newSelectedIds: string[]) => {
-    setSelectedLicenseeIds(newSelectedIds);
+    let finalIds = newSelectedIds;
+    if (isVaultManagerSelected && newSelectedIds.length > 1) {
+      finalIds = [newSelectedIds[newSelectedIds.length - 1]];
+      toast.info('Vault Managers are limited to a single licensee.');
+    }
+
+    setSelectedLicenseeIds(finalIds);
     setAllLicenseesSelected(
-      newSelectedIds.length === licensees.length && licensees.length > 0
+      finalIds.length === licensees.length && licensees.length > 0 && !isVaultManagerSelected
     );
 
     setSelectedLocationIds(prevLocationIds => {
@@ -962,19 +995,31 @@ export default function AdministrationUserModal({
           return true;
         }
         const belongsToSelectedLicensee =
-          location.licenseeId && newSelectedIds.includes(location.licenseeId);
+          location.licenseeId && finalIds.includes(location.licenseeId);
         return belongsToSelectedLicensee;
       });
 
       if (validLocationIds.length !== prevLocationIds.length) {
         const removedCount = prevLocationIds.length - validLocationIds.length;
         toast.info(
-          `${removedCount} location${removedCount > 1 ? 's' : ''} removed because ${removedCount > 1 ? "they don't" : "it doesn't"} belong to the selected licensee${newSelectedIds.length > 1 ? 's' : ''}`
+          `${removedCount} location${removedCount > 1 ? 's' : ''} removed because ${removedCount > 1 ? "they don't" : "it doesn't"} belong to the selected licensee${finalIds.length > 1 ? 's' : ''}`
         );
       }
 
       return validLocationIds;
     });
+  };
+
+  const handleLocationChange = (newSelectedIds: string[]) => {
+    let finalIds = newSelectedIds;
+    if (isVaultManagerSelected && newSelectedIds.length > 1) {
+      finalIds = [newSelectedIds[newSelectedIds.length - 1]];
+      toast.info('Vault Managers are limited to a single location.');
+    }
+    setSelectedLocationIds(finalIds);
+    setAllLocationsSelected(
+      finalIds.length === availableLocations.length && availableLocations.length > 0 && !isVaultManagerSelected
+    );
   };
 
   const handleAllLicenseesChange = (checked: boolean) => {
@@ -991,6 +1036,17 @@ export default function AdministrationUserModal({
   };
 
   const handleSave = async () => {
+    if (roles.includes('vault-manager')) {
+      if (selectedLicenseeIds.length !== 1 || allLicenseesSelected) {
+        toast.error('Vault Managers must be assigned to exactly one licensee');
+        return;
+      }
+      if (selectedLocationIds.length !== 1 || allLocationsSelected) {
+        toast.error('Vault Managers must be assigned to exactly one location');
+        return;
+      }
+    }
+
     if (password && password !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -1794,6 +1850,7 @@ export default function AdministrationUserModal({
                             onCheckedChange={checked =>
                               handleAllLicenseesChange(checked === true)
                             }
+                            disabled={!canEditLicensees || isVaultManagerSelected}
                           />
                           <Label
                             htmlFor="allLicensees"
@@ -1811,7 +1868,7 @@ export default function AdministrationUserModal({
                             placeholder="Select licensees..."
                             searchPlaceholder="Search licensees..."
                             label="licensees"
-                            showSelectAll={true}
+                            showSelectAll={!isVaultManagerSelected}
                           />
                         )}
 
@@ -1887,6 +1944,7 @@ export default function AdministrationUserModal({
                               onCheckedChange={checked =>
                                 handleAllLocationsChange(checked === true)
                               }
+                              disabled={isVaultManagerSelected}
                               className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
                             />
                             All Locations{' '}
@@ -1905,22 +1963,7 @@ export default function AdministrationUserModal({
                               selectedIds={selectedLocationIds.filter(id =>
                                 locationOptions.some(opt => opt.id === id)
                               )}
-                              onChange={newSelectedIds => {
-                                setSelectedLocationIds(prevLocationIds => {
-                                  const locationsNotInOptions =
-                                    prevLocationIds.filter(
-                                      id =>
-                                        !locationOptions.some(
-                                          opt => opt.id === id
-                                        )
-                                    );
-                                  const merged = [
-                                    ...locationsNotInOptions,
-                                    ...newSelectedIds,
-                                  ];
-                                  return merged;
-                                });
-                              }}
+                               onChange={handleLocationChange}
                               placeholder={
                                 availableLocations.length === 0
                                   ? 'No locations available for selected licensees'
@@ -1928,7 +1971,7 @@ export default function AdministrationUserModal({
                               }
                               searchPlaceholder="Search locations..."
                               label="locations"
-                              showSelectAll={true}
+                              showSelectAll={!isVaultManagerSelected}
                               disabled={availableLocations.length === 0}
                             />
                           )}
@@ -2494,43 +2537,76 @@ export default function AdministrationUserModal({
                       <Info className="h-4 w-4" />
                     </button>
                   </div>
-                  {isEditMode && isDeveloper ? (
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-                      {availableRoles.map(role => (
-                        <label
-                          key={role.value}
-                          className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 transition-colors hover:bg-gray-100"
-                        >
-                          <Checkbox
-                            id={role.value}
-                            checked={roles.includes(role.value)}
-                            onCheckedChange={checked =>
-                              handleRoleChange(role.value, checked === true)
-                            }
-                          />
-                          <span className="text-sm font-medium text-gray-900">
-                            {role.label}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={e => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setRolePermissionsDialog({
-                                open: true,
-                                role: role.value,
-                                roleLabel: role.label,
-                              });
-                            }}
-                            className="ml-auto rounded-full p-1 text-gray-400 hover:bg-white hover:text-blue-600"
-                            title={`View pages accessible to ${role.label}`}
-                          >
-                            <Info className="h-4 w-4" />
-                          </button>
-                        </label>
-                      ))}
-                    </div>
-                  ) : (
+                  <div className={`relative rounded-xl border-2 border-transparent transition-all duration-300 ${isEditMode && ((!allLicenseesSelected && selectedLicenseeIds.length === 0) || (!allLocationsSelected && selectedLocationIds.length === 0)) ? 'border-dashed border-amber-200 bg-gray-50/50 opacity-60 grayscale' : 'border-solid border-transparent'}`}>
+                    {isEditMode && ((!allLicenseesSelected && selectedLicenseeIds.length === 0) || (!allLocationsSelected && selectedLocationIds.length === 0)) && (
+                      <div className="absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl bg-white/40 p-6 backdrop-blur-[2px]">
+                        <div className="group flex flex-col items-center gap-4 rounded-2xl bg-amber-50 px-8 py-6 text-center shadow-xl ring-1 ring-amber-200 transition-transform hover:scale-105">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-50">
+                            <AlertCircle className="h-8 w-8 animate-pulse text-amber-600" />
+                          </div>
+                          <div className="space-y-1">
+                            <h4 className="text-lg font-bold text-amber-900">Action Required</h4>
+                            <p className="max-w-[280px] text-sm font-medium leading-relaxed text-amber-700">
+                              Please select a <span className="font-bold underline">Licensee</span> and <span className="font-bold underline">Location</span> above to unlock available roles.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {isEditMode ? (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                        {availableRoles.map(role => {
+                          const isVaultManagerRole = role.value === 'vault-manager';
+                          const isVMRestricted = isVaultManagerRole && (
+                            selectedLicenseeIds.length > 1 || 
+                            allLicenseesSelected || 
+                            selectedLocationIds.length > 1 || 
+                            allLocationsSelected
+                          );
+
+                          return (
+                            <div key={role.value} className="flex flex-col gap-1">
+                              <label
+                                className={`flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 transition-colors ${isVMRestricted ? 'opacity-60 cursor-not-allowed grayscale' : 'hover:bg-gray-100'}`}
+                              >
+                                <Checkbox
+                                  id={role.value}
+                                  checked={roles.includes(role.value)}
+                                  onCheckedChange={checked =>
+                                    handleRoleChange(role.value, checked === true)
+                                  }
+                                  disabled={isVMRestricted}
+                                />
+                                <span className={`text-sm font-medium ${isVMRestricted ? 'text-gray-500' : 'text-gray-900'}`}>
+                                  {role.label}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={e => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setRolePermissionsDialog({
+                                      open: true,
+                                      role: role.value,
+                                      roleLabel: role.label,
+                                    });
+                                  }}
+                                  className="ml-auto rounded-full p-1 text-gray-400 hover:bg-white hover:text-blue-600"
+                                  title={`View pages accessible to ${role.label}`}
+                                >
+                                  <Info className="h-4 w-4" />
+                                </button>
+                              </label>
+                              {isVMRestricted && (
+                                <p className="px-2 text-[10px] font-bold text-red-600 leading-tight">
+                                  Vault Managers are limited to 1 Licensee & Location
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
                     <div className="flex flex-wrap gap-2">
                       {roles && roles.length > 0 ? (
                         roles.map(roleValue => {
@@ -2568,6 +2644,7 @@ export default function AdministrationUserModal({
                       )}
                     </div>
                   )}
+                </div>
                 </div>
               </CardContent>
             </Card>

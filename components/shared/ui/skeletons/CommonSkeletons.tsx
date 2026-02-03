@@ -100,4 +100,36 @@ export const ChartNoData = ({
   </Card>
 );
 
-
+/**
+ * Skeleton component for tables
+ */
+export const TableSkeleton = ({ 
+  rows = 5, 
+  cols = 4 
+}: { 
+  rows?: number; 
+  cols?: number 
+}) => (
+  <Card>
+    <CardContent className="p-0">
+      <div className="animate-pulse">
+        <div className="border-b px-4 py-3">
+          <div className="flex gap-4">
+            {Array.from({ length: cols }).map((_, i) => (
+              <Skeleton key={i} className="h-4 flex-1" />
+            ))}
+          </div>
+        </div>
+        <div className="divide-y">
+          {Array.from({ length: rows }).map((_, i) => (
+            <div key={i} className="flex gap-4 px-4 py-4">
+              {Array.from({ length: cols }).map((_, j) => (
+                <Skeleton key={j} className="h-4 flex-1" />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);

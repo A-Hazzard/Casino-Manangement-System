@@ -187,17 +187,36 @@ export function formatDenominations(denominations: Denomination[]): string {
 }
 
 /**
- * Generate empty denomination template
+ * Update denomination inventory (add or subtract)
  * 
- * @returns Array with all denominations set to quantity 0
+ * @param current - Current denominations
+ * @param adjustment - Denominations to add or subtract
+ * @param type - 'add' or 'subtract'
+ * @returns Updated denomination array
  */
-export function getEmptyDenominationTemplate(): Denomination[] {
-  return [
-    { denomination: 100, quantity: 0 },
-    { denomination: 50, quantity: 0 },
-    { denomination: 20, quantity: 0 },
-    { denomination: 10, quantity: 0 },
-    { denomination: 5, quantity: 0 },
-    { denomination: 1, quantity: 0 },
-  ];
+export function updateDenominationInventory(
+  current: Denomination[],
+  adjustment: Denomination[],
+  type: 'add' | 'subtract'
+): Denomination[] {
+  const currentMap = new Map<number, number>();
+  
+  // Initialize with current values
+  current.forEach(d => currentMap.set(d.denomination, d.quantity));
+  
+  // Apply adjustments
+  adjustment.forEach(adj => {
+    const currentQty = currentMap.get(adj.denomination) || 0;
+    if (type === 'add') {
+      currentMap.set(adj.denomination, currentQty + adj.quantity);
+    } else {
+      currentMap.set(adj.denomination, Math.max(0, currentQty - adj.quantity));
+    }
+  });
+  
+  // Convert back to array
+  return Array.from(currentMap.entries()).map(([denomination, quantity]) => ({
+    denomination: denomination as 1 | 5 | 10 | 20 | 50 | 100,
+    quantity,
+  }));
 }

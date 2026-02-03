@@ -10,12 +10,17 @@
 
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import CashierShiftModel from '@/app/api/lib/models/cashierShift';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type {
-  VaultBalance,
-  VaultShift,
-  VaultTransaction,
+    VaultBalance,
+    VaultShift,
+    VaultTransaction,
 } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -71,6 +76,7 @@ export async function GET(request: NextRequest) {
         denominations: [],
         activeShiftId: undefined,
         lastReconciliation: undefined,
+        canClose: false,
       };
       return NextResponse.json({ success: true, data: response });
     }
@@ -88,14 +94,76 @@ export async function GET(request: NextRequest) {
         : undefined;
 
     // ============================================================================
-    // STEP 4: Construct and return response
+    // STEP 4.5: Calculate Cash on Premises (Machines & Cashiers)
     // ============================================================================
-    const response: VaultBalance = {
-      balance: lastTransaction?.vaultBalanceAfter ?? activeShift.openingBalance,
+    // A. Check if can close (BR-01) - needed for the button state
+    const activeCashierShifts = await CashierShiftModel.countDocuments({
+      vaultShiftId: activeShift._id,
+      status: { $in: ['active', 'pending_review', 'pending_start'] }
+    });
+    
+    // B. All Active Cashier Floats sum
+    const activeCashiersData = await CashierShiftModel.find({
+        locationId,
+        status: { $in: ['active', 'pending_review'] }
+    }, { currentBalance: 1 }).lean();
+    const totalCashierFloats = activeCashiersData.reduce((sum: number, s: any) => sum + (s.currentBalance || 0), 0);
+
+    // 2. Machine Money In (Drops) - Use Today's Gaming Day
+    const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
+    const gameDayOffset = (locationInfo as any)?.gameDayOffset ?? 8;
+    const gamingDayRange = getGamingDayRangeForPeriod('Today', gameDayOffset);
+
+    // Get all machine IDs for this location
+    const machines = await Machine.find({ gamingLocation: locationId }, { _id: 1 }).lean();
+    const machineIds = machines.map(m => String(m._id));
+
+    const machineMeters = await Meters.aggregate([
+        {
+          $match: {
+            machine: { $in: machineIds },
+            readAt: {
+              $gte: gamingDayRange.rangeStart,
+              $lte: gamingDayRange.rangeEnd,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalMoneyIn: { $sum: '$movement.drop' },
+          },
+        },
+    ]);
+    const totalMachineMoneyIn = machineMeters.length > 0 ? machineMeters[0].totalMoneyIn : 0;
+
+    const vaultBalanceVal = lastTransaction?.vaultBalanceAfter ?? activeShift.openingBalance;
+
+    // ============================================================================
+    // STEP 5: Construct and return response
+    // ============================================================================
+    const response: VaultBalance & { 
+        totalCashOnPremises: number;
+        machineMoneyIn: number;
+        cashierFloats: number;
+    } = {
+      balance: vaultBalanceVal,
+      // Prefer currentDenominations if set, otherwise fallback to opening
       denominations:
-        lastTransaction?.denominations ?? activeShift.openingDenominations,
+        activeShift.currentDenominations &&
+        activeShift.currentDenominations.length > 0
+          ? activeShift.currentDenominations
+          : activeShift.openingDenominations,
       activeShiftId: activeShift._id,
       lastReconciliation,
+      canClose: activeCashierShifts === 0,
+      blockReason: activeCashierShifts > 0 
+        ? `Cannot close vault while ${activeCashierShifts} cashier shift(s) are still Active or Pending Review.` 
+        : undefined,
+      // Premise metrics
+      totalCashOnPremises: vaultBalanceVal + totalCashierFloats + totalMachineMoneyIn,
+      machineMoneyIn: totalMachineMoneyIn,
+      cashierFloats: totalCashierFloats
     };
 
     return NextResponse.json({ success: true, data: response });

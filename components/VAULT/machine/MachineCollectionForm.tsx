@@ -9,20 +9,22 @@
 
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/shared/ui/card';
+import { MachineSearchSelect } from '@/components/shared/ui/machine/MachineSearchSelect';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import type { Denomination } from '@/shared/types/vault';
 import { cn } from '@/lib/utils';
+import type { GamingMachine } from '@/shared/types/entities';
+import type { Denomination } from '@/shared/types/vault';
 import { Monitor } from 'lucide-react';
+import { useState } from 'react';
 
 type MachineCollectionFormProps = {
   onSubmit: (
@@ -31,6 +33,7 @@ type MachineCollectionFormProps = {
     denominations: Denomination[]
   ) => Promise<void>;
   loading?: boolean;
+  machines?: GamingMachine[];
 };
 
 const DEFAULT_DENOMINATIONS: Denomination['denomination'][] = [
@@ -40,12 +43,14 @@ const DEFAULT_DENOMINATIONS: Denomination['denomination'][] = [
 export default function MachineCollectionForm({
   onSubmit,
   loading = false,
+  machines = [],
 }: MachineCollectionFormProps) {
   const { formatAmount } = useCurrencyFormat();
   const [machineId, setMachineId] = useState('');
   const [denominations, setDenominations] = useState<Denomination[]>(
     DEFAULT_DENOMINATIONS.map(denom => ({ denomination: denom, quantity: 0 }))
   );
+
 
   const totalAmount = denominations.reduce(
     (sum, d) => sum + d.denomination * d.quantity,
@@ -62,7 +67,7 @@ export default function MachineCollectionForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!machineId.trim()) {
-      alert('Please enter a machine ID');
+      alert('Please select a machine');
       return;
     }
     if (totalAmount === 0) {
@@ -99,17 +104,17 @@ export default function MachineCollectionForm({
               htmlFor="machineId"
               className="text-sm font-medium text-gray-700"
             >
-              Machine ID *
+              Select Machine *
             </Label>
-            <Input
-              id="machineId"
-              type="text"
-              value={machineId}
-              onChange={e => setMachineId(e.target.value)}
-              placeholder="Enter machine ID"
-              className="mt-1"
-              required
-            />
+            <div className="mt-1">
+              <MachineSearchSelect
+                value={machineId}
+                onValueChange={setMachineId}
+                machines={machines}
+                placeholder="Search by Asset, SMID, Serial, Game..."
+                emptyMessage="No machines found"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

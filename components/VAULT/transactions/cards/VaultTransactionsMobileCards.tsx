@@ -16,13 +16,18 @@
 'use client';
 
 import { Badge } from '@/components/shared/ui/badge';
+import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
+import ViewDenominationsModal from '@/components/VAULT/transactions/modals/ViewDenominationsModal';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import type {
-  ExtendedVaultTransaction,
-  VaultTransactionType,
-} from '@/shared/types/vault';
 import { cn } from '@/lib/utils';
+import type {
+    Denomination,
+    ExtendedVaultTransaction,
+    VaultTransactionType,
+} from '@/shared/types/vault';
+import { Eye } from 'lucide-react';
+import { useState } from 'react';
 
 type VaultTransactionsMobileCardsProps = {
   transactions: ExtendedVaultTransaction[];
@@ -38,9 +43,14 @@ export default function VaultTransactionsMobileCards({
   getTransactionTypeBadge,
 }: VaultTransactionsMobileCardsProps) {
   // ============================================================================
+
   // Hooks
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
+  const [selectedTxDenominations, setSelectedTxDenominations] = useState<{
+    denominations: Denomination[];
+    amount: number;
+  } | null>(null);
 
   // ============================================================================
   // Render
@@ -69,7 +79,14 @@ export default function VaultTransactionsMobileCards({
                 <div className="mb-3 flex items-start justify-between border-b pb-3">
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      {new Date(tx.timestamp).toLocaleString()}
+                      {new Date(tx.timestamp).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: 'numeric',
+                        hour12: true,
+                      })}
                     </p>
                     <p className="text-xs text-gray-500">
                       {tx.performedByName || 'System'}
@@ -123,12 +140,21 @@ export default function VaultTransactionsMobileCards({
                 {/* Denominations */}
                 {tx.denominations && tx.denominations.length > 0 && (
                   <div className="mb-3">
-                    <p className="text-xs text-gray-500">Denominations</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {tx.denominations
-                        .map(d => `$${d.denomination}x${d.quantity}`)
-                        .join(', ')}
-                    </p>
+                    <p className="text-xs text-gray-500 mb-1">Denominations</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs w-full justify-center"
+                      onClick={() =>
+                        setSelectedTxDenominations({
+                          denominations: tx.denominations,
+                          amount: Math.abs(tx.amount),
+                        })
+                      }
+                    >
+                      <Eye className="mr-2 h-3 w-3" />
+                      View Denominations
+                    </Button>
                   </div>
                 )}
 
@@ -144,6 +170,14 @@ export default function VaultTransactionsMobileCards({
           );
         })}
       </div>
+
+
+      <ViewDenominationsModal
+        open={!!selectedTxDenominations}
+        onClose={() => setSelectedTxDenominations(null)}
+        denominations={selectedTxDenominations?.denominations || []}
+        totalAmount={selectedTxDenominations?.amount || 0}
+      />
     </div>
   );
 }

@@ -9,11 +9,12 @@
  * @module app/api/vault/machine-collections/route
  */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { MachineCollectionModel } from '@/app/api/lib/models/machineCollection';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { MachineCollectionModel } from '@/app/api/lib/models/machineCollection';
 import type { CreateMachineCollectionRequest } from '@/shared/types/vault';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
@@ -30,10 +31,11 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    const vaultManagerId = userPayload.userId;
+    const vaultManagerId = userPayload._id as string;
+    const username = (userPayload.username || userPayload.emailAddress) as string;
     const userRoles = (userPayload?.roles as string[]) || [];
     const hasVMAccess = userRoles.some(role =>
-      ['developer', 'admin', 'manager'].includes(role.toLowerCase())
+      ['developer', 'admin', 'manager', 'vault-manager'].includes(role.toLowerCase())
     );
     if (!hasVMAccess) {
       return NextResponse.json(
@@ -134,7 +136,23 @@ export async function POST(request: NextRequest) {
     await activeVaultShift.save();
 
     // ============================================================================
-    // STEP 9: Return success response
+    // STEP 9: Audit Activity
+    // ============================================================================
+    await logActivity({
+      userId: vaultManagerId,
+      username,
+      action: 'create',
+      details: `Recorded machine collection from ${machineName || machineId}: $${amount}`,
+      metadata: {
+        resource: 'vault',
+        resourceId: locationId,
+        machineId,
+        transactionId,
+      },
+    });
+
+    // ============================================================================
+    // STEP 10: Return success response
     // ============================================================================
     return NextResponse.json({
       success: true,

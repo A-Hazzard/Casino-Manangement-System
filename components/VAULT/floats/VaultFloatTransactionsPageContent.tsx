@@ -13,33 +13,33 @@
  */
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useUserStore } from '@/lib/store/userStore';
-import type { CashierFloat } from '@/shared/types/vault';
-import type { CashierFloatSortOption } from './tables/VaultCashierFloatsTable';
-import type { FloatTransactionSortOption } from './tables/VaultFloatTransactionsTable';
-import VaultCashierFloatsTable from './tables/VaultCashierFloatsTable';
-import VaultCashierFloatsMobileCards from './cards/VaultCashierFloatsMobileCards';
-import VaultFloatTransactionsTable from './tables/VaultFloatTransactionsTable';
-import VaultFloatTransactionsMobileCards from './cards/VaultFloatTransactionsMobileCards';
-import { Plus, Minus, Users, RefreshCw, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
+import VaultFloatTransactionsSkeleton from '@/components/ui/skeletons/VaultFloatTransactionsSkeleton';
 import {
-  DEFAULT_CASHIER_FLOATS,
-  DEFAULT_VAULT_BALANCE,
+    DEFAULT_CASHIER_FLOATS,
+    DEFAULT_VAULT_BALANCE,
 } from '@/components/VAULT/overview/data/defaults';
 import {
-  fetchFloatTransactionsData,
-  handleApproveFloatTransaction,
-  handleRejectFloatTransaction,
+    fetchFloatTransactionsData,
+    handleApproveFloatTransaction,
+    handleRejectFloatTransaction,
 } from '@/lib/helpers/vaultHelpers';
-import VaultFloatTransactionsSkeleton from '@/components/ui/skeletons/VaultFloatTransactionsSkeleton';
-import PaginationControls from '@/components/shared/ui/PaginationControls';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useUserStore } from '@/lib/store/userStore';
+import { cn } from '@/lib/utils';
+import type { CashierFloat } from '@/shared/types/vault';
+import { AlertTriangle, RefreshCw, Users } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import VaultCashierFloatsMobileCards from './cards/VaultCashierFloatsMobileCards';
+import VaultFloatTransactionsMobileCards from './cards/VaultFloatTransactionsMobileCards';
+import type { CashierFloatSortOption } from './tables/VaultCashierFloatsTable';
+import VaultCashierFloatsTable from './tables/VaultCashierFloatsTable';
+import type { FloatTransactionSortOption } from './tables/VaultFloatTransactionsTable';
+import VaultFloatTransactionsTable from './tables/VaultFloatTransactionsTable';
 
 export default function VaultFloatTransactionsPageContent() {
   // ============================================================================
@@ -217,19 +217,7 @@ export default function VaultFloatTransactionsPageContent() {
     toast.success('Data refreshed');
   };
 
-  /**
-   * Handle issue float button click
-   */
-  const handleIssueFloatClick = () => {
-    toast.info('Issue Float modal will be implemented');
-  };
 
-  /**
-   * Handle receive float button click
-   */
-  const handleReceiveFloatClick = () => {
-    toast.info('Receive Float modal will be implemented');
-  };
 
   /**
    * Handle approve transaction action
@@ -408,25 +396,7 @@ export default function VaultFloatTransactionsPageContent() {
           </Card>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-4 sm:flex-row">
-          <Button
-            onClick={handleIssueFloatClick}
-            className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
-            size="lg"
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Issue Float
-          </Button>
-          <Button
-            onClick={handleReceiveFloatClick}
-            className="bg-button text-white hover:bg-button/90"
-            size="lg"
-          >
-            <Minus className="mr-2 h-5 w-5" />
-            Receive Float
-          </Button>
-        </div>
+
 
         {/* Current Cashier Floats: Responsive Views */}
         <div className="space-y-4">

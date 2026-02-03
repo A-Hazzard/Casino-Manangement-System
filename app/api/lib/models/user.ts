@@ -232,6 +232,7 @@ const UserSchema = new Schema(
     },
     profilePicture: { type: String, default: null }, // default null for missing entries
     password: { type: String, required: true },
+    tempPassword: { type: String, default: null }, // Plain text temporary password for new cashiers
     passwordUpdatedAt: { type: Date, default: null },
     sessionVersion: { type: Number, default: 1 },
     loginCount: { type: Number, default: 0 },

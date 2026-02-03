@@ -12,9 +12,9 @@
  */
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function CashierPage() {
   // ============================================================================
@@ -26,8 +26,8 @@ export default function CashierPage() {
   // Effects
   // ============================================================================
   useEffect(() => {
-    // Redirect to first available cashier page
-    router.replace('/vault/cashier/payouts');
+    // Redirect to first available cashier page (dashboard/shifts)
+    router.replace('/vault/cashier/shifts');
   }, [router]);
 
   // ============================================================================

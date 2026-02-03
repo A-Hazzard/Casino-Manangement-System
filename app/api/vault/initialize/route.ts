@@ -9,14 +9,15 @@
  * @module app/api/vault/initialize/route
  */
 
-import VaultShiftModel from '@/app/api/lib/models/vaultShift';
-import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import VaultShiftModel from '@/app/api/lib/models/vaultShift';
+import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { validateDenominations } from '@/lib/helpers/vault/calculations';
 import type {
-  InitializeVaultRequest,
-  InitializeVaultResponse,
+    InitializeVaultRequest,
+    InitializeVaultResponse,
 } from '@/shared/types/vault';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,7 +38,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = userPayload.userId;
+    const userId = userPayload._id as string;
+    const username = userPayload.username as string;
     const userRoles = (userPayload?.roles as string[]) || [];
 
     // Check if user has vault-manager role
@@ -125,6 +127,7 @@ export async function POST(request: NextRequest) {
       openedAt: now,
       openingBalance,
       openingDenominations: denominations,
+      currentDenominations: denominations,
       reconciliations: [],
       canClose: true, // No cashiers yet, so can close
       createdAt: now,
@@ -151,7 +154,22 @@ export async function POST(request: NextRequest) {
       createdAt: now,
     });
 
-    // STEP 8: Return success response
+    // STEP 8: Audit Activity
+    await logActivity({
+      userId,
+      username,
+      action: 'create',
+      details: `Initialized vault for location ${locationId} with balance $${openingBalance}`,
+      metadata: {
+        resource: 'location',
+        resourceId: locationId,
+        resourceName: 'Vault',
+        vaultShiftId,
+        transactionId,
+      },
+    });
+
+    // STEP 9: Return success response
     const response: InitializeVaultResponse = {
       success: true,
       vaultShift: vaultShift.toObject(),

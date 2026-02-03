@@ -21,11 +21,11 @@ Evolution One CMS is a comprehensive casino management system built with Next.js
 
 ### Setup and Execution
 
-1.  **Install Dependencies:** Use `pnpm install` to ensure consistent package management and dependency resolution.
-2.  **Run Development Server:** `pnpm run dev`
-3.  **Build for Production:** `pnpm run build`
-4.  **Linting:** `pnpm run lint`
-5.  **Type Checking:** `pnpm run type-check`
+1.  **Install Dependencies:** Use `bun install` to ensure consistent package management and dependency resolution.
+2.  **Run Development Server:** `bun run dev`
+3.  **Build for Production:** `bun run build`
+4.  **Linting:** `bun run lint`
+5.  **Type Checking:** `bun run type-check`
 
 ### Key Scripts
 
@@ -149,7 +149,7 @@ When assisting with this project, adhere to the following principles:
 - **Line Limits:** Route files ≤500 lines, helpers ≤600 lines
 - **Imports:** Grouped and ordered (helpers, types, utilities, framework)
 - **Documentation:** File-level JSDoc, function annotations, module tags
-- **Build Process:** `pnpm` package management, ESLint compliance required
+- **Build Process:** `bun` package management, ESLint compliance required
   }
 
 ````

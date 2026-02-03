@@ -7,13 +7,13 @@
  *
  * @module app/api/vault/transfers/route */
 
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { InterLocationTransferModel } from '@/app/api/lib/models/interLocationTransfer';
 import type { CreateInterLocationTransferRequest } from '@/shared/types/vault';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 
 /**
  * POST /api/vault/transfers
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    const vaultManagerId = userPayload.userId;
+    const vaultManagerId = userPayload._id as string;
     const userRoles = (userPayload?.roles as string[]) || [];
     const hasVMAccess = userRoles.some(role =>
       ['developer', 'admin', 'manager'].includes(role.toLowerCase())

@@ -9,19 +9,19 @@
 
 import type { NotificationItem } from '@/components/shared/ui/NotificationBell';
 import {
-  DEFAULT_CASHIER_FLOATS,
-  DEFAULT_VAULT_BALANCE,
+    DEFAULT_CASHIER_FLOATS,
+    DEFAULT_VAULT_BALANCE,
 } from '@/components/VAULT/overview/data/defaults';
 import type {
-  CashDesk,
-  CashierFloat,
-  CashierShift,
-  Denomination,
-  FloatRequest,
-  UnbalancedShiftInfo,
-  VaultBalance,
-  VaultMetrics,
-  VaultTransaction,
+    CashDesk,
+    CashierFloat,
+    CashierShift,
+    Denomination,
+    FloatRequest,
+    UnbalancedShiftInfo,
+    VaultBalance,
+    VaultMetrics,
+    VaultTransaction,
 } from '@/shared/types/vault';
 
 // ============================================================================
@@ -59,6 +59,7 @@ export async function fetchVaultOverviewData(
       metrics: VaultMetrics;
       transactions: VaultTransaction[];
       pendingShifts: UnbalancedShiftInfo[];
+      floatRequests: FloatRequest[];
       cashDesks: CashDesk[];
       notifications: NotificationItem[];
     } = {
@@ -66,6 +67,7 @@ export async function fetchVaultOverviewData(
       metrics: {} as VaultMetrics,
       transactions: [],
       pendingShifts: [],
+      floatRequests: [],
       cashDesks: [],
       notifications: [],
     };
@@ -76,6 +78,8 @@ export async function fetchVaultOverviewData(
       if (data.success) {
         result.vaultBalance = {
           ...data.data,
+          canClose: data.data.canClose ?? false,
+          blockReason: data.data.blockReason,
           managerOnDuty: username || 'Loading...',
           lastAudit: data.data.lastReconciliation
             ? new Date(data.data.lastReconciliation).toLocaleString()
@@ -110,7 +114,7 @@ export async function fetchVaultOverviewData(
           (shift: CashierShift) => ({
             shiftId: shift._id,
             cashierId: shift.cashierId,
-            cashierName: `Cashier ${shift.cashierId.substring(0, 4)}`,
+            cashierName: shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId.substring(0, 4)}`,
             expectedBalance: shift.expectedClosingBalance || 0,
             enteredBalance: shift.cashierEnteredBalance || 0,
             discrepancy: shift.discrepancy || 0,
@@ -128,6 +132,7 @@ export async function fetchVaultOverviewData(
             message: `Shift ${shift.shiftId} has a discrepancy of $${shift.discrepancy}`,
             timestamp: shift.closedAt,
             urgent: true,
+            status: 'unread',
           });
         });
       }
@@ -141,10 +146,11 @@ export async function fetchVaultOverviewData(
           (shift: CashierShift) => ({
             _id: shift._id,
             locationId: shift.locationId,
-            name: `Cashier ${shift.cashierId.substring(0, 4)}`,
-            balance: shift.openingBalance,
-            lastAudit: new Date(shift.openedAt).toLocaleTimeString(),
-            managerOnDuty: 'N/A',
+            name: shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId.substring(0, 4)}`,
+            cashierName: shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId.substring(0, 4)}`,
+            balance: shift.currentBalance ?? shift.openingBalance,
+            denominations: shift.lastSyncedDenominations ?? shift.openingDenominations, // Pass sync'd denominations for active shifts
+            lastAudit: new Date(shift.openedAt).toISOString(),
             status: 'active',
           })
         );
@@ -156,14 +162,16 @@ export async function fetchVaultOverviewData(
     if (pendingFloatsRes.ok) {
       const data = await pendingFloatsRes.json();
       if (data.success && Array.isArray(data.requests)) {
+        result.floatRequests = data.requests;
         data.requests.forEach((req: FloatRequest) => {
           newNotifications.push({
-            id: `float-${req._id}`,
+            id: req._id,
             type: 'float_request',
-            title: 'Float Request Pending',
-            message: `Float ${req.type} request of $${req.requestedAmount}`,
+            title: 'New Float Request',
+            message: `Cashier ${req.cashierId.substring(0, 4)} requested $${req.requestedAmount}`,
             timestamp: new Date(req.requestedAt),
             urgent: false,
+            status: 'unread',
           });
         });
       }
@@ -174,6 +182,95 @@ export async function fetchVaultOverviewData(
   } catch (error) {
     console.error('Failed to fetch vault overview data', error);
     throw error;
+  }
+}
+
+/**
+ * Initialize vault for a location (Start Shift)
+ */
+export async function handleInitializeVault(data: {
+  locationId: string;
+  openingBalance: number;
+  denominations: Denomination[];
+  notes?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch('/api/vault/initialize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return {
+      success: result.success,
+      error: result.error || 'Failed to initialize vault',
+    };
+  } catch (error) {
+    console.error('Error initializing vault:', error);
+    return { success: false, error: 'An error occurred' };
+  }
+}
+
+/**
+ * Approve a float request
+ */
+export async function handleFloatAction(
+  requestId: string,
+  status: 'approved' | 'denied' | 'edited',
+  data?: {
+    approvedAmount?: number;
+    approvedDenominations?: Denomination[];
+    vmNotes?: string;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch('/api/vault/float-request/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requestId,
+        status,
+        ...data,
+      }),
+    });
+
+    const result = await response.json();
+    return {
+      success: result.success,
+      error: result.error || 'Failed to process float request',
+    };
+  } catch (error) {
+    console.error(`Error processing float ${status}:`, error);
+    return { success: false, error: 'An error occurred' };
+  }
+}
+
+/**
+ * Direct open cashier shift (Skip request workflow)
+ */
+export async function handleDirectOpenShift(data: {
+  locationId: string;
+  cashierId: string;
+  amount: number;
+  denominations: Denomination[];
+  notes?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch('/api/vault/cashier-shift/direct-open', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return {
+      success: result.success,
+      error: result.error || 'Failed to open cashier shift',
+    };
+  } catch (error) {
+    console.error('Error opening cashier shift:', error);
+    return { success: false, error: 'An error occurred' };
   }
 }
 
@@ -497,7 +594,15 @@ export async function fetchEndOfDayReportData(locationId: string) {
       ? await metricsResponse.json()
       : null;
 
-    // Process denomination breakdown
+    // Map machineMoneyIn from balance provider if available
+    const slotCounts = balanceData?.success && balanceData.data?.machineMoneyIn !== undefined
+      ? [{ 
+          machineId: 'All Floor Machines', 
+          location: 'Main Floor', 
+          closingCount: balanceData.data.machineMoneyIn 
+        }]
+      : [];
+
     const denominationBreakdown: Record<string, number> =
       endOfDayData?.success && endOfDayData.data?.denominationBreakdown
         ? endOfDayData.data.denominationBreakdown
@@ -509,7 +614,7 @@ export async function fetchEndOfDayReportData(locationId: string) {
         ? balanceData.data
         : DEFAULT_VAULT_BALANCE,
       cashierFloats: cashierData?.success ? cashierData.shifts || [] : [],
-      slotCounts: [], // Placeholder for meters API
+      slotCounts: slotCounts,
       floatRequests: floatRequestsData?.success
         ? floatRequestsData.data || []
         : [],
@@ -561,7 +666,7 @@ export async function fetchCashOnPremisesData(locationId: string) {
     if (balanceResponse.ok) {
       const data = await balanceResponse.json();
       if (data.success) {
-        result.vaultBalance = data.balance || DEFAULT_VAULT_BALANCE;
+        result.vaultBalance = data.data || DEFAULT_VAULT_BALANCE;
       }
     }
 
@@ -639,7 +744,7 @@ export async function fetchFloatTransactionsData(
 
     // Process balance data
     if (balanceData?.success) {
-      result.vaultBalance = balanceData.balance || DEFAULT_VAULT_BALANCE;
+      result.vaultBalance = balanceData.data || DEFAULT_VAULT_BALANCE;
     }
 
     // Process transactions data
@@ -809,25 +914,38 @@ export async function handleRemoveCash(
 /**
  * Handle record expense operation
  */
+/**
+ * Handle record expense operation
+ */
 export async function handleRecordExpense(
   data: {
     category: string;
     amount: number;
     description: string;
     date: Date;
+    denominations?: Denomination[];
+    file?: File;
   },
   _locationId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const formData = new FormData();
+    formData.append('category', data.category);
+    formData.append('amount', data.amount.toString());
+    formData.append('description', data.description);
+    formData.append('date', data.date.toISOString());
+    
+    if (data.denominations && data.denominations.length > 0) {
+      formData.append('denominations', JSON.stringify(data.denominations));
+    }
+
+    if (data.file) {
+      formData.append('file', data.file);
+    }
+
     const response = await fetch('/api/vault/expense', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        category: data.category,
-        amount: data.amount,
-        description: data.description,
-        date: data.date,
-      }),
+      body: formData,
     });
 
     const resData = await response.json();
@@ -1150,6 +1268,7 @@ export async function handleCreateCashier(cashierData: {
           username: username,
           emailAddress: cashierData.email,
           password: tempPassword,
+          tempPassword: tempPassword, // Store plain text temp password
           roles: ['cashier'],
           profile: {
             firstName,
@@ -1163,35 +1282,6 @@ export async function handleCreateCashier(cashierData: {
 
       data = await response.json();
 
-    // If user creation succeeded, send welcome email via API
-    if (data.success && tempPassword) {
-      try {
-        const emailResponse = await fetch('/api/email/send-welcome', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            firstName,
-            lastName,
-            username,
-            email: cashierData.email,
-            tempPassword,
-            loginUrl:
-              process.env.NEXT_PUBLIC_LOGIN_URL ||
-              'https://your-domain.com/login',
-          }),
-        });
-
-        if (!emailResponse.ok) {
-          console.error(
-            'Failed to send cashier welcome email:',
-            await emailResponse.text()
-          );
-        }
-      } catch (emailError) {
-        console.error('Failed to send cashier welcome email:', emailError);
-        // Don't fail the operation, just log the error
-      }
-    }
   } catch (error) {
     console.error('Error creating cashier:', error);
     return {
@@ -1354,7 +1444,7 @@ export function getTransactionTypeBadge(type: string) {
     };
   }
   return {
-    label: type,
+    label: type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
     className: '',
     icon: null,
   };

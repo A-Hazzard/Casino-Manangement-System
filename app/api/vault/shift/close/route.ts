@@ -9,14 +9,14 @@
  * @module app/api/vault/shift/close/route
  */
 
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
 import {
-  canCloseVaultShift,
-  validateDenominations,
+    canCloseVaultShift,
+    validateDenominations,
 } from '@/lib/helpers/vault/calculations';
 import type { CloseVaultShiftRequest } from '@/shared/types/vault';
 import { nanoid } from 'nanoid';
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = userPayload.userId;
+    const userId = userPayload._id as string;
     const userRoles = (userPayload?.roles as string[]) || [];
 
     const hasVaultAccess = userRoles.some((role: string) =>
@@ -135,7 +135,12 @@ export async function POST(request: NextRequest) {
     vaultShift.status = 'closed';
     vaultShift.closedAt = now;
     vaultShift.closingBalance = closingBalance;
-    vaultShift.closingDenominations = denominations;
+    vaultShift.closingDenominations = denominations.map((d: any) => ({
+      denomination: typeof d.denomination === 'string' 
+        ? parseInt(d.denomination.replace('$', '')) 
+        : d.denomination,
+      quantity: d.count ?? d.quantity ?? 0
+    }));
     vaultShift.updatedAt = now;
     await vaultShift.save();
 
@@ -149,7 +154,12 @@ export async function POST(request: NextRequest) {
       from: { type: 'vault' },
       to: { type: 'external' },
       amount: closingBalance,
-      denominations,
+      denominations: denominations.map((d: any) => ({
+        denomination: typeof d.denomination === 'string' 
+          ? parseInt(d.denomination.replace('$', '')) 
+          : d.denomination,
+        quantity: d.count ?? d.quantity ?? 0
+      })),
       vaultBalanceBefore: closingBalance,
       vaultBalanceAfter: 0,
       vaultShiftId,

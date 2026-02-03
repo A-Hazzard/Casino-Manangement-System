@@ -14,19 +14,7 @@
 
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 import PageErrorBoundary from '@/components/shared/ui/errors/PageErrorBoundary';
-
-function VaultExpensesPageContent() {
-  return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900">Expenses</h1>
-        <p className="mt-2 text-gray-600">
-          This page will be implemented in a future update.
-        </p>
-      </div>
-    </div>
-  );
-}
+import VaultExpensesPageContent from '@/components/VAULT/expenses/VaultExpensesPageContent';
 
 export default function VaultExpensesPage() {
   return (
@@ -37,3 +25,4 @@ export default function VaultExpensesPage() {
     </ProtectedRoute>
   );
 }
+

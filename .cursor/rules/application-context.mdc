@@ -1,0 +1,76 @@
+---
+description: Comprehensive application context, business logic, and architectural guidelines for the Evolution One CMS.
+globs: **/*
+---
+
+# Evolution One Casino Management System - Application Context
+
+## 📚 Essential Documentation References
+
+- **Collection Report System:** [Backend](../Documentation/backend/collection-report.md) | [Frontend](../Documentation/frontend/collection-report.md)
+- **Financial Metrics:** [Financial Metrics Guide](../Documentation/financial-metrics-guide.md)
+- **Database:** [Database Models & Relationships](../Documentation/database-models.md)
+- **Type System:** [TypeScript Type Safety Rules](../Documentation/typescript-type-safety-rules.md)
+- **Engineering Guidelines:** [Engineering Guidelines](../Documentation/ENGINEERING_GUIDELINES.md)
+
+## 🏢 Core Architecture
+
+### Technology Stack
+- **Frontend:** Next.js 16.0.7, TypeScript, Tailwind CSS, Zustand, Radix UI.
+- **Backend:** Next.js API Routes, MongoDB with Mongoose ODM.
+- **Infrastructure:** `bun` for package management, JWT (jose) for auth.
+
+### Project Structure (Key Directories)
+- `app/api/lib/models`: Mongoose schemas.
+- `app/api/lib/helpers`: Server-side business logic.
+- `shared/types`: Centralized TypeScript definitions (Single Source of Truth).
+- `components/shared/ui/skeletons`: Mandatory content-specific loading states.
+
+## 💰 Business Logic & Financials
+
+### Financial Flow
+`Member Session` → `Machine Events` → `Meter Readings` → `Collections` → `Collection Reports`
+
+### Metrics Dashboard
+- **Drop (Money In):** Physical cash inserted (`movement.drop`).
+- **Money Out:** Manual payouts (`movement.totalCancelledCredits`).
+- **Gross Revenue:** `Drop - Money Out`.
+- **Movement Delta Method:** **MANDATORY**. Sum movement fields from meters; never use cumulative approach alone for periodic analysis.
+
+### Gaming Day Offset
+- **Business Rule:** Gaming day starts at **8 AM** Trinidad Time (UTC-4).
+- **Implementation:** All meter-based queries must apply the offset. Calendar events (logs) use UTC/Local as is.
+
+## 🛠️ Engineering Guidelines (CRITICAL)
+
+### 1. Loading States (Skeleton Loaders)
+- **MANDATORY:** Every page/component with async data must use a specific skeleton loader.
+- **NO GENERIC SPINNERS:** Skeletons must exactly match the layout of the final content.
+- **Mobile-Specific:** Skeletons must be responsive and match mobile views.
+
+### 2. TypeScript Discipline
+- **No `any` allowed.** Use proper types from `shared/types`.
+- **Single Source of Truth:** Prefer types in `shared/shared/` to eliminate frontend/backend duplication.
+
+### 3. Collection Report Integrity
+- **SAS Time Calculation:** Backend is solely responsible for metrics calculation.
+- **isEditing Flag:** Protect against unsaved machine edits during report creation.
+- **Race Condition Prevention:** 1-minute buffer to prevent simultaneous collection conflicts.
+
+### 4. Security & Access
+- **Licensee Filtering:** All queries must filter by `licencee` ID.
+- **Unauthorized Handling:** Use `UnauthorizedError` component for 403 responses.
+
+## 🚀 Key Modules Status (January 2026)
+
+### Vault Management System (VMS)
+- **Cashier Dashboard:** Simplified "cash register" model for payouts (no bill breakdown).
+- **Vault Management:** Strict bill-by-bill tracking for liquidity movements (floats, transfers).
+- **Shift System:** Mandatory "currentBalance" tracking for active cashiers.
+
+### SMIB Management (Slot Machine Interface Board)
+- **Real-time Control:** Restart, meter requests, and firmware (OTA) updates over MQTT.
+- **GridFS Storage:** Firmware binaries stored in MongoDB.
+
+### Gaming Day & Date Filters
+- Standardized across all endpoints using Trinidad Local Time to UTC conversion.

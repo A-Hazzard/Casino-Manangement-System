@@ -4,24 +4,24 @@ This document provides essential information for AI agents working on the Evolut
 
 ## 1. Build, Lint, and Test Commands
 
-Use `pnpm` for all package management tasks.
+Use `bun` for all package management tasks.
 
 | Action             | Command                         | Notes                              |
 | :----------------- | :------------------------------ | :--------------------------------- |
-| **Install**        | `pnpm install`                  |                                    |
-| **Build**          | `pnpm run build`                | Next.js production build           |
-| **Dev Server**     | `pnpm run dev`                  | Starts development server          |
-| **Lint**           | `pnpm run lint`                 | Runs ESLint                        |
-| **Lint Fix**       | `pnpm run lint:fix`             | Auto-fixes ESLint issues           |
-| **Type Check**     | `pnpm run type-check`           | Runs TypeScript compiler (no emit) |
-| **Format**         | `pnpm run format`               | Runs Prettier                      |
-| **Test (All)**     | `pnpm run test`                 | Runs Jest tests                    |
-| **Test (Watch)**   | `pnpm run test:watch`           | Watch mode                         |
+| **Install**        | `bun install`                  |                                    |
+| **Build**          | `bun run build`                | Next.js production build           |
+| **Dev Server**     | `bun run dev`                  | Starts development server          |
+| **Lint**           | `bun run lint`                 | Runs ESLint                        |
+| **Lint Fix**       | `bun run lint:fix`             | Auto-fixes ESLint issues           |
+| **Type Check**     | `bun run type-check`           | Runs TypeScript compiler (no emit) |
+| **Format**         | `bun run format`               | Runs Prettier                      |
+| **Test (All)**     | `bun run test`                 | Runs Jest tests                    |
+| **Test (Watch)**   | `bun run test:watch`           | Watch mode                         |
 | **Test (Single)**  | `npx jest path/to/file.test.ts` | Run specific test file             |
-| **Test (Pattern)** | `pnpm run test -t 'pattern'`    | Run tests matching name pattern    |
+| **Test (Pattern)** | `bun run test -t 'pattern'`    | Run tests matching name pattern    |
 
 **Validation Workflow:**
-After changes, always run: `pnpm run type-check && pnpm run lint`
+After changes, always run: `bun run type-check && bun run lint`
 
 ## 2. Code Style & Architecture
 

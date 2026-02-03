@@ -15,21 +15,20 @@
  * - Logs authentication activities for security auditing.
  */
 
+import UserModel from '@/app/api/lib/models/user';
+import { comparePassword } from '@/app/api/lib/utils/validation';
 import {
-  generateAccessToken,
-  generateRefreshToken,
-  getCurrentDbConnectionString,
+    generateAccessToken,
+    generateRefreshToken,
+    getCurrentDbConnectionString,
 } from '@/lib/utils/auth';
 import type { AuthResult } from '@/shared/types';
 import { UserAuthPayload } from '@/shared/types';
 import type { LeanUserDocument } from '@/shared/types/auth';
-import { sendEmail } from '@/app/api/lib/utils/email';
-import UserModel from '@/app/api/lib/models/user';
-import { comparePassword } from '@/app/api/lib/utils/validation';
 import { logActivity } from '../activityLogger';
 import {
-  getInvalidProfileFields,
-  hasInvalidProfileFields,
+    getInvalidProfileFields,
+    hasInvalidProfileFields,
 } from '../profileValidation';
 import { getUserByEmail, getUserByUsername } from '../users/users';
 
@@ -521,39 +520,16 @@ export async function sendPasswordResetEmail(
       };
     }
 
-    // Generate reset token (in a real app, you'd store this in the database with expiration)
-    const resetToken =
-      Math.random().toString(36).substring(2, 15) +
-      Math.random().toString(36).substring(2, 15);
-
-    // Store reset token in user record (you'd want to add this field to your user model)
-    // await typedUser.updateOne({ resetToken, resetTokenExpires: new Date(Date.now() + 60 * 60 * 1000) });
-
-    const resetUrl = `${
-      process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    }/reset-password?token=${resetToken}`;
-
-    await sendEmail(
-      email,
-      'Password Reset Request',
-      `Password Reset Request\n\nYou requested a password reset for your account.\nClick the link below to reset your password:\n${resetUrl}\n\nThis link will expire in 1 hour.\nIf you didn't request this reset, please ignore this email.`,
-      `
-        <h2>Password Reset Request</h2>
-        <p>You requested a password reset for your account.</p>
-        <p>Click the link below to reset your password:</p>
-        <a href="${resetUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a>
-        <p>This link will expire in 1 hour.</p>
-        <p>If you didn't request this reset, please ignore this email.</p>
-      `
-    );
+    // Email service has been removed from the application
+    console.log(`[AUTH] Password reset requested for ${email}, but email services are disabled.`);
 
     return {
       success: true,
-      message: 'Password reset email sent successfully.',
+      message: 'Password reset email functionality is currently disabled.',
     };
   } catch (error) {
     console.error('Password reset email error:', error);
-    return { success: false, message: 'Failed to send password reset email.' };
+    return { success: false, message: 'Failed to process password reset request.' };
   }
 }
 

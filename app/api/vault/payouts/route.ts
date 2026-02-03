@@ -92,11 +92,39 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const skip = (page - 1) * limit;
     
-    const payouts = await PayoutModel.find(query)
-      .sort({ timestamp: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    const payouts = await PayoutModel.aggregate([
+      { $match: query },
+      { $sort: { timestamp: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'cashierId',
+          foreignField: '_id',
+          as: 'cashierDetails'
+        }
+      },
+      {
+        $addFields: {
+          cashierName: {
+            $let: {
+              vars: {
+                user: { $arrayElemAt: ['$cashierDetails', 0] }
+              },
+              in: {
+                $cond: {
+                  if: { $and: [{ $gt: ['$$user.profile.firstName', null] }, { $gt: ['$$user.profile.lastName', null] }] },
+                  then: { $concat: ['$$user.profile.firstName', ' ', '$$user.profile.lastName'] },
+                  else: '$cashierId'
+                }
+              }
+            }
+          }
+        }
+      },
+      { $project: { cashierDetails: 0 } }
+    ]);
 
     const total = await PayoutModel.countDocuments(query);
 

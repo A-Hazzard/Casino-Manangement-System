@@ -42,6 +42,9 @@ const VaultShiftSchema = new Schema(
     openingBalance: { type: Number, required: true, min: 0 },
     openingDenominations: [DenominationSchema],
 
+    // Current running inventory
+    currentDenominations: [DenominationSchema],
+
     // Closing balance
     closingBalance: { type: Number, min: 0 },
     closingDenominations: [DenominationSchema],

@@ -14,8 +14,8 @@ import { useUserStore } from '@/lib/store/userStore';
 import type { ProfileValidationModalData } from '@/lib/types/auth';
 import { getDefaultRedirectPathFromRoles } from '@/lib/utils/roleBasedRedirect';
 import type {
-  InvalidProfileFields,
-  ProfileValidationReasons,
+    InvalidProfileFields,
+    ProfileValidationReasons,
 } from '@/shared/types/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -213,7 +213,12 @@ export function useLoginPageData() {
           window.location.href = '/';
           return { success: true };
         }
-        return { success: false, message: result.message };
+        return {
+          success: false,
+          message: result.message || 'Validation failed',
+          invalidFields: result.invalidFields || result.invalidProfileFields,
+          fieldErrors: result.errors || result.fieldErrors,
+        };
       } finally {
         setProfileUpdating(false);
       }

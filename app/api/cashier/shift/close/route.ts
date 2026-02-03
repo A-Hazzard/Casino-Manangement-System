@@ -13,18 +13,19 @@
  * @module app/api/cashier/shift/close/route
  */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
 import {
-  calculateExpectedBalance,
-  validateDenominations,
+    calculateExpectedBalance,
+    validateDenominations,
 } from '@/lib/helpers/vault/calculations';
 import type {
-  CloseCashierShiftRequest,
-  CloseCashierShiftResponse,
+    CloseCashierShiftRequest,
+    CloseCashierShiftResponse,
 } from '@/shared/types/vault';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
@@ -44,8 +45,8 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-
-    const userId = userPayload.userId;
+    const userId = userPayload._id as string;
+    const username = userPayload.username as string;
     const userRoles = (userPayload?.roles as string[]) || [];
 
     const hasCashierAccess = userRoles.some((role: string) =>
@@ -189,6 +190,22 @@ export async function POST(request: NextRequest) {
           'Shift closed successfully. Your count matched the expected balance.',
       };
 
+      // Audit Activity (Success)
+      await logActivity({
+        userId,
+        username,
+        action: 'update',
+        details: `Closed shift (Balanced). Closing Balance: $${physicalCount}`,
+        metadata: {
+          resource: 'cashier_shift',
+          resourceId: shiftId,
+          resourceName: 'Cashier Shift',
+          transactionId,
+          vaultShiftId: cashierShift.vaultShiftId,
+          status: 'closed',
+        },
+      });
+
       return NextResponse.json(response, { status: 200 });
     } else {
       // ===== MISMATCH: Pending review (C-4 CRITICAL) =====
@@ -210,6 +227,22 @@ export async function POST(request: NextRequest) {
         message:
           'Your shift is under review. There is a discrepancy between your count and the system records. Please contact your manager.',
       };
+
+      // Audit Activity (Discrepancy)
+      await logActivity({
+        userId,
+        username,
+        action: 'update',
+        details: `Closed shift with discrepancy. Physical: $${physicalCount}, Expected: $${expectedBalance}, Diff: $${discrepancy}`,
+        metadata: {
+          resource: 'cashier_shift',
+          resourceId: shiftId,
+          resourceName: 'Cashier Shift',
+          vaultShiftId: cashierShift.vaultShiftId,
+          status: 'pending_review',
+          discrepancy,
+        },
+      });
 
       return NextResponse.json(response, { status: 200 });
     }

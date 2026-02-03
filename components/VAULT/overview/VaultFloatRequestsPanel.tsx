@@ -9,18 +9,18 @@
 
 'use client';
 
-import { useState } from 'react';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import type { FloatRequest, Denomination } from '@/shared/types/vault';
-import { CheckCircle, X, Edit } from 'lucide-react';
+import type { Denomination, FloatRequest } from '@/shared/types/vault';
+import { CheckCircle, Edit, Loader2, X } from 'lucide-react';
+import { useState } from 'react';
 
 type VaultFloatRequestsPanelProps = {
   floatRequests: FloatRequest[];
@@ -36,6 +36,7 @@ type VaultFloatRequestsPanelProps = {
     approvedDenominations: Denomination[],
     notes?: string
   ) => Promise<void>;
+  onConfirm: (requestId: string) => Promise<void>;
   loading?: boolean;
 };
 
@@ -44,6 +45,7 @@ export default function VaultFloatRequestsPanel({
   onApprove,
   onDeny,
   onEdit,
+  onConfirm,
   loading = false,
 }: VaultFloatRequestsPanelProps) {
   const { formatAmount } = useCurrencyFormat();
@@ -54,7 +56,9 @@ export default function VaultFloatRequestsPanel({
   );
   const [editNotes, setEditNotes] = useState<string>('');
 
-  const pendingRequests = floatRequests.filter(req => req.status === 'pending');
+  const activeRequests = floatRequests.filter(req => 
+    req.status === 'pending' || req.status === 'approved_vm'
+  );
 
   const startEdit = (request: FloatRequest) => {
     setEditingId(request._id);
@@ -80,7 +84,7 @@ export default function VaultFloatRequestsPanel({
     }
   };
 
-  if (pendingRequests.length === 0) {
+  if (activeRequests.length === 0) {
     return (
       <Card className="rounded-lg bg-container shadow-md">
         <CardHeader>
@@ -101,11 +105,11 @@ export default function VaultFloatRequestsPanel({
     <Card className="rounded-lg bg-container shadow-md">
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-gray-900">
-          Float Requests ({pendingRequests.length})
+          Active Requests ({activeRequests.length})
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {pendingRequests.map(request => (
+        {activeRequests.map(request => (
           <div key={request._id} className="space-y-3 rounded-lg border p-4">
             <div className="flex items-start justify-between">
               <div>
@@ -120,7 +124,13 @@ export default function VaultFloatRequestsPanel({
                   {new Date(request.requestedAt).toLocaleString()}
                 </p>
               </div>
-              <Badge className="bg-orangeHighlight text-white">Pending</Badge>
+              <Badge className={
+                request.status === 'pending' 
+                  ? "bg-orangeHighlight text-white" 
+                  : "bg-green-600 text-white"
+              }>
+                {request.status === 'pending' ? 'Pending Approval' : 'Ready for Handoff'}
+              </Badge>
             </div>
 
             {request.requestNotes && (
@@ -177,33 +187,59 @@ export default function VaultFloatRequestsPanel({
               </div>
             ) : (
               <div className="flex gap-2 border-t pt-3">
-                <Button
-                  size="sm"
-                  onClick={() => onApprove(request._id)}
-                  disabled={loading}
-                  className="bg-button text-white hover:bg-button/90"
-                >
-                  <CheckCircle className="mr-1 h-4 w-4" />
-                  Approve
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => startEdit(request)}
-                  disabled={loading}
-                  variant="outline"
-                >
-                  <Edit className="mr-1 h-4 w-4" />
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => onDeny(request._id)}
-                  disabled={loading}
-                  variant="destructive"
-                >
-                  <X className="mr-1 h-4 w-4" />
-                  Deny
-                </Button>
+                {request.status === 'pending' ? (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() => onApprove(request._id)}
+                      disabled={loading}
+                      className="bg-button text-white hover:bg-button/90"
+                    >
+                      <CheckCircle className="mr-1 h-4 w-4" />
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => startEdit(request)}
+                      disabled={loading}
+                      variant="outline"
+                    >
+                      <Edit className="mr-1 h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const reason = prompt('Rejection Reason (Optional):', 'Insufficient vault balance');
+                        if (reason !== null) {
+                          onDeny(request._id, reason);
+                        }
+                      }}
+                      disabled={loading}
+                      variant="destructive"
+                    >
+                      <X className="mr-1 h-4 w-4" />
+                      Deny
+                    </Button>
+                  </>
+                ) : (
+                  request.type === 'decrease' ? (
+                    <Button
+                      size="sm"
+                      onClick={() => onConfirm(request._id)}
+                      disabled={loading}
+                      className="bg-green-600 text-white hover:bg-green-700 w-full py-4 text-sm font-bold"
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Confirm Receipt & Finalize Return
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 italic py-2">
+                       <Loader2 className="h-4 w-4 animate-spin" />
+                       Waiting for Cashier to confirm receipt...
+                    </div>
+                  )
+                )}
               </div>
             )}
           </div>

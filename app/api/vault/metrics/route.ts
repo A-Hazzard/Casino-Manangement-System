@@ -8,11 +8,16 @@
  *
  * @module app/api/vault/metrics/route */
 
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import CashierShiftModel from '@/app/api/lib/models/cashierShift';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 
 /**
  * GET /api/vault/metrics
@@ -104,6 +109,41 @@ export async function GET(request: NextRequest) {
 
     const netCashFlow = totalCashIn - totalCashOut;
 
+    // A. Cashier Floats sum
+    const activeCashiersData = await CashierShiftModel.find({
+        locationId,
+        status: { $in: ['active', 'pending_review'] }
+    }, { currentBalance: 1 }).lean();
+    const totalCashierFloats = activeCashiersData.reduce((sum: number, s: any) => sum + (s.currentBalance || 0), 0);
+
+    // B. Machine Money In (Drops) - Use Today's Gaming Day
+    const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
+    const gameDayOffset = (locationInfo as any)?.gameDayOffset ?? 8;
+    const gamingDayRange = getGamingDayRangeForPeriod('Today', gameDayOffset);
+
+    // Get all machine IDs for this location
+    const machines = await Machine.find({ gamingLocation: locationId }, { _id: 1 }).lean();
+    const machineIds = machines.map((m: any) => String(m._id));
+
+    const machineMeters = await Meters.aggregate([
+        {
+          $match: {
+            machine: { $in: machineIds },
+            readAt: {
+              $gte: gamingDayRange.rangeStart,
+              $lte: gamingDayRange.rangeEnd,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalMoneyIn: { $sum: '$movement.drop' },
+          },
+        },
+    ]);
+    const totalMachineBalance = machineMeters.length > 0 ? machineMeters[0].totalMoneyIn : 0;
+
     // ============================================================================
     // STEP 6: Performance tracking and return response
     // ============================================================================
@@ -124,6 +164,8 @@ export async function GET(request: NextRequest) {
         totalCashOut,
         netCashFlow,
         payouts,
+        totalMachineBalance,
+        totalCashierFloats,
       },
     });
   } catch (error) {

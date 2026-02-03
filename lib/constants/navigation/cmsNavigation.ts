@@ -7,19 +7,18 @@
 import { HIGH_PRIORITY_ROLES } from '@/lib/constants/roles';
 import type { NavigationConfig, NavigationItem } from '@/lib/types/layout/navigation';
 import {
-  ArrowLeftRight,
-  BarChart3,
-  Calendar,
-  Clock,
-  DollarSign,
-  FileText,
-  MapPin,
-  MonitorSpeaker,
-  Receipt,
-  TrendingUp,
-  UserCog,
-  Users,
-  Wallet,
+    ArrowLeftRight,
+    BarChart3,
+    Clock,
+    DollarSign,
+    FileText,
+    MapPin,
+    MonitorSpeaker,
+    Receipt,
+    TrendingUp,
+    UserCog,
+    Users,
+    Wallet
 } from 'lucide-react';
 
 /**
@@ -104,16 +103,11 @@ const baseCmsNavigationItems: NavigationItem[] = [
     href: '/vault/management/reports/cash-on-premises',
     icon: FileText,
   },
-  {
-    label: 'End-of-Day Reports',
-    href: '/vault/management/reports/end-of-day',
-    icon: Calendar,
-  },
-  {
-    label: 'Expenses',
-    href: '/vault/management/expenses',
-    icon: Receipt,
-  },
+    {
+      label: 'Expenses',
+      href: '/vault/management/expenses',
+      icon: Receipt,
+    },
   {
     label: 'Administration',
     href: '/administration',

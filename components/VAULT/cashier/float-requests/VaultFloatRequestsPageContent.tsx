@@ -17,7 +17,7 @@ import { useUserStore } from '@/lib/store/userStore';
 import { CheckCircle2, Clock, Loader2, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import VaultFloatRequestsMobileCards from './cards/VaultFloatRequestsMobileCards';
+
 import type { FloatRequestSortOption } from './tables/VaultFloatRequestsTable';
 import VaultFloatRequestsTable from './tables/VaultFloatRequestsTable';
 
@@ -71,7 +71,8 @@ export default function VaultFloatRequestsPageContent() {
   const mapRequests = (data: any[]) => {
       return data.map(r => ({
           id: r._id,
-          cashier: r.cashierId || 'Unknown', // Ideally fetch name
+          cashier: r.cashierName || r.cashierId || 'Unknown',
+          cashierId: r.cashierId,
           station: 'Cash Desk',
           type: r.type, // 'increase' or 'decrease'
           amount: r.requestedAmount,
@@ -80,7 +81,7 @@ export default function VaultFloatRequestsPageContent() {
           status: r.status,
           requested: r.requestedAt || r.createdAt,
           processed: r.processedAt || r.updatedAt,
-          processedBy: r.processedBy || 'Vault Manager'
+          processedBy: r.processedByName || r.processedBy || 'Vault Manager'
       }));
   };
 
@@ -209,14 +210,7 @@ export default function VaultFloatRequestsPageContent() {
             showHistory={false}
           />
 
-          <div className="block lg:hidden">
-            <VaultFloatRequestsMobileCards
-                requests={sortedPendingRequests}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                showActions={true}
-            />
-          </div>
+
         </div>
       )}
 
@@ -235,9 +229,7 @@ export default function VaultFloatRequestsPageContent() {
           showHistory={true}
         />
 
-        <div className="block lg:hidden">
-             <VaultFloatRequestsMobileCards requests={sortedRequestHistory} />
-        </div>
+
       </div>
       </div>
     </PageLayout>

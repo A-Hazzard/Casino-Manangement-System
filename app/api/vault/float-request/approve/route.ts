@@ -10,13 +10,12 @@
  * @module app/api/vault/float-request/approve/route
  */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
-import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { validateDenominations } from '@/lib/helpers/vault/calculations';
-import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/middleware/db';
 
@@ -31,6 +30,7 @@ export async function POST(request: NextRequest) {
       );
     }
     const vmUserId = userPayload._id as string;
+    const vmUsername = userPayload.username as string;
     const userRoles = (userPayload.roles as string[]) || [];
 
     const hasVaultAccess = userRoles.some((role: string) =>
@@ -96,18 +96,44 @@ export async function POST(request: NextRequest) {
 
     // STEP 4: Handle DENY
     if (status === 'denied') {
+      const finalNotes = vmNotes || 'Insufficient vault balance';
+      floatRequest.vmNotes = finalNotes;
+      
       // If it was a shift open request, we should probably close/cancel the pending shift too
       if (floatRequest.cashierShiftId) {
-        const shift = await CashierShiftModel.findById(floatRequest.cashierShiftId);
+        const shift = await CashierShiftModel.findOne({ _id: floatRequest.cashierShiftId });
         if (shift && shift.status === 'pending_start') {
-           shift.status = 'closed'; // Or deleted? 'closed' effectively kills it.
+           shift.status = 'cancelled'; // Use cancelled for denied start requests
            shift.closedAt = now;
-           shift.notes = 'Shift denied by VM';
+           shift.notes = `Shift denied by VM: ${finalNotes}`;
            await shift.save();
         }
       }
 
-      await floatRequest.save();
+      await floatRequest.save(); // Save the denied float request
+
+      // Mark notification as actioned
+      try {
+        const { markNotificationAsActionedByEntity } = await import('@/lib/helpers/vault/notifications');
+        await markNotificationAsActionedByEntity(requestId, 'float_request');
+      } catch (notifError) {
+        console.error('Failed to update notification status during deny:', notifError);
+      }
+
+      // AUDIT DENY
+      await logActivity({
+        userId: vmUserId,
+        username: vmUsername,
+        action: 'update',
+        details: `Denied float request: ${requestId}`,
+        metadata: {
+          resource: 'vault',
+          resourceId: floatRequest.locationId,
+          resourceName: 'Float Request Denied',
+          floatRequestId: requestId,
+        },
+      });
+
       return NextResponse.json({
         success: true,
         status: 'denied',
@@ -119,6 +145,17 @@ export async function POST(request: NextRequest) {
     if (status === 'approved' || status === 'edited') {
       let finalAmount = floatRequest.requestedAmount;
       let finalDenominations = floatRequest.requestedDenominations;
+
+      // === 1. Fetch Active Vault Shift for Balance Check ===
+      const vaultShift = await VaultShiftModel.findOne({ _id: floatRequest.vaultShiftId });
+      if (!vaultShift) {
+        return NextResponse.json(
+          { success: false, error: 'Associated vault shift not found or closed' },
+          { status: 404 }
+        );
+      }
+      
+      const currentVaultBalance = vaultShift.closingBalance !== undefined ? vaultShift.closingBalance : vaultShift.openingBalance;
 
       if (status === 'edited') {
         if (approvedAmount === undefined || !approvedDenominations) {
@@ -141,83 +178,72 @@ export async function POST(request: NextRequest) {
         
         floatRequest.approvedAmount = finalAmount;
         floatRequest.approvedDenominations = finalDenominations;
+      } else {
+        // Simple approval - copy requested to approved
+        floatRequest.approvedAmount = floatRequest.requestedAmount;
+        floatRequest.approvedDenominations = floatRequest.requestedDenominations;
       }
 
-      // Handle Linked Cashier Shift
-      const cashierShift = await CashierShiftModel.findById(floatRequest.cashierShiftId);
-      if (!cashierShift) {
-        return NextResponse.json(
-            { success: false, error: 'Linked cashier shift not found' },
-            { status: 404 }
-        );
-      }
-
-      let transactionType = 'float_increase';
-
-      if (cashierShift.status === 'pending_start') {
-        // === ACTIVATE SHIFT ===
-        cashierShift.status = 'active';
-        cashierShift.openedAt = now;
-        cashierShift.openingBalance = finalAmount;
-        cashierShift.openingDenominations = finalDenominations;
-        // Reset metrics just in case
-        cashierShift.payoutsTotal = 0;
-        cashierShift.floatAdjustmentsTotal = 0;
-        
-        transactionType = 'cashier_shift_open';
-        
-        // Mark vault as having active cashiers
-        await VaultShiftModel.updateOne(
-            { _id: floatRequest.vaultShiftId },
-            { canClose: false }
-        );
-      } else if (cashierShift.status === 'active') {
-        // === MID-SHIFT ADJUSTMENT ===
-        if (floatRequest.type === 'increase') {
-            cashierShift.floatAdjustmentsTotal += finalAmount;
-        } else {
-            cashierShift.floatAdjustmentsTotal -= finalAmount;
-        }
-        // transactionType stays float_increase/decrease
-        transactionType = floatRequest.type === 'increase' ? 'float_increase' : 'float_decrease';
-      }
-
-      await cashierShift.save();
-
-      // Create Transaction
-      const transactionId = nanoid();
-      const isIncrease = floatRequest.type === 'increase';
+      // === 2. Validate Vault Balance (if money leaving vault) ===
+      const isMoneyLeavingVault = (floatRequest.type === 'increase' || !floatRequest.type); 
       
-      await VaultTransactionModel.create({
-        _id: transactionId,
-        locationId: floatRequest.locationId,
-        timestamp: now,
-        type: transactionType,
-        from: isIncrease ? { type: 'vault' } : { type: 'cashier', id: floatRequest.cashierId },
-        to: isIncrease ? { type: 'cashier', id: floatRequest.cashierId } : { type: 'vault' },
-        amount: finalAmount,
-        denominations: finalDenominations,
-        vaultShiftId: floatRequest.vaultShiftId,
-        cashierShiftId: cashierShift._id,
-        floatRequestId: floatRequest._id,
-        performedBy: vmUserId,
-        notes: vmNotes || (transactionType === 'cashier_shift_open' ? 'Shift opened via float approval' : 'Float adjustment approved'),
-        isVoid: false,
-        createdAt: now,
-      });
+      if (isMoneyLeavingVault) {
+        const { validateVaultDenominations, validateVaultBalance } = await import('@/lib/helpers/vault/validation');
+        const balanceCheck = validateVaultBalance(finalAmount, currentVaultBalance);
+        if (!balanceCheck.valid) {
+          return NextResponse.json(
+            { success: false, error: `Insufficient vault funds. Balance: $${currentVaultBalance}, Req: $${finalAmount}` },
+            { status: 400 }
+          );
+        }
 
-      floatRequest.transactionId = transactionId;
+        const vaultDenoms = (vaultShift.currentDenominations?.length > 0)
+          ? vaultShift.currentDenominations
+          : vaultShift.openingDenominations;
+
+        const denomCheck = validateVaultDenominations(finalDenominations, vaultDenoms || []);
+        if (!denomCheck.valid) {
+          return NextResponse.json(
+            { success: false, error: 'Vault does not have the specific denominations requested.', details: denomCheck.insufficientDenominations },
+            { status: 400 }
+          );
+        }
+      }
+
+      // SET INTERMEDIATE STATUS
+      floatRequest.status = 'approved_vm';
+
+      if (floatRequest.auditLog) {
+        floatRequest.auditLog.push({
+          action: status === 'approved' ? 'approved' : 'edited',
+          performedBy: vmUserId,
+          timestamp: now,
+          notes: vmNotes || (status === 'approved' ? 'Approved by VM - Awaiting cashier confirmation' : 'Edited by VM - Awaiting cashier confirmation'),
+          metadata: { approvedAmount: finalAmount }
+        });
+      }
+      
       await floatRequest.save();
 
-      return NextResponse.json(
-        {
-          success: true,
-          status: status,
-          floatRequest: floatRequest.toObject(),
-          cashierShift: cashierShift.toObject(),
+      // AUDIT LOG
+      await logActivity({
+        userId: vmUserId,
+        username: vmUsername,
+        action: 'update',
+        details: `${status === 'approved' ? 'Approved' : 'Edited'} float request: $${finalAmount}. Awaiting cashier confirmation.`,
+        metadata: {
+          resource: 'vault',
+          resourceId: floatRequest.locationId,
+          floatRequestId: requestId,
+          status: 'approved_vm',
         },
-        { status: 200 }
-      );
+      });
+
+      return NextResponse.json({
+        success: true,
+        status: 'approved_vm',
+        floatRequest: floatRequest.toObject(),
+      });
     }
 
     return NextResponse.json(

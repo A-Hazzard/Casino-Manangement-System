@@ -311,12 +311,14 @@ export function validatePhoneNumber(value: string | undefined | null): boolean {
   const trimmed = value.trim();
 
   // Strip all non-digit characters to check for minimum digit count
+  // Trinidad and Tobago numbers are 10 digits (868 + 7 digits)
+  // We allow 7 to 15 digits to cover local and international formats
   const digitCount = trimmed.replace(/\D/g, '').length;
-  if (digitCount < 7) return false;
+  if (digitCount < 7 || digitCount > 15) return false;
 
-  // More permissive regex allowing digits, spaces, hyphens, parentheses, plus, and dots
-  // length checked after trim is between 7 and 25
-  const phoneRegex = /^[+0-9\s\-().]{7,25}$/;
+  // Extremely permissive regex for the visual format
+  // Allows digits, spaces, hyphens, parentheses, plus, dots, and common separators
+  const phoneRegex = /^[+0-9\s\-().,]{7,35}$/;
   if (!phoneRegex.test(trimmed)) {
     return false;
   }
