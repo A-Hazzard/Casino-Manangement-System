@@ -22,6 +22,7 @@ import {
 } from '@/components/shared/ui/dialog';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
 import { useCashierShift } from '@/lib/hooks/useCashierShift';
+import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
 import type { CreatePayoutRequest, Denomination } from '@/shared/types/vault';
 import { Lock, Plus, RefreshCw } from 'lucide-react';
@@ -30,6 +31,7 @@ import { toast } from 'sonner';
 
 // Components & Sections
 import CashierDashboardSkeleton from '@/components/ui/skeletons/CashierDashboardSkeleton';
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import CashierActivitySection from './CashierActivitySection';
 import HandPayForm from './payouts/HandPayForm';
 import TicketRedemptionForm from './payouts/TicketRedemptionForm';
@@ -51,6 +53,7 @@ export default function CashierDashboardPageContent() {
     status, 
     currentBalance, 
     hasActiveVaultShift,
+    isVaultReconciled,
     loading: shiftLoading, 
     refreshing,
     openShift, 
@@ -205,7 +208,7 @@ export default function CashierDashboardPageContent() {
 
   if (shiftLoading) {
      return (
-        <PageLayout showHeader={false}>
+        <PageLayout>
             <CashierDashboardSkeleton />
         </PageLayout>
      );
@@ -215,51 +218,64 @@ export default function CashierDashboardPageContent() {
   const isOffShift = (!shift || (!isShiftActive && status !== 'pending_start' && status !== 'pending_review'));
 
   return (
-    <PageLayout showHeader={false}>
+    <PageLayout>
       <div className="space-y-6">
           {/* Dashboard Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">
-                Cashier Dashboard
-              </h1>
-              <p className="mt-1 text-sm text-gray-600">
-                Manage your shift, process payouts, and monitor your float
-              </p>
-            </div>
-            
-             <div className="flex items-center gap-2">
+          <VaultManagerHeader
+            title="Cashier Dashboard"
+            showBack={false}
+            description={
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => refresh(true)}
+                  disabled={refreshing}
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5 text-gray-400 hover:text-blue-600"
+                >
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </Button>
+                <span className="text-xs font-medium text-gray-500">
+                  {new Date().toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </span>
+              </div>
+            }
+          >
+            {isOffShift && (
                <Button
-                 onClick={() => refresh(true)}
-                 disabled={refreshing}
-                 variant="outline"
-                 size="sm"
-                 className="mr-2"
-               >
-                 <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-               </Button>
-
-               {isOffShift && (
-                  <Button
-                   onClick={() => setShowShiftOpen(true)}
-                   className="bg-green-600 text-white hover:bg-green-700"
-                 >
-                   <Plus className="mr-2 h-4 w-4" />
-                   Start Shift
-                 </Button>
-               )}
-               
-               {isShiftActive && (
-                  <Button
-                   onClick={() => setShowShiftClose(true)}
-                   className="bg-red-600 text-white hover:bg-red-700"
-                 >
-                   <Lock className="mr-2 h-4 w-4" />
-                   End Shift
-                 </Button>
-               )}
-             </div>
-           </div>
+                onClick={() => {
+                  if (!isVaultReconciled) {
+                    toast.error('Vault Not Reconciled', {
+                      description: 'Please ask a Vault Manager to perform the mandatory opening reconciliation.'
+                    });
+                    return;
+                  }
+                  setShowShiftOpen(true);
+                }}
+                className={cn(
+                  "bg-green-600 text-white hover:bg-green-700",
+                  !isVaultReconciled && "opacity-40 cursor-not-allowed"
+                )}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Start Shift
+              </Button>
+            )}
+            
+            {isShiftActive && (
+               <Button
+                onClick={() => setShowShiftClose(true)}
+                className="bg-red-600 text-white hover:bg-red-700"
+              >
+                <Lock className="mr-2 h-4 w-4" />
+                End Shift
+              </Button>
+            )}
+          </VaultManagerHeader>
 
           {/* Pending Banners */}
            <ShiftStatusBanner 
@@ -279,12 +295,35 @@ export default function CashierDashboardPageContent() {
                shift={shift}
                currentBalance={currentBalance}
                refreshing={refreshing}
-               onTicketRedeem={() => setShowTicketForm(true)}
-               onHandPay={() => setShowHandPayForm(true)}
+               onTicketRedeem={() => {
+                 if (!isVaultReconciled) {
+                   toast.error('Vault Not Reconciled', {
+                     description: 'Operations are blocked until the vault is reconciled.'
+                   });
+                   return;
+                 }
+                 setShowTicketForm(true);
+               }}
+               onHandPay={() => {
+                  if (!isVaultReconciled) {
+                    toast.error('Vault Not Reconciled', {
+                      description: 'Operations are blocked until the vault is reconciled.'
+                    });
+                    return;
+                  }
+                  setShowHandPayForm(true);
+               }}
                onRequestFloat={(type) => {
+                  if (!isVaultReconciled) {
+                    toast.error('Vault Not Reconciled', {
+                      description: 'Operations are blocked until the vault is reconciled.'
+                    });
+                    return;
+                  }
                   setFloatRequestType(type);
                   setShowFloatRequest(true);
                }}
+               isVaultReconciled={isVaultReconciled}
             />
           )}
 
@@ -304,6 +343,7 @@ export default function CashierDashboardPageContent() {
             actionLoading={actionLoading}
             shiftLoading={shiftLoading}
             hasActiveVaultShift={hasActiveVaultShift}
+            isVaultReconciled={isVaultReconciled}
             machines={machines}
             currentBalance={currentBalance}
             onOpenClose={() => setShowShiftOpen(false)}
@@ -346,7 +386,7 @@ export default function CashierDashboardPageContent() {
 function ShiftModals({
   showOpen, showClose, showTicket, showHandPay, showFloat, 
   floatType, actionLoading, shiftLoading, hasActiveVaultShift,
-  machines, currentBalance,
+  isVaultReconciled, machines, currentBalance,
   onOpenClose, onCloseClose, onTicketClose, onHandPayClose, onFloatClose,
   onOpenSubmit, onCloseSubmit, onTicketSubmit, onHandPaySubmit, onFloatSubmit,
   onRequestCash
@@ -358,6 +398,7 @@ function ShiftModals({
         onClose={onOpenClose}
         onSubmit={onOpenSubmit}
         hasActiveVaultShift={hasActiveVaultShift}
+        isVaultReconciled={isVaultReconciled}
         loading={shiftLoading}
       />
       

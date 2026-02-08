@@ -23,11 +23,11 @@ import {
     calculateExpectedBalance,
     validateDenominations,
 } from '@/lib/helpers/vault/calculations';
+import { generateMongoId } from '@/lib/utils/id';
 import type {
     CloseCashierShiftRequest,
     CloseCashierShiftResponse,
 } from '@/shared/types/vault';
-import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
       await cashierShift.save();
 
       // Create transaction to return float to vault
-      const transactionId = nanoid();
+      const transactionId = await generateMongoId();
       await VaultTransactionModel.create({
         _id: transactionId,
         locationId: cashierShift.locationId,
@@ -218,9 +218,23 @@ export async function POST(request: NextRequest) {
       // Update vault shift canClose status (cannot close with pending review)
       await updateVaultCanClose(cashierShift.vaultShiftId);
 
-      // TODO: Create notification for VM (Phase 4)
-
-      // CRITICAL: DO NOT reveal expected balance or discrepancy amount to cashier
+      // Create notification for VM (Phase 4)
+      try {
+        const { createShiftReviewNotification } = await import('@/lib/helpers/vault/notifications');
+        const vaultShift = await VaultShiftModel.findOne({ _id: cashierShift.vaultShiftId });
+        if (vaultShift?.vaultManagerId) {
+          await createShiftReviewNotification(
+            shiftId,
+            cashierShift.locationId,
+            username, // This is the cashier's username
+            userId,   // This is the cashier's user ID
+            discrepancy,
+            vaultShift.vaultManagerId
+          );
+        }
+      } catch (notifError) {
+        console.error('Failed to create shift review notification:', notifError);
+      }
       const response: CloseCashierShiftResponse = {
         success: true,
         status: 'pending_review',

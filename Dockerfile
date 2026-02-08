@@ -20,22 +20,16 @@ COPY . .
 ARG NODE_ENV
 ARG MONGODB_URI
 ARG JWT_SECRET
-ARG EMAIL_USER
-ARG SENDGRID_API_KEY
 
 ENV NODE_ENV=${NODE_ENV}
 ENV MONGODB_URI=${MONGODB_URI}
 ENV JWT_SECRET=${JWT_SECRET}
-ENV EMAIL_USER=${EMAIL_USER}
-ENV SENDGRID_API_KEY=${SENDGRID_API_KEY}
 
 # Build the Next.js app
 # Provide placeholder values for build-time checks if not passed via --build-arg
 # The actual runtime values will be set by the ENV instructions above using ARGs passed during build or CI/CD runtime injection
 RUN MONGODB_URI=${MONGODB_URI:-dummy_MONGODB_URI} \
     JWT_SECRET=${JWT_SECRET:-dummy_jwt_secret} \
-    EMAIL_USER=${EMAIL_USER:-dummy_email_user} \
-    SENDGRID_API_KEY=${SENDGRID_API_KEY:-dummy_sendgrid_key} \
     NODE_ENV=${NODE_ENV:-production} \
     pnpm build
 

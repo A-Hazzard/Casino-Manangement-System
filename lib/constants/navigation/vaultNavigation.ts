@@ -9,7 +9,6 @@ import {
     BarChart3,
     FileText,
     Receipt,
-    TrendingUp,
     Wallet
 } from 'lucide-react';
 
@@ -29,11 +28,6 @@ export const vaultNavigationConfig: NavigationConfig = {
       label: 'Float Management',
       href: '/vault/management/floats',
       icon: Wallet,
-    },
-    {
-      label: 'Transfers',
-      href: '/vault/management/transfers',
-      icon: TrendingUp,
     },
     {
       label: 'Cash on Premises',

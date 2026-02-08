@@ -809,17 +809,22 @@ The system implements a hierarchical role-based access control (RBAC) system whe
 - **Allowed**: Developer, Admin, Manager
 - **Rationale**: System administration requires high security clearance
 
-#### Vault Management Page
+#### Vault Management System
 
-- **Allowed**: Developer, Admin, Manager, Location Admin, Vault Manager
-- **Restricted**: Cashier, Technician, Collector
+### System Overview
+The Vault Management System (VMS) handles cash movements, cashier shifts, float requests, and financial reconciliation for casino operations. It operates in **VAULT** mode but shares core infrastructure with the CMS.
 
-#### Vault Cashier Page
+### Core Models
+- **VaultShift** (`vaultShifts`): Tracks high-level vault status, opening/closing balances, and audit reconciliations.
+- **CashierShift** (`cashierShifts`): Manage individual cashier drawers, including opening floats and blind closing validation.
+- **VaultTransaction** (`vaultTransactions`): Immutable ledger of all cash movements between Vault, Cashiers, Machines (Collections), and External sources (Banks).
+- **FloatRequest** (`floatRequests`): Request system for cashiers to increase/decrease their drawer balance, requiring manager approval.
+- **Payout** (`payouts`): Records for ticket redemptions and machine hand-pays.
 
-- **Allowed**: Developer, Admin, Manager, Location Admin, Vault Manager, Cashier
-- **Restricted**: Technician, Collector
-
-### Licensee Filtering Strategy
+### Key Workflows
+- **Blind Closing**: Cashiers count their drawer without knowing the "system expected" balance. Discrepancies are flagged for manager review.
+- **Dual Approval**: Float movements require a request/approval/receipt workflow to ensure accountability.
+- **Health Grid**: Real-time visualization of Net Cash Flow and Denomination inventory.
 
 #### Location-Based Access
 

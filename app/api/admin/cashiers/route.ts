@@ -8,9 +8,10 @@
  * @module app/api/admin/cashiers/route
  */
 
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { generateMongoId } from '@/lib/utils/id';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
     // STEP 5: Create cashier account
     // ============================================================================
     const tempPassword = nanoid(10); // Generate temporary password
-    const userId = nanoid();
+    const userId = await generateMongoId();
 
     const newCashier = new UserModel({
       _id: userId,

@@ -41,6 +41,8 @@ type VaultModalsProps = {
     denominations: Denomination[]; 
     total: number;
   } | null;
+  currentDenominations: Denomination[];
+  isInitial: boolean;
   canCloseVault: boolean;
   closeVaultBlockReason?: string;
 };
@@ -52,6 +54,8 @@ export default function VaultModals({
   onConfirm,
   machines = [],
   viewDenomsData,
+  currentDenominations,
+  isInitial = false,
   canCloseVault,
   closeVaultBlockReason,
 }: VaultModalsProps) {
@@ -65,11 +69,13 @@ export default function VaultModals({
       <VaultRemoveCashModal
         open={modals.removeCash}
         onClose={() => onClose('removeCash')}
+        vaultDenominations={currentDenominations}
         onConfirm={(data) => onConfirm('removeCash', data)}
       />
       <VaultRecordExpenseModal
         open={modals.recordExpense}
         onClose={() => onClose('recordExpense')}
+        vaultDenominations={currentDenominations}
         onConfirm={(data) => onConfirm('recordExpense', data)}
       />
       <VaultReconcileModal
@@ -77,11 +83,15 @@ export default function VaultModals({
         onClose={() => onClose('reconcile')}
         onConfirm={(data) => onConfirm('reconcile', data)}
         currentBalance={vaultBalance}
+        systemDenominations={currentDenominations}
       />
       <VaultInitializeModal
         open={modals.initialize}
         onClose={() => onClose('initialize')}
         onConfirm={(data) => onConfirm('initialize', data)}
+        expectedBalance={vaultBalance}
+        expectedDenominations={currentDenominations}
+        isInitial={isInitial}
       />
       <VaultCollectionModal
         open={modals.collection}

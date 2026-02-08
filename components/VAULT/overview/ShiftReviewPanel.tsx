@@ -9,14 +9,13 @@
 
 'use client';
 
-import { useState } from 'react';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -24,6 +23,7 @@ import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type { UnbalancedShiftInfo } from '@/shared/types/vault';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
 
 type ShiftReviewPanelProps = {
   pendingShifts: UnbalancedShiftInfo[];
@@ -94,7 +94,7 @@ export default function ShiftReviewPanel({
   }
 
   return (
-    <Card className="rounded-lg bg-container shadow-md">
+    <Card id="shift-review-panel" className="rounded-lg bg-container shadow-md scroll-mt-20">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
           <AlertTriangle className="h-5 w-5 text-orangeHighlight" />

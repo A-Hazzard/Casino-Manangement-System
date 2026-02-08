@@ -116,8 +116,7 @@ The system uses eight distinct roles arranged in priority order:
 - **Floats**: Developer, Admin, Manager, Vault Manager
 - **Expenses**: Developer, Admin, Manager, Vault Manager
 - **Transactions**: Developer, Admin, Manager, Vault Manager
-- **Transfers**: Developer, Admin, Manager, Vault Manager
-- **Reports**: Developer, Admin, Manager, Vault Manager
+- **Reports (Cash on Premises)**: Developer, Admin, Manager, Vault Manager
 
 ## Licensee Filtering Strategy
 

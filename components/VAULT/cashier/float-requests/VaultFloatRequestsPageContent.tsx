@@ -13,6 +13,7 @@
 
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import { useUserStore } from '@/lib/store/userStore';
 import { CheckCircle2, Clock, Loader2, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -22,8 +23,9 @@ import type { FloatRequestSortOption } from './tables/VaultFloatRequestsTable';
 import VaultFloatRequestsTable from './tables/VaultFloatRequestsTable';
 
 export default function VaultFloatRequestsPageContent() {
-  const { user } = useUserStore();
+  const { user, isVaultReconciled } = useUserStore();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [requestHistory, setRequestHistory] = useState<any[]>([]);
 
@@ -33,11 +35,13 @@ export default function VaultFloatRequestsPageContent() {
   const [historySortOption, setHistorySortOption] = useState<FloatRequestSortOption>('processed');
   const [historySortOrder, setHistorySortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const fetchRequests = async () => {
+  const fetchRequests = async (isManual = false) => {
     const locationId = user?.assignedLocations?.[0];
     if (!locationId) return;
 
-    setLoading(true);
+    if (isManual) setRefreshing(true);
+    else setLoading(true);
+
     try {
         const [pendingRes, historyRes] = await Promise.all([
             fetch(`/api/vault/float-request?locationId=${locationId}&status=pending`),
@@ -65,6 +69,7 @@ export default function VaultFloatRequestsPageContent() {
         toast.error('Failed to load float requests');
     } finally {
         setLoading(false);
+        setRefreshing(false);
     }
   };
 
@@ -91,6 +96,12 @@ export default function VaultFloatRequestsPageContent() {
 
   // Actions
   const handleApprove = async (requestId: string) => {
+    if (!isVaultReconciled) {
+      toast.error('Reconciliation Required', {
+        description: 'Please perform the mandatory opening reconciliation before approving requests.'
+      });
+      return;
+    }
     try {
         const res = await fetch(`/api/vault/float-requests/${requestId}/approve`, {
             method: 'POST', // or PUT
@@ -111,6 +122,12 @@ export default function VaultFloatRequestsPageContent() {
   };
 
   const handleReject = async (requestId: string) => {
+    if (!isVaultReconciled) {
+      toast.error('Reconciliation Required', {
+        description: 'Please perform the mandatory opening reconciliation before rejecting requests.'
+      });
+      return;
+    }
     try {
         const res = await fetch(`/api/vault/float-requests/${requestId}/reject`, {
              method: 'POST',
@@ -167,7 +184,7 @@ export default function VaultFloatRequestsPageContent() {
 
   if (loading && pendingRequests.length === 0 && requestHistory.length === 0) {
       return (
-        <PageLayout showHeader={false}>
+        <PageLayout>
              <div className="flex h-[50vh] items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
             </div>
@@ -176,18 +193,25 @@ export default function VaultFloatRequestsPageContent() {
   }
 
   return (
-    <PageLayout showHeader={false}>
+    <PageLayout>
       <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Float Requests</h1>
-            <p className="mt-1 text-sm text-gray-600">
-            Manage cashier float increase and decrease requests
-            </p>
-        </div>
-        <Button variant="ghost" size="sm" onClick={fetchRequests}><RefreshCw className="h-4 w-4 mr-2"/> Refresh</Button>
-      </div>
+        <VaultManagerHeader
+          title="Float Requests"
+          description="Review and process cashier float adjustment requests"
+          backHref="/vault/management"
+          onFloatActionComplete={() => fetchRequests(true)}
+        >
+          <Button
+            onClick={() => fetchRequests(true)}
+            disabled={refreshing}
+            variant="ghost"
+            size="sm"
+            className="h-9 px-3 text-gray-400 hover:text-blue-600"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </VaultManagerHeader>
 
       {/* Pending Requests Section */}
       {sortedPendingRequests.length > 0 && (
@@ -208,6 +232,7 @@ export default function VaultFloatRequestsPageContent() {
             onReject={handleReject}
             showActions={true}
             showHistory={false}
+            disabled={!isVaultReconciled}
           />
 
 

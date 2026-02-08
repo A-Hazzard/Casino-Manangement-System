@@ -14,7 +14,7 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { nanoid } from 'nanoid';
+import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     // STEP 6: Create Closing Transaction
     // ============================================================================
     // Return the final confirmed float amount to vault
-    const transactionId = nanoid();
+    const transactionId = await generateMongoId();
     await VaultTransactionModel.create({
       _id: transactionId,
       locationId: cashierShift.locationId,

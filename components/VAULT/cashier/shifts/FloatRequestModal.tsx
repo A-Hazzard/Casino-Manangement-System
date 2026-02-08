@@ -11,8 +11,9 @@ import {
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { cn } from '@/lib/utils';
 import type { Denomination } from '@/shared/types/vault';
-import { Minus, TrendingUp } from 'lucide-react';
+import { Minus, RefreshCw, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 type FloatRequestModalProps = {
@@ -96,63 +97,81 @@ export default function FloatRequestModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Denomination Breakdown */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold text-gray-900">
-                Breakdown *
-              </Label>
-              <div className="text-sm font-medium text-gray-500">
-                Total: <span className={`text-${accentColor}-600 font-bold`}>{formatAmount(totalAmount)}</span>
+        <form onSubmit={handleSubmit} className="p-0 overflow-hidden">
+          <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+            {/* Denomination Breakdown */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <div className="space-y-0.5">
+                  <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                    Denomination Breakdown
+                  </Label>
+                  <p className="text-[10px] text-gray-500">Specify exactly which bills you are {type === 'increase' ? 'receiving' : 'returning'}</p>
+                </div>
+                <div className={cn(
+                  "px-3 py-1.5 rounded-2xl flex flex-col items-end shadow-sm border",
+                  type === 'increase' ? "bg-emerald-50 border-emerald-100" : "bg-orange-50 border-orange-100"
+                )}>
+                  <span className="text-[9px] font-black uppercase opacity-60 tracking-wider">Total Amount</span>
+                  <span className={cn(
+                    "text-lg font-black tracking-tight",
+                    type === 'increase' ? "text-emerald-700" : "text-orange-700"
+                  )}>{formatAmount(totalAmount)}</span>
+                </div>
+              </div>
+              
+              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 shadow-inner">
+                <DenominationInputGrid
+                  denominations={denominations}
+                  onChange={setDenominations}
+                  disabled={loading}
+                />
               </div>
             </div>
-            
-            <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
-              <DenominationInputGrid
-                denominations={denominations}
-                onChange={setDenominations}
-                disabled={loading}
+
+            {/* Reason Field */}
+            <div className="space-y-2 group">
+              <Label htmlFor="reason" className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                Request Notes
+              </Label>
+              <Textarea
+                id="reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder={type === 'increase' 
+                  ? "e.g. Busy weekend replenishment..." 
+                  : "e.g. End of shift return..."
+                }
+                className="resize-none border-2 border-gray-100 focus:border-blue-500/50 bg-white min-h-[100px] transition-all rounded-xl text-sm"
               />
             </div>
           </div>
 
-          {/* Reason Field */}
-          <div className="space-y-2">
-            <Label htmlFor="reason" className="text-sm font-semibold text-gray-900">
-              Reason (Optional)
-            </Label>
-            <Textarea
-              id="reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder={type === 'increase' 
-                ? "Why do you need more float? (e.g., Busy weekend, machine drop scheduled)" 
-                : "Why are you returning float? (e.g., Shift end, excess cash)"
-              }
-              className="resize-none focus-visible:ring-offset-0 min-h-[80px]"
-            />
-          </div>
-
-          <DialogFooter className="pt-2">
+          <DialogFooter className="p-4 bg-gray-50 border-t flex flex-col sm:flex-row gap-3">
             <Button 
                 type="button" 
                 variant="ghost" 
                 onClick={onClose}
-                className="text-gray-500 hover:text-gray-900"
+                className="order-2 sm:order-1 text-gray-500 hover:text-gray-900 font-bold"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading || !isFormValid}
-              className={`px-8 ${
+              className={cn(
+                "order-1 sm:order-2 flex-1 h-12 font-black text-white shadow-lg active:scale-[0.98] transition-all rounded-xl",
                 type === 'increase'
-                  ? 'bg-emerald-600 hover:bg-emerald-700'
-                  : 'bg-orange-600 hover:bg-orange-700'
-              } text-white`}
+                  ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                  : 'bg-orange-600 hover:bg-orange-700 shadow-orange-600/20'
+              )}
             >
-              {loading ? 'Submitting...' : 'Submit Request'}
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  Submitting Request...
+                </div>
+              ) : `Submit ${type === 'increase' ? 'Increase' : 'Return'}`}
             </Button>
           </DialogFooter>
         </form>

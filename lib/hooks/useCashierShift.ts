@@ -23,6 +23,7 @@ export function useCashierShift() {
   const [shift, setShift] = useState<CashierShift | null>(null);
   const [currentBalance, setCurrentBalance] = useState<number>(0);
   const [hasActiveVaultShift, setHasActiveVaultShift] = useState<boolean>(false);
+  const [isVaultReconciled, setIsVaultReconciled] = useState<boolean>(false);
   const [status, setStatus] = useState<CashierShift['status'] | 'idle' | 'loading'>('loading');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,6 +50,7 @@ export function useCashierShift() {
           setPendingVmApproval(data.pendingVmApproval || null);
           setPendingRequest(data.pendingRequest || null);
           setHasActiveVaultShift(data.hasActiveVaultShift || false);
+          setIsVaultReconciled(data.isVaultReconciled || false);
         }
       }
     } catch (error) {
@@ -69,16 +71,20 @@ export function useCashierShift() {
 
   // Polling for status updates (Shift approvals, Float request approvals)
   useEffect(() => {
-    if (!user || status === 'idle' || status === 'loading') {
+    // Poll every 30s. 
+    // We poll if shift is active, OR if we are idle and waiting for vault reconciliation.
+    const shouldPoll = status !== 'loading' && (status !== 'idle' || !isVaultReconciled);
+
+    if (!user || !shouldPoll) {
       return;
     }
 
     const interval = setInterval(() => {
       fetchCurrentShift(true);
-    }, 30000); // Poll every 30s
+    }, 30000); 
 
     return () => clearInterval(interval);
-  }, [user, status, fetchCurrentShift]);
+  }, [user, status, isVaultReconciled, fetchCurrentShift]);
 
   const openShift = async (denominations: Denomination[], requestedFloat: number) => {
     const locationId = user?.assignedLocations?.[0];
@@ -181,6 +187,7 @@ export function useCashierShift() {
     status,
     currentBalance,
     hasActiveVaultShift,
+    isVaultReconciled,
     pendingVmApproval,
     pendingRequest,
     loading,

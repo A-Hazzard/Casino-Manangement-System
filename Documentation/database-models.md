@@ -41,14 +41,17 @@ Licencee (licencee.ts)
 │   ├── Machine (machines.ts) - Primary UI data source
 │   │   ├── Meter (meters.ts) - Financial metrics source
 │   │   └── CollectionMetersHistory (embedded) - Collection data
-│   ├── Collection (collections.ts) - Collection reports
+│   ├── Collection (collections.ts) - Compliance reports
 │   └── CollectionReport (collectionReport.ts) - Financial summaries
 ├── User (user.ts) - Authentication & permissions
 ├── Member (members.ts) - Player management
-├── Vault (vault-related collections)
-│   ├── FloatRequest (floatRequests.ts)
-│   ├── Payout (cashDeskPayouts.ts)
-│   └── Shift (shifts.ts)
+├── Vault (VMS Collections)
+│   ├── VaultShift (vaultShift.ts)
+│   ├── CashierShift (cashierShift.ts)
+│   ├── FloatRequest (floatRequest.ts)
+│   ├── Payout (payout.ts)
+│   ├── VaultTransaction (vaultTransaction.ts) - Ledger
+│   └── VaultNotification (vaultNotification.ts)
 └── Firmware (firmware.ts) - Firmware management
 ```
 
@@ -169,34 +172,105 @@ GamingLocation {
 }
 ```
 
-### 4. Vault Models (Cash Management)
+### 4. Vault Management Models (VMS)
 
-**Purpose**: Manages cash handling, float requests, and cashier shifts.
+The Vault Management System (VMS) is designed for strict audibility and cash control.
 
-**Key Models**:
-
+**VaultShift**
 ```typescript
-FloatRequest {
+{
   _id: string;
-  type: "FLOAT_INCREASE" | "FLOAT_DECREASE";
-  cashierId: string;
-  requestedDenom: Record<string, number>;
-  requestedTotalAmount: number;
-  status: "PENDING" | "APPROVED" | "REJECTED";
   locationId: string;
-  shiftId: string;
-}
-
-Shift {
-  _id: string;
-  userId: string;
-  locationId: string;
-  startDenom: Record<string, number>;
-  endDenom?: Record<string, number>;
-  status: "OPEN" | "CLOSED";
-  startedShiftAt: Date;
+  vaultManagerId: string;
+  status: "active" | "closed";
+  openedAt: Date;
+  openingBalance: number;
+  openingDenominations: Denomination[];
+  closingBalance?: number;
+  reconciliations: VaultReconciliation[]; // Audit adjustment history
+  canClose: boolean; // Managed by BR-01 logic
 }
 ```
+
+**CashierShift**
+```typescript
+{
+  _id: string;
+  cashierId: string;
+  status: "pending_start" | "active" | "closed" | "pending_review";
+  openingBalance: number;
+  currentBalance: number; // Live calculated balance
+  discrepancy?: number; // Populated on blind close mismatch
+  discrepancyResolved: boolean;
+}
+```
+
+**VaultTransaction (The Ledger)**
+```typescript
+{
+  _id: string;
+  locationId: string;
+  type: "add_cash" | "remove_cash" | "expense" | "payout" | "float_increase" | "float_decrease" | "vault_open" | "vault_close";
+  from: { type: string, id: string };
+  to: { type: string, id: string };
+  amount: number;
+  denominations: Denomination[];
+  vaultBalanceBefore: number;
+  vaultBalanceAfter: number;
+  isVoid: boolean;
+  performedBy: string; // User ID
+  timestamp: Date;
+}
+```
+
+**FloatRequest**
+```typescript
+{
+  _id: string;
+  locationId: string;
+  cashierId: string;
+  cashierShiftId: string;
+  vaultShiftId: string;
+  type: "increase" | "decrease";
+  requestedAmount: number;
+  requestedDenominations: Denomination[];
+  status: "pending" | "approved_vm" | "active" | "denied" | "cancelled";
+  processedBy?: string;
+}
+```
+
+**Payout**
+```typescript
+{
+  _id: string;
+  locationId: string;
+  cashierId: string;
+  cashierShiftId: string;
+  type: "ticket" | "hand_pay";
+  amount: number;
+  ticketNumber?: string;
+  machineId?: string;
+  validated: boolean;
+  transactionId: string; // Links back to VaultTransaction
+}
+```
+
+**VaultNotification**
+```typescript
+{
+  _id: string;
+  locationId: string;
+  type: "float_request" | "shift_review" | "low_inventory";
+  title: string;
+  message: string;
+  timestamp: Date;
+  status: "unread" | "read";
+  urgent: boolean;
+  referenceId?: string; // Links to Payout, Shift, or Request
+}
+```
+
+---
 
 ## User Model (user.ts)
 

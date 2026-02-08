@@ -51,6 +51,8 @@ type UserStore = {
   setInitialized: (initialized: boolean) => void;
   hasActiveVaultShift: boolean;
   setHasActiveVaultShift: (active: boolean) => void;
+  isVaultReconciled: boolean;
+  setIsVaultReconciled: (reconciled: boolean) => void;
 };
 
 /**
@@ -65,6 +67,7 @@ const createStore = () => {
         user: null,
         isInitialized: false,
         hasActiveVaultShift: false,
+        isVaultReconciled: false,
         setUser: user => {
           set({ user });
           // Clear cache when user data changes to ensure fresh data
@@ -73,12 +76,13 @@ const createStore = () => {
           }
         },
         clearUser: () => {
-          set({ user: null, isInitialized: false, hasActiveVaultShift: false });
+          set({ user: null, isInitialized: false, hasActiveVaultShift: false, isVaultReconciled: false });
           // Clear cache when user is logged out
           clearUserCache();
         },
         setInitialized: initialized => set({ isInitialized: initialized }),
         setHasActiveVaultShift: active => set({ hasActiveVaultShift: active }),
+        setIsVaultReconciled: reconciled => set({ isVaultReconciled: reconciled }),
       }),
       {
         name: 'user-auth-store', // Customize this name
@@ -142,8 +146,10 @@ export const useUserStore =
         user: null,
         isInitialized: false,
         hasActiveVaultShift: false,
+        isVaultReconciled: false,
         setUser: () => {},
         clearUser: () => {},
         setInitialized: () => {},
         setHasActiveVaultShift: () => {},
+        setIsVaultReconciled: () => {},
       }));

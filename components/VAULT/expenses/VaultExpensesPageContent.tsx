@@ -13,9 +13,11 @@
  */
 'use client';
 
+import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
-import { Input } from '@/components/shared/ui/input';
+import type { DateRange } from '@/components/shared/ui/dateRangePicker';
+import { ModernDateRangePicker } from '@/components/shared/ui/ModernDateRangePicker';
 import {
     Select,
     SelectContent,
@@ -31,6 +33,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/shared/ui/table';
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import VaultRecordExpenseModal from '@/components/VAULT/overview/modals/VaultRecordExpenseModal';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
@@ -69,16 +72,16 @@ export default function VaultExpensesPageContent() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
-  const { user, hasActiveVaultShift } = useUserStore();
+  const { user, hasActiveVaultShift, isVaultReconciled } = useUserStore();
   const locationId = user?.assignedLocations?.[0] || '';
   const [expenses, setExpenses] = useState<VaultTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
   // Filters
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [category, setCategory] = useState<string>('all');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Summary
   const [summary, setSummary] = useState<ExpenseSummary>({
@@ -97,11 +100,11 @@ export default function VaultExpensesPageContent() {
       if (locationId) {
         params.append('locationId', locationId);
       }
-      if (startDate) {
-        params.append('startDate', startDate);
+      if (dateRange?.from) {
+        params.append('startDate', dateRange.from.toISOString());
       }
-      if (endDate) {
-        params.append('endDate', endDate);
+      if (dateRange?.to) {
+        params.append('endDate', dateRange.to.toISOString());
       }
       if (category && category !== 'all') {
         params.append('category', category);
@@ -118,7 +121,7 @@ export default function VaultExpensesPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [locationId, startDate, endDate, category]);
+  }, [locationId, dateRange, category]);
 
   /**
    * Calculate summary totals from expenses
@@ -198,43 +201,49 @@ export default function VaultExpensesPageContent() {
   };
 
   const handleClearFilters = () => {
-    setStartDate('');
-    setEndDate('');
+    setDateRange(undefined);
     setCategory('all');
+  };
+
+  const handleSetLastMonth = () => {
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    setDateRange({ from: lastMonth, to: lastMonthEnd });
   };
 
   // ============================================================================
   // Render
   // ============================================================================
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Expenses</h1>
-          <p className="text-muted-foreground">
-            Track and manage operational expenses
-          </p>
-        </div>
-        <Button 
-          onClick={() => {
-            if (!hasActiveVaultShift) {
-              toast.error('Operation Blocked', {
-                description: 'You must start a vault shift before recording expenses.'
-              });
-              return;
-            }
-            setShowModal(true);
-          }} 
-          className={cn(
-             "gap-2",
-             !hasActiveVaultShift && "opacity-40 cursor-not-allowed"
-          )}
-        >
-          <Plus className="h-4 w-4" />
-          Record Expense
-        </Button>
-      </div>
+    <PageLayout>
+      <div className="flex flex-col gap-6">
+        <VaultManagerHeader title="Expenses" description="Manage vault expense records">
+          <Button 
+            onClick={() => {
+              if (!hasActiveVaultShift) {
+                toast.error('Operation Blocked', {
+                  description: 'You must start a vault shift before recording expenses.'
+                });
+                return;
+              }
+              if (!isVaultReconciled) {
+                toast.error('Reconciliation Required', {
+                  description: 'Please perform the mandatory opening reconciliation before recording expenses.'
+                });
+                return;
+              }
+              setShowModal(true);
+            }} 
+            className={cn(
+              "gap-2",
+              (!hasActiveVaultShift || !isVaultReconciled) && "opacity-40 cursor-not-allowed"
+            )}
+          >
+            <Plus className="h-4 w-4" />
+            Record Expense
+          </Button>
+        </VaultManagerHeader>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -273,24 +282,26 @@ export default function VaultExpensesPageContent() {
           <CardTitle className="text-lg">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-4 items-end">
             <div className="flex flex-col gap-1">
-              <label className="text-sm text-muted-foreground">Start Date</label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="w-40"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-muted-foreground">End Date</label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                className="w-40"
-              />
+              <label className="text-sm text-muted-foreground">Date Range</label>
+              <Button
+                variant="outline"
+                onClick={() => setShowDatePicker(!showDatePicker)}
+                className="w-48 justify-start text-left font-normal"
+              >
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <>
+                      {dateRange.from.toLocaleDateString()} - {dateRange.to.toLocaleDateString()}
+                    </>
+                  ) : (
+                    dateRange.from.toLocaleDateString()
+                  )
+                ) : (
+                  <span>Select date range</span>
+                )}
+              </Button>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-sm text-muted-foreground">Category</label>
@@ -314,6 +325,21 @@ export default function VaultExpensesPageContent() {
               </Button>
             </div>
           </div>
+          {showDatePicker && (
+            <div className="mt-4">
+              <ModernDateRangePicker
+                value={dateRange}
+                onChange={setDateRange}
+                onGo={() => {
+                  setShowDatePicker(false);
+                  fetchExpenses();
+                }}
+                onCancel={() => setShowDatePicker(false)}
+                onSetLastMonth={handleSetLastMonth}
+                enableTimeInputs={false}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -402,6 +428,7 @@ export default function VaultExpensesPageContent() {
         onClose={() => setShowModal(false)}
         onConfirm={handleRecordExpense}
       />
-    </div>
+      </div>
+    </PageLayout>
   );
 }

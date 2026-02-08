@@ -77,8 +77,9 @@ export async function PUT(request: NextRequest) {
     // ============================================================================
     const userId = await getUserIdFromServer();
     if (!userId) {
+      console.warn('[Profile API] Unauthorized: getUserIdFromServer returned null');
       return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
+        { success: false, message: 'Unauthorized - Invalid or missing session' },
         { status: 401 }
       );
     }

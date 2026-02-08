@@ -13,7 +13,7 @@ export async function logActivity(params: {
   metadata?: Record<string, unknown>;
   userId?: string;
   username?: string;
-}): Promise<void> {
+}): Promise<string> {
   try {
     // Extract resource info from metadata if available (ensure lowercase)
     const resource = (
@@ -78,6 +78,7 @@ export async function logActivity(params: {
     });
 
     console.warn('✅ Activity logged successfully:', activityLog._id);
+    return activityLog._id;
   } catch (error) {
     console.error('❌ Failed to log activity:', error);
     // Re-throw the error to ensure the calling code knows logging failed

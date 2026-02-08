@@ -43,9 +43,6 @@ export default function VaultHeader({
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Vault Manager
-        </h1>
         <p className="mt-1 text-sm text-gray-600 flex items-center gap-2">
           {new Date().toLocaleDateString('en-US', {
             weekday: 'long',

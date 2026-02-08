@@ -261,8 +261,8 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 4: Create Float Request
-    const { nanoid } = await import('nanoid');
-    const requestId = nanoid();
+    const { generateMongoId } = await import('@/lib/utils/id');
+    const requestId = await generateMongoId();
     const now = new Date();
 
     const floatRequest = await FloatRequestModel.create({

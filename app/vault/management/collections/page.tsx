@@ -7,16 +7,14 @@
  */
 'use client';
 
-import { useState } from 'react';
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
-import PageErrorBoundary from '@/components/shared/ui/errors/PageErrorBoundary';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import PageErrorBoundary from '@/components/shared/ui/errors/PageErrorBoundary';
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import MachineCollectionForm from '@/components/VAULT/machine/MachineCollectionForm';
-import { Button } from '@/components/shared/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
-import { toast } from 'sonner';
 import type { Denomination } from '@/shared/types/vault';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 export default function MachineCollectionsPage() {
   const [loading, setLoading] = useState(false);
@@ -60,21 +58,10 @@ export default function MachineCollectionsPage() {
       <PageErrorBoundary>
         <PageLayout showHeader={false}>
           <div className="space-y-6">
-            <div className="flex items-center gap-4">
-              <Link href="/vault/management">
-                <Button variant="outline" size="icon">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">
-                  Machine Collections
-                </h1>
-                <p className="mt-1 text-sm text-gray-600">
-                  Record cash collected from gaming machines
-                </p>
-              </div>
-            </div>
+            <VaultManagerHeader
+                title="Machine Collections"
+                description="Record cash collected from gaming machines"
+            />
 
             <div className="mx-auto max-w-2xl">
               <MachineCollectionForm

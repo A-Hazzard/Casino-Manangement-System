@@ -42,12 +42,14 @@ export async function GET(_request: NextRequest) {
     // STEP 3: Check for active vault shift at user's location
     const locationId = (userPayload.assignedLocations as string[])?.[0];
     let hasActiveVaultShift = false;
+    let isVaultReconciled = false;
     if (locationId) {
       const activeVaultShift = await VaultShiftModel.findOne({
         locationId,
         status: 'active',
       });
       hasActiveVaultShift = !!activeVaultShift;
+      isVaultReconciled = activeVaultShift?.isReconciled || false;
     }
 
     if (!shift) {
@@ -55,13 +57,14 @@ export async function GET(_request: NextRequest) {
         success: true,
         shift: null,
         hasActiveVaultShift,
+        isVaultReconciled,
       });
     }
 
     // STEP 4: Get current balance tracking
     let currentBalance = 0;
     if (shift.status === 'active') {
-      currentBalance = shift.currentBalance ?? calculateExpectedBalance(
+      currentBalance = shift.currentBalance || calculateExpectedBalance(
         shift.openingBalance,
         shift.payoutsTotal,
         shift.floatAdjustmentsTotal
@@ -85,6 +88,7 @@ export async function GET(_request: NextRequest) {
       currentBalance, // Only relevant for active shifts
       status: shift.status,
       hasActiveVaultShift,
+      isVaultReconciled,
       pendingVmApproval: pendingVmApproval ? pendingVmApproval.toObject() : null,
       pendingRequest: pendingRequest ? pendingRequest.toObject() : null,
     });

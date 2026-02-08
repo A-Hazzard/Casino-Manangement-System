@@ -14,8 +14,8 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { InterLocationTransferModel } from '@/app/api/lib/models/interLocationTransfer';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import { generateMongoId } from '@/lib/utils/id';
 import type { ApproveInterLocationTransferRequest } from '@/shared/types/vault';
-import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Create transaction for receiving location
-      const transactionId = nanoid();
+      const transactionId = await generateMongoId();
       transferDoc.transactionId = transactionId;
       transferDoc.completedAt = now;
 

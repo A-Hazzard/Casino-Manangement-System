@@ -26,6 +26,7 @@ type VaultQuickActionsSectionProps = {
   onSoftCount?: () => void;
   onCloseVault?: () => void;
   isShiftActive?: boolean;
+  isReconciled?: boolean;
 };
 
 export default function VaultQuickActionsSection({
@@ -37,9 +38,10 @@ export default function VaultQuickActionsSection({
   onSoftCount,
   onCloseVault,
   isShiftActive = false,
+  isReconciled = false,
 }: VaultQuickActionsSectionProps) {
   // Common style for disabled state
-  const disabledClasses = !isShiftActive ? "opacity-40 cursor-not-allowed" : "";
+  const disabledClasses = (!isShiftActive || !isReconciled) ? "opacity-40 cursor-not-allowed" : "";
 
   // ============================================================================
   // Render
@@ -86,12 +88,14 @@ export default function VaultQuickActionsSection({
           </span>
         </Button>
 
+
         {/* Machine Collection - Purple */}
         {onMachineCollection && (
           <Button
             onClick={onMachineCollection}
             className={`h-auto min-h-[80px] flex-col gap-2 bg-purple-600 py-4 text-white hover:bg-purple-700 ${disabledClasses}`}
             size="lg"
+            title="Record cash collected from gaming machines"
           >
             <Monitor className="h-5 w-5 sm:h-6 sm:w-6" />
             <span className="text-sm font-semibold sm:text-base">
@@ -106,6 +110,7 @@ export default function VaultQuickActionsSection({
             onClick={onSoftCount}
             className={`h-auto min-h-[80px] flex-col gap-2 bg-indigo-600 py-4 text-white hover:bg-indigo-700 ${disabledClasses}`}
             size="lg"
+            title="Count collected cash and add it to vault inventory"
           >
             <RefreshCw className="h-5 w-5 sm:h-6 sm:w-6" />
             <span className="text-sm font-semibold sm:text-base">
@@ -132,8 +137,9 @@ export default function VaultQuickActionsSection({
         {onCloseVault && (
           <Button
             onClick={onCloseVault}
-            className={`h-auto min-h-[80px] flex-col gap-2 bg-orange-600 py-4 text-white hover:bg-orange-700 ${disabledClasses}`}
+            className={`h-auto min-h-[80px] flex-col gap-2 bg-orange-600 py-4 text-white hover:bg-orange-700 ${!isShiftActive ? "opacity-40 cursor-not-allowed" : ""}`}
             size="lg"
+            title="Submit final counts and close the vault day"
           >
             <Landmark className="h-5 w-5 sm:h-6 sm:w-6" />
             <span className="text-sm font-semibold sm:text-base">

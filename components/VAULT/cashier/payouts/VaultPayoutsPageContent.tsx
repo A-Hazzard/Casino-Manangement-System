@@ -17,10 +17,12 @@ import {
     DialogHeader,
     DialogTitle
 } from '@/components/shared/ui/dialog';
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
 import { useCashierShift } from '@/lib/hooks/useCashierShift';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
+import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
 import type { CreatePayoutRequest } from '@/shared/types/vault';
 import { Banknote, CheckCircle2, DollarSign, FileText, Loader2, RefreshCw, Ticket } from 'lucide-react';
@@ -53,6 +55,7 @@ export default function VaultPayoutsPageContent() {
   const { 
     shift, 
     currentBalance, 
+    isVaultReconciled,
     refresh: refreshShift 
   } = useCashierShift();
 
@@ -184,7 +187,7 @@ export default function VaultPayoutsPageContent() {
 
   if (loading && payouts.length === 0) {
       return (
-        <PageLayout showHeader={false}>
+        <PageLayout>
             <div className="flex h-[50vh] items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
             </div>
@@ -193,19 +196,15 @@ export default function VaultPayoutsPageContent() {
   }
 
   return (
-    <PageLayout showHeader={false}>
+    <PageLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Player Payouts</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              History of processed player payouts.
-            </p>
-          </div>
-        </div>
+        <VaultManagerHeader 
+          title="Player Payouts" 
+          description="View and verify completed player payouts" 
+        />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card className="rounded-lg bg-container shadow-md">
+          <Card className="rounded-lg bg-container shadow-md border-t-4 border-button">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -217,7 +216,7 @@ export default function VaultPayoutsPageContent() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-lg bg-container shadow-md">
+          <Card className="rounded-lg bg-container shadow-md border-t-4 border-orangeHighlight">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -231,7 +230,7 @@ export default function VaultPayoutsPageContent() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-lg bg-container shadow-md">
+          <Card className="rounded-lg bg-container shadow-md border-t-4 border-blue-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -256,11 +255,22 @@ export default function VaultPayoutsPageContent() {
               </div>
               
               <div className="flex items-center gap-2">
-                  <Button 
+                   <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => setShowTicketForm(true)}
-                      className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                      onClick={() => {
+                        if (!isVaultReconciled) {
+                          toast.error('Vault Not Reconciled', {
+                            description: 'Payouts are blocked until the vault is reconciled.'
+                          });
+                          return;
+                        }
+                        setShowTicketForm(true);
+                      }}
+                      className={cn(
+                        "border-blue-600 text-blue-600 hover:bg-blue-50",
+                        !isVaultReconciled && "opacity-40 cursor-not-allowed"
+                      )}
                   >
                       <Ticket className="h-4 w-4 mr-2" />
                       Ticket
@@ -268,8 +278,19 @@ export default function VaultPayoutsPageContent() {
                   <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => setShowHandPayForm(true)}
-                      className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                      onClick={() => {
+                        if (!isVaultReconciled) {
+                          toast.error('Vault Not Reconciled', {
+                            description: 'Payouts are blocked until the vault is reconciled.'
+                          });
+                          return;
+                        }
+                        setShowHandPayForm(true);
+                      }}
+                      className={cn(
+                        "border-emerald-600 text-emerald-600 hover:bg-emerald-50",
+                        !isVaultReconciled && "opacity-40 cursor-not-allowed"
+                      )}
                   >
                       <Banknote className="h-4 w-4 mr-2" />
                       Hand Pay

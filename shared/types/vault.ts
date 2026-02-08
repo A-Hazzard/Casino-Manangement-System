@@ -66,6 +66,7 @@ export type VaultShift = {
   closingDenominations?: Denomination[];
   reconciliations: VaultReconciliation[];
   canClose: boolean; // BR-01
+  isReconciled: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -373,6 +374,7 @@ export type InitializeVaultResponse = {
   success: boolean;
   vaultShift: VaultShift;
   transaction: VaultTransaction;
+  logId?: string;
 };
 
 // Vault shift open
@@ -453,6 +455,9 @@ export type VaultBalance = {
   totalCashOnPremises?: number;
   machineMoneyIn?: number;
   cashierFloats?: number;
+  isInitial?: boolean;
+  openingBalance?: number;
+  isReconciled?: boolean;
 };
 
 export type CashDesk = {

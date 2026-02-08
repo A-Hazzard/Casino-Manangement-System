@@ -46,7 +46,7 @@ export async function fetchVaultOverviewData(
     ] = await Promise.all([
       fetch(`/api/vault/balance?locationId=${locationId}`),
       fetch(`/api/vault/metrics?locationId=${locationId}`),
-      fetch(`/api/vault/transactions?locationId=${locationId}&limit=10`),
+      fetch(`/api/vault/transactions?locationId=${locationId}&limit=5`),
       fetch(
         `/api/cashier/shifts?status=pending_review&locationId=${locationId}`
       ),
@@ -80,10 +80,10 @@ export async function fetchVaultOverviewData(
           ...data.data,
           canClose: data.data.canClose ?? false,
           blockReason: data.data.blockReason,
-          managerOnDuty: username || 'Loading...',
-          lastAudit: data.data.lastReconciliation
+          managerOnDuty: data.data.managerOnDuty || username || 'Loading...',
+          lastAudit: data.data.lastAudit || (data.data.lastReconciliation
             ? new Date(data.data.lastReconciliation).toLocaleString()
-            : 'Never',
+            : 'Never'),
         };
       }
     }
@@ -353,16 +353,23 @@ export async function fetchAuditTrail(
       if (data.success) {
         const txs = data.items || data.transactions || [];
         return {
-          entries: txs.map((tx: any) => ({
-            id: tx._id,
-            timestamp: new Date(tx.timestamp).toLocaleString(),
-            type: tx.type,
-            description: tx.notes || `${tx.type.replace(/_/g, ' ')}`,
-            performedBy: tx.performedByName || tx.performedBy || 'System',
-            amount: tx.amount,
-            location: tx.locationId,
-            status: tx.isVoid ? 'failed' : 'completed',
-          })),
+          entries: txs.map((tx: any) => {
+            const isReconcile = tx.type === 'vault_reconciliation';
+            const adj = isReconcile ? (tx.vaultBalanceAfter - tx.vaultBalanceBefore) : tx.amount;
+            
+            return {
+              id: tx._id,
+              timestamp: new Date(tx.timestamp).toLocaleString(),
+              type: tx.type,
+              description: tx.notes || `${tx.type.replace(/_/g, ' ')}`,
+              performedBy: tx.performedByName || tx.performedBy || 'System',
+              amount: adj,
+              balanceBefore: tx.vaultBalanceBefore,
+              balanceAfter: tx.vaultBalanceAfter,
+              location: tx.locationId,
+              status: tx.isVoid ? 'failed' : 'completed',
+            };
+          }),
           total: data.total || data.pagination?.total || txs.length,
         };
       }
@@ -392,17 +399,39 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
         const { metrics } = metricsData;
         const transactions = transactionsData.transactions;
 
+        // Filter transactions for TODAY only
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        
+        const todayTxs = transactions.filter((tx: any) => 
+          new Date(tx.timestamp).getTime() >= startOfDay.getTime()
+        );
+
         // Calculate hourly transaction volume for "Peak Hour" and "Transaction Volume" chart
         const hourlyStats = new Array(24).fill(0).map((_, i) => ({
           time: `${i.toString().padStart(2, '0')}:00`,
           transactions: 0,
           amount: 0,
+          cashOut: 0, // Track cash out specific amount
         }));
 
-        transactions.forEach((tx: any) => {
+        todayTxs.forEach((tx: any) => {
           const hour = new Date(tx.timestamp).getHours();
           hourlyStats[hour].transactions++;
-          hourlyStats[hour].amount += tx.amount;
+          // For balance trend: if it's cash IN (to vault), add. If cash OUT (from vault), subtract.
+          // Logic: to.type === 'vault' -> +amount
+          //        from.type === 'vault' -> -amount
+          // But 'amount' accumulates blindly, so let's check direction
+          
+          if (tx.to?.type === 'vault') {
+             hourlyStats[hour].amount += Math.abs(tx.amount);
+          } else if (tx.from?.type === 'vault') {
+             hourlyStats[hour].amount -= Math.abs(tx.amount);
+             hourlyStats[hour].cashOut += Math.abs(tx.amount);
+          } else {
+             // Fallback if generic
+             hourlyStats[hour].amount += tx.amount;
+          }
         });
 
         // Find peak hour
@@ -415,15 +444,25 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
           }
         });
 
+        // Calculate total Payouts amount (metrics.payouts is a COUNT)
+        const totalPayoutsAmount = todayTxs
+          .filter((tx: any) => tx.type === 'payout')
+          .reduce((sum: number, tx: any) => sum + Math.abs(tx.amount), 0); // Ensure positive magnitude
+
         // Construct trend data based on real daily transactions
-        let runningBalance = metrics.totalCashIn * 0.5;
+        // Start running balance from 0 (or opening balance if we had it, but for trend 0 is baseline)
+        let runningBalance = 0;
+        let runningCashOut = 0;
+        
         const balanceTrend = hourlyStats
-          .filter(h => h.transactions > 0 || h.amount > 0)
+          .filter(h => h.transactions > 0 || h.amount > 0 || h.cashOut > 0)
           .map(h => {
             runningBalance += h.amount;
+            runningCashOut += h.cashOut;
             return {
               time: h.time,
               balance: runningBalance,
+              cashOut: runningCashOut,
               transactions: h.transactions,
             };
           });
@@ -434,17 +473,20 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
             : [
                 {
                   time: '00:00',
-                  balance: metrics.totalCashIn,
+                  balance: 0, // Start for graph should typically be flat if no data
+                  cashOut: 0,
                   transactions: 0,
                 },
                 {
                   time: '12:00',
-                  balance: metrics.totalCashIn,
+                  balance: 0,
+                  cashOut: 0,
                   transactions: 0,
                 },
                 {
                   time: '23:59',
-                  balance: metrics.totalCashIn,
+                  balance: 0,
+                  cashOut: 0,
                   transactions: 0,
                 },
               ];
@@ -457,6 +499,7 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
             { category: 'Cash In', amount: metrics.totalCashIn },
             { category: 'Cash Out', amount: metrics.totalCashOut },
             { category: 'Net Flow', amount: Math.abs(metrics.netCashFlow) },
+            { category: 'Payouts', amount: totalPayoutsAmount },
           ],
         };
       }
@@ -739,7 +782,14 @@ export async function fetchFloatTransactionsData(
 
     // Process cashier data
     if (cashierData?.success) {
-      result.cashierFloats = cashierData.shifts || DEFAULT_CASHIER_FLOATS;
+      result.cashierFloats = (cashierData.shifts || []).map((shift: any) => ({
+        ...shift,
+        cashierName: shift.cashierName || shift.cashierUsername || `Cashier ${(shift.cashierId || '').substring(0, 4)}`,
+        balance: shift.currentBalance ?? shift.openingBalance ?? 0,
+        status: shift.status || 'active',
+      }));
+    } else {
+      result.cashierFloats = DEFAULT_CASHIER_FLOATS;
     }
 
     // Process balance data
@@ -775,12 +825,26 @@ export async function fetchFloatTransactionsData(
  */
 export async function fetchCashiersData(
   page: number = 1,
-  limit: number = 20
+  limit: number = 20,
+  search?: string,
+  sortConfig?: { key: string; direction: 'ascending' | 'descending' }
 ): Promise<{ users: any[]; total: number; totalPages: number }> {
   try {
+    let url = `/api/users?role=cashier&page=${page}&limit=${limit}`;
+    
+    if (search) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+
+    // Since the API might not support direct sort params yet, 
+    // we handle sorting client-side or pass if API supports it.
+    // Assuming backend might not fully support dynamic sort key yet based on API analysis,
+    // but passing common ones is safe if backend ignores them. 
+    // For now we'll stick to search and filter.
+    
     // Include authentication cookies for authorization
     const response = await fetch(
-      `/api/users?role=cashier&page=${page}&limit=${limit}`,
+      url,
       {
         credentials: 'include',
         headers: {
@@ -791,8 +855,37 @@ export async function fetchCashiersData(
     if (response.ok) {
       const data = await response.json();
       if (data.success) {
+        const users = data.users;
+
+        // Client-side sorting as a fallback/enhancement if API doesn't handle it
+        if (sortConfig && users.length > 0) {
+           users.sort((a: any, b: any) => {
+             let valA = a[sortConfig.key];
+             let valB = b[sortConfig.key];
+
+             // Handle nested profile fields
+             if (sortConfig.key === 'name') {
+                valA = `${a.profile?.firstName || ''} ${a.profile?.lastName || ''}`;
+                valB = `${b.profile?.firstName || ''} ${b.profile?.lastName || ''}`;
+             }
+             
+             // Handle email field mismatch
+             if (sortConfig.key === 'email') {
+                valA = a.emailAddress || a.email || '';
+                valB = b.emailAddress || b.email || '';
+             }
+
+             if (typeof valA === 'string') valA = valA.toLowerCase();
+             if (typeof valB === 'string') valB = valB.toLowerCase();
+
+             if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
+             if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
+             return 0;
+           });
+        }
+
         return {
-          users: data.users,
+          users: users,
           total: data.pagination?.total || data.users.length,
           totalPages: data.pagination?.totalPages || 1,
         };
@@ -802,6 +895,61 @@ export async function fetchCashiersData(
   } catch (error) {
     console.error('Failed to fetch cashiers:', error);
     throw error;
+  }
+}
+
+/**
+ * Handle delete cashier operation
+ */
+export async function handleDeleteCashier(
+  cashierId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch('/api/users', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _id: cashierId }),
+    });
+
+    const data = await response.json();
+    return {
+      success: data.success,
+      error: data.error || data.message || 'Failed to delete cashier',
+    };
+  } catch (error) {
+    console.error('Error deleting cashier:', error);
+    return {
+      success: false,
+      error: 'An error occurred while deleting cashier',
+    };
+  }
+}
+
+/**
+ * Handle update cashier status operation (Enable/Disable)
+ */
+export async function handleUpdateCashierStatus(
+  cashierId: string,
+  isEnabled: boolean
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`/api/users/${cashierId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isEnabled }),
+    });
+
+    const data = await response.json();
+    return {
+      success: data.success,
+      error: data.error || data.message || 'Failed to update cashier status',
+    };
+  } catch (error) {
+    console.error('Error updating cashier status:', error);
+    return {
+      success: false,
+      error: 'An error occurred while updating cashier status',
+    };
   }
 }
 

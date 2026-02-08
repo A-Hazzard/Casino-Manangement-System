@@ -13,18 +13,30 @@
  */
 
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
+import PageLayout from '@/components/shared/layout/PageLayout';
 import PageErrorBoundary from '@/components/shared/ui/errors/PageErrorBoundary';
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 
 function VaultCashDesksPageContent() {
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900">Cash Desks</h1>
-        <p className="mt-2 text-gray-600">
-          This page will be implemented in a future update.
-        </p>
+    <PageLayout showHeader={false}>
+      <div className="space-y-6">
+        <VaultManagerHeader 
+          title="Cash Desks" 
+          description="Manage and monitor cashier stations" 
+        />
+        
+        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 p-8">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-gray-900">Feature Coming Soon</h2>
+            <p className="mt-2 text-gray-600 max-w-md">
+              The Cash Desk management interface is currently under development. 
+              In the meantime, you can monitor desk balances from the Vault Dashboard.
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }
 

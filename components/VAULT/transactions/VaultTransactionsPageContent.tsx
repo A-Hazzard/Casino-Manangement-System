@@ -25,6 +25,7 @@ import {
     SelectValue,
 } from '@/components/shared/ui/select';
 import VaultTransactionsSkeleton from '@/components/ui/skeletons/VaultTransactionsSkeleton';
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
     fetchVaultTransactions,
     getTransactionTypeBadge
@@ -209,7 +210,7 @@ export default function VaultTransactionsPageContent() {
   // Show skeleton while loading
   if (loading && transactions.length === 0) {
     return (
-      <PageLayout showHeader={false}>
+      <PageLayout>
         <VaultTransactionsSkeleton />
       </PageLayout>
     );
@@ -219,17 +220,14 @@ export default function VaultTransactionsPageContent() {
   // Render
   // ============================================================================
   return (
-    <PageLayout showHeader={false}>
+    <PageLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Transaction History
-          </h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Monitor all vault transaction history
-          </p>
-        </div>
+        <VaultManagerHeader
+            title="Transaction History"
+            description="Monitor all vault transaction history"
+            onFloatActionComplete={() => fetchData()}
+        />
 
         {/* Search and Filters */}
         <div className="flex flex-col gap-4 sm:flex-row">
@@ -366,6 +364,7 @@ export default function VaultTransactionsPageContent() {
               sortOrder={sortOrder}
               onSort={handleSort}
               getTransactionTypeBadge={getTransactionBadge}
+              disablePagination={true}
             />
           </div>
 

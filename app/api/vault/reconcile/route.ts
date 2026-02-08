@@ -16,8 +16,8 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { validateDenominations } from '@/lib/helpers/vault/calculations';
+import { generateMongoId } from '@/lib/utils/id';
 import type { ReconcileVaultRequest } from '@/shared/types/vault';
-import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -75,25 +75,27 @@ export async function POST(request: NextRequest) {
       !vaultShiftId ||
       newBalance === undefined ||
       !denominations ||
-      !reason ||
-      !comment
+      (!reason && !comment)
     ) {
       return NextResponse.json(
         {
           success: false,
           error:
-            'Missing required fields: vaultShiftId, newBalance, denominations, reason, comment',
+            'Missing required fields: vaultShiftId, newBalance, denominations, and description (reason/comment)',
         },
         { status: 400 }
       );
     }
 
-    // Mandatory comment for audit (VM-1)
-    if (comment.trim().length < 10) {
+    // Combine or fallback (VM-1 simplification)
+    const finalDescription = (reason || comment || '').trim();
+
+    // Mandatory description for audit (VM-1)
+    if (finalDescription.length < 10) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Comment must be at least 10 characters for audit purposes',
+          error: 'Reason/Comment must be at least 10 characters for audit purposes',
         },
         { status: 400 }
       );
@@ -184,14 +186,15 @@ export async function POST(request: NextRequest) {
       previousBalance,
       newBalance,
       denominations,
-      reason,
-      comment,
+      reason: finalDescription,
+      comment: finalDescription,
     });
 
     
     // Update live state
     vaultShift.currentDenominations = denominations;
     vaultShift.closingBalance = newBalance;
+    vaultShift.isReconciled = true; // Mark as reconciled
 
     vaultShift.updatedAt = now;
     await vaultShift.save();
@@ -199,7 +202,7 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 9: Create transaction record
     // ============================================================================
-    const transactionId = nanoid();
+    const transactionId = await generateMongoId();
     const adjustmentAmount = newBalance - previousBalance;
 
     const transaction = await VaultTransactionModel.create({
@@ -215,8 +218,8 @@ export async function POST(request: NextRequest) {
       vaultBalanceAfter: newBalance,
       vaultShiftId,
       performedBy: userId,
-      notes: reason,
-      auditComment: comment, // Mandatory for reconciliations
+      notes: finalDescription,
+      auditComment: finalDescription, // Mandatory for reconciliations
       isVoid: false,
       createdAt: now,
     });
@@ -237,8 +240,8 @@ export async function POST(request: NextRequest) {
         resourceName: 'Vault',
         transactionId,
         shiftId: vaultShift._id.toString(),
-        reason,
-        comment,
+        reason: finalDescription,
+        comment: finalDescription,
       },
     });
 

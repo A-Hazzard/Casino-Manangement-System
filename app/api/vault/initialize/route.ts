@@ -15,11 +15,11 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { validateDenominations } from '@/lib/helpers/vault/calculations';
+import { generateMongoId } from '@/lib/utils/id';
 import type {
-    InitializeVaultRequest,
-    InitializeVaultResponse,
+  InitializeVaultRequest,
+  VaultShift
 } from '@/shared/types/vault';
-import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -58,41 +58,58 @@ export async function POST(request: NextRequest) {
 
     // STEP 2: Parse and validate request body
     const body: InitializeVaultRequest = await request.json();
-    const { locationId, openingBalance, denominations, notes } = body;
+    const { locationId, notes } = body;
+    let { openingBalance, denominations } = body;
 
-    if (!locationId || openingBalance === undefined || !denominations) {
+    if (!locationId) {
       return NextResponse.json(
-        {
-          success: false,
-          error:
-            'Missing required fields: locationId, openingBalance, denominations',
-        },
+        { success: false, error: 'locationId is required' },
         { status: 400 }
       );
     }
 
-    // STEP 3: Validate denominations
-    const denominationValidation = validateDenominations(denominations);
-    if (!denominationValidation.valid) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid denominations',
-          details: denominationValidation.errors,
-        },
-        { status: 400 }
-      );
+    // STEP 3: Handle Automatic Initialization (if denominations/balance missing)
+    await connectDB();
+    
+    if (openingBalance === undefined || !denominations || denominations.length === 0) {
+      const lastClosedShift = await VaultShiftModel.findOne({
+        locationId,
+        status: 'closed'
+      }).sort({ closedAt: -1 }).lean<VaultShift | null>();
+
+      if (lastClosedShift) {
+        openingBalance = lastClosedShift.closingBalance || 0;
+        denominations = lastClosedShift.closingDenominations || [];
+      } else {
+        // Brand new location with no previous shifts
+        openingBalance = 0;
+        denominations = [];
+      }
     }
 
-    // Check if denomination total matches opening balance
-    if (denominationValidation.total !== openingBalance) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Denomination total ($${denominationValidation.total}) does not match opening balance ($${openingBalance})`,
-        },
-        { status: 400 }
-      );
+    // STEP 4: Validate denominations (only if not a zero-balance start for a brand new location)
+    if (denominations.length > 0) {
+      const denominationValidation = validateDenominations(denominations);
+      if (!denominationValidation.valid) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid denominations',
+            details: denominationValidation.errors,
+          },
+          { status: 400 }
+        );
+      }
+
+      if (denominationValidation.total !== openingBalance) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Denomination total ($${denominationValidation.total}) does not match opening balance ($${openingBalance})`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // STEP 4: Connect to database
@@ -116,7 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 6: Create vault shift
-    const vaultShiftId = nanoid();
+    const vaultShiftId = await generateMongoId();
     const now = new Date();
 
     const vaultShift = await VaultShiftModel.create({
@@ -135,7 +152,7 @@ export async function POST(request: NextRequest) {
     });
 
     // STEP 7: Create transaction record
-    const transactionId = nanoid();
+    const transactionId = await generateMongoId();
     const transaction = await VaultTransactionModel.create({
       _id: transactionId,
       locationId,
@@ -155,7 +172,7 @@ export async function POST(request: NextRequest) {
     });
 
     // STEP 8: Audit Activity
-    await logActivity({
+    const logId = await logActivity({
       userId,
       username,
       action: 'create',
@@ -170,13 +187,16 @@ export async function POST(request: NextRequest) {
     });
 
     // STEP 9: Return success response
-    const response: InitializeVaultResponse = {
-      success: true,
-      vaultShift: vaultShift.toObject(),
-      transaction: transaction.toObject(),
-    };
-
-    return NextResponse.json(response, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Vault initialized successfully.',
+        vaultShift: vaultShift.toObject(),
+        transaction: transaction.toObject(),
+        logId
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Error initializing vault:', error);
     return NextResponse.json(

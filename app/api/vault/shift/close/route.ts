@@ -18,8 +18,8 @@ import {
     canCloseVaultShift,
     validateDenominations,
 } from '@/lib/helpers/vault/calculations';
+import { generateMongoId } from '@/lib/utils/id';
 import type { CloseVaultShiftRequest } from '@/shared/types/vault';
-import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     await vaultShift.save();
 
     // STEP 8: Create transaction record
-    const transactionId = nanoid();
+    const transactionId = await generateMongoId();
     const transaction = await VaultTransactionModel.create({
       _id: transactionId,
       locationId: vaultShift.locationId,

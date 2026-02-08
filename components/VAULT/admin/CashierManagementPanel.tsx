@@ -40,14 +40,19 @@ import ViewDenominationsModal from '@/components/VAULT/overview/modals/ViewDenom
 import {
     fetchCashiersData,
     handleCreateCashier,
+    handleDeleteCashier,
     handleDirectOpenShift,
     handleResetCashierPassword,
+    handleUpdateCashierStatus
 } from '@/lib/helpers/vaultHelpers';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { Denomination } from '@/shared/types/vault';
 import {
     AlertTriangle,
+    ArrowUpDown,
+    Ban,
     Check,
     Copy,
     Eye,
@@ -55,6 +60,8 @@ import {
     Plus,
     RefreshCw,
     RotateCcw,
+    Search,
+    Trash2,
     User
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -79,7 +86,8 @@ interface Cashier {
 }
 
 export default function CashierManagementPanel() {
-  const { user } = useUserStore();
+  const { user, hasActiveVaultShift, isVaultReconciled } = useUserStore();
+  const { formatAmount } = useCurrencyFormat();
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -100,6 +108,18 @@ export default function CashierManagementPanel() {
     'create' | 'reset' | 'view'
   >('create');
 
+  // Search and Sort State
+  const [searchValue, setSearchValue] = useState('');
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: 'ascending' | 'descending';
+  } | undefined>(undefined);
+
+  // Action Modals State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDisableModalOpen, setIsDisableModalOpen] = useState(false);
+  const [actionCashier, setActionCashier] = useState<Cashier | null>(null);
+
   const [selectedCashier, setSelectedCashier] = useState<Cashier | null>(null);
   const [newCashier, setNewCashier] = useState({
     username: '',
@@ -112,6 +132,7 @@ export default function CashierManagementPanel() {
     '100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '1': 0
   });
   const [shiftNotes, setShiftNotes] = useState('');
+  const [vaultDenominations, setVaultDenominations] = useState<Denomination[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,16 +143,91 @@ export default function CashierManagementPanel() {
     0
   );
 
+  const checkVaultStatus = () => {
+    if (!hasActiveVaultShift) {
+      toast.error('Operation Blocked', {
+        description: 'You must start a vault shift before managing cashiers.'
+      });
+      return false;
+    }
+
+    if (!isVaultReconciled) {
+      toast.error('Reconciliation Required', {
+        description: 'Please perform the mandatory opening reconciliation before continuing with other operations.'
+      });
+      return false;
+    }
+    return true;
+  };
+
+  /**
+   * Open the create cashier modal
+   */
+  const openCreateModal = () => {
+    if (!checkVaultStatus()) return;
+    setIsCreateModalOpen(true);
+  };
+
+  /**
+   * Open the reset password modal
+   */
+  const openResetModal = (cashier: Cashier) => {
+    if (!checkVaultStatus()) return;
+    setSelectedCashier(cashier);
+    setIsResetModalOpen(true);
+  };
+
+  /**
+   * Open the start shift modal
+   */
+  const openStartShiftModal = async (cashier: Cashier) => {
+    if (!checkVaultStatus()) return;
+    setSelectedCashier(cashier);
+    setShiftDenominations({
+        '100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '1': 0
+    });
+    setShiftNotes('');
+    
+    // Fetch current vault denominations for reference
+    try {
+      const { fetchVaultBalance } = await import('@/lib/helpers/vaultHelpers');
+      const locationId = user?.assignedLocations?.[0];
+      if (locationId) {
+        const balance = await fetchVaultBalance(locationId);
+        if (balance) {
+          setVaultDenominations(balance.denominations);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch vault denominations", err);
+    }
+    
+    setIsStartShiftModalOpen(true);
+  };
+
   // Fetch cashiers on mount and page change
   useEffect(() => {
-    fetchCashiers();
+    fetchCashiers(currentPage);
   }, [currentPage]);
 
-  const fetchCashiers = async () => {
+  // Trigger search/sort
+  useEffect(() => {
+      // Debounce search
+      const timer = setTimeout(() => {
+          if (currentPage !== 1) {
+              setCurrentPage(1); // This will trigger the above useEffect
+          } else {
+              fetchCashiers(1);
+          }
+      }, 300);
+      return () => clearTimeout(timer);
+  }, [searchValue, sortConfig]);
+
+  const fetchCashiers = async (page = currentPage) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchCashiersData(currentPage, 20);
+      const data = await fetchCashiersData(page, 20, searchValue, sortConfig);
       setCashiers(data.users || []);
       setTotalPages(data.totalPages || 1);
     } catch (error) {
@@ -141,6 +237,59 @@ export default function CashierManagementPanel() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteCashierSubmit = async () => {
+    if (!actionCashier) return;
+    setLoading(true);
+    try {
+      const result = await handleDeleteCashier(actionCashier._id);
+      if (result.success) {
+        toast.success(`Cashier deleted successfully`);
+        setIsDeleteModalOpen(false);
+        setActionCashier(null);
+        fetchCashiers(1);
+      } else {
+        toast.error(result.error || 'Failed to delete cashier');
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to delete cashier');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisableCashierSubmit = async () => {
+    if (!actionCashier) return;
+    const newStatus = !actionCashier.isEnabled; 
+    setLoading(true);
+    try {
+      const result = await handleUpdateCashierStatus(actionCashier._id, newStatus);
+      if (result.success) {
+          toast.success(`Cashier ${newStatus ? 'enabled' : 'disabled'} successfully`);
+          setIsDisableModalOpen(false);
+          setActionCashier(null);
+          fetchCashiers(currentPage);
+      } else {
+          toast.error(result.error || 'Failed to update status');
+      }
+    } catch (e) {
+        console.error(e);
+        toast.error('Failed to update cashier status');
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleSort = (key: string) => {
+    setSortConfig(current => ({
+      key,
+      direction:
+        current?.key === key && current.direction === 'ascending'
+          ? 'descending'
+          : 'ascending',
+    }));
   };
 
   const handleCreateCashierClick = async () => {
@@ -175,6 +324,16 @@ export default function CashierManagementPanel() {
           setTempPassword(result.tempPassword);
           setTempPasswordAction('create');
           setIsTempPasswordModalOpen(true);
+          
+          // AUTO-COPY TO CLIPBOARD
+          try {
+            await navigator.clipboard.writeText(result.tempPassword);
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+            toast.success('Password auto-copied to clipboard');
+          } catch (err) {
+            console.error('Auto-copy failed:', err);
+          }
         }
       } else {
         toast.error(result.error || 'Failed to create cashier');
@@ -210,6 +369,7 @@ export default function CashierManagementPanel() {
           setTempPasswordAction('reset');
           setIsTempPasswordModalOpen(true);
         }
+        fetchCashiers(); // Refresh the list to reflect tempPassword status
       } else {
         toast.error(result.error || 'Failed to reset password');
       }
@@ -238,6 +398,20 @@ export default function CashierManagementPanel() {
           quantity: qty
         }));
 
+      // Real-time stock check
+      const missingStock = denoms.some(requested => {
+        const available = vaultDenominations.find(d => d.denomination === requested.denomination)?.quantity || 0;
+        return requested.quantity > available;
+      });
+
+      if (missingStock) {
+        toast.error('Insufficient Vault Stock', {
+          description: 'One or more denominations requested exceed the available vault inventory.'
+        });
+        setLoading(false);
+        return;
+      }
+
       const result = await handleDirectOpenShift({
         locationId: user.assignedLocations[0],
         cashierId: selectedCashier._id,
@@ -263,17 +437,8 @@ export default function CashierManagementPanel() {
     }
   };
 
-  const openResetModal = (cashier: Cashier) => {
-    setSelectedCashier(cashier);
-    setIsResetModalOpen(true);
-  };
-
-  const openStartShiftModal = (cashier: Cashier) => {
-    setSelectedCashier(cashier);
-    setIsStartShiftModalOpen(true);
-  };
-
   const openViewPasswordModal = (cashier: Cashier) => {
+    if (!checkVaultStatus()) return;
     if (cashier.tempPassword) {
       setTempPassword(cashier.tempPassword);
       setTempPasswordAction('view');
@@ -297,7 +462,7 @@ export default function CashierManagementPanel() {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="text-sm font-medium text-red-600">{error}</div>
-          <Button onClick={fetchCashiers} variant="outline" className="mt-4">
+          <Button onClick={() => fetchCashiers(currentPage)} variant="outline" className="mt-4">
             Try Again
           </Button>
         </div>
@@ -308,18 +473,19 @@ export default function CashierManagementPanel() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Cashier Management
-          </h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Create and manage cashier accounts
-          </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full max-w-sm">
+           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+           <Input
+             className="w-full pl-9"
+             placeholder="Search cashiers..."
+             value={searchValue}
+             onChange={(e) => setSearchValue(e.target.value)}
+           />
         </div>
         <div className="flex items-center gap-2">
           <Button
-            onClick={fetchCashiers}
+            onClick={() => fetchCashiers(currentPage)}
             disabled={loading}
             variant="outline"
             size="sm"
@@ -331,7 +497,7 @@ export default function CashierManagementPanel() {
             Refresh
           </Button>
           <Button
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={openCreateModal}
             className="bg-button text-white hover:bg-button/90"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -353,11 +519,27 @@ export default function CashierManagementPanel() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('name')}
+                  >
+                    Name <ArrowUpDown className="ml-2 inline h-4 w-4" />
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('username')}
+                  >
+                    Username <ArrowUpDown className="ml-2 inline h-4 w-4" />
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('email')}
+                  >
+                    Email <ArrowUpDown className="ml-2 inline h-4 w-4" />
+                  </TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Last Login</TableHead>
+                   <TableHead>Current Float</TableHead>
+                   <TableHead>Last Login</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -403,9 +585,14 @@ export default function CashierManagementPanel() {
                           <span className="inline-flex rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
                             Off-Shift
                           </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
+                         )}
+                       </TableCell>
+                       <TableCell className="font-mono font-medium">
+                         {cashier.shiftStatus && cashier.shiftStatus !== 'inactive' && cashier.shiftStatus !== 'closed' 
+                           ? formatAmount(cashier.currentBalance || 0) 
+                           : '—'}
+                       </TableCell>
+                       <TableCell>
                         {cashier.lastLoginAt
                           ? new Date(cashier.lastLoginAt).toLocaleString('en-US', {
                               month: 'short',
@@ -418,58 +605,87 @@ export default function CashierManagementPanel() {
                           : 'Never'}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
-                           {cashier.isEnabled && (!cashier.shiftStatus || cashier.shiftStatus === 'closed' || cashier.shiftStatus === 'inactive') && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openStartShiftModal(cashier)}
-                              className="text-green-600 hover:text-green-700 bg-green-50"
-                            >
-                              <Check className="mr-1 h-3 w-3" />
-                              Start Shift
-                            </Button>
-                          )}
-                          {cashier.tempPasswordChanged === false &&
-                            cashier.tempPassword && (
+                        <div className="flex flex-col gap-2">
+                           {/* Main Action Button */}
+                           <div className="w-full">
+                           {cashier.shiftStatus === 'active' || cashier.shiftStatus === 'pending_start' || cashier.shiftStatus === 'pending_review' ? (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => openViewPasswordModal(cashier)}
-                                className="text-blue-600 hover:text-blue-700"
+                                onClick={() => {
+                                  if (!checkVaultStatus()) return;
+                                  if (cashier.denominations) {
+                                     setViewDenomsData({
+                                        title: `Cashier Denominations - ${cashier.username}`,
+                                        denominations: cashier.denominations,
+                                        total: cashier.currentBalance || 0
+                                     });
+                                     setIsViewDenomsModalOpen(true);
+                                  }
+                                }}
+                                className="h-8 w-full gap-2 border-green-200 text-green-700 hover:bg-green-50"
                               >
-                                <Eye className="mr-1 h-3 w-3" />
+                                <Landmark className="h-4 w-4" />
+                                View Float
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openStartShiftModal(cashier)}
+                                className="h-8 w-full gap-2 border-button text-button hover:bg-blue-50"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                                Start Shift
+                              </Button>
+                            )}
+                            </div>
+
+                            {/* Secondary Actions Row */}
+                            <div className="flex justify-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openResetModal(cashier)}
+                              className="h-8 w-8 p-0 text-gray-500 hover:text-orange-600"
+                              title="Reset Password"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+
+                             {/* Disable/Enable Button */}
+                             <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => { setActionCashier(cashier); setIsDisableModalOpen(true); }}
+                                className={cn("h-8 w-8 p-0", !cashier.isEnabled ? "text-red-600" : "text-gray-500 hover:text-red-600")}
+                                title={!cashier.isEnabled ? "Enable Account" : "Disable Account"}
+                              >
+                                {cashier.isEnabled ? <Ban className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                              </Button>
+
+                              {/* Delete Button */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => { setActionCashier(cashier); setIsDeleteModalOpen(true); }}
+                                className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                                title="Delete Cashier"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+
+                            {cashier.tempPassword && !cashier.tempPasswordChanged && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openViewPasswordModal(cashier)}
+                                className="w-full text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 mt-1 h-auto py-1"
+                              >
                                 View Password
                               </Button>
                             )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openResetModal(cashier)}
-                            className="text-orange-600 hover:text-orange-700"
-                          >
-                            <RotateCcw className="mr-1 h-3 w-3" />
-                            Reset Password
-                          </Button>
-                          
-                          {cashier.shiftStatus === 'active' && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-                              onClick={() => {
-                                setViewDenomsData({
-                                  title: `Denominations - ${cashier.username}`,
-                                  denominations: cashier.denominations || [],
-                                  total: cashier.currentBalance || 0
-                                });
-                                setIsViewDenomsModalOpen(true);
-                              }}
-                              title="View Denominations"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -506,25 +722,46 @@ export default function CashierManagementPanel() {
           </DialogHeader>
           
           <div className="space-y-6 py-4">
-             <div className="grid grid-cols-2 gap-4">
-                {[100, 50, 20, 10, 5, 1].map(denom => (
-                   <div key={denom} className="space-y-1.5">
-                      <Label htmlFor={`denom-${denom}`}>${denom} Notes</Label>
-                      <Input
-                        id={`denom-${denom}`}
-                        type="number"
-                        min="0"
-                        value={shiftDenominations[denom.toString()] || 0}
-                        onChange={(e) => {
-                           const val = Math.max(0, parseInt(e.target.value) || 0);
-                           setShiftDenominations(prev => ({
-                              ...prev,
-                              [denom.toString()]: val
-                           }));
-                        }}
-                      />
-                   </div>
-                ))}
+             <div className="grid grid-cols-1 gap-y-4">
+                {[100, 50, 20, 10, 5, 1].map(denom => {
+                   const available = vaultDenominations.find(d => d.denomination === denom)?.quantity || 0;
+                   return (
+                    <div key={denom} className="flex items-center gap-4">
+                       <div className="flex-1 space-y-1.5">
+                          <Label htmlFor={`denom-${denom}`} className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+                            ${denom} Notes (Count)
+                          </Label>
+                          <Input
+                            id={`denom-${denom}`}
+                            type="number"
+                            min="0"
+                            max={available}
+                            className={cn(
+                                "h-12 text-lg font-bold",
+                                (shiftDenominations[denom.toString()] || 0) > available && "border-red-500 bg-red-50"
+                            )}
+                            value={shiftDenominations[denom.toString()] || ''}
+                            onChange={(e) => {
+                               const val = Math.max(0, parseInt(e.target.value) || 0);
+                               setShiftDenominations(prev => ({
+                                  ...prev,
+                                  [denom.toString()]: val
+                               }));
+                            }}
+                            placeholder="0"
+                          />
+                       </div>
+                       
+                       <div className="w-24 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 flex flex-col items-center justify-center">
+                          <span className="text-[10px] text-gray-400 font-black uppercase tracking-tighter">Available</span>
+                          <span className={cn(
+                              "text-xl font-black",
+                              available > 0 ? "text-gray-900" : "text-gray-300"
+                          )}>{available}</span>
+                       </div>
+                    </div>
+                   );
+                })}
              </div>
 
              <div className="bg-green-50 p-4 rounded-lg flex items-center justify-between border border-green-200">
@@ -803,6 +1040,90 @@ export default function CashierManagementPanel() {
         denominations={viewDenomsData?.denominations || []}
         totalAmount={viewDenomsData?.total || 0}
       />
+
+       {/* Delete Confirmation Modal */}
+       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Delete Cashier
+            </DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the cashier{' '}
+              <span className="font-semibold text-foreground">
+                {actionCashier?.username}
+              </span>
+              .
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
+              <p className="font-semibold">Warning</p>
+              <p>
+                Deleting a cashier will remove all their access. Ensure all their
+                shifts are closed and reconciled before proceeding.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteCashierSubmit}
+              disabled={loading}
+            >
+              {loading ? 'Deleting...' : 'Delete Cashier'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disable/Enable Confirmation Modal */}
+      <Dialog open={isDisableModalOpen} onOpenChange={setIsDisableModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {actionCashier?.isEnabled ? (
+                <>
+                  <Ban className="h-5 w-5 text-amber-500" />
+                  Disable Cashier
+                </>
+              ) : (
+                <>
+                  <Check className="h-5 w-5 text-green-500" />
+                  Enable Cashier
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {actionCashier?.isEnabled
+                ? `Are you sure you want to disable ${actionCashier?.username}? They will no longer be able to log in.`
+                : `Are you sure you want to enable ${actionCashier?.username}? They will regain access to the system.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDisableModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDisableCashierSubmit}
+              disabled={loading}
+              className={actionCashier?.isEnabled ? "bg-amber-600 hover:bg-amber-700" : "bg-green-600 hover:bg-green-700"}
+            >
+              {loading ? 'Processing...' : (actionCashier?.isEnabled ? 'Disable Account' : 'Enable Account')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

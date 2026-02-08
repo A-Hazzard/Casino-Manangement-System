@@ -23,6 +23,7 @@ type ActiveShiftDashboardProps = {
   onTicketRedeem: () => void;
   onHandPay: () => void;
   onRequestFloat: (type: 'increase' | 'decrease') => void;
+  isVaultReconciled: boolean;
 };
 
 export default function ActiveShiftDashboard({
@@ -32,13 +33,14 @@ export default function ActiveShiftDashboard({
   onTicketRedeem,
   onHandPay,
   onRequestFloat,
+  isVaultReconciled,
 }: ActiveShiftDashboardProps) {
   const { formatAmount } = useCurrencyFormat();
 
   return (
     <div className="space-y-6">
       {/* Shift Status Card */}
-      <Card className="border-l-4 border-l-green-500 overflow-hidden relative">
+      <Card className="rounded-lg bg-container shadow-md border-t-4 border-emerald-500 overflow-hidden relative animate-in slide-in-from-top-4 duration-500">
         {refreshing && (
           <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
              <div className="w-full h-full p-6 space-y-4">
@@ -90,7 +92,7 @@ export default function ActiveShiftDashboard({
       </Card>
 
       {/* Quick Actions */}
-      <Card>
+      <Card className="rounded-lg bg-container shadow-md border-t-4 border-button">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
@@ -98,7 +100,7 @@ export default function ActiveShiftDashboard({
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Button
               variant="outline"
-              className="flex h-20 flex-col gap-2"
+              className={`flex h-20 flex-col gap-2 ${!isVaultReconciled ? 'opacity-40 cursor-not-allowed' : ''}`}
               onClick={onTicketRedeem}
             >
               <Receipt className="h-6 w-6" />
@@ -106,7 +108,7 @@ export default function ActiveShiftDashboard({
             </Button>
             <Button
               variant="outline"
-              className="flex h-20 flex-col gap-2"
+              className={`flex h-20 flex-col gap-2 ${!isVaultReconciled ? 'opacity-40 cursor-not-allowed' : ''}`}
               onClick={onHandPay}
             >
               <HandCoins className="h-6 w-6" />
@@ -114,16 +116,26 @@ export default function ActiveShiftDashboard({
             </Button>
             <Button
               variant="outline"
-              className="flex h-20 flex-col gap-2"
-              onClick={() => onRequestFloat('increase')}
+              className={`flex h-20 flex-col gap-2 ${!isVaultReconciled ? 'opacity-40 cursor-not-allowed' : ''}`}
+              onClick={() => {
+                if (!isVaultReconciled) {
+                  return; // Toast handled by parent or just block
+                }
+                onRequestFloat('increase');
+              }}
             >
               <TrendingUp className="h-6 w-6" />
               <span className="text-xs">Request More Float</span>
             </Button>
             <Button
               variant="outline"
-              className="flex h-20 flex-col gap-2 border-orange-200 text-orange-600 hover:bg-orange-50"
-              onClick={() => onRequestFloat('decrease')}
+              className={`flex h-20 flex-col gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 ${!isVaultReconciled ? 'opacity-40 cursor-not-allowed' : ''}`}
+              onClick={() => {
+                if (!isVaultReconciled) {
+                  return;
+                }
+                onRequestFloat('decrease');
+              }}
             >
               <Minus className="h-6 w-6" />
               <span className="text-xs">Return Float</span>

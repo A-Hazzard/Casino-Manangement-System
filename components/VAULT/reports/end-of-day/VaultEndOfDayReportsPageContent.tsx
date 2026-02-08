@@ -34,6 +34,7 @@ import {
     TableRow,
 } from '@/components/shared/ui/table';
 import VaultEndOfDayReportsSkeleton from '@/components/ui/skeletons/VaultEndOfDayReportsSkeleton';
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
     DEFAULT_CASHIER_FLOATS,
     DEFAULT_REPORT_DENOMINATIONS,
@@ -291,7 +292,7 @@ export default function VaultEndOfDayReportsPageContent() {
 
   if (error) {
     return (
-      <PageLayout showHeader={false}>
+      <PageLayout>
         <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center space-y-4">
           <div className="rounded-full bg-red-100 p-3">
             <AlertTriangle className="h-10 w-10 text-red-600" />
@@ -307,61 +308,55 @@ export default function VaultEndOfDayReportsPageContent() {
   }
 
   return (
-    <PageLayout showHeader={false}>
+    <PageLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
-              End-of-Day Reports
-            </h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Generate and export daily closing reports
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-button text-white hover:bg-button/90">
-              <CheckCircle2 className="mr-1 h-3 w-3" />
-              Report Generated
-            </Badge>
-            <Button
-              onClick={handleRefresh}
-              variant="outline"
-              size="sm"
-              className="border-gray-300"
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
-            <Button
-              onClick={handleExportPDF}
-              variant="outline"
-              size="sm"
-              className="border-gray-300"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export PDF
-            </Button>
-            <Button
-              onClick={handleExportCSV}
-              variant="outline"
-              size="sm"
-              className="border-gray-300"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
-            <Button
-              onClick={handlePrint}
-              variant="outline"
-              size="sm"
-              className="border-gray-300"
-            >
-              <Printer className="mr-2 h-4 w-4" />
-              Print
-            </Button>
-          </div>
-        </div>
+        {/* Header */}
+        <VaultManagerHeader
+            title="End-of-Day Reports"
+            description="Generate and export daily closing reports"
+        >
+          <Badge className="bg-button text-white hover:bg-button/90">
+            <CheckCircle2 className="mr-1 h-3 w-3" />
+            Report Generated
+          </Badge>
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            size="sm"
+            className="border-gray-300"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+          <Button
+            onClick={handleExportPDF}
+            variant="outline"
+            size="sm"
+            className="border-gray-300"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export PDF
+          </Button>
+          <Button
+            onClick={handleExportCSV}
+            variant="outline"
+            size="sm"
+            className="border-gray-300"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button
+            onClick={handlePrint}
+            variant="outline"
+            size="sm"
+            className="border-gray-300"
+          >
+            <Printer className="mr-2 h-4 w-4" />
+            Print
+          </Button>
+        </VaultManagerHeader>
 
         {/* Summary Statistics */}
         <Card className="rounded-lg bg-container shadow-md border-t-4 border-orangeHighlight">

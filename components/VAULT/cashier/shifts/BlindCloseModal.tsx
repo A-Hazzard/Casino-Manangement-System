@@ -23,7 +23,6 @@ import {
     DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
-import { Label } from '@/components/shared/ui/label';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import type { Denomination } from '@/shared/types/vault';
@@ -95,22 +94,42 @@ export default function BlindCloseModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
             {denominations.map((denom, index) => (
-              <div key={denom.denomination} className="space-y-2">
-                <Label className="text-sm font-medium">
-                  ${denom.denomination} Bills
-                </Label>
-                <div className="flex items-center gap-2">
+              <div 
+                key={denom.denomination} 
+                className={cn(
+                  "relative flex items-center justify-between p-3 rounded-xl border transition-all duration-200",
+                  denom.quantity > 0 
+                    ? "bg-indigo-50/50 border-indigo-200 ring-1 ring-indigo-100 shadow-sm" 
+                    : "bg-gray-50/30 border-gray-100"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm font-black text-sm",
+                    denom.quantity > 0 ? "text-indigo-600 border border-indigo-100" : "text-gray-400 border border-transparent"
+                  )}>
+                    ${denom.denomination}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Bills</span>
+                    <span className="text-xs font-bold text-gray-700">Physical Count</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-0.5 shadow-sm">
                   <Button
                     type="button"
-                    variant="outline"
-                    size="sm"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 hover:bg-gray-100 text-gray-500 rounded-md"
                     onClick={() => updateQuantity(index, denom.quantity - 1)}
                     disabled={denom.quantity === 0}
                   >
                     <Minus className="h-3 w-3" />
                   </Button>
+                  
                   <Input
                     type="number"
                     min="0"
@@ -118,12 +137,14 @@ export default function BlindCloseModal({
                     onChange={(e) =>
                       updateQuantity(index, parseInt(e.target.value) || 0)
                     }
-                    className="w-16 text-center"
+                    className="w-12 h-8 border-none bg-transparent text-center font-black p-0 focus-visible:ring-0 text-sm"
                   />
+                  
                   <Button
                     type="button"
-                    variant="outline"
-                    size="sm"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 hover:bg-gray-100 text-gray-500 rounded-md"
                     onClick={() => updateQuantity(index, denom.quantity + 1)}
                   >
                     <Plus className="h-3 w-3" />
@@ -133,21 +154,20 @@ export default function BlindCloseModal({
             ))}
           </div>
 
-          <div className="border-t pt-4 bg-gray-50 -mx-6 px-6 pb-4 -mb-4 rounded-b-lg">
+          <div className="bg-gradient-to-r from-gray-900 to-indigo-900 rounded-2xl p-5 shadow-xl shadow-indigo-900/20">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Your Count:</span>
-              <span
-                className={cn(
-                  'text-lg font-bold',
-                  totalAmount > 0 ? 'text-blue-600' : 'text-gray-500'
-                )}
-              >
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Total Recorded</span>
+                <p className="text-white/60 text-[10px]">Blind submission for verification</p>
+              </div>
+              <span className="text-3xl font-black text-white tracking-tight">
                 {formatAmount(totalAmount)}
               </span>
             </div>
-            <p className="text-xs text-center text-gray-500 mt-2">
-              Ensure this matches your physical drawer exactly.
-            </p>
+            <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 text-[10px] text-indigo-300 font-bold uppercase tracking-wider">
+               <AlertTriangle className="h-3 w-3" />
+               Submission is final and verified by manager
+            </div>
           </div>
         </div>
 

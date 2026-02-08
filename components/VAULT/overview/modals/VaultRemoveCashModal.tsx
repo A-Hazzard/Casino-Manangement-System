@@ -15,34 +15,33 @@
  */
 'use client';
 
-import { useState, useMemo } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/shared/ui/select';
 import { Textarea } from '@/components/shared/ui/textarea';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { cn } from '@/lib/utils';
 import type {
-  CashDestination,
-  DenominationBreakdown,
+    CashDestination,
+    Denomination,
+    DenominationBreakdown,
 } from '@/shared/types/vault';
+import { ArrowDownRight, CreditCard, Info, Landmark, MessageSquare, Monitor, RefreshCw } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 type VaultRemoveCashModalProps = {
   open: boolean;
   onClose: () => void;
+  vaultDenominations?: Denomination[];
   onConfirm: (data: {
     destination: CashDestination;
     breakdown: DenominationBreakdown;
@@ -79,8 +78,10 @@ const CASH_DESTINATIONS: CashDestination[] = [
 export default function VaultRemoveCashModal({
   open,
   onClose,
+  vaultDenominations = [],
   onConfirm,
 }: VaultRemoveCashModalProps) {
+  const { formatAmount } = useCurrencyFormat();
   // ============================================================================
   // Hooks & State
   // ============================================================================
@@ -166,6 +167,21 @@ export default function VaultRemoveCashModal({
       newErrors.total = 'Total amount must be greater than 0';
     }
 
+    // Real-time stock check
+    const overages = Object.entries(breakdown).some(([key, qty]) => {
+      if (qty <= 0) return false;
+      const denomVal = DENOMINATIONS.find(d => d.key === key)?.value || 0;
+      const available = vaultDenominations.find(d => d.denomination === denomVal)?.quantity || 0;
+      return qty > available;
+    });
+
+    if (overages) {
+      toast.error('Insufficient Stock', {
+        description: 'One or more denominations exceed the available vault inventory.'
+      });
+      return;
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -225,111 +241,149 @@ export default function VaultRemoveCashModal({
   // ============================================================================
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Remove Cash From Vault</DialogTitle>
-          <DialogDescription>
-            Enter the destination and denomination breakdown for the cash being
-            removed from the vault.
+      <DialogContent className="max-w-2xl p-0 overflow-hidden">
+        <DialogHeader className="p-6 bg-orange-50 border-b border-orange-100">
+          <DialogTitle className="flex items-center gap-2 text-orange-900">
+            <ArrowDownRight className="h-5 w-5 text-orange-600" />
+            Remove Cash from Vault
+          </DialogTitle>
+          <DialogDescription className="text-orange-700/80">
+            Record cash leaving the vault for deposits or replenishment.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="max-h-[70vh] overflow-y-auto p-6 space-y-8 custom-scrollbar">
           {/* Destination Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="destination">Destination:</Label>
-            <Select
-              value={destination}
-              onValueChange={value => {
-                setDestination(value as CashDestination);
-                if (errors.destination) {
-                  setErrors(prev => {
-                    const newErrors = { ...prev };
-                    delete newErrors.destination;
-                    return newErrors;
-                  });
-                }
-              }}
-            >
-              <SelectTrigger id="destination" className="w-full">
-                <SelectValue placeholder="Select Destination:" />
-              </SelectTrigger>
-              <SelectContent>
-                {CASH_DESTINATIONS.map(dest => (
-                  <SelectItem key={dest} value={dest}>
-                    {dest}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.destination && (
-              <p className="text-sm text-red-600">{errors.destination}</p>
-            )}
-          </div>
-
-          {/* Denomination Breakdown */}
-          <div className="space-y-4">
-            <Label>Denomination Breakdown:</Label>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-              {DENOMINATIONS.map(denom => (
-                <div key={denom.key} className="space-y-2">
-                  <Label htmlFor={denom.key} className="text-sm">
-                    {denom.label}
-                  </Label>
-                  <Input
-                    id={denom.key}
-                    type="number"
-                    min="0"
-                    value={breakdown[denom.key] || 0}
-                    onChange={e =>
-                      handleDenominationChange(denom.key, e.target.value)
-                    }
-                    className="w-full"
-                  />
-                </div>
-              ))}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <Label htmlFor="destination" className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                Outbound Destination
+              </Label>
+              {errors.destination && <span className="text-[10px] font-bold text-red-500 uppercase">Required</span>}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {CASH_DESTINATIONS.map(dest => {
+                const isSelected = destination === dest;
+                const Icon = dest === 'Bank Deposit' ? Landmark : dest === 'ATM Fill' ? Monitor : CreditCard;
+                return (
+                  <button
+                    key={dest}
+                    type="button"
+                    onClick={() => setDestination(dest)}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2",
+                      isSelected 
+                        ? "bg-orange-600 border-orange-600 text-white shadow-lg shadow-orange-200" 
+                        : "bg-white border-gray-100 text-gray-600 hover:border-orange-200 hover:bg-orange-50/30"
+                    )}
+                  >
+                    <Icon className={cn("h-6 w-6", isSelected ? "text-white" : "text-orange-500")} />
+                    <span className="text-[11px] font-black uppercase tracking-tight leading-tight">{dest}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Total Amount */}
-          <div className="space-y-2">
-            <Label>Total Amount:</Label>
-            <Input
-              value={`$${totalAmount.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`}
-              readOnly
-              className="w-full font-semibold"
-            />
-            {errors.total && (
-              <p className="text-sm text-red-600">{errors.total}</p>
-            )}
+          {/* Denomination Grid */}
+          <div className="space-y-4">
+            <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">
+              Denomination Breakdown & Stock
+            </Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {DENOMINATIONS.map(denom => {
+                const available = vaultDenominations.find(d => d.denomination === denom.value)?.quantity || 0;
+                const requested = breakdown[denom.key] || 0;
+                const isOver = requested > available;
+
+                return (
+                  <div 
+                    key={denom.key} 
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-xl border transition-all duration-200",
+                      requested > 0 
+                        ? (isOver ? "bg-red-50 border-red-200 ring-1 ring-red-100" : "bg-orange-50/50 border-orange-200 ring-1 ring-orange-100") 
+                        : "bg-gray-50/30 border-gray-100"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                          "flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm font-black text-xs",
+                          requested > 0 ? (isOver ? "text-red-600 border border-red-100" : "text-orange-600 border border-orange-100") : "text-gray-400 border border-transparent"
+                      )}>
+                          {denom.label}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Vault Stock</span>
+                        <span className={cn("text-xs font-bold", available > 0 ? "text-gray-900" : "text-gray-300")}>{available}</span>
+                      </div>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={breakdown[denom.key] || ''}
+                      onChange={e => handleDenominationChange(denom.key, e.target.value)}
+                      placeholder="0"
+                      className={cn(
+                        "w-16 h-9 text-center font-black bg-white rounded-lg border-gray-200 focus-visible:ring-orange-500/30 transition-all",
+                        isOver && "border-red-500 text-red-600"
+                      )}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes (Optional):</Label>
-            <Textarea
-              id="notes"
-              placeholder="Enter reason for removal..."
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={3}
-            />
+          {/* Notes & Summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+             <div className="space-y-2">
+                <Label htmlFor="notes" className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-1">
+                   <MessageSquare className="h-3 w-3" />
+                   Removal Reason
+                </Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Optional details about this removal..."
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  rows={3}
+                  className="resize-none bg-gray-50/50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm"
+                />
+             </div>
+
+             <div className="bg-gradient-to-br from-gray-900 to-orange-900 rounded-2xl p-5 shadow-xl shadow-orange-900/10">
+                <div className="flex items-center justify-between mb-4">
+                   <span className="text-[10px] font-black uppercase tracking-widest text-orange-200 opacity-60">Total Value</span>
+                   <ArrowDownRight className="h-4 w-4 text-orange-400" />
+                </div>
+                <div className="space-y-0.5">
+                   <span className="text-3xl font-black text-white tracking-tight">{formatAmount(totalAmount)}</span>
+                   <p className="text-[10px] text-orange-200/50 font-bold uppercase tracking-tight">Outbound Cash Value</p>
+                </div>
+                <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-white/40 border-t border-white/5 pt-4">
+                   <Info className="h-3 w-3" />
+                   Stock will be deducted immediately
+                </div>
+             </div>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={loading}>
+        <DialogFooter className="p-4 bg-gray-50 border-t flex flex-col sm:flex-row gap-3">
+          <Button variant="ghost" onClick={handleClose} disabled={loading} className="order-2 sm:order-1 font-bold text-gray-500">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!isValid || loading}
-            className="bg-buttonActive text-white hover:bg-buttonActive/90"
+            className="order-1 sm:order-2 flex-1 h-12 bg-orange-600 text-white hover:bg-orange-700 font-black text-base shadow-lg shadow-orange-600/20 active:scale-[0.98] transition-all rounded-xl"
           >
-            {loading ? 'Removing...' : 'Remove Cash'}
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Processing...
+              </div>
+            ) : 'Confirm Removal'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -25,6 +25,7 @@ import {
 } from '@/components/shared/ui/dialog';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import VaultTransfersSkeleton from '@/components/ui/skeletons/VaultTransfersSkeleton';
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import { DEFAULT_VAULT_BALANCE } from '@/components/VAULT/overview/data/defaults';
 import {
     fetchVaultBalance,
@@ -243,7 +244,7 @@ export default function VaultTransfersPageContent() {
   // Show skeleton while loading
   if (loading && transfers.length === 0) {
     return (
-      <PageLayout showHeader={false}>
+      <PageLayout>
         <VaultTransfersSkeleton />
       </PageLayout>
     );
@@ -253,15 +254,12 @@ export default function VaultTransfersPageContent() {
   // Render
   // ============================================================================
   return (
-    <PageLayout showHeader={false}>
+    <PageLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Transfers</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Transfer funds between vaults, cash desks, and banks
-          </p>
-        </div>
+        <VaultManagerHeader 
+          title="Transfers" 
+          description="Transfer funds between vaults, cash desks, and banks" 
+        />
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

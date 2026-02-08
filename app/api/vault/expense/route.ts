@@ -12,11 +12,12 @@
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { updateVaultShiftInventory, validateDenominationTotal } from '@/app/api/lib/helpers/vault/inventory';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import { generateMongoId } from '@/lib/utils/id';
 import { Db, GridFSBucket } from 'mongodb';
-import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 import { Readable } from 'stream';
 
@@ -205,55 +206,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update Inventory (currentDenominations)
-    if (denominations.length > 0) {
-      const currentInventory =
-        activeVaultShift.currentDenominations &&
-        activeVaultShift.currentDenominations.length > 0
-          ? activeVaultShift.currentDenominations
-          : activeVaultShift.openingDenominations;
+    // MANDATORY: Enforce denominations for expenses to keep inventory accurate
+    if (!denominations || denominations.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Denominations are required for recorded expenses' },
+        { status: 400 }
+      );
+    }
 
-      const newInventoryMap = new Map<number, number>();
-      
-      // Initialize with current
-      currentInventory.forEach((d: { denomination: number; quantity: number }) => {
-        newInventoryMap.set(d.denomination, d.quantity);
-      });
-
-      // Deduct expense denominations
-      let insufficientFunds = false;
-      denominations.forEach((d) => {
-        const currentQty = newInventoryMap.get(d.denomination) || 0;
-        if (currentQty < d.quantity) {
-          insufficientFunds = true;
-        }
-        newInventoryMap.set(d.denomination, Math.max(0, currentQty - d.quantity));
-      });
-
-      if (insufficientFunds) {
-        // Option: Allow it (go negative? no, schema prevents) or Block it. 
-        // We blocked based on total amount already. 
-        // If specific bills are missing, we should probably warn or block.
-        // For now, let's block strictly to maintain accurate inventory.
-        return NextResponse.json(
-          { success: false, error: 'Insufficient bill quantities for this expense.' },
-          { status: 400 }
-        );
-      }
-
-      // Convert back to array
-      activeVaultShift.currentDenominations = Array.from(
-        newInventoryMap.entries()
-      ).map(([denomination, quantity]) => ({
-        denomination,
-        quantity,
-      }));
+    if (!validateDenominationTotal(amount, denominations as any)) {
+      return NextResponse.json(
+        { success: false, error: 'Denomination total does not match expense amount' },
+        { status: 400 }
+      );
     }
 
     // ============================================================================
     // STEP 7: Create transaction
     // ============================================================================
-    const transactionId = nanoid();
+    const transactionId = await generateMongoId();
     const expenseDate = dateStr ? new Date(dateStr) : new Date();
 
     const vaultTransaction = new VaultTransactionModel({
@@ -278,12 +249,10 @@ export async function POST(request: NextRequest) {
     });
 
     // ============================================================================
-    // STEP 8: Save and Update Balance
+    // STEP 8: Save and Update Balance & Inventory
     // ============================================================================
     await vaultTransaction.save();
-
-    activeVaultShift.closingBalance = vaultTransaction.vaultBalanceAfter;
-    await activeVaultShift.save();
+    await updateVaultShiftInventory(activeVaultShift, amount, denominations as any, false);
 
     // STEP 9: Audit Activity
     await logActivity({

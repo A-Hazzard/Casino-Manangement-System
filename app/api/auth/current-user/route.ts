@@ -77,6 +77,7 @@ export async function GET() {
       success: true,
       user: {
         id: dbUser._id?.toString() || '',
+        _id: dbUser._id?.toString() || '',
         username: dbUser.username || '',
         emailAddress: dbUser.emailAddress || '',
         profile: dbUser.profile || {},

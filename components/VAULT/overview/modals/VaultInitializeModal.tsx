@@ -1,19 +1,3 @@
-/**
- * Vault Initialize Modal Component
- *
- * Modal for initializing the vault (starting a new shift) with denomination breakdown.
- *
- * Features:
- * - Denomination breakdown (6 inputs: $100, $50, $20, $10, $5, $1)
- * - Auto-calculated total amount
- * - Optional notes field
- * - Form validation
- * - Loading state on submit
- *
- * @module components/VAULT/modals/VaultInitializeModal
- */
-'use client';
-
 import { Button } from '@/components/shared/ui/button';
 import {
     Dialog,
@@ -23,128 +7,45 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/shared/ui/dialog';
-import { Input } from '@/components/shared/ui/input';
-import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
-import type { Denomination, DenominationBreakdown } from '@/shared/types/vault';
-import { useMemo, useState } from 'react';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import type { Denomination } from '@/shared/types/vault';
+import { AlertTriangle, ArrowRightCircle, Calendar, Landmark, MessageSquare, RefreshCw, Sparkles } from 'lucide-react';
+import { useState } from 'react';
 
 type VaultInitializeModalProps = {
   open: boolean;
   onClose: () => void;
   onConfirm: (data: {
-    denominations: Denomination[];
-    totalAmount: number;
+    denominations?: Denomination[];
+    totalAmount?: number;
     notes?: string;
   }) => Promise<void>;
+  expectedBalance: number;
+  expectedDenominations: Denomination[];
+  isInitial?: boolean;
 };
-
-// ============================================================================
-// Constants
-// ============================================================================
-/**
- * Available cash denominations for breakdown input
- */
-const DENOMINATIONS_CONFIG = [
-  { key: 'hundred' as const, label: '$100', value: 100 },
-  { key: 'fifty' as const, label: '$50', value: 50 },
-  { key: 'twenty' as const, label: '$20', value: 20 },
-  { key: 'ten' as const, label: '$10', value: 10 },
-  { key: 'five' as const, label: '$5', value: 5 },
-  { key: 'one' as const, label: '$1', value: 1 },
-] as const;
 
 export default function VaultInitializeModal({
   open,
   onClose,
   onConfirm,
+  expectedBalance,
+  expectedDenominations,
+  isInitial = false
 }: VaultInitializeModalProps) {
-  // ============================================================================
-  // Hooks & State
-  // ============================================================================
-  const [breakdown, setBreakdown] = useState<DenominationBreakdown>({
-    hundred: 0,
-    fifty: 0,
-    twenty: 0,
-    ten: 0,
-    five: 0,
-    one: 0,
-  });
+  const { formatAmount } = useCurrencyFormat();
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // ============================================================================
-  // Computed Values
-  // ============================================================================
-  const totalAmount = useMemo(() => {
-    return (
-      breakdown.hundred * 100 +
-      breakdown.fifty * 50 +
-      breakdown.twenty * 20 +
-      breakdown.ten * 10 +
-      breakdown.five * 5 +
-      breakdown.one * 1
-    );
-  }, [breakdown]);
-
-  const isValid = totalAmount > 0;
-
-  // ============================================================================
-  // Event Handlers
-  // ============================================================================
-  const handleDenominationChange = (
-    key: keyof DenominationBreakdown,
-    value: string
-  ) => {
-    const numValue = parseInt(value, 10) || 0;
-    if (numValue < 0) return;
-
-    setBreakdown(prev => ({
-      ...prev,
-      [key]: numValue,
-    }));
-    
-    if (errors.total) {
-      setErrors({});
-    }
-  };
 
   const handleSubmit = async () => {
-    if (totalAmount <= 0) {
-      setErrors({ total: 'Total amount must be greater than 0' });
-      return;
-    }
-
     setLoading(true);
     try {
-      // Map breakdown to Denomination[] format required by API
-      const denominations: Denomination[] = [
-        { denomination: 100, quantity: breakdown.hundred },
-        { denomination: 50, quantity: breakdown.fifty },
-        { denomination: 20, quantity: breakdown.twenty },
-        { denomination: 10, quantity: breakdown.ten },
-        { denomination: 5, quantity: breakdown.five },
-        { denomination: 1, quantity: breakdown.one },
-      ].filter(d => d.quantity > 0) as Denomination[];
-
       await onConfirm({
-        denominations,
-        totalAmount,
         notes: notes.trim() || undefined,
-      });
-      
-      // Reset form on success
-      setBreakdown({
-        hundred: 0,
-        fifty: 0,
-        twenty: 0,
-        ten: 0,
-        five: 0,
-        one: 0,
+        // We pass undefined for balance/denoms to let backend use previous close
       });
       setNotes('');
-      setErrors({});
       onClose();
     } catch (error) {
       console.error('Error initializing vault:', error);
@@ -155,106 +56,105 @@ export default function VaultInitializeModal({
 
   const handleClose = () => {
     if (loading) return;
-    setBreakdown({
-      hundred: 0,
-      fifty: 0,
-      twenty: 0,
-      ten: 0,
-      five: 0,
-      one: 0,
-    });
     setNotes('');
-    setErrors({});
     onClose();
   };
 
-  // ============================================================================
-  // Render
-  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Open New Vault Shift</DialogTitle>
-          <DialogDescription>
-            Initialize the vault for today by entering the current physical cash on hand breakdown.
-            This establishes the starting balance for your shift.
+      <DialogContent className="max-w-md p-0 overflow-hidden">
+        <DialogHeader className="p-6 bg-slate-50 border-b border-slate-100">
+          <DialogTitle className="flex items-center gap-2 text-slate-900">
+            {isInitial ? <Sparkles className="h-5 w-5 text-amber-500" /> : <Calendar className="h-5 w-5 text-blue-600" />}
+            {isInitial ? "Initialize New Vault" : "Open Vault Shift"}
+          </DialogTitle>
+          <DialogDescription className="text-slate-500">
+            {isInitial 
+              ? "Setup your location's vault for the very first time."
+              : "Verify balance and start the daily vault session."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Denomination Breakdown */}
-          <div className="space-y-4">
-            <Label className="text-base font-semibold">Denomination Breakdown:</Label>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-              {DENOMINATIONS_CONFIG.map(denom => (
-                <div key={denom.key} className="space-y-2">
-                  <Label htmlFor={denom.key} className="text-sm">
-                    {denom.label} Bills
-                  </Label>
-                  <Input
-                    id={denom.key}
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={breakdown[denom.key] || ''}
-                    onChange={e =>
-                      handleDenominationChange(denom.key, e.target.value)
-                    }
-                    className="w-full"
-                  />
-                </div>
-              ))}
+        <div className="p-6 space-y-6">
+          {/* Expected Balance Card - Premium Style */}
+          {!isInitial && (
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-6 shadow-xl shadow-blue-500/20 text-white">
+              <div className="relative z-10">
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-100/60 mb-1">Expected Opening Balance</p>
+                <p className="text-4xl font-black tracking-tight">{formatAmount(expectedBalance)}</p>
+                
+                {expectedDenominations && expectedDenominations.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-3 gap-2">
+                    {expectedDenominations.filter(d => d.quantity > 0).map(d => (
+                      <div key={d.denomination} className="flex flex-col">
+                        <span className="text-[9px] font-black uppercase text-blue-200/50">${d.denomination} Bills</span>
+                        <span className="text-sm font-bold">x{d.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Landmark className="absolute -right-4 -bottom-4 h-24 w-24 text-white/5" />
             </div>
-          </div>
+          )}
 
-          {/* Total Amount Display */}
-          <div className="rounded-lg bg-gray-50 p-4 border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Calculated Opening Balance:</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ${totalAmount.toLocaleString('en-US', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-button/10 flex items-center justify-center text-button">
-                <span className="font-bold">$</span>
-              </div>
+          {isInitial && (
+            <div className="flex items-start gap-4 rounded-2xl bg-amber-50 p-5 border-2 border-amber-100/50 shadow-sm">
+               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                 <AlertTriangle className="h-5 w-5 text-amber-600" />
+               </div>
+               <div className="space-y-1">
+                 <p className="text-sm font-black text-amber-900 uppercase tracking-tight">Zero Balance Start</p>
+                 <p className="text-xs text-amber-800/80 leading-relaxed font-medium">
+                   This vault is currently empty. Initialize to start with <span className="font-bold underline">$0.00</span>. 
+                   You can add inventory immediately after.
+                 </p>
+               </div>
             </div>
-            {errors.total && (
-              <p className="mt-2 text-sm text-red-600 font-medium">{errors.total}</p>
-            )}
-          </div>
+          )}
 
           {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="init-notes">Audit Comment / Notes (Optional):</Label>
+          <div className="space-y-3 px-1">
+            <Label htmlFor="init-notes" className="text-[11px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+               <MessageSquare className="h-3 w-3" />
+               Opening Notes
+            </Label>
             <Textarea
               id="init-notes"
-              placeholder="E.g., Starting balance for morning shift..."
+              placeholder="e.g. Starting Monday morning shift..."
               value={notes}
               onChange={e => setNotes(e.target.value)}
               rows={3}
+              className="resize-none bg-gray-50/50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm"
             />
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={loading}>
-            Cancel
-          </Button>
+        <DialogFooter className="p-4 bg-gray-50 border-t flex flex-col gap-2">
           <Button
             onClick={handleSubmit}
-            disabled={!isValid || loading}
-            className="bg-button text-white hover:bg-button/90 flex-1 sm:flex-none"
+            disabled={loading}
+            className="w-full h-12 bg-blue-600 text-white hover:bg-blue-700 font-black text-base shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-all rounded-xl"
           >
-            {loading ? 'Initializing...' : 'Start Vault Shift'}
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-5 w-5 animate-spin" />
+                Initializing...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span>Start Vault Shift</span>
+                <ArrowRightCircle className="h-5 w-5" />
+              </div>
+            )}
+          </Button>
+          <Button variant="ghost" onClick={handleClose} disabled={loading} className="w-full font-bold text-gray-500">
+            Go Back
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+import { Label } from '@/components/shared/ui/label';

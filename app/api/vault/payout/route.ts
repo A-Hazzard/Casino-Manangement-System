@@ -15,8 +15,8 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import PayoutModel from '@/app/api/lib/models/payout';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import { generateMongoId } from '@/lib/utils/id';
 import type { CreatePayoutRequest } from '@/shared/types/vault';
-import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -130,8 +130,8 @@ export async function POST(request: NextRequest) {
     // STEP 4: Create Payout and Transaction records
     // ============================================================================
     const now = new Date();
-    const payoutId = nanoid();
-    const transactionId = nanoid();
+    const payoutId = await generateMongoId();
+    const transactionId = await generateMongoId();
 
     const payoutData: any = {
       _id: payoutId,

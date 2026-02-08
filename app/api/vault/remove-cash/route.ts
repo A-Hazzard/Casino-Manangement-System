@@ -11,10 +11,11 @@
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { updateVaultShiftInventory, validateDenominationTotal } from '@/app/api/lib/helpers/vault/inventory';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { nanoid } from 'nanoid';
+import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -111,16 +112,26 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
+    // STEP 5.5: Validate Denomination Total
+    // ============================================================================
+    if (!validateDenominationTotal(amount, denominations)) {
+      return NextResponse.json(
+        { success: false, error: 'Denomination total does not match amount' },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
     // STEP 6: Create transaction
     // ============================================================================
-    const transactionId = nanoid();
+    const transactionId = await generateMongoId();
     const now = new Date();
 
     const vaultTransaction = new VaultTransactionModel({
       _id: transactionId,
       locationId: activeVaultShift.locationId,
       timestamp: now,
-      type: 'vault_close', // Using vault_close for removal or add generic 'removal' enum later
+      type: 'vault_close', // Using vault_close for removal
       from: { type: 'vault' },
       to: { type: 'external', id: destination },
       amount,
@@ -136,47 +147,10 @@ export async function POST(request: NextRequest) {
     });
 
     // ============================================================================
-    // STEP 7: Save and Update Balance
-    // ============================================================================
-    // ============================================================================
     // STEP 7: Save and Update Balance & Inventory
     // ============================================================================
     await vaultTransaction.save();
-
-    // Update Balance
-    activeVaultShift.closingBalance = vaultTransaction.vaultBalanceAfter;
-
-    // Update Inventory (currentDenominations)
-    const currentInventory =
-      activeVaultShift.currentDenominations &&
-      activeVaultShift.currentDenominations.length > 0
-        ? activeVaultShift.currentDenominations
-        : activeVaultShift.openingDenominations;
-
-    const newInventoryMap = new Map<number, number>();
-    
-    // Initialize with current
-    currentInventory.forEach((d: { denomination: number; quantity: number }) => {
-      newInventoryMap.set(d.denomination, d.quantity);
-    });
-
-    // Remove cash
-    denominations.forEach((d: { denomination: number; quantity: number }) => {
-      const currentQty = newInventoryMap.get(d.denomination) || 0;
-      // Ensure we don't go below zero (schema constraint)
-      const newQty = Math.max(0, currentQty - d.quantity);
-      newInventoryMap.set(d.denomination, newQty);
-    });
-
-    // Convert back to array
-    activeVaultShift.currentDenominations = Array.from(
-      newInventoryMap.entries()
-    ).map(([denomination, quantity]) => ({
-      denomination,
-      quantity,
-    }));
-
-    await activeVaultShift.save();
+    await updateVaultShiftInventory(activeVaultShift, amount, denominations, false);
 
     // STEP 8: Audit Activity
     await logActivity({

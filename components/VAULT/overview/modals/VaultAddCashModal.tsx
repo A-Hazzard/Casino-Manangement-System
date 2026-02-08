@@ -15,27 +15,23 @@
  */
 'use client';
 
-import { useState, useMemo } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/shared/ui/select';
 import { Textarea } from '@/components/shared/ui/textarea';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { cn } from '@/lib/utils';
 import type { CashSource, DenominationBreakdown } from '@/shared/types/vault';
+import { ArrowUpRight, Info, Landmark, MessageSquare, Plus, RefreshCw, Wallet } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 type VaultAddCashModalProps = {
   open: boolean;
@@ -78,6 +74,7 @@ export default function VaultAddCashModal({
   onClose,
   onConfirm,
 }: VaultAddCashModalProps) {
+  const { formatAmount } = useCurrencyFormat();
   // ============================================================================
   // Hooks & State
   // ============================================================================
@@ -222,111 +219,137 @@ export default function VaultAddCashModal({
   // ============================================================================
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Add Cash To Vault</DialogTitle>
-          <DialogDescription>
-            Enter the source and denomination breakdown for the cash being added
-            to the vault.
+      <DialogContent className="max-w-2xl p-0 overflow-hidden">
+        <DialogHeader className="p-6 bg-blue-50 border-b border-blue-100">
+          <DialogTitle className="flex items-center gap-2 text-blue-900">
+            <ArrowUpRight className="h-5 w-5 text-blue-600" />
+            Add Cash to Vault
+          </DialogTitle>
+          <DialogDescription className="text-blue-700/80">
+            Replenish vault inventory by recording new cash arrivals.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Source Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="source">Source:</Label>
-            <Select
-              value={source}
-              onValueChange={value => {
-                setSource(value as CashSource);
-                if (errors.source) {
-                  setErrors(prev => {
-                    const newErrors = { ...prev };
-                    delete newErrors.source;
-                    return newErrors;
-                  });
-                }
-              }}
-            >
-              <SelectTrigger id="source" className="w-full">
-                <SelectValue placeholder="Select Source:" />
-              </SelectTrigger>
-              <SelectContent>
-                {CASH_SOURCES.map(src => (
-                  <SelectItem key={src} value={src}>
-                    {src}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.source && (
-              <p className="text-sm text-red-600">{errors.source}</p>
-            )}
+        <div className="max-h-[70vh] overflow-y-auto p-6 space-y-8 custom-scrollbar">
+          {/* Source Selection - Premium Layout */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <Label htmlFor="source" className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                Funding Source
+              </Label>
+              {errors.source && <span className="text-[10px] font-bold text-red-500 uppercase">Required</span>}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {CASH_SOURCES.map(src => {
+                const isSelected = source === src;
+                const Icon = src === 'Bank Withdrawal' ? Landmark : src === 'Owner Injection' ? Wallet : Plus;
+                return (
+                  <button
+                    key={src}
+                    type="button"
+                    onClick={() => setSource(src)}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2",
+                      isSelected 
+                        ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200" 
+                        : "bg-white border-gray-100 text-gray-600 hover:border-blue-200 hover:bg-blue-50/30"
+                    )}
+                  >
+                    <Icon className={cn("h-6 w-6", isSelected ? "text-white" : "text-blue-500")} />
+                    <span className="text-[11px] font-black uppercase tracking-tight leading-tight">{src}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Denomination Breakdown */}
+          {/* Denomination Grid - Row Style */}
           <div className="space-y-4">
-            <Label>Denomination Breakdown:</Label>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+            <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">
+              Denomination Breakdown
+            </Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {DENOMINATIONS.map(denom => (
-                <div key={denom.key} className="space-y-2">
-                  <Label htmlFor={denom.key} className="text-sm">
-                    {denom.label}
-                  </Label>
+                <div 
+                  key={denom.key} 
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-xl border transition-all duration-200",
+                    breakdown[denom.key] > 0 
+                      ? "bg-blue-50/50 border-blue-200 ring-1 ring-blue-100" 
+                      : "bg-gray-50/30 border-gray-100"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                        "flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm font-black text-xs",
+                        breakdown[denom.key] > 0 ? "text-blue-600 border border-blue-100" : "text-gray-400 border border-transparent"
+                    )}>
+                        {denom.label}
+                    </div>
+                    <span className="text-xs font-bold text-gray-700">Bills</span>
+                  </div>
                   <Input
-                    id={denom.key}
                     type="number"
                     min="0"
-                    value={breakdown[denom.key] || 0}
-                    onChange={e =>
-                      handleDenominationChange(denom.key, e.target.value)
-                    }
-                    className="w-full"
+                    value={breakdown[denom.key] || ''}
+                    onChange={e => handleDenominationChange(denom.key, e.target.value)}
+                    placeholder="0"
+                    className="w-16 h-9 text-center font-black bg-white rounded-lg border-gray-200 focus-visible:ring-blue-500/30 transition-all"
                   />
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Total Amount */}
-          <div className="space-y-2">
-            <Label>Total Amount:</Label>
-            <Input
-              value={`$${totalAmount.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`}
-              readOnly
-              className="w-full font-semibold"
-            />
-            {errors.total && (
-              <p className="text-sm text-red-600">{errors.total}</p>
-            )}
-          </div>
+          {/* Notes & Summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+             <div className="space-y-2">
+                <Label htmlFor="notes" className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-1">
+                   <MessageSquare className="h-3 w-3" />
+                   Internal Notes
+                </Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Optional details about this arrival..."
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  rows={3}
+                  className="resize-none bg-gray-50/50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm"
+                />
+             </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes (Optional):</Label>
-            <Textarea
-              id="notes"
-              placeholder="Add any additional notes..."
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={3}
-            />
+             <div className="bg-gradient-to-br from-gray-900 to-blue-900 rounded-2xl p-5 shadow-xl shadow-blue-900/10">
+                <div className="flex items-center justify-between mb-4">
+                   <span className="text-[10px] font-black uppercase tracking-widest text-blue-200 opacity-60">Total Value</span>
+                   <ArrowUpRight className="h-4 w-4 text-blue-400" />
+                </div>
+                <div className="space-y-0.5">
+                   <span className="text-3xl font-black text-white tracking-tight">{formatAmount(totalAmount)}</span>
+                   <p className="text-[10px] text-blue-200/50 font-bold uppercase tracking-tight">Verified Inbound Cash</p>
+                </div>
+                <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-white/40 border-t border-white/5 pt-4">
+                   <Info className="h-3 w-3" />
+                   Affects vault inventory immediately
+                </div>
+             </div>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={loading}>
+        <DialogFooter className="p-4 bg-gray-50 border-t flex flex-col sm:flex-row gap-3">
+          <Button variant="ghost" onClick={handleClose} disabled={loading} className="order-2 sm:order-1 font-bold text-gray-500">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!isValid || loading}
-            className="bg-buttonActive text-white hover:bg-buttonActive/90"
+            className="order-1 sm:order-2 flex-1 h-12 bg-blue-600 text-white hover:bg-blue-700 font-black text-base shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-all rounded-xl"
           >
-            {loading ? 'Adding...' : 'Add Cash'}
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Adding Cash...
+              </div>
+            ) : 'Confirm Arrival'}
           </Button>
         </DialogFooter>
       </DialogContent>

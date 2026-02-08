@@ -9,6 +9,7 @@
  * @module app/api/vault/transactions/route
  */
 
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
@@ -57,9 +58,26 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3: Database connection
+    // STEP 3: Database connection & Licensee filtering
     // ============================================================================
     await connectDB();
+
+    const allowedLocationIds = await getUserLocationFilter(
+      (userPayload?.assignedLicensees as string[]) || [],
+      undefined,
+      (userPayload?.assignedLocations as string[]) || [],
+      (userPayload?.roles as string[]) || []
+    );
+
+    if (
+      allowedLocationIds !== 'all' &&
+      !allowedLocationIds.includes(locationId)
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied for this location' },
+        { status: 403 }
+      );
+    }
 
     // ============================================================================
     // STEP 4: Fetch transactions

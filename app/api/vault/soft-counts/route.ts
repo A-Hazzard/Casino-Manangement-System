@@ -11,12 +11,13 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { updateVaultShiftInventory, validateDenominationTotal } from '@/app/api/lib/helpers/vault/inventory';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { SoftCountModel } from '@/app/api/lib/models/softCount';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import { generateMongoId } from '@/lib/utils/id';
 import type { CreateSoftCountRequest } from '@/shared/types/vault';
-import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 5: Create soft count record
     // ============================================================================
-    const softCountId = nanoid();
+    const softCountId = await generateMongoId();
     const now = new Date();
 
     const softCount = new SoftCountModel({
@@ -97,9 +98,19 @@ export async function POST(request: NextRequest) {
     });
 
     // ============================================================================
+    // STEP 6.5: Validate Denomination Total
+    // ============================================================================
+    if (!validateDenominationTotal(amount, denominations)) {
+      return NextResponse.json(
+        { success: false, error: 'Denomination total does not match soft count amount' },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
     // STEP 6: Create vault transaction
     // ============================================================================
-    const transactionId = nanoid();
+    const transactionId = await generateMongoId();
     softCount.transactionId = transactionId;
 
     const vaultTransaction = new VaultTransactionModel({
@@ -128,10 +139,9 @@ export async function POST(request: NextRequest) {
     await vaultTransaction.save();
 
     // ============================================================================
-    // STEP 8: Update vault shift balance
+    // STEP 8: Update vault shift balance & inventory
     // ============================================================================
-    activeVaultShift.closingBalance = vaultTransaction.vaultBalanceAfter;
-    await activeVaultShift.save();
+    await updateVaultShiftInventory(activeVaultShift, amount, denominations, false);
 
     // ============================================================================
     // STEP 9: Audit Activity

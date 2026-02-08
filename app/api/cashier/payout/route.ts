@@ -13,9 +13,10 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import PayoutModel from '@/app/api/lib/models/payout';
+import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import { generateMongoId } from '@/lib/utils/id';
 import type { CreatePayoutRequest } from '@/shared/types/vault';
-import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -80,6 +81,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // STEP 3.5: Check if Vault is reconciled
+    const vaultShift = await VaultShiftModel.findOne({ 
+        _id: shift.vaultShiftId,
+        status: 'active'
+    });
+
+    if (!vaultShift?.isReconciled) {
+        return NextResponse.json(
+            { success: false, error: 'Vault is not reconciled. Operation blocked until Vault Manager performs reconciliation.' },
+            { status: 403 }
+        );
+    }
+
     // Check Balance using live tracking
     const currentBalance = shift.currentBalance || 0;
 
@@ -92,8 +106,8 @@ export async function POST(request: NextRequest) {
 
     // STEP 4: Process Payout
     const now = new Date();
-    const payoutId = nanoid();
-    const transactionId = nanoid();
+    const payoutId = await generateMongoId();
+    const transactionId = await generateMongoId();
 
     const payoutData: any = {
         _id: payoutId,

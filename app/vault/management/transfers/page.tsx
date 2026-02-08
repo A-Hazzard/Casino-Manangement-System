@@ -12,16 +12,10 @@
  * @module app/vault/management/transfers/page
  */
 
-import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
-import PageErrorBoundary from '@/components/shared/ui/errors/PageErrorBoundary';
-import VaultTransfersPageContent from '@/components/VAULT/transfers/VaultTransfersPageContent';
+import { notFound } from 'next/navigation';
 
 export default function VaultTransfersPage() {
-  return (
-    <ProtectedRoute requiredPage="vault-management">
-      <PageErrorBoundary>
-        <VaultTransfersPageContent />
-      </PageErrorBoundary>
-    </ProtectedRoute>
-  );
+  
+  notFound();
+  return null;
 }

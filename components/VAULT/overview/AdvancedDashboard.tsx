@@ -9,37 +9,40 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/shared/ui/card';
 import { Button } from '@/components/shared/ui/button';
 import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-} from 'recharts';
-import {
-  TrendingUp,
-  DollarSign,
-  Activity,
-  PieChart as PieChartIcon,
-  RefreshCw,
-} from 'lucide-react';
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@/components/shared/ui/card';
+import { fetchAdvancedDashboardMetrics } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
-import { fetchAdvancedDashboardMetrics } from '@/lib/helpers/vaultHelpers';
+import { formatTime12Hour } from '@/shared/utils/dateFormat';
+import {
+    Activity,
+    DollarSign,
+    PieChart as PieChartIcon,
+    RefreshCw,
+    TrendingUp,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    Legend,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis
+} from 'recharts';
 import { toast } from 'sonner';
 
 export default function AdvancedDashboard() {
@@ -152,56 +155,75 @@ export default function AdvancedDashboard() {
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <>
-                  {selectedView === 'balance' && (
-                    <AreaChart data={dashboardData?.balanceTrend || []}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="time" />
-                      <YAxis />
-                      <Tooltip
-                        formatter={value => [
-                          formatAmount(Number(value)),
-                          'Balance',
-                        ]}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="balance"
-                        stroke="#3B82F6"
-                        fill="#3B82F6"
-                        fillOpacity={0.1}
-                      />
-                    </AreaChart>
-                  )}
-                  {selectedView === 'transactions' && (
-                    <BarChart data={dashboardData?.balanceTrend || []}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="time" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="balance" fill="#10B981" />
-                    </BarChart>
-                  )}
-                  {selectedView === 'flow' && (
-                    <PieChart>
-                      <Pie
-                        data={dashboardData?.cashFlowData || []}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="amount"
-                        nameKey="category"
-                        label={({ name, percent }) =>
-                          `${name} ${(percent * 100).toFixed(0)}%`
-                        }
-                      />
-                      <Tooltip
-                        formatter={value => formatAmount(Number(value))}
-                      />
-                    </PieChart>
-                  )}
-                </>
+                {selectedView === 'balance' ? (
+                  <AreaChart data={dashboardData?.balanceTrend || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="time"
+                      tickFormatter={(time) => formatTime12Hour(time)}
+                    />
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatAmount(Number(value)),
+                        name === 'balance' ? 'Vault Balance' : 'Cumulative Cash Out'
+                      ]}
+                      labelFormatter={(label) => formatTime12Hour(label)}
+                    />
+                    <Legend />
+                    <Area
+                      type="monotone"
+                      dataKey="balance"
+                      name="Vault Balance"
+                      stroke="#5A69E7"
+                      fill="#5A69E7"
+                      fillOpacity={0.1}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="cashOut"
+                      name="Total Cash Out"
+                      stroke="#FFA203"
+                      fill="#FFA203"
+                      fillOpacity={0.1}
+                    />
+                  </AreaChart>
+                ) : selectedView === 'transactions' ? (
+                  <BarChart data={dashboardData?.balanceTrend || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="time" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip formatter={(val) => [val, 'Count']} />
+                    <Bar dataKey="transactions" fill="#FFA203" name="Transaction Count" />
+                  </BarChart>
+                ) : (
+                  <PieChart>
+                    <Pie
+                      data={dashboardData?.cashFlowData || []}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={120}
+                      fill="#FFA203"
+                      dataKey="amount"
+                      nameKey="category"
+                      label={({ name, percent }) =>
+                        `${name} ${(percent * 100).toFixed(0)}%`
+                      }
+                    >
+                      {dashboardData?.cashFlowData?.map((entry: any, index: number) => (
+                         <Cell key={`cell-${index}`} fill={
+                           index === 0 ? "#0AB40B" : // Cash In (Green)
+                           index === 1 ? "#FFA203" : // Cash Out (Orange)
+                           index === 2 ? "#5A69E7" : // Net Flow (Blue)
+                           "#F9687D" // Payouts (Pink)
+                         } />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={value => formatAmount(Number(value))}
+                    />
+                  </PieChart>
+                )}
               </ResponsiveContainer>
             </div>
           </CardContent>

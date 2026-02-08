@@ -1,13 +1,10 @@
 import { Button } from '@/components/shared/ui/button';
-import {
-  Card,
-  CardContent
-} from '@/components/shared/ui/card';
 import { DatePicker } from '@/components/shared/ui/date-picker';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { AlertTriangle, Ticket } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { AlertTriangle, RefreshCw, Ticket } from 'lucide-react';
 import { useState } from 'react';
 
 type TicketRedemptionFormProps = {
@@ -52,112 +49,131 @@ export default function TicketRedemptionForm({
   };
 
   return (
-    <Card className="rounded-lg bg-container shadow-md border-none lg:shadow-none">
-      <CardContent className="pt-6 px-0 sm:px-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Ticket Info */}
-          <div className="grid grid-cols-1 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="ticketNumber" className="text-sm font-medium text-gray-700">
-                Ticket Number *
-              </Label>
-              <div className="relative">
-                <Input
-                  id="ticketNumber"
-                  type="text"
-                  value={ticketNumber}
-                  onChange={e => setTicketNumber(e.target.value)}
-                  placeholder="Enter ticket number"
-                  className="h-11 pl-10"
-                  required
-                />
-                <Ticket className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">
-                Date on Physical Ticket *
-              </Label>
-              <DatePicker 
-                date={printedAt}
-                setDate={setPrintedAt}
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          {/* Amount Input */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="amount" className="text-sm font-medium text-gray-700">
-                Redemption Amount ($) *
-              </Label>
-              <div className="text-xs text-gray-500 font-semibold">
-                Stash: {formatAmount(currentBalance)}
-              </div>
-            </div>
-            <div className="relative">
+    <div className="w-full">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Ticket Info Section */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="ticketNumber" className="text-[11px] font-bold uppercase tracking-wider text-gray-500 ml-1">
+              Ticket Number
+            </Label>
+            <div className="relative group">
               <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="h-12 text-lg font-bold"
+                id="ticketNumber"
+                type="text"
+                value={ticketNumber}
+                onChange={e => setTicketNumber(e.target.value)}
+                placeholder="Enter #..."
+                className="h-11 pl-10 bg-gray-50/50 border-gray-200 focus:bg-white transition-all font-mono"
                 required
               />
-              <div className="absolute left-3 top-3.5 text-gray-400 font-bold">$</div>
+              <Ticket className="absolute left-3 top-3 h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
             </div>
           </div>
 
-          {/* Summary Display */}
-          <div className="rounded-xl bg-blue-50 border border-blue-100 p-4 text-blue-900">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold opacity-70 uppercase tracking-wider">Total Redemption</span>
-                <span className="text-sm opacity-80">{ticketNumber || 'No ticket #'}</span>
-              </div>
-              <span className={`text-2xl font-black ${isOverBalance ? 'text-red-600' : 'text-blue-600'}`}>
-                {formatAmount(numAmount)}
-              </span>
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 ml-1">
+              Issue Date
+            </Label>
+            <DatePicker 
+              date={printedAt}
+              setDate={setPrintedAt}
+              disabled={loading}
+            />
+          </div>
+        </div>
+
+        {/* Amount Input Section */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between px-1">
+            <Label htmlFor="amount" className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              Redemption Amount
+            </Label>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200">
+                <span className="text-[9px] font-black text-gray-400 uppercase">Stash</span>
+                <span className="text-[11px] font-bold text-gray-700">{formatAmount(currentBalance)}</span>
             </div>
-            {isOverBalance && (
-              <div className="mt-2 space-y-1">
-                <div className="flex items-center gap-2 text-xs text-red-500 font-bold">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Insufficient funds in your cashier stash
-                </div>
-                <div className="text-xs text-red-600 font-bold uppercase tracking-tight pl-5">
-                  Additional Amount Needed: <span className="text-base text-blue-600 font-black tracking-normal ml-1">{formatAmount(numAmount - currentBalance)}</span>
-                </div>
+          </div>
+          <div className="relative group">
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="0.00"
+              className="h-14 text-2xl font-black pl-10 bg-white border-2 border-gray-100 focus:border-blue-500 focus:ring-0 transition-all text-blue-600"
+              required
+            />
+            <div className="absolute left-3 top-4 text-gray-400 font-black text-xl group-focus-within:text-blue-500 transition-colors">$</div>
+          </div>
+        </div>
+
+        {/* Visual Summary Card */}
+        <div className={cn(
+          "rounded-2xl p-4 transition-all border shadow-sm",
+          isOverBalance 
+            ? "bg-red-50 border-red-100 text-red-900" 
+            : "bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 text-blue-900"
+        )}>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Payout Value</span>
+              <div className="flex items-center gap-2">
+                <Ticket className="h-4 w-4 opacity-40 shrink-0" />
+                <span className="text-sm font-bold truncate max-w-[120px]">{ticketNumber || 'Waiting for #...'}</span>
               </div>
-            )}
+            </div>
+            <span className={cn(
+               "text-3xl font-black tracking-tight",
+               isOverBalance ? "text-red-600" : "text-blue-700"
+            )}>
+              {formatAmount(numAmount)}
+            </span>
           </div>
 
-          <div className="flex gap-3">
+          {isOverBalance && (
+            <div className="mt-3 pt-3 border-t border-red-200/50 space-y-1">
+              <div className="flex items-center gap-2 text-xs text-red-600 font-bold">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Insufficient cashier stash balance
+              </div>
+              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-tight text-red-500 pl-5">
+                <span>Shortfall:</span>
+                <span className="text-sm text-blue-600 bg-white px-2 py-0.5 rounded border border-red-100 shadow-sm">{formatAmount(numAmount - currentBalance)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+          <Button
+            type="submit"
+            disabled={loading || !isFormValid}
+            className="flex-1 bg-blue-600 h-14 text-white hover:bg-blue-700 font-black text-base shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-all"
+          >
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-5 w-5 animate-spin" />
+                Processing...
+              </div>
+            ) : 'Redeem Ticket'}
+          </Button>
+          
+          {isOverBalance && (
             <Button
-              type="submit"
-              disabled={loading || !isFormValid}
-              className="flex-1 bg-blue-600 py-6 text-white hover:bg-blue-700 font-bold"
+              type="button"
+              variant="outline"
+              onClick={onRequestCash}
+              className="flex-1 border-gray-200 bg-white text-orangeHighlight hover:bg-orangeHighlight/5 h-14 font-bold border-2"
             >
-              {loading ? 'Processing...' : 'Redeem Ticket'}
+              Request From Vault
             </Button>
-            {isOverBalance && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onRequestCash}
-                className="flex-1 border-orangeHighlight text-orangeHighlight hover:bg-orangeHighlight/10 py-6 font-bold"
-              >
-                Request Cash
-              </Button>
-            )}
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+          )}
+        </div>
+      </form>
+    </div>
   );
 }

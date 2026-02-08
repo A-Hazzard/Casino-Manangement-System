@@ -11,8 +11,8 @@ import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { InterLocationTransferModel } from '@/app/api/lib/models/interLocationTransfer';
+import { generateMongoId } from '@/lib/utils/id';
 import type { CreateInterLocationTransferRequest } from '@/shared/types/vault';
-import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 4: Create transfer record
     // ============================================================================
-    const transferId = nanoid();
+    const transferId = await generateMongoId();
 
     // TODO: Get location names from database
     const fromLocationName = `Location ${fromLocationId}`;

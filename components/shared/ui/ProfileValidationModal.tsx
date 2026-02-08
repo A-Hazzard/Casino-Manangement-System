@@ -66,7 +66,6 @@ import type {
     ProfileValidationReasons,
 } from '@/shared/types/auth';
 import { AlertTriangle, Loader2, LogOut } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -107,7 +106,6 @@ export default function ProfileValidationModal({
   reasons = {},
 }: ProfileValidationModalProps) {
   const { user: authUser, clearUser } = useUserStore();
-  const router = useRouter();
   const normalizedRoles =
     authUser?.roles?.map(role => role.toLowerCase()) || [];
   const canManageAssignments =
@@ -1160,9 +1158,14 @@ export default function ProfileValidationModal({
                 type="button"
                 variant="outline"
                 onClick={async () => {
-                  await logoutUser();
-                  clearUser();
-                  router.push('/login?logout=success');
+                  try {
+                    await logoutUser();
+                    clearUser();
+                    window.location.href = '/login?logout=success';
+                  } catch (error) {
+                    console.error('Logout error:', error);
+                    window.location.href = '/login';
+                  }
                 }}
                 disabled={loading}
                 className="flex items-center gap-2"

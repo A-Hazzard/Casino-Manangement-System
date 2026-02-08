@@ -16,7 +16,7 @@ import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { updateDenominationInventory } from '@/lib/helpers/vault/calculations';
-import { nanoid } from 'nanoid';
+import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/middleware/db';
 
@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
     vaultShift.currentDenominations = vaultDenominationsAfter;
 
     // C. Create Transaction
-    const transactionId = nanoid();
+    const transactionId = await generateMongoId();
     await VaultTransactionModel.create({
       _id: transactionId,
       locationId: floatRequest.locationId,

@@ -18,6 +18,7 @@ import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import VaultFloatTransactionsSkeleton from '@/components/ui/skeletons/VaultFloatTransactionsSkeleton';
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
     DEFAULT_CASHIER_FLOATS,
     DEFAULT_VAULT_BALANCE,
@@ -46,7 +47,7 @@ export default function VaultFloatTransactionsPageContent() {
   // Hooks & State
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
-  const { user } = useUserStore();
+  const { user, isVaultReconciled } = useUserStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [floatSortOption, setFloatSortOption] =
@@ -223,6 +224,12 @@ export default function VaultFloatTransactionsPageContent() {
    * Handle approve transaction action
    */
   const handleApprove = async (transactionId: string) => {
+    if (!isVaultReconciled) {
+      toast.error('Reconciliation Required', {
+        description: 'Please perform the mandatory opening reconciliation before approving transactions.'
+      });
+      return;
+    }
     try {
       const result = await handleApproveFloatTransaction(transactionId);
       if (result.success) {
@@ -241,6 +248,12 @@ export default function VaultFloatTransactionsPageContent() {
    * Handle reject transaction action
    */
   const handleReject = async (transactionId: string) => {
+    if (!isVaultReconciled) {
+      toast.error('Reconciliation Required', {
+        description: 'Please perform the mandatory opening reconciliation before rejecting transactions.'
+      });
+      return;
+    }
     try {
       const result = await handleRejectFloatTransaction(transactionId);
       if (result.success) {
@@ -284,7 +297,7 @@ export default function VaultFloatTransactionsPageContent() {
   // ============================================================================
   if (loading && floatTransactions.length === 0) {
     return (
-      <PageLayout showHeader={false}>
+      <PageLayout>
         <VaultFloatTransactionsSkeleton />
       </PageLayout>
     );
@@ -292,7 +305,7 @@ export default function VaultFloatTransactionsPageContent() {
 
   if (error) {
     return (
-      <PageLayout showHeader={false}>
+      <PageLayout>
         <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center">
           <AlertTriangle className="mb-4 h-12 w-12 text-red-500" />
           <h2 className="text-xl font-semibold text-gray-900">{error}</h2>
@@ -306,18 +319,13 @@ export default function VaultFloatTransactionsPageContent() {
   }
 
   return (
-    <PageLayout showHeader={false}>
+    <PageLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Float Transactions
-            </h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Manage float increases and decreases.
-            </p>
-          </div>
+        <VaultManagerHeader
+            title="Float Transactions"
+            description="Manage and monitor vault float statuses"
+            onFloatActionComplete={() => fetchData()}
+        >
           <Button
             onClick={handleRefresh}
             disabled={loading}
@@ -330,7 +338,7 @@ export default function VaultFloatTransactionsPageContent() {
             />
             {loading ? 'Refreshing...' : 'Refresh'}
           </Button>
-        </div>
+        </VaultManagerHeader>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -440,6 +448,7 @@ export default function VaultFloatTransactionsPageContent() {
               onApprove={handleApprove}
               onReject={handleReject}
               showActions={true}
+              disabled={!isVaultReconciled}
             />
           </div>
 
@@ -454,6 +463,7 @@ export default function VaultFloatTransactionsPageContent() {
               onApprove={handleApprove}
               onReject={handleReject}
               showActions={true}
+              disabled={!isVaultReconciled}
             />
           </div>
 

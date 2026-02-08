@@ -11,12 +11,12 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
@@ -57,6 +57,7 @@ type VaultFloatRequestsTableProps = {
   onReject?: (requestId: string) => void;
   showActions?: boolean;
   showHistory?: boolean;
+  disabled?: boolean;
 };
 
 export default function VaultFloatRequestsTable({
@@ -68,6 +69,7 @@ export default function VaultFloatRequestsTable({
   onReject,
   showActions = false,
   showHistory = false,
+  disabled = false,
 }: VaultFloatRequestsTableProps) {
   const { formatAmount } = useCurrencyFormat();
 
@@ -99,7 +101,7 @@ export default function VaultFloatRequestsTable({
   return (
     <div className="space-y-4">
       {/* Desktop View */}
-      <div className="hidden lg:block overflow-x-auto rounded-lg bg-container shadow-md">
+      <div className="hidden lg:block overflow-x-auto rounded-lg bg-container shadow-md border-t-4 border-orangeHighlight">
         <Table>
           <TableHeader>
             <TableRow className="bg-button hover:bg-button text-white">
@@ -189,10 +191,18 @@ export default function VaultFloatRequestsTable({
                     <TableCell className="text-right">
                       {isPending && (
                         <div className="flex justify-end gap-2">
-                          <button onClick={() => onApprove?.(request.id)} className="p-1.5 rounded-full bg-button text-white hover:bg-button/80">
+                          <button 
+                            onClick={() => !disabled && onApprove?.(request.id)} 
+                            disabled={disabled}
+                            className={cn("p-1.5 rounded-full bg-button text-white hover:bg-button/80", disabled && "opacity-40 cursor-not-allowed")}
+                          >
                             <CheckCircle2 className="h-4 w-4" />
                           </button>
-                          <button onClick={() => onReject?.(request.id)} className="p-1.5 rounded-full bg-red-600 text-white hover:bg-red-500">
+                          <button 
+                            onClick={() => !disabled && onReject?.(request.id)} 
+                            disabled={disabled}
+                            className={cn("p-1.5 rounded-full bg-red-600 text-white hover:bg-red-500", disabled && "opacity-40 cursor-not-allowed")}
+                          >
                             <X className="h-4 w-4" />
                           </button>
                         </div>
@@ -257,15 +267,17 @@ export default function VaultFloatRequestsTable({
                 {showActions && isPending && (
                   <div className="flex gap-2 pt-2 border-t border-gray-100 mt-2">
                     <Button 
-                      className="flex-1 bg-button hover:bg-button text-xs h-8" 
-                      onClick={() => onApprove?.(request.id)}
+                      className={cn("flex-1 bg-button hover:bg-button text-xs h-8", disabled && "opacity-40 cursor-not-allowed")}
+                      onClick={() => !disabled && onApprove?.(request.id)}
+                      disabled={disabled}
                     >
                       <CheckCircle2 className="h-3 w-3 mr-1" /> Approve
                     </Button>
                     <Button 
                       variant="destructive" 
-                      className="flex-1 text-xs h-8" 
-                      onClick={() => onReject?.(request.id)}
+                      className={cn("flex-1 text-xs h-8", disabled && "opacity-40 cursor-not-allowed")}
+                      onClick={() => !disabled && onReject?.(request.id)}
+                      disabled={disabled}
                     >
                       <X className="h-3 w-3 mr-1" /> Reject
                     </Button>

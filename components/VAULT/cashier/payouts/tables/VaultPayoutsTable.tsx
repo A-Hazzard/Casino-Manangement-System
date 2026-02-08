@@ -11,20 +11,20 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle
 } from '@/components/shared/ui/dialog';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
@@ -94,7 +94,7 @@ export default function VaultPayoutsTable({
   return (
     <div className="space-y-4">
       {/* Desktop Table View */}
-      <div className="hidden lg:block overflow-x-auto rounded-lg bg-container shadow-md">
+      <div className="hidden lg:block overflow-x-auto rounded-lg bg-container shadow-md border-t-4 border-orangeHighlight">
         <Table>
           <TableHeader>
             <TableRow className="bg-button hover:bg-button">

@@ -15,7 +15,6 @@ import {
     MapPin,
     MonitorSpeaker,
     Receipt,
-    TrendingUp,
     UserCog,
     Users,
     Wallet
@@ -92,11 +91,6 @@ const baseCmsNavigationItems: NavigationItem[] = [
     label: 'Float Management',
     href: '/vault/management/floats',
     icon: Wallet,
-  },
-  {
-    label: 'Transfers',
-    href: '/vault/management/transfers',
-    icon: TrendingUp,
   },
   {
     label: 'Cash on Premises',

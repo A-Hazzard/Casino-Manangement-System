@@ -26,6 +26,7 @@ import {
     TableRow,
 } from '@/components/shared/ui/table';
 import VaultCashOnPremisesSkeleton from '@/components/ui/skeletons/VaultCashOnPremisesSkeleton';
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
     DEFAULT_CASHIER_FLOATS,
     DEFAULT_VAULT_BALANCE,
@@ -275,51 +276,44 @@ export default function VaultCashOnPremisesPageContent() {
   }
 
   return (
-    <PageLayout showHeader={false}>
+    <PageLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Cash on Premises
-            </h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Monitor total cash across all locations
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              onClick={handleRefresh}
-              disabled={loading}
-              variant="outline"
-              size="sm"
-              className="border-gray-300"
-            >
-              <RefreshCw
-                className={cn('mr-2 h-4 w-4', loading && 'animate-spin')}
-              />
-              {loading ? 'Refreshing...' : 'Refresh'}
-            </Button>
-            <Button
-              onClick={handleExportCSV}
-              variant="outline"
-              size="sm"
-              className="border-gray-300"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
-            <Button
-              onClick={handleExportPDF}
-              variant="outline"
-              size="sm"
-              className="border-gray-300"
-            >
-              <Printer className="mr-2 h-4 w-4" />
-              Export PDF
-            </Button>
-          </div>
-        </div>
+        <VaultManagerHeader
+            title="Cash on Premises"
+            description="Monitor total cash across all locations"
+        >
+          <Button
+            onClick={handleRefresh}
+            disabled={loading}
+            variant="outline"
+            size="sm"
+            className="border-gray-300"
+          >
+            <RefreshCw
+              className={cn('mr-2 h-4 w-4', loading && 'animate-spin')}
+            />
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          <Button
+            onClick={handleExportCSV}
+            variant="outline"
+            size="sm"
+            className="border-gray-300"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button
+            onClick={handleExportPDF}
+            variant="outline"
+            size="sm"
+            className="border-gray-300"
+          >
+            <Printer className="mr-2 h-4 w-4" />
+            Export PDF
+          </Button>
+        </VaultManagerHeader>
 
         {/* Total Cash on Premises Card */}
         <Card className="rounded-lg bg-container shadow-md">

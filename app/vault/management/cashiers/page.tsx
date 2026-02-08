@@ -8,26 +8,18 @@
  */
 
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
-import PageErrorBoundary from '@/components/shared/ui/errors/PageErrorBoundary';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import PageErrorBoundary from '@/components/shared/ui/errors/PageErrorBoundary';
 import CashierManagementPanel from '@/components/VAULT/admin/CashierManagementPanel';
-import { Button } from '@/components/shared/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 
 export default function CashierManagementPage() {
   return (
     <ProtectedRoute requiredPage="vault-management">
       <PageErrorBoundary>
-        <PageLayout showHeader={false}>
+        <PageLayout pageTitle="Cashier Management">
           <div className="space-y-6">
-            <div className="flex items-center gap-4">
-              <Link href="/vault/management">
-                <Button variant="outline" size="icon">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
+            <VaultManagerHeader />
 
             <CashierManagementPanel />
           </div>

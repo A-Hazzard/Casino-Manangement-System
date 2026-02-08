@@ -74,10 +74,12 @@ export default function CashierActivitySection() {
   };
 
   return (
-    <Card>
+    <Card className="rounded-lg bg-container shadow-md border-t-4 border-orangeHighlight animate-in fade-in duration-500">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-base font-semibold flex items-center gap-2">
-          <History className="h-5 w-5 text-gray-400" />
+        <CardTitle className="text-base font-bold flex items-center gap-2 text-gray-900">
+          <div className="flex h-8 w-8 items-center justify-center rounded border border-gray-300">
+              <History className="h-4 w-4 text-orangeHighlight" />
+          </div>
           Shift & Float History
         </CardTitle>
         <button 
@@ -106,12 +108,12 @@ export default function CashierActivitySection() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
+                    <p className="text-sm font-bold text-gray-900 truncate">
                       {activity.action}
                     </p>
                     <div className="flex-shrink-0">
                       {activity.amount !== undefined && (
-                        <span className="text-sm font-bold text-gray-900">
+                        <span className={activity.amount > 0 ? 'text-sm font-bold text-button' : 'text-sm font-bold text-orangeHighlight'}>
                           {formatAmount(activity.amount)}
                         </span>
                       )}

@@ -18,7 +18,7 @@ import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { updateDenominationInventory, validateDenominations } from '@/lib/helpers/vault/calculations';
 import { validateVaultBalance, validateVaultDenominations } from '@/lib/helpers/vault/validation';
-import { nanoid } from 'nanoid';
+import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -104,6 +104,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!vaultShift.isReconciled) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Vault is not reconciled. You must perform the mandatory opening reconciliation before starting cashier shifts.',
+        },
+        { status: 403 }
+      );
+    }
+
     const currentVaultBalance = vaultShift.closingBalance !== undefined ? vaultShift.closingBalance : vaultShift.openingBalance;
 
     // STEP 6: Validate Vault Balance & Denominations (Money leaving vault)
@@ -147,9 +157,9 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 8: Create records in a transaction block (logical)
-    const shiftId = nanoid();
-    const requestId = nanoid();
-    const transactionId = nanoid();
+    const shiftId = await generateMongoId();
+    const requestId = await generateMongoId();
+    const transactionId = await generateMongoId();
     const now = new Date();
 
     // 1. Create Cashier Shift (Active)
@@ -162,6 +172,8 @@ export async function POST(request: NextRequest) {
       openedAt: now,
       openingBalance: amount,
       openingDenominations: denominations,
+      currentBalance: amount,
+      lastSyncedDenominations: denominations,
       payoutsTotal: 0,
       payoutsCount: 0,
       floatAdjustmentsTotal: 0,

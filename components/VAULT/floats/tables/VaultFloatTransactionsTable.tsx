@@ -39,6 +39,7 @@ type VaultFloatTransactionsTableProps = {
   onApprove?: (transactionId: string) => void;
   onReject?: (transactionId: string) => void;
   showActions?: boolean;
+  disabled?: boolean;
 };
 
 export default function VaultFloatTransactionsTable({
@@ -49,6 +50,7 @@ export default function VaultFloatTransactionsTable({
   onApprove,
   onReject,
   showActions = false,
+  disabled = false,
 }: VaultFloatTransactionsTableProps) {
   const { formatAmount } = useCurrencyFormat();
 
@@ -114,8 +116,20 @@ export default function VaultFloatTransactionsTable({
                     <TableCell className="text-right">
                        {!isCompleted && (
                          <div className="flex justify-end gap-2">
-                            <button onClick={() => onApprove?.(tx._id)} className="p-1.5 rounded-full bg-button text-white"><CheckCircle2 className="h-4 w-4" /></button>
-                            <button onClick={() => onReject?.(tx._id)} className="p-1.5 rounded-full bg-red-600 text-white"><X className="h-4 w-4" /></button>
+                            <button 
+                              onClick={() => !disabled && onApprove?.(tx._id)} 
+                              disabled={disabled}
+                              className={cn("p-1.5 rounded-full bg-button text-white", disabled && "opacity-40 cursor-not-allowed")}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => !disabled && onReject?.(tx._id)} 
+                              disabled={disabled}
+                              className={cn("p-1.5 rounded-full bg-red-600 text-white", disabled && "opacity-40 cursor-not-allowed")}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
                          </div>
                        )}
                     </TableCell>
@@ -168,10 +182,21 @@ export default function VaultFloatTransactionsTable({
 
                 {showActions && !isCompleted && (
                   <div className="flex gap-2 pt-2 mt-2">
-                    <Button size="sm" className="flex-1 bg-button h-8 text-xs" onClick={() => onApprove?.(tx._id)}>
+                    <Button 
+                      size="sm" 
+                      className={cn("flex-1 bg-button h-8 text-xs", disabled && "opacity-40 cursor-not-allowed")} 
+                      onClick={() => !disabled && onApprove?.(tx._id)}
+                      disabled={disabled}
+                    >
                         <CheckCircle2 className="h-3 w-3 mr-1" /> Approve
                     </Button>
-                    <Button size="sm" variant="destructive" className="flex-1 h-8 text-xs" onClick={() => onReject?.(tx._id)}>
+                    <Button 
+                      size="sm" 
+                      variant="destructive" 
+                      className={cn("flex-1 h-8 text-xs", disabled && "opacity-40 cursor-not-allowed")} 
+                      onClick={() => !disabled && onReject?.(tx._id)}
+                      disabled={disabled}
+                    >
                         <X className="h-3 w-3 mr-1" /> Reject
                     </Button>
                   </div>

@@ -19,19 +19,19 @@
  */
 'use client';
 
-import ProfileValidationModal from '@/components/shared/ui/ProfileValidationModal';
+import ProfileCompletionModal from '@/components/shared/ui/ProfileCompletionModal';
 import { logoutUser } from '@/lib/helpers/client';
 import { useCurrentUserQuery } from '@/lib/hooks/useCurrentUserQuery';
 import { useAuthSessionStore } from '@/lib/store/authSessionStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
-    ProfileValidationFormData,
-    ProfileValidationModalData,
+  ProfileValidationFormData,
+  ProfileValidationModalData,
 } from '@/lib/types/auth';
 import { validatePasswordStrength } from '@/lib/utils/validation';
 import type {
-    InvalidProfileFields,
-    ProfileValidationReasons,
+  InvalidProfileFields,
+  ProfileValidationReasons,
 } from '@/shared/types/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -167,6 +167,13 @@ export default function ProfileValidationGate({
       const result = shouldRefetch ? await refetch() : null;
       if (cancelled) return;
 
+      // If refetch was attempted but failed (no data) or resulted in error,
+      // stop here to prevent using stale 'user' data which might trigger the modal on an invalid session.
+      // The useCurrentUserQuery hook will handle 401s by clearing the user eventually.
+      if (shouldRefetch && (!result?.data || result.isError)) {
+        return;
+      }
+
       const latestUser = result?.data?.user ?? user;
       if (!latestUser) {
         setOpen(false);
@@ -288,6 +295,7 @@ export default function ProfileValidationGate({
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
 
@@ -443,6 +451,11 @@ export default function ProfileValidationGate({
     }
   };
 
+
+// ... (previous imports remain, ProfileValidationModal is removed)
+
+// ...
+
   // ============================================================================
   // Render - Profile Validation Modal
   // ============================================================================
@@ -451,15 +464,13 @@ export default function ProfileValidationGate({
   }
 
   return (
-    <ProfileValidationModal
+    <ProfileCompletionModal
       open={open}
-      onClose={() => setOpen(false)}
       onUpdate={handleUpdate}
       loading={loading}
       invalidFields={invalidFields}
-      currentData={currentData}
       reasons={fieldReasons}
-      enforceUpdate
+      currentData={currentData}
     />
   );
 }

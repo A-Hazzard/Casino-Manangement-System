@@ -1618,7 +1618,9 @@ export async function handleCashiersRequest(
   allActiveShifts.forEach((shift: Record<string, any>) => {
     shiftMap.set(String(shift.cashierId), {
       status: String(shift.status),
-      balance: shift.currentBalance ?? shift.openingBalance ?? 0,
+      balance: (shift.status === 'active' || shift.status === 'pending_review') 
+        ? (shift.currentBalance || shift.openingBalance || 0) 
+        : (shift.openingBalance || 0),
       denominations: shift.lastSyncedDenominations ?? shift.openingDenominations ?? []
     });
   });

@@ -14,6 +14,7 @@ import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
+import UserModel from '@/app/api/lib/models/user';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
@@ -71,12 +72,29 @@ export async function GET(request: NextRequest) {
     }).lean<VaultShift | null>();
 
     if (!activeShift) {
-      const response: VaultBalance = {
-        balance: 0,
-        denominations: [],
+      // Find the most recently closed shift for this location to get the suggested opening balance
+      const lastClosedShift = await VaultShiftModel.findOne({
+        locationId,
+        status: 'closed',
+      }).sort({ closedAt: -1 }).lean<VaultShift | null>();
+
+      const lastReconTime = lastClosedShift?.reconciliations?.length 
+        ? new Date(Math.max(...lastClosedShift.reconciliations.map(r => new Date(r.timestamp).getTime())))
+        : null;
+      
+      const lastAuditTime = lastClosedShift?.closedAt 
+        ? (lastReconTime && lastReconTime > lastClosedShift.closedAt ? lastReconTime : lastClosedShift.closedAt)
+        : (lastReconTime || null);
+
+      const response: VaultBalance & { isInitial: boolean } = {
+        balance: lastClosedShift?.closingBalance ?? 0,
+        denominations: lastClosedShift?.closingDenominations ?? [],
         activeShiftId: undefined,
-        lastReconciliation: undefined,
+        lastReconciliation: lastReconTime || undefined,
+        lastAudit: lastAuditTime ? lastAuditTime.toISOString() : 'Never',
         canClose: false,
+        isInitial: !lastClosedShift,
+        managerOnDuty: 'None'
       };
       return NextResponse.json({ success: true, data: response });
     }
@@ -87,11 +105,24 @@ export async function GET(request: NextRequest) {
       .sort({ timestamp: -1 })
       .lean<VaultTransaction | null>();
 
-    const lastReconciliation =
+    const lastReconTime =
       activeShift.reconciliations?.length > 0
-        ? activeShift.reconciliations[activeShift.reconciliations.length - 1]
-            .timestamp
-        : undefined;
+        ? new Date(Math.max(...activeShift.reconciliations.map(r => new Date(r.timestamp).getTime())))
+        : null;
+
+    const lastAuditTime = activeShift.openedAt 
+      ? (lastReconTime && lastReconTime > activeShift.openedAt ? lastReconTime : activeShift.openedAt)
+      : (lastReconTime || null);
+
+    // Fetch Manager on Duty name
+    const vaultManager = await UserModel.findOne({ _id: activeShift.vaultManagerId }, { profile: 1, username: 1 }).lean() as { 
+      profile?: { firstName: string; lastName: string }; 
+      username: string 
+    } | null;
+
+    const managerName = vaultManager?.profile?.firstName && vaultManager?.profile?.lastName 
+      ? `${vaultManager.profile.firstName} ${vaultManager.profile.lastName}`
+      : vaultManager?.username || 'Unknown';
 
     // ============================================================================
     // STEP 4.5: Calculate Cash on Premises (Machines & Cashiers)
@@ -155,7 +186,9 @@ export async function GET(request: NextRequest) {
           ? activeShift.currentDenominations
           : activeShift.openingDenominations,
       activeShiftId: activeShift._id,
-      lastReconciliation,
+      lastReconciliation: lastReconTime || undefined,
+      lastAudit: lastAuditTime ? lastAuditTime.toISOString() : 'Never',
+      managerOnDuty: managerName,
       canClose: activeCashierShifts === 0,
       blockReason: activeCashierShifts > 0 
         ? `Cannot close vault while ${activeCashierShifts} cashier shift(s) are still Active or Pending Review.` 
@@ -163,7 +196,9 @@ export async function GET(request: NextRequest) {
       // Premise metrics
       totalCashOnPremises: vaultBalanceVal + totalCashierFloats + totalMachineMoneyIn,
       machineMoneyIn: totalMachineMoneyIn,
-      cashierFloats: totalCashierFloats
+      cashierFloats: totalCashierFloats,
+      openingBalance: activeShift.openingBalance,
+      isReconciled: activeShift.isReconciled || false
     };
 
     return NextResponse.json({ success: true, data: response });

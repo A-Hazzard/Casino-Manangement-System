@@ -64,6 +64,9 @@ const VaultShiftSchema = new Schema(
     // BR-01: Cannot close if cashiers active/pending
     canClose: { type: Boolean, default: true },
 
+    // Mandatory opening reconciliation check
+    isReconciled: { type: Boolean, default: false },
+
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date },
   },

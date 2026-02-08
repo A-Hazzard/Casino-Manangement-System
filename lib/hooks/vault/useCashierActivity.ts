@@ -25,8 +25,8 @@ export function useCashierActivity() {
       else setRefreshing(true);
       // Fetch shifts and requests in parallel
       const [shiftsRes, requestsRes] = await Promise.all([
-        fetch('/api/cashier/shifts?limit=10'),
-        fetch('/api/vault/float-request?limit=10&status=all')
+        fetch('/api/cashier/shifts?limit=5'),
+        fetch('/api/vault/float-request?limit=5&status=all')
       ]);
 
       if (shiftsRes.ok && requestsRes.ok) {
@@ -74,7 +74,7 @@ export function useCashierActivity() {
 
         // Sort by timestamp desc
         combined.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-        setActivities(combined.slice(0, 15));
+        setActivities(combined.slice(0, 5));
       }
     } catch (error) {
       console.error('Failed to fetch activity', error);

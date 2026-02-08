@@ -9,6 +9,7 @@
 
 'use client';
 
+import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
     DEFAULT_VAULT_BALANCE,
     DEFAULT_VAULT_METRICS,
@@ -16,7 +17,9 @@ import {
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
-import { fetchVaultOverviewData } from '@/lib/helpers/vaultHelpers';
+import {
+    fetchVaultOverviewData
+} from '@/lib/helpers/vaultHelpers';
 import { useUserStore } from '@/lib/store/userStore';
 import type { GamingMachine } from '@/shared/types/entities';
 import {
@@ -28,10 +31,11 @@ import {
     type VaultMetrics,
     type VaultTransaction,
 } from '@/shared/types/vault';
-import { FileText } from 'lucide-react';
+import { FileText, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import AdvancedDashboard from './AdvancedDashboard';
 
 // Skeleton & Base UI
 import { TableSkeleton } from '@/components/shared/ui/skeletons/CommonSkeletons';
@@ -47,19 +51,17 @@ import VaultRecentActivitySection from '@/components/VAULT/overview/sections/Vau
 
 // Extracted Sections
 import VaultCashDesksSection from './sections/VaultCashDesksSection';
-import VaultHeader from './sections/VaultHeader';
 import VaultHealthGrid from './sections/VaultHealthGrid';
 import VaultModals from './sections/VaultModals';
 import VaultShiftPromotion from './sections/VaultShiftPromotion';
 
 // Hooks
-import { useNotifications } from '@/lib/hooks/vault/useNotifications';
 
 /**
  * Vault Overview Component
  */
 export default function VaultOverviewPageContent() {
-   const { user, setHasActiveVaultShift } = useUserStore();
+   const { user, setHasActiveVaultShift, setIsVaultReconciled } = useUserStore();
   
   // ============================================================================
   // STATE & HOOKS
@@ -98,14 +100,6 @@ export default function VaultOverviewPageContent() {
     total: number;
   } | null>(null);
 
-  // Notifications Hook
-  const {
-    notifications,
-    markAsRead,
-    dismissNotification,
-    refresh: refreshNotifications
-  } = useNotifications(user?.assignedLocations?.[0]);
-
   // ============================================================================
   // DATA FETCHING
   // ============================================================================
@@ -137,7 +131,7 @@ export default function VaultOverviewPageContent() {
         const machinesData = await fetchCabinetsForLocation(
             locationId, 
             undefined, 
-            'All Time' // We just need the list, time period isn't critical for selection
+            'All Time' 
         );
         if (machinesData && machinesData.data) {
              setMachines(machinesData.data);
@@ -145,8 +139,6 @@ export default function VaultOverviewPageContent() {
       } catch (err) {
          console.error("Failed to fetch machines for vault", err);
       }
-
-      refreshNotifications();
     } catch (error) {
       console.error('Failed to fetch vault data', error);
       toast.error('Failed to load vault data');
@@ -154,7 +146,7 @@ export default function VaultOverviewPageContent() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.assignedLocations, user?.username, refreshNotifications]);
+  }, [user?.assignedLocations, user?.username]);
 
   useEffect(() => {
     fetchData(false);
@@ -278,6 +270,7 @@ export default function VaultOverviewPageContent() {
   /**
    * Generic Modal Confirm Handlers
    */
+  const handleResolveShift = handleShiftResolveConfirm;
   const handleModalConfirm = async (type: string, data?: any) => {
     let endpoint = '';
     const method = 'POST';
@@ -303,6 +296,10 @@ export default function VaultOverviewPageContent() {
         endpoint = '/api/vault/shift/close'; 
         requestPayload.vaultShiftId = vaultBalance.activeShiftId || null; // Ensure vaultShiftId is added
         break;
+      case 'closeShift': 
+        endpoint = '/api/vault/shift/close'; 
+        requestPayload.vaultShiftId = vaultBalance.activeShiftId || null; // Ensure vaultShiftId is added
+        break;
     }
 
     if (!endpoint) return;
@@ -311,9 +308,10 @@ export default function VaultOverviewPageContent() {
 
       // Transform data for Initialize Vault
       if (type === 'initialize') {
-         // API expects openingBalance, modal provides totalAmount
-         requestPayload.openingBalance = data.totalAmount;
-         // Ensure denominations property exists (it should from modal)
+         // API expects openingBalance, modal provides totalAmount (optional now)
+         if (data?.totalAmount !== undefined) {
+             requestPayload.openingBalance = data.totalAmount;
+         }
       }
 
       let requestBody = JSON.stringify(requestPayload);
@@ -375,23 +373,34 @@ export default function VaultOverviewPageContent() {
   // ============================================================================
   
    const isShiftActive = !!vaultBalance.activeShiftId;
+   const isReconciled = !!vaultBalance.isReconciled;
  
    useEffect(() => {
      setHasActiveVaultShift(isShiftActive);
-   }, [isShiftActive, setHasActiveVaultShift]);
+     setIsVaultReconciled(isReconciled);
+   }, [isShiftActive, isReconciled, setHasActiveVaultShift, setIsVaultReconciled]);
 
-  const checkShiftStarted = useCallback(() => {
+   const checkShiftStarted = useCallback((actionKey?: string) => {
     if (!isShiftActive) {
       toast.error('Operation Blocked', {
         description: 'You must start a vault shift before performing this operation.'
       });
       return false;
     }
+
+    // BR-X: Mandatory opening reconciliation
+    if (!vaultBalance.isReconciled && actionKey !== 'reconcile' && actionKey !== 'closeShift') {
+      toast.error('Reconciliation Required', {
+        description: 'Please perform the mandatory opening reconciliation before continuing with other operations.'
+      });
+      return false;
+    }
+
     return true;
-  }, [isShiftActive]);
+  }, [isShiftActive, vaultBalance.isReconciled]);
 
   const handleAction = (actionKey: keyof typeof modals) => {
-    if (!checkShiftStarted()) return;
+    if (!checkShiftStarted(actionKey)) return;
     setModals(prev => ({ ...prev, [actionKey]: true }));
   };
 
@@ -401,43 +410,51 @@ export default function VaultOverviewPageContent() {
 
   if (loading) {
      return (
-        <PageLayout showHeader={false}>
+        <PageLayout>
             <VaultOverviewSkeleton />
         </PageLayout>
      );
   }
 
-  // Map notifications to NotificationItem format for the Bell component
-  const bellNotifications = notifications.map(n => ({
-    id: n._id,
-    type: n.type,
-    title: n.title,
-    message: n.message,
-    timestamp: new Date(n.createdAt),
-    urgent: n.urgent,
-    status: n.status,
-    relatedEntityId: n.relatedEntityId, // Ensure this ID is passed correctly
-    metadata: n.metadata
-  }));
-
   return (
-    <PageLayout showHeader={false}>
+    <PageLayout>
       <div className="space-y-6">
         {/* Header with Title & Notifications */}
-        <VaultHeader 
-          bellNotifications={bellNotifications}
-          denominations={vaultBalance.denominations}
-          refreshing={refreshing}
-          onRefresh={() => fetchData(true)}
-          onMarkAsRead={markAsRead}
-          onMarkAllAsRead={() => markAsRead(notifications.filter(n => n.status === 'unread').map(n => n._id))}
-          onNotificationClick={() => {}} // Could open details
-          onDismiss={dismissNotification}
-          onApprove={handleFloatApprove}
-          onDeny={handleFloatDeny}
-          isShiftActive={isShiftActive}
-          onCloseDay={() => handleAction('closeShift')}
-        />
+        <VaultManagerHeader
+          title="Vault Management"
+          showBack={false}
+          onFloatActionComplete={() => fetchData(true)}
+          description={
+            <div className="flex items-center gap-2">
+              <span>
+                {new Date().toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => fetchData(true)}
+                disabled={refreshing}
+                className="h-6 px-1.5 text-gray-400 hover:text-blue-600"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          }
+        >
+          {isShiftActive && (
+            <Button
+              onClick={() => handleAction('closeShift')}
+              className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
+            >
+              Close Day
+            </Button>
+          )}
+        </VaultManagerHeader>
         
         {/* Helper for viewing denominations from desks */}
         {/* This bit is handled by the state and passed to VaultModals */}
@@ -477,17 +494,34 @@ export default function VaultOverviewPageContent() {
 
         {/* Float Requests Panel */}
         {floatRequests.length > 0 && (
-          <VaultFloatRequestsPanel
-            floatRequests={floatRequests}
-            onApprove={handleFloatApprove}
-            onDeny={handleFloatDeny}
-            onEdit={handleFloatEdit}
-            onConfirm={handleFloatConfirm}
-          />
+          <div id="float-requests-panel" className="scroll-mt-20">
+            <VaultFloatRequestsPanel
+              floatRequests={floatRequests}
+              onApprove={handleFloatApprove}
+              onDeny={handleFloatDeny}
+              onEdit={handleFloatEdit}
+              onConfirm={handleFloatConfirm}
+            />
+          </div>
+        )}
+
+        {/* Shift Review Panel - Only show if pending shifts exist */}
+        {pendingShifts.length > 0 && (
+          <div id="shift-review-panel" className="scroll-mt-20">
+            <ShiftReviewPanel
+              pendingShifts={pendingShifts}
+              onResolve={handleResolveShift}
+            />
+          </div>
         )}
 
         {/* Metrics Grid */}
         <VaultHealthGrid metrics={metrics} refreshing={refreshing && !loading} />
+
+        {/* Charts Section */}
+        <div className="mt-8">
+          <AdvancedDashboard />
+        </div>
 
         {/* Inventory Table */}
         <VaultInventoryCard denominations={vaultBalance.denominations} isLoading={loading} />
@@ -509,6 +543,7 @@ export default function VaultOverviewPageContent() {
         {/* Action Area & History */}
         <VaultQuickActionsSection
           isShiftActive={isShiftActive}
+          isReconciled={vaultBalance.isReconciled}
           onAddCash={() => handleAction('addCash')}
           onRemoveCash={() => handleAction('removeCash')}
           onRecordExpense={() => handleAction('recordExpense')}
@@ -534,6 +569,8 @@ export default function VaultOverviewPageContent() {
         <VaultModals 
           modals={modals}
           vaultBalance={vaultBalance.balance}
+          currentDenominations={vaultBalance.denominations}
+          isInitial={!!vaultBalance.isInitial}
           onClose={(key) => setModals(m => ({ ...m, [key]: false }))}
           onConfirm={handleModalConfirm}
           machines={machines}

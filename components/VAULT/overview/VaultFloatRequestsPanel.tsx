@@ -102,7 +102,7 @@ export default function VaultFloatRequestsPanel({
   }
 
   return (
-    <Card className="rounded-lg bg-container shadow-md">
+    <Card id="float-requests-panel" className="rounded-lg bg-container shadow-md scroll-mt-20">
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-gray-900">
           Active Requests ({activeRequests.length})

@@ -14,9 +14,10 @@
 'use client';
 
 import { Card, CardContent } from '@/components/shared/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/shared/ui/tooltip';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { LucideIcon } from 'lucide-react';
 
 type VaultMetricCardProps = {
   title: string;
@@ -25,6 +26,8 @@ type VaultMetricCardProps = {
   iconColor?: string;
   iconBgColor?: string;
   className?: string;
+  tooltipContent?: string;
+  onClick?: () => void;
 };
 
 export default function VaultMetricCard({
@@ -34,17 +37,26 @@ export default function VaultMetricCard({
   iconColor = 'text-blue-600',
   iconBgColor = 'bg-blue-100',
   className,
+  tooltipContent,
+  onClick,
 }: VaultMetricCardProps) {
-  // ============================================================================
+  // ===================================
   // Hooks
-  // ============================================================================
+  // ===================================
   const { formatAmount } = useCurrencyFormat();
 
-  // ============================================================================
+  // ===================================
   // Render
-  // ============================================================================
-  return (
-    <Card className={cn('w-full rounded-lg bg-container shadow-md transition-shadow hover:shadow-md', className)}>
+  // ===================================
+  const cardContent = (
+    <Card 
+      className={cn(
+        'w-full rounded-lg bg-container shadow-md transition-all hover:shadow-lg cursor-help', 
+        onClick && 'hover:scale-[1.02] active:scale-[0.98] cursor-pointer border-blue-200 ring-offset-2 focus-visible:ring-2',
+        className
+      )}
+      onClick={onClick}
+    >
       <CardContent className="p-4 sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-2">
@@ -59,5 +71,19 @@ export default function VaultMetricCard({
         </div>
       </CardContent>
     </Card>
+  );
+
+  if (!tooltipContent) return cardContent;
+
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>{cardContent}</TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[250px] text-center p-3">
+          <p className="font-semibold mb-1">{title}</p>
+          <p className="text-muted-foreground whitespace-pre-line">{tooltipContent}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

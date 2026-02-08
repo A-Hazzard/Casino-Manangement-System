@@ -17,8 +17,8 @@ import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import { validateDenominations } from '@/lib/helpers/vault/calculations';
+import { generateMongoId } from '@/lib/utils/id';
 import type { OpenCashierShiftRequest } from '@/shared/types/vault';
-import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
   
 export async function POST(request: NextRequest) {
@@ -105,6 +105,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!vaultShift.isReconciled) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Vault is not reconciled. Please ask a Vault Manager to perform the mandatory opening reconciliation.',
+        },
+        { status: 403 }
+      );
+    }
+
     // STEP 5.5: Ensure cashier is assigned to this location
     const assignedLocations = (userPayload.assignedLocations as string[]) || [];
     if (!assignedLocations.includes(locationId)) {
@@ -134,7 +144,7 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 7: Create Cashier Shift (Pending Start)
-    const shiftId = nanoid();
+    const shiftId = await generateMongoId();
     const now = new Date();
 
     const cashierShift = await CashierShiftModel.create({
@@ -154,7 +164,7 @@ export async function POST(request: NextRequest) {
     });
 
     // STEP 8: Create Float Request
-    const requestId = nanoid();
+    const requestId = await generateMongoId();
     const floatRequest = await FloatRequestModel.create({
       _id: requestId,
       locationId,

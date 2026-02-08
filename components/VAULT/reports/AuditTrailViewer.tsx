@@ -9,41 +9,41 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/shared/ui/button';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/shared/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/shared/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/shared/ui/select';
 import {
-  Search,
-  Filter,
-  FileText,
-  RefreshCw,
-  AlertTriangle,
-} from 'lucide-react';
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/shared/ui/table';
+import { fetchAuditTrail } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
-import { fetchAuditTrail } from '@/lib/helpers/vaultHelpers';
+import {
+    AlertTriangle,
+    FileText,
+    Filter,
+    RefreshCw,
+    Search,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 const TRANSACTION_TYPES = [
@@ -303,7 +303,19 @@ export default function AuditTrailViewer() {
                       <TableCell>{entry.description}</TableCell>
                       <TableCell>{entry.performedBy}</TableCell>
                       <TableCell className="font-mono">
-                        {entry.amount > 0 ? formatAmount(entry.amount) : '-'}
+                        {entry.type === 'vault_reconciliation' && entry.balanceBefore !== undefined ? (
+                          <div className="flex flex-col text-[10px]">
+                            <span className="text-gray-400">Shift:</span>
+                            <span className="font-bold text-gray-900">
+                              {formatAmount(entry.balanceBefore)} → {formatAmount(entry.balanceAfter)}
+                            </span>
+                            <span className={`mt-0.5 ${entry.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              ({entry.amount >= 0 ? '+' : ''}{formatAmount(entry.amount)})
+                            </span>
+                          </div>
+                        ) : (
+                          entry.amount > 0 ? formatAmount(entry.amount) : '-'
+                        )}
                       </TableCell>
                       <TableCell>
                         <span

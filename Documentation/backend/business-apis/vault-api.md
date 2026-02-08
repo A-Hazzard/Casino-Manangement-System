@@ -61,14 +61,31 @@ Records external payments to players.
 `POST /api/vault/add-cash`
 
 **Purpose**: Adds cash from external sources (Bank Withdrawal, Owner Injection).
-- **Model**: Creates a `VaultTransaction` and updates `VaultShift.closingBalance`.
+- **Model**: Creates a `VaultTransaction` and updates `VaultShift.currentDenominations`.
 - **Denominations**: Mandatory breakdown required.
 
 ### Removing Cash (Outflow)
 `POST /api/vault/remove-cash`
 
 **Purpose**: Removes cash for Bank Deposits or ATM Fills.
-- **Model**: Decrements `VaultShift.closingBalance`.
+- **Model**: Decrements `VaultShift.closingBalance` and updates inventory.
+
+### Recording Expenses
+`POST /api/vault/expense`
+
+**Purpose**: Deducts cash for operational costs (Supplies, Maintenance).
+- **Request**: `amount`, `category`, `notes`.
+
+### Soft Count (Inventory Replenishment)
+`POST /api/vault/soft-counts`
+
+**Purpose**: Mid-shift replenishment of vault bills from gaming machines.
+- **Logic**: Increases vault inventory and balance without ending a shift.
+
+### Machine Collection (EOD Consolidation)
+`POST /api/vault/machine-collection`
+
+**Purpose**: Final daily consolidation of cash boxes into the vault.
 
 ---
 
@@ -87,6 +104,12 @@ Records external payments to players.
 **Purpose**: Records a player payout and deducts it from the cashier's active float.
 - **Validation**: Ensures the cashier has sufficient float before processing.
 - **Model**: Creates a `Payout` and a `VaultTransaction` (Cashier -> External).
+
+### Resolving Shift Discrepancies
+`POST /api/cashier/shift/resolve`
+
+**Purpose**: Allows a Vault Manager to force-close an unbalanced cashier shift.
+- **Payload**: `shiftId`, `finalBalance`, `auditComment`.
 
 ---
 

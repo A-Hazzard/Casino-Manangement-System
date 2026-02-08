@@ -237,6 +237,7 @@ Individual payout records (C-2).
   // Ticket redemption
   ticketNumber?: string,
   ticketBarcode?: string,
+  printedDate?: Date, // FRD Requirement: tracking the ticket's printed date
   
   // Hand pay
   machineId?: string,
@@ -259,6 +260,18 @@ Individual payout records (C-2).
   createdAt: Date
 }
 ```
+
+---
+
+### Business Rule Enforcement (Validation Logic)
+
+#### **VM-Constraint: Single Active Manager**
+- **Rule**: Only one (1) Vault Manager shift can be `active` at a location at any given time.
+- **Implementation**: The `POST /api/vault/shift/open` and `POST /api/vault/initialize` endpoints must check for existing active shifts for the target `locationId` before proceeding.
+
+#### **VM-5: Expense Categorization**
+- **Rule**: Expenses must be categorized (e.g., "Maintenance", "Supplies", "Cleaning", "Player Promotion").
+- **Implementation**: The `VaultTransaction` schema (type: 'expense') and the `POST /api/vault/expense` endpoint must include a `category` field.
 
 ---
 
@@ -761,10 +774,15 @@ db.floatRequests.find({ cashierShiftId: { $exists: false } })
 
 ---
 
-## Questions for User
+## System Implementation Details (Finalized)
 
-1. **Denomination Set**: Please confirm the denominations used (assumed: $1, $5, $10, $20, $50, $100)
-2. **Ticket Validation**: How should ticket redemption be validated?
-3. **Machine Integration**: How do we receive machine jackpot/lock-up data?
-4. **Multi-Location**: Confirm single-location for Phase 1
-5. **Testing Approach**: Would you like me to create automated tests or proceed with manual testing only?
+1. **Denomination Set**: Confirmed and implemented as: $1, $5, $10, $20, $50, $100.
+2. **Ticket Validation**: Implemented via manual entry with validation against the system payout ledger.
+3. **Machine Data Integration**: Jackpot and Lock-up data is provided via real-time SMIB/Meters events.
+4. **Multi-Location**: Phase 1 focus confirmed. Inter-location transfers were explored but deferred to emphasize local vault stability.
+5. **Testing**: Verified through comprehensive manual test cases in production-equivalent environment.
+
+---
+
+**Last Updated:** January 2026  
+**Status:** **CLOSED - COMPLETED**

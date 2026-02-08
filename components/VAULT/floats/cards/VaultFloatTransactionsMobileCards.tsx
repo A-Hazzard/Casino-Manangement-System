@@ -20,15 +20,16 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { cn } from '@/lib/utils';
 import type { FloatTransaction } from '@/shared/types/vault';
 import { CheckCircle2, Clock, Minus, Plus } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 type VaultFloatTransactionsMobileCardsProps = {
   transactions: FloatTransaction[];
   onApprove?: (transactionId: string) => void;
   onReject?: (transactionId: string) => void;
   showActions?: boolean;
+  disabled?: boolean;
 };
 
 /**
@@ -40,6 +41,7 @@ export default function VaultFloatTransactionsMobileCards({
   onApprove,
   onReject,
   showActions = false,
+  disabled = false,
 }: VaultFloatTransactionsMobileCardsProps) {
   // ============================================================================
   // Hooks
@@ -150,18 +152,20 @@ export default function VaultFloatTransactionsMobileCards({
                 {showActions && !isCompleted && (
                   <div className="mt-3 flex gap-2 border-t pt-3">
                     <Button
-                      onClick={() => onApprove?.(tx._id)}
+                      onClick={() => !disabled && onApprove?.(tx._id)}
+                      disabled={disabled}
                       size="sm"
-                      className="flex-1 bg-button text-white hover:bg-button/90"
+                      className={cn("flex-1 bg-button text-white hover:bg-button/90", disabled && "opacity-40 cursor-not-allowed")}
                     >
                       <CheckCircle2 className="mr-1 h-4 w-4" />
                       Approve
                     </Button>
                     <Button
-                      onClick={() => onReject?.(tx._id)}
+                      onClick={() => !disabled && onReject?.(tx._id)}
+                      disabled={disabled}
                       size="sm"
                       variant="destructive"
-                      className="flex-1"
+                      className={cn("flex-1", disabled && "opacity-40 cursor-not-allowed")}
                     >
                       <Minus className="mr-1 h-4 w-4" />
                       Reject
