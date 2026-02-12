@@ -15,19 +15,22 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
+import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Minus, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type BlindCloseModalProps = {
   open: boolean;
@@ -36,10 +39,6 @@ type BlindCloseModalProps = {
   loading?: boolean;
 };
 
-const DEFAULT_DENOMINATIONS: Denomination['denomination'][] = [
-  1, 5, 10, 20, 50, 100,
-];
-
 export default function BlindCloseModal({
   open,
   onClose,
@@ -47,10 +46,23 @@ export default function BlindCloseModal({
   loading = false,
 }: BlindCloseModalProps) {
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
+  const { user } = useUserStore();
+  
+  // Use user's assigned licensee if available (Cashier context), otherwise dashboard selection (Admin context)
+  const effectiveLicenseeId = useMemo(() => {
+    return user?.assignedLicensees?.[0] || selectedLicencee;
+  }, [user?.assignedLicensees, selectedLicencee]);
 
-  const [denominations, setDenominations] = useState<Denomination[]>(
-    DEFAULT_DENOMINATIONS.map((denom) => ({ denomination: denom, quantity: 0 }))
-  );
+  const denomsList = useMemo(() => getDenominationValues(effectiveLicenseeId), [effectiveLicenseeId]);
+  
+  const [denominations, setDenominations] = useState<Denomination[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+    }
+  }, [open, denomsList]);
 
   const totalAmount = denominations.reduce(
     (sum, d) => sum + d.denomination * d.quantity,

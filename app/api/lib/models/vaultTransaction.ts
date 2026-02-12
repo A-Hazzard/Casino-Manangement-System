@@ -9,7 +9,7 @@ const DenominationSchema = new Schema(
     denomination: {
       type: Number,
       required: true,
-      enum: [1, 5, 10, 20, 50, 100],
+      enum: [1, 2, 5, 10, 20, 50, 100, 500, 1000, 5000],
     },
     quantity: {
       type: Number,

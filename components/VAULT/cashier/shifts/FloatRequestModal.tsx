@@ -11,9 +11,12 @@ import {
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
+import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Coins, RefreshCw } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type FloatRequestModalProps = {
   open: boolean;
@@ -30,14 +33,7 @@ export type FloatRequestData = {
   denominations?: Denomination[];
 };
 
-const INITIAL_DENOMINATIONS: Denomination[] = [
-  { denomination: 100, quantity: 0 },
-  { denomination: 50, quantity: 0 },
-  { denomination: 20, quantity: 0 },
-  { denomination: 10, quantity: 0 },
-  { denomination: 5, quantity: 0 },
-  { denomination: 1, quantity: 0 },
-];
+
 
 export default function FloatRequestModal({
   open,
@@ -47,9 +43,28 @@ export default function FloatRequestModal({
   loading = false,
 }: FloatRequestModalProps) {
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
+  const { user } = useUserStore();
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [reason, setReason] = useState('');
-  const [denominations, setDenominations] = useState<Denomination[]>(INITIAL_DENOMINATIONS);
+  const [denominations, setDenominations] = useState<Denomination[]>([]);
+
+  // Use user's assigned licensee if available (Cashier context), otherwise dashboard selection (Admin context)
+  const effectiveLicenseeId = useMemo(() => {
+    return user?.assignedLicensees?.[0] || selectedLicencee;
+  }, [user?.assignedLicensees, selectedLicencee]);
+
+  const denomsList = useMemo(() => getDenominationValues(effectiveLicenseeId), [effectiveLicenseeId]);
+
+  // Update denominations when licensee changes or modal opens
+  useEffect(() => {
+    if (open && step === 'input') {
+      setDenominations(denomsList.map(denom => ({ 
+        denomination: denom as Denomination['denomination'], 
+        quantity: 0 
+      })));
+    }
+  }, [denomsList, open, step]);
 
   const totalAmount = useMemo(() => {
     return denominations.reduce((sum, d) => sum + (d.denomination * d.quantity), 0);
@@ -75,7 +90,6 @@ export default function FloatRequestModal({
       });
       // Reset form
       setReason('');
-      setDenominations(INITIAL_DENOMINATIONS);
       setStep('input');
       onClose();
     } catch {

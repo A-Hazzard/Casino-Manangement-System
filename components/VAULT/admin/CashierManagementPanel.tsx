@@ -46,8 +46,10 @@ import {
     handleUpdateCashierStatus
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
+import { getDenominationValues, getInitialDenominationRecord } from '@/lib/utils/vault/denominations';
 import type { Denomination, FloatRequest } from '@/shared/types/vault';
 import {
     AlertTriangle,
@@ -88,6 +90,7 @@ interface Cashier {
 export default function CashierManagementPanel() {
   const { user, hasActiveVaultShift, isVaultReconciled } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -124,9 +127,7 @@ export default function CashierManagementPanel() {
     email: '',
   });
   
-  const [shiftDenominations, setShiftDenominations] = useState<Record<string, number>>({
-    '100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '1': 0
-  });
+  const [shiftDenominations, setShiftDenominations] = useState<Record<string, number>>({});
   const [shiftNotes, setShiftNotes] = useState('');
 
   
@@ -179,9 +180,7 @@ export default function CashierManagementPanel() {
   const openEndShiftModal = async (cashier: Cashier) => {
     if (!checkVaultStatus()) return;
     setSelectedCashier(cashier);
-    setShiftDenominations({
-        '100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '1': 0
-    });
+    setShiftDenominations(getInitialDenominationRecord(selectedLicencee));
     setShiftNotes('');
     
 
@@ -202,9 +201,11 @@ export default function CashierManagementPanel() {
             setCurrentFloatRequest(req);
             
             // Init denominations
-            const denoms: Record<string, number> = { '100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '1': 0 };
+            const denoms = getInitialDenominationRecord(selectedLicencee);
             req.denominations.forEach((d: Denomination) => {
-                denoms[d.denomination.toString()] = d.quantity;
+                if (denoms[d.denomination.toString()] !== undefined) {
+                    denoms[d.denomination.toString()] = d.quantity;
+                }
             });
             setReviewDenominations(denoms);
             
@@ -243,7 +244,7 @@ export default function CashierManagementPanel() {
           }
           setIsReviewRequestModalOpen(false);
           fetchCashiers(); // Refresh list
-      } catch (err) {
+      } catch (_err) {
           toast.error("Failed to process request");
       } finally {
           setLoading(false);
@@ -455,7 +456,7 @@ export default function CashierManagementPanel() {
       if (result.success) {
         toast.success(`Shift ended for ${selectedCashier.username}. Move to Pending Review.`);
         setIsEndShiftModalOpen(false);
-        setShiftDenominations({'100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '1': 0});
+        setShiftDenominations(getInitialDenominationRecord(selectedLicencee));
         setShiftNotes('');
         fetchCashiers();
       } else {
@@ -747,7 +748,7 @@ export default function CashierManagementPanel() {
           
           <div className="space-y-6 py-4">
              <div className="grid grid-cols-1 gap-y-4">
-                {[100, 50, 20, 10, 5, 1].map(denom => {
+                {getDenominationValues(selectedLicencee).map(denom => {
                    return (
                     <div key={denom} className="flex items-center gap-4">
                        <div className="flex-1 space-y-1.5">

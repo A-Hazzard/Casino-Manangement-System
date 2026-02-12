@@ -348,25 +348,30 @@ export default function VaultOverviewPageContent() {
       let requestBody = JSON.stringify(requestPayload);
 
       // Transform data for Add/Remove Cash
-      // The modal returns { breakdown: { hundred: 2, ... }, totalAmount: 200 }
+      // The modal returns { denominations: [...], totalAmount: 200 }
       // The API expects { denominations: [{ denomination: 100, quantity: 2 }, ...], amount: 200 }
       if (type === 'addCash' || type === 'removeCash') {
-         const { breakdown, totalAmount, ...rest } = data;
+         const { denominations, breakdown, totalAmount, ...rest } = data;
          
-         const denominationMap: Record<string, number> = {
-            hundred: 100,
-            fifty: 50,
-            twenty: 20,
-            ten: 10,
-            five: 5,
-            one: 1
-         };
+         let denominationsArray = denominations;
 
-         const breakdownObj = breakdown || {};
-         const denominationsArray = Object.keys(breakdownObj).map((key) => ({
-             denomination: denominationMap[key] || 0,
-             quantity: Number(breakdownObj[key as keyof typeof breakdownObj])
-         })).filter(d => d.denomination > 0 && d.quantity > 0);
+         // Fallback for types if needed, but modals should send denominations now
+         if (!denominationsArray && breakdown) {
+            const denominationMap: Record<string, number> = {
+                hundred: 100,
+                fifty: 50,
+                twenty: 20,
+                ten: 10,
+                five: 5,
+                one: 1
+             };
+    
+             const breakdownObj = breakdown || {};
+             denominationsArray = Object.keys(breakdownObj).map((key) => ({
+                 denomination: denominationMap[key] || 0,
+                 quantity: Number(breakdownObj[key as keyof typeof breakdownObj])
+             })).filter(d => d.denomination > 0 && d.quantity > 0);
+         }
 
          requestBody = JSON.stringify({
             ...rest,
@@ -450,7 +455,13 @@ export default function VaultOverviewPageContent() {
          return;
        }
        setIsClosingDay(true);
-       setModals(prev => ({ ...prev, collection: true }));
+       
+       // Skip collection if already done
+       if (vaultBalance.isCollectionDone) {
+          setModals(prev => ({ ...prev, closeShift: true }));
+       } else {
+          setModals(prev => ({ ...prev, collection: true }));
+       }
        return;
     }
 
@@ -555,6 +566,7 @@ export default function VaultOverviewPageContent() {
         <div id="shift-review-panel" className="scroll-mt-20">
           <ShiftReviewPanel
             pendingShifts={pendingShifts}
+            vaultInventory={vaultBalance.denominations}
             onResolve={handleResolveShift}
             onReject={handleShiftReject}
             onRefresh={() => fetchData(true)}

@@ -17,9 +17,9 @@
 
 import { getLicenseeName } from '@/lib/utils/licensee';
 import type {
-  CurrencyCode,
-  ExchangeRates,
-  LicenseeCurrencyMapping,
+    CurrencyCode,
+    ExchangeRates,
+    LicenseeCurrencyMapping,
 } from '@/shared/types/currency';
 
 // Fixed exchange rates (USD as base currency)

@@ -644,45 +644,25 @@ export async function fetchEndOfDayReportData(
         : new Date(date)
       : new Date();
       
-    // Check if the requested date is effectively "today"
-    // We compare YYYY-MM-DD strings to be safe
-    const todayStr = new Date().toISOString().split('T')[0];
     const reportDateStr = dateObj.toISOString().split('T')[0];
-    const isToday = reportDateStr === todayStr;
 
-    // Fetch EOD Data and Metrics (always needed)
+    // Fetch EOD Data and Metrics
     const eodPromise = fetch(
       `/api/vault/end-of-day?locationId=${locationId}&date=${reportDateStr}`
     );
     const metricsPromise = fetch(
       `/api/vault/metrics?locationId=${locationId}&date=${reportDateStr}`
     );
-
-    // Conditionally fetch "Current State" endpoints
-    // If viewing a past report, we do NOT want current active shifts or current vault balance
-    const balancePromise = isToday 
-      ? fetch(`/api/vault/balance?locationId=${locationId}`)
-      : Promise.resolve(null);
       
-    const cashierPromise = isToday
-      ? fetch(`/api/cashier/shifts?locationId=${locationId}&status=active`)
-      : Promise.resolve(null);
-      
-    const floatRequestsPromise = isToday
-      ? fetch(`/api/vault/float-request?locationId=${locationId}`)
-      : Promise.resolve(null);
+    const floatRequestsPromise = fetch(`/api/vault/float-request?locationId=${locationId}`);
 
     const [
       endOfDayResponse,
       metricsResponse,
-      balanceResponse,
-      cashierResponse,
       floatRequestsResponse,
     ] = await Promise.all([
       eodPromise,
       metricsPromise,
-      balancePromise,
-      cashierPromise,
       floatRequestsPromise,
     ]);
 
@@ -693,68 +673,27 @@ export async function fetchEndOfDayReportData(
     const metricsData = metricsResponse.ok
       ? await metricsResponse.json()
       : null;
-
-    const balanceData = balanceResponse && balanceResponse.ok
-      ? await balanceResponse.json()
-      : null;
-      
-    const cashierData = cashierResponse && cashierResponse.ok
-      ? await cashierResponse.json()
-      : null;
       
     const floatRequestsData = floatRequestsResponse && floatRequestsResponse.ok
       ? await floatRequestsResponse.json()
       : null;
 
-    // Map machineMoneyIn from balance provider if available (for TODAY)
-    // For past dates, we should likely rely on metrics (which has totalMachineBalance)
-    let slotCounts: any[] = [];
-    
-    if (isToday && balanceData?.success && balanceData.data?.machineMoneyIn !== undefined) {
-         slotCounts = [{ 
-          machineId: 'All Floor Machines', 
-          location: 'Main Floor', 
-          closingCount: balanceData.data.machineMoneyIn 
-        }];
-    } else if (!isToday && metricsData?.success && metricsData.metrics?.totalMachineBalance > 0) {
-        // Construct slot counts from metrics for past dates
-        slotCounts = [{
-            machineId: 'All Floor Machines (Historical)',
-            location: 'Main Floor',
-            closingCount: metricsData.metrics.totalMachineBalance
-        }];
-    }
+    // Use data from End-of-Day API if available
+    const data = endOfDayData?.data || {};
 
-    const denominationBreakdown: Record<string, number> =
-      endOfDayData?.success && endOfDayData.data?.denominationBreakdown
-        ? endOfDayData.data.denominationBreakdown
-        : {};
-
-    // Construct Vault Balance
-    // If today: use live balance
-    // If past: rely on endOfDayData.totalCash or 0? 
-    // Actually, vaultBalance.balance is used as "System Balance".
-    // For past dates, ideally we'd have a snapshot. If not, 0 is safer than current.
-    // However, endOfDayData.totalCash is "Total On Premises" (Vault + Cashiers + Machines).
-    // The UI calculates "Total On Premises" = systemBalance + machines + cashiers.
-    // So we need to be careful.
-    
-    let vaultBalanceObj = DEFAULT_VAULT_BALANCE;
-    
-    if (isToday && balanceData?.success) {
-        vaultBalanceObj = balanceData.data;
-    } else if (!isToday) {
-        // For past dates, we assume 0 for "Vault Balance" if we don't have a snapshot.
-        // Or if we want to show the total cash, we might need adjustments.
-        // But crucially, returning 0 prevents showing the WRONG current 120.
-        vaultBalanceObj = { ...DEFAULT_VAULT_BALANCE, balance: 0 };
-    }
+    // Map Vault Balance
+    const vaultBalanceObj = {
+        ...DEFAULT_VAULT_BALANCE,
+        balance: data.vaultBalance?.systemBalance || 0,
+        // If we have physical count from report (which is same as system for active/closed unless variance), use it?
+        // The default object expects 'balance' as primary (system).
+    };
 
     return {
-      denominationBreakdown,
+      denominationBreakdown: data.denominationBreakdown || {},
       vaultBalance: vaultBalanceObj,
-      cashierFloats: cashierData?.success ? cashierData.shifts || [] : [],
-      slotCounts: slotCounts,
+      cashierFloats: data.cashierFloats || [],
+      slotCounts: data.slotCounts || [],
       floatRequests: floatRequestsData?.success
         ? floatRequestsData.data || []
         : [],

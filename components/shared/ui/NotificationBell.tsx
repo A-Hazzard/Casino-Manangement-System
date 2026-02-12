@@ -11,6 +11,7 @@
 
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
+import { Checkbox } from '@/components/shared/ui/checkbox';
 import DenominationInputGrid from '@/components/shared/ui/DenominationInputGrid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/shared/ui/dialog';
 import {
@@ -20,6 +21,8 @@ import {
     DropdownMenuTrigger
 } from '@/components/shared/ui/dropdown-menu';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Bell, Check, Clock, DollarSign, Edit2, Eye, Filter, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -49,10 +52,10 @@ export type NotificationItem = {
 
 type NotificationBellProps = {
   notifications: NotificationItem[];
-  onMarkAsRead: (notificationId: string) => void;
+  onMarkAsRead: (notificationId: string | string[]) => void;
   onMarkAllAsRead: () => void;
   onNotificationClick: (notification: NotificationItem) => void;
-  onDismiss: (notificationId: string) => void;
+  onDismiss: (notificationId: string | string[]) => void;
   vaultInventory?: { denomination: number; quantity: number }[];
   // Vault specific actions for the modal
   onApprove?: (id: string, denominations?: Denomination[]) => Promise<void>;
@@ -77,8 +80,11 @@ export default function NotificationBell({
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedDenominations, setEditedDenominations] = useState<Denomination[]>([]);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
 
   // Reset editing state when modal closes or changes
   useEffect(() => {
@@ -88,7 +94,8 @@ export default function NotificationBell({
     } else {
         // Initialize edited denominations from request
         const requested = viewDetails.metadata?.requestedDenominations || [];
-        const initialDenoms: Denomination[] = [100, 50, 20, 10, 5, 1].map(d => ({
+        const denomsList = getDenominationValues(selectedLicencee);
+        const initialDenoms: Denomination[] = denomsList.map(d => ({
             denomination: d as any,
             quantity: requested.find((r: any) => Number(r.denomination) === d)?.quantity || 0
         }));
@@ -198,20 +205,52 @@ export default function NotificationBell({
             Notifications ({unreadCount})
           </DropdownMenuLabel>
           <div className="flex gap-2">
+            {!isSelecting && notifications.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (confirm('Are you sure you want to clear all notifications?')) {
+                    onDismiss(notifications.map(n => n.id));
+                  }
+                }}
+                className="h-auto p-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                Clear All
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setUnreadOnly(!unreadOnly)}
+              onClick={() => {
+                const newState = !isSelecting;
+                setIsSelecting(newState);
+                if (!newState) setSelectedIds(new Set());
+              }}
               className={`h-auto p-1.5 text-xs flex items-center gap-1.5 rounded-md transition-colors ${
-                unreadOnly 
+                isSelecting 
                   ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
                   : 'text-gray-500 hover:bg-gray-100'
               }`}
             >
-              <Filter className={`h-3 w-3 ${unreadOnly ? 'fill-blue-700' : ''}`} />
-              {unreadOnly ? 'Unread Only' : 'Show All'}
+              {isSelecting ? 'Cancel Select' : 'Select'}
             </Button>
-            {unreadCount > 0 && (
+            {!isSelecting && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setUnreadOnly(!unreadOnly)}
+                className={`h-auto p-1.5 text-xs flex items-center gap-1.5 rounded-md transition-colors ${
+                  unreadOnly 
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                    : 'text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                <Filter className={`h-3 w-3 ${unreadOnly ? 'fill-blue-700' : ''}`} />
+                {unreadOnly ? 'Unread Only' : 'Show All'}
+              </Button>
+            )}
+            {!isSelecting && unreadCount > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -226,6 +265,56 @@ export default function NotificationBell({
           </div>
         </div>
 
+        {isSelecting && filteredNotifications.length > 0 && (
+          <div className="bg-blue-50 px-4 py-2 border-b flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Checkbox 
+                checked={selectedIds.size > 0 && selectedIds.size === filteredNotifications.length}
+                onCheckedChange={(checked: boolean) => {
+                  if (checked) {
+                    setSelectedIds(new Set(filteredNotifications.map(n => n.id)));
+                  } else {
+                    setSelectedIds(new Set());
+                  }
+                }}
+                id="select-all"
+              />
+              <label htmlFor="select-all" className="text-xs font-semibold text-blue-700 cursor-pointer">
+                Select All ({filteredNotifications.length})
+              </label>
+            </div>
+            {selectedIds.size > 0 && (
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    onMarkAsRead(Array.from(selectedIds));
+                    setIsSelecting(false);
+                    setSelectedIds(new Set());
+                  }}
+                  className="h-7 px-2 text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-100"
+                >
+                  Mark Read
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (confirm(`Delete ${selectedIds.size} notifications?`)) {
+                      onDismiss(Array.from(selectedIds));
+                      setIsSelecting(false);
+                      setSelectedIds(new Set());
+                    }
+                  }}
+                  className="h-7 px-2 text-[10px] font-bold uppercase tracking-wider text-red-600 hover:bg-red-100"
+                >
+                  Delete
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
         {filteredNotifications.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-gray-500">
             {unreadOnly ? 'No unread notifications' : 'No history yet'}
@@ -238,6 +327,22 @@ export default function NotificationBell({
                 className={`${getStatusColor(notification.status)} transition-colors relative group`}
               >
                 <div className="flex items-start gap-3 p-4 pr-24">
+                  {isSelecting && (
+                    <div className="mt-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox 
+                        checked={selectedIds.has(notification.id)}
+                        onCheckedChange={(checked: boolean) => {
+                          const newSelected = new Set(selectedIds);
+                          if (checked) {
+                            newSelected.add(notification.id);
+                          } else {
+                            newSelected.delete(notification.id);
+                          }
+                          setSelectedIds(newSelected);
+                        }}
+                      />
+                    </div>
+                  )}
                   <div className="mt-1 flex-shrink-0">
                     {getNotificationIcon(notification.type)}
                   </div>
@@ -404,7 +509,7 @@ export default function NotificationBell({
                               <Badge variant="outline" className="text-[10px] font-normal">Available</Badge>
                             </div>
                             <div className="grid grid-cols-1 gap-2">
-                               {[100, 50, 20, 10, 5, 1].map(val => {
+                               {getDenominationValues(selectedLicencee).map(val => {
                                 const stock = vaultInventory.find(v => v.denomination === val)?.quantity || 0;
                                 return (
                                   <div key={val} className="flex justify-between p-2 rounded bg-gray-50/50 border border-dashed border-gray-200">

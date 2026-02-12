@@ -19,7 +19,7 @@ type VaultCashDeskCardProps = {
   onViewDenominations: () => void;
 };
 
-export default function VaultCashDeskCard({ cashDesk, onViewDenominations }: VaultCashDeskCardProps) {
+export default function VaultCashDeskCard({ cashDesk, onViewDenominations: _onViewDenominations }: VaultCashDeskCardProps) {
   const { formatAmount } = useCurrencyFormat();
 
   const isActive = cashDesk.status === 'active';

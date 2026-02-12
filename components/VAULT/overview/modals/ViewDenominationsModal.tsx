@@ -15,7 +15,9 @@ import {
     DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { cn } from '@/lib/utils';
+import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { Coins, Receipt } from 'lucide-react';
 
@@ -35,9 +37,10 @@ export default function ViewDenominationsModal({
   totalAmount,
 }: ViewDenominationsModalProps) {
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
 
   // Ensure all denominations are present even if quantity is 0
-  const standardDenoms = [100, 50, 20, 10, 5, 1];
+  const standardDenoms = getDenominationValues(selectedLicencee);
   const displayDenoms = standardDenoms.map(val => {
     const found = denominations.find(d => d.denomination === val);
     return {

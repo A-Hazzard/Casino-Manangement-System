@@ -45,11 +45,11 @@ export async function POST(request: NextRequest) {
     // STEP 2: Parse and validate request body
     // ============================================================================
     const body = await request.json();
-    const { shiftId, reason } = body;
+    const { shiftId, reason = '' } = body;
 
-    if (!shiftId || !reason) {
+    if (!shiftId) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields (shiftId, reason)' },
+        { success: false, error: 'Missing required field: shiftId' },
         { status: 400 }
       );
     }

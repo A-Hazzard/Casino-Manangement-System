@@ -15,15 +15,13 @@ import {
     TooltipTrigger,
 } from '@/components/shared/ui/tooltip';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { cn } from '@/lib/utils';
+import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { GamingMachine } from '@/shared/types/entities';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertCircle, Coins, Info, Minus, Plus, RefreshCw, Save } from 'lucide-react';
-import { useEffect, useState } from 'react';
-
-const DEFAULT_DENOMINATIONS_VALUES = [
-  100, 50, 20, 10, 5, 2, 1
-] as const;
+import { useEffect, useMemo, useState } from 'react';
 
 interface VaultCollectionEntryFormProps {
   machine: GamingMachine;
@@ -47,6 +45,7 @@ export default function VaultCollectionEntryForm({
   loading
 }: VaultCollectionEntryFormProps) {
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
   
   // Meter Inputs
   const [meters, setMeters] = useState({
@@ -55,10 +54,14 @@ export default function VaultCollectionEntryForm({
     totalIn: '' // Calculated or Manual? Let's assume calculated for verification
   });
 
+  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
+
   // Physical Count
-  const [denominations, setDenominations] = useState<Denomination[]>(
-    DEFAULT_DENOMINATIONS_VALUES.map(d => ({ denomination: d, quantity: 0 } as Denomination))
-  );
+  const [denominations, setDenominations] = useState<Denomination[]>([]);
+
+  useEffect(() => {
+    setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+  }, [denomsList]);
   
   // Notes
   const [notes, setNotes] = useState('');
@@ -91,10 +94,10 @@ export default function VaultCollectionEntryForm({
   // Reset form when machine changes
   useEffect(() => {
     setMeters({ billIn: '', ticketIn: '', totalIn: '' });
-    setDenominations(DEFAULT_DENOMINATIONS_VALUES.map(d => ({ denomination: d, quantity: 0 } as Denomination)));
+    setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
     setNotes('');
     setExpectedDrop('');
-  }, [machine._id]);
+  }, [machine._id, denomsList]);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50 overflow-hidden">

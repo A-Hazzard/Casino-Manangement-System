@@ -20,9 +20,12 @@ import {
     DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
+import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Coins } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type CashierShiftOpenModalProps = {
   open: boolean;
@@ -33,9 +36,7 @@ type CashierShiftOpenModalProps = {
   loading?: boolean;
 };
 
-const DEFAULT_DENOMINATIONS: Denomination['denomination'][] = [
-  1, 5, 10, 20, 50, 100,
-];
+
 
 export default function CashierShiftOpenModal({
   open,
@@ -46,11 +47,28 @@ export default function CashierShiftOpenModal({
   loading = false,
 }: CashierShiftOpenModalProps) {
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
+  const { user } = useUserStore();
   const [step, setStep] = useState<'input' | 'review'>('input');
 
-  const [denominations, setDenominations] = useState<Denomination[]>(
-    DEFAULT_DENOMINATIONS.map(denom => ({ denomination: denom, quantity: 0 }))
-  );
+  // Use user's assigned licensee if available (Cashier context), otherwise dashboard selection (Admin context)
+  const effectiveLicenseeId = useMemo(() => {
+    return user?.assignedLicensees?.[0] || selectedLicencee;
+  }, [user?.assignedLicensees, selectedLicencee]);
+
+  const denomsList = useMemo(() => getDenominationValues(effectiveLicenseeId), [effectiveLicenseeId]);
+
+  const [denominations, setDenominations] = useState<Denomination[]>([]);
+
+  // Update denominations when licensee changes or modal opens
+  useEffect(() => {
+    if (open && step === 'input') {
+      setDenominations(denomsList.map(denom => ({ 
+        denomination: denom as Denomination['denomination'], 
+        quantity: 0 
+      })));
+    }
+  }, [denomsList, open, step]);
 
   const totalAmount = denominations.reduce(
     (sum, d) => sum + d.denomination * d.quantity,
@@ -82,8 +100,8 @@ export default function CashierShiftOpenModal({
       handleClose();
       // Reset form
       setDenominations(
-        DEFAULT_DENOMINATIONS.map(denom => ({
-          denomination: denom,
+        denomsList.map(denom => ({
+          denomination: denom as Denomination['denomination'],
           quantity: 0,
         }))
       );

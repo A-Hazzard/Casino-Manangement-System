@@ -20,6 +20,8 @@ import {
     CardTitle,
 } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Layers } from 'lucide-react';
 import { useMemo } from 'react';
@@ -37,13 +39,15 @@ export default function VaultInventoryCard({
   isLoading = false,
 }: VaultInventoryCardProps) {
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
 
   // Normalize denominations to ensure all slots exist even if 0
   const normalizedDenoms = useMemo(() => {
     const map = new Map<number, number>();
+    const denomsList = getDenominationValues(selectedLicencee);
     (denominations || []).forEach(d => map.set(d.denomination, d.quantity));
 
-    const result = [100, 50, 20, 10, 5, 1].map(val => ({
+    const result = denomsList.map(val => ({
       value: val,
       quantity: map.get(val) || 0,
       total: val * (map.get(val) || 0),
@@ -51,7 +55,7 @@ export default function VaultInventoryCard({
     }));
 
     return result;
-  }, [denominations]);
+  }, [denominations, selectedLicencee]);
 
   const totalBills = normalizedDenoms.reduce(
     (acc, curr) => acc + curr.quantity,
@@ -77,7 +81,7 @@ export default function VaultInventoryCard({
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8">
             {normalizedDenoms.map(item => (
               <div
                 key={item.value}

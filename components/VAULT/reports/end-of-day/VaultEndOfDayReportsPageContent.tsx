@@ -21,60 +21,57 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import { DatePicker } from '@/components/shared/ui/date-picker';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
 import VaultEndOfDayReportsSkeleton from '@/components/ui/skeletons/VaultEndOfDayReportsSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
-  DEFAULT_CASHIER_FLOATS,
-  DEFAULT_REPORT_DENOMINATIONS,
-  DEFAULT_REPORT_SLOTS,
-  DEFAULT_VAULT_BALANCE,
-  DEFAULT_VAULT_METRICS,
+    DEFAULT_CASHIER_FLOATS,
+    DEFAULT_REPORT_DENOMINATIONS,
+    DEFAULT_REPORT_SLOTS,
+    DEFAULT_VAULT_BALANCE,
+    DEFAULT_VAULT_METRICS,
 } from '@/components/VAULT/overview/data/defaults';
 import {
-  calculateEndOfDayMetrics,
-  fetchEndOfDayReportData,
+    calculateEndOfDayMetrics,
+    fetchEndOfDayReportData,
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type {
-  CashierFloat,
-  FloatRequest,
-  VaultMetrics,
+    CashierFloat,
+    FloatRequest,
+    VaultMetrics,
 } from '@/shared/types/vault';
-import { isSameDay } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
-  AlertTriangle,
-  Calendar,
-  ChevronDown,
-  Download,
-  FileText,
-  Monitor,
-  RefreshCw,
-  Users,
-  Wallet
+    AlertTriangle,
+    ChevronDown,
+    Download,
+    Monitor,
+    RefreshCw,
+    Users,
+    Wallet
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -85,10 +82,10 @@ export default function VaultEndOfDayReportsPageContent() {
   // Hooks & State
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
-  const { user, hasActiveVaultShift } = useUserStore();
+  const { user } = useUserStore();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [reportGenerated, setReportGenerated] = useState(false);
-  const [loading, setLoading] = useState(false);
+  // Start loading by default
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<{
     denominationBreakdown: Record<string, number>;
@@ -112,7 +109,10 @@ export default function VaultEndOfDayReportsPageContent() {
   const fetchReportData = async () => {
     const locationId = user?.assignedLocations?.[0];
     if (!locationId) {
-      setError('No location assigned');
+      if (user) {
+         setLoading(false);
+         // Optional: setError('No location assigned');
+      }
       return;
     }
 
@@ -126,16 +126,19 @@ export default function VaultEndOfDayReportsPageContent() {
       setError('Failed to load report data');
       toast.error('Failed to load report data');
     } finally {
-      setLoading(false);
+      // Small delay to prevent flickering
+      setTimeout(() => setLoading(false), 300);
     }
   };
 
-  // Auto-refresh when report parameters change
+  // Auto-fetch on mount or date change
   useEffect(() => {
-    if (reportGenerated && user?.assignedLocations?.[0]) {
+    if (user?.assignedLocations?.[0]) {
       fetchReportData();
+    } else if (user && (!user.assignedLocations || user.assignedLocations.length === 0)) {
+        setLoading(false);
     }
-  }, [selectedDate, reportGenerated]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedDate, user?.assignedLocations]); 
 
   // ============================================================================
   // Computed Values
@@ -145,13 +148,6 @@ export default function VaultEndOfDayReportsPageContent() {
   // ============================================================================
   // Event Handlers
   // ============================================================================
-  /**
-   * Handle generate report action
-   */
-  const handleGenerateReport = async () => {
-    setReportGenerated(true);
-    await fetchReportData();
-  };
 
   /**
    * Handle refresh action
@@ -238,10 +234,6 @@ export default function VaultEndOfDayReportsPageContent() {
   // Render
   // ============================================================================
   
-  // Only block access if the selected date is 'today' AND there is an active shift
-  // Using isSameDay to check if selectedDate is today
-  const isToday = selectedDate && isSameDay(selectedDate, new Date());
-  
   return (
     <PageLayout>
       <div className="space-y-6">
@@ -257,14 +249,12 @@ export default function VaultEndOfDayReportsPageContent() {
                 date={selectedDate} 
                 setDate={(date) => {
                   setSelectedDate(date);
-                  if (date) {
-                    setReportGenerated(true);
-                  }
                 }} 
               />
             </div>
             
-            {reportGenerated && !error && !(hasActiveVaultShift && isToday) && (
+            {/* Show controls unless error */}
+            {!error && (
               <div className="flex items-center gap-2">
                 <Button
                   onClick={handleRefresh}
@@ -272,8 +262,9 @@ export default function VaultEndOfDayReportsPageContent() {
                   size="sm"
                   title="Refresh Report"
                   className="h-8 w-8 p-0 border-gray-300 bg-white sm:w-auto sm:px-3"
+                  disabled={loading}
                 >
-                  <RefreshCw className="h-3.5 w-3.5 sm:mr-2" />
+                  <RefreshCw className={cn("h-3.5 w-3.5 sm:mr-2", loading && "animate-spin")} />
                   <span className="hidden sm:inline">Refresh</span>
                 </Button>
 
@@ -283,6 +274,7 @@ export default function VaultEndOfDayReportsPageContent() {
                       variant="outline"
                       size="sm"
                       className="h-8 border-gray-300 bg-white"
+                      disabled={loading}
                     >
                       <Download className="h-3.5 w-3.5 sm:mr-2" />
                       <span className="hidden xs:inline sm:hidden">Export</span>
@@ -306,72 +298,12 @@ export default function VaultEndOfDayReportsPageContent() {
 
         {/* Content Area */}
         {(() => {
-          // 1. Restricted Access for Today
-          if (hasActiveVaultShift && isToday) {
-            return (
-              <div className="flex min-h-[50vh] items-center justify-center">
-                <Card className="w-full max-w-md rounded-lg bg-container shadow-md">
-                  <CardContent className="flex flex-col items-center justify-center p-8 text-center">
-                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orangeHighlight/10">
-                      <AlertTriangle className="h-8 w-8 text-orangeHighlight" />
-                    </div>
-                    <h2 className="mb-2 text-xl font-bold text-gray-900">
-                      Access Restricted for Today
-                    </h2>
-                    <p className="mb-6 text-sm text-gray-600">
-                      The End-of-Day Report for today is only available after the vault shift has been closed.
-                      <br/>
-                      <span className="font-medium">You can select a past date from the picker above to view historical reports.</span>
-                    </p>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => window.location.href = '/vault/management'}
-                    >
-                      Return to Dashboard
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            );
-          }
-
-          // 2. Not Generated Yet
-          if (!reportGenerated) {
-            return (
-              <div className="flex min-h-[50vh] items-center justify-center">
-                <Card className="w-full max-w-2xl rounded-lg bg-container shadow-md">
-                  <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-                    <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
-                      <FileText className="h-10 w-10 text-gray-600" />
-                    </div>
-                    <h2 className="mb-2 text-2xl font-semibold text-gray-900">
-                      Generate End-of-Day Report
-                    </h2>
-                    <p className="mb-8 text-sm text-gray-600">
-                      This will compile the closing float, slot machine counts,
-                      and vault balance into a comprehensive report for the selected date.
-                    </p>
-                    <Button
-                      onClick={handleGenerateReport}
-                      disabled={loading}
-                      className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
-                      size="lg"
-                    >
-                      <Calendar className="mr-2 h-5 w-5" />
-                      {loading ? 'Generating...' : 'Generate Report'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            );
-          }
-
-          // 3. Loading
+          // 1. Loading
           if (loading) {
             return <VaultEndOfDayReportsSkeleton />;
           }
 
-          // 4. Error
+          // 2. Error
           if (error) {
             return (
               <div className="flex min-h-[50vh] flex-col items-center justify-center space-y-4">
@@ -387,7 +319,7 @@ export default function VaultEndOfDayReportsPageContent() {
             );
           }
 
-          // 5. Report Content
+          // 3. Report Content
           return (
             <>
 

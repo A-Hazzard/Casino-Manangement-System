@@ -29,7 +29,9 @@ import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { cn } from '@/lib/utils';
+import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination, ExpenseCategory } from '@/shared/types/vault';
 import {
     Briefcase,
@@ -42,7 +44,7 @@ import {
     Tag,
     Wrench
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 type VaultRecordExpenseModalProps = {
@@ -67,20 +69,26 @@ export default function VaultRecordExpenseModal({
   onConfirm,
 }: VaultRecordExpenseModalProps) {
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
   // ============================================================================
   // Hooks & State
   // ============================================================================
   const [category, setCategory] = useState<ExpenseCategory | ''>('');
   
   // Denomination State
-  const [denominations, setDenominations] = useState<Denomination[]>([
-    { denomination: 100, quantity: 0 },
-    { denomination: 50, quantity: 0 },
-    { denomination: 20, quantity: 0 },
-    { denomination: 10, quantity: 0 },
-    { denomination: 5, quantity: 0 },
-    { denomination: 1, quantity: 0 },
-  ]);
+  const [denominations, setDenominations] = useState<Denomination[]>([]);
+
+  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
+
+  // Update denominations when licensee changes or modal opens
+  useEffect(() => {
+    if (open) {
+      setDenominations(denomsList.map(denom => ({ 
+        denomination: denom as Denomination['denomination'], 
+        quantity: 0 
+      })));
+    }
+  }, [denomsList, open]);
 
   const [description, setDescription] = useState('');
   const [date, setDate] = useState<Date>(new Date());
@@ -177,14 +185,10 @@ export default function VaultRecordExpenseModal({
    */
   const handleReset = () => {
     setCategory('');
-    setDenominations([
-      { denomination: 100, quantity: 0 },
-      { denomination: 50, quantity: 0 },
-      { denomination: 20, quantity: 0 },
-      { denomination: 10, quantity: 0 },
-      { denomination: 5, quantity: 0 },
-      { denomination: 1, quantity: 0 },
-    ]);
+    setDenominations(denomsList.map(denom => ({
+      denomination: denom as Denomination['denomination'],
+      quantity: 0,
+    })));
     setDescription('');
     setDate(new Date());
     setErrors({});

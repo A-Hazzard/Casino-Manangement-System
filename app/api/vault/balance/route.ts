@@ -15,6 +15,7 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import UserModel from '@/app/api/lib/models/user';
+import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
@@ -170,6 +171,12 @@ export async function GET(request: NextRequest) {
 
     const vaultBalanceVal = lastTransaction?.vaultBalanceAfter ?? activeShift.openingBalance;
 
+    // Check if collection is done
+    const isCollectionDone = await VaultCollectionSession.exists({
+      vaultShiftId: activeShift._id,
+      status: 'completed'
+    });
+
     // ============================================================================
     // STEP 5: Construct and return response
     // ============================================================================
@@ -177,6 +184,7 @@ export async function GET(request: NextRequest) {
         totalCashOnPremises: number;
         machineMoneyIn: number;
         cashierFloats: number;
+        isCollectionDone: boolean;
     } = {
       balance: vaultBalanceVal,
       // Prefer currentDenominations if set, otherwise fallback to opening
@@ -198,7 +206,8 @@ export async function GET(request: NextRequest) {
       machineMoneyIn: totalMachineMoneyIn,
       cashierFloats: totalCashierFloats,
       openingBalance: activeShift.openingBalance,
-      isReconciled: activeShift.isReconciled || false
+      isReconciled: activeShift.isReconciled || false,
+      isCollectionDone: !!isCollectionDone
     };
 
     return NextResponse.json({ success: true, data: response });

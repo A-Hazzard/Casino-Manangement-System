@@ -76,8 +76,9 @@ export default function CashierDashboardPageContent() {
   const [machines, setMachines] = useState<GamingMachine[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
   
-  // Confirmation state for cancelling requests
+  // Confirmation state for requests
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
+  const [showShiftCancelConfirm, setShowShiftCancelConfirm] = useState(false);
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
   
   // --- Logic Handlers ---
@@ -154,16 +155,16 @@ export default function CashierDashboardPageContent() {
   };
 
   /**
-   * Handle shift cancellation
+   * Handle shift cancellation request (trigger modal)
    */
-  const handleShiftCancel = async () => {
-    const isReview = status === 'pending_review';
-    const message = isReview 
-      ? 'Are you sure you want to cancel your shift closure request? Your shift will remain active.'
-      : 'Are you sure you want to cancel your shift opening request?';
-      
-    if (!confirm(message)) return;
-    
+  const handleShiftCancel = () => {
+    setShowShiftCancelConfirm(true);
+  };
+
+  /**
+   * Execute shift cancellation
+   */
+  const executeShiftCancel = async () => {
     setActionLoading(true);
     try {
       const res = await fetch('/api/cashier/shift/cancel', {
@@ -173,6 +174,7 @@ export default function CashierDashboardPageContent() {
       if (result.success) {
         toast.success(result.message || 'Shift request cancelled');
         refresh(true);
+        setShowShiftCancelConfirm(false);
       } else {
         toast.error(result.error || 'Failed to cancel shift request');
       }
@@ -228,6 +230,10 @@ export default function CashierDashboardPageContent() {
 
   const isShiftActive = status === 'active';
   const isOffShift = (!shift || (!isShiftActive && status !== 'pending_start' && status !== 'pending_review'));
+  
+  const shiftCancelMessage = status === 'pending_review'
+      ? 'Are you sure you want to cancel your shift closure request? Your shift will remain active.'
+      : 'Are you sure you want to cancel your shift opening request?';
 
   return (
     <PageLayout>
@@ -408,13 +414,25 @@ export default function CashierDashboardPageContent() {
             loading={actionLoading}
             onConfirm={async () => {
               if (pendingCancelId) {
-                setActionLoading(true); // Re-use action loading or add specific? Re-using is fine as only one action at a time.
+                setActionLoading(true); 
                 await cancelFloatRequest(pendingCancelId);
                 setActionLoading(false);
                 setShowCancelConfirmation(false);
                 setPendingCancelId(null);
               }
             }}
+          />
+          
+          <ConfirmationModal
+             open={showShiftCancelConfirm}
+             onOpenChange={setShowShiftCancelConfirm}
+             title="Cancel Shift Request"
+             description={shiftCancelMessage}
+             confirmLabel="Yes, Cancel Request"
+             cancelLabel="No, Keep It"
+             variant="destructive"
+             loading={actionLoading}
+             onConfirm={executeShiftCancel}
           />
       </div>
     </PageLayout>

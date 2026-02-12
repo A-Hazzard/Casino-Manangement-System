@@ -6,6 +6,16 @@
  */
 'use client';
 
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/shared/ui/alert-dialog';
 import { Button } from '@/components/shared/ui/button';
 import {
     Dialog,
@@ -16,9 +26,10 @@ import {
 import VaultCollectionEntryForm from '@/components/VAULT/overview/modals/wizard/VaultCollectionEntryForm';
 import VaultCollectionMachineSelector from '@/components/VAULT/overview/modals/wizard/VaultCollectionMachineSelector';
 import VaultCollectionSessionList from '@/components/VAULT/overview/modals/wizard/VaultCollectionSessionList';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import type { GamingMachine } from '@/shared/types/entities';
-import { CheckCheck, LayoutGrid, Loader2 } from 'lucide-react';
+import { CheckCheck, CheckCircle2, LayoutGrid, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -40,6 +51,7 @@ export default function VaultCollectionWizardModal({
   currentLocationId
 }: VaultCollectionWizardModalProps) {
   const { user } = useUserStore();
+  const { formatAmount } = useCurrencyFormat();
   
   // -- State --
   const [loading, setLoading] = useState(false);
@@ -50,6 +62,13 @@ export default function VaultCollectionWizardModal({
   // Selection
   const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Completion State
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [finalStats, setFinalStats] = useState({ count: 0, total: 0 });
+
+  // Confirmation State
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // -- Derivations --
   const selectedMachine = machines.find(m => m._id === selectedMachineId);
@@ -66,6 +85,9 @@ export default function VaultCollectionWizardModal({
         setSessionId(null);
         setEntries([]);
         setSelectedMachineId(null);
+        setIsCompleted(false);
+        setFinalStats({ count: 0, total: 0 });
+        setShowConfirmModal(false);
     }
   }, [open, currentLocationId, currentVaultShiftId]);
 
@@ -185,14 +207,17 @@ export default function VaultCollectionWizardModal({
     }
   };
 
-  const handleFinalize = async () => {
+  const handleFinalizeClick = () => {
     if (!sessionId || entries.length === 0) return;
-    
-    if (!confirm(`Are you sure you want to commit counts for ${entries.length} machines? This adds the cash to the vault and closes this collection batch.`)) {
-        return;
-    }
+    setShowConfirmModal(true);
+  };
 
+  const executeFinalize = async () => {
     setLoading(true);
+    // Optimistically close the confirm modal immediately or wait? 
+    // Standard is to keep it or transition. Since we are moving to a success view, let's just close confirm.
+    setShowConfirmModal(false); 
+    
     try {
         const res = await fetch('/api/vault/collection-session/finalize', {
             method: 'POST',
@@ -207,9 +232,13 @@ export default function VaultCollectionWizardModal({
         
         const data = await res.json();
         if (data.success) {
+            // Show success logic instead of closing immediately
+            setFinalStats({
+                count: entries.length,
+                total: data.totalCollected || entries.reduce((acc: any, e: any) => acc + e.totalAmount, 0)
+            });
+            setIsCompleted(true);
             toast.success('Collection finalized successfully');
-            onConfirm(); // Parent callback (e.g., triggers Close Shift)
-            onClose();
         } else {
             toast.error(data.error || 'Failed to finalize batch');
         }
@@ -220,83 +249,147 @@ export default function VaultCollectionWizardModal({
     }
   };
 
+  const handleSuccessClose = () => {
+      onConfirm(); // Trigger parent refresh/next step
+      onClose();   // Close modal
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden flex flex-col bg-white">
-        
-        {/* Header */}
-        <DialogHeader className="px-6 py-4 border-b border-gray-100 flex flex-row items-center justify-between space-y-0 bg-white z-20">
-            <div className="flex items-center gap-3">
-                <div className="bg-violet-100 p-2 rounded-lg text-violet-600">
-                    <LayoutGrid className="h-5 w-5" />
-                </div>
-                <div>
-                   <DialogTitle className="text-lg font-bold text-gray-900">Machine Collection</DialogTitle>
-                   <p className="text-xs text-gray-500 font-medium mt-0.5">
-                      Session ID: <span className="font-mono">{sessionId ? sessionId.substring(0,8) : '...'}</span>
-                      {sessionLoading && <span className="ml-2 animate-pulse text-violet-500">Syncing...</span>}
-                   </p>
-                </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-                <Button variant="ghost" onClick={onClose} disabled={loading} className="text-gray-500">
-                    Cancel
-                </Button>
-                <Button 
-                   onClick={handleFinalize} 
-                   disabled={loading || entries.length === 0}
-                   className="bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200"
-                >
-                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCheck className="mr-2 h-4 w-4" />}
-                    Finish Collection ({entries.length})
-                </Button>
-            </div>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={(val) => !val && !isCompleted && onClose()}>
+        <DialogContent className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden flex flex-col bg-white">
+          
+          {/* SUCCESS VIEW */}
+          {isCompleted ? (
+              <div className="flex-1 flex flex-col items-center justify-center bg-gray-50/50 p-10 animate-in fade-in zoom-in-95 duration-300">
+                  <div className="bg-white p-10 rounded-3xl shadow-xl border border-gray-100 flex flex-col items-center max-w-md w-full text-center">
+                      <div className="h-24 w-24 bg-emerald-100 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                          <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+                      </div>
+                      
+                      <h2 className="text-2xl font-black text-gray-900 mb-2">Collection Complete!</h2>
+                      <p className="text-gray-500 mb-8">
+                          The collection batch has been successfully committed to the vault.
+                      </p>
+                      
+                      <div className="w-full bg-gray-50 rounded-xl p-6 mb-8 border border-gray-100">
+                          <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+                              <span className="text-gray-500 font-medium">Machines Processed</span>
+                              <span className="text-gray-900 font-bold text-lg">{finalStats.count}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                              <span className="text-gray-500 font-medium">Total Cash Collected</span>
+                              <span className="text-emerald-600 font-black text-2xl">
+                                  {formatAmount(finalStats.total)}
+                              </span>
+                          </div>
+                      </div>
 
-        {/* 3-Column Layout */}
-        <div className="flex-1 flex min-h-0 bg-gray-50/50">
-            
-            {/* Left: Machine Selector */}
-            <VaultCollectionMachineSelector 
-                machines={machines}
-                selectedMachineId={selectedMachineId}
-                collectedMachineIds={collectedMachineIds}
-                onSelect={setSelectedMachineId}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-            />
+                      <Button 
+                          size="lg" 
+                          onClick={handleSuccessClose}
+                          className="w-full h-12 text-base font-bold bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200"
+                      >
+                          Success - Continue
+                      </Button>
+                  </div>
+              </div>
+          ) : (
+              <>
+                  {/* Header */}
+                  <DialogHeader className="px-6 py-4 border-b border-gray-100 flex flex-row items-center justify-between space-y-0 bg-white z-20">
+                      <div className="flex items-center gap-3">
+                          <div className="bg-violet-100 p-2 rounded-lg text-violet-600">
+                              <LayoutGrid className="h-5 w-5" />
+                          </div>
+                          <div>
+                          <DialogTitle className="text-lg font-bold text-gray-900">Machine Collection</DialogTitle>
+                          <p className="text-xs text-gray-500 font-medium mt-0.5">
+                              Session ID: <span className="font-mono">{sessionId ? sessionId.substring(0,8) : '...'}</span>
+                              {sessionLoading && <span className="ml-2 animate-pulse text-violet-500">Syncing...</span>}
+                          </p>
+                          </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                          <Button variant="ghost" onClick={onClose} disabled={loading} className="text-gray-500">
+                              Cancel
+                          </Button>
+                          <Button 
+                          onClick={handleFinalizeClick} 
+                          disabled={loading || entries.length === 0}
+                          className="bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200"
+                          >
+                              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCheck className="mr-2 h-4 w-4" />}
+                              Finish Collection ({entries.length})
+                          </Button>
+                      </div>
+                  </DialogHeader>
 
-            {/* Middle: Entry Form */}
-            <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200 bg-white relative">
-                 {selectedMachine ? (
-                    <VaultCollectionEntryForm 
-                        machine={selectedMachine}
-                        onSave={handleAddEntry}
-                        loading={loading}
-                    />
-                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-10 text-center">
-                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <LayoutGrid className="h-10 w-10 opacity-30" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-600 mb-1">No Machine Selected</h3>
-                        <p className="text-sm max-w-[280px]">
-                           Select a machine from the left list to begin entering collection data.
-                        </p>
-                    </div>
-                 )}
-            </div>
+                  {/* 3-Column Layout */}
+                  <div className="flex-1 flex min-h-0 bg-gray-50/50">
+                      
+                      {/* Left: Machine Selector */}
+                      <VaultCollectionMachineSelector 
+                          machines={machines}
+                          selectedMachineId={selectedMachineId}
+                          collectedMachineIds={collectedMachineIds}
+                          onSelect={setSelectedMachineId}
+                          searchTerm={searchTerm}
+                          onSearchChange={setSearchTerm}
+                      />
 
-            {/* Right: Session List */}
-            <VaultCollectionSessionList 
-                entries={entries}
-                onRemove={handleRemoveEntry}
-                // onEdit={(id) => setSelectedMachineId(id)} // Optional: Support editing
-            />
+                      {/* Middle: Entry Form */}
+                      <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200 bg-white relative">
+                          {selectedMachine ? (
+                              <VaultCollectionEntryForm 
+                                  machine={selectedMachine}
+                                  onSave={handleAddEntry}
+                                  loading={loading}
+                              />
+                          ) : (
+                              <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-10 text-center">
+                                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                      <LayoutGrid className="h-10 w-10 opacity-30" />
+                                  </div>
+                                  <h3 className="text-lg font-semibold text-gray-600 mb-1">No Machine Selected</h3>
+                                  <p className="text-sm max-w-[280px]">
+                                  Select a machine from the left list to begin entering collection data.
+                                  </p>
+                              </div>
+                          )}
+                      </div>
 
-        </div>
-      </DialogContent>
-    </Dialog>
+                      {/* Right: Session List */}
+                      <VaultCollectionSessionList 
+                          entries={entries}
+                          onRemove={handleRemoveEntry}
+                          // onEdit={(id) => setSelectedMachineId(id)} // Optional: Support editing
+                      />
+
+                  </div>
+              </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Modal */}
+      <AlertDialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finish Collection?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to commit counts for {entries.length} machines? This adds the cash to the vault and closes this collection batch.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeFinalize} disabled={loading} className="bg-violet-600 hover:bg-violet-700">
+              Confirm & Finish
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -10,7 +10,7 @@
 // ============================================================================
 
 export type Denomination = {
-  denomination: 1 | 2 | 5 | 10 | 20 | 50 | 100;
+  denomination: 1 | 2 | 5 | 10 | 20 | 50 | 100 | 500 | 1000 | 5000;
   quantity: number;
 };
 
@@ -459,6 +459,7 @@ export type VaultBalance = {
   isInitial?: boolean;
   openingBalance?: number;
   isReconciled?: boolean;
+  isCollectionDone?: boolean;
 };
 
 export type CashDesk = {

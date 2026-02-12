@@ -15,11 +15,13 @@ import { Label } from '@/components/shared/ui/label';
 import { MachineSearchSelect } from '@/components/shared/ui/machine/MachineSearchSelect';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { cn } from '@/lib/utils';
+import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { GamingMachine } from '@/shared/types/entities';
 import type { Denomination } from '@/shared/types/vault';
 import { ArrowRightCircle, Coins, MessageSquare, Minus, Monitor, Plus, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type SoftCountFormProps = {
   onSubmit: (
@@ -32,9 +34,7 @@ type SoftCountFormProps = {
   machines?: GamingMachine[];
 };
 
-const DEFAULT_DENOMINATIONS: Denomination['denomination'][] = [
-  1, 5, 10, 20, 50, 100,
-];
+
 
 export default function SoftCountForm({
   onSubmit,
@@ -42,11 +42,20 @@ export default function SoftCountForm({
   machines = [],
 }: SoftCountFormProps) {
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
   const [machineId, setMachineId] = useState('');
   const [notes, setNotes] = useState('');
-  const [denominations, setDenominations] = useState<Denomination[]>(
-    DEFAULT_DENOMINATIONS.map(denom => ({ denomination: denom, quantity: 0 }))
-  );
+  const [denominations, setDenominations] = useState<Denomination[]>([]);
+
+  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
+
+  // Update denominations when licensee changes
+  useEffect(() => {
+    setDenominations(denomsList.map(denom => ({ 
+      denomination: denom as Denomination['denomination'], 
+      quantity: 0 
+    })));
+  }, [denomsList]);
 
 
   const totalAmount = denominations.reduce(
@@ -82,8 +91,8 @@ export default function SoftCountForm({
       setMachineId('');
       setNotes('');
       setDenominations(
-        DEFAULT_DENOMINATIONS.map(denom => ({
-          denomination: denom,
+        denomsList.map(denom => ({
+          denomination: denom as Denomination['denomination'],
           quantity: 0,
         }))
       );

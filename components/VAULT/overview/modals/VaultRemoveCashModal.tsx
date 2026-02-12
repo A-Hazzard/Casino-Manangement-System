@@ -17,25 +17,26 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { cn } from '@/lib/utils';
+import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type {
-  CashDestination,
-  Denomination,
-  DenominationBreakdown,
+    CashDestination,
+    Denomination
 } from '@/shared/types/vault';
 import { ArrowDownRight, CreditCard, Info, Landmark, MessageSquare, Monitor, RefreshCw } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 type VaultRemoveCashModalProps = {
@@ -44,27 +45,11 @@ type VaultRemoveCashModalProps = {
   vaultDenominations?: Denomination[];
   onConfirm: (data: {
     destination: CashDestination;
-    breakdown: DenominationBreakdown;
+    denominations: Denomination[];
     totalAmount: number;
     notes?: string;
   }) => Promise<void>;
 };
-
-// ============================================================================
-// Constants
-// ============================================================================
-/**
- * Available cash denominations for breakdown input
- * Used to calculate total amount from individual denomination counts
- */
-const DENOMINATIONS = [
-  { key: 'hundred' as const, label: '$100', value: 100 },
-  { key: 'fifty' as const, label: '$50', value: 50 },
-  { key: 'twenty' as const, label: '$20', value: 20 },
-  { key: 'ten' as const, label: '$10', value: 10 },
-  { key: 'five' as const, label: '$5', value: 5 },
-  { key: 'one' as const, label: '$1', value: 1 },
-] as const;
 
 /**
  * Available cash destinations for removing cash from vault
@@ -82,19 +67,20 @@ export default function VaultRemoveCashModal({
   onConfirm,
 }: VaultRemoveCashModalProps) {
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
   // ============================================================================
   // Hooks & State
   // ============================================================================
   const [destination, setDestination] = useState<CashDestination | ''>('');
-  const [breakdown, setBreakdown] = useState<DenominationBreakdown>({
-    hundred: 0,
-    fifty: 0,
-    twenty: 0,
-    ten: 0,
-    five: 0,
-    two: 0,
-    one: 0,
-  });
+  const [denominations, setDenominations] = useState<Denomination[]>([]);
+
+  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
+
+  useEffect(() => {
+    if (open) {
+      setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+    }
+  }, [open, denomsList]);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -107,15 +93,8 @@ export default function VaultRemoveCashModal({
    * Multiplies each denomination count by its value and sums them
    */
   const totalAmount = useMemo(() => {
-    return (
-      breakdown.hundred * 100 +
-      breakdown.fifty * 50 +
-      breakdown.twenty * 20 +
-      breakdown.ten * 10 +
-      breakdown.five * 5 +
-      breakdown.one * 1
-    );
-  }, [breakdown]);
+    return denominations.reduce((acc, curr) => acc + (curr.denomination * curr.quantity), 0);
+  }, [denominations]);
 
   /**
    * Check if form is valid for submission
@@ -134,24 +113,13 @@ export default function VaultRemoveCashModal({
    * @param value - Input value as string
    */
   const handleDenominationChange = (
-    key: keyof DenominationBreakdown,
+    denomination: number,
     value: string
   ) => {
     const numValue = parseInt(value, 10) || 0;
     if (numValue < 0) return;
 
-    setBreakdown((prev: DenominationBreakdown) => ({
-      ...prev,
-      [key]: numValue,
-    }));
-    // Clear error for this field
-    if (errors[key]) {
-      setErrors((prev: Record<string, string>) => {
-        const newErrors = { ...prev };
-        delete newErrors[key];
-        return newErrors;
-      });
-    }
+    setDenominations(prev => prev.map(d => d.denomination === denomination ? { ...d, quantity: numValue } : d));
   };
 
   /**
@@ -169,11 +137,10 @@ export default function VaultRemoveCashModal({
     }
 
     // Real-time stock check
-    const overages = Object.entries(breakdown).some(([key, qty]) => {
-      if (qty <= 0) return false;
-      const denomVal = DENOMINATIONS.find(d => d.key === key)?.value || 0;
-      const available = vaultDenominations.find(d => d.denomination === denomVal)?.quantity || 0;
-      return qty > available;
+    const overages = denominations.some(requested => {
+      if (requested.quantity <= 0) return false;
+      const available = vaultDenominations.find(d => d.denomination === requested.denomination)?.quantity || 0;
+      return requested.quantity > available;
     });
 
     if (overages) {
@@ -192,21 +159,13 @@ export default function VaultRemoveCashModal({
     try {
       await onConfirm({
         destination: destination as CashDestination,
-        breakdown,
+        denominations,
         totalAmount,
         notes: notes.trim() || undefined,
       });
       // Reset form on success
       setDestination('');
-      setBreakdown({
-        hundred: 0,
-        fifty: 0,
-        twenty: 0,
-        ten: 0,
-        five: 0,
-        two: 0,
-        one: 0,
-      });
+      setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
       setNotes('');
       setErrors({});
       onClose();
@@ -225,15 +184,7 @@ export default function VaultRemoveCashModal({
   const handleClose = () => {
     if (loading) return;
     setDestination('');
-    setBreakdown({
-      hundred: 0,
-      fifty: 0,
-      twenty: 0,
-      ten: 0,
-      five: 0,
-      two: 0,
-      one: 0,
-    });
+    setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
     setNotes('');
     setErrors({});
     onClose();
@@ -294,14 +245,14 @@ export default function VaultRemoveCashModal({
               Denomination Breakdown & Stock
             </Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {DENOMINATIONS.map(denom => {
-                const available = vaultDenominations.find(d => d.denomination === denom.value)?.quantity || 0;
-                const requested = breakdown[denom.key] || 0;
+              {denominations.map(denom => {
+                const available = vaultDenominations.find(d => d.denomination === denom.denomination)?.quantity || 0;
+                const requested = denom.quantity;
                 const isOver = requested > available;
 
                 return (
                   <div 
-                    key={denom.key} 
+                    key={denom.denomination} 
                     className={cn(
                       "flex items-center justify-between p-3 rounded-xl border transition-all duration-200",
                       requested > 0 
@@ -314,7 +265,7 @@ export default function VaultRemoveCashModal({
                           "flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm font-black text-xs",
                           requested > 0 ? (isOver ? "text-red-600 border border-red-100" : "text-violet-600 border border-violet-100") : "text-gray-400 border border-transparent"
                       )}>
-                          {denom.label}
+                          ${denom.denomination}
                       </div>
                       <div className="flex flex-col">
                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Vault Stock</span>
@@ -324,8 +275,8 @@ export default function VaultRemoveCashModal({
                     <Input
                       type="number"
                       min="0"
-                      value={breakdown[denom.key] || ''}
-                      onChange={e => handleDenominationChange(denom.key, e.target.value)}
+                      value={requested === 0 ? '' : requested}
+                      onChange={e => handleDenominationChange(denom.denomination, e.target.value)}
                       placeholder="0"
                       className={cn(
                         "w-16 h-9 text-center font-black bg-white rounded-lg border-gray-200 focus-visible:ring-violet-500/30 transition-all",

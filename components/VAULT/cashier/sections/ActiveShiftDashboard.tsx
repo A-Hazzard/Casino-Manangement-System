@@ -27,7 +27,7 @@ type ActiveShiftDashboardProps = {
 
 export default function ActiveShiftDashboard({
   shift,
-  currentBalance,
+  currentBalance: _currentBalance,
   refreshing: _refreshing,
   onTicketRedeem,
   onHandPay,

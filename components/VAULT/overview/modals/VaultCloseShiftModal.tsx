@@ -21,10 +21,12 @@ import {
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { cn } from '@/lib/utils';
+import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, CheckCircle2, Landmark, Minus, Plus, RefreshCw, XCircle } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type VaultCloseShiftModalProps = {
   open: boolean;
@@ -36,15 +38,6 @@ type VaultCloseShiftModalProps = {
   loading?: boolean;
 };
 
-const INITIAL_DENOMINATIONS: Denomination[] = [
-  { denomination: 100, quantity: 0 },
-  { denomination: 50, quantity: 0 },
-  { denomination: 20, quantity: 0 },
-  { denomination: 10, quantity: 0 },
-  { denomination: 5, quantity: 0 },
-  { denomination: 1, quantity: 0 },
-];
-
 export default function VaultCloseShiftModal({
   open,
   onClose,
@@ -55,7 +48,16 @@ export default function VaultCloseShiftModal({
   loading = false,
 }: VaultCloseShiftModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const [denominations, setDenominations] = useState<Denomination[]>(INITIAL_DENOMINATIONS);
+  const { selectedLicencee } = useDashBoardStore();
+  const [denominations, setDenominations] = useState<Denomination[]>([]);
+
+  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
+
+  useEffect(() => {
+    if (open) {
+      setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+    }
+  }, [open, denomsList]);
 
   const totalAmount = useMemo(() => {
     return denominations.reduce((sum, d) => sum + (d.denomination * d.quantity), 0);
@@ -65,7 +67,7 @@ export default function VaultCloseShiftModal({
 
   const handleSubmit = async () => {
     await onConfirm(totalAmount, denominations.filter(d => d.quantity > 0));
-    setDenominations(INITIAL_DENOMINATIONS);
+    setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
   };
 
   return (
@@ -229,7 +231,7 @@ export default function VaultCloseShiftModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || !canClose || totalAmount <= 0}
+            disabled={loading || !canClose || (totalAmount <= 0 && currentBalance !== 0)}
             className="order-1 sm:order-2 flex-1 h-12 bg-violet-600 text-white hover:bg-violet-700 font-black text-base shadow-lg shadow-violet-600/20 active:scale-[0.98] transition-all rounded-xl"
           >
             {loading ? (

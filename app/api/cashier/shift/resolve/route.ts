@@ -47,21 +47,11 @@ export async function POST(request: NextRequest) {
     // STEP 2: Parse and validate request body
     // ============================================================================
     const body = await request.json();
-    const { shiftId, finalBalance, auditComment, denominations } = body;
+    const { shiftId, finalBalance, auditComment = '', denominations } = body;
 
-    if (!shiftId || finalBalance === undefined || !auditComment) {
+    if (!shiftId || finalBalance === undefined) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    if (auditComment.length < 10) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Audit comment must be at least 10 characters',
-        },
+        { success: false, error: 'Missing required fields (shiftId, finalBalance)' },
         { status: 400 }
       );
     }

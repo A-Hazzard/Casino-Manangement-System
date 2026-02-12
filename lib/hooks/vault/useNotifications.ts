@@ -99,31 +99,35 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
     }
   };
 
-  const dismissNotification = async (notificationId: string) => {
+  const dismissNotifications = async (notificationIds: string | string[]) => {
+    const ids = Array.isArray(notificationIds) ? notificationIds : [notificationIds];
+    if (ids.length === 0) return;
+
     try {
       const res = await fetch('/api/vault/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'dismiss',
-          notificationIds: [notificationId]
+          notificationIds: ids
         })
       });
 
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          setNotifications(prev => prev.filter(n => n._id !== notificationId));
-          // If it was unread, decrement count
-          const wasUnread = notifications.find(n => n._id === notificationId)?.status === 'unread';
-          if (wasUnread) {
-            setUnreadCount(prev => Math.max(0, prev - 1));
+          setNotifications(prev => prev.filter(n => !ids.includes(n._id)));
+          
+          // Calculate how many unread were dismissed to update count
+          const unreadDismissed = notifications.filter(n => ids.includes(n._id) && n.status === 'unread').length;
+          if (unreadDismissed > 0) {
+            setUnreadCount(prev => Math.max(0, prev - unreadDismissed));
           }
         }
       }
     } catch (error) {
-      console.error('Failed to dismiss notification', error);
-      toast.error('Failed to dismiss notification');
+      console.error('Failed to dismiss notifications', error);
+      toast.error('Failed to dismiss notifications');
     }
   };
 
@@ -134,7 +138,7 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
     pendingShiftReviews,
     isLoading,
     markAsRead,
-    dismissNotification,
+    dismissNotification: dismissNotifications,
     refresh: fetchNotifications
   };
 }

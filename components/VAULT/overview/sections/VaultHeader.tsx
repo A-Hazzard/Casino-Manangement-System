@@ -16,10 +16,10 @@ type VaultHeaderProps = {
   denominations: any[];
   refreshing: boolean;
   onRefresh: () => void;
-  onMarkAsRead: (id: string) => void | Promise<void>;
+  onMarkAsRead: (id: string | string[]) => void | Promise<void>;
   onMarkAllAsRead: () => void | Promise<void>;
   onNotificationClick: (n: any) => void;
-  onDismiss: (id: string) => void | Promise<void>;
+  onDismiss: (id: string | string[]) => void | Promise<void>;
   onApprove: (id: string) => Promise<void>;
   onDeny: (id: string, reason?: string) => Promise<void>;
   onCloseDay: () => void;

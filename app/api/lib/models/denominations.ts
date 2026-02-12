@@ -14,7 +14,7 @@ import { model, models, Schema } from 'mongoose';
 // ============================================================================
 
 const ALLOWED_DENOMINATION_VALUES = [
-  1, 20, 50, 100, 500, 1000, 2000, 5000,
+  1, 2, 5, 10, 20, 50, 100, 500, 1000, 2000, 5000,
 ] as const;
 
 const denominationSchema = new Schema(

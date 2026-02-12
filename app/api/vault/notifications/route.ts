@@ -103,7 +103,9 @@ export async function POST(request: NextRequest) {
     if (action === 'mark_read') {
       await markNotificationsAsRead(notificationIds);
     } else if (action === 'dismiss') {
+      console.log(`[Notifications API] Dismissing ${notificationIds.length} notifications for user ${userPayload._id}`);
       await dismissNotifications(notificationIds, userPayload._id as string);
+      console.log(`[Notifications API] Dismissed successfully.`);
     } else {
       return NextResponse.json(
         { success: false, error: 'Invalid action' },

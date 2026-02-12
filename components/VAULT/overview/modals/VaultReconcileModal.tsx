@@ -11,10 +11,12 @@ import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { cn } from '@/lib/utils';
+import { getDenominationValues, getInitialDenominationRecord } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { Info, Landmark, RefreshCw } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type VaultReconcileModalProps = {
   open: boolean;
@@ -29,7 +31,7 @@ type VaultReconcileModalProps = {
   systemDenominations: Denomination[];
 };
 
-const DENOMINATIONS = [100, 50, 20, 10, 5, 1] as const;
+
 
 export default function VaultReconcileModal({
   open,
@@ -39,16 +41,20 @@ export default function VaultReconcileModal({
   systemDenominations = []
 }: VaultReconcileModalProps) {
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
   const [loading, setLoading] = useState(false);
-  const [breakdown, setBreakdown] = useState<Record<number, number>>({
-    100: 0,
-    50: 0,
-    20: 0,
-    10: 0,
-    5: 0,
-    1: 0,
-  });
+  
+  const denominationsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
+  
+  const [breakdown, setBreakdown] = useState<Record<number, number>>({});
   const [reason, setReason] = useState('');
+
+  // Update breakdown when licensee changes or modal opens
+  useEffect(() => {
+    if (open) {
+      setBreakdown(getInitialDenominationRecord(selectedLicencee) as Record<any, number>);
+    }
+  }, [selectedLicencee, open]);
 
   const totalAmount = useMemo(() => {
     return Object.entries(breakdown).reduce(
@@ -92,7 +98,7 @@ export default function VaultReconcileModal({
       });
       onClose();
       // Reset form
-      setBreakdown({ 100: 0, 50: 0, 20: 0, 10: 0, 5: 0, 1: 0 });
+      setBreakdown(getInitialDenominationRecord(selectedLicencee) as Record<any, number>);
       setReason('');
     } catch (error) {
       console.error('Reconciliation failed', error);
@@ -125,7 +131,7 @@ export default function VaultReconcileModal({
                </div>
 
                <div className="space-y-3 sm:space-y-2">
-                 {DENOMINATIONS.map(denom => {
+                 {denominationsList.map(denom => {
                    const systemQty = getSystemQuantity(denom);
                    const physicalQty = breakdown[denom];
                    const isDifferent = systemQty !== physicalQty;

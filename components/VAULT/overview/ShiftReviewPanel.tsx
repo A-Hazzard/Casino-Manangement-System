@@ -15,13 +15,16 @@ import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/shared/ui/tooltip';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { cn } from '@/lib/utils';
+import { getDenominationValues, getInitialDenominationRecord } from '@/lib/utils/vault/denominations';
 import type { Denomination, UnbalancedShiftInfo } from '@/shared/types/vault';
 import { AlertTriangle, CheckCircle, ChevronDown, ChevronLeft, ChevronRight, Info, RefreshCw, Search, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type ShiftReviewPanelProps = {
   pendingShifts: UnbalancedShiftInfo[];
+  vaultInventory?: Denomination[];
   onResolve: (
     shiftId: string,
     finalBalance: number,
@@ -38,20 +41,20 @@ type ShiftReviewPanelProps = {
 
 export default function ShiftReviewPanel({
   pendingShifts,
+  vaultInventory = [],
   onResolve,
   onReject,
   onRefresh,
   loading = false,
 }: ShiftReviewPanelProps) {
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
   const [finalBalance, setFinalBalance] = useState<string>('');
   const [auditComment, setAuditComment] = useState<string>('');
   const [isEditingBreakdown, setIsEditingBreakdown] = useState(false);
-  const [shiftDenominations, setShiftDenominations] = useState<Record<string, number>>({
-    '100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '1': 0
-  });
+  const [shiftDenominations, setShiftDenominations] = useState<Record<string, number>>({});
 
   const [expandedShifts, setExpandedShifts] = useState<Set<string>>(new Set());
 
@@ -130,10 +133,12 @@ export default function ShiftReviewPanel({
     setFinalBalance(shift.expectedBalance.toString());
     
     // Initialize denominations from shift data if available
-    const denoms: Record<string, number> = { '100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '1': 0 };
+    const denoms = getInitialDenominationRecord(selectedLicencee);
     if (shift.enteredDenominations) {
         shift.enteredDenominations.forEach(d => {
-            denoms[d.denomination.toString()] = d.quantity;
+            if (denoms[d.denomination.toString()] !== undefined) {
+               denoms[d.denomination.toString()] = d.quantity;
+            }
         });
     }
     setShiftDenominations(denoms);
@@ -150,9 +155,26 @@ export default function ShiftReviewPanel({
     setIsRejecting(false);
     setIsEditingBreakdown(false);
     setFinalBalance('');
-    setShiftDenominations({ '100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '1': 0 });
+    setShiftDenominations(getInitialDenominationRecord(selectedLicencee));
     setAuditComment('');
   };
+
+  // Validation for vault stock - Same as Float Request functionality
+  const currentShortageCheck = useMemo(() => {
+    if (!resolvingId || !isEditingBreakdown) return { hasShortage: false, shortages: [] };
+
+    const shortages = Object.entries(shiftDenominations)
+      .filter(([_, qty]) => qty > 0)
+      .map(([denom, qty]) => ({ denomination: Number(denom), quantity: qty }))
+      .filter(req => {
+        const stock = vaultInventory.find(v => Number(v.denomination) === Number(req.denomination))?.quantity || 0;
+        return Number(req.quantity) > Number(stock);
+      });
+
+    return { hasShortage: shortages.length > 0, shortages };
+  }, [resolvingId, isEditingBreakdown, shiftDenominations, vaultInventory]);
+
+  const { hasShortage } = currentShortageCheck;
 
   const getSuggestedRejectionReason = (shift: UnbalancedShiftInfo) => {
     const { discrepancy } = shift;
@@ -164,7 +186,7 @@ export default function ShiftReviewPanel({
     let message = `Your count is $${absDisc.toFixed(2)} ${direction}. `;
     
     // Check if discrepancy matches common denominations exactly
-    const commonDenoms = [100, 50, 20, 10, 5, 1];
+    const commonDenoms = getDenominationValues(selectedLicencee);
     const matchingDenom = commonDenoms.find(d => Math.abs(absDisc - d) < 0.01);
     
     if (matchingDenom) {
@@ -177,10 +199,6 @@ export default function ShiftReviewPanel({
 
   const handleReject = async () => {
     if (!resolvingId) return;
-    if (auditComment.trim().length < 10) {
-      alert('Rejection reason must be at least 10 characters long');
-      return;
-    }
     try {
       await onReject(resolvingId, auditComment.trim());
       cancelResolve();
@@ -199,10 +217,6 @@ export default function ShiftReviewPanel({
     const balance = parseFloat(finalBalance);
     if (isNaN(balance) || balance < 0) {
       alert('Please enter a valid final balance');
-      return;
-    }
-    if (auditComment.trim().length < 10) {
-      alert('Audit comment must be at least 10 characters long');
       return;
     }
 
@@ -501,24 +515,46 @@ export default function ShiftReviewPanel({
 
                                 {isEditingBreakdown && (
                                     <div className="grid grid-cols-3 gap-2 mt-2 bg-white p-3 rounded-lg border border-orange-200">
-                                        {[100, 50, 20, 10, 5, 1].map(denom => (
-                                            <div key={denom} className="space-y-1">
-                                                <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">${denom} Count</Label>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    className="h-9 text-sm font-bold"
-                                                    value={shiftDenominations[denom.toString()] || ''}
-                                                    onChange={(e) => {
-                                                        const val = Math.max(0, parseInt(e.target.value) || 0);
-                                                        setShiftDenominations(prev => ({
-                                                            ...prev,
-                                                            [denom.toString()]: val
-                                                        }));
-                                                    }}
-                                                />
-                                            </div>
-                                        ))}
+                                        {getDenominationValues(selectedLicencee).map(denom => {
+                                            const qty = shiftDenominations[denom.toString()] || 0;
+                                            const stock = vaultInventory.find(v => Number(v.denomination) === denom)?.quantity || 0;
+                                            const isShort = qty > stock;
+                                            
+                                            return (
+                                                <div key={denom} className="space-y-1">
+                                                    <div className="flex justify-between items-center">
+                                                        <Label className={cn(
+                                                            "text-[10px] font-bold uppercase tracking-tighter",
+                                                            isShort ? "text-red-500" : "text-gray-500"
+                                                        )}>
+                                                            ${denom} Count
+                                                        </Label>
+                                                        {isShort && <AlertTriangle className="h-3 w-3 text-red-500" />}
+                                                    </div>
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        className={cn(
+                                                            "h-9 text-sm font-bold",
+                                                            isShort ? "border-red-500 focus-visible:ring-red-500 bg-red-50" : ""
+                                                        )}
+                                                        value={qty || ''}
+                                                        onChange={(e) => {
+                                                            const val = Math.max(0, parseInt(e.target.value) || 0);
+                                                            setShiftDenominations(prev => ({
+                                                                ...prev,
+                                                                [denom.toString()]: val
+                                                            }));
+                                                        }}
+                                                    />
+                                                    {isShort && (
+                                                        <p className="text-[9px] text-red-600 font-bold leading-none">
+                                                            Max: {stock}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                         <div className="col-span-3 pt-2 mt-2 border-t flex items-center justify-between">
                                             <span className="text-xs font-bold text-gray-600">Calculated Total:</span>
                                             <span className="text-sm font-black text-orange-600">${shiftTotal.toLocaleString()}</span>
@@ -539,28 +575,53 @@ export default function ShiftReviewPanel({
                             )}
                             <div>
                             <Label className="text-sm font-medium text-gray-700">
-                                {isRejecting ? 'Reason for Rejection *' : 'Audit Comment *'}
+                                {isRejecting ? 'Reason for Rejection' : 'Audit Comment'}
                             </Label>
                             <Textarea
                                 value={auditComment}
                                 onChange={e => setAuditComment(e.target.value)}
-                                placeholder={isRejecting ? "Required: Tell the cashier what needs correction (min 10 chars)" : "Required: Explain the discrepancy resolution (min 10 chars)"}
+                                placeholder={isRejecting ? "Tell the cashier what needs correction (optional)" : "Explain the discrepancy resolution (optional)"}
                                 className="mt-1"
                                 rows={3}
-                                required
                             />
                             </div>
+
+                            {/* Shortage Alert - Similar to Float Request notification */}
+                            {hasShortage && !isRejecting && (
+                                <div className="p-3 bg-red-100 border border-red-200 rounded-md flex items-start gap-3 w-full mb-2">
+                                    <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-bold text-red-800">Insufficient Vault Funds</p>
+                                        <p className="text-xs text-red-700">
+                                            Your adjusted breakdown exceeds available vault inventory. Please verify specific bill counts.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex flex-wrap gap-2 mt-2 w-full">
                             {!isRejecting ? (
                                 <div className="flex flex-wrap gap-2 w-full">
                                 <Button
                                     size="sm"
                                     onClick={handleResolve}
-                                    disabled={loading || auditComment.trim().length < 10}
-                                    className="bg-button text-white hover:bg-button/90 flex-grow basis-0 min-w-[110px]"
+                                    disabled={loading || hasShortage}
+                                    className={cn(
+                                        "flex-grow basis-0 min-w-[110px]",
+                                        hasShortage ? "bg-gray-200 text-gray-500 hover:bg-gray-200" : "bg-button text-white hover:bg-button/90"
+                                    )}
                                 >
-                                    <CheckCircle className="mr-1 h-4 w-4" />
-                                    Force Close
+                                    {hasShortage ? (
+                                        <>
+                                            <X className="mr-1 h-4 w-4" />
+                                            Insufficient Stock
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle className="mr-1 h-4 w-4" />
+                                            Force Close
+                                        </>
+                                    )}
                                 </Button>
                                 <Button
                                     size="sm"
@@ -575,7 +636,7 @@ export default function ShiftReviewPanel({
                                 <Button
                                 size="sm"
                                 onClick={handleReject}
-                                disabled={loading || auditComment.trim().length < 10}
+                                disabled={loading}
                                 className="bg-red-600 text-white hover:bg-red-700 w-full"
                                 >
                                 Confirm Rejection
@@ -604,9 +665,9 @@ export default function ShiftReviewPanel({
                             </Button>
                         </div>
                         )}
-                    </div>
-                )}
-              </TooltipProvider>
+                        </div>
+                    )}
+                </TooltipProvider>
             </div>
             );
           })

@@ -1,3 +1,4 @@
+
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
 import { NextResponse } from 'next/server';
 import { connectDB } from '../../lib/middleware/db';
@@ -14,6 +15,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const vaultShiftId = searchParams.get('vaultShiftId');
     const locationId = searchParams.get('locationId');
+    const status = searchParams.get('status');
 
     if (!vaultShiftId || !locationId) {
       return NextResponse.json({ success: false, error: 'Vault Shift ID and Location ID required' }, { status: 400 });
@@ -21,12 +23,19 @@ export async function GET(req: Request) {
 
     await connectDB();
 
-    // Find active session for this vault shift
-    const session = await VaultCollectionSession.findOne({
+    // Build query
+    const query: any = {
       locationId,
-      vaultShiftId,
-      status: 'active'
-    }).sort({ createdAt: -1 });
+      vaultShiftId
+    };
+    
+    // Only filter by status if explicitly provided
+    if (status) {
+      query.status = status;
+    }
+
+    // Find session for this vault shift
+    const session = await VaultCollectionSession.findOne(query).sort({ createdAt: -1 });
 
     return NextResponse.json({ success: true, session });
   } catch (error: any) {
@@ -125,7 +134,7 @@ export async function POST(req: Request) {
     }
     
     // 4. Cancel Session
-    else if (action === 'cancel') {
+    else if (action === 'removeEntry') {
         if (!sessionId) return NextResponse.json({ success: false, error: 'Session ID required' }, { status: 400 });
         
         session = await VaultCollectionSession.findByIdAndUpdate(
