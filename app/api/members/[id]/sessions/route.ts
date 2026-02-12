@@ -13,9 +13,9 @@
  */
 
 import {
-  applyCurrencyConversionToMetrics,
-  getCurrencyFromQuery,
-  shouldApplyCurrencyConversion,
+    applyCurrencyConversionToMetrics,
+    getCurrencyFromQuery,
+    shouldApplyCurrencyConversion,
 } from '@/app/api/lib/helpers/currency/helper';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
@@ -73,8 +73,59 @@ export async function GET(
     const filter = searchParams.get('filter') || 'session';
     const displayCurrency = getCurrencyFromQuery(searchParams);
     const licencee = searchParams.get('licencee') || null;
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
+    const timePeriod = searchParams.get('timePeriod');
 
     const query: Record<string, unknown> = { memberId: id };
+
+    // Date filtering logic
+    if (startDateParam && endDateParam) {
+      const start = new Date(startDateParam);
+      // Create end date and add 1 day to make it inclusive (less than next day)
+      const end = new Date(endDateParam);
+      end.setUTCDate(end.getUTCDate() + 1);
+      
+      query.startTime = {
+        $gte: start,
+        $lt: end
+      };
+    } else if (timePeriod) {
+      const now = new Date();
+      // Reset to start of today (local time as base, but could be UTC depending on server)
+      // Usually matching the 'today' logic of the dashboard
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      switch (timePeriod) {
+        case 'today':
+          query.startTime = { 
+            $gte: today, 
+            $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) 
+          };
+          break;
+        case 'yesterday':
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          query.startTime = { 
+            $gte: yesterday, 
+            $lt: today 
+          };
+          break;
+        case '7d':
+          const sevenDaysAgo = new Date(today);
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          query.startTime = { $gte: sevenDaysAgo };
+          break;
+        case '30d':
+          const thirtyDaysAgo = new Date(today);
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          query.startTime = { $gte: thirtyDaysAgo };
+          break;
+        case 'all time':
+            // No filter
+            break;
+      }
+    }
 
     // ============================================================================
     // STEP 4: Handle individual session view or grouped view

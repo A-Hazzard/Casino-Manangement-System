@@ -14,9 +14,40 @@ import {
     XCircle
 } from 'lucide-react';
 
+import { useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
+
 export default function CashierActivitySection() {
   const { activities, loading, refreshing, refresh } = useCashierActivity();
   const { formatAmount } = useCurrencyFormat();
+
+  // Poll for updates every 20 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refresh(true);
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [refresh]);
+
+  const handleCancel = useCallback(async (requestId: string) => {
+    try {
+      const res = await fetch('/api/vault/float-request/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success('Request cancelled successfully');
+        refresh(true);
+      } else {
+        toast.error(data.error || 'Failed to cancel request');
+      }
+    } catch {
+      toast.error('Network error - could not cancel request');
+    }
+  }, [refresh]);
 
   if ((loading || refreshing) && activities.length === 0) {
     return (
@@ -133,10 +164,23 @@ export default function CashierActivitySection() {
                         {activity.notes}
                     </p>
                   )}
+
                   {activity.details && (
                     <p className="mt-1 text-[11px] font-bold text-red-600">
                       {activity.details}
                     </p>
+                  )}
+                  
+                  {/* Cancel Action for Pending Requests */}
+                  {activity.status === 'pending' && (
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        onClick={() => handleCancel(activity.id)}
+                        className="text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 py-1 px-2 rounded transition-colors border border-transparent hover:border-red-100"
+                      >
+                        Cancel Request
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

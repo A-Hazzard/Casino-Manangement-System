@@ -35,7 +35,7 @@ export type GamingDayRange = {
  * @param timezoneOffset - UTC offset in hours (e.g., -4 for UTC-4, default -4 for Trinidad/Guyana/Barbados)
  * @returns Object with rangeStart and rangeEnd in UTC
  */
-function getGamingDayRange(
+export function getGamingDayRange(
   selectedDate: Date,
   gameDayStartHour: number = 0,
   timezoneOffset: number = -4

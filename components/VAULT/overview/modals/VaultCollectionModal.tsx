@@ -17,6 +17,7 @@ import {
 } from '@/components/shared/ui/dialog';
 import type { GamingMachine } from '@/shared/types/entities';
 import type { Denomination } from '@/shared/types/vault';
+import { Monitor } from 'lucide-react';
 import { useState } from 'react';
 
 type VaultCollectionModalProps = {
@@ -58,15 +59,18 @@ export default function VaultCollectionModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Machine Collection</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-xl p-0 overflow-hidden">
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+          <DialogTitle className="flex items-center gap-2 text-violet-900">
+            <Monitor className="h-5 w-5 text-violet-600" />
+            Machine Collection
+          </DialogTitle>
+          <DialogDescription className="text-violet-700/80">
             Record cash collected from a gaming machine.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="py-2">
+        <div className="max-h-[75vh] overflow-y-auto p-6 custom-scrollbar">
             <MachineCollectionForm onSubmit={handleSubmit} loading={loading} machines={machines} />
         </div>
       </DialogContent>

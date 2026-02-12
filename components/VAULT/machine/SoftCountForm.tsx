@@ -129,14 +129,14 @@ export default function SoftCountForm({
                 className={cn(
                   "relative flex items-center justify-between p-3 rounded-xl border transition-all duration-200",
                   denom.quantity > 0 
-                    ? "bg-orange-50/50 border-orange-200 ring-1 ring-orange-100 shadow-sm" 
+                    ? "bg-violet-50/50 border-violet-200 ring-1 ring-violet-100 shadow-sm" 
                     : "bg-gray-50/30 border-gray-100"
                 )}
               >
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm font-black text-xs",
-                    denom.quantity > 0 ? "text-orange-600 border border-orange-100" : "text-gray-400 border border-transparent"
+                    denom.quantity > 0 ? "text-violet-600 border border-violet-100" : "text-gray-400 border border-transparent"
                   )}>
                     ${denom.denomination}
                   </div>
@@ -196,28 +196,28 @@ export default function SoftCountForm({
         </div>
 
         {/* Summary Card */}
-        <div className="relative overflow-hidden rounded-2xl bg-slate-900 p-5 text-white shadow-xl">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 p-5 text-white shadow-xl shadow-violet-500/20">
           <div className="relative z-10 flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-0.5">Total Soft Count Value</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-violet-100/60 mb-0.5">Total Soft Count Value</p>
               <span className={cn(
                 "text-3xl font-black tracking-tight transition-all",
-                totalAmount > 0 ? "text-orange-400" : "text-white/20"
+                totalAmount > 0 ? "text-white" : "text-white/20"
               )}>
                 {formatAmount(totalAmount)}
               </span>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
               <RefreshCw className="h-6 w-6 text-white/20" />
             </div>
           </div>
-          <div className="absolute -right-4 -bottom-4 h-24 w-24 bg-orange-500/10 blur-2xl rounded-full" />
+          <Coins className="absolute -right-4 -bottom-4 h-24 w-24 text-white/5 rotate-12" />
         </div>
 
         <Button
           type="submit"
           disabled={loading || !machineId.trim() || totalAmount === 0}
-          className="w-full h-14 bg-orange-600 text-white hover:bg-orange-700 font-black text-base shadow-lg shadow-orange-600/20 active:scale-[0.98] transition-all rounded-xl"
+          className="w-full h-14 bg-violet-600 text-white hover:bg-violet-700 font-black text-base shadow-lg shadow-violet-600/20 active:scale-[0.98] transition-all rounded-xl"
         >
           {loading ? (
             <div className="flex items-center gap-2">

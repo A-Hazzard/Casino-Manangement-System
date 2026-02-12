@@ -152,10 +152,11 @@ export async function PUT(request: NextRequest) {
         'Email address must differ from username and other identifiers.';
     }
 
-    if (!validatePhoneNumber(phone)) {
+    // Phone is optional - only validate if provided
+    if (phone && !validatePhoneNumber(phone)) {
       errors.phone =
         'Provide a valid phone number (digits, spaces, hyphen, parentheses, optional leading +).';
-    } else if (normalizePhoneNumber(phone) === normalizePhoneNumber(username)) {
+    } else if (phone && normalizePhoneNumber(phone) === normalizePhoneNumber(username)) {
       errors.phone = 'Phone number cannot match the username.';
     }
 

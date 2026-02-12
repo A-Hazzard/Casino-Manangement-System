@@ -9,14 +9,8 @@
  * @module app/api/vault/float-request/confirm/route
  */
 
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
-import VaultShiftModel from '@/app/api/lib/models/vaultShift';
-import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { updateDenominationInventory } from '@/lib/helpers/vault/calculations';
-import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/middleware/db';
 
@@ -79,152 +73,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const now = new Date();
-    const finalAmount = floatRequest.approvedAmount;
-    const finalDenominations = floatRequest.approvedDenominations;
-
-    // STEP 4: Fetch Entities
-    const vaultShift = await VaultShiftModel.findOne({ _id: floatRequest.vaultShiftId });
-    const cashierShift = await CashierShiftModel.findOne({ _id: floatRequest.cashierShiftId });
-
-    if (!vaultShift || !cashierShift) {
-      return NextResponse.json(
-        { success: false, error: 'Associated shifts not found' },
-        { status: 404 }
-      );
-    }
-
-    const currentVaultBalance = vaultShift.closingBalance !== undefined ? vaultShift.closingBalance : vaultShift.openingBalance;
-
-    // STEP 5: LEDGER UPDATES (Moving cash)
-    let transactionType = 'float_increase';
-    const isIncrease = floatRequest.type === 'increase' || !floatRequest.type; // initial shift is technically an increase
-
-    // A. Update Cashier Shift
-    if (cashierShift.status === 'pending_start') {
-      cashierShift.status = 'active';
-      cashierShift.openedAt = now;
-      cashierShift.openingBalance = finalAmount;
-      cashierShift.openingDenominations = finalDenominations;
-      cashierShift.currentBalance = finalAmount;
-      cashierShift.lastSyncedDenominations = finalDenominations;
-      transactionType = 'cashier_shift_open';
-      
-      await VaultShiftModel.updateOne(
-          { _id: floatRequest.vaultShiftId },
-          { canClose: false }
-      );
-    } else {
-      if (floatRequest.type === 'increase') {
-          cashierShift.floatAdjustmentsTotal += finalAmount;
-          cashierShift.currentBalance += finalAmount;
-          transactionType = 'float_increase';
-      } else {
-          cashierShift.floatAdjustmentsTotal -= finalAmount;
-          cashierShift.currentBalance -= finalAmount;
-          transactionType = 'float_decrease';
-      }
-      cashierShift.lastSyncedDenominations = finalDenominations;
-    }
-
-    // B. Update Vault Shift
-    let vaultBalanceAfter = currentVaultBalance;
-    let vaultDenominationsAfter = (vaultShift.currentDenominations?.length > 0)
-        ? vaultShift.currentDenominations
-        : vaultShift.openingDenominations;
-
-    vaultDenominationsAfter = [...(vaultDenominationsAfter || [])];
-
-    // Outflow from vault if: it's an increase OR cashier_shift_open
-    const isOutflow = isIncrease; // Note: floatRequest.type is 'increase' or undefined for open
-
-    if (isOutflow) {
-        vaultBalanceAfter = currentVaultBalance - finalAmount;
-        vaultDenominationsAfter = updateDenominationInventory(
-          vaultDenominationsAfter,
-          finalDenominations,
-          'subtract'
-        );
-    } else {
-        vaultBalanceAfter = currentVaultBalance + finalAmount;
-        vaultDenominationsAfter = updateDenominationInventory(
-          vaultDenominationsAfter,
-          finalDenominations,
-          'add'
-        );
-    }
-
-    vaultShift.closingBalance = vaultBalanceAfter;
-    vaultShift.currentDenominations = vaultDenominationsAfter;
-
-    // C. Create Transaction
-    const transactionId = await generateMongoId();
-    await VaultTransactionModel.create({
-      _id: transactionId,
-      locationId: floatRequest.locationId,
-      timestamp: now,
-      type: transactionType,
-      from: isOutflow ? { type: 'vault' } : { type: 'cashier', id: floatRequest.cashierId },
-      to: isOutflow ? { type: 'cashier', id: floatRequest.cashierId } : { type: 'vault' },
-      amount: finalAmount,
-      denominations: finalDenominations,
-      vaultBalanceBefore: currentVaultBalance,
-      vaultBalanceAfter: vaultBalanceAfter,
-      vaultShiftId: floatRequest.vaultShiftId,
-      cashierShiftId: cashierShift._id,
-      floatRequestId: floatRequest._id,
-      performedBy: userId,
-      notes: `Confirmed by Cashier. ${floatRequest.vmNotes || ''}`,
-      isVoid: false,
-      createdAt: now,
-    });
-
-    // STEP 6: Finalize Float Request
-    floatRequest.status = 'approved';
-    floatRequest.transactionId = transactionId;
-    if (floatRequest.auditLog) {
-      floatRequest.auditLog.push({
-        action: 'confirmed',
-        performedBy: userId,
-        timestamp: now,
-        notes: 'Confirmed by cashier'
-      });
-    }
-
-    // STEP 7: Save All
-    await Promise.all([
-      cashierShift.save(),
-      vaultShift.save(),
-      floatRequest.save(),
-    ]);
-
-    // Mark notification as actioned
-    try {
-      const { markNotificationAsActionedByEntity } = await import('@/lib/helpers/vault/notifications');
-      await markNotificationAsActionedByEntity(requestId, 'float_request');
-    } catch (notifError) {
-      console.error('Failed to update notification status:', notifError);
-    }
-
-    // AUDIT LOG
-    await logActivity({
+    // STEP 4/5/6/7: Finalize the transaction using the helper
+    const { finalizeFloatRequest } = await import('@/app/api/lib/helpers/vault/finalizeFloat');
+    
+    const result = await finalizeFloatRequest(
+      requestId,
       userId,
       username,
-      action: 'update',
-      details: `Confirmed float request receipt: $${finalAmount}`,
-      metadata: {
-        resource: 'vault',
-        resourceId: floatRequest.locationId,
-        floatRequestId: requestId,
-        transactionId,
-        status: 'approved',
-      },
-    });
+      floatRequest.type === 'decrease' ? 'Return receipt confirmed by VM' : 'Float receipt confirmed by cashier'
+    );
 
     return NextResponse.json({
       success: true,
-      floatRequest: floatRequest.toObject(),
-      cashierShift: cashierShift.toObject(),
+      floatRequest: result.floatRequest.toObject(),
+      cashierShift: result.cashierShift.toObject(),
     });
 
   } catch (error) {

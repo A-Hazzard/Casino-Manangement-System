@@ -17,12 +17,12 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -85,6 +85,7 @@ export default function VaultAddCashModal({
     twenty: 0,
     ten: 0,
     five: 0,
+    two: 0,
     one: 0,
   });
   const [notes, setNotes] = useState('');
@@ -181,6 +182,7 @@ export default function VaultAddCashModal({
         twenty: 0,
         ten: 0,
         five: 0,
+        two: 0,
         one: 0,
       });
       setNotes('');
@@ -207,6 +209,7 @@ export default function VaultAddCashModal({
       twenty: 0,
       ten: 0,
       five: 0,
+      two: 0,
       one: 0,
     });
     setNotes('');
@@ -220,17 +223,17 @@ export default function VaultAddCashModal({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl p-0 overflow-hidden">
-        <DialogHeader className="p-6 bg-blue-50 border-b border-blue-100">
-          <DialogTitle className="flex items-center gap-2 text-blue-900">
-            <ArrowUpRight className="h-5 w-5 text-blue-600" />
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+          <DialogTitle className="flex items-center gap-2 text-violet-900">
+            <ArrowUpRight className="h-5 w-5 text-violet-600" />
             Add Cash to Vault
           </DialogTitle>
-          <DialogDescription className="text-blue-700/80">
+          <DialogDescription className="text-violet-700/80">
             Replenish vault inventory by recording new cash arrivals.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[70vh] overflow-y-auto p-6 space-y-8 custom-scrollbar">
+        <div className="max-h-[75vh] overflow-y-auto p-6 space-y-8 custom-scrollbar">
           {/* Source Selection - Premium Layout */}
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
@@ -251,11 +254,11 @@ export default function VaultAddCashModal({
                     className={cn(
                       "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2",
                       isSelected 
-                        ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200" 
-                        : "bg-white border-gray-100 text-gray-600 hover:border-blue-200 hover:bg-blue-50/30"
+                        ? "bg-violet-600 border-violet-600 text-white shadow-lg shadow-violet-200" 
+                        : "bg-white border-gray-100 text-gray-600 hover:border-violet-200 hover:bg-violet-50/30"
                     )}
                   >
-                    <Icon className={cn("h-6 w-6", isSelected ? "text-white" : "text-blue-500")} />
+                    <Icon className={cn("h-6 w-6", isSelected ? "text-white" : "text-violet-500")} />
                     <span className="text-[11px] font-black uppercase tracking-tight leading-tight">{src}</span>
                   </button>
                 );
@@ -275,14 +278,14 @@ export default function VaultAddCashModal({
                   className={cn(
                     "flex items-center justify-between p-3 rounded-xl border transition-all duration-200",
                     breakdown[denom.key] > 0 
-                      ? "bg-blue-50/50 border-blue-200 ring-1 ring-blue-100" 
+                      ? "bg-violet-50/50 border-violet-200 ring-1 ring-violet-100" 
                       : "bg-gray-50/30 border-gray-100"
                   )}
                 >
                   <div className="flex items-center gap-3">
                     <div className={cn(
                         "flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm font-black text-xs",
-                        breakdown[denom.key] > 0 ? "text-blue-600 border border-blue-100" : "text-gray-400 border border-transparent"
+                        breakdown[denom.key] > 0 ? "text-violet-600 border border-violet-100" : "text-gray-400 border border-transparent"
                     )}>
                         {denom.label}
                     </div>
@@ -294,7 +297,7 @@ export default function VaultAddCashModal({
                     value={breakdown[denom.key] || ''}
                     onChange={e => handleDenominationChange(denom.key, e.target.value)}
                     placeholder="0"
-                    className="w-16 h-9 text-center font-black bg-white rounded-lg border-gray-200 focus-visible:ring-blue-500/30 transition-all"
+                    className="w-16 h-9 text-center font-black bg-white rounded-lg border-gray-200 focus-visible:ring-violet-500/30 transition-all"
                   />
                 </div>
               ))}
@@ -318,16 +321,16 @@ export default function VaultAddCashModal({
                 />
              </div>
 
-             <div className="bg-gradient-to-br from-gray-900 to-blue-900 rounded-2xl p-5 shadow-xl shadow-blue-900/10">
-                <div className="flex items-center justify-between mb-4">
-                   <span className="text-[10px] font-black uppercase tracking-widest text-blue-200 opacity-60">Total Value</span>
-                   <ArrowUpRight className="h-4 w-4 text-blue-400" />
+             <div className="rounded-2xl p-5 bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100 shadow-sm text-violet-900">
+                <div className="flex items-center justify-between mb-2">
+                   <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">Total Value</span>
+                   <ArrowUpRight className="h-4 w-4 text-violet-500" />
                 </div>
                 <div className="space-y-0.5">
-                   <span className="text-3xl font-black text-white tracking-tight">{formatAmount(totalAmount)}</span>
-                   <p className="text-[10px] text-blue-200/50 font-bold uppercase tracking-tight">Verified Inbound Cash</p>
+                   <span className="text-3xl font-black tracking-tight text-violet-700">{formatAmount(totalAmount)}</span>
+                   <p className="text-[10px] text-violet-600/60 font-bold uppercase tracking-tight">Verified Inbound Cash</p>
                 </div>
-                <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-white/40 border-t border-white/5 pt-4">
+                <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-violet-400 border-t border-violet-200/50 pt-4">
                    <Info className="h-3 w-3" />
                    Affects vault inventory immediately
                 </div>
@@ -342,7 +345,7 @@ export default function VaultAddCashModal({
           <Button
             onClick={handleSubmit}
             disabled={!isValid || loading}
-            className="order-1 sm:order-2 flex-1 h-12 bg-blue-600 text-white hover:bg-blue-700 font-black text-base shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-all rounded-xl"
+            className="order-1 sm:order-2 flex-1 h-12 bg-violet-600 text-white hover:bg-violet-700 font-black text-base shadow-lg shadow-violet-600/20 active:scale-[0.98] transition-all rounded-xl"
           >
             {loading ? (
               <div className="flex items-center gap-2">

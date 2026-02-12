@@ -8,9 +8,11 @@
  */
 'use client';
 
+import DebugSection from '@/components/shared/debug/DebugSection';
 import NotificationBell from '@/components/shared/ui/NotificationBell';
 import { Button } from '@/components/shared/ui/button';
-import { fetchVaultBalance, handleFloatAction } from '@/lib/helpers/vaultHelpers';
+import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
+import { fetchVaultBalance, handleFloatAction, handleFloatConfirm } from '@/lib/helpers/vaultHelpers';
 import { useNotifications } from '@/lib/hooks/vault/useNotifications';
 import { useUserStore } from '@/lib/store/userStore';
 import type { Denomination } from '@/shared/types/vault';
@@ -26,6 +28,7 @@ type VaultManagerHeaderProps = {
   showBack?: boolean;
   children?: React.ReactNode;
   onFloatActionComplete?: () => void; // Callback after float approve/deny
+  showNotificationBell?: boolean;
 };
 
 export default function VaultManagerHeader({ 
@@ -34,7 +37,8 @@ export default function VaultManagerHeader({
   backHref = '/vault/management',
   showBack = true,
   children,
-  onFloatActionComplete
+  onFloatActionComplete,
+  showNotificationBell = true
 }: VaultManagerHeaderProps) {
   const { user } = useUserStore();
   const locationId = user?.assignedLocations?.[0];
@@ -45,7 +49,7 @@ export default function VaultManagerHeader({
     markAsRead,
     refresh,
     dismissNotification
-  } = useNotifications(locationId);
+  } = useNotifications(showNotificationBell ? locationId : undefined);
 
   // Fetch vault inventory for float request verification
   const fetchInventory = useCallback(async () => {
@@ -64,22 +68,31 @@ export default function VaultManagerHeader({
 
   // Poll for notifications every 30 seconds
   useEffect(() => {
-    if (!locationId) return;
+    if (!locationId || !showNotificationBell) return;
     
     const interval = setInterval(() => {
       refresh();
       fetchInventory(); // Also refresh inventory
-    }, 30000);
+    }, DEFAULT_POLL_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [locationId, refresh, fetchInventory]);
+  }, [locationId, refresh, fetchInventory, showNotificationBell]);
 
   // Handle float request approval
-  const handleFloatApprove = useCallback(async (requestId: string) => {
+  const handleFloatApprove = useCallback(async (requestId: string, approvedDenominations?: Denomination[]) => {
     try {
-      const result = await handleFloatAction(requestId, 'approved');
+      const status = approvedDenominations ? 'edited' : 'approved';
+      let data: any = undefined;
+
+      if (approvedDenominations) {
+          const approvedAmount = approvedDenominations.reduce((sum, d) => sum + (d.denomination * d.quantity), 0);
+          data = { approvedDenominations, approvedAmount };
+      }
+
+      const result = await handleFloatAction(requestId, status, data);
+
       if (result.success) {
-        toast.success('Float request approved successfully');
+        toast.success(approvedDenominations ? 'Float request validated and approved' : 'Float request approved successfully');
         refresh(); // Refresh notifications
         fetchInventory(); // Refresh inventory
         onFloatActionComplete?.();
@@ -109,6 +122,23 @@ export default function VaultManagerHeader({
     }
   }, [refresh, onFloatActionComplete]);
 
+  // Handle float receipt confirmation (for returns)
+  const handleFloatReceiptConfirm = useCallback(async (requestId: string) => {
+    try {
+      const result = await handleFloatConfirm(requestId);
+      if (result.success) {
+        toast.success('Float return confirmed and finalized');
+        refresh();
+        onFloatActionComplete?.();
+      } else {
+        toast.error(result.error || 'Failed to confirm float receipt');
+      }
+    } catch (error) {
+      console.error('Error confirming receipt:', error);
+      toast.error('An error occurred while confirming receipt');
+    }
+  }, [refresh, onFloatActionComplete]);
+
   // Map notifications to NotificationItem format
   const bellNotifications = notifications.map(n => ({
     id: n._id,
@@ -122,37 +152,49 @@ export default function VaultManagerHeader({
     metadata: n.metadata
   }));
 
+
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-4 mb-6">
-      <div className="flex items-center gap-4">
-        {showBack && backHref && (
-          <Link href={backHref}>
-            <Button variant="outline" size="icon" className="h-9 w-9">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-        )}
-        {title && (
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
-            {description && <p className="text-sm text-gray-600">{description}</p>}
-          </div>
+    <div className="border-b pb-4 mb-6">
+      {/* First Row: Back Button, Title/Description, and Notification Bell */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4">
+          {showBack && backHref && (
+            <Link href={backHref}>
+              <Button variant="outline" size="icon" className="h-9 w-9">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
+          {title && (
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
+              {description && <div className="text-sm text-gray-600">{description}</div>}
+            </div>
+          )}
+          <DebugSection title="Page Context" data={{ title, description, backHref, locationId, user }} className="ml-2" />
+        </div>
+
+        {showNotificationBell && (
+          <NotificationBell
+            notifications={bellNotifications}
+            onMarkAsRead={markAsRead}
+            onMarkAllAsRead={() => markAsRead(notifications.filter(n => n.status === 'unread').map(n => n._id))}
+            onNotificationClick={() => {}}
+            onDismiss={dismissNotification}
+            vaultInventory={vaultInventory}
+            onApprove={handleFloatApprove}
+            onDeny={handleFloatDeny}
+            onConfirm={handleFloatReceiptConfirm}
+          />
         )}
       </div>
 
-      <div className="flex items-center gap-2">
-        {children}
-        <NotificationBell
-          notifications={bellNotifications}
-          onMarkAsRead={markAsRead}
-          onMarkAllAsRead={() => markAsRead(notifications.filter(n => n.status === 'unread').map(n => n._id))}
-          onNotificationClick={() => {}}
-          onDismiss={dismissNotification}
-          vaultInventory={vaultInventory}
-          onApprove={handleFloatApprove}
-          onDeny={handleFloatDeny}
-        />
-      </div>
+      {/* Second Row: Children (Filters, Buttons, etc.) */}
+      {children && (
+        <div className="flex items-center gap-2">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

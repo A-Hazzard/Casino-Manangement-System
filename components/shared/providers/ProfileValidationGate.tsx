@@ -25,13 +25,13 @@ import { useCurrentUserQuery } from '@/lib/hooks/useCurrentUserQuery';
 import { useAuthSessionStore } from '@/lib/store/authSessionStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
-  ProfileValidationFormData,
-  ProfileValidationModalData,
+    ProfileValidationFormData,
+    ProfileValidationModalData,
 } from '@/lib/types/auth';
 import { validatePasswordStrength } from '@/lib/utils/validation';
 import type {
-  InvalidProfileFields,
-  ProfileValidationReasons,
+    InvalidProfileFields,
+    ProfileValidationReasons,
 } from '@/shared/types/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -205,6 +205,13 @@ export default function ProfileValidationGate({
       if (nextInvalid.dateOfBirth) {
         delete nextInvalid.dateOfBirth;
         delete nextReasons.dateOfBirth;
+      }
+
+      // EXEMPTION: Phone is no longer required
+      // Remove it from validation checks so it doesn't trigger the modal
+      if (nextInvalid.phone) {
+        delete nextInvalid.phone;
+        delete nextReasons.phone;
       }
 
       const needsUpdate = Object.values(nextInvalid).some(Boolean);

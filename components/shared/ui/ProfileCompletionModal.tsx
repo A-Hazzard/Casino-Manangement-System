@@ -2,30 +2,32 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
+import { logoutUser } from '@/lib/helpers/client';
+import { useUserStore } from '@/lib/store/userStore';
 import type {
-    ProfileValidationFormData,
-    ProfileValidationModalData,
+  ProfileValidationFormData,
+  ProfileValidationModalData,
 } from '@/lib/types/auth';
 import { cn } from '@/lib/utils';
 import { validatePasswordStrength } from '@/lib/utils/validation';
 import type {
-    InvalidProfileFields,
-    ProfileValidationReasons,
+  InvalidProfileFields,
+  ProfileValidationReasons,
 } from '@/shared/types/auth';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import * as React from 'react';
@@ -99,6 +101,8 @@ export default function ProfileCompletionModal({
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
+  
+  const { clearUser } = useUserStore();
 
   // Sync state with props when modal opens or data changes
   useEffect(() => {
@@ -139,6 +143,9 @@ export default function ProfileCompletionModal({
     invalidFields.gender;
 
   const hasContactErrors = invalidFields.emailAddress || invalidFields.phone;
+  
+  // Always show contact section if we're showing the modal (user can optionally fill phone)
+  const showContactSection = hasContactErrors || needsPassword || hasPersonalErrors;
 
   // ============================================================================
   // Handlers
@@ -164,9 +171,10 @@ export default function ProfileCompletionModal({
     // Basic Client-Side Validation (Fast Feedback)
     const errors: Record<string, string> = {};
 
-    if (invalidFields.phone && !formData.phone.trim()) {
-      errors.phone = 'Phone number is required.';
-    }
+    // Phone validation removed - it is optional
+    // if (invalidFields.phone && !formData.phone.trim()) {
+    //   errors.phone = 'Phone number is required.';
+    // }
 
     if (needsPassword) {
       if (!formData.newPassword) errors.newPassword = 'New password is required.';
@@ -189,7 +197,47 @@ export default function ProfileCompletionModal({
 
     if (!result.success) {
       if (result.fieldErrors) setValidationErrors(result.fieldErrors);
-      if (result.message) setServerError(result.message);
+      
+      let errorMessage = result.message;
+      
+      // If validation failed, check for errors on fields that aren't currently visible
+      if (result.fieldErrors && (errorMessage === 'Validation failed' || !errorMessage)) {
+        const hiddenErrors: string[] = [];
+        const errors = result.fieldErrors;
+        
+        Object.entries(errors).forEach(([key, msg]) => {
+           // 1. Password Fields
+           if (['currentPassword', 'newPassword', 'confirmPassword'].includes(key)) {
+               if (!needsPassword) hiddenErrors.push(msg);
+               return;
+           }
+           
+           // 2. Assignment Fields (Always hidden in this modal)
+           if (['licenseeIds', 'locationIds'].includes(key)) {
+               hiddenErrors.push(msg); // Msg usually says "Select at least one..."
+               return;
+           }
+           
+           // 3. Profile Fields
+           // In this modal, a field is ONLY rendered if it is marked as invalid in `invalidFields`
+           // If the API returns an error for a field we didn't ask the user to fix, they can't see it.
+           const isFieldVisible = invalidFields[key as keyof InvalidProfileFields];
+           
+           // Special case: otherName is not rendered at all in the current JSX provided
+           // Phone is now always shown, so don't add it to hidden errors
+           if (key === 'otherName' || (!isFieldVisible && key !== 'phone')) {
+               // Make the field name readable
+               const fieldLabel = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+               hiddenErrors.push(`${fieldLabel}: ${msg}`);
+           }
+        });
+        
+        if (hiddenErrors.length > 0) {
+            errorMessage = `Validation failed: ${hiddenErrors.join(' | ')}`;
+        }
+      }
+
+      if (errorMessage) setServerError(errorMessage);
     }
   };
 
@@ -314,13 +362,13 @@ export default function ProfileCompletionModal({
           )}
 
           {/* Section: Contact Details */}
-          {hasContactErrors && (
+          {showContactSection && (
             <fieldset className="space-y-4 bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
                 <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 px-1">
                     Contact Information
                 </legend>
                 {invalidFields.emailAddress && renderFieldInput('emailAddress', 'Email Address', 'name@example.com', 'email')}
-                {invalidFields.phone && renderFieldInput('phone', 'Phone Number', '+1 868-XXX-XXXX', 'tel')}
+                {renderFieldInput('phone', 'Phone Number (Optional)', '+1 868-XXX-XXXX', 'tel')}
             </fieldset>
           )}
 
@@ -395,8 +443,9 @@ export default function ProfileCompletionModal({
              <Button
                type="button"
                variant="outline"
-               onClick={() => {
-                   // Force hard reload to clear session state completely if user chooses to logout
+               onClick={async () => {
+                   await logoutUser();
+                   clearUser();
                    window.location.href = '/login'; 
                }}
                className="flex-1 border-slate-200 bg-white text-slate-700 hover:bg-slate-50"

@@ -9,6 +9,8 @@
  * @module app/api/lib/helpers/vault/endOfDay
  */
 
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { getGamingDayRange } from '@/lib/utils/gamingDayRange';
 import { calculateTotalCashOnPremises } from './cashMonitoring';
 
 /**
@@ -32,17 +34,18 @@ export async function generateEndOfDayReport(
   locationId: string,
   date: Date
 ): Promise<EndOfDayReport> {
-  // Calculate start and end of day
-  const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
+  // Fetch location to get gameDayOffset
+  const location = await GamingLocations.findById(locationId).select('gameDayOffset').lean();
+  const gameDayOffset = (location as any)?.gameDayOffset ?? 8; // Default to 8 AM if not set
 
-  const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
+  // Calculate start and end of day using gaming day logic
+  // This ensures we capture the full operational day (e.g., 8 AM to 8 AM next day)
+  const { rangeStart, rangeEnd } = getGamingDayRange(date, gameDayOffset);
 
   // Get cash on premises
   const cashData = await calculateTotalCashOnPremises(locationId, {
-    start: startOfDay,
-    end: endOfDay,
+    start: rangeStart,
+    end: rangeEnd,
   });
 
   return {

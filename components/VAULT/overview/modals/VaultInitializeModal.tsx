@@ -63,38 +63,38 @@ export default function VaultInitializeModal({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-md p-0 overflow-hidden">
-        <DialogHeader className="p-6 bg-slate-50 border-b border-slate-100">
-          <DialogTitle className="flex items-center gap-2 text-slate-900">
-            {isInitial ? <Sparkles className="h-5 w-5 text-amber-500" /> : <Calendar className="h-5 w-5 text-blue-600" />}
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+          <DialogTitle className="flex items-center gap-2 text-violet-900">
+            {isInitial ? <Sparkles className="h-5 w-5 text-amber-500" /> : <Calendar className="h-5 w-5 text-violet-600" />}
             {isInitial ? "Initialize New Vault" : "Open Vault Shift"}
           </DialogTitle>
-          <DialogDescription className="text-slate-500">
+          <DialogDescription className="text-violet-700/80">
             {isInitial 
               ? "Setup your location's vault for the very first time."
               : "Verify balance and start the daily vault session."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-6 space-y-6">
+        <div className="max-h-[75vh] overflow-y-auto p-6 space-y-6 custom-scrollbar">
           {/* Expected Balance Card - Premium Style */}
           {!isInitial && (
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-6 shadow-xl shadow-blue-500/20 text-white">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100 p-6 shadow-sm">
               <div className="relative z-10">
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-100/60 mb-1">Expected Opening Balance</p>
-                <p className="text-4xl font-black tracking-tight">{formatAmount(expectedBalance)}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-violet-400 mb-1">Expected Opening Balance</p>
+                <p className="text-4xl font-black tracking-tight text-violet-700">{formatAmount(expectedBalance)}</p>
                 
                 {expectedDenominations && expectedDenominations.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-3 gap-2">
+                  <div className="mt-4 pt-4 border-t border-violet-200/50 grid grid-cols-3 gap-2">
                     {expectedDenominations.filter(d => d.quantity > 0).map(d => (
                       <div key={d.denomination} className="flex flex-col">
-                        <span className="text-[9px] font-black uppercase text-blue-200/50">${d.denomination} Bills</span>
-                        <span className="text-sm font-bold">x{d.quantity}</span>
+                        <span className="text-[9px] font-black uppercase text-violet-400/80">${d.denomination} Bills</span>
+                        <span className="text-sm font-bold text-violet-600">x{d.quantity}</span>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-              <Landmark className="absolute -right-4 -bottom-4 h-24 w-24 text-white/5" />
+              <Landmark className="absolute -right-4 -bottom-4 h-24 w-24 text-violet-100/50" />
             </div>
           )}
 
@@ -134,7 +134,7 @@ export default function VaultInitializeModal({
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full h-12 bg-blue-600 text-white hover:bg-blue-700 font-black text-base shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-all rounded-xl"
+            className="w-full h-12 bg-violet-600 text-white hover:bg-violet-700 font-black text-base shadow-lg shadow-violet-600/20 active:scale-[0.98] transition-all rounded-xl"
           >
             {loading ? (
               <div className="flex items-center gap-2">

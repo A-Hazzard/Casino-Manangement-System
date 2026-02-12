@@ -16,7 +16,7 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import { getGamingDayRange } from '@/lib/utils/gamingDayRange';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(request.url);
     const locationId = searchParams.get('locationId');
+    const dateStr = searchParams.get('date');
 
     if (!locationId) {
       return NextResponse.json(
@@ -81,22 +82,29 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Define time range (Start of Day)
+    // STEP 4: Define time range (Gaming Day)
     // ============================================================================
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
+    const gameDayOffset = (locationInfo as any)?.gameDayOffset ?? 8;
+    
+    const requestDate = dateStr ? new Date(dateStr) : new Date();
+    const { rangeStart, rangeEnd } = getGamingDayRange(requestDate, gameDayOffset);
 
     // ============================================================================
     // STEP 5: Aggregate Transactions
     // ============================================================================
     const transactions = await VaultTransactionModel.find({
       locationId,
-      timestamp: { $gte: startOfDay },
+      timestamp: { 
+        $gte: rangeStart,
+        $lte: rangeEnd
+      },
     }).lean();
 
     let totalCashIn = 0;
     let totalCashOut = 0;
     let payouts = 0;
+    let expenses = 0;
 
     transactions.forEach(tx => {
       if (tx.to.type === 'vault') {
@@ -104,6 +112,9 @@ export async function GET(request: NextRequest) {
       }
       if (tx.from.type === 'vault') {
         totalCashOut += tx.amount;
+      }
+      if (tx.type === 'expense') {
+        expenses += tx.amount;
       }
     });
 
@@ -116,10 +127,9 @@ export async function GET(request: NextRequest) {
     }, { currentBalance: 1 }).lean();
     const totalCashierFloats = activeCashiersData.reduce((sum: number, s: any) => sum + (s.currentBalance || 0), 0);
 
-    // B. Machine Money In (Drops) - Use Today's Gaming Day
-    const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
-    const gameDayOffset = (locationInfo as any)?.gameDayOffset ?? 8;
-    const gamingDayRange = getGamingDayRangeForPeriod('Today', gameDayOffset);
+    // B. Machine Money In (Drops) - Use Gaming Day Logic
+    // Using the same range calculated above
+    const gamingDayRange = { rangeStart, rangeEnd };
 
     // Get all machine IDs for this location
     const machines = await Machine.find({ gamingLocation: locationId }, { _id: 1 }).lean();
@@ -166,6 +176,7 @@ export async function GET(request: NextRequest) {
         payouts,
         totalMachineBalance,
         totalCashierFloats,
+        expenses,
       },
     });
   } catch (error) {

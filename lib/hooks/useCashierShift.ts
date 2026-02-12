@@ -7,6 +7,7 @@
  * @module lib/hooks/useCashierShift
  */
 
+import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import type {
     CashierShift,
     CloseCashierShiftRequest,
@@ -57,7 +58,7 @@ export function useCashierShift() {
       console.error('Failed to fetch shift', error);
       if (!isSilent) toast.error('Failed to load shift status');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
       setRefreshing(false);
     }
   }, []);
@@ -81,7 +82,7 @@ export function useCashierShift() {
 
     const interval = setInterval(() => {
       fetchCurrentShift(true);
-    }, 30000); 
+    }, DEFAULT_POLL_INTERVAL); 
 
     return () => clearInterval(interval);
   }, [user, status, isVaultReconciled, fetchCurrentShift]);
@@ -182,6 +183,29 @@ export function useCashierShift() {
     }
   };
 
+  const cancelFloatRequest = async (requestId: string) => {
+    try {
+      const res = await fetch('/api/vault/float-request', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || 'Request cancelled');
+        fetchCurrentShift();
+        return true;
+      } else {
+        toast.error(data.error || 'Failed to cancel request');
+        return false;
+      }
+    } catch (error) {
+      console.error('Cancel failed', error);
+      toast.error('Connection error');
+      return false;
+    }
+  };
+
   return {
     shift,
     status,
@@ -195,6 +219,7 @@ export function useCashierShift() {
     refresh: fetchCurrentShift,
     openShift,
     confirmApproval,
-    closeShift
+    closeShift,
+    cancelFloatRequest
   };
 }

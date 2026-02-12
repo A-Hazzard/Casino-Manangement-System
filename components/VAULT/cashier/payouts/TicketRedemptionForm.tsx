@@ -24,11 +24,11 @@ export default function TicketRedemptionForm({
   
   const [ticketNumber, setTicketNumber] = useState('');
   const [amount, setAmount] = useState<string>('');
-  const [printedAt, setPrintedAt] = useState<Date | undefined>(new Date());
+  const [printedAt, setPrintedAt] = useState<Date | undefined>(undefined);
 
   const numAmount = parseFloat(amount) || 0;
   const isOverBalance = numAmount > currentBalance;
-  const isFormValid = ticketNumber.trim() && numAmount > 0 && !isOverBalance;
+  const isFormValid = ticketNumber.trim().length > 0 && numAmount > 0 && !isOverBalance && printedAt !== undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +38,7 @@ export default function TicketRedemptionForm({
       await onSubmit(
         ticketNumber.trim(), 
         numAmount, 
-        printedAt
+        printedAt || new Date()
       );
       setTicketNumber('');
       setAmount('');

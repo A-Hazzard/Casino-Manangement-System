@@ -10,6 +10,7 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
+import DenominationInputGrid from '@/components/shared/ui/DenominationInputGrid';
 import {
     Dialog,
     DialogContent,
@@ -18,13 +19,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/shared/ui/dialog';
-import { Input } from '@/components/shared/ui/input';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { cn } from '@/lib/utils';
 import type { Denomination } from '@/shared/types/vault';
-import { AlertTriangle, Minus, Plus } from 'lucide-react';
+import { AlertTriangle, Coins } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'sonner';
 
 type CashierShiftOpenModalProps = {
   open: boolean;
@@ -48,6 +46,7 @@ export default function CashierShiftOpenModal({
   loading = false,
 }: CashierShiftOpenModalProps) {
   const { formatAmount } = useCurrencyFormat();
+  const [step, setStep] = useState<'input' | 'review'>('input');
 
   const [denominations, setDenominations] = useState<Denomination[]>(
     DEFAULT_DENOMINATIONS.map(denom => ({ denomination: denom, quantity: 0 }))
@@ -58,34 +57,29 @@ export default function CashierShiftOpenModal({
     0
   );
 
-  const updateQuantity = (index: number, quantity: number) => {
-    if (quantity < 0) return;
-    const newDenominations = [...denominations];
-    newDenominations[index] = { ...newDenominations[index], quantity };
-    setDenominations(newDenominations as Denomination[]);
+
+
+  const handleClose = () => {
+    setStep('input');
+    onClose();
   };
 
-  const handleSubmit = async () => {
-    if (!hasActiveVaultShift) {
-      toast.error('No shifts enabled for manager. Please contact your Vault Manager.');
-      return;
-    }
-
-    if (!isVaultReconciled) {
-      toast.error('Vault Not Reconciled', {
-        description: 'Please ask a Vault Manager to perform the mandatory opening reconciliation.'
-      });
-      return;
-    }
-
+  const handleReview = () => {
+    if (!hasActiveVaultShift || !isVaultReconciled) return;
+    
     const filteredDenominations = denominations.filter(d => d.quantity > 0);
     if (filteredDenominations.length === 0) {
       alert('Please specify at least one denomination with quantity > 0');
       return;
     }
+    setStep('review');
+  };
+
+  const handleSubmit = async () => {
+    const filteredDenominations = denominations.filter(d => d.quantity > 0);
     try {
       await onSubmit(filteredDenominations);
-      onClose();
+      handleClose();
       // Reset form
       setDenominations(
         DEFAULT_DENOMINATIONS.map(denom => ({
@@ -99,127 +93,134 @@ export default function CashierShiftOpenModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Start New Shift</DialogTitle>
-          <DialogDescription>
-            Request your opening float by specifying the denominations you need.
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-md p-0 overflow-hidden">
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+          <DialogTitle className="flex items-center gap-2 text-violet-900">
+            <Coins className="h-5 w-5 text-violet-600" />
+            {step === 'input' ? 'Start New Shift' : 'Review Float Request'}
+          </DialogTitle>
+          <DialogDescription className="text-violet-700/80">
+            {step === 'input' 
+              ? 'Request your opening float by specifying the denominations you need.'
+              : 'Please verify your float request breakdown before submitting.'}
           </DialogDescription>
         </DialogHeader>
 
-        {!hasActiveVaultShift && (
-          <div className="flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700 border border-red-100 mb-2">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            <p>
-              <strong>Cannot Start Shift:</strong> No active Vault Manager shift found at this location.
-            </p>
-          </div>
-        )}
-
-        {hasActiveVaultShift && !isVaultReconciled && (
-          <div className="flex items-center gap-2 rounded-md bg-amber-50 p-3 text-sm text-amber-700 border border-amber-100 mb-2">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            <p>
-              <strong>Reconciliation Pending:</strong> The vault manager must reconcile the vault before you can start your shift.
-            </p>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
-            {denominations.map((denom, index) => (
-              <div 
-                key={denom.denomination} 
-                className={cn(
-                  "relative flex items-center justify-between p-3 rounded-xl border transition-all duration-200",
-                  denom.quantity > 0 
-                    ? "bg-blue-50/50 border-blue-200 ring-1 ring-blue-100 shadow-sm" 
-                    : "bg-gray-50/30 border-gray-100"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm font-black text-sm",
-                    denom.quantity > 0 ? "text-blue-600 border border-blue-100" : "text-gray-400 border border-transparent"
-                  )}>
-                    ${denom.denomination}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Bills</span>
-                    <span className="text-xs font-bold text-gray-700">Denomination</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-0.5 shadow-sm">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 hover:bg-gray-100 text-gray-500 rounded-md"
-                    onClick={() => updateQuantity(index, denom.quantity - 1)}
-                    disabled={denom.quantity === 0}
-                  >
-                    <Minus className="h-3 w-3" />
-                  </Button>
-                  
-                  <Input
-                    type="number"
-                    min="0"
-                    value={denom.quantity}
-                    onChange={e =>
-                      updateQuantity(index, parseInt(e.target.value) || 0)
-                    }
-                    className="w-12 h-8 border-none bg-transparent text-center font-black p-0 focus-visible:ring-0 text-sm"
-                  />
-                  
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 hover:bg-gray-100 text-gray-500 rounded-md"
-                    onClick={() => updateQuantity(index, denom.quantity + 1)}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-4 shadow-lg shadow-blue-500/20">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-100">Total Requested</span>
-                <p className="text-white/80 text-[10px]">Sum of all specified denominations</p>
-              </div>
-              <span className="text-2xl font-black text-white tracking-tight">
-                {formatAmount(totalAmount)}
-              </span>
+        <div className="max-h-[75vh] overflow-y-auto p-6 space-y-6 custom-scrollbar">
+          {!hasActiveVaultShift && (
+            <div className="flex items-center gap-3 rounded-xl bg-red-50 p-4 text-xs text-red-700 border border-red-100 mb-2 shadow-sm">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-red-500" />
+              <p className="leading-tight">
+                <strong className="block uppercase tracking-widest text-[10px] mb-0.5">Cannot Start Shift</strong> No active Vault Manager shift found at this location.
+              </p>
             </div>
-          </div>
+          )}
+
+          {hasActiveVaultShift && !isVaultReconciled && (
+            <div className="flex items-center gap-3 rounded-xl bg-amber-50 p-4 text-xs text-amber-700 border border-amber-100 mb-2 shadow-sm">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+              <p className="leading-tight">
+                <strong className="block uppercase tracking-widest text-[10px] mb-0.5">Reconciliation Pending</strong> The vault manager must reconcile the vault before you can start your shift.
+              </p>
+            </div>
+          )}
+
+          {step === 'input' ? (
+            <div className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm">
+                <DenominationInputGrid 
+                    denominations={denominations}
+                    onChange={setDenominations}
+                    disabled={loading}
+                />
+            </div>
+          ) : (
+            <div className="rounded-xl border overflow-hidden">
+                <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b">
+                        <tr>
+                            <th className="px-4 py-3 text-left font-bold text-gray-500 uppercase tracking-widest text-[10px]">Denomination</th>
+                            <th className="px-4 py-3 text-center font-bold text-gray-500 uppercase tracking-widest text-[10px]">Count</th>
+                            <th className="px-4 py-3 text-right font-bold text-gray-500 uppercase tracking-widest text-[10px]">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                        {denominations.filter(d => d.quantity > 0).map(d => (
+                            <tr key={d.denomination} className="bg-white">
+                                <td className="px-4 py-3 font-semibold text-gray-700">${d.denomination}</td>
+                                <td className="px-4 py-3 text-center font-mono font-medium text-gray-600">{d.quantity}</td>
+                                <td className="px-4 py-3 text-right font-bold text-gray-900">${d.denomination * d.quantity}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    <tfoot className="bg-violet-50/50 border-t border-violet-100">
+                        <tr>
+                            <td colSpan={2} className="px-4 py-3 font-black text-violet-900 text-right uppercase tracking-wide text-xs">Total Request</td>
+                            <td className="px-4 py-3 text-right font-black text-violet-700">{formatAmount(totalAmount)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+          )}
+
+          {step === 'input' && (
+            <div className="rounded-2xl p-5 bg-gradient-to-br from-violet-600 to-purple-700 shadow-xl shadow-violet-500/20 text-white relative overflow-hidden">
+                <div className="relative z-10 flex items-center justify-between">
+                <div className="space-y-0.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-violet-100/60">Total Opening request</span>
+                    <p className="text-white/60 text-[10px] font-medium italic">Sum of specified denominations</p>
+                </div>
+                <span className="text-3xl font-black text-white tracking-tight">
+                    {formatAmount(totalAmount)}
+                </span>
+                </div>
+                <Coins className="absolute -right-4 -bottom-4 h-24 w-24 text-white/5 rotate-12" />
+            </div>
+          )}
         </div>
 
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading || totalAmount === 0}
-            className={cn(
-              "bg-button text-white hover:bg-button/90",
-              (!hasActiveVaultShift || !isVaultReconciled) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            {loading ? 'Requesting...' : 'Request Float'}
-          </Button>
+        <DialogFooter className="p-6 bg-gray-50 border-t border-gray-100 flex gap-2">
+          {step === 'input' ? (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleClose}
+                disabled={loading}
+                className="font-black text-gray-500 hover:bg-gray-100/50"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleReview}
+                disabled={loading || totalAmount === 0 || !hasActiveVaultShift || !isVaultReconciled}
+                className="bg-violet-600 text-white hover:bg-violet-700 font-black shadow-lg shadow-violet-600/20 px-8 ml-auto"
+              >
+                Review Request
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setStep('input')}
+                disabled={loading}
+                className="font-black text-gray-500 hover:bg-gray-100/50"
+              >
+                Back to Edit
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading}
+                className="bg-green-600 text-white hover:bg-green-700 font-black shadow-lg shadow-green-600/20 px-8 ml-auto"
+              >
+                {loading ? 'Confirming...' : 'Confirm & Request'}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

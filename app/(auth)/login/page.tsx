@@ -6,13 +6,12 @@
 
 'use client';
 
-import { Suspense } from 'react';
-import Image from 'next/image';
 import LoginForm from '@/components/shared/auth/LoginForm';
 import LiquidGradient from '@/components/shared/ui/LiquidGradient';
 import PasswordUpdateModal from '@/components/shared/ui/PasswordUpdateModal';
-import ProfileValidationModal from '@/components/shared/ui/ProfileValidationModal';
 import { LoginPageSkeleton } from '@/components/shared/ui/skeletons/LoginSkeletons';
+import Image from 'next/image';
+import { Suspense } from 'react';
 
 // Hooks
 import { useLoginPageData } from '@/lib/hooks/auth/useLoginPageData';
@@ -29,11 +28,10 @@ function LoginPageContent() {
 
   const {
     identifier, password, showPassword, rememberMe, errors, message, messageType,
-    loading, redirecting, authLoading, showPasswordUpdateModal, showProfileValidationModal,
-    invalidProfileFields, profileValidationReasons, currentUserData, profileUpdating,
+    loading, redirecting, authLoading, showPasswordUpdateModal,
     setIdentifier, setPassword, setShowPassword, setRememberMe, handleLogin,
-    setShowPasswordUpdateModal, setShowProfileValidationModal,
-    handlePasswordUpdate, handleProfileUpdate
+    setShowPasswordUpdateModal,
+    handlePasswordUpdate
   } = hook;
 
   // Show loading skeleton while checking authentication status
@@ -77,16 +75,7 @@ function LoginPageContent() {
         loading={loading}
       />
 
-      <ProfileValidationModal
-        open={showProfileValidationModal}
-        onClose={() => setShowProfileValidationModal(false)}
-        onUpdate={handleProfileUpdate}
-        loading={profileUpdating}
-        invalidFields={invalidProfileFields}
-        currentData={currentUserData}
-        reasons={profileValidationReasons}
-        enforceUpdate
-      />
+
     </>
   );
 }

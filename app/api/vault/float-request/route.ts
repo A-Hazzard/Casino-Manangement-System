@@ -314,3 +314,89 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+// ... POST method ...
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const userPayload = await getUserFromServer();
+    if (!userPayload) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { requestId } = await request.json();
+    if (!requestId) {
+        return NextResponse.json(
+            { success: false, error: 'Request ID required' },
+            { status: 400 }
+        );
+    }
+
+    await connectDB();
+    const requestDoc = await FloatRequestModel.findById(requestId);
+    
+    if (!requestDoc) {
+        return NextResponse.json(
+            { success: false, error: 'Request not found' },
+            { status: 404 }
+        );
+    }
+
+    // Ownership check
+    const isOwner = requestDoc.cashierId.toString() === userPayload._id;
+    const isVM = (userPayload.roles as string[] || []).some(r => 
+        ['admin', 'manager', 'vault-manager'].includes(r.toLowerCase())
+    );
+
+    if (!isOwner && !isVM) {
+        return NextResponse.json(
+            { success: false, error: 'Unauthorized' },
+            { status: 403 }
+        );
+    }
+
+    if (requestDoc.status !== 'pending') {
+        return NextResponse.json(
+            { success: false, error: 'Only pending requests can be cancelled' },
+            { status: 400 }
+        );
+    }
+
+    // Update status to cancelled
+    requestDoc.status = 'cancelled';
+    requestDoc.auditLog.push({
+        action: 'cancelled',
+        performedBy: userPayload._id,
+        timestamp: new Date(),
+        notes: 'Cancelled by user'
+    });
+    
+    await requestDoc.save();
+
+    // DELETE NOTIFICATION
+    try {
+        const VaultNotificationModel = (await import('@/app/api/lib/models/vaultNotification')).default;
+        await VaultNotificationModel.deleteMany({
+            relatedEntityId: requestId,
+            relatedEntityType: 'float_request'
+        });
+    } catch (notifError) {
+        console.error('Failed to delete notification:', notifError);
+        // Continue, don't block the cancellation
+    }
+
+    return NextResponse.json({
+        success: true,
+        message: 'Request cancelled successfully'
+    });
+
+  } catch (error) {
+    console.error('Error cancelling float request:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

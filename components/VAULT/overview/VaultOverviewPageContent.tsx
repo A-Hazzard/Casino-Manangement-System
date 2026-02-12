@@ -16,6 +16,7 @@ import {
 } from '@/components/VAULT/overview/data/defaults';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
+import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
 import {
     fetchVaultOverviewData
@@ -80,6 +81,9 @@ export default function VaultOverviewPageContent() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [shiftReviewLoading, setShiftReviewLoading] = useState(false);
+  
+  // Close Day Sequence State
+  const [isClosingDay, setIsClosingDay] = useState(false);
 
   // Modal Visibility State
   const [modals, setModals] = useState({
@@ -154,7 +158,7 @@ export default function VaultOverviewPageContent() {
     // STEP: Periodic refresh for float requests and notifications
     const interval = setInterval(() => {
         fetchData(true); // Silent refresh
-    }, 30000); // 30 seconds
+    }, DEFAULT_POLL_INTERVAL); // 5 seconds
 
     return () => clearInterval(interval);
   }, [fetchData]);
@@ -245,13 +249,13 @@ export default function VaultOverviewPageContent() {
   /**
    * Resolve Shift Discrepancies
    */
-  const handleShiftResolveConfirm = async (shiftId: string, finalBalance: number, auditComment: string) => {
+  const handleShiftResolveConfirm = async (shiftId: string, finalBalance: number, auditComment: string, denominations?: Denomination[]) => {
     setShiftReviewLoading(true);
     try {
       const res = await fetch('/api/cashier/shift/resolve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shiftId, finalBalance, auditComment })
+        body: JSON.stringify({ shiftId, finalBalance, auditComment, denominations })
       });
       const data = await res.json();
       if (data.success) {
@@ -259,6 +263,28 @@ export default function VaultOverviewPageContent() {
         fetchData(true);
       } else {
         toast.error(data.error || 'Failed to resolve shift');
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setShiftReviewLoading(false);
+    }
+  };
+
+  const handleShiftReject = async (shiftId: string, reason: string) => {
+    setShiftReviewLoading(true);
+    try {
+      const res = await fetch('/api/cashier/shift/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shiftId, reason })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Shift closure rejected and returned to cashier');
+        fetchData(true);
+      } else {
+        toast.error(data.error || 'Failed to reject shift');
       }
     } catch {
       toast.error('Network error');
@@ -290,16 +316,21 @@ export default function VaultOverviewPageContent() {
         requestPayload.vaultShiftId = vaultBalance.activeShiftId || null; // Ensure vaultShiftId is added
         break;
       case 'initialize': endpoint = '/api/vault/initialize'; break;
-      case 'collection': endpoint = '/api/vault/machine-collections'; break;
-      case 'softCount': endpoint = '/api/vault/soft-counts'; break;
       case 'closeShift': 
         endpoint = '/api/vault/shift/close'; 
         requestPayload.vaultShiftId = vaultBalance.activeShiftId || null; // Ensure vaultShiftId is added
         break;
-      case 'closeShift': 
-        endpoint = '/api/vault/shift/close'; 
-        requestPayload.vaultShiftId = vaultBalance.activeShiftId || null; // Ensure vaultShiftId is added
-        break;
+    }
+
+    // Special handling for collection type - wizard handles its own API calls
+    if (type === 'collection') {
+      setModals(prev => ({ ...prev, collection: false }));
+      if (isClosingDay) {
+        setModals(prev => ({ ...prev, closeShift: true }));
+        setIsClosingDay(false);
+      }
+      fetchData(true);
+      return;
     }
 
     if (!endpoint) return;
@@ -354,6 +385,13 @@ export default function VaultOverviewPageContent() {
       if (result.success) {
         toast.success(result.message || 'Action completed');
         setModals(prev => ({ ...prev, [type]: false }));
+        
+        // STEP: Handle auto-trigger of Close Shift after Collection during Close Day sequence
+        if (type === 'collection' && isClosingDay) {
+          setModals(prev => ({ ...prev, closeShift: true }));
+          setIsClosingDay(false); // Reset sequence flag
+        }
+
         if (type === 'closeShift') {
           // If vault closed, maybe redirect or just refresh
           fetchData(false);
@@ -401,6 +439,21 @@ export default function VaultOverviewPageContent() {
 
   const handleAction = (actionKey: keyof typeof modals) => {
     if (!checkShiftStarted(actionKey)) return;
+
+    // STEP: Special handling for Close Day sequence (Collection FIRST)
+    if (actionKey === 'closeShift') {
+       // Validate if we can actually close before starting the flow
+       if (!vaultBalance.canClose) {
+         toast.error('Operation Blocked', {
+           description: vaultBalance.blockReason || 'All cashier shifts and reviews must be completed.'
+         });
+         return;
+       }
+       setIsClosingDay(true);
+       setModals(prev => ({ ...prev, collection: true }));
+       return;
+    }
+
     setModals(prev => ({ ...prev, [actionKey]: true }));
   };
 
@@ -460,27 +513,20 @@ export default function VaultOverviewPageContent() {
         {/* This bit is handled by the state and passed to VaultModals */}
 
         {/* Actionable Panels */}
-        <ShiftReviewPanel
-            pendingShifts={pendingShifts}
-            onResolve={handleShiftResolveConfirm}
-            loading={shiftReviewLoading}
-        />
 
         <VaultShiftPromotion 
             activeShiftId={vaultBalance.activeShiftId}
             onStartShift={() => setModals(m => ({ ...m, initialize: true }))}
         />
         
-        {!isShiftActive && (
-          <div className="flex justify-end">
-            <Link href="/vault/management/reports/end-of-day">
-              <Button variant="outline" className="gap-2 border-orangeHighlight text-orangeHighlight hover:bg-orangeHighlight/10">
-                <FileText className="h-4 w-4" />
-                View End-of-Day Report
-              </Button>
-            </Link>
-          </div>
-        )}
+        <div className="flex justify-end">
+          <Link href="/vault/management/reports/end-of-day">
+            <Button variant="outline" className="gap-2 border-orangeHighlight text-orangeHighlight hover:bg-orangeHighlight/10">
+              <FileText className="h-4 w-4" />
+              View End-of-Day Report
+            </Button>
+          </Link>
+        </div>
 
         {/* Balance Card Section */}
         {loading ? (
@@ -505,15 +551,16 @@ export default function VaultOverviewPageContent() {
           </div>
         )}
 
-        {/* Shift Review Panel - Only show if pending shifts exist */}
-        {pendingShifts.length > 0 && (
-          <div id="shift-review-panel" className="scroll-mt-20">
-            <ShiftReviewPanel
-              pendingShifts={pendingShifts}
-              onResolve={handleResolveShift}
-            />
-          </div>
-        )}
+        {/* Shift Review Panel */}
+        <div id="shift-review-panel" className="scroll-mt-20">
+          <ShiftReviewPanel
+            pendingShifts={pendingShifts}
+            onResolve={handleResolveShift}
+            onReject={handleShiftReject}
+            onRefresh={() => fetchData(true)}
+            loading={shiftReviewLoading}
+          />
+        </div>
 
         {/* Metrics Grid */}
         <VaultHealthGrid metrics={metrics} refreshing={refreshing && !loading} />
@@ -548,14 +595,9 @@ export default function VaultOverviewPageContent() {
           onRemoveCash={() => handleAction('removeCash')}
           onRecordExpense={() => handleAction('recordExpense')}
           onManageCashiers={() => {
-            // Manage Cashiers might be allowed? 
-            // But user said "block all operations". 
-            // Usually manage cashiers is administrative.
-            // I'll block it too for consistency.
             if (!checkShiftStarted()) return;
             window.location.href = '/vault/management/cashiers';
           }}
-          onMachineCollection={() => handleAction('collection')}
           onSoftCount={() => handleAction('softCount')}
         />
 
@@ -571,12 +613,17 @@ export default function VaultOverviewPageContent() {
           vaultBalance={vaultBalance.balance}
           currentDenominations={vaultBalance.denominations}
           isInitial={!!vaultBalance.isInitial}
-          onClose={(key) => setModals(m => ({ ...m, [key]: false }))}
+          onClose={(key) => {
+             setModals(m => ({ ...m, [key]: false }));
+             if (key === 'collection') setIsClosingDay(false); // Cancel sequence if collection closed
+          }}
           onConfirm={handleModalConfirm}
           machines={machines}
           viewDenomsData={viewDenomsData}
           canCloseVault={vaultBalance.canClose}
           closeVaultBlockReason={vaultBalance.blockReason}
+          currentVaultShiftId={vaultBalance.activeShiftId || undefined}
+          currentLocationId={user?.assignedLocations?.[0]}
         />
       </div>
     </PageLayout>

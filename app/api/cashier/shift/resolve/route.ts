@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     // STEP 2: Parse and validate request body
     // ============================================================================
     const body = await request.json();
-    const { shiftId, finalBalance, auditComment } = body;
+    const { shiftId, finalBalance, auditComment, denominations } = body;
 
     if (!shiftId || finalBalance === undefined || !auditComment) {
       return NextResponse.json(
@@ -100,9 +100,10 @@ export async function POST(request: NextRequest) {
 
     cashierShift.status = 'closed';
     cashierShift.closingBalance = finalBalance;
-    // We keep closingDenominations as what cashier entered, or maybe we should allow editing them too?
-    // For simplicity, we just adjust the balance total. The denominations might be off but the total is what matters for accounting.
-    // If exact denominations are needed, we'd need UI to edit them. Assuming total override for now.
+    if (denominations && denominations.length > 0) {
+      cashierShift.closingDenominations = denominations;
+      cashierShift.vmAdjustedDenominations = denominations;
+    }
     cashierShift.vmAdjustedBalance = finalBalance;
     cashierShift.vmReviewNotes = auditComment;
     cashierShift.reviewedBy = vaultManagerId;
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
       from: { type: 'cashier', id: cashierShift.cashierId },
       to: { type: 'vault' },
       amount: finalBalance,
-      denominations: [], // We might not have exact denominations if VM only adjusted total
+      denominations: denominations || [], // Use adjusted denominations if provided
       cashierBalanceBefore: finalBalance,
       cashierBalanceAfter: 0,
       vaultShiftId: cashierShift.vaultShiftId,

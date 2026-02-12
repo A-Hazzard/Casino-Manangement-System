@@ -8,6 +8,7 @@
  */
 'use client';
 
+import DebugSection from '@/components/shared/debug/DebugSection';
 import VaultMetricCard from '@/components/VAULT/overview/cards/VaultMetricCard';
 import { useUserStore } from '@/lib/store/userStore';
 import type { VaultMetrics } from '@/shared/types/vault';
@@ -36,7 +37,11 @@ export default function VaultHealthGrid({ metrics, refreshing: _refreshing }: Va
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Vault Health</h3>
+        <DebugSection title="Vault Metrics" data={metrics} />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 animate-in fade-in duration-500">
         <VaultMetricCard
           title="Total Cash In"
           value={metrics.totalCashIn}
@@ -47,6 +52,14 @@ export default function VaultHealthGrid({ metrics, refreshing: _refreshing }: Va
           onClick={() => openBreakdown('in', 'Total Cash In')}
         />
         <VaultMetricCard
+          title="Net Cash Flow"
+          value={metrics.netCashFlow}
+          icon={DollarSign}
+          iconColor="text-orange-600"
+          iconBgColor="bg-orange-100"
+          tooltipContent="Total Cash In - Total Cash Out. Represents the current movement of funds."
+        />
+        <VaultMetricCard
           title="Total Cash Out"
           value={metrics.totalCashOut}
           icon={CreditCard}
@@ -54,14 +67,6 @@ export default function VaultHealthGrid({ metrics, refreshing: _refreshing }: Va
           iconBgColor="bg-blue-100"
           tooltipContent="Sum of all funds removed from the vault (Deposit, Expense, Transfer)."
           onClick={() => openBreakdown('out', 'Total Cash Out')}
-        />
-        <VaultMetricCard
-          title="Net Cash Flow"
-          value={metrics.netCashFlow}
-          icon={DollarSign}
-          iconColor="text-orange-600"
-          iconBgColor="bg-orange-100"
-          tooltipContent="Total Cash In - Total Cash Out. Represents the current movement of funds."
         />
         <VaultMetricCard
           title="Payouts"

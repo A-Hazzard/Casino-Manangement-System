@@ -15,14 +15,13 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { Landmark, Minus, Monitor, Plus, Receipt, RefreshCw, Users } from 'lucide-react';
+import { Landmark, Minus, Plus, Receipt, RefreshCw, Users } from 'lucide-react';
 
 type VaultQuickActionsSectionProps = {
   onAddCash: () => void;
   onRemoveCash: () => void;
   onRecordExpense: () => void;
   onManageCashiers?: () => void;
-  onMachineCollection?: () => void;
   onSoftCount?: () => void;
   onCloseVault?: () => void;
   isShiftActive?: boolean;
@@ -34,7 +33,6 @@ export default function VaultQuickActionsSection({
   onRemoveCash,
   onRecordExpense,
   onManageCashiers,
-  onMachineCollection,
   onSoftCount,
   onCloseVault,
   isShiftActive = false,
@@ -53,25 +51,25 @@ export default function VaultQuickActionsSection({
         <span className="text-gray-400">→</span>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         {/* Add Cash Button - Green for positive action */}
         <Button
           onClick={onAddCash}
-          className={`h-auto min-h-[80px] flex-col gap-2 bg-button py-4 text-white hover:bg-button/90 ${disabledClasses}`}
-          size="lg"
+          className={`h-auto min-h-[70px] flex-col gap-1 bg-button py-3 text-white hover:bg-button/90 ${disabledClasses}`}
+          size="sm"
         >
-          <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
-          <span className="text-sm font-semibold sm:text-base">Add Cash</span>
+          <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+          <span className="text-xs font-semibold sm:text-sm line-clamp-1">Add Cash</span>
         </Button>
 
         {/* Remove Cash Button - Orange for withdrawal action */}
         <Button
           onClick={onRemoveCash}
-          className={`h-auto min-h-[80px] flex-col gap-2 bg-orangeHighlight py-4 text-white hover:bg-orangeHighlight/90 ${disabledClasses}`}
-          size="lg"
+          className={`h-auto min-h-[70px] flex-col gap-1 bg-orangeHighlight py-3 text-white hover:bg-orangeHighlight/90 ${disabledClasses}`}
+          size="sm"
         >
-          <Minus className="h-5 w-5 sm:h-6 sm:w-6" />
-          <span className="text-sm font-semibold sm:text-base">
+          <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
+          <span className="text-xs font-semibold sm:text-sm line-clamp-1">
             Remove Cash
           </span>
         </Button>
@@ -79,41 +77,25 @@ export default function VaultQuickActionsSection({
         {/* Record Expense Button - Blue for informational action */}
         <Button
           onClick={onRecordExpense}
-          className={`h-auto min-h-[80px] flex-col gap-2 bg-lighterBlueHighlight py-4 text-white hover:bg-lighterBlueHighlight/90 ${disabledClasses}`}
-          size="lg"
+          className={`h-auto min-h-[70px] flex-col gap-1 bg-lighterBlueHighlight py-3 text-white hover:bg-lighterBlueHighlight/90 ${disabledClasses}`}
+          size="sm"
         >
-          <Receipt className="h-5 w-5 sm:h-6 sm:w-6" />
-          <span className="text-sm font-semibold sm:text-base">
+          <Receipt className="h-4 w-4 sm:h-5 sm:w-5" />
+          <span className="text-xs font-semibold sm:text-sm line-clamp-1">
             Record Expense
           </span>
         </Button>
-
-
-        {/* Machine Collection - Purple */}
-        {onMachineCollection && (
-          <Button
-            onClick={onMachineCollection}
-            className={`h-auto min-h-[80px] flex-col gap-2 bg-purple-600 py-4 text-white hover:bg-purple-700 ${disabledClasses}`}
-            size="lg"
-            title="Record cash collected from gaming machines"
-          >
-            <Monitor className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="text-sm font-semibold sm:text-base">
-              Collection
-            </span>
-          </Button>
-        )}
 
         {/* Soft Count - Indigo */}
         {onSoftCount && (
           <Button
             onClick={onSoftCount}
-            className={`h-auto min-h-[80px] flex-col gap-2 bg-indigo-600 py-4 text-white hover:bg-indigo-700 ${disabledClasses}`}
-            size="lg"
+            className={`h-auto min-h-[70px] flex-col gap-1 bg-indigo-600 py-3 text-white hover:bg-indigo-700 ${disabledClasses}`}
+            size="sm"
             title="Count collected cash and add it to vault inventory"
           >
-            <RefreshCw className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="text-sm font-semibold sm:text-base">
+            <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-xs font-semibold sm:text-sm line-clamp-1">
               Soft Count
             </span>
           </Button>
@@ -123,11 +105,11 @@ export default function VaultQuickActionsSection({
         {onManageCashiers && (
           <Button
             onClick={onManageCashiers}
-            className={`h-auto min-h-[80px] flex-col gap-2 bg-teal-600 py-4 text-white hover:bg-teal-700 ${disabledClasses}`}
-            size="lg"
+            className={`h-auto min-h-[70px] flex-col gap-1 bg-teal-600 py-3 text-white hover:bg-teal-700 ${disabledClasses}`}
+            size="sm"
           >
-            <Users className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="text-sm font-semibold sm:text-base">
+            <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-xs font-semibold sm:text-sm line-clamp-1">
               Manage Cashiers
             </span>
           </Button>
@@ -137,12 +119,12 @@ export default function VaultQuickActionsSection({
         {onCloseVault && (
           <Button
             onClick={onCloseVault}
-            className={`h-auto min-h-[80px] flex-col gap-2 bg-orange-600 py-4 text-white hover:bg-orange-700 ${!isShiftActive ? "opacity-40 cursor-not-allowed" : ""}`}
-            size="lg"
+            className={`h-auto min-h-[70px] flex-col gap-1 bg-orange-600 py-3 text-white hover:bg-orange-700 ${!isShiftActive ? "opacity-40 cursor-not-allowed" : ""}`}
+            size="sm"
             title="Submit final counts and close the vault day"
           >
-            <Landmark className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="text-sm font-semibold sm:text-base">
+            <Landmark className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-xs font-semibold sm:text-sm line-clamp-1">
               Close Day
             </span>
           </Button>

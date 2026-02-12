@@ -8,6 +8,7 @@
 'use client';
 
 import VaultCashDeskCard from '@/components/VAULT/overview/cards/VaultCashDeskCard';
+import DebugSection from '@/components/shared/debug/DebugSection';
 import type { CashDesk } from '@/shared/types/vault';
 
 type VaultCashDesksSectionProps = {
@@ -23,9 +24,12 @@ export default function VaultCashDesksSection({
 }: VaultCashDesksSectionProps) {
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-gray-900">
-        Cash Desks Status
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900">
+          Cash Desks Status
+        </h2>
+        <DebugSection title="Cash Desks" data={cashDesks} />
+      </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {cashDesks.length > 0 ? (
           [...cashDesks]

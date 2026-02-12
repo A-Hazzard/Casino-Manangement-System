@@ -9,7 +9,7 @@
 
 import VaultAddCashModal from '@/components/VAULT/overview/modals/VaultAddCashModal';
 import VaultCloseShiftModal from '@/components/VAULT/overview/modals/VaultCloseShiftModal';
-import VaultCollectionModal from '@/components/VAULT/overview/modals/VaultCollectionModal';
+import VaultCollectionWizardModal from '@/components/VAULT/overview/modals/VaultCollectionWizardModal';
 import VaultInitializeModal from '@/components/VAULT/overview/modals/VaultInitializeModal';
 import VaultReconcileModal from '@/components/VAULT/overview/modals/VaultReconcileModal';
 import VaultRecordExpenseModal from '@/components/VAULT/overview/modals/VaultRecordExpenseModal';
@@ -45,6 +45,8 @@ type VaultModalsProps = {
   isInitial: boolean;
   canCloseVault: boolean;
   closeVaultBlockReason?: string;
+  currentVaultShiftId?: string;
+  currentLocationId?: string;
 };
 
 export default function VaultModals({
@@ -58,6 +60,8 @@ export default function VaultModals({
   isInitial = false,
   canCloseVault,
   closeVaultBlockReason,
+  currentVaultShiftId,
+  currentLocationId,
 }: VaultModalsProps) {
   return (
     <>
@@ -93,11 +97,13 @@ export default function VaultModals({
         expectedDenominations={currentDenominations}
         isInitial={isInitial}
       />
-      <VaultCollectionModal
+      <VaultCollectionWizardModal
         open={modals.collection}
         onClose={() => onClose('collection')}
-        onConfirm={(machineId, amount, denominations) => onConfirm('collection', { machineId, amount, denominations })}
+        onConfirm={() => onConfirm('collection', { success: true })}
         machines={machines}
+        currentVaultShiftId={currentVaultShiftId}
+        currentLocationId={currentLocationId}
       />
       <VaultSoftCountModal
         open={modals.softCount}

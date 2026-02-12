@@ -34,17 +34,15 @@ import type { Denomination, ExpenseCategory } from '@/shared/types/vault';
 import {
     Briefcase,
     Calendar as CalendarIcon,
-    Camera,
     FileText,
     Lightbulb,
     Receipt,
     RefreshCw,
     ShieldCheck,
     Tag,
-    Upload,
     Wrench
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 type VaultRecordExpenseModalProps = {
@@ -57,7 +55,6 @@ type VaultRecordExpenseModalProps = {
     denominations: Denomination[];
     description: string;
     date: Date;
-    file?: File;
   }) => Promise<void>;
 };
 
@@ -90,10 +87,7 @@ export default function VaultRecordExpenseModal({
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // File Upload State
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   // ============================================================================
   // Computed Values
@@ -116,38 +110,7 @@ export default function VaultRecordExpenseModal({
   // Event Handlers
   // ============================================================================
   
-  // File Upload Handlers
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  };
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  };
-
-  const handleChooseFileClick = () => {
-    fileInputRef.current?.click();
-  };
 
   /**
    * Handle form submission
@@ -199,7 +162,6 @@ export default function VaultRecordExpenseModal({
         denominations, // Pass all denominations (including 0s, backend can filter if needed or we filter here)
         description: description.trim(),
         date,
-        file: selectedFile || undefined,
       });
       handleReset();
       onClose();
@@ -226,8 +188,7 @@ export default function VaultRecordExpenseModal({
     setDescription('');
     setDate(new Date());
     setErrors({});
-    setSelectedFile(null);
-    setDragActive(false);
+    setErrors({});
   };
 
   /**
@@ -326,14 +287,14 @@ export default function VaultRecordExpenseModal({
               </div>
 
               {/* Summary Card */}
-              <div className="bg-gradient-to-br from-gray-900 to-violet-900 rounded-2xl p-5 shadow-xl shadow-violet-900/10">
-                <div className="flex items-center justify-between mb-4">
-                   <span className="text-[10px] font-black uppercase tracking-widest text-violet-200 opacity-60">Payout Value</span>
-                   <Receipt className="h-4 w-4 text-violet-400" />
+              <div className="rounded-2xl p-5 bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100 shadow-sm text-violet-900">
+                <div className="flex items-center justify-between mb-2">
+                   <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">Payout Value</span>
+                   <Receipt className="h-4 w-4 text-violet-500" />
                 </div>
                 <div className="space-y-0.5">
-                   <span className="text-3xl font-black text-white tracking-tight">{formatAmount(amountNum)}</span>
-                   <p className="text-[10px] text-violet-200/50 font-bold uppercase tracking-tight">Total Expense Amount</p>
+                   <span className="text-3xl font-black tracking-tight text-violet-700">{formatAmount(amountNum)}</span>
+                   <p className="text-[10px] text-violet-600/60 font-bold uppercase tracking-tight">Total Expense Amount</p>
                 </div>
               </div>
             </div>
@@ -355,67 +316,7 @@ export default function VaultRecordExpenseModal({
                 />
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">
-                  Receipt Attachment
-                </Label>
-                <div
-                  className={cn(
-                    "relative rounded-2xl border-2 border-dashed p-6 text-center transition-all cursor-pointer group",
-                    dragActive
-                      ? 'border-violet-500 bg-violet-50/50 shadow-inner'
-                      : 'border-gray-200 hover:border-violet-300 hover:bg-violet-50/10 bg-gray-50/30'
-                  )}
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                  onClick={handleChooseFileClick}
-                >
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept="image/*,application/pdf"
-                  />
 
-                  {selectedFile ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-violet-600">
-                        <Upload className="h-6 w-6" />
-                      </div>
-                      <div className="truncate text-sm font-bold text-gray-700 max-w-[240px]">
-                        {selectedFile.name}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedFile(null);
-                        }}
-                        className="text-red-500 hover:text-red-600 font-black uppercase text-[10px]"
-                      >
-                        Remove Attachment
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 group-hover:scale-105 transition-transform duration-200">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm border border-gray-100">
-                        <Camera className="h-6 w-6 text-violet-500" />
-                      </div>
-                      <div className="text-sm font-bold text-gray-500">
-                        Drop receipt <span className="text-violet-600">here</span> or <span className="text-violet-600">click</span>
-                      </div>
-                      <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                        IMAGES OR PDF • MAX 10MB
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
         </div>

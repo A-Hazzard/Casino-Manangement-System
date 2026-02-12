@@ -51,7 +51,11 @@ Licencee (licencee.ts)
 │   ├── FloatRequest (floatRequest.ts)
 │   ├── Payout (payout.ts)
 │   ├── VaultTransaction (vaultTransaction.ts) - Ledger
-│   └── VaultNotification (vaultNotification.ts)
+│   ├── VaultNotification (vaultNotification.ts)
+│   ├── VaultCollectionSession (vault-collection-session.ts) - Draft collections
+│   ├── MachineCollection (machineCollection.ts) - Finalized collection records
+│   ├── SoftCount (softCount.ts) - Soft count records
+│   └── InterLocationTransfer (interLocationTransfer.ts) - Cash transfers
 └── Firmware (firmware.ts) - Firmware management
 ```
 

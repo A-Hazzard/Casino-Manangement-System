@@ -20,7 +20,6 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
-import DateFilters from '@/components/shared/ui/common/DateFilters';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { SessionEventsPageSkeleton } from '@/components/shared/ui/skeletons/SessionsSkeletons';
@@ -123,28 +122,6 @@ export function SessionsEventsPageContent({
           page: page.toString(),
           limit: '10',
         };
-
-        // Handle date filtering - use startDate/endDate for Custom, timePeriod for others
-        if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
-          const startDate = customDateRange.startDate instanceof Date
-            ? customDateRange.startDate
-            : new Date(customDateRange.startDate);
-          const endDate = customDateRange.endDate instanceof Date
-            ? customDateRange.endDate
-            : new Date(customDateRange.endDate);
-          params.startDate = startDate.toISOString().split('T')[0];
-          params.endDate = endDate.toISOString().split('T')[0];
-        } else if (activeMetricsFilter && activeMetricsFilter !== 'All Time') {
-          // Map dashboard filter values to API timePeriod values
-          const timePeriodMap: Record<string, string> = {
-            'Today': 'today',
-            'Yesterday': 'yesterday',
-            '7d': '7d',
-            '30d': '30d',
-          };
-          const apiTimePeriod = timePeriodMap[activeMetricsFilter] || activeMetricsFilter.toLowerCase();
-          params.timePeriod = apiTimePeriod;
-        }
 
         // Fetch session info and events in parallel
         const [sessionRes, eventsRes] = await Promise.all([
@@ -575,16 +552,6 @@ export function SessionsEventsPageContent({
             <>
               {/* Member Location Settings Section */}
               {renderLocationSettings()}
-
-              {/* Filter Section */}
-              <Card className="border-none bg-transparent shadow-none">
-                <DateFilters 
-                  onCustomRangeGo={handleRefresh} 
-                  hideAllTime={false}
-                  mode="auto"
-                  hideIndicator
-                />
-              </Card>
 
               {/* Error Display */}
               {error && (

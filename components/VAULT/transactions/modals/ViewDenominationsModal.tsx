@@ -1,19 +1,12 @@
-import { Card, CardContent } from '@/components/shared/ui/card';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
 } from '@/components/shared/ui/dialog';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/shared/ui/table';
+import { cn } from '@/lib/utils';
 import type { Denomination } from '@/shared/types/vault';
+import { Coins, Receipt } from 'lucide-react';
 
 type ViewDenominationsModalProps = {
   open: boolean;
@@ -30,62 +23,51 @@ export default function ViewDenominationsModal({
 }: ViewDenominationsModalProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Denomination Breakdown</DialogTitle>
+      <DialogContent className="max-w-md p-0 overflow-hidden">
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+          <DialogTitle className="flex items-center gap-2 text-violet-900">
+            <Coins className="h-5 w-5 text-violet-600" />
+            Denomination Breakdown
+          </DialogTitle>
         </DialogHeader>
 
-        {/* Desktop Table View */}
-        <div className="hidden sm:block">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Denomination</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {denominations.map((denom) => (
-                <TableRow key={denom.denomination}>
-                  <TableCell>${denom.denomination}</TableCell>
-                  <TableCell className="text-right">{denom.quantity}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    ${(denom.denomination * denom.quantity).toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))}
-              <TableRow className="bg-muted/50 font-bold">
-                <TableCell colSpan={2}>Total Amount</TableCell>
-                <TableCell className="text-right">
-                  ${totalAmount.toLocaleString()}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
+        <div className="max-h-[75vh] overflow-y-auto p-6 space-y-6 custom-scrollbar">
+          <div className="grid grid-cols-2 gap-3">
+            {denominations.map((d) => (
+              <div 
+                key={d.denomination} 
+                className={cn(
+                  "flex items-center justify-between p-3 rounded-xl border transition-all",
+                  d.quantity > 0 ? "bg-white border-violet-100 shadow-sm" : "bg-gray-50/50 border-gray-100 opacity-60"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 font-black text-[10px]",
+                    d.quantity > 0 ? "text-violet-600 border border-violet-100" : "text-gray-400 border border-transparent"
+                  )}>
+                    ${d.denomination}
+                  </div>
+                  <span className="text-[10px] font-black uppercase text-gray-400">Bills</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-black text-gray-900 leading-none">x{d.quantity}</span>
+                </div>
+              </div>
+            ))}
+          </div>
 
-        {/* Mobile Card View */}
-        <div className="sm:hidden space-y-3 max-h-[60vh] overflow-y-auto p-1">
-          {denominations.map((denom) => (
-            <Card key={denom.denomination} className="bg-card">
-              <CardContent className="p-4 flex justify-between items-center">
-                <div className="flex flex-col">
-                  <span className="text-sm text-muted-foreground">Bill Value</span>
-                  <span className="font-bold text-lg">${denom.denomination}</span>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-sm text-muted-foreground">Count: {denom.quantity}</span>
-                  <span className="font-bold text-lg">
-                    ${(denom.denomination * denom.quantity).toLocaleString()}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          <div className="rounded-lg bg-muted p-4 flex justify-between items-center mt-4">
-            <span className="font-bold">Total Amount</span>
-            <span className="font-bold text-xl">${totalAmount.toLocaleString()}</span>
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 p-5 shadow-xl shadow-violet-500/20 text-white">
+            <div className="relative z-10 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-violet-100/60 mb-0.5">Verified Total Balance</p>
+                <span className="text-3xl font-black tracking-tight">${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
+                <Receipt className="h-6 w-6 text-violet-100" />
+              </div>
+            </div>
+            <Coins className="absolute -right-4 -bottom-4 h-20 w-20 text-white/5 rotate-12" />
           </div>
         </div>
       </DialogContent>

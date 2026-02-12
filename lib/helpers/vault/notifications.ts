@@ -7,9 +7,9 @@
  */
 
 import VaultNotificationModel, {
-  type IVaultNotification,
-  type NotificationStatus,
-  type NotificationType,
+    type IVaultNotification,
+    type NotificationStatus,
+    type NotificationType,
 } from '@/app/api/lib/models/vaultNotification';
 import type { FloatRequest } from '@/shared/types/vault';
 
@@ -25,13 +25,25 @@ export async function createFloatRequestNotification(
   cashierName: string,
   vaultManagerId: string
 ): Promise<IVaultNotification> {
+  // Determine specific title based on type and if it's initial
+  let title = `Float Request from ${cashierName}`;
+  const isInitial = floatRequest.requestNotes === 'Initial shift float' || !floatRequest.type;
+  
+  if (isInitial) {
+    title = `Cashdesk Start Day Float Request - ${cashierName}`;
+  } else if (floatRequest.type === 'increase') {
+    title = `Float Increase Request - ${cashierName}`;
+  } else if (floatRequest.type === 'decrease') {
+    title = `Float Return Request - ${cashierName}`;
+  }
+
   const notification = await VaultNotificationModel.create({
     locationId: floatRequest.locationId,
     type: 'float_request' as NotificationType,
     recipientId: vaultManagerId,
     recipientRole: 'vault-manager',
-    title: `Float Request from ${cashierName}`,
-    message: `${cashierName} has requested a ${floatRequest.type} of TT$${floatRequest.requestedAmount.toFixed(2)}`,
+    title,
+    message: `${cashierName} has requested a ${floatRequest.type || 'float'} of TT$${floatRequest.requestedAmount.toFixed(2)}`,
     urgent: floatRequest.requestedAmount > 5000, // Mark large requests as urgent
     relatedEntityType: 'float_request',
     relatedEntityId: floatRequest._id,
@@ -39,8 +51,9 @@ export async function createFloatRequestNotification(
       cashierId: floatRequest.cashierId,
       cashierName,
       requestedAmount: floatRequest.requestedAmount,
-      requestType: floatRequest.type,
+      requestType: floatRequest.type || 'increase',
       requestedDenominations: floatRequest.requestedDenominations,
+      entityStatus: floatRequest.status,
     },
     status: 'unread',
     actionUrl: `/vault/management?floatRequestId=${floatRequest._id}`,

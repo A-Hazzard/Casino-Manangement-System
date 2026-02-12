@@ -10,7 +10,7 @@
 // ============================================================================
 
 export type Denomination = {
-  denomination: 1 | 5 | 10 | 20 | 50 | 100;
+  denomination: 1 | 2 | 5 | 10 | 20 | 50 | 100;
   quantity: number;
 };
 
@@ -25,6 +25,7 @@ export type DenominationBreakdown = {
   twenty: number;
   ten: number;
   five: number;
+  two: number;
   one: number;
 };
 
@@ -544,6 +545,7 @@ export type UnbalancedShiftInfo = {
   cashierName: string;
   expectedBalance: number;
   enteredBalance: number;
+  enteredDenominations: Denomination[];
   discrepancy: number;
   closedAt: Date;
 };

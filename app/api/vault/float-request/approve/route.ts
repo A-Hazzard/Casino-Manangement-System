@@ -185,9 +185,9 @@ export async function POST(request: NextRequest) {
       }
 
       // === 2. Validate Vault Balance (if money leaving vault) ===
-      const isMoneyLeavingVault = (floatRequest.type === 'increase' || !floatRequest.type); 
+      const isOutflow = (floatRequest.type === 'increase' || !floatRequest.type); 
       
-      if (isMoneyLeavingVault) {
+      if (isOutflow) {
         const { validateVaultDenominations, validateVaultBalance } = await import('@/lib/helpers/vault/validation');
         const balanceCheck = validateVaultBalance(finalAmount, currentVaultBalance);
         if (!balanceCheck.valid) {
@@ -210,7 +210,34 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // SET INTERMEDIATE STATUS
+      // Save the updates (approved denominations, etc) before potentially auto-finalizing
+      await floatRequest.save();
+
+      // STEP 6: Determine next status
+      // If it's a DECREASE (Return), the VM is the final word, so we can finalize it NOW.
+      // If it's an INCREASE/START, the Cashier must still confirm receipt.
+      const isDecrease = floatRequest.type === 'decrease';
+
+      if (isDecrease) {
+        // AUTO-CONFIRM FOR RETURNS
+        const { finalizeFloatRequest } = await import('@/app/api/lib/helpers/vault/finalizeFloat');
+        
+        const result = await finalizeFloatRequest(
+          requestId,
+          vmUserId,
+          vmUsername,
+          `Return automatically finalized upon VM ${status === 'approved' ? 'approval' : 'edit'}`
+        );
+
+        return NextResponse.json({
+          success: true,
+          status: 'approved',
+          floatRequest: result.floatRequest.toObject(),
+          cashierShift: result.cashierShift.toObject(),
+        });
+      }
+
+      // SET INTERMEDIATE STATUS FOR INCREASES
       floatRequest.status = 'approved_vm';
 
       if (floatRequest.auditLog) {
@@ -224,6 +251,17 @@ export async function POST(request: NextRequest) {
       }
       
       await floatRequest.save();
+
+      // Mark notification as having new status in metadata
+      try {
+        const VaultNotificationModel = (await import('@/app/api/lib/models/vaultNotification')).default;
+        await VaultNotificationModel.updateMany(
+            { relatedEntityId: requestId, relatedEntityType: 'float_request' },
+            { $set: { 'metadata.entityStatus': 'approved_vm' } }
+        );
+      } catch (notifError) {
+        console.error('Failed to update notification metadata:', notifError);
+      }
 
       // AUDIT LOG
       await logActivity({

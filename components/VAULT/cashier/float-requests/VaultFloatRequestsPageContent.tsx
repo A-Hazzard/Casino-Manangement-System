@@ -13,6 +13,7 @@
 
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import { useUserStore } from '@/lib/store/userStore';
 import { CheckCircle2, Clock, Loader2, RefreshCw } from 'lucide-react';
@@ -28,6 +29,12 @@ export default function VaultFloatRequestsPageContent() {
   const [refreshing, setRefreshing] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [requestHistory, setRequestHistory] = useState<any[]>([]);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const ITEMS_PER_PAGE = 20;
 
   // Sort states
   const [pendingSortOption, setPendingSortOption] = useState<FloatRequestSortOption>('requested');
@@ -45,7 +52,7 @@ export default function VaultFloatRequestsPageContent() {
     try {
         const [pendingRes, historyRes] = await Promise.all([
             fetch(`/api/vault/float-request?locationId=${locationId}&status=pending`),
-            fetch(`/api/vault/float-request?locationId=${locationId}&status=all&limit=50`)
+            fetch(`/api/vault/float-request?locationId=${locationId}&status=all&limit=${ITEMS_PER_PAGE}&page=${currentPage + 1}`)
         ]);
 
         if (pendingRes.ok) {
@@ -59,8 +66,18 @@ export default function VaultFloatRequestsPageContent() {
             const data = await historyRes.json();
             if (data.success) {
                 // Filter out pending from history to avoid duplication if API returns them in 'all'
-                const history = (data.data || []).filter((r: any) => r.status !== 'pending');
-                setRequestHistory(mapRequests(history));
+                const historyRaw = data.data || [];
+                const historyFiltered = historyRaw.filter((r: any) => r.status !== 'pending');
+                setRequestHistory(mapRequests(historyFiltered));
+                
+                // Handle pagination info from API if available, otherwise estimate
+                if (data.pagination) {
+                    setTotalPages(data.pagination.totalPages || 1);
+                    setTotalItems(data.pagination.totalItems || historyFiltered.length);
+                } else if (data.total) { // Alternate structure
+                    setTotalItems(data.total);
+                    setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
+                }
             }
         }
 
@@ -92,7 +109,7 @@ export default function VaultFloatRequestsPageContent() {
 
   useEffect(() => {
     fetchRequests();
-  }, [user?.assignedLocations]);
+  }, [user?.assignedLocations, currentPage]);
 
   // Actions
   const handleApprove = async (requestId: string) => {
@@ -200,6 +217,7 @@ export default function VaultFloatRequestsPageContent() {
           description="Review and process cashier float adjustment requests"
           backHref="/vault/management"
           onFloatActionComplete={() => fetchRequests(true)}
+          showNotificationBell={false}
         >
           <Button
             onClick={() => fetchRequests(true)}
@@ -254,7 +272,17 @@ export default function VaultFloatRequestsPageContent() {
           showHistory={true}
         />
 
-
+        {totalPages > 1 && (
+            <div className="mt-4">
+                <PaginationControls 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    setCurrentPage={setCurrentPage}
+                    totalCount={totalItems}
+                    limit={ITEMS_PER_PAGE}
+                />
+            </div>
+        )}
       </div>
       </div>
     </PageLayout>

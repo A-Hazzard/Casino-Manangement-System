@@ -17,6 +17,7 @@ import {
 } from '@/components/shared/ui/dialog';
 import type { GamingMachine } from '@/shared/types/entities';
 import type { Denomination } from '@/shared/types/vault';
+import { RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
 type VaultSoftCountModalProps = {
@@ -59,15 +60,18 @@ export default function VaultSoftCountModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Soft Count</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-xl p-0 overflow-hidden">
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+          <DialogTitle className="flex items-center gap-2 text-violet-900">
+            <RefreshCw className="h-5 w-5 text-violet-600" />
+            Soft Count
+          </DialogTitle>
+          <DialogDescription className="text-violet-700/80">
             Record mid-day cash removal from a machine.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="py-2">
+        <div className="max-h-[75vh] overflow-y-auto p-6 custom-scrollbar">
             <SoftCountForm onSubmit={handleSubmit} loading={loading} machines={machines} />
         </div>
       </DialogContent>

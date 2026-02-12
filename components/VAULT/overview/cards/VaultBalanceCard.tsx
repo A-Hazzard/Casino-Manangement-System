@@ -13,6 +13,7 @@
  */
 'use client';
 
+import DebugSection from '@/components/shared/debug/DebugSection';
 import { Button } from '@/components/shared/ui/button';
 import {
     Card,
@@ -45,9 +46,12 @@ export default function VaultBalanceCard({
   return (
     <Card className="w-full rounded-lg bg-container shadow-md">
       <CardHeader className="flex flex-col gap-4 pb-2 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-lg text-gray-700 sm:text-xl">
-          Vault Status
-        </CardTitle>
+        <div className="flex items-center gap-3">
+          <CardTitle className="text-lg text-gray-700 sm:text-xl">
+            Vault Status
+          </CardTitle>
+          <DebugSection title="Vault Balance Data" data={balance} />
+        </div>
         {onReconcile && (
           <Button
             variant="outline"

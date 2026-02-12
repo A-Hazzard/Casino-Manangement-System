@@ -12,11 +12,13 @@
  */
 'use client';
 
+import DebugSection from '@/components/shared/debug/DebugSection';
 import { Badge } from '@/components/shared/ui/badge';
 import VaultTransactionsTable from '@/components/VAULT/transactions/tables/VaultTransactionsTable';
+import { formatActivityType } from '@/lib/utils/formatters';
 import type {
-  VaultTransaction,
-  VaultTransactionType,
+    VaultTransaction,
+    VaultTransactionType,
 } from '@/shared/types/vault';
 import { ArrowDown, ArrowUp, Receipt } from 'lucide-react';
 
@@ -60,7 +62,7 @@ function getTransactionTypeBadge(type: VaultTransactionType) {
       </Badge>
     );
   }
-  return <Badge>{type}</Badge>;
+  return <Badge>{formatActivityType(type)}</Badge>;
 }
 
 export default function VaultRecentActivitySection({
@@ -71,8 +73,11 @@ export default function VaultRecentActivitySection({
   // ============================================================================
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+        </div>
+        <DebugSection title="Recent Activity Data" data={transactions} />
       </div>
 
       <VaultTransactionsTable

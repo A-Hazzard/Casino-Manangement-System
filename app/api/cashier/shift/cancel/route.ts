@@ -37,70 +37,100 @@ export async function POST(_request: NextRequest) {
     // STEP 2: Connect to DB
     await connectDB();
 
-    // STEP 3: Find the pending shift for this cashier
+    // STEP 3: Find the pending or review shift for this cashier
     const pendingShift = await CashierShiftModel.findOne({
       cashierId: userId,
-      status: 'pending_start'
+      status: { $in: ['pending_start', 'pending_review'] }
     });
 
     if (!pendingShift) {
       return NextResponse.json(
-        { success: false, error: 'No pending shift request found to cancel' },
+        { success: false, error: 'No cancellable shift request found' },
         { status: 404 }
       );
     }
 
     const shiftId = pendingShift._id;
     const locationId = pendingShift.locationId;
+    const currentStatus = pendingShift.status;
 
-    // STEP 4: Find and delete associated float request
-    const floatRequest = await FloatRequestModel.findOne({
-      cashierShiftId: shiftId,
-      status: 'pending'
-    });
+    // STEP 4: Handle based on status
+    if (currentStatus === 'pending_start') {
+      // Find and handle associated float request
+      const floatRequest = await FloatRequestModel.findOne({
+        cashierShiftId: shiftId,
+        status: 'pending'
+      });
 
-    if (floatRequest) {
-      // Mark notification as actioned (cancelled)
-      try {
-        await markNotificationAsCancelledByEntity(floatRequest._id, 'float_request');
-      } catch (notifError) {
-        console.error('Failed to update notification status during cancel:', notifError);
+      if (floatRequest) {
+        // Mark notification as actioned (cancelled)
+        try {
+          await markNotificationAsCancelledByEntity(floatRequest._id, 'float_request');
+        } catch (notifError) {
+          console.error('Failed to update notification status during cancel:', notifError);
+        }
+
+        await FloatRequestModel.updateOne({ _id: floatRequest._id }, { 
+          status: 'cancelled',
+          updatedAt: new Date(),
+          vmNotes: 'Request cancelled by cashier',
+          $push: {
+            auditLog: {
+              action: 'cancelled',
+              performedBy: userId,
+              timestamp: new Date(),
+              notes: 'Cancelled by cashier'
+            }
+          }
+        });
       }
 
-      await FloatRequestModel.updateOne({ _id: floatRequest._id }, { 
+      // Update the pending shift to cancelled
+      await CashierShiftModel.updateOne({ _id: shiftId }, { 
         status: 'cancelled',
+        closedAt: new Date(),
+        notes: 'Shift opening request cancelled by cashier'
+      });
+
+      // Audit Activity
+      await logActivity({
+        userId,
+        username,
+        action: 'cancel',
+        details: `Cashier shift opening request cancelled by cashier`,
+        metadata: {
+          resource: 'cashier_shift', resourceId: shiftId, locationId, type: 'open_request'
+        }
+      });
+    } else if (currentStatus === 'pending_review') {
+      // Revert to Active
+      await CashierShiftModel.updateOne({ _id: shiftId }, { 
+        status: 'active',
+        cashierEnteredBalance: undefined,
+        cashierEnteredDenominations: [],
+        closedAt: undefined,
         updatedAt: new Date(),
-        vmNotes: 'Request cancelled by cashier',
-        $push: {
-          auditLog: {
-            action: 'cancelled',
-            performedBy: userId,
-            timestamp: new Date(),
-            notes: 'Cancelled by cashier'
-          }
+        $set: { notes: 'Close request cancelled by cashier' }
+      });
+
+      // Mark Shift Review Notification as cancelled
+      try {
+        await markNotificationAsCancelledByEntity(shiftId, 'shift_review');
+      } catch (notifError) {
+        console.error('Failed to update shift review notification during cancel:', notifError);
+      }
+
+      // Audit Activity
+      await logActivity({
+        userId,
+        username,
+        action: 'cancel',
+        details: `Cashier shift close request (pending review) cancelled by cashier. Reverted to active.`,
+        metadata: {
+          resource: 'cashier_shift', resourceId: shiftId, locationId, type: 'close_request'
         }
       });
     }
-
-    // STEP 5: Update the pending shift to cancelled
-    await CashierShiftModel.updateOne({ _id: shiftId }, { 
-      status: 'cancelled',
-      closedAt: new Date(),
-      notes: 'Shift opening request cancelled by cashier'
-    });
-
-    // STEP 6: Audit Activity
-    await logActivity({
-      userId,
-      username,
-      action: 'cancel',
-      details: `Cashier shift opening request cancelled by cashier`,
-      metadata: {
-        resource: 'cashier_shift',
-        resourceId: shiftId,
-        locationId
-      }
-    });
 
     return NextResponse.json({
       success: true,

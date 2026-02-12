@@ -273,72 +273,74 @@ export default function VaultTransactionsPageContent() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="rounded-lg bg-container shadow-md">
-            <CardContent className="p-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Card className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Total Transactions
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">
+                    Transactions
                   </p>
-                  <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">
+                  <p className="text-lg font-black text-gray-900 sm:text-xl">
                     {summaryMetrics.totalTransactions}
                   </p>
                 </div>
-                <FileText className="h-8 w-8 text-gray-400" />
+                <div className="h-8 w-8 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:bg-violet-50 group-hover:border-violet-100 transition-colors">
+                  <FileText className="h-4 w-4 text-gray-400 group-hover:text-violet-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="rounded-lg bg-container shadow-md">
-            <CardContent className="p-6">
+          <Card className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">
                     Total Inflow
                   </p>
-                  <p className="break-words text-xl font-bold text-button sm:text-2xl">
+                  <p className="text-lg font-black text-emerald-600 sm:text-xl">
                     {formatAmount(summaryMetrics.totalInflow)}
                   </p>
                 </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-button/10">
-                  <ArrowUp className="h-5 w-5 text-button" />
+                <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center border border-emerald-100 group-hover:bg-emerald-100 transition-colors">
+                  <ArrowUp className="h-4 w-4 text-emerald-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="rounded-lg bg-container shadow-md">
-            <CardContent className="p-6">
+          <Card className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none">
                     Total Outflow
                   </p>
-                  <p className="break-words text-xl font-bold text-orangeHighlight sm:text-2xl">
+                  <p className="text-lg font-black text-orange-600 sm:text-xl">
                     {formatAmount(summaryMetrics.totalOutflow)}
                   </p>
                 </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orangeHighlight/10">
-                  <ArrowDown className="h-5 w-5 text-orangeHighlight" />
+                <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center border border-orange-100 group-hover:bg-orange-100 transition-colors">
+                  <ArrowDown className="h-4 w-4 text-orange-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="rounded-lg bg-container shadow-md">
-            <CardContent className="p-6">
+          <Card className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-red-500 uppercase tracking-widest leading-none">
                     Total Expenses
                   </p>
-                  <p className="break-words text-xl font-bold text-red-600 sm:text-2xl">
+                  <p className="text-lg font-black text-red-600 sm:text-xl">
                     {formatAmount(summaryMetrics.totalExpenses)}
                   </p>
                 </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                  <Receipt className="h-5 w-5 text-red-600" />
+                <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center border border-red-100 group-hover:bg-red-100 transition-colors">
+                  <Receipt className="h-4 w-4 text-red-600" />
                 </div>
               </div>
             </CardContent>

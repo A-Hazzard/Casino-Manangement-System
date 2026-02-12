@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui
 import { Input } from '@/components/shared/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shared/ui/table';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatActivityType } from '@/lib/utils/formatters';
 import { History, Loader2, Search } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -156,7 +157,7 @@ export default function ActivityLogPanel({
                     </TableCell>
                     <TableCell>
                       <Badge className={getBadgeVariant(activity.type) === 'destructive' ? 'bg-red-100 text-red-700 hover:bg-red-100 border-none' : 'bg-blue-50 text-blue-700 hover:bg-blue-50 border-none'}>
-                        {activity.type.replace(/_/g, ' ').toUpperCase()}
+                        {formatActivityType(activity.type)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -193,7 +194,7 @@ export default function ActivityLogPanel({
                         {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                      </span>
                      <Badge className={getBadgeVariant(activity.type) === 'destructive' ? 'bg-red-100 text-red-700 hover:bg-red-100 border-none text-[10px]' : 'bg-blue-50 text-blue-700 hover:bg-blue-50 border-none text-[10px]'}>
-                        {activity.type.replace(/_/g, ' ').toUpperCase()}
+                        {formatActivityType(activity.type)}
                      </Badge>
                   </div>
                   <div className="flex items-center justify-between gap-2 border-t border-gray-50 pt-2">

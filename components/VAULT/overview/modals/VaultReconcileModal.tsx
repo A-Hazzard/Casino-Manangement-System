@@ -11,8 +11,9 @@ import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { cn } from '@/lib/utils';
 import type { Denomination } from '@/shared/types/vault';
-import { Info } from 'lucide-react';
+import { Info, Landmark, RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 type VaultReconcileModalProps = {
@@ -102,121 +103,142 @@ export default function VaultReconcileModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Vault Reconciliation Audit</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-4xl p-0 overflow-hidden">
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+          <DialogTitle className="flex items-center gap-2 text-violet-900">
+            <Landmark className="h-5 w-5 text-violet-600" />
+            Vault Reconciliation Audit
+          </DialogTitle>
+          <DialogDescription className="text-violet-700/80">
             Compare your physical cash count against system records. Any adjustments will be strictly audited.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 gap-8 py-4 lg:grid-cols-5">
-          {/* Left: Denomination Grid */}
-          <div className="lg:col-span-3 space-y-4">
-             <div className="hidden sm:grid grid-cols-5 gap-2 px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-               <div className="col-span-1">Bill</div>
-               <div className="col-span-2 text-center">System Count</div>
-               <div className="col-span-2 text-center">Physical Count</div>
-             </div>
+        <div className="max-h-[75vh] overflow-y-auto p-6 space-y-8 custom-scrollbar">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+            {/* Left: Denomination Grid */}
+            <div className="lg:col-span-3 space-y-4">
+               <div className="hidden sm:grid grid-cols-5 gap-2 px-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                 <div className="col-span-1">Bill</div>
+                 <div className="col-span-2 text-center">System Count</div>
+                 <div className="col-span-2 text-center">Physical Count</div>
+               </div>
 
-             <div className="space-y-3 sm:space-y-2">
-               {DENOMINATIONS.map(denom => {
-                 const systemQty = getSystemQuantity(denom);
-                 const physicalQty = breakdown[denom];
-                 const isDifferent = systemQty !== physicalQty;
+               <div className="space-y-3 sm:space-y-2">
+                 {DENOMINATIONS.map(denom => {
+                   const systemQty = getSystemQuantity(denom);
+                   const physicalQty = breakdown[denom];
+                   const isDifferent = systemQty !== physicalQty;
 
-                 return (
-                   <div key={denom} className={`flex flex-col sm:grid sm:grid-cols-5 sm:items-center gap-3 sm:gap-2 rounded-lg border p-3 sm:p-2 ${isDifferent ? 'border-amber-200 bg-amber-50/30' : 'border-gray-100'}`}>
-                     {/* Mobile Header */}
-                     <div className="flex items-center justify-between sm:block">
-                        <div className="text-sm font-bold text-gray-900 sm:text-gray-700">${denom} Bill</div>
-                        <div className="sm:hidden flex items-center gap-2">
-                           <span className="text-[10px] font-bold text-gray-400 uppercase">System:</span>
-                           <span className="text-sm font-mono font-bold text-gray-600">{systemQty}</span>
-                        </div>
+                   return (
+                     <div key={denom} className={cn(
+                        "flex flex-col sm:grid sm:grid-cols-5 sm:items-center gap-3 sm:gap-2 rounded-xl border p-3 transition-all duration-200",
+                        isDifferent ? 'border-amber-200 bg-amber-50/30 ring-1 ring-amber-100' : 'border-gray-100 bg-gray-50/10'
+                     )}>
+                       {/* Mobile Header */}
+                       <div className="flex items-center justify-between sm:block">
+                          <div className="text-sm font-black text-gray-900 uppercase tracking-tight sm:text-gray-700">${denom} Bill</div>
+                          <div className="sm:hidden flex items-center gap-2">
+                             <span className="text-[10px] font-black text-gray-400 uppercase">System:</span>
+                             <span className="text-sm font-bold text-gray-600">{systemQty}</span>
+                          </div>
+                       </div>
+                       
+                       {/* System Count (Desktop) */}
+                       <div className="hidden sm:flex col-span-2 justify-center">
+                          <div className="w-full rounded-lg bg-white border border-gray-100 px-3 py-2 text-center text-sm font-bold text-gray-500 shadow-sm">
+                            {systemQty}
+                          </div>
+                       </div>
+
+                       {/* Physical Input */}
+                       <div className="sm:col-span-2 flex flex-col sm:flex-row items-center gap-2">
+                          <span className="sm:hidden text-[10px] font-black text-gray-400 uppercase self-start">Physical Count:</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={breakdown[denom] || ''}
+                            onChange={e => handleQuantityChange(denom, e.target.value)}
+                            className={cn(
+                                "text-center font-black h-11 sm:h-9 rounded-lg bg-white border-2 transition-all",
+                                isDifferent ? 'border-amber-400 focus-visible:ring-amber-400/30' : 'border-gray-100 focus-visible:ring-violet-500/30'
+                            )}
+                            placeholder="0"
+                          />
+                       </div>
                      </div>
-                     
-                     {/* System Count (Desktop) */}
-                     <div className="hidden sm:flex col-span-2 justify-center">
-                        <div className="w-full rounded bg-gray-100 px-3 py-2 text-center text-sm font-mono font-medium text-gray-600">
-                          {systemQty}
-                        </div>
-                     </div>
+                   );
+                 })}
+               </div>
 
-                     {/* Physical Input */}
-                     <div className="sm:col-span-2 flex flex-col sm:flex-row items-center gap-2">
-                        <span className="sm:hidden text-[10px] font-bold text-gray-400 uppercase self-start">Physical Count:</span>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={breakdown[denom] || ''}
-                          onChange={e => handleQuantityChange(denom, e.target.value)}
-                          className={`text-center font-mono font-bold h-11 sm:h-9 ${isDifferent ? 'border-amber-400 focus-visible:ring-amber-400' : ''}`}
-                          placeholder="0"
-                        />
-                     </div>
-                   </div>
-                 );
-               })}
-             </div>
+               <div className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 p-5 text-white shadow-xl shadow-violet-500/20 relative overflow-hidden">
+                  <div className="relative z-10">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-violet-100/60 mb-1">Total Physical Count</p>
+                    <p className="text-3xl font-black tracking-tight">{formatAmount(totalAmount)}</p>
+                  </div>
+                  <div className="relative z-10 h-12 w-12 shrink-0 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center">
+                     <Landmark className="h-6 w-6 text-violet-100" />
+                  </div>
+                  <Landmark className="absolute -right-4 -bottom-4 h-24 w-24 text-white/5 rotate-12" />
+               </div>
+            </div>
 
-             <div className="flex items-center justify-between rounded-xl bg-gray-900 p-4 text-white shadow-lg">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total Physical Count</p>
-                  <p className="text-2xl font-black">{formatAmount(totalAmount)}</p>
-                </div>
-                <div className="h-10 w-10 shrink-0 rounded-full bg-white/10 flex items-center justify-center">
-                   <Landmark className="h-5 w-5 text-gray-300" />
-                </div>
-             </div>
-          </div>
+            {/* Right: Summary & Audit */}
+            <div className="lg:col-span-2 space-y-6">
+               <div className="rounded-2xl border border-violet-100 bg-violet-50/30 p-5 space-y-4">
+                  <div className="flex justify-between items-center text-xs uppercase tracking-wider font-black text-gray-400">
+                     <span>System Ledger:</span>
+                     <span className="text-gray-900">{formatAmount(currentBalance)}</span>
+                  </div>
+                  <div className="pt-4 border-t border-violet-100 flex justify-between items-center">
+                     <span className="text-[11px] font-black uppercase tracking-widest text-violet-400">Variance:</span>
+                     <span className={cn(
+                        "text-xl font-black tracking-tight",
+                        variance === 0 ? "text-emerald-600" : variance > 0 ? "text-violet-600" : "text-red-600"
+                     )}>
+                        {variance > 0 ? '+' : ''}{formatAmount(variance)}
+                     </span>
+                  </div>
+               </div>
 
-          {/* Right: Summary & Audit */}
-          <div className="lg:col-span-2 space-y-5">
-             <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                   <span className="text-gray-500 font-medium">System Ledger:</span>
-                   <span className="font-mono font-bold text-gray-900">{formatAmount(currentBalance)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-200">
-                   <span className="text-gray-500 font-bold">Variance:</span>
-                   <span className={`font-mono font-black text-lg ${variance === 0 ? 'text-green-600' : variance > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                      {variance > 0 ? '+' : ''}{formatAmount(variance)}
-                   </span>
-                </div>
-             </div>
-
-             <div className="space-y-4">
-               <div className="space-y-2">
-                 <Label htmlFor="reason" className="text-xs font-bold uppercase text-gray-500">Adjustment Reason (10 char min)</Label>
+               <div className="space-y-3">
+                 <Label htmlFor="reason" className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">Adjustment Reason (10 char min)</Label>
                  <Textarea
                    id="reason"
                    placeholder="Detailed explanation for this audit event..."
                    value={reason}
                    onChange={e => setReason(e.target.value)}
                    rows={6}
-                   className={`bg-white resize-none ${reason.length > 0 && reason.length < 10 ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                   className={cn(
+                       "bg-gray-50/50 border-gray-100 rounded-2xl resize-none focus:bg-white transition-all text-sm border-2",
+                       reason.length > 0 && reason.length < 10 ? 'border-red-400 focus-visible:ring-red-400/30' : 'focus:border-violet-500/30'
+                   )}
                  />
                </div>
-             </div>
 
-             <div className="flex items-start gap-2 rounded-lg bg-blue-50/50 p-3 text-[11px] text-blue-700 border border-blue-100">
-                <Info className="h-4 w-4 shrink-0 mt-0.5" />
-                <p>Reconciliation updates the system "Source of Truth" to match your physical count. This is a non-reversible audit event.</p>
-             </div>
+               <div className="flex items-start gap-3 rounded-2xl bg-amber-50 p-4 text-[11px] text-amber-800 border border-amber-100/50">
+                  <Info className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                  <p className="font-medium leading-relaxed">Reconciliation updates the system "Source of Truth" to match your physical count. This is a non-reversible audit event.</p>
+               </div>
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="border-t pt-4">
-          <Button variant="ghost" onClick={onClose} disabled={loading}>
+        <DialogFooter className="p-4 bg-gray-50 border-t flex flex-col sm:flex-row gap-3">
+          <Button variant="ghost" onClick={onClose} disabled={loading} className="order-2 sm:order-1 font-bold text-gray-500">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={loading || reason.length < 10}
-            className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90 px-8 h-11 font-bold shadow-md shadow-orangeHighlight/20"
+            className="order-1 sm:order-2 flex-1 h-12 bg-violet-600 text-white hover:bg-violet-700 font-black text-base shadow-lg shadow-violet-600/20 active:scale-[0.98] transition-all rounded-xl"
           >
-            {loading ? 'Reconciling...' : 'Confirm Audit Adjustment'}
+            {loading ? (
+                <div className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Reconciling...
+                </div>
+            ) : 'Confirm Audit Adjustment'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -224,5 +246,4 @@ export default function VaultReconcileModal({
   );
 }
 
-import { Landmark } from 'lucide-react';
 

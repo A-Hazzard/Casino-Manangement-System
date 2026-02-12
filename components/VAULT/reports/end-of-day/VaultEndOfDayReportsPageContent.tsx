@@ -16,59 +16,67 @@
 
 'use client';
 
+import DebugSection from '@/components/shared/debug/DebugSection';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
+import { DatePicker } from '@/components/shared/ui/date-picker';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/shared/ui/dropdown-menu';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import VaultEndOfDayReportsSkeleton from '@/components/ui/skeletons/VaultEndOfDayReportsSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
-    DEFAULT_CASHIER_FLOATS,
-    DEFAULT_REPORT_DENOMINATIONS,
-    DEFAULT_REPORT_SLOTS,
-    DEFAULT_VAULT_BALANCE,
-    DEFAULT_VAULT_METRICS,
+  DEFAULT_CASHIER_FLOATS,
+  DEFAULT_REPORT_DENOMINATIONS,
+  DEFAULT_REPORT_SLOTS,
+  DEFAULT_VAULT_BALANCE,
+  DEFAULT_VAULT_METRICS,
 } from '@/components/VAULT/overview/data/defaults';
 import {
-    calculateEndOfDayMetrics,
-    fetchEndOfDayReportData,
+  calculateEndOfDayMetrics,
+  fetchEndOfDayReportData,
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type {
-    CashierFloat,
-    FloatRequest,
-    VaultMetrics,
+  CashierFloat,
+  FloatRequest,
+  VaultMetrics,
 } from '@/shared/types/vault';
+import { isSameDay } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
-    AlertTriangle,
-    Calendar,
-    CheckCircle2,
-    Download,
-    FileText,
-    Monitor,
-    Printer,
-    RefreshCw,
-    Users,
-    Wallet
+  AlertTriangle,
+  Calendar,
+  ChevronDown,
+  Download,
+  FileText,
+  Monitor,
+  RefreshCw,
+  Users,
+  Wallet
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
@@ -78,6 +86,7 @@ export default function VaultEndOfDayReportsPageContent() {
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { user, hasActiveVaultShift } = useUserStore();
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [reportGenerated, setReportGenerated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +119,7 @@ export default function VaultEndOfDayReportsPageContent() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchEndOfDayReportData(locationId);
+      const data = await fetchEndOfDayReportData(locationId, selectedDate);
       setReportData(data);
     } catch (err) {
       console.error('Failed to fetch report data:', err);
@@ -120,6 +129,13 @@ export default function VaultEndOfDayReportsPageContent() {
       setLoading(false);
     }
   };
+
+  // Auto-refresh when report parameters change
+  useEffect(() => {
+    if (reportGenerated && user?.assignedLocations?.[0]) {
+      fetchReportData();
+    }
+  }, [selectedDate, reportGenerated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ============================================================================
   // Computed Values
@@ -216,147 +232,164 @@ export default function VaultEndOfDayReportsPageContent() {
     }
   };
 
-  /**
-   * Handle print
-   */
-  const handlePrint = () => {
-    window.print();
-  };
+
 
   // ============================================================================
   // Render
   // ============================================================================
-  if (hasActiveVaultShift) {
-    return (
-      <PageLayout showHeader={false}>
-        <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
-          <Card className="w-full max-w-md rounded-lg bg-container shadow-md">
-            <CardContent className="flex flex-col items-center justify-center p-8 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orangeHighlight/10">
-                <AlertTriangle className="h-8 w-8 text-orangeHighlight" />
-              </div>
-              <h2 className="mb-2 text-xl font-bold text-gray-900">
-                Access Restricted
-              </h2>
-              <p className="mb-6 text-sm text-gray-600">
-                The End-of-Day Report is only available after the vault shift has been closed. Please close your shift to view this report.
-              </p>
-              <Button 
-                variant="outline" 
-                onClick={() => window.location.href = '/vault/management'}
-              >
-                Return to Dashboard
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </PageLayout>
-    );
-  }
-
-  if (!reportGenerated) {
-    return (
-      <PageLayout showHeader={false}>
-        <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
-          <Card className="w-full max-w-2xl rounded-lg bg-container shadow-md">
-            <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-              <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
-                <FileText className="h-10 w-10 text-gray-600" />
-              </div>
-              <h2 className="mb-2 text-2xl font-semibold text-gray-900">
-                Generate End-of-Day Report
-              </h2>
-              <p className="mb-8 text-sm text-gray-600">
-                This will compile today's closing float, slot machine counts,
-                and vault balance into a comprehensive report.
-              </p>
-              <Button
-                onClick={handleGenerateReport}
-                disabled={loading}
-                className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
-                size="lg"
-              >
-                <Calendar className="mr-2 h-5 w-5" />
-                {loading ? 'Generating...' : 'Generate Report'}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </PageLayout>
-    );
-  }
-
-  if (loading) {
-    return <VaultEndOfDayReportsSkeleton />;
-  }
-
-  if (error) {
-    return (
-      <PageLayout>
-        <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center space-y-4">
-          <div className="rounded-full bg-red-100 p-3">
-            <AlertTriangle className="h-10 w-10 text-red-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900">{error}</h2>
-          <Button onClick={fetchReportData} variant="outline">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Retry
-          </Button>
-        </div>
-      </PageLayout>
-    );
-  }
-
+  
+  // Only block access if the selected date is 'today' AND there is an active shift
+  // Using isSameDay to check if selectedDate is today
+  const isToday = selectedDate && isSameDay(selectedDate, new Date());
+  
   return (
     <PageLayout>
       <div className="space-y-6">
-        {/* Header */}
-        {/* Header */}
+        {/* Header - Always Visible */}
         <VaultManagerHeader
             title="End-of-Day Reports"
             description="Generate and export daily closing reports"
         >
-          <Badge className="bg-button text-white hover:bg-button/90">
-            <CheckCircle2 className="mr-1 h-3 w-3" />
-            Report Generated
-          </Badge>
-          <Button
-            onClick={handleRefresh}
-            variant="outline"
-            size="sm"
-            className="border-gray-300"
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-          <Button
-            onClick={handleExportPDF}
-            variant="outline"
-            size="sm"
-            className="border-gray-300"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export PDF
-          </Button>
-          <Button
-            onClick={handleExportCSV}
-            variant="outline"
-            size="sm"
-            className="border-gray-300"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
-          <Button
-            onClick={handlePrint}
-            variant="outline"
-            size="sm"
-            className="border-gray-300"
-          >
-            <Printer className="mr-2 h-4 w-4" />
-            Print
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500 whitespace-nowrap">Report Date:</span>
+              <DatePicker 
+                date={selectedDate} 
+                setDate={(date) => {
+                  setSelectedDate(date);
+                  if (date) {
+                    setReportGenerated(true);
+                  }
+                }} 
+              />
+            </div>
+            
+            {reportGenerated && !error && !(hasActiveVaultShift && isToday) && (
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleRefresh}
+                  variant="outline"
+                  size="sm"
+                  title="Refresh Report"
+                  className="h-8 w-8 p-0 border-gray-300 bg-white sm:w-auto sm:px-3"
+                >
+                  <RefreshCw className="h-3.5 w-3.5 sm:mr-2" />
+                  <span className="hidden sm:inline">Refresh</span>
+                </Button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 border-gray-300 bg-white"
+                    >
+                      <Download className="h-3.5 w-3.5 sm:mr-2" />
+                      <span className="hidden xs:inline sm:hidden">Export</span>
+                      <span className="hidden sm:inline">Export Report</span>
+                      <ChevronDown className="ml-1 h-3.5 w-3.5 text-gray-500" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleExportPDF}>
+                      Export as PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportCSV}>
+                      Export as CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+          </div>
         </VaultManagerHeader>
+
+        {/* Content Area */}
+        {(() => {
+          // 1. Restricted Access for Today
+          if (hasActiveVaultShift && isToday) {
+            return (
+              <div className="flex min-h-[50vh] items-center justify-center">
+                <Card className="w-full max-w-md rounded-lg bg-container shadow-md">
+                  <CardContent className="flex flex-col items-center justify-center p-8 text-center">
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orangeHighlight/10">
+                      <AlertTriangle className="h-8 w-8 text-orangeHighlight" />
+                    </div>
+                    <h2 className="mb-2 text-xl font-bold text-gray-900">
+                      Access Restricted for Today
+                    </h2>
+                    <p className="mb-6 text-sm text-gray-600">
+                      The End-of-Day Report for today is only available after the vault shift has been closed.
+                      <br/>
+                      <span className="font-medium">You can select a past date from the picker above to view historical reports.</span>
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => window.location.href = '/vault/management'}
+                    >
+                      Return to Dashboard
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          }
+
+          // 2. Not Generated Yet
+          if (!reportGenerated) {
+            return (
+              <div className="flex min-h-[50vh] items-center justify-center">
+                <Card className="w-full max-w-2xl rounded-lg bg-container shadow-md">
+                  <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+                    <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
+                      <FileText className="h-10 w-10 text-gray-600" />
+                    </div>
+                    <h2 className="mb-2 text-2xl font-semibold text-gray-900">
+                      Generate End-of-Day Report
+                    </h2>
+                    <p className="mb-8 text-sm text-gray-600">
+                      This will compile the closing float, slot machine counts,
+                      and vault balance into a comprehensive report for the selected date.
+                    </p>
+                    <Button
+                      onClick={handleGenerateReport}
+                      disabled={loading}
+                      className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
+                      size="lg"
+                    >
+                      <Calendar className="mr-2 h-5 w-5" />
+                      {loading ? 'Generating...' : 'Generate Report'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          }
+
+          // 3. Loading
+          if (loading) {
+            return <VaultEndOfDayReportsSkeleton />;
+          }
+
+          // 4. Error
+          if (error) {
+            return (
+              <div className="flex min-h-[50vh] flex-col items-center justify-center space-y-4">
+                <div className="rounded-full bg-red-100 p-3">
+                  <AlertTriangle className="h-10 w-10 text-red-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">{error}</h2>
+                <Button onClick={fetchReportData} variant="outline">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry
+                </Button>
+              </div>
+            );
+          }
+
+          // 5. Report Content
+          return (
+            <>
 
         {/* Summary Statistics */}
         <Card className="rounded-lg bg-container shadow-md border-t-4 border-orangeHighlight">
@@ -365,7 +398,10 @@ export default function VaultEndOfDayReportsPageContent() {
               <CardTitle className="text-lg font-semibold text-gray-900">
                 Summary Statistics
               </CardTitle>
-              <div className="text-xs font-medium text-gray-400 uppercase">Real-time queried data</div>
+              <div className="flex items-center gap-3">
+                <DebugSection title="EOD Metrics" data={{ metrics, reportData }} />
+                <div className="text-xs font-medium text-gray-400 uppercase">Real-time queried data</div>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -427,28 +463,64 @@ export default function VaultEndOfDayReportsPageContent() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="font-medium text-gray-600">Vault</span>
-                  <span className="font-bold text-gray-900">{((metrics.systemBalance / metrics.totalOnPremises) * 100).toFixed(1)}%</span>
+                  <span className="font-bold text-gray-900">
+                    {metrics.totalOnPremises > 0 
+                      ? ((metrics.systemBalance / metrics.totalOnPremises) * 100).toFixed(1)
+                      : '0.0'
+                    }%
+                  </span>
                 </div>
                 <div className="h-2 w-full rounded-full bg-gray-100">
-                  <div className="h-full rounded-full bg-orangeHighlight" style={{ width: `${(metrics.systemBalance / metrics.totalOnPremises) * 100}%` }} />
+                  <div 
+                    className="h-full rounded-full bg-orangeHighlight" 
+                    style={{ 
+                      width: metrics.totalOnPremises > 0 
+                        ? `${(metrics.systemBalance / metrics.totalOnPremises) * 100}%` 
+                        : '0%'
+                    }} 
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="font-medium text-gray-600">Slot Machines</span>
-                  <span className="font-bold text-gray-900">{((metrics.totalMachineBalance / metrics.totalOnPremises) * 100).toFixed(1)}%</span>
+                  <span className="font-bold text-gray-900">
+                    {metrics.totalOnPremises > 0 
+                      ? ((metrics.totalMachineBalance / metrics.totalOnPremises) * 100).toFixed(1)
+                      : '0.0'
+                    }%
+                  </span>
                 </div>
                 <div className="h-2 w-full rounded-full bg-gray-100">
-                  <div className="h-full rounded-full bg-lighterBlueHighlight" style={{ width: `${(metrics.totalMachineBalance / metrics.totalOnPremises) * 100}%` }} />
+                  <div 
+                    className="h-full rounded-full bg-lighterBlueHighlight" 
+                    style={{ 
+                      width: metrics.totalOnPremises > 0 
+                        ? `${(metrics.totalMachineBalance / metrics.totalOnPremises) * 100}%` 
+                        : '0%'
+                    }} 
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="font-medium text-gray-600">Cashier Floats</span>
-                  <span className="font-bold text-gray-900">{((metrics.totalCashDeskFloat / metrics.totalOnPremises) * 100).toFixed(1)}%</span>
+                  <span className="font-bold text-gray-900">
+                    {metrics.totalOnPremises > 0 
+                      ? ((metrics.totalCashDeskFloat / metrics.totalOnPremises) * 100).toFixed(1)
+                      : '0.0'
+                    }%
+                  </span>
                 </div>
                 <div className="h-2 w-full rounded-full bg-gray-100">
-                  <div className="h-full rounded-full bg-button" style={{ width: `${(metrics.totalCashDeskFloat / metrics.totalOnPremises) * 100}%` }} />
+                  <div 
+                    className="h-full rounded-full bg-button" 
+                    style={{ 
+                      width: metrics.totalOnPremises > 0 
+                        ? `${(metrics.totalCashDeskFloat / metrics.totalOnPremises) * 100}%` 
+                        : '0%'
+                    }} 
+                  />
                 </div>
               </div>
             </CardContent>
@@ -746,6 +818,9 @@ export default function VaultEndOfDayReportsPageContent() {
             </div>
           </CardContent>
         </Card>
+            </>
+          );
+        })()}
       </div>
     </PageLayout>
   );

@@ -72,13 +72,16 @@ export async function GET(_request: NextRequest) {
     }
     
     // STEP 5: Check for pending float movements (dual-approval flow)
+    // Only check for requests related to the current shift
     const pendingVmApproval = await FloatRequestModel.findOne({
         cashierId: userId,
+        cashierShiftId: shift._id,
         status: 'approved_vm',
     }).sort({ updatedAt: -1 });
 
     const pendingRequest = await FloatRequestModel.findOne({
         cashierId: userId,
+        cashierShiftId: shift._id,
         status: 'pending',
     }).sort({ createdAt: -1 });
 

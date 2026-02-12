@@ -8,18 +8,11 @@
 'use client';
 
 import { Badge } from '@/components/shared/ui/badge';
-import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/shared/ui/card';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/shared/ui/tooltip';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import type { CashDesk } from '@/shared/types/vault';
-import { AlertCircle, Eye, User } from 'lucide-react';
+import { AlertCircle, User } from 'lucide-react';
 
 type VaultCashDeskCardProps = {
   cashDesk: CashDesk;
@@ -64,29 +57,11 @@ export default function VaultCashDeskCard({ cashDesk, onViewDenominations }: Vau
       <CardContent className="px-4 pb-4 pt-2">
         <div className="mt-2 flex items-center justify-between rounded-lg bg-gray-50 p-3">
           <div>
-            <p className="text-xs text-gray-500">Current Balance</p>
+            <p className="text-xs text-gray-500">Current Float</p>
             <p className="text-lg font-bold text-gray-900">
               {formatAmount(cashDesk.balance)}
             </p>
           </div>
-          
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 text-gray-500 hover:text-gray-900"
-                  onClick={onViewDenominations}
-                >
-                   <Eye className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>View Denominations</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
 
         {cashDesk.lastAudit && (

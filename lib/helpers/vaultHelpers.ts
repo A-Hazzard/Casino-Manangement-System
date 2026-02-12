@@ -117,6 +117,7 @@ export async function fetchVaultOverviewData(
             cashierName: shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId.substring(0, 4)}`,
             expectedBalance: shift.expectedClosingBalance || 0,
             enteredBalance: shift.cashierEnteredBalance || 0,
+            enteredDenominations: shift.cashierEnteredDenominations || [],
             discrepancy: shift.discrepancy || 0,
             closedAt: shift.closedAt ? new Date(shift.closedAt) : new Date(),
           })
@@ -247,6 +248,30 @@ export async function handleFloatAction(
 }
 
 /**
+ * Confirm a float request (final receipt)
+ */
+export async function handleFloatConfirm(
+  requestId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch('/api/vault/float-request/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId }),
+    });
+
+    const result = await response.json();
+    return {
+      success: result.success,
+      error: result.error || 'Failed to confirm float request',
+    };
+  } catch (error) {
+    console.error('Error confirming float:', error);
+    return { success: false, error: 'An error occurred' };
+  }
+}
+
+/**
  * Direct open cashier shift (Skip request workflow)
  */
 export async function handleDirectOpenShift(data: {
@@ -273,6 +298,7 @@ export async function handleDirectOpenShift(data: {
     return { success: false, error: 'An error occurred' };
   }
 }
+
 
 /**
  * Refresh vault balance data
@@ -416,13 +442,16 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
         }));
 
         todayTxs.forEach((tx: any) => {
+          // Skip reconciliation transactions for charts/trends
+          if (tx.type === 'vault_reconciliation') return;
+
           const hour = new Date(tx.timestamp).getHours();
-          hourlyStats[hour].transactions++;
-          // For balance trend: if it's cash IN (to vault), add. If cash OUT (from vault), subtract.
+                    // For balance trend: if it's cash IN (to vault), add. If cash OUT (from vault), subtract.
           // Logic: to.type === 'vault' -> +amount
           //        from.type === 'vault' -> -amount
           // But 'amount' accumulates blindly, so let's check direction
-          
+          hourlyStats[hour].transactions++;
+
           if (tx.to?.type === 'vault') {
              hourlyStats[hour].amount += Math.abs(tx.amount);
           } else if (tx.from?.type === 'vault') {
@@ -604,58 +633,126 @@ export async function fetchVaultTransactions(
 /**
  * Fetch end-of-day report data
  */
-export async function fetchEndOfDayReportData(locationId: string) {
+export async function fetchEndOfDayReportData(
+  locationId: string,
+  date?: string | Date
+) {
   try {
-    const date = new Date().toISOString().split('T')[0];
+    const dateObj = date
+      ? date instanceof Date
+        ? date
+        : new Date(date)
+      : new Date();
+      
+    // Check if the requested date is effectively "today"
+    // We compare YYYY-MM-DD strings to be safe
+    const todayStr = new Date().toISOString().split('T')[0];
+    const reportDateStr = dateObj.toISOString().split('T')[0];
+    const isToday = reportDateStr === todayStr;
+
+    // Fetch EOD Data and Metrics (always needed)
+    const eodPromise = fetch(
+      `/api/vault/end-of-day?locationId=${locationId}&date=${reportDateStr}`
+    );
+    const metricsPromise = fetch(
+      `/api/vault/metrics?locationId=${locationId}&date=${reportDateStr}`
+    );
+
+    // Conditionally fetch "Current State" endpoints
+    // If viewing a past report, we do NOT want current active shifts or current vault balance
+    const balancePromise = isToday 
+      ? fetch(`/api/vault/balance?locationId=${locationId}`)
+      : Promise.resolve(null);
+      
+    const cashierPromise = isToday
+      ? fetch(`/api/cashier/shifts?locationId=${locationId}&status=active`)
+      : Promise.resolve(null);
+      
+    const floatRequestsPromise = isToday
+      ? fetch(`/api/vault/float-request?locationId=${locationId}`)
+      : Promise.resolve(null);
+
     const [
       endOfDayResponse,
+      metricsResponse,
       balanceResponse,
       cashierResponse,
       floatRequestsResponse,
-      metricsResponse,
     ] = await Promise.all([
-      fetch(`/api/vault/end-of-day?locationId=${locationId}&date=${date}`),
-      fetch(`/api/vault/balance?locationId=${locationId}`),
-      fetch(`/api/cashier/shifts?locationId=${locationId}&status=active`),
-      fetch(`/api/vault/float-request?locationId=${locationId}`),
-      fetch(`/api/vault/metrics?locationId=${locationId}`),
+      eodPromise,
+      metricsPromise,
+      balancePromise,
+      cashierPromise,
+      floatRequestsPromise,
     ]);
 
     const endOfDayData = endOfDayResponse.ok
       ? await endOfDayResponse.json()
       : null;
-    const balanceData = balanceResponse.ok
-      ? await balanceResponse.json()
-      : null;
-    const cashierData = cashierResponse.ok
-      ? await cashierResponse.json()
-      : null;
-    const floatRequestsData = floatRequestsResponse.ok
-      ? await floatRequestsResponse.json()
-      : null;
+      
     const metricsData = metricsResponse.ok
       ? await metricsResponse.json()
       : null;
 
-    // Map machineMoneyIn from balance provider if available
-    const slotCounts = balanceData?.success && balanceData.data?.machineMoneyIn !== undefined
-      ? [{ 
+    const balanceData = balanceResponse && balanceResponse.ok
+      ? await balanceResponse.json()
+      : null;
+      
+    const cashierData = cashierResponse && cashierResponse.ok
+      ? await cashierResponse.json()
+      : null;
+      
+    const floatRequestsData = floatRequestsResponse && floatRequestsResponse.ok
+      ? await floatRequestsResponse.json()
+      : null;
+
+    // Map machineMoneyIn from balance provider if available (for TODAY)
+    // For past dates, we should likely rely on metrics (which has totalMachineBalance)
+    let slotCounts: any[] = [];
+    
+    if (isToday && balanceData?.success && balanceData.data?.machineMoneyIn !== undefined) {
+         slotCounts = [{ 
           machineId: 'All Floor Machines', 
           location: 'Main Floor', 
           closingCount: balanceData.data.machineMoneyIn 
-        }]
-      : [];
+        }];
+    } else if (!isToday && metricsData?.success && metricsData.metrics?.totalMachineBalance > 0) {
+        // Construct slot counts from metrics for past dates
+        slotCounts = [{
+            machineId: 'All Floor Machines (Historical)',
+            location: 'Main Floor',
+            closingCount: metricsData.metrics.totalMachineBalance
+        }];
+    }
 
     const denominationBreakdown: Record<string, number> =
       endOfDayData?.success && endOfDayData.data?.denominationBreakdown
         ? endOfDayData.data.denominationBreakdown
         : {};
 
+    // Construct Vault Balance
+    // If today: use live balance
+    // If past: rely on endOfDayData.totalCash or 0? 
+    // Actually, vaultBalance.balance is used as "System Balance".
+    // For past dates, ideally we'd have a snapshot. If not, 0 is safer than current.
+    // However, endOfDayData.totalCash is "Total On Premises" (Vault + Cashiers + Machines).
+    // The UI calculates "Total On Premises" = systemBalance + machines + cashiers.
+    // So we need to be careful.
+    
+    let vaultBalanceObj = DEFAULT_VAULT_BALANCE;
+    
+    if (isToday && balanceData?.success) {
+        vaultBalanceObj = balanceData.data;
+    } else if (!isToday) {
+        // For past dates, we assume 0 for "Vault Balance" if we don't have a snapshot.
+        // Or if we want to show the total cash, we might need adjustments.
+        // But crucially, returning 0 prevents showing the WRONG current 120.
+        vaultBalanceObj = { ...DEFAULT_VAULT_BALANCE, balance: 0 };
+    }
+
     return {
       denominationBreakdown,
-      vaultBalance: balanceData?.success
-        ? balanceData.data
-        : DEFAULT_VAULT_BALANCE,
+      vaultBalance: vaultBalanceObj,
       cashierFloats: cashierData?.success ? cashierData.shifts || [] : [],
       slotCounts: slotCounts,
       floatRequests: floatRequestsData?.success
@@ -1566,6 +1663,10 @@ export function calculateEndOfDayMetrics(reportData: {
  * Get transaction type badge component
  */
 export function getTransactionTypeBadge(type: string) {
+  // Import locally to avoid circular dependencies
+  const formatActivityType = (t: string) =>
+    t.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+
   if (type === 'machine_collection') {
     return {
       label: 'Inflow',
@@ -1592,7 +1693,7 @@ export function getTransactionTypeBadge(type: string) {
     };
   }
   return {
-    label: type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+    label: formatActivityType(type),
     className: '',
     icon: null,
   };

@@ -61,7 +61,7 @@ export default function VaultMetricCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-2">
             <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">
+            <p className="break-words text-lg font-bold text-gray-900 sm:text-xl">
               {formatAmount(value)}
             </p>
           </div>

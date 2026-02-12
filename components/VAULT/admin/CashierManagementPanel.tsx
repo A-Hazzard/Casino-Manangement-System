@@ -36,19 +36,19 @@ import {
     TableRow,
 } from '@/components/shared/ui/table';
 import CashierManagementSkeleton from '@/components/ui/skeletons/CashierManagementSkeleton';
-import ViewDenominationsModal from '@/components/VAULT/overview/modals/ViewDenominationsModal';
+
 import {
     fetchCashiersData,
     handleCreateCashier,
     handleDeleteCashier,
-    handleDirectOpenShift,
+    handleFloatAction,
     handleResetCashierPassword,
     handleUpdateCashierStatus
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
-import type { Denomination } from '@/shared/types/vault';
+import type { Denomination, FloatRequest } from '@/shared/types/vault';
 import {
     AlertTriangle,
     ArrowUpDown,
@@ -56,7 +56,7 @@ import {
     Check,
     Copy,
     Eye,
-    Landmark,
+
     Plus,
     RefreshCw,
     RotateCcw,
@@ -95,14 +95,10 @@ export default function CashierManagementPanel() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isTempPasswordModalOpen, setIsTempPasswordModalOpen] = useState(false);
   const [isViewPasswordModalOpen, setIsViewPasswordModalOpen] = useState(false);
-  const [isStartShiftModalOpen, setIsStartShiftModalOpen] = useState(false);
-  const [isViewDenomsModalOpen, setIsViewDenomsModalOpen] = useState(false);
-  
-  const [viewDenomsData, setViewDenomsData] = useState<{
-    title: string;
-    denominations: Denomination[];
-    total: number;
-  } | null>(null);
+  const [isEndShiftModalOpen, setIsEndShiftModalOpen] = useState(false);
+  const [isReviewRequestModalOpen, setIsReviewRequestModalOpen] = useState(false);
+  const [currentFloatRequest, setCurrentFloatRequest] = useState<FloatRequest | null>(null);
+  const [reviewDenominations, setReviewDenominations] = useState<Record<string, number>>({});
   const [tempPassword, setTempPassword] = useState('');
   const [tempPasswordAction, setTempPasswordAction] = useState<
     'create' | 'reset' | 'view'
@@ -132,7 +128,7 @@ export default function CashierManagementPanel() {
     '100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '1': 0
   });
   const [shiftNotes, setShiftNotes] = useState('');
-  const [vaultDenominations, setVaultDenominations] = useState<Denomination[]>([]);
+
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -178,9 +174,9 @@ export default function CashierManagementPanel() {
   };
 
   /**
-   * Open the start shift modal
+   * Open the end shift modal
    */
-  const openStartShiftModal = async (cashier: Cashier) => {
+  const openEndShiftModal = async (cashier: Cashier) => {
     if (!checkVaultStatus()) return;
     setSelectedCashier(cashier);
     setShiftDenominations({
@@ -188,21 +184,70 @@ export default function CashierManagementPanel() {
     });
     setShiftNotes('');
     
-    // Fetch current vault denominations for reference
-    try {
-      const { fetchVaultBalance } = await import('@/lib/helpers/vaultHelpers');
-      const locationId = user?.assignedLocations?.[0];
-      if (locationId) {
-        const balance = await fetchVaultBalance(locationId);
-        if (balance) {
-          setVaultDenominations(balance.denominations);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch vault denominations", err);
-    }
+
     
-    setIsStartShiftModalOpen(true);
+    setIsEndShiftModalOpen(true);
+  };
+
+  const handleReviewRequest = async (cashier: Cashier) => {
+    if (!checkVaultStatus()) return;
+    setLoading(true);
+    try {
+        // Fetch pending request for this cashier
+        const res = await fetch(`/api/vault/float-request?locationId=${user?.assignedLocations?.[0]}&cashierId=${cashier._id}&status=pending`);
+        const data = await res.json();
+        
+        if (data.success && data.requests && data.requests.length > 0) {
+            const req = data.requests[0];
+            setCurrentFloatRequest(req);
+            
+            // Init denominations
+            const denoms: Record<string, number> = { '100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '1': 0 };
+            req.denominations.forEach((d: Denomination) => {
+                denoms[d.denomination.toString()] = d.quantity;
+            });
+            setReviewDenominations(denoms);
+            
+            setIsReviewRequestModalOpen(true);
+        } else {
+            toast.error("No pending request found for this cashier");
+        }
+    } catch (err) {
+        console.error(err);
+        toast.error("Failed to fetch request");
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleApproveRequest = async (isRejection = false) => {
+      if (!currentFloatRequest) return;
+      setLoading(true);
+      try {
+          if (isRejection) {
+              await handleFloatAction(currentFloatRequest._id, 'denied');
+              toast.success("Request denied");
+          } else {
+              // Convert reviewDenominations to array
+              const approvedDenoms: Denomination[] = Object.entries(reviewDenominations)
+                  .filter(([_, qty]) => qty > 0)
+                  .map(([val, qty]) => ({
+                      denomination: Number(val) as Denomination['denomination'],
+                      quantity: qty
+                  }));
+              
+              await handleFloatAction(currentFloatRequest._id, 'edited', {
+                  approvedDenominations: approvedDenoms
+              });
+              toast.success("Request approved");
+          }
+          setIsReviewRequestModalOpen(false);
+          fetchCashiers(); // Refresh list
+      } catch (err) {
+          toast.error("Failed to process request");
+      } finally {
+          setLoading(false);
+      }
   };
 
   // Fetch cashiers on mount and page change
@@ -381,14 +426,9 @@ export default function CashierManagementPanel() {
     }
   };
 
-  const handleStartShiftSubmit = async () => {
+  const handleEndShiftSubmit = async () => {
     if (!selectedCashier || !user?.assignedLocations?.[0]) return;
     
-    if (shiftTotal <= 0) {
-      toast.error('Starting float must be greater than 0');
-      return;
-    }
-
     setLoading(true);
     try {
       const denoms = Object.entries(shiftDenominations)
@@ -398,39 +438,31 @@ export default function CashierManagementPanel() {
           quantity: qty
         }));
 
-      // Real-time stock check
-      const missingStock = denoms.some(requested => {
-        const available = vaultDenominations.find(d => d.denomination === requested.denomination)?.quantity || 0;
-        return requested.quantity > available;
+      const res = await fetch('/api/vault/cashier-shift/force-close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cashierId: selectedCashier._id,
+          locationId: user.assignedLocations[0],
+          denominations: denoms,
+          physicalCount: shiftTotal,
+          notes: shiftNotes
+        })
       });
 
-      if (missingStock) {
-        toast.error('Insufficient Vault Stock', {
-          description: 'One or more denominations requested exceed the available vault inventory.'
-        });
-        setLoading(false);
-        return;
-      }
-
-      const result = await handleDirectOpenShift({
-        locationId: user.assignedLocations[0],
-        cashierId: selectedCashier._id,
-        amount: shiftTotal,
-        denominations: denoms,
-        notes: shiftNotes
-      });
+      const result = await res.json();
 
       if (result.success) {
-        toast.success(`Shift started for ${selectedCashier.username}`);
-        setIsStartShiftModalOpen(false);
+        toast.success(`Shift ended for ${selectedCashier.username}. Move to Pending Review.`);
+        setIsEndShiftModalOpen(false);
         setShiftDenominations({'100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '1': 0});
         setShiftNotes('');
         fetchCashiers();
       } else {
-        toast.error(result.error || 'Failed to start shift');
+        toast.error(result.error || 'Failed to end shift');
       }
     } catch (error) {
-      console.error('Error starting shift:', error);
+      console.error('Error ending shift:', error);
       toast.error('An error occurred');
     } finally {
       setLoading(false);
@@ -607,39 +639,30 @@ export default function CashierManagementPanel() {
                       <TableCell>
                         <div className="flex flex-col gap-2">
                            {/* Main Action Button */}
-                           <div className="w-full">
-                           {cashier.shiftStatus === 'active' || cashier.shiftStatus === 'pending_start' || cashier.shiftStatus === 'pending_review' ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  if (!checkVaultStatus()) return;
-                                  if (cashier.denominations) {
-                                     setViewDenomsData({
-                                        title: `Cashier Denominations - ${cashier.username}`,
-                                        denominations: cashier.denominations,
-                                        total: cashier.currentBalance || 0
-                                     });
-                                     setIsViewDenomsModalOpen(true);
-                                  }
-                                }}
-                                className="h-8 w-full gap-2 border-green-200 text-green-700 hover:bg-green-50"
-                              >
-                                <Landmark className="h-4 w-4" />
-                                View Float
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openStartShiftModal(cashier)}
-                                className="h-8 w-full gap-2 border-button text-button hover:bg-blue-50"
-                              >
-                                <RotateCcw className="h-4 w-4" />
-                                Start Shift
-                              </Button>
-                            )}
-                            </div>
+                            <div className="flex flex-col gap-2 w-full">
+                            {cashier.shiftStatus === 'active' && (
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() => openEndShiftModal(cashier)}
+                                   className="h-8 w-full gap-2 border-red-200 text-red-700 hover:bg-red-50"
+                                 >
+                                   <RotateCcw className="h-4 w-4" />
+                                   End Shift
+                                 </Button>
+                               )}
+                             {cashier.shiftStatus === 'pending_start' && (
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => handleReviewRequest(cashier)}
+                                 className="h-8 w-full gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
+                               >
+                                 <Check className="h-4 w-4" />
+                                 Review Request
+                               </Button>
+                             )}
+                             </div>
 
                             {/* Secondary Actions Row */}
                             <div className="flex justify-center gap-2">
@@ -708,23 +731,23 @@ export default function CashierManagementPanel() {
         </CardContent>
       </Card>
 
-      {/* Start Shift Modal */}
-      <Dialog open={isStartShiftModalOpen} onOpenChange={setIsStartShiftModalOpen}>
+      {/* End Shift Modal */}
+      <Dialog open={isEndShiftModalOpen} onOpenChange={setIsEndShiftModalOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Landmark className="h-5 w-5 text-green-600" />
-              Direct Shift Open
+              <RotateCcw className="h-5 w-5 text-red-600" />
+              Force End Shift
             </DialogTitle>
             <DialogDescription>
-              Provide an opening float to start the shift for <strong>{selectedCashier?.username}</strong>.
+              Collect the remaining float from <strong>{selectedCashier?.username}</strong> to end their shift.
+              This will move the shift to <strong>Pending Review</strong>.
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-6 py-4">
              <div className="grid grid-cols-1 gap-y-4">
                 {[100, 50, 20, 10, 5, 1].map(denom => {
-                   const available = vaultDenominations.find(d => d.denomination === denom)?.quantity || 0;
                    return (
                     <div key={denom} className="flex items-center gap-4">
                        <div className="flex-1 space-y-1.5">
@@ -735,46 +758,34 @@ export default function CashierManagementPanel() {
                             id={`denom-${denom}`}
                             type="number"
                             min="0"
-                            max={available}
-                            className={cn(
-                                "h-12 text-lg font-bold",
-                                (shiftDenominations[denom.toString()] || 0) > available && "border-red-500 bg-red-50"
-                            )}
+                            className="h-12 text-lg font-bold"
                             value={shiftDenominations[denom.toString()] || ''}
                             onChange={(e) => {
                                const val = Math.max(0, parseInt(e.target.value) || 0);
                                setShiftDenominations(prev => ({
                                   ...prev,
                                   [denom.toString()]: val
-                               }));
+                                }));
                             }}
                             placeholder="0"
                           />
-                       </div>
-                       
-                       <div className="w-24 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 flex flex-col items-center justify-center">
-                          <span className="text-[10px] text-gray-400 font-black uppercase tracking-tighter">Available</span>
-                          <span className={cn(
-                              "text-xl font-black",
-                              available > 0 ? "text-gray-900" : "text-gray-300"
-                          )}>{available}</span>
                        </div>
                     </div>
                    );
                 })}
              </div>
 
-             <div className="bg-green-50 p-4 rounded-lg flex items-center justify-between border border-green-200">
-                <span className="font-semibold text-green-800">Total Opening Float:</span>
-                <span className="text-2xl font-black text-green-600">TT${shiftTotal.toLocaleString()}</span>
+             <div className="bg-red-50 p-4 rounded-lg flex items-center justify-between border border-red-200">
+                <span className="font-semibold text-red-800">Total Collected:</span>
+                <span className="text-2xl font-black text-red-600">TT${shiftTotal.toLocaleString()}</span>
              </div>
 
              <div className="space-y-1.5">
-                <Label htmlFor="shift-notes">Notes (Optional)</Label>
+                <Label htmlFor="shift-notes">Notes / Reason</Label>
                 <textarea
                   id="shift-notes"
                   className="w-full p-2 text-sm border rounded-md min-h-[80px]"
-                  placeholder="Reason or instructions..."
+                  placeholder="Why are you force ending this shift?"
                   value={shiftNotes}
                   onChange={(e) => setShiftNotes(e.target.value)}
                 />
@@ -784,16 +795,95 @@ export default function CashierManagementPanel() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setIsStartShiftModalOpen(false)}
+              onClick={() => setIsEndShiftModalOpen(false)}
             >
               Cancel
             </Button>
             <Button 
-              onClick={handleStartShiftSubmit} 
-              disabled={loading || shiftTotal <= 0}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleEndShiftSubmit} 
+              disabled={loading}
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {loading ? 'Processing...' : 'Start Shift Now'}
+              {loading ? 'Processing...' : 'Confirm & End Shift'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Review Float Request Modal */}
+      <Dialog open={isReviewRequestModalOpen} onOpenChange={setIsReviewRequestModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Check className="h-5 w-5 text-purple-600" />
+              Review Float Request
+            </DialogTitle>
+            <DialogDescription>
+              Review and optionally edit the float requested by Cashier.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+             <div className="grid grid-cols-1 gap-y-4">
+                {[100, 50, 20, 10, 5, 1].map(denom => {
+                   return (
+                    <div key={denom} className="flex items-center gap-4">
+                       <div className="flex-1 space-y-1.5">
+                          <Label htmlFor={`review-denom-${denom}`} className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+                            ${denom} Notes (Count)
+                          </Label>
+                          <Input
+                            id={`review-denom-${denom}`}
+                            type="number"
+                            min="0"
+                            className="h-12 text-lg font-bold"
+                            value={reviewDenominations[denom.toString()] || ''}
+                            onChange={(e) => {
+                               const val = Math.max(0, parseInt(e.target.value) || 0);
+                               setReviewDenominations(prev => ({
+                                  ...prev,
+                                  [denom.toString()]: val
+                                }));
+                            }}
+                            placeholder="0"
+                          />
+                       </div>
+                    </div>
+                   );
+                })}
+             </div>
+
+             <div className="bg-purple-50 p-4 rounded-lg flex items-center justify-between border border-purple-200">
+                <span className="font-semibold text-purple-800">Total Float:</span>
+                <span className="text-2xl font-black text-purple-600">
+                    TT${Object.entries(reviewDenominations).reduce(
+                        (sum, [val, qty]) => sum + (Number(val) * qty), 
+                        0
+                    ).toLocaleString()}
+                </span>
+             </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => handleApproveRequest(true)} // Reject
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 mr-auto"
+            >
+              Reject Request
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setIsReviewRequestModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => handleApproveRequest(false)} // Approve
+              disabled={loading}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              {loading ? 'Processing...' : 'Approve & Start Shift'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1033,13 +1123,7 @@ export default function CashierManagementPanel() {
         </DialogContent>
       </Dialog>
       
-      <ViewDenominationsModal
-        open={isViewDenomsModalOpen}
-        onClose={() => setIsViewDenomsModalOpen(false)}
-        title={viewDenomsData?.title || 'Cashier Denominations'}
-        denominations={viewDenomsData?.denominations || []}
-        totalAmount={viewDenomsData?.total || 0}
-      />
+
 
        {/* Delete Confirmation Modal */}
        <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>

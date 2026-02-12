@@ -11,7 +11,6 @@
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
-import { Skeleton } from '@/components/shared/ui/skeleton';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type { CashierShift } from '@/shared/types/vault';
 import { Clock, HandCoins, Minus, Receipt, TrendingUp } from 'lucide-react';
@@ -29,7 +28,7 @@ type ActiveShiftDashboardProps = {
 export default function ActiveShiftDashboard({
   shift,
   currentBalance,
-  refreshing,
+  refreshing: _refreshing,
   onTicketRedeem,
   onHandPay,
   onRequestFloat,
@@ -41,16 +40,6 @@ export default function ActiveShiftDashboard({
     <div className="space-y-6">
       {/* Shift Status Card */}
       <Card className="rounded-lg bg-container shadow-md border-t-4 border-emerald-500 overflow-hidden relative animate-in slide-in-from-top-4 duration-500">
-        {refreshing && (
-          <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
-             <div className="w-full h-full p-6 space-y-4">
-               <Skeleton className="h-6 w-32" />
-               <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                 {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-12 w-full" />)}
-               </div>
-             </div>
-          </div>
-        )}
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -61,13 +50,7 @@ export default function ActiveShiftDashboard({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div>
-              <p className="text-sm text-gray-600">Current Float</p>
-              <p className="text-xl font-bold text-green-600">
-                {formatAmount(currentBalance)}
-              </p>
-            </div>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             <div>
               <p className="text-sm text-gray-600">Opening Float</p>
               <p className="text-lg font-semibold">

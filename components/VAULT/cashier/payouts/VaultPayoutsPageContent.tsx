@@ -201,6 +201,7 @@ export default function VaultPayoutsPageContent() {
         <VaultManagerHeader 
           title="Player Payouts" 
           description="View and verify completed player payouts" 
+          showNotificationBell={false}
         />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

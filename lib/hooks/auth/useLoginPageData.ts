@@ -11,23 +11,12 @@ import { loginUser } from '@/lib/helpers/client';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useAuthSessionStore } from '@/lib/store/authSessionStore';
 import { useUserStore } from '@/lib/store/userStore';
-import type { ProfileValidationModalData } from '@/lib/types/auth';
 import { getDefaultRedirectPathFromRoles } from '@/lib/utils/roleBasedRedirect';
-import type {
-    InvalidProfileFields,
-    ProfileValidationReasons,
-} from '@/shared/types/auth';
+
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { UserRole } from '../../constants/roles';
 
-export type ProfileUpdateResult = {
-  success: boolean;
-  invalidFields?: InvalidProfileFields;
-  fieldErrors?: Record<string, string>;
-  message?: string;
-  invalidProfileReasons?: ProfileValidationReasons;
-};
 
 export function useLoginPageData() {
   const router = useRouter();
@@ -50,25 +39,6 @@ export function useLoginPageData() {
   const [redirecting, setRedirecting] = useState(false);
 
   const [showPasswordUpdateModal, setShowPasswordUpdateModal] = useState(false);
-  const [showProfileValidationModal, setShowProfileValidationModal] =
-    useState(false);
-  const [invalidProfileFields, setInvalidProfileFields] =
-    useState<InvalidProfileFields>({});
-  const [profileValidationReasons, setProfileValidationReasons] =
-    useState<ProfileValidationReasons>({});
-  const [profileUpdating, setProfileUpdating] = useState(false);
-  const [currentUserData] = useState<ProfileValidationModalData>({
-    username: '',
-    firstName: '',
-    lastName: '',
-    otherName: '',
-    gender: '',
-    emailAddress: '',
-    phone: '',
-    dateOfBirth: '',
-    licenseeIds: [],
-    locationIds: [],
-  });
 
   const handleLogin = useCallback(
     async (e?: React.FormEvent) => {
@@ -98,13 +68,8 @@ export function useLoginPageData() {
             return;
           }
 
-          if (res.requiresProfileUpdate || res.user?.requiresProfileUpdate) {
-            setInvalidProfileFields(res.invalidProfileFields || {});
-            setProfileValidationReasons(res.invalidProfileReasons || {});
-            // Map user data for modal...
-            setShowProfileValidationModal(true);
-            return;
-          }
+          // Profile validation bypass
+          // if (res.requiresProfileUpdate) { ... } logic removed per user request
 
           setUser(res.user!);
           setMessage('Login successful. Redirecting...');
@@ -179,49 +144,18 @@ export function useLoginPageData() {
     redirecting,
     authLoading,
     showPasswordUpdateModal,
-    showProfileValidationModal,
-    invalidProfileFields,
-    profileValidationReasons,
-    currentUserData,
-    profileUpdating,
     setIdentifier,
     setPassword,
     setShowPassword,
     setRememberMe,
     handleLogin,
     setShowPasswordUpdateModal,
-    setShowProfileValidationModal,
     handlePasswordUpdate: async () => {
       setShowPasswordUpdateModal(false);
       setMessage('Password updated');
       setMessageType('success');
       setRedirecting(true);
       window.location.href = '/';
-    },
-    handleProfileUpdate: async (
-      data: ProfileValidationModalData
-    ): Promise<ProfileUpdateResult> => {
-      setProfileUpdating(true);
-      try {
-        const res = await fetch('/api/profile', {
-          method: 'PUT',
-          body: JSON.stringify(data),
-        });
-        const result = await res.json();
-        if (result.success) {
-          setShowProfileValidationModal(false);
-          window.location.href = '/';
-          return { success: true };
-        }
-        return {
-          success: false,
-          message: result.message || 'Validation failed',
-          invalidFields: result.invalidFields || result.invalidProfileFields,
-          fieldErrors: result.errors || result.fieldErrors,
-        };
-      } finally {
-        setProfileUpdating(false);
-      }
     },
   };
 }

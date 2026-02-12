@@ -11,6 +11,7 @@
 
 'use client';
 
+import DebugSection from '@/components/shared/debug/DebugSection';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import {
@@ -30,6 +31,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 // Components & Sections
+import ConfirmationModal from '@/components/shared/ui/ConfirmationModal';
 import CashierDashboardSkeleton from '@/components/ui/skeletons/CashierDashboardSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import CashierActivitySection from './CashierActivitySection';
@@ -61,7 +63,8 @@ export default function CashierDashboardPageContent() {
     closeShift,
     refresh,
     pendingVmApproval,
-    pendingRequest
+    pendingRequest,
+    cancelFloatRequest // Add this
   } = useCashierShift();
 
   const [showShiftOpen, setShowShiftOpen] = useState(false);
@@ -72,6 +75,10 @@ export default function CashierDashboardPageContent() {
   const [floatRequestType, setFloatRequestType] = useState<'increase' | 'decrease'>('increase');
   const [machines, setMachines] = useState<GamingMachine[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
+  
+  // Confirmation state for cancelling requests
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
+  const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
   
   // --- Logic Handlers ---
 
@@ -150,7 +157,12 @@ export default function CashierDashboardPageContent() {
    * Handle shift cancellation
    */
   const handleShiftCancel = async () => {
-    if (!confirm('Are you sure you want to cancel your shift request?')) return;
+    const isReview = status === 'pending_review';
+    const message = isReview 
+      ? 'Are you sure you want to cancel your shift closure request? Your shift will remain active.'
+      : 'Are you sure you want to cancel your shift opening request?';
+      
+    if (!confirm(message)) return;
     
     setActionLoading(true);
     try {
@@ -224,16 +236,17 @@ export default function CashierDashboardPageContent() {
           <VaultManagerHeader
             title="Cashier Dashboard"
             showBack={false}
+            showNotificationBell={false}
             description={
               <div className="flex items-center gap-2">
                 <Button
-                  onClick={() => refresh(true)}
+                  onClick={() => refresh(false)}
                   disabled={refreshing}
                   variant="ghost"
                   size="sm"
                   className="h-6 px-1.5 text-gray-400 hover:text-blue-600"
                 >
-                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-4 w-4 ${(refreshing || (shiftLoading && shift)) ? 'animate-spin' : ''}`} />
                 </Button>
                 <span className="text-xs font-medium text-gray-500">
                   {new Date().toLocaleDateString('en-US', {
@@ -277,6 +290,10 @@ export default function CashierDashboardPageContent() {
             )}
           </VaultManagerHeader>
 
+          <div className="flex justify-end -mt-4 mb-2">
+            <DebugSection title="Shift State" data={{ shift, status, currentBalance }} />
+          </div>
+
           {/* Pending Banners */}
            <ShiftStatusBanner 
             status={status}
@@ -287,6 +304,10 @@ export default function CashierDashboardPageContent() {
             pendingVmApproval={pendingVmApproval}
             pendingRequest={pendingRequest}
             onConfirm={confirmApproval}
+            onCancelRequest={(requestId) => {
+              setPendingCancelId(requestId);
+              setShowCancelConfirmation(true);
+            }}
           />
 
           {/* Active Work Area */}
@@ -373,6 +394,26 @@ export default function CashierDashboardPageContent() {
             onRequestCash={() => {
                setFloatRequestType('increase');
                setShowFloatRequest(true);
+            }}
+          />
+
+          <ConfirmationModal
+            open={showCancelConfirmation}
+            onOpenChange={setShowCancelConfirmation}
+            title="Cancel Request"
+            description="Are you sure you want to cancel this float request? This action cannot be undone."
+            confirmLabel="Yes, Cancel Request"
+            cancelLabel="Keep Request"
+            variant="destructive"
+            loading={actionLoading}
+            onConfirm={async () => {
+              if (pendingCancelId) {
+                setActionLoading(true); // Re-use action loading or add specific? Re-using is fine as only one action at a time.
+                await cancelFloatRequest(pendingCancelId);
+                setActionLoading(false);
+                setShowCancelConfirmation(false);
+                setPendingCancelId(null);
+              }
             }}
           />
       </div>

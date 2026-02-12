@@ -14,12 +14,12 @@
  */
 'use client';
 
-import { useUserStore } from '@/lib/store/userStore';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import { logoutUser } from '@/lib/helpers/client';
+import { useUserStore } from '@/lib/store/userStore';
 import { AlertTriangle, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { logoutUser } from '@/lib/helpers/client';
 
 export default function VaultUnauthorized() {
   // ============================================================================

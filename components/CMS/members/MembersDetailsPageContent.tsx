@@ -29,24 +29,24 @@ import MembersPlayerSessionTableSkeleton from '@/components/CMS/members/MembersP
 import MembersPlayerTotalsCard from '@/components/CMS/members/MembersPlayerTotalsCard';
 import MembersPlayerTotalsCardSkeleton from '@/components/CMS/members/MembersPlayerTotalsCardSkeleton';
 import { Button } from '@/components/shared/ui/button';
+import DateFilters from '@/components/shared/ui/common/DateFilters';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import {
-  ChevronLeft,
-  Download,
-  FileSpreadsheet,
-  FileText,
-  RefreshCw,
+    ChevronLeft,
+    Download,
+    FileSpreadsheet,
+    FileText,
+    RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
-type FilterType = 'session' | 'day' | 'week' | 'month';
 type SortOption =
   | 'time'
   | 'sessionLength'
@@ -69,7 +69,12 @@ export default function MembersDetailsPageContent() {
   // ============================================================================
   const params = useParams();
   const memberId = params.id as string;
-  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { 
+    selectedLicencee, 
+    setSelectedLicencee,
+    activeMetricsFilter,
+    customDateRange
+  } = useDashBoardStore();
 
   // ============================================================================
   // State Management
@@ -79,7 +84,7 @@ export default function MembersDetailsPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [showTotals, setShowTotals] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const [filter, setFilter] = useState<FilterType>('session');
+  // Removed local filter state in favor of dashboard date filters
   const [sortOption, setSortOption] = useState<SortOption>('time');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -99,10 +104,36 @@ export default function MembersDetailsPageContent() {
       const memberResponse = await axios.get(`/api/members/${memberId}`);
       const memberData: Member = memberResponse.data;
 
+      // Build query params
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', (currentPage + 1).toString());
+      queryParams.append('limit', '20');
+      // Always view sessions list, filtered by date
+      queryParams.append('filter', 'session'); 
+
+      // Date filtering logic
+      if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
+        const startDate = customDateRange.startDate instanceof Date
+          ? customDateRange.startDate
+          : new Date(customDateRange.startDate);
+        const endDate = customDateRange.endDate instanceof Date
+          ? customDateRange.endDate
+          : new Date(customDateRange.endDate);
+        queryParams.append('startDate', startDate.toISOString().split('T')[0]);
+        queryParams.append('endDate', endDate.toISOString().split('T')[0]);
+      } else if (activeMetricsFilter && activeMetricsFilter !== 'All Time') {
+        const timePeriodMap: Record<string, string> = {
+          'Today': 'today',
+          'Yesterday': 'yesterday',
+          '7d': '7d',
+          '30d': '30d',
+        };
+        const apiTimePeriod = timePeriodMap[activeMetricsFilter] || activeMetricsFilter.toLowerCase();
+        queryParams.append('timePeriod', apiTimePeriod);
+      }
+
       const sessionsResponse = await axios.get(
-        `/api/members/${memberId}/sessions?filter=${filter}&page=${
-          currentPage + 1
-        }&limit=20`
+        `/api/members/${memberId}/sessions?${queryParams.toString()}`
       );
       const sessionsData = sessionsResponse.data;
 
@@ -116,7 +147,7 @@ export default function MembersDetailsPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [memberId, filter, currentPage]);
+  }, [memberId, currentPage, activeMetricsFilter, customDateRange]);
 
   // ============================================================================
   // Effects - Data Fetching
@@ -151,10 +182,7 @@ export default function MembersDetailsPageContent() {
     setCurrentPage(page);
   };
 
-  const handleFilterChange = (newFilter: FilterType) => {
-    setFilter(newFilter);
-    setCurrentPage(0); // Reset to first page when filter changes
-  };
+
 
   const handleSortToggle = () => {
     setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'));
@@ -174,9 +202,36 @@ export default function MembersDetailsPageContent() {
     try {
       setLoading(true);
 
+      // Build query params for export
+      const queryParams = new URLSearchParams();
+      queryParams.append('limit', '10000');
+      queryParams.append('export', 'true');
+      queryParams.append('filter', 'session');
+
+      // Date filtering logic
+      if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
+        const startDate = customDateRange.startDate instanceof Date
+          ? customDateRange.startDate
+          : new Date(customDateRange.startDate);
+        const endDate = customDateRange.endDate instanceof Date
+          ? customDateRange.endDate
+          : new Date(customDateRange.endDate);
+        queryParams.append('startDate', startDate.toISOString().split('T')[0]);
+        queryParams.append('endDate', endDate.toISOString().split('T')[0]);
+      } else if (activeMetricsFilter && activeMetricsFilter !== 'All Time') {
+        const timePeriodMap: Record<string, string> = {
+          'Today': 'today',
+          'Yesterday': 'yesterday',
+          '7d': '7d',
+          '30d': '30d',
+        };
+        const apiTimePeriod = timePeriodMap[activeMetricsFilter] || activeMetricsFilter.toLowerCase();
+        queryParams.append('timePeriod', apiTimePeriod);
+      }
+
       // Fetch all session data for export
       const response = await axios.get(
-        `/api/members/${memberId}/sessions?filter=${filter}&export=true&limit=10000`
+        `/api/members/${memberId}/sessions?${queryParams.toString()}`
       );
 
       const data = response.data;
@@ -246,9 +301,7 @@ export default function MembersDetailsPageContent() {
         link.setAttribute('href', url);
         link.setAttribute(
           'download',
-          `member-${memberId}-sessions-${filter}-${
-            new Date().toISOString().split('T')[0]
-          }.csv`
+          `member-${memberId}-sessions-${new Date().toISOString().split('T')[0]}.csv`
         );
         link.style.visibility = 'hidden';
 
@@ -360,24 +413,12 @@ export default function MembersDetailsPageContent() {
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
-              <span className="text-sm font-medium text-gray-700">
-                View by:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {(['session', 'day', 'week', 'month'] as FilterType[]).map(
-                  filterOption => (
-                    <Button
-                      key={filterOption}
-                      variant={filter === filterOption ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => handleFilterChange(filterOption)}
-                      className="text-xs capitalize sm:text-sm"
-                    >
-                      {filterOption}
-                    </Button>
-                  )
-                )}
-              </div>
+               <DateFilters 
+                 onCustomRangeGo={handleRefresh} 
+                 hideAllTime={false}
+                 mode="auto"
+                 hideIndicator
+               />
             </div>
 
             {/* Export Controls */}
