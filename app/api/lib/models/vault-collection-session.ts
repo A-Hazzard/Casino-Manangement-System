@@ -4,6 +4,11 @@ const VaultCollectionSessionSchema = new Schema(
   {
     locationId: { type: String, required: true },
     vaultShiftId: { type: String, required: true },
+    type: { 
+      type: String, 
+      enum: ['machine_collection', 'soft_count'], 
+      default: 'machine_collection' 
+    },
     status: { 
       type: String, 
       enum: ['active', 'completed', 'cancelled'], 
@@ -30,6 +35,7 @@ const VaultCollectionSessionSchema = new Schema(
       },
       
       // Variance
+      expectedDrop: { type: Number },
       variance: { type: Number },
       
       notes: { type: String },

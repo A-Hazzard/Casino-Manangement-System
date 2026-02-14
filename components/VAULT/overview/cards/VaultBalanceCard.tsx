@@ -40,6 +40,16 @@ export default function VaultBalanceCard({
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // Helper to determine font size based on amount string length
+  const getDynamicFontSize = (text: string, baseSize: string, mediumSize: string, smallSize: string) => {
+    if (text.length > 15) return smallSize;
+    if (text.length > 12) return mediumSize;
+    return baseSize;
+  };
+
+  const balanceStr = formatAmount(balance.balance);
+  const premisesStr = formatAmount(balance.totalCashOnPremises || balance.balance);
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -72,15 +82,18 @@ export default function VaultBalanceCard({
       <CardContent>
         <div className="flex flex-col gap-4 md:flex-row md:gap-6">
           {/* Vault Balance */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-600">
               Current Vault Balance
             </p>
-            <p className="mt-1 break-words text-2xl font-bold text-gray-900 sm:text-3xl md:text-4xl">
-              {formatAmount(balance.balance)}
+            <p className={cn(
+                "mt-1 font-bold text-gray-900 leading-none transition-all duration-300 truncate",
+                getDynamicFontSize(balanceStr, "text-2xl sm:text-3xl md:text-4xl", "text-xl sm:text-2xl md:text-3xl", "text-lg sm:text-xl md:text-2xl")
+            )}>
+              {balanceStr}
             </p>
             {balance.openingBalance !== undefined && (
-              <p className="mt-1 text-xs text-gray-500 font-medium">
+              <p className="mt-1 text-xs text-gray-500 font-medium truncate">
                 Started with: <span className="text-gray-900">{formatAmount(balance.openingBalance)}</span>
               </p>
             )}
@@ -92,9 +105,9 @@ export default function VaultBalanceCard({
           <div className="border-t border-gray-200 pt-4 md:hidden"></div>
 
           {/* Last Audit */}
-          <div className="flex-1 md:pt-0">
+          <div className="flex-1 md:pt-0 min-w-0">
             <p className="text-sm font-medium text-gray-600">Last Audit</p>
-            <p className="mt-1 text-lg text-gray-900">
+            <p className="mt-1 text-lg text-gray-900 truncate">
               {balance.lastAudit && balance.lastAudit !== 'Never' ? new Intl.DateTimeFormat('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -112,9 +125,9 @@ export default function VaultBalanceCard({
           <div className="border-t border-gray-200 pt-4 md:hidden"></div>
 
           {/* Manager on Duty */}
-          <div className="flex-1 md:pt-0">
+          <div className="flex-1 md:pt-0 min-w-0">
             <p className="text-sm font-medium text-gray-600">Manager on Duty</p>
-            <p className="mt-1 text-lg font-semibold text-gray-900">
+            <p className="mt-1 text-lg font-semibold text-gray-900 truncate">
               {balance.managerOnDuty}
             </p>
           </div>
@@ -125,14 +138,17 @@ export default function VaultBalanceCard({
           <div className="border-t border-gray-200 pt-4 md:hidden"></div>
 
           {/* Premises Metrics */}
-          <div className="flex-1 md:pt-0">
+          <div className="flex-1 md:pt-0 min-w-0">
             <p className="text-sm font-medium text-orangeHighlight">Cash on Premises</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">
-              {formatAmount(balance.totalCashOnPremises || balance.balance)}
+            <p className={cn(
+                "mt-1 font-bold text-gray-900 leading-none transition-all duration-300 truncate",
+                getDynamicFontSize(premisesStr, "text-2xl", "text-xl", "text-lg")
+            )}>
+              {premisesStr}
             </p>
-            <div className="mt-1 flex gap-3 text-[10px] uppercase tracking-wider text-gray-500 font-mono">
-              <span title="Machine Money In">M: {formatAmount(balance.machineMoneyIn || 0)}</span>
-              <span title="Total Active Cashier Floats">F: {formatAmount(balance.cashierFloats || 0)}</span>
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] uppercase tracking-wider text-gray-500 font-mono overflow-hidden">
+              <span className="truncate" title="Machine Money In">Machines' Soft Count: {formatAmount(balance.machineMoneyIn || 0)}</span>
+              <span className="truncate" title="Total Active Cashier Floats">Cashiers' Float: {formatAmount(balance.cashierFloats || 0)}</span>
             </div>
           </div>
         </div>

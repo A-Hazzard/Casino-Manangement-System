@@ -11,63 +11,68 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import CashierManagementSkeleton from '@/components/ui/skeletons/CashierManagementSkeleton';
 
 import {
-    fetchCashiersData,
-    handleCreateCashier,
-    handleDeleteCashier,
-    handleFloatAction,
-    handleResetCashierPassword,
-    handleUpdateCashierStatus
+  fetchCashiersData,
+  handleCreateCashier,
+  handleDeleteCashier,
+  handleFloatAction,
+  handleResetCashierPassword,
+  handleUpdateCashierStatus
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
+
+// Phase 2 Modals
 import { getDenominationValues, getInitialDenominationRecord } from '@/lib/utils/vault/denominations';
 import type { Denomination, FloatRequest } from '@/shared/types/vault';
 import {
-    AlertTriangle,
-    ArrowUpDown,
-    Ban,
-    Check,
-    Copy,
-    Eye,
+  AlertTriangle,
+  ArrowUpDown,
+  Ban,
+  Check,
+  Copy,
+  Eye,
 
-    Plus,
-    RefreshCw,
-    RotateCcw,
-    Search,
-    Trash2,
-    User
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Trash2,
+  User
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import CashierActionSelectionModal from './modals/CashierActionSelectionModal';
+import CashierActivityLogModal from './modals/CashierActivityLogModal';
+import CashierShiftHistoryModal from './modals/CashierShiftHistoryModal';
 
 interface Cashier {
   _id: string;
@@ -134,6 +139,11 @@ export default function CashierManagementPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
+
+  // Phase 2 History Modals State
+  const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
+  const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
+  const [isShiftHistoryModalOpen, setIsShiftHistoryModalOpen] = useState(false);
 
   const shiftTotal = Object.entries(shiftDenominations).reduce(
     (sum, [val, qty]) => sum + (Number(val) * qty), 
@@ -244,7 +254,8 @@ export default function CashierManagementPanel() {
           }
           setIsReviewRequestModalOpen(false);
           fetchCashiers(); // Refresh list
-      } catch (_err) {
+      } catch (err) {
+          console.error("Shift review error:", err);
           toast.error("Failed to process request");
       } finally {
           setLoading(false);
@@ -580,21 +591,37 @@ export default function CashierManagementPanel() {
                 {cashiers.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="py-8 text-center text-gray-500"
                     >
                       No cashiers found. Create one to get started.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  cashiers.map(cashier => (
+                  cashiers
+                    .filter(c => c._id !== user?._id)
+                    .map(cashier => (
                     <TableRow key={cashier._id}>
-                      <TableCell className="font-medium">
+                      <TableCell 
+                        className="font-medium cursor-pointer text-purple-600 hover:text-purple-800 hover:underline"
+                        onClick={() => {
+                          setSelectedCashier(cashier);
+                          setIsSelectionModalOpen(true);
+                        }}
+                      >
                         {cashier.profile && cashier.profile.firstName
                           ? `${cashier.profile.firstName} ${cashier.profile.lastName}`
                           : 'Unspecified'}
                       </TableCell>
-                      <TableCell>{cashier.username}</TableCell>
+                      <TableCell 
+                        className="cursor-pointer hover:text-purple-600"
+                        onClick={() => {
+                          setSelectedCashier(cashier);
+                          setIsSelectionModalOpen(true);
+                        }}
+                      >
+                        {cashier.username}
+                      </TableCell>
                       <TableCell>{cashier.emailAddress}</TableCell>
                       <TableCell>
                         {!cashier.isEnabled ? (
@@ -1209,6 +1236,41 @@ export default function CashierManagementPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Phase 2 History Modals */}
+      <CashierActionSelectionModal
+        isOpen={isSelectionModalOpen}
+        onClose={() => setIsSelectionModalOpen(false)}
+        onSelectActivityLog={() => {
+          setIsSelectionModalOpen(false);
+          setIsActivityLogModalOpen(true);
+        }}
+        onSelectShiftHistory={() => {
+          setIsSelectionModalOpen(false);
+          setIsShiftHistoryModalOpen(true);
+        }}
+        cashier={selectedCashier}
+      />
+
+      <CashierActivityLogModal
+        isOpen={isActivityLogModalOpen}
+        onClose={() => setIsActivityLogModalOpen(false)}
+        onBack={() => {
+          setIsActivityLogModalOpen(false);
+          setIsSelectionModalOpen(true);
+        }}
+        cashier={selectedCashier}
+      />
+
+      <CashierShiftHistoryModal
+        isOpen={isShiftHistoryModalOpen}
+        onClose={() => setIsShiftHistoryModalOpen(false)}
+        onBack={() => {
+          setIsShiftHistoryModalOpen(false);
+          setIsSelectionModalOpen(true);
+        }}
+        cashier={selectedCashier}
+      />
     </div>
   );
 }

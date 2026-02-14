@@ -44,6 +44,14 @@ export default function VaultMetricCard({
   // Hooks
   // ===================================
   const { formatAmount } = useCurrencyFormat();
+  const formattedValue = formatAmount(value);
+
+  // Helper for dynamic font size
+  const getDynamicFontSize = (text: string) => {
+    if (text.length > 15) return 'text-base sm:text-lg';
+    if (text.length > 12) return 'text-lg sm:text-xl';
+    return 'text-xl sm:text-2xl';
+  };
 
   // ===================================
   // Render
@@ -60,9 +68,12 @@ export default function VaultMetricCard({
       <CardContent className="p-4 sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-2">
-            <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="break-words text-lg font-bold text-gray-900 sm:text-xl">
-              {formatAmount(value)}
+            <p className="text-sm font-medium text-gray-600 truncate">{title}</p>
+            <p className={cn(
+                "font-bold text-gray-900 leading-tight transition-all truncate",
+                getDynamicFontSize(formattedValue)
+            )}>
+              {formattedValue}
             </p>
           </div>
           <div className={cn('flex-shrink-0 rounded-lg p-3', iconBgColor)}>

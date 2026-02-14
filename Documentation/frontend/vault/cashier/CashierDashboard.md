@@ -20,16 +20,16 @@ The simplified interface for Cashiers to manage their daily operations.
 *   **Payout Operations:**
     *   **Ticket Redemption:**
         *   Used for cashing out slot machine tickets.
-        *   Features a mocked barcode scanner UI for manual/automatic ticket entry.
-        *   Uses `DenominationInputGrid` to record the physical bills handed to the customer.
+        *   Features a barcode entry field for manual/automatic ticket entry.
+        *   **Workflow:** Enter Ticket # and Amount. System updates stash balance.
         *   Visual: Blue-themed modal.
     *   **Hand Pay / Jackpot:**
         *   Used for large wins or machine hand-pays.
         *   Machine selection via `MachineSearchSelect` (linked to live machine IDs).
         *   Reason selection (Jackpot, Canceled Credit, Progressive, etc.).
-        *   Uses `DenominationInputGrid` for physical cash tracking.
+        *   **Workflow:** Enter Amount and Machine.
         *   Visual: Emerald-themed modal.
-    *   **Validation:** Cashier cannot perform a payout that exceeds their current system balance (Stash).
+    *   **Validation:** Cashier cannot perform a payout that exceeds their current system balance (Stash). If over-balance, the dashboard offers a "Request From Vault" shortcut.
 *   **Float Increase/Decrease:**
     *   Cashier selects requested amount using denominations.
     *   State changes to "Waiting for Approval".

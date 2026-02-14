@@ -19,33 +19,33 @@ import { toast } from 'sonner';
 export default function SoftCountsPage() {
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (
-    machineId: string,
-    amount: number,
-    denominations: Denomination[],
-    notes?: string
-  ) => {
+  const handleSubmit = async (data: {
+    amount: number;
+    denominations: Denomination[];
+    notes?: string;
+    meters?: { billIn: number; ticketIn: number; totalIn: number };
+    expectedDrop: number;
+    variance: number;
+  }) => {
+    const { amount, denominations, notes } = data;
     setLoading(true);
     try {
       const response = await fetch('/api/vault/soft-counts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          machineId, // Although API might not strict require it if it's generic soft count, form sends it. API doesn't use machineId in body destructuring?
-          // Wait, SoftCountForm sends machineId. The API route receives `amount, denominations, notes`.
-          // I should check API route again.
           amount,
           denominations,
-          notes: notes || `Soft count from ${machineId}`, // Append machineId to notes if API doesn't take it separately
+          notes: notes || `Soft count recording`, 
         }),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
 
-      if (data.success) {
+      if (responseData.success) {
         toast.success(`Soft count recorded: $${amount}`);
       } else {
-        toast.error(data.error || 'Failed to record soft count');
+        toast.error(responseData.error || 'Failed to record soft count');
       }
     } catch (error) {
       console.error('Error recording soft count:', error);

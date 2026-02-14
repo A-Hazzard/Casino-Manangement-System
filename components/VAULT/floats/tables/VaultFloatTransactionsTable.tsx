@@ -91,20 +91,35 @@ export default function VaultFloatTransactionsTable({
           </TableHeader>
           <TableBody>
             {transactions.map(tx => {
-              const isIncrease = tx.type === 'float_increase';
+              // Transactions that add money to the cashier's float
+              const isInflow = tx.type === 'float_increase' || tx.type === 'cashier_shift_open';
               const isCompleted = !tx.isVoid;
+
+              // Map type to display label
+              const getLabel = (type: string) => {
+                switch (type) {
+                  case 'float_increase': return 'Increase';
+                  case 'float_decrease': return 'Decrease';
+                  case 'cashier_shift_open': return 'Shift Open';
+                  case 'payout': return 'Payout';
+                  default: return type.replace(/_/g, ' ');
+                }
+              };
 
               return (
                 <TableRow key={tx._id} className="transition-colors hover:bg-muted/30">
                   <TableCell className="text-xs whitespace-nowrap">{formatDate(tx.timestamp)}</TableCell>
                   <TableCell className="font-medium text-sm">{tx.performedByName}</TableCell>
                   <TableCell className="text-center">
-                    <Badge className={cn('px-2 py-0.5 text-[10px]', isIncrease ? 'bg-button' : 'bg-lighterBlueHighlight')}>
-                      {isIncrease ? 'Increase' : 'Decrease'}
+                    <Badge className={cn(
+                      'px-2 py-0.5 text-[10px] capitalize', 
+                      isInflow ? 'bg-button' : 'bg-lighterBlueHighlight'
+                    )}>
+                      {getLabel(tx.type)}
                     </Badge>
                   </TableCell>
-                  <TableCell className={cn('text-right font-bold', isIncrease ? 'text-button' : 'text-lighterBlueHighlight')}>
-                    {isIncrease ? '+' : ''}{formatAmount(Math.abs(tx.amount))}
+                  <TableCell className={cn('text-right font-bold', isInflow ? 'text-button' : 'text-lighterBlueHighlight')}>
+                    {isInflow ? '+' : '-'}{formatAmount(Math.abs(tx.amount))}
                   </TableCell>
                   <TableCell className="text-xs text-gray-500 max-w-[150px] truncate">{tx.notes || '-'}</TableCell>
                   <TableCell className="text-center">
@@ -144,11 +159,21 @@ export default function VaultFloatTransactionsTable({
       {/* Mobile/Tablet Card View */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4">
         {transactions.map(tx => {
-          const isIncrease = tx.type === 'float_increase';
+          const isInflow = tx.type === 'float_increase' || tx.type === 'cashier_shift_open';
           const isCompleted = !tx.isVoid;
 
+          const getLabel = (type: string) => {
+            switch (type) {
+              case 'float_increase': return 'Increase';
+              case 'float_decrease': return 'Decrease';
+              case 'cashier_shift_open': return 'Shift Open';
+              case 'payout': return 'Payout';
+              default: return type.replace(/_/g, ' ');
+            }
+          };
+
           return (
-            <Card key={tx._id} className={cn("overflow-hidden border-l-4 shadow-sm", isIncrease ? "border-l-button" : "border-l-lighterBlueHighlight")}>
+            <Card key={tx._id} className={cn("overflow-hidden border-l-4 shadow-sm", isInflow ? "border-l-button" : "border-l-lighterBlueHighlight")}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
@@ -160,15 +185,15 @@ export default function VaultFloatTransactionsTable({
                        <span className="font-bold text-gray-900 text-sm">{tx.performedByName}</span>
                     </div>
                   </div>
-                  <span className={cn("text-lg font-black", isIncrease ? "text-button" : "text-lighterBlueHighlight")}>
-                    {isIncrease ? '+' : ''}{formatAmount(Math.abs(tx.amount))}
+                  <span className={cn("text-lg font-black", isInflow ? "text-button" : "text-lighterBlueHighlight")}>
+                    {isInflow ? '+' : '-'}{formatAmount(Math.abs(tx.amount))}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                   <div className="flex items-center gap-2">
-                    <Badge className={cn('px-2 py-0.5 text-[10px]', isIncrease ? 'bg-button' : 'bg-lighterBlueHighlight')}>
-                        {isIncrease ? 'Increase' : 'Decrease'}
+                    <Badge className={cn('px-2 py-0.5 text-[10px] capitalize', isInflow ? 'bg-button' : 'bg-lighterBlueHighlight')}>
+                        {getLabel(tx.type)}
                     </Badge>
                     <Badge className={cn('px-2 py-0.5 text-[10px]', isCompleted ? 'bg-button text-white' : 'bg-orangeHighlight')}>
                       {isCompleted ? 'Completed' : 'Pending'}

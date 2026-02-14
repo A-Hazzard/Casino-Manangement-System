@@ -14,6 +14,8 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { MachineCollectionModel } from '@/app/api/lib/models/machineCollection';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import { getGamingDayRange } from '@/lib/utils/gamingDayRange';
+import { Machine } from '../../models/machines';
+import { Meters } from '../../models/meters';
 
 /**
  * End of Day Report Data Structure matching Frontend Expectations
@@ -25,6 +27,10 @@ export type EndOfDayReport = {
   denominationBreakdown: Record<string, number>;
   transactions?: Array<Record<string, unknown>>;
   
+  // Status flags
+  shiftStatus: 'not_started' | 'active' | 'closed';
+  previousShiftActive: boolean;
+
   // Detailed sections required by UI
   vaultBalance: {
     systemBalance: number;
@@ -42,6 +48,7 @@ export type EndOfDayReport = {
     machineId: string;
     location: string;
     closingCount: number;
+    collected: boolean;
   }>;
 };
 
@@ -78,24 +85,30 @@ export async function generateEndOfDayReport(
       },
       { 
         status: 'active',
-        // For active, we only include if the requested date covers "now" (implied by lack of closedAt check relative to range, but practically means "latest active")
-        // However, we should be careful not to pick an active shift for a historical date query.
-        // But for "End of Day", usually implies closing.
-        // If checking a past date and no closed shift exists, maybe there was no activity?
-        // We will allow picking active if it started before rangeEnd (safety).
-        openedAt: { $lt: rangeEnd } 
+        // Only include an active shift if it belongs to this gaming day (started within the range)
+        openedAt: { $gte: rangeStart, $lt: rangeEnd } 
       }
     ]
   }).sort({ closedAt: -1, openedAt: -1 });
+
+  // Fallback: If no shift found in strictly defined range, and we are looking at "Active" data...
+  // But user specifically wants "Nothing showing if not started".
+  // So strictly enforcing rangeStart is correct.
+
 
   let vaultSystemBalance = 0;
   let vaultPhysicalCount = 0;
   const vaultVariance = 0;
   let vaultDenominations: any[] = [];
   let status = 'closed';
+  
+  let shiftStatus: 'not_started' | 'active' | 'closed' = 'not_started';
+  let previousShiftActive = false;
 
   if (vaultShift) {
     status = vaultShift.status;
+    shiftStatus = vaultShift.status as 'active' | 'closed';
+    
     // If closed, use closing figures. If active, use current/opening.
     if (vaultShift.status === 'closed') {
       vaultSystemBalance = vaultShift.closingBalance || 0; // The validated balance
@@ -110,6 +123,16 @@ export async function generateEndOfDayReport(
       vaultSystemBalance = vaultShift.currentBalance ?? vaultShift.openingBalance;
       vaultPhysicalCount = vaultSystemBalance; // Assuming matched for active
       vaultDenominations = vaultShift.currentDenominations ?? vaultShift.openingDenominations ?? [];
+    }
+  } else {
+    // If no shift found for this day, check if previous day is still active
+    const prevActive = await VaultShiftModel.findOne({
+      locationId,
+      status: 'active',
+      openedAt: { $lt: rangeStart }
+    });
+    if (prevActive) {
+      previousShiftActive = true;
     }
   }
 
@@ -136,7 +159,7 @@ export async function generateEndOfDayReport(
       },
       {
         status: 'active',
-        openedAt: { $lte: rangeEnd }
+        openedAt: { $gte: rangeStart, $lte: rangeEnd }
       }
     ]
   }).lean();
@@ -150,20 +173,64 @@ export async function generateEndOfDayReport(
 
   const totalCashierFloat = cashierFloats.reduce((sum, c) => sum + c.balance, 0);
 
-  // ============================================================================
-  // 3. Slot Machine Counts
-  // ============================================================================
-  // Find collections performed in range
+  // 3. Machine Counts (Drops)
+  // Fetch ALL machines for this location
+  const allMachines = await Machine.find({ 
+    gamingLocation: locationId,
+    deletedAt: { $exists: false } 
+  }).select('_id assetNumber custom.name').lean();
+  
+  const machineIds = allMachines.map(m => String(m._id));
+
+  // Calculate Machine Drops from Meters (Soft Count)
+  // This matches the logic from balance/route.ts to ensure consistency
+  const machineMeters = await Meters.aggregate([
+    {
+      $match: {
+        machine: { $in: machineIds },
+        readAt: {
+          $gte: rangeStart,
+          $lte: rangeEnd,
+        },
+      },
+    },
+    {
+      $group: {
+        _id: '$machine',
+        totalDrop: { $sum: '$movement.drop' },
+      },
+    },
+  ]);
+
+  // Create a map of drops for easy lookup
+  const dropMap = new Map(machineMeters.map(m => [m._id, m.totalDrop]));
+
+  // Find collections performed in range (Physical Count/Hard Count - if available)
+  // Note: Collections might not happen daily. If no collection, we use 0 or Soft Count?
+  // User asked for "Machines' Soft Count" in balance card, here it is "Closing Slot Count".
+  // If we want to show the daily drop, we should use the Meter data (Soft Count).
   const machineCollections = await MachineCollectionModel.find({
     locationId,
     collectedAt: { $gte: rangeStart, $lte: rangeEnd }
   }).lean();
 
-  const slotCounts = machineCollections.map((mc: any) => ({
-    machineId: mc.machineId,
-    location: mc.machineName || 'Floor', // Use machineName if available
-    closingCount: mc.amount || 0
-  }));
+  const collectionMap = new Map(machineCollections.map(mc => [mc.machineId, mc]));
+
+  const slotCounts: EndOfDayReport['slotCounts'] = allMachines.map((machine: any) => {
+    const mId = machine._id.toString();
+    const softCount = dropMap.get(mId) || 0;
+    const collection = collectionMap.get(mId);
+    
+    // Use Soft Count (Meters) as the primary "Closing Count" for End of Day report
+    // unless a physical collection occurred, which might override or be a separate column.
+    // For now, mapping "Closing Count" to the calculate drop from meters.
+    return {
+      machineId: mId,
+      location: (machine.custom?.name || machine.assetNumber || 'Floor') as string,
+      closingCount: softCount, 
+      collected: !!collection
+    };
+  });
   
   const totalMachineBalance = slotCounts.reduce((sum, s) => sum + s.closingCount, 0);
 
@@ -171,15 +238,7 @@ export async function generateEndOfDayReport(
   // 4. Aggregations
   // ============================================================================
   
-  // Total Cash on Premises = Vault + Cashiers + Machines (Drops not yet in vault? Or drops already in vault?)
-  // Usually Machine Collection -> Vault. If so, don't double count.
-  // But MachineCollection usually tracks "money collected from machine".
-  // If it's not yet in vault (e.g. drop box), it counts.
-  // If it's processed into vault, it's in Vault Balance.
-  // "Closing Slot Count" implies drops for the day.
-  // "Closing Float" implies vault holding.
-  // We'll sum them for "Total Cash" unless logic dictates otherwise.
-  // Simplest interpretation: Sum of components.
+  // Total Cash on Premises = Vault + Cashiers + Machines
   const totalCash = vaultSystemBalance + totalCashierFloat + totalMachineBalance;
 
   return {
@@ -188,6 +247,10 @@ export async function generateEndOfDayReport(
     totalCash,
     denominationBreakdown,
     transactions: [],
+    
+    // Status flags
+    shiftStatus,
+    previousShiftActive,
     
     // Detailed sections
     vaultBalance: {
@@ -239,9 +302,9 @@ export function exportReportToCSV(report: EndOfDayReport): string {
 
   // Machines
   lines.push('Machine Collections');
-  lines.push('Machine ID,Location,Amount');
+  lines.push('Machine ID,Location,Amount,Collected');
   report.slotCounts.forEach(s => {
-    lines.push(`${s.machineId},${s.location},${s.closingCount}`);
+    lines.push(`${s.machineId},${s.location},${s.closingCount},${s.collected ? 'YES' : 'NO'}`);
   });
 
   return lines.join('\n');

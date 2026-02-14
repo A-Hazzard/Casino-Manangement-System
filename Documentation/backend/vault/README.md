@@ -31,10 +31,11 @@ The Vault system is a multi-tenant accounting ledger for managing gaming operati
 ## API Summary
 
 ### Vault Manager (VM) Endpoints
-- `POST /api/vault/shift/open`: Start the vault day.
-- `POST /api/vault/float-request/api/approve`: Approve/Deny/Edit cashier floats.
-- `POST /api/vault/expense`: Record operational costs.
-- `GET /api/vault/balance`: Get real-time vault status.
+- `POST /api/vault/initialize`: Start the vault day and shift.
+- `POST /api/vault/float-request/approve`: Approve/Deny/Edit cashier floats.
+- `POST /api/vault/expense`: Record operational costs and upload receipts.
+- `GET /api/vault/balance`: Get real-time vault status and Cash on Premises metric.
+- `GET /api/vault/transactions`: Audit trail of all movements.
 
 ### Cashier (C) Endpoints
 - `POST /api/cashier/shift/open`: Request initial float.

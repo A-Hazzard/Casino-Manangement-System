@@ -24,12 +24,14 @@ import {
     DialogTitle,
 } from '@/components/shared/ui/dialog';
 import VaultCollectionEntryForm from '@/components/VAULT/overview/modals/wizard/VaultCollectionEntryForm';
+import VaultCollectionMachineHistory from '@/components/VAULT/overview/modals/wizard/VaultCollectionMachineHistory';
 import VaultCollectionMachineSelector from '@/components/VAULT/overview/modals/wizard/VaultCollectionMachineSelector';
 import VaultCollectionSessionList from '@/components/VAULT/overview/modals/wizard/VaultCollectionSessionList';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
+import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
-import { CheckCheck, CheckCircle2, LayoutGrid, Loader2 } from 'lucide-react';
+import { CheckCheck, CheckCircle2, History as HistoryIcon, LayoutGrid, ListChecks, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -70,6 +72,11 @@ export default function VaultCollectionWizardModal({
   // Confirmation State
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
+  // History State
+  const [viewMode, setViewMode] = useState<'session' | 'history'>('session');
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   // -- Derivations --
   const selectedMachine = machines.find(m => m._id === selectedMachineId);
   const collectedMachineIds = entries.map(e => e.machineId);
@@ -88,8 +95,37 @@ export default function VaultCollectionWizardModal({
         setIsCompleted(false);
         setFinalStats({ count: 0, total: 0 });
         setShowConfirmModal(false);
+        setViewMode('session');
+        setHistory([]);
     }
   }, [open, currentLocationId, currentVaultShiftId]);
+
+  // Fetch history when selection changes
+  useEffect(() => {
+    if (!selectedMachineId) {
+      setHistory([]);
+      if (viewMode === 'history') setViewMode('session');
+      return;
+    }
+
+    const fetchHistory = async () => {
+      setHistoryLoading(true);
+      try {
+        const res = await fetch(`/api/vault/activity-log?type=machine_collection&machineId=${selectedMachineId}&limit=5`);
+        const data = await res.json();
+        if (data.success) {
+          setHistory(data.activities || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch machine history:', error);
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+
+    fetchHistory();
+    // Auto-switch to history if a machine is selected? Option: setViewMode('history');
+  }, [selectedMachineId]);
 
   const loadSession = async () => {
     setSessionLoading(true);
@@ -257,7 +293,7 @@ export default function VaultCollectionWizardModal({
   return (
     <>
       <Dialog open={open} onOpenChange={(val) => !val && !isCompleted && onClose()}>
-        <DialogContent className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden flex flex-col bg-white">
+        <DialogContent className="max-w-[98vw] w-full h-[95vh] p-0 overflow-hidden flex flex-col bg-white border-none shadow-2xl rounded-3xl">
           
           {/* SUCCESS VIEW */}
           {isCompleted ? (
@@ -297,28 +333,33 @@ export default function VaultCollectionWizardModal({
           ) : (
               <>
                   {/* Header */}
-                  <DialogHeader className="px-6 py-4 border-b border-gray-100 flex flex-row items-center justify-between space-y-0 bg-white z-20">
-                      <div className="flex items-center gap-3">
-                          <div className="bg-violet-100 p-2 rounded-lg text-violet-600">
+                  <DialogHeader className="px-8 py-5 border-b border-gray-100 flex flex-row items-center justify-between space-y-0 bg-white z-20">
+                      <div className="flex items-center gap-4">
+                          <div className="h-10 w-10 bg-violet-100 rounded-xl flex items-center justify-center text-violet-600 shadow-sm">
                               <LayoutGrid className="h-5 w-5" />
                           </div>
                           <div>
-                          <DialogTitle className="text-lg font-bold text-gray-900">Machine Collection</DialogTitle>
-                          <p className="text-xs text-gray-500 font-medium mt-0.5">
-                              Session ID: <span className="font-mono">{sessionId ? sessionId.substring(0,8) : '...'}</span>
-                              {sessionLoading && <span className="ml-2 animate-pulse text-violet-500">Syncing...</span>}
+                          <DialogTitle className="text-xl font-black text-gray-900 tracking-tight leading-none">Machine Collection</DialogTitle>
+                          <p className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-widest flex items-center gap-2">
+                              Session ID: <span className="text-violet-500 font-mono tracking-tighter">{sessionId ? sessionId.substring(0,8) : '...'}</span>
+                              {sessionLoading && <Loader2 className="h-3 w-3 animate-spin text-violet-400" />}
                           </p>
                           </div>
                       </div>
                       
-                      <div className="flex items-center gap-3">
-                          <Button variant="ghost" onClick={onClose} disabled={loading} className="text-gray-500">
+                      <div className="flex items-center gap-4">
+                          <Button 
+                            variant="ghost" 
+                            onClick={onClose} 
+                            disabled={loading} 
+                            className="text-gray-400 hover:text-gray-600 font-bold text-sm tracking-tight"
+                          >
                               Cancel
                           </Button>
                           <Button 
                           onClick={handleFinalizeClick} 
                           disabled={loading || entries.length === 0}
-                          className="bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200"
+                          className="h-11 px-6 bg-violet-500 hover:bg-violet-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-violet-500/20 transition-all active:scale-[0.98]"
                           >
                               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCheck className="mr-2 h-4 w-4" />}
                               Finish Collection ({entries.length})
@@ -327,7 +368,7 @@ export default function VaultCollectionWizardModal({
                   </DialogHeader>
 
                   {/* 3-Column Layout */}
-                  <div className="flex-1 flex min-h-0 bg-gray-50/50">
+                  <div className="flex-1 flex min-h-0 bg-white">
                       
                       {/* Left: Machine Selector */}
                       <VaultCollectionMachineSelector 
@@ -340,7 +381,7 @@ export default function VaultCollectionWizardModal({
                       />
 
                       {/* Middle: Entry Form */}
-                      <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200 bg-white relative">
+                      <div className="flex-1 flex flex-col min-w-0 bg-white relative">
                           {selectedMachine ? (
                               <VaultCollectionEntryForm 
                                   machine={selectedMachine}
@@ -348,24 +389,65 @@ export default function VaultCollectionWizardModal({
                                   loading={loading}
                               />
                           ) : (
-                              <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-10 text-center">
-                                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                                      <LayoutGrid className="h-10 w-10 opacity-30" />
+                              <div className="flex-1 flex flex-col items-center justify-center p-10 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                  <div className="w-24 h-24 bg-gray-50 rounded-3xl flex items-center justify-center mb-6 shadow-sm border border-gray-100">
+                                      <LayoutGrid className="h-10 w-10 text-gray-200" />
                                   </div>
-                                  <h3 className="text-lg font-semibold text-gray-600 mb-1">No Machine Selected</h3>
-                                  <p className="text-sm max-w-[280px]">
+                                  <h3 className="text-xl font-black text-gray-800 mb-2 tracking-tight">No Machine Selected</h3>
+                                  <p className="text-gray-400 text-sm max-w-[320px] font-medium leading-relaxed">
                                   Select a machine from the left list to begin entering collection data.
                                   </p>
                               </div>
                           )}
                       </div>
 
-                      {/* Right: Session List */}
-                      <VaultCollectionSessionList 
-                          entries={entries}
-                          onRemove={handleRemoveEntry}
-                          // onEdit={(id) => setSelectedMachineId(id)} // Optional: Support editing
-                      />
+                      {/* Right: Session List / Summary */}
+                      <div className="w-1/4 min-w-[320px] border-l border-gray-100 bg-white flex flex-col h-full z-10">
+                        <div className="p-3 border-b border-gray-100 flex items-center justify-center gap-2 bg-gray-50/30">
+                           <Button 
+                             variant={viewMode === 'session' ? 'secondary' : 'ghost'} 
+                             size="sm" 
+                             className={cn(
+                               "flex-1 h-9 text-[10px] font-black uppercase tracking-widest gap-2 rounded-lg transition-all",
+                               viewMode === 'session' ? "bg-white shadow-sm border border-gray-100 text-violet-600" : "text-gray-400"
+                             )}
+                             onClick={() => setViewMode('session')}
+                           >
+                             <ListChecks className="h-3.5 w-3.5" />
+                             Session
+                           </Button>
+                           <Button 
+                             variant={viewMode === 'history' ? 'secondary' : 'ghost'} 
+                             size="sm" 
+                             className={cn(
+                                "flex-1 h-9 text-[10px] font-black uppercase tracking-widest gap-2 rounded-lg transition-all",
+                                viewMode === 'history' ? "bg-white shadow-sm border border-gray-100 text-violet-600" : "text-gray-400"
+                             )}
+                             onClick={() => setViewMode('history')}
+                             disabled={!selectedMachineId}
+                           >
+                             <HistoryIcon className="h-3.5 w-3.5" />
+                             History
+                           </Button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-hidden bg-gray-50/20">
+                          {viewMode === 'session' ? (
+                            <VaultCollectionSessionList 
+                                entries={entries}
+                                onRemove={handleRemoveEntry}
+                                containerClassName="w-full border-l-0 shadow-none min-w-0"
+                            />
+                          ) : (
+                            <VaultCollectionMachineHistory 
+                              history={history}
+                              loading={historyLoading}
+                              machineName={selectedMachine?.custom?.name || selectedMachine?.assetNumber || 'Machine'}
+                              containerClassName="w-full border-l-0 shadow-none min-w-0"
+                            />
+                          )}
+                        </div>
+                      </div>
 
                   </div>
               </>

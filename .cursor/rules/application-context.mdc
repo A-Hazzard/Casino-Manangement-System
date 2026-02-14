@@ -64,12 +64,11 @@ globs: **/*
 ## 🚀 Key Modules Status (January 2026)
 
 ### Vault Management System (VMS)
-- **Vault Dashboard:** Features "Advanced Dashboard" with real-time charts (Balance Trend, Transaction Volume, Cash Flow Pie Chart).
-- **Health Grid:** Real-time monitoring of Cash In, Cash Out, Net Flow, and Payouts with automated calculation logic.
-- **Cashier Dashboard:** Simplified "cash register" model for payouts (no bill breakdown).
-- **Vault Management:** Strict bill-by-bill tracking for liquidity movements (floats, reconciliation).
-- **Shift System:** Mandatory "currentBalance" tracking for active cashiers.
-- **Discrepancy Resolution:** "Shift Review Panel" for Vault Managers to resolve unbalanced cashier shifts (Blind Close mismatches).
+- **Vault Dashboard:** Features "Advanced Dashboard" with real-time charts and optimized grid for top 4 cashiers.
+- **Expenses:** default 7-day historical view; mandatory denomination tracking for petty cash.
+- **Health Grid:** Real-time monitoring of Cash In, Cash Out, Net Flow, and Payouts.
+- **Vault Management:** Strict atomic ledger tracking for every bill movement (floats, collections, expenses).
+- **Shift System:** Mandatory "currentBalance" tracking and discrepancy resolution via "Shift Review Panel".
 
 ### SMIB Management (Slot Machine Interface Board)
 - **Real-time Control:** Restart, meter requests, and firmware (OTA) updates over MQTT.

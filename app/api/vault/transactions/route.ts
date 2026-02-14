@@ -90,7 +90,11 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
 
     if (type && type !== 'all') {
-      query.type = type;
+      if (type.includes(',')) {
+        query.type = { $in: type.split(',') };
+      } else {
+        query.type = type;
+      }
     }
     
     // Status filter - mapped to transaction properties

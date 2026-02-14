@@ -58,7 +58,10 @@ export default function VaultCashDeskCard({ cashDesk, onViewDenominations: _onVi
         <div className="mt-2 flex items-center justify-between rounded-lg bg-gray-50 p-3">
           <div>
             <p className="text-xs text-gray-500">Current Float</p>
-            <p className="text-lg font-bold text-gray-900">
+            <p className={cn(
+                "font-bold text-gray-900 leading-none transition-all truncate",
+                formatAmount(cashDesk.balance).length > 12 ? 'text-base' : 'text-lg'
+            )}>
               {formatAmount(cashDesk.balance)}
             </p>
           </div>

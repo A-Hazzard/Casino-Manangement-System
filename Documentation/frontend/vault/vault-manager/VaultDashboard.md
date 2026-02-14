@@ -26,23 +26,23 @@ Located below the primary cards, this section provides visual trends:
 
 ### 3. Active Cashiers Section
 Displays status cards for active cashiers.
-*   **Sorting:** Top 5 cashiers are displayed, sorted by their current float balance (highest first).
+*   **Sorting:** Top 4 cashiers are displayed, sorted by their current float balance (highest first).
 *   **View Denominations:** Managers can click the "Eye" icon on a cashier card to view their current denomination breakdown.
 
 ### 4. Quick Actions
 *   **Start Day:** (Visible only if Vault Closed) opens `VaultInitializeModal`. Initializes the vault's starting state.
-*   **Close Day:** (Visible only if Vault Open) opens `VaultCloseShiftModal`.
+*   **Close Day:** (Visible only if Vault Open) initiates the Close Day sequence.
     *   **BR-01 Enforcement:** Closing is blocked if any cashier shifts are still `active` or `pending_review`.
-    *   **Workflow:** Manager must perform a physical count and enter denominations. The system flags any discrepancies against the expected balance.
+    *   **Workflow:** Manager must perform machine collections (if not done), enter denominations, and acknowledge coverage. The system flags any discrepancies against the expected balance.
 *   **Add Cash / Remove Cash:** External cash movement tracked by denomination.
-*   **Expenses:** Log categorized spending (Supplies, Repairs, etc.) with mandatory notes.
+*   **Expenses:** Log categorized spending (Supplies, Repairs, etc.) with mandatory notes and default 7-day view in history.
 *   **Machine Collection:** Transfer cash from machine stackers to vault.
 *   **Soft Count:** Replenish vault float from machine drops mid-shift.
 *   **Manage Cashiers:** Access to cashier account creation and password resets.
 
 ### 5. Oversight Panels
-*   **Notification Bell:** Real-time alerts for float requests and shift discrepancies.
+*   **Notification Bell:** Real-time alerts for float requests and shift discrepancies. Includes integrated action buttons (Approve/Deny) for rapid response.
 *   **Shift Review Panel:** Dedicated section for resolving "Pending Review" shifts (discrepancy resolution).
-    *   *Conditional Logic:* Only visible when `pendingShifts.length > 0`.
+    *   *Conditional Logic:** Only visible when `pendingShifts.length > 0`.
     *   *Action:* Managers input the "Final Validated Balance" and an "Audit Comment" to force-close unbalanced shifts.
-*   **Recent Activity:** Live ledger of the last 10 vault transactions.
+*   **Recent Activity:** Live ledger of the last 5 vault transactions.

@@ -19,7 +19,7 @@ Records the removal of funds from the vault to an external destination (e.g., Ba
     *   Subtracts specified `denominations` from the shift's `currentDenominations`.
     *   Ensures bill quantities do not drop below zero.
     *   Decrements `closingBalance`.
-3.  **Audit Trail:** Creates a `VaultTransaction` (type: `vault_close`).
+3.  **Audit Trail:** Creates a `VaultTransaction` (type: `vault_close`). *Note: `vault_close` is used as a generic adjustment for cash outflows.*
 4.  **Logging:** Records a "create" action in the `ActivityLog`.
 
 ## Models Used

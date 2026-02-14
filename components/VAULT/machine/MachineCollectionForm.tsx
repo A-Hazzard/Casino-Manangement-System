@@ -171,18 +171,20 @@ export default function MachineCollectionForm({
         </div>
 
         {/* Summary Card */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 p-5 text-white shadow-xl shadow-violet-500/20">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 p-5 text-white shadow-xl shadow-violet-500/20 min-h-[110px] flex flex-col justify-center">
           <div className="relative z-10 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-violet-100/60 mb-0.5">Total Machine Collection</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-violet-100/60 mb-1">Total Machine Collection</p>
               <span className={cn(
-                "text-3xl font-black tracking-tight transition-all",
-                totalAmount > 0 ? "text-white" : "text-white/20"
+                "font-black tracking-tighter transition-all leading-none block truncate",
+                totalAmount > 0 ? "text-white" : "text-white/20",
+                formatAmount(totalAmount).length > 15 ? 'text-xl' :
+                formatAmount(totalAmount).length > 12 ? 'text-2xl' : 'text-4xl'
               )}>
                 {formatAmount(totalAmount)}
               </span>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
+            <div className="flex-shrink-0 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 ml-4">
               <Monitor className="h-6 w-6 text-white/20" />
             </div>
           </div>

@@ -63,8 +63,18 @@ export default function VaultFloatTransactionsMobileCards({
     <div className="block lg:hidden">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {transactions.map(tx => {
-          const isIncrease = tx.type === 'float_increase';
+          const isInflow = tx.type === 'float_increase' || tx.type === 'cashier_shift_open';
           const isCompleted = !tx.isVoid;
+
+          const getLabel = (type: string) => {
+            switch (type) {
+              case 'float_increase': return 'Increase';
+              case 'float_decrease': return 'Decrease';
+              case 'cashier_shift_open': return 'Shift Open';
+              case 'payout': return 'Payout';
+              default: return type.replace(/_/g, ' ');
+            }
+          };
 
           return (
             <Card
@@ -79,7 +89,7 @@ export default function VaultFloatTransactionsMobileCards({
                       {new Date(tx.timestamp).toLocaleString()}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {isIncrease ? tx.toName : tx.fromName}
+                      {tx.performedByName || (isInflow ? tx.toName : tx.fromName)}
                     </p>
                   </div>
                   <Badge
@@ -108,23 +118,18 @@ export default function VaultFloatTransactionsMobileCards({
                 <div className="mb-3">
                   <Badge
                     className={cn(
-                      'px-2 py-1',
-                      isIncrease
+                      'px-2 py-1 capitalize',
+                      isInflow
                         ? 'bg-button text-white hover:bg-button/90'
                         : 'bg-lighterBlueHighlight text-white hover:bg-lighterBlueHighlight/90'
                     )}
                   >
-                    {isIncrease ? (
-                      <>
-                        <Plus className="mr-1 h-3 w-3" />
-                        Increase
-                      </>
+                    {isInflow ? (
+                      <Plus className="mr-1 h-3 w-3" />
                     ) : (
-                      <>
-                        <Minus className="mr-1 h-3 w-3" />
-                        Decrease
-                      </>
+                      <Minus className="mr-1 h-3 w-3" />
                     )}
+                    {getLabel(tx.type)}
                   </Badge>
                 </div>
 
@@ -134,10 +139,10 @@ export default function VaultFloatTransactionsMobileCards({
                   <p
                     className={cn(
                       'text-xl font-bold',
-                      isIncrease ? 'text-button' : 'text-lighterBlueHighlight'
+                      isInflow ? 'text-button' : 'text-lighterBlueHighlight'
                     )}
                   >
-                    {isIncrease ? '+' : ''}
+                    {isInflow ? '+' : '-'}
                     {formatAmount(Math.abs(tx.amount))}
                   </p>
                 </div>

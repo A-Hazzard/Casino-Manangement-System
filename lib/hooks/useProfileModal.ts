@@ -12,8 +12,7 @@ import { fetchLicensees } from '@/lib/helpers/client';
 import { fetchCountries } from '@/lib/helpers/countries';
 import { useUserStore } from '@/lib/store/userStore';
 import type { User as AdminUser } from '@/lib/types/administration';
-import type { Country } from '@/lib/types/common';
-import type { Licensee } from '@/lib/types/common';
+import type { Country, Licensee } from '@/lib/types/common';
 import axios from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -109,8 +108,11 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
             setProfilePicture(data.profilePicture || null);
             setSelectedRoles(data.roles || []);
 
-            // Set initial assignments
-            if (data.rel?.licencee) {
+            // Set initial assignments (Support current API fields)
+            if (data.assignedLicensees) {
+               setSelectedLicenseeIds(Array.isArray(data.assignedLicensees) ? data.assignedLicensees : []);
+            } else if (data.rel?.licencee) {
+              // Fallback for legacy data
               const isAll = data.rel.licencee === 'all';
               setAllLicenseesSelected(isAll);
               setSelectedLicenseeIds(
@@ -121,7 +123,11 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
                     : [data.rel.licencee]
               );
             }
-            if (data.resourcePermissions?.['gaming-locations']?.resources) {
+
+            if (data.assignedLocations) {
+               setSelectedLocationIds(Array.isArray(data.assignedLocations) ? data.assignedLocations : []);
+            } else if (data.resourcePermissions?.['gaming-locations']?.resources) {
+              // Fallback for legacy data
               const resources =
                 data.resourcePermissions['gaming-locations'].resources;
               const isAll = resources === 'all';
@@ -347,6 +353,9 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
           : {},
         profilePicture,
         roles: selectedRoles,
+        assignedLocations: allLocationsSelected ? ['all'] : selectedLocationIds,
+        assignedLicensees: allLicenseesSelected ? ['all'] : selectedLicenseeIds,
+        // Legacy fields for backward compatibility if needed by SMIB/other systems
         rel: {
           ...userData.rel,
           licencee: allLicenseesSelected ? 'all' : selectedLicenseeIds,

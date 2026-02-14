@@ -9,19 +9,19 @@
 
 import type { NotificationItem } from '@/components/shared/ui/NotificationBell';
 import {
-    DEFAULT_CASHIER_FLOATS,
-    DEFAULT_VAULT_BALANCE,
+  DEFAULT_CASHIER_FLOATS,
+  DEFAULT_VAULT_BALANCE,
 } from '@/components/VAULT/overview/data/defaults';
 import type {
-    CashDesk,
-    CashierFloat,
-    CashierShift,
-    Denomination,
-    FloatRequest,
-    UnbalancedShiftInfo,
-    VaultBalance,
-    VaultMetrics,
-    VaultTransaction,
+  CashDesk,
+  CashierFloat,
+  CashierShift,
+  Denomination,
+  FloatRequest,
+  UnbalancedShiftInfo,
+  VaultBalance,
+  VaultMetrics,
+  VaultTransaction,
 } from '@/shared/types/vault';
 
 // ============================================================================
@@ -109,7 +109,7 @@ export async function fetchVaultOverviewData(
 
     if (pendingShiftsRes.ok) {
       const data = await pendingShiftsRes.json();
-      if (data.success) {
+      if (data?.success) {
         const formattedShifts: UnbalancedShiftInfo[] = data.shifts.map(
           (shift: CashierShift) => ({
             shiftId: shift._id,
@@ -689,7 +689,7 @@ export async function fetchEndOfDayReportData(
         // The default object expects 'balance' as primary (system).
     };
 
-    return {
+      return {
       denominationBreakdown: data.denominationBreakdown || {},
       vaultBalance: vaultBalanceObj,
       cashierFloats: data.cashierFloats || [],
@@ -698,6 +698,8 @@ export async function fetchEndOfDayReportData(
         ? floatRequestsData.data || []
         : [],
       metrics: metricsData?.success ? metricsData.metrics : null,
+      shiftStatus: data.shiftStatus || 'not_started',
+      previousShiftActive: data.previousShiftActive || false,
     };
   } catch (error) {
     console.error('Failed to fetch end-of-day report data:', error);
@@ -705,64 +707,6 @@ export async function fetchEndOfDayReportData(
   }
 }
 
-/**
- * Fetch cash on premises data from multiple endpoints
- */
-export async function fetchCashOnPremisesData(locationId: string) {
-  try {
-    const [cashMonitoringResponse, balanceResponse, cashierResponse] =
-      await Promise.all([
-        fetch(`/api/vault/cash-monitoring?locationId=${locationId}`),
-        fetch(`/api/vault/balance?locationId=${locationId}`),
-        fetch(`/api/cashier/shifts?locationId=${locationId}&status=active`),
-      ]);
-
-    const result: {
-      cashData: {
-        totalCash: number;
-        denominationBreakdown: Record<string, number>;
-      };
-      vaultBalance: any;
-      cashierFloats: CashierFloat[];
-    } = {
-      cashData: {
-        totalCash: 0,
-        denominationBreakdown: {},
-      },
-      vaultBalance: DEFAULT_VAULT_BALANCE,
-      cashierFloats: DEFAULT_CASHIER_FLOATS,
-    };
-
-    // Process cash monitoring data
-    if (cashMonitoringResponse.ok) {
-      const data = await cashMonitoringResponse.json();
-      if (data.success) {
-        result.cashData = data.data;
-      }
-    }
-
-    // Process balance data
-    if (balanceResponse.ok) {
-      const data = await balanceResponse.json();
-      if (data.success) {
-        result.vaultBalance = data.data || DEFAULT_VAULT_BALANCE;
-      }
-    }
-
-    // Process cashier data
-    if (cashierResponse.ok) {
-      const data = await cashierResponse.json();
-      if (data.success) {
-        result.cashierFloats = data.shifts || DEFAULT_CASHIER_FLOATS;
-      }
-    }
-
-    return result;
-  } catch (error) {
-    console.error('Failed to fetch cash on premises data:', error);
-    throw error;
-  }
-}
 
 /**
  * Fetch float transactions data from multiple endpoints with pagination
@@ -782,7 +726,7 @@ export async function fetchFloatTransactionsData(
       fetch(`/api/cashier/shifts?locationId=${locationId}&status=active`),
       fetch(`/api/vault/balance?locationId=${locationId}`),
       fetch(
-        `/api/vault/transactions?locationId=${locationId}&page=${page}&limit=${limit}`
+        `/api/vault/transactions?locationId=${locationId}&type=float_increase,float_decrease,cashier_shift_open,payout&page=${page}&limit=${limit}`
       ),
       fetch(`/api/vault/float-request?locationId=${locationId}`),
     ]);
@@ -835,12 +779,13 @@ export async function fetchFloatTransactionsData(
 
     // Process transactions data
     if (transactionsData?.success) {
-      // Filter for float-related transactions only
-      const floatTxs = (transactionsData.transactions || []).filter((tx: any) =>
-        ['float_increase', 'float_decrease'].includes(tx.type)
+      // Still apply a safe filter in case the API didn't handle the multi-type param
+      const floatTypes = ['float_increase', 'float_decrease', 'cashier_shift_open', 'payout'];
+      const floatTxs = (transactionsData.items || transactionsData.transactions || []).filter((tx: any) =>
+        floatTypes.includes(tx.type)
       );
       result.floatTransactions = floatTxs;
-      result.totalTransactions = transactionsData.pagination?.total || 0;
+      result.totalTransactions = transactionsData.pagination?.total || transactionsData.total || 0;
       result.totalPages = transactionsData.pagination?.totalPages || 1;
     }
 
@@ -1543,7 +1488,6 @@ export function calculateEndOfDayMetrics(reportData: {
     cashierFloats,
     vaultBalance,
     floatRequests,
-    metrics,
   } = reportData;
 
   // Process denomination breakdown (calculate total value)
@@ -1562,153 +1506,36 @@ export function calculateEndOfDayMetrics(reportData: {
     0
   );
 
-  const totalCashDeskFloat = cashierFloats.reduce(
+  const totalCashierFloat = cashierFloats.reduce(
     (sum, f) => sum + (f.balance || 0),
     0
   );
 
-  const systemBalance = vaultBalance?.balance || 0;
-  const physicalCount = totalDenominationValue;
-  const variance = systemBalance - physicalCount;
-
-  // Real calculation for inflows/outflows comes from metrics if available
-  const totalInflows = metrics?.totalCashIn || systemBalance;
-  const totalOutflows = metrics?.totalCashOut || 0;
-  const totalExpenses = metrics?.expenses || 0;
-  const totalPayouts = metrics?.payouts || 0;
-  const floatRequestsCount = floatRequests.length;
-
-  const totalOnPremises =
-    systemBalance + totalMachineBalance + totalCashDeskFloat;
+  const totalFloatRequests = floatRequests.reduce(
+    (sum, r) => sum + (r.requestedAmount || 0),
+    0
+  );
 
   return {
     totalDenominationValue,
     totalDenominationCount,
     totalMachineBalance,
-    totalCashDeskFloat,
-    systemBalance,
-    physicalCount,
-    variance,
-    totalOnPremises,
-    totalInflows,
-    totalOutflows,
-    totalExpenses,
-    totalPayouts,
-    floatRequestsCount,
+    totalCashierFloat,
+    totalCashDeskFloat: totalCashierFloat, // Alias for compatibility
+    totalFloatRequests,
+    vaultBalance: vaultBalance?.balance || 0,
+    totalOnPremises:
+      (vaultBalance?.balance || 0) + totalMachineBalance + totalCashierFloat,
+    // Additional metrics for EOD reports
+    systemBalance: vaultBalance?.balance || 0,
+    totalInflows: 0, // To be calculated from transactions
+    totalOutflows: 0, // To be calculated from transactions
+    totalExpenses: 0, // To be calculated from transactions
+    totalPayouts: 0, // To be calculated from transactions
+    physicalCount: vaultBalance?.balance || 0, // Physical count from closing
+    variance: 0, // Difference between system and physical
+    floatRequestsCount: floatRequests.length,
   };
-}
-
-/**
- * Get transaction type badge component
- */
-export function getTransactionTypeBadge(type: string) {
-  // Import locally to avoid circular dependencies
-  const formatActivityType = (t: string) =>
-    t.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
-
-  if (type === 'machine_collection') {
-    return {
-      label: 'Inflow',
-      className: 'bg-button text-white hover:bg-button/90',
-      icon: 'arrow-up',
-    };
-  }
-  if (
-    type === 'float_increase' ||
-    type === 'float_decrease' ||
-    type === 'payout'
-  ) {
-    return {
-      label: 'Outflow',
-      className: 'bg-orangeHighlight text-white hover:bg-orangeHighlight/90',
-      icon: 'arrow-down',
-    };
-  }
-  if (type === 'expense') {
-    return {
-      label: 'Expense',
-      className: 'bg-red-600 text-white hover:bg-red-600/90',
-      icon: 'receipt',
-    };
-  }
-  return {
-    label: formatActivityType(type),
-    className: '',
-    icon: null,
-  };
-}
-
-/**
- * Filter and sort transactions
- */
-export function filterAndSortTransactions(
-  transactions: any[],
-  searchTerm: string,
-  selectedType: string,
-  selectedStatus: string,
-  sortOption: string,
-  sortOrder: 'asc' | 'desc'
-) {
-  // First filter
-  const filtered = transactions.filter((tx: any) => {
-    const matchesSearch =
-      searchTerm === '' ||
-      tx.performedByName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.fromName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.toName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.notes?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesType = selectedType === 'all' || tx.type === selectedType;
-    const matchesStatus =
-      selectedStatus === 'all' ||
-      (selectedStatus === 'completed' && !tx.isVoid) ||
-      (selectedStatus === 'voided' && tx.isVoid);
-
-    return matchesSearch && matchesType && matchesStatus;
-  });
-
-  // Then sort
-  return [...filtered].sort((a, b) => {
-    let aValue: string | number;
-    let bValue: string | number;
-
-    switch (sortOption) {
-      case 'date':
-        aValue = a.timestamp.getTime();
-        bValue = b.timestamp.getTime();
-        break;
-      case 'type':
-        aValue = a.type;
-        bValue = b.type;
-        break;
-      case 'amount':
-        aValue = Math.abs(a.amount);
-        bValue = Math.abs(b.amount);
-        break;
-      case 'user':
-        aValue = a.performedByName?.toLowerCase() || '';
-        bValue = b.performedByName?.toLowerCase() || '';
-        break;
-      case 'status':
-        aValue = !a.isVoid ? 'completed' : 'voided';
-        bValue = !b.isVoid ? 'completed' : 'voided';
-        break;
-      case 'source':
-        aValue = (a.fromName || '').toLowerCase();
-        bValue = (b.fromName || '').toLowerCase();
-        break;
-      case 'destination':
-        aValue = (a.toName || '').toLowerCase();
-        bValue = (b.toName || '').toLowerCase();
-        break;
-      default:
-        return 0;
-    }
-
-    if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
 }
 
 /**
@@ -1796,5 +1623,104 @@ export function handleNotificationClick(notification: NotificationItem) {
       break;
     default:
       console.log('Unknown notification type:', notification);
+  }
+}
+/**
+ * Get badge configuration for a transaction type
+ * Used by transaction history and audit trail components
+ *
+ * @param type - Transaction type
+ * @returns Object with label, icon, and className for Badge component
+ */
+export function getTransactionTypeBadge(type: string): {
+  label: string;
+  icon: 'arrow-up' | 'arrow-down' | 'receipt' | 'none';
+  className: string;
+} {
+  switch (type) {
+    case 'vault_open':
+      return { 
+        label: 'Shift Open', 
+        icon: 'none', 
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-50' 
+      };
+    case 'vault_close':
+      return { 
+        label: 'Shift Close', 
+        icon: 'none', 
+        className: 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100' 
+      };
+    case 'cashier_shift_open':
+      return { 
+        label: 'Cashier Open', 
+        icon: 'arrow-down', 
+        className: 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100' 
+      };
+    case 'cashier_shift_close':
+      return { 
+        label: 'Cashier Close', 
+        icon: 'none', 
+        className: 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-50' 
+      };
+    case 'float_increase':
+      return { 
+        label: 'Float Up', 
+        icon: 'arrow-down', 
+        className: 'bg-teal-50 text-teal-700 border-teal-100 hover:bg-teal-50' 
+      };
+    case 'float_decrease':
+      return { 
+        label: 'Float Down', 
+        icon: 'arrow-up', 
+        className: 'bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-50' 
+      };
+    case 'payout':
+      return { 
+        label: 'Payout', 
+        icon: 'arrow-down', 
+        className: 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-50' 
+      };
+    case 'machine_collection':
+      return { 
+        label: 'Collection', 
+        icon: 'arrow-up', 
+        className: 'bg-cyan-50 text-cyan-700 border-cyan-100 hover:bg-cyan-50' 
+      };
+    case 'soft_count':
+      return { 
+        label: 'Soft Count', 
+        icon: 'arrow-up', 
+        className: 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-50' 
+      };
+    case 'expense':
+      return { 
+        label: 'Expense', 
+        icon: 'receipt', 
+        className: 'bg-red-50 text-red-700 border-red-100 hover:bg-red-50' 
+      };
+    case 'vault_reconciliation':
+      return { 
+        label: 'Audit', 
+        icon: 'none', 
+        className: 'bg-violet-50 text-violet-700 border-violet-100 hover:bg-violet-50' 
+      };
+    case 'add_cash':
+      return { 
+        label: 'Treasury In', 
+        icon: 'arrow-up', 
+        className: 'bg-green-50 text-green-700 border-green-100 hover:bg-green-50' 
+      };
+    case 'remove_cash':
+      return { 
+        label: 'Treasury Out', 
+        icon: 'arrow-down', 
+        className: 'bg-stone-50 text-stone-700 border-stone-100 hover:bg-stone-50' 
+      };
+    default:
+      return { 
+        label: type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), 
+        icon: 'none', 
+        className: 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-50' 
+      };
   }
 }

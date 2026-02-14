@@ -27,6 +27,7 @@ import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, CheckCircle2, Landmark, Minus, Plus, RefreshCw, XCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import CollectionTallyList from '../sections/CollectionTallyList';
 
 type VaultCloseShiftModalProps = {
   open: boolean;
@@ -36,6 +37,7 @@ type VaultCloseShiftModalProps = {
   canClose: boolean;
   blockReason?: string;
   loading?: boolean;
+  locationId?: string;
 };
 
 export default function VaultCloseShiftModal({
@@ -46,6 +48,7 @@ export default function VaultCloseShiftModal({
   canClose,
   blockReason,
   loading = false,
+  locationId,
 }: VaultCloseShiftModalProps) {
   const { formatAmount } = useCurrencyFormat();
   const { selectedLicencee } = useDashBoardStore();
@@ -136,6 +139,13 @@ export default function VaultCloseShiftModal({
                    )}
                 </div>
               </div>
+
+              {/* End of Day Machine Tally */}
+              {locationId && (
+                <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                  <CollectionTallyList locationId={locationId} />
+                </div>
+              )}
 
               {/* Denomination Input - Row System */}
               <div className="space-y-4">

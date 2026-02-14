@@ -184,9 +184,9 @@ export function getExchangeRates(): ExchangeRates {
 export function getCurrencySymbol(currency: CurrencyCode): string {
   const symbols: Record<CurrencyCode, string> = {
     USD: '$',
-    TTD: 'TT$',
-    GYD: 'G$',
-    BBD: 'Bds$',
+    TTD: '$',
+    GYD: '$',
+    BBD: '$',
   };
   return symbols[currency];
 }

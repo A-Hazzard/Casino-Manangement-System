@@ -487,11 +487,11 @@ All APIs follow a consistent response format:
 
 | Endpoint                      | Method | Description                 | Used By               |
 | ----------------------------- | ------ | --------------------------- | --------------------- |
-| `/vault/cash-monitoring`      | GET    | Cash on premises status     | Vault Overview        |
-| `/vault/float-requests/[id]`  | GET/PUT| Manage float requests       | Cashier/Manager       |
-| `/vault/payouts/[id]`         | GET/PUT| Manage cashier payouts      | Cashier               |
-| `/vault/shifts/[id]`          | GET/PUT| Manage cashier shifts       | Cashier               |
-| `/vault/end-of-day`           | GET/POST| End of day reporting       | Vault Manager         |
+| `/vault/float-request`        | POST   | Request float (Cashier)     | Cashier Dashboard     |
+| `/vault/float-request/approve`| POST   | Manage float requests       | Vault Manager Bell    |
+| `/vault/expense`              | POST   | Record expense              | Vault Expenses        |
+| `/vault/initialize`           | POST   | Start vault shift           | Vault Dashboard       |
+| `/vault/shift/close`          | POST   | End of day closing          | Vault Dashboard       |
 
 **Documentation:** [vault-api.md](vault-api.md)
 

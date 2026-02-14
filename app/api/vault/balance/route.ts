@@ -11,20 +11,20 @@
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import UserModel from '@/app/api/lib/models/user';
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type {
-    VaultBalance,
-    VaultShift,
-    VaultTransaction,
+  VaultBalance,
+  VaultShift,
+  VaultTransaction,
 } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
+import { getGamingDayRange } from '../../../../lib/utils/gamingDayRange';
+import { GamingLocations } from '../../lib/models/gaminglocations';
 
 export async function GET(request: NextRequest) {
   try {
@@ -141,12 +141,30 @@ export async function GET(request: NextRequest) {
     }, { currentBalance: 1 }).lean();
     const totalCashierFloats = activeCashiersData.reduce((sum: number, s: any) => sum + (s.currentBalance || 0), 0);
 
-    // 2. Machine Money In (Drops) - Use Today's Gaming Day
+    // 2. Machine Money In (Drops) - Use Gaming Day of the Shift
     const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
     const gameDayOffset = (locationInfo as any)?.gameDayOffset ?? 8;
-    const gamingDayRange = getGamingDayRangeForPeriod('Today', gameDayOffset);
+    const timezoneOffset = -4; 
 
-    // Get all machine IDs for this location
+    // Calculate Gaming Day Start for the Active Shift
+    const openedAt = new Date(activeShift.openedAt);
+    
+    // Shift to "Local" (Fake UTC) to determine the calendar day and hour relative to offset
+    const openedAtLocalTime = openedAt.getTime() + (timezoneOffset * 60 * 60 * 1000);
+    const openedAtLocal = new Date(openedAtLocalTime);
+    
+    const localHour = openedAtLocal.getUTCHours();
+    
+    // Determine the base date for the gaming day
+    // If the open hour is before the cutoff, it belongs to the previous day
+    const baseGamingDate = new Date(openedAtLocal);
+    if (localHour < gameDayOffset) {
+         baseGamingDate.setDate(baseGamingDate.getDate() - 1);
+    }
+    
+    const { rangeStart, rangeEnd } = getGamingDayRange(baseGamingDate, gameDayOffset, timezoneOffset);
+
+    // We want all meter drops recorded since this vault shift opened.
     const machines = await Machine.find({ gamingLocation: locationId }, { _id: 1 }).lean();
     const machineIds = machines.map(m => String(m._id));
 
@@ -155,8 +173,8 @@ export async function GET(request: NextRequest) {
           $match: {
             machine: { $in: machineIds },
             readAt: {
-              $gte: gamingDayRange.rangeStart,
-              $lte: gamingDayRange.rangeEnd,
+              $gte: rangeStart, 
+              $lte: rangeEnd,
             },
           },
         },

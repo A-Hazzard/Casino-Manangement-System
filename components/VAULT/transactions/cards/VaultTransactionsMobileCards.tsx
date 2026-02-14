@@ -108,12 +108,13 @@ export default function VaultTransactionsMobileCards({
                 <div className="mb-3">{getTransactionTypeBadge(tx.type)}</div>
 
                 {/* Amount */}
-                <div className="mb-3">
+                <div className="mb-3 min-w-0">
                   <p className="text-xs text-gray-500">Amount</p>
                   <p
                     className={cn(
-                      'text-xl font-bold',
-                      isPositive ? 'text-button' : 'text-orangeHighlight'
+                      'font-bold leading-none transition-all truncate',
+                      isPositive ? 'text-button' : 'text-orangeHighlight',
+                      formatAmount(Math.abs(tx.amount)).length > 12 ? 'text-lg' : 'text-xl'
                     )}
                   >
                     {isPositive ? '+' : ''}

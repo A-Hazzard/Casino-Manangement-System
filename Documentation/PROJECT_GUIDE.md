@@ -810,21 +810,12 @@ The system implements a hierarchical role-based access control (RBAC) system whe
 - **Rationale**: System administration requires high security clearance
 
 #### Vault Management System
+The Vault Management System (VMS) handles cash movements, cashier shifts, float requests, and financial reconciliation.
 
-### System Overview
-The Vault Management System (VMS) handles cash movements, cashier shifts, float requests, and financial reconciliation for casino operations. It operates in **VAULT** mode but shares core infrastructure with the CMS.
-
-### Core Models
-- **VaultShift** (`vaultShifts`): Tracks high-level vault status, opening/closing balances, and audit reconciliations.
-- **CashierShift** (`cashierShifts`): Manage individual cashier drawers, including opening floats and blind closing validation.
-- **VaultTransaction** (`vaultTransactions`): Immutable ledger of all cash movements between Vault, Cashiers, Machines (Collections), and External sources (Banks).
-- **FloatRequest** (`floatRequests`): Request system for cashiers to increase/decrease their drawer balance, requiring manager approval.
-- **Payout** (`payouts`): Records for ticket redemptions and machine hand-pays.
-
-### Key Workflows
-- **Blind Closing**: Cashiers count their drawer without knowing the "system expected" balance. Discrepancies are flagged for manager review.
-- **Dual Approval**: Float movements require a request/approval/receipt workflow to ensure accountability.
-- **Health Grid**: Real-time visualization of Net Cash Flow and Denomination inventory.
+- **Vault Dashboard:** Optimized grid for top 4 cashiers, real-time health metrics, and advanced charting.
+- **Expenses Management:** Centralized tracking of operational costs with a default 7-day historical view.
+- **Shift System:** Strict mandatory reconciliation for opening and blind-closing for cashiers.
+- **Ledger:** Atomic tracking of every bill movement with full audit trails.
 
 #### Location-Based Access
 
@@ -1110,16 +1101,15 @@ export async function GET(request: NextRequest) {
 ## Vault Management System
 
 ### Overview
-
 The Vault Management System (VMS) is a specialized module for cash handling, float management, and cashier oversight. It operates in parallel with the CMS but uses a different layout and navigation context.
 
 ### Key Components
-
-- **Vault Layout Wrapper**: `VaultLayoutWrapper.tsx` provides VAULT-specific navigation
-- **Float Management**: Tracking increase/decrease requests for cash desks
-- **Shift Management**: Cashier shift opening, closing, and reconciliation
-- **Cash Monitoring**: Real-time tracking of cash on premises and denominations
-- **Payouts**: Processing player payouts through the vault system
+- **Vault Layout Wrapper**: `VaultLayoutWrapper.tsx` provides VAULT-specific navigation.
+- **Float Management**: Tracking increase/decrease requests for cash desks.
+- **Shift Management**: Cashier shift opening, closing, and reconciliation.
+- **Financial Metrics**: Real-time tracking of vault liquidity, cashier floats, and machine soft counts.
+- **Payouts**: Processing player payouts through the vault system.
+- **Expense History**: Default 7-day view for recorded petty cash expenses.
 
 ---
 

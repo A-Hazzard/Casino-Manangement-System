@@ -40,9 +40,9 @@ This document maps every button, modal, and business logic path within the Vault
 ### 1.3 Daily Vault Oversight [Req: VM-1, BR-03]
 - **Card: Vault Status**
   - Displays: **"Current Vault Balance"** (`VaultShift.closingBalance` or `openingBalance`), **"Last Audit"** (`VaultShift.reconciliations.timestamp`), **"Manager on Duty"** (`User.profile.firstName` of `vaultManagerId`), and **"Cash on Premises"**.
-  - **Query:** `GET /api/vault/balance?locationId=...` 
+   - **Query:** `GET /api/vault/balance?locationId=...` 
     - Fetches the active `VaultShift` from the `vaultshifts` collection.
-    - Calculates **"Cash on Premises"** by summing: `VaultShift.closingBalance` (or `openingBalance`) + `Σ CashierShift.currentBalance` (from `cashiershifts` collection where `status: 'active'`) + `Σ Meters.drop` (from `meters` collection for Today's gaming day).
+    - Displays **"Cash on Premises"** calculated by summing: `VaultShift.closingBalance` + `Σ Active Cashier Balances` + `Total Machine Soft Counts`.
   - **Button: [Reconcile]**
     - Opens **"Verify Vault Balance"** modal.
     - Used to record an audit check of physical bills vs system count [Req: VM-1].
@@ -50,8 +50,8 @@ This document maps every button, modal, and business logic path within the Vault
   - Displays physical bill counts for all denominations (100, 50, 20, 10, 5, 1).
   - **Live Logic:** `VaultShift.openingDenominations[denom].quantity` + `Σ VaultTransaction.denominations[denom].quantity` (where `to: 'vault'`) - `Σ VaultTransaction.denominations[denom].quantity` (where `from: 'vault'`).
 - **Card: Vault Recent Activity**
-  - Displays the last 10 transactions.
-  - **Query:** `VaultTransaction.find({ locationId, vaultShiftId }).sort({ timestamp: -1 }).limit(10)` (from `vaulttransactions` collection).
+  - Displays the last 5 transactions.
+  - **Query:** `VaultTransaction.find({ locationId, vaultShiftId }).sort({ timestamp: -1 }).limit(5)` (from `vaulttransactions` collection).
 - **Section: Health Grid**
   - Real-time display: **Total Cash In**, **Total Cash Out**, **Net Cash Flow**, **Payouts**.
   - **Query:** Aggregates `VaultTransaction` records (filtered by current `VaultShift._id`) for the current shift period, grouping by `type` (e.g., `add_cash`, `remove_cash`, `expense`, `payout`).
@@ -225,6 +225,171 @@ The system tracks physical bill counts within the vault safe.
 - **Immutable Ledger (BR-03):** Transactions cannot be deleted; they must be **voided**, creating a reverse-entry in the audit trail.
 - **Location Isolation:** Users only see cashiers and machines assigned to their specific locations.
 
+
+## 6. Enhanced Vault Manager Features (Phase 2)
+
+### 6.1 Activity Log Monitoring
+
+**Purpose:** Comprehensive audit trail of all vault operations.
+
+**Access:** `/vault/management/activity-log`
+
+**Features:**
+- View all transactions for assigned locations
+- Filter by cashier, machine ID, date range, transaction type
+- **Machine Audit**: Select a specific machine to see its entire lifecycle (Collections, Soft Counts, Historical Variances).
+- Export activity logs to CSV
+- Pagination for large datasets
+ 
+**Query:** `GET /api/vault/activity-log?locationId=...&cashierId=...&machineId=...&startDate=...&endDate=...`
+
+**Use Cases:**
+- Audit cashier performance
+- Track vault cash movements
+- Investigate discrepancies
+- Compliance reporting
 ---
 
-**Last Updated:** February 2026
+### 6.2 Cashier Detail Views
+
+**Access:** Click cashier name in Manage Cashiers table (`/vault/management/cashiers`)
+
+**Modal Flow:**
+1. **Selection Modal** appears with options:
+   - View Activity Log
+   - View Shift History
+2. Select an option to open respective modal
+3. Use **Back** button to return to selection
+4. **Close** button exits all modals
+
+**Activity Log Modal:**
+- All transactions performed by cashier
+- Payouts, float requests, shift operations
+- Timestamp, type, amount details
+- **Note:** Does NOT show denomination details (logging only)
+
+**Shift History Modal:**
+- All shifts: active, closed, pending_review
+- Opening/closing balances
+- Discrepancies and resolutions
+- Shift duration and metrics
+- Expandable rows for shift details
+
+---
+
+### 6.3 Enhanced Machine Operations
+
+#### Soft Count - 3-Panel Interface
+
+**Purpose:** Record physical cash removal from machines without editing meter values.
+
+**Layout:**
+
+**Left Panel (Machine List):**
+- All machines from location
+- Live meter data display:
+  - Money In (from meters)
+  - Money Out (from meters)
+  - Gross (calculated: In - Out)
+- Selection checkboxes
+
+**Center Panel (Count Form):**
+- Selected machine details
+- Denomination input fields
+- Physical count total (auto-calculated)
+- Variance display: Physical vs Gross
+- Color coding: Green (match), Red (variance)
+- Notes field
+ 
+**Right Panel (Contextual Data):**
+- **Default View**: Queued soft counts (batch processing).
+- **History View**: Last 5 collections/soft counts for the **currently selected machine**.
+- Displays Date, Amount, and Variance Trends to help VM identify bin issues or count errors on the spot.
+- **Submit All** button (batch submission)
+
+**Key Logic:**
+- Soft count tracks physical removal
+- **Does NOT edit meter values** (critical requirement)
+- Creates `VaultTransaction` with type `soft_count`
+- Updates vault balance
+
+---
+
+#### Machine Collection - Same Pattern
+
+**Purpose:** Record official machine drops.
+
+**Features:**
+- Identical 3-panel layout as soft count
+- Machine list with meter data
+- Collection form with denominations
+- Queue system for batch processing
+
+---
+
+### 6.4 Pending Reviews Dashboard
+
+**Location:** Main vault dashboard (`/vault/management`)
+
+**Card: "Pending Reviews"**
+
+**Displays:**
+- Unbalanced cashier shifts (status: `pending_review`)
+- Badge with count of pending items
+- For each shift:
+  - Cashier name
+  - Expected closing balance
+  - Entered closing balance
+  - Discrepancy amount (highlighted in red)
+  - Time pending
+  - Urgency indicator (>24 hours)
+
+**Quick Actions:**
+- **Review** button opens resolution modal
+- VM can adjust balance or accept cashier count
+- Audit comment required
+- After resolution, card updates automatically
+
+**Workflow:**
+1. Cashier closes shift with discrepancy
+2. Shift goes to `pending_review` status
+3. Appears in Pending Reviews card
+4. VM clicks "Review"
+5. Resolves discrepancy (adjust or accept)
+6. Adds audit comment
+7. Force closes shift
+8. Card clears, shift closes
+
+**Query:** `CashierShift.find({ locationId, status: 'pending_review' })`
+
+---
+
+### 6.5 Vault Notification Center
+
+**Access:** `/vault/notifications`
+
+**Features:**
+- Dedicated dashboard for operational alerts (Low Inventory, Pending Floats, Discrepancies).
+- **Categorization**: Color-coded alerts (Info, Warning, Error, Success).
+- **State Management**: Notifications sync with active shift status.
+- **Bulk Actions**: Mark all as read or clear entire queue.
+
+**Model:** `VaultNotification`
+
+---
+
+### 6.6 End-of-Day Tallying & Coverage
+
+**Logic:** Ensures 100% floor accountability before vault closure.
+
+**Features:**
+1. **Full Asset Fetch**: Closure process queries ALL active machines at the location.
+2. **Collection Check**: Compares asset list against `machinecollections` for the current date.
+3. **Modal Integration**: The "Close Vault" modal displays a real-time tally (e.g., "12 / 15 Machines Collected").
+4. **Coverage Warning**: Prevents closure without acknowledgment if machines are missing from the daily count.
+
+**Query:** `generateEndOfDayReport` helper aggregates `MachineModel.find` vs `MachineCollectionModel.find`.
+
+---
+
+**Last Updated:** February 13, 2026

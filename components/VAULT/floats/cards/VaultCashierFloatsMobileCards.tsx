@@ -18,8 +18,8 @@
 import { Badge } from '@/components/shared/ui/badge';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import type { CashierFloat } from '@/shared/types/vault';
 import { cn } from '@/lib/utils';
+import type { CashierFloat } from '@/shared/types/vault';
 
 type VaultCashierFloatsMobileCardsProps = {
   floats: CashierFloat[];
@@ -77,9 +77,12 @@ export default function VaultCashierFloatsMobileCards({
               </div>
 
               {/* Current Float */}
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-gray-500">Current Float</p>
-                <p className="text-xl font-bold text-orangeHighlight">
+                <p className={cn(
+                    "font-bold text-orangeHighlight leading-none transition-all truncate",
+                    formatAmount(float.balance).length > 12 ? 'text-lg' : 'text-xl'
+                )}>
                   {formatAmount(float.balance)}
                 </p>
               </div>

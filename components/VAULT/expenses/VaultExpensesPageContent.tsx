@@ -79,7 +79,12 @@ export default function VaultExpensesPageContent() {
   const [showModal, setShowModal] = useState(false);
 
   // Filters
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 7);
+    return { from, to };
+  });
   const [category, setCategory] = useState<string>('all');
   const [showDatePicker, setShowDatePicker] = useState(false);
 

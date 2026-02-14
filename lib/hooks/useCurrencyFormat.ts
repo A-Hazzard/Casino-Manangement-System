@@ -1,7 +1,6 @@
 'use client';
 
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
-import { formatAmount as _formatAmount } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 
 /**
@@ -37,20 +36,8 @@ export function useCurrencyFormat() {
   /**
    * Format amount with currency symbol only (no number formatting)
    */
-  const formatAmountSimple = (amount: number, currency?: CurrencyCode) => {
-    const targetCurrency = currency || displayCurrency;
-    const symbol =
-      targetCurrency === 'USD'
-        ? '$'
-        : targetCurrency === 'TTD'
-          ? 'TT$'
-          : targetCurrency === 'GYD'
-            ? 'G$'
-            : targetCurrency === 'BBD'
-              ? 'Bds$'
-              : '$';
-
-    return `${symbol}${amount.toFixed(2)}`;
+  const formatAmountSimple = (amount: number, _currency?: CurrencyCode) => {
+    return `$${amount.toFixed(2)}`;
   };
 
   /**
@@ -58,16 +45,7 @@ export function useCurrencyFormat() {
    */
   const getCurrencyInfo = () => ({
     code: displayCurrency,
-    symbol:
-      displayCurrency === 'USD'
-        ? '$'
-        : displayCurrency === 'TTD'
-          ? 'TT$'
-          : displayCurrency === 'GYD'
-            ? 'G$'
-            : displayCurrency === 'BBD'
-              ? 'Bds$'
-              : '$',
+    symbol: '$',
     name:
       displayCurrency === 'USD'
         ? 'US Dollar'

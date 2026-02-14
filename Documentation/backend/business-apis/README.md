@@ -77,8 +77,8 @@ This directory contains documentation for the core business domain APIs that han
 **[vault-api.md](./vault-api.md)** - Vault operations and cash management
 
 **Key Endpoints:**
-- `GET /api/vault/cash-monitoring` - Total cash on premises
-- `GET /api/vault/cash-monitoring/denominations` - Denomination breakdown
+- `GET /api/vault/balance` - Vault status and total liquidity
+- `GET /api/vault/transactions` - Global movement ledger
 - `GET /api/vault/end-of-day` - End of day report generation
 - `POST /api/vault/end-of-day` - Export end of day report
 - `GET /api/vault/float-requests/[id]` - Float request details

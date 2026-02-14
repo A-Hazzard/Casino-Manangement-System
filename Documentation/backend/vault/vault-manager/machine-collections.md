@@ -22,7 +22,7 @@ Records a machine cash collection, creating a specific collection record and a v
 1.  **Shift Context:** Verifies manager has an 'active' `VaultShift`.
 2.  **Location Context:** Retrieves `locationId` from the active shift.
 3.  **Persistence:**
-    *   Saves `MachineCollection` record with `nanoid`.
+    *   Saves `MachineCollection` record (system ID).
     *   Saves `VaultTransaction` linked to the collection.
     *   Updates `VaultShift.closingBalance`.
 4.  **Balance Integrity:** Recalculates `closingBalance` based on transaction `vaultBalanceAfter`.

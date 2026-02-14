@@ -30,11 +30,11 @@ export default function VaultCashDesksSection({
         </h2>
         <DebugSection title="Cash Desks" data={cashDesks} />
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {cashDesks.length > 0 ? (
           [...cashDesks]
             .sort((a, b) => b.balance - a.balance)
-            .slice(0, 5)
+            .slice(0, 4)
             .map(cashDesk => (
               <VaultCashDeskCard 
                 key={cashDesk._id} 

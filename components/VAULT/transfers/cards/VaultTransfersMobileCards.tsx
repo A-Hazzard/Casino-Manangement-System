@@ -20,9 +20,9 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { cn } from '@/lib/utils';
 import type { VaultTransfer } from '@/shared/types/vault';
 import { ArrowLeftRight, CheckCircle2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 type VaultTransfersMobileCardsProps = {
   transfers: VaultTransfer[];
@@ -114,9 +114,12 @@ export default function VaultTransfersMobileCards({
                 </div>
 
                 {/* Amount */}
-                <div className="mb-3">
+                <div className="mb-3 min-w-0">
                   <p className="text-xs text-gray-500">Amount</p>
-                  <p className="text-xl font-bold text-orangeHighlight">
+                  <p className={cn(
+                      "font-bold text-orangeHighlight leading-none transition-all truncate",
+                      formatAmount(transfer.amount).length > 12 ? 'text-lg' : 'text-xl'
+                  )}>
                     {formatAmount(transfer.amount)}
                   </p>
                 </div>

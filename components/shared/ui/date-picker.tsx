@@ -15,37 +15,38 @@
  */
 'use client';
 
-import * as React from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
+import * as React from 'react';
 import { DayPicker, SelectSingleEventHandler } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/shared/ui/button';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
 } from '@/components/shared/ui/popover';
+import { cn } from '@/lib/utils';
 
 export type DatePickerProps = {
   date: Date | undefined;
   setDate: (date: Date | undefined) => void;
   disabled?: boolean;
+  disabledDates?: any; // Matcher | Matcher[] from react-day-picker
 };
 
-export function DatePicker({ date, setDate, disabled }: DatePickerProps) {
+export function DatePicker({ date, setDate, disabled, disabledDates }: DatePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const handleSelect: SelectSingleEventHandler = (
     day,
     selectedDate,
     activeModifiers,
-    e
+    _e
   ) => {
-    if (activeModifiers && e) {
-      /* Stub */
+    if (activeModifiers.disabled) {
+       return; 
     }
     setDate(day);
     if (day) {
@@ -75,7 +76,7 @@ export function DatePicker({ date, setDate, disabled }: DatePickerProps) {
           selected={date}
           onSelect={handleSelect}
           initialFocus={isOpen}
-          disabled={disabled}
+          disabled={disabledDates}
           showOutsideDays
         />
       </PopoverContent>

@@ -8,6 +8,7 @@ import type { NavigationConfig } from '@/lib/types/layout/navigation';
 import {
     BarChart3,
     FileText,
+    History,
     Receipt,
     Wallet
 } from 'lucide-react';
@@ -30,14 +31,14 @@ export const vaultNavigationConfig: NavigationConfig = {
       icon: Wallet,
     },
     {
-      label: 'Cash on Premises',
-      href: '/vault/management/reports/cash-on-premises',
-      icon: FileText,
-    },
-    {
       label: 'Expenses',
       href: '/vault/management/expenses',
       icon: Receipt,
+    },
+    {
+      label: 'Activity Log',
+      href: '/vault/management/activity-log',
+      icon: History,
     },
   ],
 };

@@ -14,6 +14,7 @@
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
@@ -75,9 +76,15 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 3: Connect to database
+    // STEP 3: Connect to database and authenticate user
     // ============================================================================
     await connectDB();
+
+    const userPayload = await getUserFromServer();
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const isCashier = userRoles.includes('cashier');
+    const isVaultManager = userRoles.includes('vault-manager');
+    const isStaff = isCashier || isVaultManager;
 
     // ============================================================================
     // STEP 4: Fetch machine by ID
@@ -286,7 +293,8 @@ export async function GET(
 
     // For cabinet detail pages we ALWAYS convert from the machine's native currency
     // into the selected display currency (including USD), regardless of licensee filter or role.
-    const shouldConvert = Boolean(displayCurrency);
+    // EXCEPT for cashiers and vault managers who should always see raw values.
+    const shouldConvert = Boolean(displayCurrency) && !isStaff;
 
     if (shouldConvert) {
       // Get location details to determine native currency

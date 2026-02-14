@@ -1,7 +1,9 @@
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
 import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
+import { updateVaultShiftInventory } from '../../../lib/helpers/vault/inventory';
 import { connectDB } from '../../../lib/middleware/db';
+import VaultShiftModel from '../../../lib/models/vaultShift';
 import VaultTransactionModel from '../../../lib/models/vaultTransaction';
 
 export async function POST(req: Request) {
@@ -30,32 +32,39 @@ export async function POST(req: Request) {
       _id: new mongoose.Types.ObjectId().toHexString(),
       locationId,
       vaultShiftId, // Attach to current Vault Shift
-      type: 'machine_collection',
-      from: { type: 'machine', id: entry.machineId },
-      to: { type: 'vault' },
+      type: session.type === 'soft_count' ? 'soft_count' : 'machine_collection',
+      from: session.type === 'soft_count' ? { type: 'vault' } : { type: 'machine', id: entry.machineId },
+      to: session.type === 'soft_count' ? { type: 'external' } : { type: 'vault' },
       amount: entry.totalAmount,
       denominations: entry.denominations,
       performedBy: userId || session.startedBy,
-      notes: `Collection from Machine ${entry.machineName || entry.machineId}`,
+      notes: session.type === 'soft_count' 
+        ? `Soft count removal from Machine ${entry.machineName || entry.machineId}${entry.notes ? `: ${entry.notes}` : ''}`
+        : `Collection from Machine ${entry.machineName || entry.machineId}${entry.notes ? `: ${entry.notes}` : ''}`,
       createdAt: new Date(),
-      // Link to this specific session if needed? Or just generic
-      externalRef: sessionId // Optional, hypothetical field
+      externalRef: sessionId
     }));
 
     await VaultTransactionModel.insertMany(transactions);
 
-    // 4. Update Vault Balance (Add total collected)
-    const totalCollected = session.entries.reduce((sum: number, e: any) => sum + e.totalAmount, 0);
+    // 4. Update Vault Balance & Inventory
+    const activeVaultShift = await VaultShiftModel.findById(vaultShiftId);
+    if (!activeVaultShift || activeVaultShift.status !== 'active') {
+        return NextResponse.json({ success: false, error: 'Active vault shift not found' }, { status: 400 });
+    }
 
-    // Fetch current Vault Shift to update closing stats (if tracked live)
-    // Or just let transactions define the balance. 
-    // Usually we update a cached 'currentBalance' somewhere if performance is key.
-    
-    // For now, let's assume balance is derived from transactions, or updated on Shift Close.
+    const totalCollected = session.entries.reduce((sum: number, e: any) => sum + e.totalAmount, 0);
+    const isAddition = session.type !== 'soft_count';
+
+    // Update inventory machine-by-machine to ensure all denoms are tracked
+    for (const entry of session.entries) {
+        await updateVaultShiftInventory(activeVaultShift, entry.totalAmount, entry.denominations, isAddition);
+    }
     
     // 5. Mark Session as Completed
     session.status = 'completed';
     session.completedAt = new Date();
+    session.totalCollected = totalCollected;
     await session.save();
 
     return NextResponse.json({ 

@@ -16,6 +16,7 @@ export async function GET(req: Request) {
     const vaultShiftId = searchParams.get('vaultShiftId');
     const locationId = searchParams.get('locationId');
     const status = searchParams.get('status');
+    const type = searchParams.get('type') || 'machine_collection';
 
     if (!vaultShiftId || !locationId) {
       return NextResponse.json({ success: false, error: 'Vault Shift ID and Location ID required' }, { status: 400 });
@@ -26,7 +27,8 @@ export async function GET(req: Request) {
     // Build query
     const query: any = {
       locationId,
-      vaultShiftId
+      vaultShiftId,
+      type
     };
     
     // Only filter by status if explicitly provided
@@ -47,7 +49,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { action, locationId, vaultShiftId, machineId, entryData, sessionId } = body;
+    const { action, locationId, vaultShiftId, machineId, entryData, sessionId, type = 'machine_collection' } = body;
 
     // Get current user (simple mock for now, replace with actual auth)
     // In a real app, use getServerSession(authOptions)
@@ -71,6 +73,7 @@ export async function POST(req: Request) {
       const existing = await VaultCollectionSession.findOne({
         locationId,
         vaultShiftId,
+        type,
         status: 'active'
       });
 
@@ -81,6 +84,7 @@ export async function POST(req: Request) {
       session = await VaultCollectionSession.create({
         locationId,
         vaultShiftId,
+        type,
         startedBy: userId || 'system',
         status: 'active',
         entries: [],
@@ -101,13 +105,26 @@ export async function POST(req: Request) {
 
       // Check if machine already added
       const existingEntryIndex = session.entries.findIndex((e: any) => e.machineId === entryData.machineId);
-      
+
+      const newEntry = {
+        machineId: entryData.machineId,
+        machineName: entryData.machineName,
+        source: entryData.source || 'manual',
+        totalAmount: entryData.totalAmount || 0,
+        denominations: entryData.denominations || [],
+        meters: entryData.meters || {},
+        expectedDrop: entryData.expectedDrop || 0,
+        variance: entryData.variance || 0,
+        notes: entryData.notes || '',
+        collectedAt: entryData.collectedAt || new Date()
+      };
+
       if (existingEntryIndex >= 0) {
         // Update existing entry
-        session.entries[existingEntryIndex] = entryData;
+        session.entries[existingEntryIndex] = newEntry;
       } else {
         // Add new entry
-        session.entries.push(entryData);
+        session.entries.push(newEntry);
       }
       
       // Recalculate total

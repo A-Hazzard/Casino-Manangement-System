@@ -174,19 +174,41 @@ export default function VaultManagerHeader({
           <DebugSection title="Page Context" data={{ title, description, backHref, locationId, user }} className="ml-2" />
         </div>
 
-        {showNotificationBell && (
-          <NotificationBell
-            notifications={bellNotifications}
-            onMarkAsRead={markAsRead}
-            onMarkAllAsRead={() => markAsRead(notifications.filter(n => n.status === 'unread').map(n => n._id))}
-            onNotificationClick={() => {}}
-            onDismiss={dismissNotification}
-            vaultInventory={vaultInventory}
-            onApprove={handleFloatApprove}
-            onDeny={handleFloatDeny}
-            onConfirm={handleFloatReceiptConfirm}
-          />
-        )}
+        <div className="flex items-center gap-3">
+          {!user?.roles?.includes('cashier') ? (
+            <Link href="/vault/management/reports/end-of-day">
+              <Button 
+                variant="default" 
+                className="bg-orangeHighlight hover:bg-orangeHighlight/90 text-white"
+              >
+                Close Daily Operations
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/vault/cashier/close-shift">
+              <Button 
+                variant="default" 
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                End Shift
+              </Button>
+            </Link>
+          )}
+          
+          {showNotificationBell && (
+            <NotificationBell
+              notifications={bellNotifications}
+              onMarkAsRead={markAsRead}
+              onMarkAllAsRead={() => markAsRead(notifications.filter(n => n.status === 'unread').map(n => n._id))}
+              onNotificationClick={() => {}}
+              onDismiss={dismissNotification}
+              vaultInventory={vaultInventory}
+              onApprove={handleFloatApprove}
+              onDeny={handleFloatDeny}
+              onConfirm={handleFloatReceiptConfirm}
+            />
+          )}
+        </div>
       </div>
 
       {/* Second Row: Children (Filters, Buttons, etc.) */}

@@ -12,6 +12,7 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { cn } from '@/lib/utils';
 import type { CashierShift } from '@/shared/types/vault';
 import { Clock, HandCoins, Minus, Receipt, TrendingUp } from 'lucide-react';
 
@@ -53,13 +54,19 @@ export default function ActiveShiftDashboard({
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             <div>
               <p className="text-sm text-gray-600">Opening Float</p>
-              <p className="text-lg font-semibold">
+              <p className={cn(
+                  "font-semibold leading-tight transition-all truncate",
+                  formatAmount(shift.openingBalance).length > 12 ? 'text-base' : 'text-lg'
+              )}>
                 {formatAmount(shift.openingBalance)}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Total Payouts</p>
-              <p className="text-lg font-semibold text-red-600">
+              <p className={cn(
+                  "font-semibold text-red-600 leading-tight transition-all truncate",
+                  formatAmount(shift.payoutsTotal).length > 12 ? 'text-base' : 'text-lg'
+              )}>
                 {formatAmount(shift.payoutsTotal)}
               </p>
               <p className="text-xs text-gray-500">count: {shift.payoutsCount}</p>

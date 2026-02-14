@@ -18,7 +18,7 @@ Records the injection of funds into the vault from an external source (e.g., Ban
 2.  **Inventory Sync:** 
     *   Adds specified `denominations` to the shift's `currentDenominations` map.
     *   Increments `closingBalance`.
-3.  **Audit Trail:** Creates a `VaultTransaction` (type: `vault_open`).
+3.  **Audit Trail:** Creates a `VaultTransaction` (type: `vault_open`). *Note: `vault_open` is currently used for all external cash injections.*
 4.  **Logging:** Records a "create" action in the `ActivityLog`.
 
 ## Models Used

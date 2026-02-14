@@ -21,6 +21,7 @@ import {
 } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Layers } from 'lucide-react';
@@ -97,17 +98,22 @@ export default function VaultInventoryCard({
                   </div>
                 )}
                 
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-tighter">
+                <span className="text-xs font-medium text-gray-400 uppercase tracking-tighter truncate w-full">
                   ${item.value} Bills
                 </span>
                 
-                <span className={`text-2xl font-bold ${
-                    item.isLow ? 'text-red-700' : 'text-gray-900'
-                }`}>
+                <span className={cn(
+                    "font-bold leading-tight transition-all truncate w-full",
+                    item.isLow ? 'text-red-700' : 'text-gray-900',
+                    item.quantity.toString().length > 6 ? 'text-lg' : 'text-2xl'
+                )}>
                   {item.quantity}
                 </span>
                 
-                <span className="text-xs font-medium text-gray-500">
+                <span className={cn(
+                    "font-medium text-gray-500 overflow-hidden truncate w-full",
+                    formatAmount(item.total).length > 12 ? 'text-[9px]' : 'text-xs'
+                )}>
                   {formatAmount(item.total)}
                 </span>
               </div>

@@ -20,7 +20,7 @@ import {
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import type { CashierFloat } from '@/shared/types/vault';
-import { Activity, User } from 'lucide-react';
+import { Clock, User } from 'lucide-react';
 
 export type CashierFloatSortOption = 'cashierName' | 'balance' | 'status';
 
@@ -64,7 +64,11 @@ export default function VaultCashierFloatsTable({
               >
                 Cashier
               </TableHead>
+              <TableHead className="text-center font-semibold text-white">Start Time</TableHead>
+              <TableHead className="text-center font-semibold text-white">End Time</TableHead>
+              <TableHead className="text-right font-semibold text-white">Opening Float</TableHead>
               <TableHead className="text-right font-semibold text-white">Current Float</TableHead>
+              <TableHead className="text-right font-semibold text-white">Payouts</TableHead>
               <TableHead className="font-semibold text-white text-center">Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -72,7 +76,21 @@ export default function VaultCashierFloatsTable({
             {floats.map(float => (
               <TableRow key={float._id} className="transition-colors hover:bg-muted/30">
                 <TableCell isFirstColumn className="font-medium">{float.cashierName}</TableCell>
-                <TableCell className="text-right font-bold text-button">{formatAmount(float.balance)}</TableCell>
+                <TableCell className="text-center text-xs text-gray-500">
+                  {float.openedAt ? new Date(float.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                </TableCell>
+                <TableCell className="text-center text-xs text-gray-500">
+                  {float.closedAt ? new Date(float.closedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                </TableCell>
+                <TableCell className="text-right font-medium text-gray-600">
+                  {formatAmount(float.openingBalance || 0)}
+                </TableCell>
+                <TableCell className="text-right font-bold text-button">
+                  {formatAmount(float.balance)}
+                </TableCell>
+                <TableCell className="text-right font-bold text-orangeHighlight">
+                  {formatAmount(float.payoutsTotal || 0)}
+                </TableCell>
                 <TableCell className="text-center">
                   <Badge className={cn('px-2 py-0.5 text-[10px]', float.status === 'active' ? 'bg-orangeHighlight' : 'bg-gray-400')}>
                     {float.status}
@@ -94,19 +112,40 @@ export default function VaultCashierFloatsTable({
                    <User className="h-5 w-5 text-button" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-gray-900 truncate max-w-[120px]">{float.cashierName}</span>
-                  <div className="flex items-center gap-1 text-[10px] text-gray-400">
-                    <Activity className="h-3 w-3" />
-                    <span className="capitalize">{float.status}</span>
+                  <span className="font-bold text-gray-900 truncate max-w-[150px]">{float.cashierName}</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                      <Clock className="h-3 w-3" />
+                      <span>{float.openedAt ? new Date(float.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                    </div>
+                    {float.closedAt && (
+                      <div className="flex items-center gap-1 text-[10px] text-gray-400 border-l pl-2">
+                        <span className="text-[8px] font-black uppercase">End</span>
+                        <span>{new Date(float.closedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">Balance</span>
-                <span className="text-lg font-black text-button">{formatAmount(float.balance)}</span>
-              </div>
+              <Badge className={cn('px-2 py-0.5 text-[10px]', float.status === 'active' ? 'bg-orangeHighlight' : 'bg-gray-400')}>
+                {float.status}
+              </Badge>
             </CardContent>
+
+            <div className="grid grid-cols-3 gap-2 border-t bg-gray-50/50 px-4 py-3">
+               <div className="flex flex-col">
+                  <span className="text-[9px] text-gray-400 uppercase font-black tracking-tighter">Opening</span>
+                  <span className="text-xs font-bold text-gray-600 truncate">{formatAmount(float.openingBalance || 0)}</span>
+               </div>
+               <div className="flex flex-col border-x border-gray-100 px-3">
+                  <span className="text-[9px] text-gray-400 uppercase font-black tracking-tighter">Payouts</span>
+                  <span className="text-xs font-bold text-orangeHighlight truncate">{formatAmount(float.payoutsTotal || 0)}</span>
+               </div>
+               <div className="flex flex-col items-end">
+                  <span className="text-[9px] text-gray-400 uppercase font-black tracking-tighter">Current</span>
+                  <span className="text-sm font-black text-button truncate">{formatAmount(float.balance)}</span>
+               </div>
+            </div>
           </Card>
         ))}
       </div>

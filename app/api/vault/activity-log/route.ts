@@ -28,16 +28,18 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const locationId = searchParams.get('locationId');
-    const userId = searchParams.get('userId') || userPayload._id;
+    const userId = searchParams.get('userId');
+    const cashierId = searchParams.get('cashierId'); // NEW: Support cashier filtering
+    const machineId = searchParams.get('machineId'); // NEW: Support machine filtering
     const type = searchParams.get('type');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = parseInt(searchParams.get('skip') || '0');
 
-    if (!locationId) {
+    if (!locationId && !userId && !cashierId && !machineId) {
       return NextResponse.json(
-        { success: false, error: 'Missing locationId' },
+        { success: false, error: 'Missing filter parameters (locationId, userId, or machineId required)' },
         { status: 400 }
       );
     }
@@ -48,14 +50,27 @@ export async function GET(request: NextRequest) {
     const filters: any = { locationId };
 
     // If user is a cashier, only show their activity
-    // If user is a VM, they can see others if they specified userId
+    // If user is a VM, they can see others if they specified userId or cashierId
     const userRoles = (userPayload.roles as string[]) || [];
-    const isVM = userRoles.some(r => ['admin', 'vault-manager', 'manager'].includes(r.toLowerCase()));
+    const isVM = userRoles.some(r => ['admin', 'vault-manager', 'manager', 'developer'].includes(r.toLowerCase()));
 
     if (!isVM) {
+      // Cashiers can only see their own activity
       filters.performedBy = userPayload._id;
+    } else if (cashierId) {
+      // VM filtering by cashier ID
+      filters.performedBy = cashierId;
     } else if (userId) {
+      // VM filtering by user ID
       filters.performedBy = userId;
+    }
+
+    if (machineId) {
+      // Filter by machine ID in from or to fields
+      filters.$or = [
+        { 'from.id': machineId },
+        { 'to.id': machineId }
+      ];
     }
 
     if (type) {
@@ -73,12 +88,41 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     await connectDB();
 
+    const aggregationPipeline: any[] = [
+      { $match: filters },
+      { $sort: { timestamp: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $lookup: {
+        from: 'users',
+          localField: 'performedBy',
+          foreignField: '_id',
+          as: 'performer',
+        },
+      },
+      {
+        $addFields: {
+          performerName: {
+            $cond: {
+              if: { $gt: [{ $size: '$performer' }, 0] },
+              then: {
+                $concat: [
+                  { $ifNull: [{ $arrayElemAt: ['$performer.profile.firstName', 0] }, ''] },
+                  ' ',
+                  { $ifNull: [{ $arrayElemAt: ['$performer.profile.lastName', 0] }, ''] },
+                ],
+              },
+              else: '$performedBy',
+            },
+          },
+        },
+      },
+      { $project: { performer: 0 } },
+    ];
+
     const [activities, totalCount] = await Promise.all([
-      VaultTransactionModel.find(filters)
-        .sort({ timestamp: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+      VaultTransactionModel.aggregate(aggregationPipeline),
       VaultTransactionModel.countDocuments(filters),
     ]);
 

@@ -94,6 +94,8 @@ export default function VaultEndOfDayReportsPageContent() {
     vaultBalance: typeof DEFAULT_VAULT_BALANCE;
     floatRequests: FloatRequest[];
     metrics: VaultMetrics | null;
+    shiftStatus: 'not_started' | 'active' | 'closed';
+    previousShiftActive: boolean;
   }>({
     denominationBreakdown: {},
     slotCounts: DEFAULT_REPORT_SLOTS,
@@ -101,6 +103,8 @@ export default function VaultEndOfDayReportsPageContent() {
     vaultBalance: DEFAULT_VAULT_BALANCE,
     floatRequests: [],
     metrics: DEFAULT_VAULT_METRICS,
+    shiftStatus: 'not_started',
+    previousShiftActive: false,
   });
 
   // ============================================================================
@@ -169,7 +173,7 @@ export default function VaultEndOfDayReportsPageContent() {
         { Section: 'Daily Activity Summary', Metric: 'Player Payouts', Value: metrics.totalPayouts },
         { Section: 'Denomination Breakdown', Metric: 'Total Value', Value: metrics.totalDenominationValue },
         { Section: 'Location Breakdown', Metric: 'Vault Balance', Value: metrics.systemBalance },
-        { Section: 'Location Breakdown', Metric: 'Machine Balance', Value: metrics.totalMachineBalance },
+        { Section: 'Location Breakdown', Metric: 'Machines', Value: metrics.totalMachineBalance },
         { Section: 'Location Breakdown', Metric: 'Cash Desk Floats', Value: metrics.totalCashDeskFloat },
         { Section: 'Location Breakdown', Metric: 'Total on Premises', Value: metrics.totalOnPremises },
         { Section: 'Variance', Metric: 'System Balance', Value: metrics.systemBalance },
@@ -211,7 +215,7 @@ export default function VaultEndOfDayReportsPageContent() {
           ['Activity', 'Expenses', formatAmount(metrics.totalExpenses)],
           ['Activity', 'Payouts', formatAmount(metrics.totalPayouts)],
           ['Locations', 'Vault', formatAmount(metrics.systemBalance)],
-          ['Locations', 'Slot Machines', formatAmount(metrics.totalMachineBalance)],
+          ['Locations', 'Machines', formatAmount(metrics.totalMachineBalance)],
           ['Locations', 'Cash Desks', formatAmount(metrics.totalCashDeskFloat)],
           ['Locations', 'Total on Premises', formatAmount(metrics.totalOnPremises)],
           ['Verification', 'System Balance', formatAmount(metrics.systemBalance)],
@@ -249,7 +253,8 @@ export default function VaultEndOfDayReportsPageContent() {
                 date={selectedDate} 
                 setDate={(date) => {
                   setSelectedDate(date);
-                }} 
+                }}
+                disabledDates={{ after: new Date() }}
               />
             </div>
             
@@ -319,7 +324,51 @@ export default function VaultEndOfDayReportsPageContent() {
             );
           }
 
-          // 3. Report Content
+          // 3. Shift Status Handling
+          if (reportData.previousShiftActive) {
+            return (
+              <Card className="border-l-4 border-l-red-500">
+                 <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+                    <div className="mb-4 rounded-full bg-red-100 p-4">
+                      <AlertTriangle className="h-12 w-12 text-red-600" />
+                    </div>
+                    <h3 className="mb-2 text-xl font-bold text-gray-900">
+                      Previous Gaming Day Active
+                    </h3>
+                    <p className="max-w-md text-gray-500">
+                      The shift for the previous gaming day is still active. 
+                      You must close the previous day's shift before you can generate a report for today.
+                    </p>
+                 </CardContent>
+              </Card>
+            );
+          }
+
+          if (reportData.shiftStatus === 'not_started') {
+            const isToday = selectedDate?.toDateString() === new Date().toDateString();
+            
+            return (
+              <Card className="border-l-4 border-l-gray-300">
+                 <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+                    <div className="mb-4 rounded-full bg-gray-100 p-4">
+                      <Wallet className="h-12 w-12 text-gray-400" />
+                    </div>
+                    <h3 className="mb-2 text-xl font-bold text-gray-900">
+                      {isToday ? 'Shift Not Started' : 'No Shift Found'}
+                    </h3>
+                    <p className="max-w-md text-gray-500">
+                      {isToday 
+                        ? 'The shift for this gaming day has not been started yet.'
+                        : 'No shift was recorded for this date.'}
+                      <br/>
+                      No data is available.
+                    </p>
+                 </CardContent>
+              </Card>
+            );
+          }
+
+          // 4. Report Content
           return (
             <>
 
@@ -415,7 +464,7 @@ export default function VaultEndOfDayReportsPageContent() {
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="font-medium text-gray-600">Slot Machines</span>
+                  <span className="font-medium text-gray-600">Machines</span>
                   <span className="font-bold text-gray-900">
                     {metrics.totalOnPremises > 0 
                       ? ((metrics.totalMachineBalance / metrics.totalOnPremises) * 100).toFixed(1)
@@ -481,7 +530,7 @@ export default function VaultEndOfDayReportsPageContent() {
                     <TableCell className="text-right font-bold text-orangeHighlight">{formatAmount(metrics.systemBalance)}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell isFirstColumn className="font-medium">Slot Floor (Drops)</TableCell>
+                    <TableCell isFirstColumn className="font-medium">Machine Drops</TableCell>
                     <TableCell className="text-xs uppercase text-gray-500">Machines</TableCell>
                     <TableCell className="text-right font-bold text-lighterBlueHighlight">{formatAmount(metrics.totalMachineBalance)}</TableCell>
                   </TableRow>
@@ -554,13 +603,13 @@ export default function VaultEndOfDayReportsPageContent() {
           </CardContent>
         </Card>
 
-        {/* Closing Slot Count */}
+        {/* Closing Machine Count */}
         <Card className="rounded-lg bg-container shadow-md">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Monitor className="h-5 w-5 text-gray-600" />
               <CardTitle className="text-lg font-semibold text-gray-900">
-                Closing Slot Count
+                Closing Machine Count
               </CardTitle>
             </div>
           </CardHeader>

@@ -482,6 +482,10 @@ export type CashierFloat = {
   lastActivity: string;
   shiftStartTime: string;
   status: 'active' | 'inactive';
+  openedAt?: string | Date;
+  closedAt?: string | Date;
+  openingBalance?: number;
+  payoutsTotal?: number;
 };
 
 export type VaultTransfer = {

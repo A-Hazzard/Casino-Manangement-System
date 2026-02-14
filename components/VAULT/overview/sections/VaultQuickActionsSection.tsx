@@ -15,7 +15,7 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { Landmark, Minus, Plus, Receipt, RefreshCw, Users } from 'lucide-react';
+import { History, Landmark, Minus, Plus, Receipt, RefreshCw, Users } from 'lucide-react';
 
 type VaultQuickActionsSectionProps = {
   onAddCash: () => void;
@@ -23,6 +23,7 @@ type VaultQuickActionsSectionProps = {
   onRecordExpense: () => void;
   onManageCashiers?: () => void;
   onSoftCount?: () => void;
+  onViewActivityLog?: () => void;
   onCloseVault?: () => void;
   isShiftActive?: boolean;
   isReconciled?: boolean;
@@ -34,6 +35,7 @@ export default function VaultQuickActionsSection({
   onRecordExpense,
   onManageCashiers,
   onSoftCount,
+  onViewActivityLog,
   onCloseVault,
   isShiftActive = false,
   isReconciled = false,
@@ -111,6 +113,21 @@ export default function VaultQuickActionsSection({
             <Users className="h-4 w-4 sm:h-5 sm:w-5" />
             <span className="text-xs font-semibold sm:text-sm line-clamp-1">
               Manage Cashiers
+            </span>
+          </Button>
+        )}
+
+        {/* Activity Log - Blue/Gray */}
+        {onViewActivityLog && (
+          <Button
+            onClick={onViewActivityLog}
+            className={`h-auto min-h-[70px] flex-col gap-1 bg-slate-600 py-3 text-white hover:bg-slate-700 ${disabledClasses}`}
+            size="sm"
+            title="View complete audit trail of vault operations"
+          >
+            <History className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-xs font-semibold sm:text-sm line-clamp-1">
+              Activity Log
             </span>
           </Button>
         )}

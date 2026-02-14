@@ -12,6 +12,7 @@ type TicketRedemptionFormProps = {
   onSubmit: (ticketNumber: string, amount: number, printedAt?: Date) => Promise<void>;
   onRequestCash: () => void;
   loading?: boolean;
+  maxDate?: Date;
 };
 
 export default function TicketRedemptionForm({
@@ -19,6 +20,7 @@ export default function TicketRedemptionForm({
   onSubmit,
   onRequestCash,
   loading = false,
+  maxDate,
 }: TicketRedemptionFormProps) {
   const { formatAmount } = useCurrencyFormat();
   
@@ -28,7 +30,8 @@ export default function TicketRedemptionForm({
 
   const numAmount = parseFloat(amount) || 0;
   const isOverBalance = numAmount > currentBalance;
-  const isFormValid = ticketNumber.trim().length > 0 && numAmount > 0 && !isOverBalance && printedAt !== undefined;
+  const isDateValid = printedAt !== undefined && (!maxDate || printedAt <= maxDate);
+  const isFormValid = ticketNumber.trim().length > 0 && numAmount > 0 && !isOverBalance && isDateValid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +45,7 @@ export default function TicketRedemptionForm({
       );
       setTicketNumber('');
       setAmount('');
-      setPrintedAt(new Date());
+      setPrintedAt(undefined);
     } catch {
       // Error handled by parent
     }
@@ -79,6 +82,7 @@ export default function TicketRedemptionForm({
               date={printedAt}
               setDate={setPrintedAt}
               disabled={loading}
+              disabledDates={{ after: maxDate || new Date() }}
             />
           </div>
         </div>

@@ -17,7 +17,8 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
-import VaultFloatTransactionsSkeleton from '@/components/ui/skeletons/VaultFloatTransactionsSkeleton';
+import { Skeleton } from '@/components/shared/ui/skeleton';
+import { TableSkeleton } from '@/components/shared/ui/skeletons/CommonSkeletons';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
     DEFAULT_CASHIER_FLOATS,
@@ -295,10 +296,13 @@ export default function VaultFloatTransactionsPageContent() {
   // ============================================================================
   // Render
   // ============================================================================
-  if (loading && floatTransactions.length === 0) {
+  // No location assigned check
+  if (!loading && !user?.assignedLocations?.[0]) {
     return (
       <PageLayout>
-        <VaultFloatTransactionsSkeleton />
+        <div className="flex h-64 items-center justify-center text-gray-500">
+          No location assigned. Please contact your administrator.
+        </div>
       </PageLayout>
     );
   }
@@ -342,66 +346,81 @@ export default function VaultFloatTransactionsPageContent() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="rounded-lg bg-container shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Total Cashier Float
-                  </p>
-                  <p className="break-words text-xl font-bold text-orangeHighlight sm:text-2xl">
-                    {formatAmount(totalCashierFloat)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {loading ? (
+            <>
+              {[1, 2, 3, 4].map(i => (
+                <Card key={i} className="rounded-lg bg-container shadow-md">
+                  <CardContent className="p-6">
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-8 w-32" />
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          ) : (
+            <>
+              <Card className="rounded-lg bg-container shadow-md">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Total Cashier Float
+                      </p>
+                      <p className="break-words text-xl font-bold text-orangeHighlight sm:text-2xl">
+                        {formatAmount(totalCashierFloat)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="rounded-lg bg-container shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Active Cashiers
-                  </p>
-                  <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">
-                    {activeCashiers}
-                  </p>
-                </div>
-                <Users className="h-8 w-8 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="rounded-lg bg-container shadow-md">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Active Cashiers
+                      </p>
+                      <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">
+                        {activeCashiers}
+                      </p>
+                    </div>
+                    <Users className="h-8 w-8 text-gray-400" />
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="rounded-lg bg-container shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Pending Requests
-                  </p>
-                  <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">
-                    {pendingRequests}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="rounded-lg bg-container shadow-md">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Pending Requests
+                      </p>
+                      <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">
+                        {pendingRequests}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="rounded-lg bg-container shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Vault Available
-                  </p>
-                  <p className="break-words text-xl font-bold text-lighterBlueHighlight sm:text-2xl">
-                    {formatAmount(vaultBalance.balance)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="rounded-lg bg-container shadow-md">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Vault Available
+                      </p>
+                      <p className="break-words text-xl font-bold text-lighterBlueHighlight sm:text-2xl">
+                        {formatAmount(vaultBalance.balance)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
 
 
@@ -412,24 +431,35 @@ export default function VaultFloatTransactionsPageContent() {
             Current Cashier Floats
           </h2>
 
-          {/* Desktop Table View - lg and above */}
-          <div className={loading ? 'pointer-events-none opacity-50' : ''}>
-            <VaultCashierFloatsTable
-              floats={sortedCashierFloats}
-              sortOption={floatSortOption}
-              sortOrder={floatSortOrder}
-              onSort={handleFloatSort}
-            />
-          </div>
+          {loading ? (
+            <div className="space-y-4">
+              <div className="hidden lg:block">
+                <TableSkeleton rows={5} cols={7} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4">
+                {[1, 2, 3, 4].map(i => (
+                  <Card key={i} className="h-32 animate-pulse bg-gray-50" />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View - lg and above */}
+              <div className="hidden lg:block">
+                <VaultCashierFloatsTable
+                  floats={sortedCashierFloats}
+                  sortOption={floatSortOption}
+                  sortOrder={floatSortOrder}
+                  onSort={handleFloatSort}
+                />
+              </div>
 
-          {/* Mobile/Tablet Card View - below lg */}
-          <div
-            className={
-              loading ? 'pointer-events-none opacity-50' : 'block lg:hidden'
-            }
-          >
-            <VaultCashierFloatsMobileCards floats={sortedCashierFloats} />
-          </div>
+              {/* Mobile/Tablet Card View - below lg */}
+              <div className="block lg:hidden">
+                <VaultCashierFloatsMobileCards floats={sortedCashierFloats} />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Float Transaction History: Responsive Views */}
@@ -438,46 +468,57 @@ export default function VaultFloatTransactionsPageContent() {
             Float Transaction History
           </h2>
 
-          {/* Desktop Table View - lg and above */}
-          <div className={loading ? 'pointer-events-none opacity-50' : ''}>
-            <VaultFloatTransactionsTable
-              transactions={sortedFloatTransactions}
-              sortOption={transactionSortOption}
-              sortOrder={transactionSortOrder}
-              onSort={handleTransactionSort}
-              onApprove={handleApprove}
-              onReject={handleReject}
-              showActions={true}
-              disabled={!isVaultReconciled}
-            />
-          </div>
-
-          {/* Mobile/Tablet Card View - below lg */}
-          <div
-            className={
-              loading ? 'pointer-events-none opacity-50' : 'block lg:hidden'
-            }
-          >
-            <VaultFloatTransactionsMobileCards
-              transactions={sortedFloatTransactions}
-              onApprove={handleApprove}
-              onReject={handleReject}
-              showActions={true}
-              disabled={!isVaultReconciled}
-            />
-          </div>
-
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="mt-4">
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                setCurrentPage={setCurrentPage}
-              />
+          {loading ? (
+            <div className="space-y-4">
+              <div className="hidden lg:block">
+                <TableSkeleton rows={5} cols={6} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4">
+                {[1, 2, 3, 4].map(i => (
+                  <Card key={i} className="h-32 animate-pulse bg-gray-50" />
+                ))}
+              </div>
             </div>
+          ) : (
+            <>
+              {/* Desktop Table View - lg and above */}
+              <div className="hidden lg:block">
+                <VaultFloatTransactionsTable
+                  transactions={sortedFloatTransactions}
+                  sortOption={transactionSortOption}
+                  sortOrder={transactionSortOrder}
+                  onSort={handleTransactionSort}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  showActions={true}
+                  disabled={!isVaultReconciled}
+                />
+              </div>
+
+              {/* Mobile/Tablet Card View - below lg */}
+              <div className="block lg:hidden">
+                <VaultFloatTransactionsMobileCards
+                  transactions={sortedFloatTransactions}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  showActions={true}
+                  disabled={!isVaultReconciled}
+                />
+              </div>
+            </>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-4">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              setCurrentPage={setCurrentPage}
+            />
+          </div>
+        )}
       </div>
     </PageLayout>
   );

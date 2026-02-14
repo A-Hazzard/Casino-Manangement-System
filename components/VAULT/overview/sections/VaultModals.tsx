@@ -108,8 +108,10 @@ export default function VaultModals({
       <VaultSoftCountModal
         open={modals.softCount}
         onClose={() => onClose('softCount')}
-        onConfirm={(machineId, amount, denominations, notes) => onConfirm('softCount', { machineId, amount, denominations, notes })}
+        onConfirm={() => onConfirm('softCount')}
         machines={machines}
+        currentVaultShiftId={currentVaultShiftId}
+        currentLocationId={currentLocationId}
       />
       
       <ViewDenominationsModal
@@ -127,6 +129,7 @@ export default function VaultModals({
         currentBalance={vaultBalance}
         canClose={canCloseVault}
         blockReason={closeVaultBlockReason}
+        locationId={currentLocationId}
       />
     </>
   );

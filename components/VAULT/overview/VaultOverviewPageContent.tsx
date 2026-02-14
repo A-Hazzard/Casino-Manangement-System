@@ -39,7 +39,6 @@ import { toast } from 'sonner';
 import AdvancedDashboard from './AdvancedDashboard';
 
 // Skeleton & Base UI
-import { TableSkeleton } from '@/components/shared/ui/skeletons/CommonSkeletons';
 import VaultOverviewSkeleton from '@/components/ui/skeletons/VaultOverviewSkeleton';
 
 // Panel Components
@@ -322,10 +321,10 @@ export default function VaultOverviewPageContent() {
         break;
     }
 
-    // Special handling for collection type - wizard handles its own API calls
-    if (type === 'collection') {
-      setModals(prev => ({ ...prev, collection: false }));
-      if (isClosingDay) {
+    // Special handling for collection and softCount types - wizard handles its own API calls
+    if (type === 'collection' || type === 'softCount') {
+      setModals(prev => ({ ...prev, [type]: false }));
+      if (type === 'collection' && isClosingDay) {
         setModals(prev => ({ ...prev, closeShift: true }));
         setIsClosingDay(false);
       }
@@ -472,12 +471,23 @@ export default function VaultOverviewPageContent() {
   // Handlers
   // ============================================================================
 
+  // Check for critical missing user data
+  if (!loading && !user?.assignedLocations?.[0]) {
+    return (
+      <PageLayout>
+        <div className="flex h-64 items-center justify-center text-gray-500">
+          No location assigned. Please contact your administrator.
+        </div>
+      </PageLayout>
+    );
+  }
+
   if (loading) {
-     return (
-        <PageLayout>
-            <VaultOverviewSkeleton />
-        </PageLayout>
-     );
+    return (
+      <PageLayout>
+        <VaultOverviewSkeleton />
+      </PageLayout>
+    );
   }
 
   return (
@@ -505,20 +515,13 @@ export default function VaultOverviewPageContent() {
                 disabled={refreshing}
                 className="h-6 px-1.5 text-gray-400 hover:text-blue-600"
               >
-                <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`}
+                />
               </Button>
             </div>
           }
-        >
-          {isShiftActive && (
-            <Button
-              onClick={() => handleAction('closeShift')}
-              className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
-            >
-              Close Day
-            </Button>
-          )}
-        </VaultManagerHeader>
+        />
         
         {/* Helper for viewing denominations from desks */}
         {/* This bit is handled by the state and passed to VaultModals */}
@@ -540,14 +543,10 @@ export default function VaultOverviewPageContent() {
         </div>
 
         {/* Balance Card Section */}
-        {loading ? (
-           <div className="h-40 w-full rounded-lg bg-gray-100 animate-pulse" />
-        ) : (
-          <VaultBalanceCard
-            balance={vaultBalance}
-            onReconcile={() => setModals(m => ({ ...m, reconcile: true }))}
-          />
-        )}
+        <VaultBalanceCard
+          balance={vaultBalance}
+          onReconcile={() => setModals(m => ({ ...m, reconcile: true }))}
+        />
 
         {/* Float Requests Panel */}
         {floatRequests.length > 0 && (
@@ -611,13 +610,12 @@ export default function VaultOverviewPageContent() {
             window.location.href = '/vault/management/cashiers';
           }}
           onSoftCount={() => handleAction('softCount')}
+          onViewActivityLog={() => {
+            window.location.href = '/vault/management/activity-log';
+          }}
         />
 
-        {loading ? (
-          <TableSkeleton rows={5} cols={6} />
-        ) : (
-          <VaultRecentActivitySection transactions={transactions} />
-        )}
+        <VaultRecentActivitySection transactions={transactions} />
 
         {/* All Vault Modals */}
         <VaultModals 

@@ -12,6 +12,7 @@ import {
     Clock,
     DollarSign,
     FileText,
+    History,
     MapPin,
     MonitorSpeaker,
     Receipt,
@@ -92,16 +93,16 @@ const baseCmsNavigationItems: NavigationItem[] = [
     href: '/vault/management/floats',
     icon: Wallet,
   },
-  {
-    label: 'Cash on Premises',
-    href: '/vault/management/reports/cash-on-premises',
-    icon: FileText,
-  },
     {
       label: 'Expenses',
       href: '/vault/management/expenses',
       icon: Receipt,
     },
+  {
+    label: 'Activity Log',
+    href: '/vault/management/activity-log',
+    icon: History,
+  },
   {
     label: 'Administration',
     href: '/administration',
