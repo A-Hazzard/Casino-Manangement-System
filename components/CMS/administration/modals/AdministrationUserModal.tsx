@@ -9,15 +9,16 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import type { MultiSelectOption } from '@/components/shared/ui/common/MultiSelectDropdown';
 import MultiSelectDropdown from '@/components/shared/ui/common/MultiSelectDropdown';
+import { DateTimePicker } from '@/components/shared/ui/date-time-picker';
 import CircleCropModal from '@/components/shared/ui/image/CircleCropModal';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -29,29 +30,31 @@ import type { User } from '@/lib/types/administration';
 import type { Country, Licensee } from '@/lib/types/common';
 import type { LocationSelectItem } from '@/lib/types/location';
 import {
-    getPasswordStrengthLabel,
-    isPlaceholderEmail,
-    validateEmail,
-    validatePasswordStrength,
-    validatePhoneNumber,
+  getPasswordStrengthLabel,
+  isPlaceholderEmail,
+  validateEmail,
+  validatePasswordStrength,
+  validatePhoneNumber,
 } from '@/lib/utils/validation';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
 import {
-    AlertCircle,
-    Camera,
-    Edit3,
-    Info,
-    Loader2,
-    Save,
-    Trash2,
-    X,
-    XCircle,
+  AlertCircle,
+  Camera,
+  Edit3,
+  Info,
+  Loader2,
+  Save,
+  Trash2,
+  X,
+  XCircle,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AdministrationRolePermissionsDialog } from './AdministrationRolePermissionsDialog';
+
+const EMAIL_REGEX = /\S+@\S+\.\S+/;
 
 // ============================================================================
 // Constants
@@ -316,8 +319,9 @@ export default function AdministrationUserModal({
       );
 
       const shouldSelectAll =
-        normalizedLicenseeIds.length > 0 &&
-        normalizedLicenseeIds.length === currentLicensees.length;
+        normalizedLicenseeIds.length > 1 &&
+        normalizedLicenseeIds.length === currentLicensees.length &&
+        !targetUser.roles?.includes('vault-manager');
       setAllLicenseesSelected(shouldSelectAll);
     } else {
       setSelectedLicenseeIds(prev =>
@@ -534,8 +538,9 @@ export default function AdministrationUserModal({
 
         setSelectedLocationIds(userLocationIds);
         setAllLocationsSelected(
-          validLocationIds.length > 0 &&
-            validLocationIds.length === locations.length
+          validLocationIds.length > 1 &&
+            validLocationIds.length === locations.length &&
+            !roles.includes('vault-manager')
         );
         hasInitializedLocationsFromUserRef.current = true;
       } else {
@@ -544,7 +549,7 @@ export default function AdministrationUserModal({
         hasInitializedLocationsFromUserRef.current = true;
       }
     }
-  }, [open, user, locations, licensees]);
+  }, [open, user, locations, licensees, roles]);
 
   const hasLoadedLicenseesRef = useRef(false);
   const selectedLicenseeIdsRef = useRef<string[]>([]);
@@ -623,8 +628,9 @@ export default function AdministrationUserModal({
         );
 
         const shouldSelectAll =
-          normalizedLicenseeIds.length > 0 &&
-          normalizedLicenseeIds.length === lics.length;
+          normalizedLicenseeIds.length > 1 &&
+          normalizedLicenseeIds.length === lics.length &&
+          !roles.includes('vault-manager');
         setAllLicenseesSelected(shouldSelectAll);
 
         if (normalizedLicenseeIds.length > 0) {
@@ -659,7 +665,8 @@ export default function AdministrationUserModal({
     return () => {
       cancelled = true;
     };
-  }, [open, isManager, isLocationAdmin, currentUserLicenseeIds]);
+  }, [open, isManager, isLocationAdmin, currentUserLicenseeIds, roles]);
+
 
   useEffect(() => {
     const loadCountries = async () => {
@@ -953,6 +960,187 @@ export default function AdministrationUserModal({
     selectedLicenseeIds,
   ]);
 
+  // Sync "all selected" states to prevent Vault Manager restrictions or single-item auto-selection
+  useEffect(() => {
+    if (!open) return;
+    
+    if (isVaultManagerSelected) {
+      if (allLicenseesSelected) setAllLicenseesSelected(false);
+      if (allLocationsSelected) setAllLocationsSelected(false);
+    } else {
+      // Also ensure "All" is not set if count is 1 or 0
+      if (allLicenseesSelected && (licensees.length <= 1 || selectedLicenseeIds.length !== licensees.length)) {
+        setAllLicenseesSelected(false);
+      }
+      if (allLocationsSelected && (availableLocations.length <= 1 || selectedLocationIds.length !== availableLocations.length)) {
+        setAllLocationsSelected(false);
+      }
+    }
+  }, [
+    open,
+    isVaultManagerSelected,
+    allLicenseesSelected,
+    allLocationsSelected,
+    licensees.length,
+    availableLocations.length,
+    selectedLicenseeIds.length,
+    selectedLocationIds.length
+  ]);
+
+  // Form validation
+  useEffect(() => {
+    const username = (accountData.username || '').trim();
+    const email = (accountData.email || '').trim();
+    const firstName = (formData.firstName || '').trim();
+    const lastName = (formData.lastName || '').trim();
+    const town = (formData.town || '').trim();
+    const region = (formData.region || '').trim();
+    const country = (formData.country || '').trim();
+    const idType = (formData.idType || '').trim();
+    const idNumber = (formData.idNumber || '').trim();
+
+    const newErrors: Record<string, string> = {};
+
+    // Username validation (matches User model schema)
+    if (accountTouched.username && username) {
+      if (username.length < 3) {
+        newErrors.username = 'Username must be at least 3 characters.';
+      } else if (EMAIL_REGEX.test(username)) {
+        newErrors.username = 'Username cannot look like an email address.';
+      } else if (/^\d{10,}$/.test(username)) {
+        newErrors.username = 'Username cannot look like a phone number.';
+      } else if (!/^[A-Za-z0-9\s'-]+$/.test(username)) {
+        newErrors.username =
+          'Username may only contain letters, numbers, spaces, hyphens, and apostrophes.';
+      }
+    }
+
+    // Email validation
+    if (accountTouched.email && email) {
+      if (!validateEmail(email)) {
+        newErrors.email = 'Please provide a valid email address.';
+      } else if (isPlaceholderEmail(email)) {
+        newErrors.email =
+          'Please use a real email address. Placeholder emails like example@example.com are not allowed.';
+      }
+    }
+
+    // First name validation (matches User model schema)
+    if (firstName && firstName.length > 0) {
+      if (firstName.length < 3) {
+        newErrors.firstName = 'First name must be at least 3 characters.';
+      } else if (EMAIL_REGEX.test(firstName)) {
+        newErrors.firstName = 'First name cannot look like an email address.';
+      } else if (!/^[A-Za-z\s'-]+$/.test(firstName)) {
+        newErrors.firstName =
+          'First name may only contain letters, spaces, hyphens and apostrophes.';
+      }
+    }
+
+    // Last name validation (matches User model schema)
+    if (lastName && lastName.length > 0) {
+      if (lastName.length < 3) {
+        newErrors.lastName = 'Last name must be at least 3 characters.';
+      } else if (EMAIL_REGEX.test(lastName)) {
+        newErrors.lastName = 'Last name cannot look like an email address.';
+      } else if (!/^[A-Za-z\s'-]+$/.test(lastName)) {
+        newErrors.lastName =
+          'Last name may only contain letters, spaces, hyphens and apostrophes.';
+      }
+    }
+
+    // Town validation (matches User model schema)
+    if (town && town.length > 0) {
+      if (town.length < 3) {
+        newErrors.town =
+          'Town must be at least 3 characters and may only contain letters, numbers, spaces, commas, and full stops.';
+      } else if (!/^[A-Za-z0-9\s,\.]+$/.test(town)) {
+        newErrors.town =
+          'Town may only contain letters, numbers, spaces, commas, and full stops.';
+      }
+    }
+
+    // Region validation (matches User model schema)
+    if (region && region.length > 0) {
+      if (region.length < 3) {
+        newErrors.region =
+          'Region must be at least 3 characters and may only contain letters, numbers, spaces, commas, and full stops.';
+      } else if (!/^[A-Za-z0-9\s,\.]+$/.test(region)) {
+        newErrors.region =
+          'Region may only contain letters, numbers, spaces, commas, and full stops.';
+      }
+    }
+
+    // Country validation (matches User model schema)
+    if (country && country.length > 0) {
+      if (country.length < 3) {
+        newErrors.country =
+          'Country must be at least 3 characters and may only contain letters and spaces.';
+      } else if (!/^[A-Za-z\s]+$/.test(country)) {
+        newErrors.country = 'Country may only contain letters and spaces.';
+      }
+    }
+
+    // ID Type validation (matches User model schema)
+    if (idType && idType.length > 0) {
+      if (idType.length < 3) {
+        newErrors.idType =
+          'ID type must be at least 3 characters and may only contain letters and spaces.';
+      } else if (!/^[A-Za-z\s]+$/.test(idType)) {
+        newErrors.idType = 'ID type may only contain letters and spaces.';
+      }
+    }
+
+    // ID Number validation (matches User model schema)
+    if (idNumber && idNumber.length > 0) {
+      if (idNumber.length < 3) {
+        newErrors.idNumber = 'ID number must be at least 3 characters.';
+      }
+    }
+
+    setAccountErrors(prev => {
+      const next = { ...prev };
+      // Clear errors for fields managed by this effect
+      const managedFields = [
+        'username',
+        'email',
+        'firstName',
+        'lastName',
+        'town',
+        'region',
+        'country',
+        'idType',
+        'idNumber',
+      ];
+      managedFields.forEach(field => {
+        // Only clear if the current error is NOT the async validation error
+        if (
+          field === 'username' &&
+          next[field] === 'This username is already taken.'
+        )
+          return;
+        if (
+          field === 'email' &&
+          next[field] === 'This email address is already registered.'
+        )
+          return;
+        delete next[field];
+      });
+      return { ...next, ...newErrors };
+    });
+  }, [
+    accountData.username,
+    accountData.email,
+    accountTouched,
+    formData.firstName,
+    formData.lastName,
+    formData.town,
+    formData.region,
+    formData.country,
+    formData.idType,
+    formData.idNumber,
+  ]);
+
   const handleAllLocationsChange = (checked: boolean) => {
     if (isVaultManagerSelected && checked) {
       toast.error('Vault Managers cannot be assigned to all locations');
@@ -985,7 +1173,7 @@ export default function AdministrationUserModal({
 
     setSelectedLicenseeIds(finalIds);
     setAllLicenseesSelected(
-      finalIds.length === licensees.length && licensees.length > 0 && !isVaultManagerSelected
+      finalIds.length === licensees.length && licensees.length > 1 && !isVaultManagerSelected
     );
 
     setSelectedLocationIds(prevLocationIds => {
@@ -1018,7 +1206,7 @@ export default function AdministrationUserModal({
     }
     setSelectedLocationIds(finalIds);
     setAllLocationsSelected(
-      finalIds.length === availableLocations.length && availableLocations.length > 0 && !isVaultManagerSelected
+      finalIds.length === availableLocations.length && availableLocations.length > 1 && !isVaultManagerSelected
     );
   };
 
@@ -1069,7 +1257,96 @@ export default function AdministrationUserModal({
         ? accountEmailTrimmed
         : baseEmail;
 
-    if (Object.keys(accountErrors).length > 0) {
+    // Synchronous Validation
+    const validationErrors: Record<string, string> = { ...accountErrors };
+    
+    // Username Sync Validation
+    if (updatedUsername) {
+      if (updatedUsername.length < 3) {
+        validationErrors.username = 'Username must be at least 3 characters.';
+      } else if (EMAIL_REGEX.test(updatedUsername)) {
+        validationErrors.username = 'Username cannot look like an email address.';
+      } else if (/^\d{10,}$/.test(updatedUsername)) {
+        validationErrors.username = 'Username cannot look like a phone number.';
+      } else if (!/^[A-Za-z0-9\s'-]+$/.test(updatedUsername)) {
+        validationErrors.username = 'Username may only contain letters, numbers, spaces, hyphens, and apostrophes.';
+      }
+    }
+
+    // First Name Sync Validation
+    const firstName = (formData.firstName || '').trim();
+    if (firstName) {
+      if (firstName.length < 3) {
+        validationErrors.firstName = 'First name must be at least 3 characters.';
+      } else if (EMAIL_REGEX.test(firstName)) {
+        validationErrors.firstName = 'First name cannot look like an email address.';
+      } else if (!/^[A-Za-z\s'-]+$/.test(firstName)) {
+        validationErrors.firstName = 'First name may only contain letters, spaces, hyphens and apostrophes.';
+      }
+    }
+
+    // Last Name Sync Validation
+    const lastName = (formData.lastName || '').trim();
+    if (lastName) {
+      if (lastName.length < 3) {
+        validationErrors.lastName = 'Last name must be at least 3 characters.';
+      } else if (EMAIL_REGEX.test(lastName)) {
+        validationErrors.lastName = 'Last name cannot look like an email address.';
+      } else if (!/^[A-Za-z\s'-]+$/.test(lastName)) {
+        validationErrors.lastName = 'Last name may only contain letters, spaces, hyphens and apostrophes.';
+      }
+    }
+
+    // Address Sync Validation
+    const town = (formData.town || '').trim();
+    if (town) {
+      if (town.length < 3) {
+        validationErrors.town = 'Town must be at least 3 characters.';
+      } else if (!/^[A-Za-z0-9\s,\.]+$/.test(town)) {
+        validationErrors.town = 'Town may only contain letters, numbers, spaces, commas, and full stops.';
+      }
+    }
+
+    const region = (formData.region || '').trim();
+    if (region) {
+      if (region.length < 3) {
+        validationErrors.region = 'Region must be at least 3 characters.';
+      } else if (!/^[A-Za-z0-9\s,\.]+$/.test(region)) {
+        validationErrors.region = 'Region may only contain letters, numbers, spaces, commas, and full stops.';
+      }
+    }
+
+    const country = (formData.country || '').trim();
+    if (country) {
+       // Check if it's a country ID (MongoDB ObjectId-like) or name
+       // The form usually stores ID in formData.country if selected from dropdown
+       const isCountryId = /^[0-9a-fA-F]{24}$/.test(country);
+       if (!isCountryId) {
+          if (country.length < 3) {
+            validationErrors.country = 'Country must be at least 3 characters.';
+          } else if (!/^[A-Za-z\s]+$/.test(country)) {
+            validationErrors.country = 'Country may only contain letters and spaces.';
+          }
+       }
+    }
+    
+    // ID Sync Validation
+    const idType = (formData.idType || '').trim();
+    if (idType) {
+      if (idType.length < 3) {
+        validationErrors.idType = 'ID type must be at least 3 characters.';
+      } else if (!/^[A-Za-z\s]+$/.test(idType)) {
+        validationErrors.idType = 'ID type may only contain letters and spaces.';
+      }
+    }
+
+    const idNumber = (formData.idNumber || '').trim();
+    if (idNumber && idNumber.length < 3) {
+        validationErrors.idNumber = 'ID number must be at least 3 characters.';
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      setAccountErrors(prev => ({ ...prev, ...validationErrors }));
       toast.error('Please fix the validation errors before saving');
       return;
     }
@@ -1748,15 +2025,24 @@ export default function AdministrationUserModal({
                         {isLoading ? (
                           <Skeleton className="mt-2 h-10 w-full" />
                         ) : isEditMode ? (
-                          <Input
-                            id="firstName"
-                            value={formData.firstName}
-                            onChange={e =>
-                              handleInputChange('firstName', e.target.value)
-                            }
-                            placeholder="Enter first name"
-                            className="mt-2"
-                          />
+                          <>
+                            <Input
+                              id="firstName"
+                              value={formData.firstName}
+                              onChange={e =>
+                                handleInputChange('firstName', e.target.value)
+                              }
+                              placeholder="Enter first name"
+                              className={`mt-2 ${
+                                accountErrors.firstName ? 'border-red-500' : ''
+                              }`}
+                            />
+                            {accountErrors.firstName && (
+                              <p className="mt-1.5 text-sm text-red-600">
+                                {accountErrors.firstName}
+                              </p>
+                            )}
+                          </>
                         ) : (
                           <p className="mt-2 break-words text-sm text-gray-900">
                             {formData.firstName || 'Not specified'}
@@ -1771,15 +2057,24 @@ export default function AdministrationUserModal({
                         {isLoading ? (
                           <Skeleton className="mt-2 h-10 w-full" />
                         ) : isEditMode ? (
-                          <Input
-                            id="lastName"
-                            value={formData.lastName}
-                            onChange={e =>
-                              handleInputChange('lastName', e.target.value)
-                            }
-                            placeholder="Enter last name"
-                            className="mt-2"
-                          />
+                          <>
+                            <Input
+                              id="lastName"
+                              value={formData.lastName}
+                              onChange={e =>
+                                handleInputChange('lastName', e.target.value)
+                              }
+                              placeholder="Enter last name"
+                              className={`mt-2 ${
+                                accountErrors.lastName ? 'border-red-500' : ''
+                              }`}
+                            />
+                            {accountErrors.lastName && (
+                              <p className="mt-1.5 text-sm text-red-600">
+                                {accountErrors.lastName}
+                              </p>
+                            )}
+                          </>
                         ) : (
                           <p className="mt-2 break-words text-sm text-gray-900">
                             {formData.lastName || 'Not specified'}
@@ -2115,15 +2410,24 @@ export default function AdministrationUserModal({
                       Town
                     </Label>
                     {isEditMode ? (
-                      <Input
-                        id="town"
-                        value={formData.town}
-                        onChange={e =>
-                          handleInputChange('town', e.target.value)
-                        }
-                        placeholder="Enter town"
-                        className="mt-2"
-                      />
+                      <>
+                        <Input
+                          id="town"
+                          value={formData.town}
+                          onChange={e =>
+                            handleInputChange('town', e.target.value)
+                          }
+                          placeholder="Enter town"
+                          className={`mt-2 ${
+                            accountErrors.town ? 'border-red-500' : ''
+                          }`}
+                        />
+                        {accountErrors.town && (
+                          <p className="mt-1.5 text-sm text-red-600">
+                            {accountErrors.town}
+                          </p>
+                        )}
+                      </>
                     ) : (
                       <p className="mt-2 break-words text-sm text-gray-900">
                         {formData.town || 'Not specified'}
@@ -2136,15 +2440,24 @@ export default function AdministrationUserModal({
                       Region
                     </Label>
                     {isEditMode ? (
-                      <Input
-                        id="region"
-                        value={formData.region}
-                        onChange={e =>
-                          handleInputChange('region', e.target.value)
-                        }
-                        placeholder="Enter region"
-                        className="mt-2"
-                      />
+                      <>
+                        <Input
+                          id="region"
+                          value={formData.region}
+                          onChange={e =>
+                            handleInputChange('region', e.target.value)
+                          }
+                          placeholder="Enter region"
+                          className={`mt-2 ${
+                            accountErrors.region ? 'border-red-500' : ''
+                          }`}
+                        />
+                        {accountErrors.region && (
+                          <p className="mt-1.5 text-sm text-red-600">
+                            {accountErrors.region}
+                          </p>
+                        )}
+                      </>
                     ) : (
                       <p className="mt-2 break-words text-sm text-gray-900">
                         {formData.region || 'Not specified'}
@@ -2157,27 +2470,38 @@ export default function AdministrationUserModal({
                       Country
                     </Label>
                     {isEditMode ? (
-                      <select
-                        id="country"
-                        className="mt-2 flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
-                        value={formData.country}
-                        onChange={e =>
-                          handleInputChange('country', e.target.value)
-                        }
-                      >
-                        <option value="">Select country</option>
-                        {countriesLoading ? (
-                          <option value="" disabled>
-                            Loading countries...
-                          </option>
-                        ) : (
-                          countries.map(country => (
-                            <option key={country._id} value={country._id}>
-                              {country.name}
+                      <>
+                        <select
+                          id="country"
+                          className={`mt-2 flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
+                            accountErrors.country
+                              ? 'border-red-500'
+                              : 'border-gray-300'
+                          }`}
+                          value={formData.country}
+                          onChange={e =>
+                            handleInputChange('country', e.target.value)
+                          }
+                        >
+                          <option value="">Select country</option>
+                          {countriesLoading ? (
+                            <option value="" disabled>
+                              Loading countries...
                             </option>
-                          ))
+                          ) : (
+                            countries.map(country => (
+                              <option key={country._id} value={country._id}>
+                                {country.name}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                        {accountErrors.country && (
+                          <p className="mt-1.5 text-sm text-red-600">
+                            {accountErrors.country}
+                          </p>
                         )}
-                      </select>
+                      </>
                     ) : (
                       <p className="mt-2 break-words text-sm text-gray-900">
                         {countries.find(c => c._id === formData.country)
@@ -2226,16 +2550,17 @@ export default function AdministrationUserModal({
                       Date of Birth
                     </Label>
                     {isEditMode ? (
-                      <Input
-                        id="dateOfBirth"
-                        type="date"
-                        value={formData.dateOfBirth}
-                        onChange={e =>
-                          handleInputChange('dateOfBirth', e.target.value)
-                        }
-                        placeholder="YYYY-MM-DD"
-                        className="mt-2"
-                      />
+                      <div className="mt-2">
+                        <DateTimePicker
+                          date={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
+                          setDate={(date) =>
+                            handleInputChange(
+                              'dateOfBirth',
+                              date ? date.toISOString().split('T')[0] : ''
+                            )
+                          }
+                        />
+                      </div>
                     ) : (
                       <p className="mt-2 break-words text-sm text-gray-900">
                         {formData.dateOfBirth
@@ -2257,15 +2582,24 @@ export default function AdministrationUserModal({
                       ID Type
                     </Label>
                     {isEditMode ? (
-                      <Input
-                        id="idType"
-                        value={formData.idType}
-                        onChange={e =>
-                          handleInputChange('idType', e.target.value)
-                        }
-                        placeholder="Enter ID type"
-                        className="mt-2"
-                      />
+                      <>
+                        <Input
+                          id="idType"
+                          value={formData.idType}
+                          onChange={e =>
+                            handleInputChange('idType', e.target.value)
+                          }
+                          placeholder="Enter ID type"
+                          className={`mt-2 ${
+                            accountErrors.idType ? 'border-red-500' : ''
+                          }`}
+                        />
+                        {accountErrors.idType && (
+                          <p className="mt-1.5 text-sm text-red-600">
+                            {accountErrors.idType}
+                          </p>
+                        )}
+                      </>
                     ) : (
                       <p className="mt-2 break-words text-sm text-gray-900">
                         {formData.idType || 'Not specified'}
@@ -2278,15 +2612,24 @@ export default function AdministrationUserModal({
                       ID Number
                     </Label>
                     {isEditMode ? (
-                      <Input
-                        id="idNumber"
-                        value={formData.idNumber}
-                        onChange={e =>
-                          handleInputChange('idNumber', e.target.value)
-                        }
-                        placeholder="Enter ID number"
-                        className="mt-2"
-                      />
+                      <>
+                        <Input
+                          id="idNumber"
+                          value={formData.idNumber}
+                          onChange={e =>
+                            handleInputChange('idNumber', e.target.value)
+                          }
+                          placeholder="Enter ID number"
+                          className={`mt-2 ${
+                            accountErrors.idNumber ? 'border-red-500' : ''
+                          }`}
+                        />
+                        {accountErrors.idNumber && (
+                          <p className="mt-1.5 text-sm text-red-600">
+                            {accountErrors.idNumber}
+                          </p>
+                        )}
+                      </>
                     ) : (
                       <p className="mt-2 break-words text-sm text-gray-900">
                         {formData.idNumber || 'Not specified'}

@@ -1,9 +1,9 @@
 'use client';
 
+import CollectionReportFormMachineDataEntry from '@/components/CMS/collectionReport/forms/CollectionReportFormMachineDataEntry';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import { ArrowLeft } from 'lucide-react';
 import React from 'react';
-import CollectionReportFormMachineDataEntry from '@/components/CMS/collectionReport/forms/CollectionReportFormMachineDataEntry';
 
 type MobileFormPanelProps = {
   isVisible: boolean;
@@ -58,6 +58,7 @@ type MobileFormPanelProps = {
 
   // For collected amount calculations
   onCollectedAmountChange: (value: string) => void;
+  isManager?: boolean;
 };
 
 /**
@@ -83,6 +84,7 @@ export default function CollectionReportMobileFormPanel({
   onAddMachine,
   autoFillRamClearMeters,
   onCollectedAmountChange,
+  isManager = false,
 }: MobileFormPanelProps) {
   return (
     <div
@@ -103,71 +105,108 @@ export default function CollectionReportMobileFormPanel({
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h3 className="text-lg font-bold">
-              {editingEntryId
-                ? `Edit ${selectedMachineData?.name || 'Machine'}`
-                : selectedMachineData?.name || 'Machine'}
+              {isManager 
+                ? 'Financial Summary'
+                : editingEntryId
+                  ? `Edit ${selectedMachineData?.name || 'Machine'}`
+                  : selectedMachineData?.name || 'Machine'}
             </h3>
-            <button
-              onClick={onViewCollectedList}
-              className="rounded-full p-2 hover:bg-blue-700"
-            >
-              <span className="text-sm">List ({collectedMachinesCount})</span>
-            </button>
+            {!isManager && (
+              <button
+                onClick={onViewCollectedList}
+                className="rounded-full p-2 hover:bg-blue-700"
+              >
+                <span className="text-sm">List ({collectedMachinesCount})</span>
+              </button>
+            )}
           </div>
 
           {/* Scrollable Form Content */}
           <div className="flex-1 overflow-y-auto">
             {/* Form Content */}
-            <CollectionReportFormMachineDataEntry
-              machineName={
-                selectedMachineData
-                  ? formatMachineDisplay(selectedMachineData)
-                  : 'N/A'
-              }
-              smibId={
-                selectedMachineData?.relayId ||
-                selectedMachineData?.smbId ||
-                'N/A'
-              }
-              currentMetersIn={selectedMachineData?.collectionMeters?.metersIn}
-              currentMetersOut={
-                selectedMachineData?.collectionMeters?.metersOut
-              }
-              onViewMachine={onViewMachine}
-              collectionTime={formData.collectionTime}
-              onCollectionTimeChange={date => {
-                if (date) onFormDataChange('collectionTime', date);
-              }}
-              metersIn={formData.metersIn}
-              metersOut={formData.metersOut}
-              ramClear={formData.ramClear}
-              ramClearMetersIn={formData.ramClearMetersIn}
-              ramClearMetersOut={formData.ramClearMetersOut}
-              prevIn={selectedMachineData?.collectionMeters?.metersIn}
-              prevOut={selectedMachineData?.collectionMeters?.metersOut}
-              onMetersInChange={val => onFormDataChange('metersIn', val)}
-              onMetersOutChange={val => onFormDataChange('metersOut', val)}
-              onRamClearChange={autoFillRamClearMeters}
-              onRamClearMetersInChange={val =>
-                onFormDataChange('ramClearMetersIn', val)
-              }
-              onRamClearMetersOutChange={val =>
-                onFormDataChange('ramClearMetersOut', val)
-              }
-              notes={formData.notes}
-              onNotesChange={val => onFormDataChange('notes', val)}
-              showFinancials={collectedMachinesCount === 0}
-              taxes={financials.taxes}
-              advance={financials.advance}
-              onTaxesChange={val => onFinancialDataChange('taxes', val)}
-              onAdvanceChange={val => onFinancialDataChange('advance', val)}
-              disabled={!inputsEnabled}
-              isProcessing={isProcessing}
-            />
+            {!isManager && (
+              <CollectionReportFormMachineDataEntry
+                machineName={
+                  selectedMachineData
+                    ? formatMachineDisplay(selectedMachineData)
+                    : 'N/A'
+                }
+                smibId={
+                  selectedMachineData?.relayId ||
+                  selectedMachineData?.smbId ||
+                  'N/A'
+                }
+                currentMetersIn={selectedMachineData?.collectionMeters?.metersIn}
+                currentMetersOut={
+                  selectedMachineData?.collectionMeters?.metersOut
+                }
+                onViewMachine={onViewMachine}
+                collectionTime={formData.collectionTime}
+                onCollectionTimeChange={date => {
+                  if (date) onFormDataChange('collectionTime', date);
+                }}
+                metersIn={formData.metersIn}
+                metersOut={formData.metersOut}
+                ramClear={formData.ramClear}
+                ramClearMetersIn={formData.ramClearMetersIn}
+                ramClearMetersOut={formData.ramClearMetersOut}
+                prevIn={selectedMachineData?.collectionMeters?.metersIn}
+                prevOut={selectedMachineData?.collectionMeters?.metersOut}
+                onMetersInChange={val => onFormDataChange('metersIn', val)}
+                onMetersOutChange={val => onFormDataChange('metersOut', val)}
+                onRamClearChange={autoFillRamClearMeters}
+                onRamClearMetersInChange={val =>
+                  onFormDataChange('ramClearMetersIn', val)
+                }
+                onRamClearMetersOutChange={val =>
+                  onFormDataChange('ramClearMetersOut', val)
+                }
+                notes={formData.notes}
+                onNotesChange={val => onFormDataChange('notes', val)}
+                showFinancials={collectedMachinesCount === 0}
+                taxes={financials.taxes}
+                advance={financials.advance}
+                onTaxesChange={val => onFinancialDataChange('taxes', val)}
+                onAdvanceChange={val => onFinancialDataChange('advance', val)}
+                disabled={!inputsEnabled}
+                isProcessing={isProcessing}
+              />
+            )}
 
-            {/* Additional Financial Fields (only for first machine) */}
-            {collectedMachinesCount === 0 && (
+            {/* Additional Financial Fields (only for first machine or if manager) */}
+            {(collectedMachinesCount === 0 || isManager) && (
               <div className="px-4 pb-4">
+                {isManager && (
+                   <div className="mb-6 pt-4">
+                     <h3 className="text-base font-semibold mb-3">
+                       Shared Financials for Batch
+                     </h3>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div>
+                         <label className="block text-sm font-medium mb-1">Taxes</label>
+                         <input
+                           type="text"
+                           placeholder="0"
+                           value={financials.taxes}
+                           onChange={(e) => onFinancialDataChange('taxes', e.target.value)}
+                           disabled={isProcessing}
+                           className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         />
+                       </div>
+                       <div>
+                         <label className="block text-sm font-medium mb-1">Advance</label>
+                         <input
+                           type="text"
+                           placeholder="0"
+                           value={financials.advance}
+                           onChange={(e) => onFinancialDataChange('advance', e.target.value)}
+                           disabled={isProcessing}
+                           className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         />
+                       </div>
+                     </div>
+                   </div>
+                )}
                 <div className="space-y-4">
                   {/* Variance */}
                   <div>
@@ -350,7 +389,7 @@ export default function CollectionReportMobileFormPanel({
           {/* Form Footer */}
           <div className="space-y-3 border-t bg-gray-50 p-4">
             {/* View Form Button - Show when there's at least 1 machine in collection */}
-            {collectedMachinesCount > 0 && (
+            {collectedMachinesCount > 0 && !isManager && (
               <button
                 onClick={onViewCollectedList}
                 className="w-full rounded-lg bg-blue-600 py-3 font-semibold text-white transition-colors hover:bg-blue-700"
@@ -360,23 +399,34 @@ export default function CollectionReportMobileFormPanel({
               </button>
             )}
 
-            <button
-              onClick={onAddMachine}
-              disabled={isProcessing || !inputsEnabled || !isAddMachineEnabled}
-              className={`w-full rounded-lg py-3 font-semibold transition-colors ${
-                isAddMachineEnabled && inputsEnabled && !isProcessing
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'cursor-not-allowed bg-gray-400 text-gray-200'
-              }`}
-            >
-              {isProcessing
-                ? editingEntryId
-                  ? 'Updating...'
-                  : 'Adding...'
-                : editingEntryId
-                  ? 'Update Machine'
-                  : 'Add Machine to List'}
-            </button>
+            {!isManager && (
+              <button
+                onClick={onAddMachine}
+                disabled={isProcessing || !inputsEnabled || !isAddMachineEnabled}
+                className={`w-full rounded-lg py-3 font-semibold transition-colors ${
+                  isAddMachineEnabled && inputsEnabled && !isProcessing
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'cursor-not-allowed bg-gray-400 text-gray-200'
+                }`}
+              >
+                {isProcessing
+                  ? editingEntryId
+                    ? 'Updating...'
+                    : 'Adding...'
+                  : editingEntryId
+                    ? 'Update Machine'
+                    : 'Add Machine to List'}
+              </button>
+            )}
+            
+            {isManager && (
+              <button
+                onClick={onViewCollectedList}
+                className="w-full rounded-lg bg-green-600 py-3 font-semibold text-white transition-colors hover:bg-green-700"
+              >
+                Finish Financial Editing
+              </button>
+            )}
           </div>
         </div>
       )}

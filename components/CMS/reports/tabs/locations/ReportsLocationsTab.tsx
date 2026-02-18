@@ -20,14 +20,11 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import ReportsLocationsOverview from './ReportsLocationsOverview';
-import ReportsLocationsRevenueAnalysis from './ReportsLocationsRevenueAnalysis';
-import ReportsLocationsSASEvaluation from './ReportsLocationsSASEvaluation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/shared/ui/tabs';
 import {
-  handleExportLocationOverview,
-  handleExportRevenueAnalysis,
-  handleExportSASEvaluation,
+    handleExportLocationOverview,
+    handleExportRevenueAnalysis,
+    handleExportSASEvaluation,
 } from '@/lib/helpers/reports/locationsTabHelpers';
 import { useLocationsTabData } from '@/lib/hooks/reports/useLocationsTabData';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -35,6 +32,9 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
 import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import ReportsLocationsOverview from './ReportsLocationsOverview';
+import ReportsLocationsRevenueAnalysis from './ReportsLocationsRevenueAnalysis';
+import ReportsLocationsSASEvaluation from './ReportsLocationsSASEvaluation';
 
 /**
  * Main ReportsLocationsTab Component
@@ -442,6 +442,15 @@ export default function ReportsLocationsTab() {
     setBottomMachinesData,
     setLocationTrendData,
   ]);
+
+  // Listen for global refresh events from parent PageLayout
+  useEffect(() => {
+    const handleGlobalRefresh = () => {
+      handleRefresh();
+    };
+    window.addEventListener('refreshReports', handleGlobalRefresh);
+    return () => window.removeEventListener('refreshReports', handleGlobalRefresh);
+  }, [handleRefresh]);
 
   // ============================================================================
   // Export Handlers

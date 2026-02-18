@@ -160,11 +160,11 @@ export default function VaultFloatRequestsTable({
               return (
                 <TableRow key={request.id} className="transition-colors hover:bg-muted/30">
                   <TableCell isFirstColumn className="text-center">
-                    <Badge className={cn('px-2 py-0.5 text-[10px]', isIncrease ? 'bg-button text-white' : 'bg-lighterBlueHighlight text-white')}>
+                    <Badge className={cn('px-2 py-0.5 text-[10px] border-none', isIncrease ? 'bg-green-600 text-white' : 'bg-orangeHighlight text-white')}>
                       {isIncrease ? 'Increase' : 'Decrease'}
                     </Badge>
                   </TableCell>
-                  <TableCell className={cn('text-center font-bold', isIncrease ? 'text-button' : 'text-lighterBlueHighlight')}>
+                  <TableCell className={cn('text-center font-bold', isIncrease ? 'text-green-600' : 'text-orangeHighlight')}>
                     {formatAmount(request.amount)}
                   </TableCell>
                   {!showHistory && (
@@ -228,10 +228,10 @@ export default function VaultFloatRequestsTable({
             <Card key={request.id} className={cn("overflow-hidden border-l-4 shadow-sm", isIncrease ? "border-l-button" : "border-l-lighterBlueHighlight")}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <Badge className={cn('px-2 py-1', isIncrease ? 'bg-button text-white' : 'bg-lighterBlueHighlight text-white')}>
+                  <Badge className={cn('px-2 py-1 border-none', isIncrease ? 'bg-green-600 text-white' : 'bg-orangeHighlight text-white')}>
                     {isIncrease ? 'Increase' : 'Decrease'}
                   </Badge>
-                  <span className={cn("text-lg font-black", isIncrease ? "text-button" : "text-lighterBlueHighlight")}>
+                  <span className={cn("text-lg font-black", isIncrease ? "text-green-600" : "text-orangeHighlight")}>
                     {formatAmount(request.amount)}
                   </span>
                 </div>

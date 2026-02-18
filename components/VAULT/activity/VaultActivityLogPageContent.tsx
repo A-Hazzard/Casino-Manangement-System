@@ -15,19 +15,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui
 import { Label } from '@/components/shared/ui/label';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/shared/ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
@@ -252,7 +252,14 @@ export default function VaultActivityLogPageContent() {
         // Convert to CSV
         const headers = ['Timestamp', 'Type', 'Description', 'Amount', 'Performed By', 'Notes'];
         const rows = data.activities.map((activity: ActivityLog) => [
-          new Date(activity.timestamp).toLocaleString(),
+          new Date(activity.timestamp).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          }),
           activity.type,
           getActivityDescription(activity),
           formatAmount(activity.amount || 0),

@@ -61,7 +61,7 @@ export default function ViewDenominationsModal({
             <div className="relative z-10 flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-violet-100/60 mb-0.5">Verified Total Balance</p>
-                <span className="text-3xl font-black tracking-tight">${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span className="text-3xl font-black tracking-tight">${(totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
                 <Receipt className="h-6 w-6 text-violet-100" />

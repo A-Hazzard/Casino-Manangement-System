@@ -435,6 +435,19 @@ function AdministrationActivityLogsTable({
     setSelectedLog(null);
   };
 
+  // Listen for refresh event from parent component
+  useEffect(() => {
+    const handleRefreshEvent = () => {
+      fetchInitialBatch();
+      toast.success('Activity logs refreshed');
+    };
+
+    window.addEventListener('refreshActivityLogs', handleRefreshEvent);
+    return () => {
+      window.removeEventListener('refreshActivityLogs', handleRefreshEvent);
+    };
+  }, [fetchInitialBatch]);
+
   return (
     <div className={className}>
       <Card>
@@ -446,14 +459,16 @@ function AdministrationActivityLogsTable({
         </CardHeader>
         <CardContent>
           {/* Search Bar */}
-          <AdministrationActivityLogsSearchBar
-            searchValue={searchTerm}
-            setSearchValue={setSearchTerm}
-            searchMode={searchMode}
-            setSearchMode={setSearchMode}
-            searchDropdownOpen={searchDropdownOpen}
-            setSearchDropdownOpen={setSearchDropdownOpen}
-          />
+          {allLogs.length > 20 && (
+            <AdministrationActivityLogsSearchBar
+              searchValue={searchTerm}
+              setSearchValue={setSearchTerm}
+              searchMode={searchMode}
+              setSearchMode={setSearchMode}
+              searchDropdownOpen={searchDropdownOpen}
+              setSearchDropdownOpen={setSearchDropdownOpen}
+            />
+          )}
 
           {/* Filters */}
           <div className="mb-6 mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">

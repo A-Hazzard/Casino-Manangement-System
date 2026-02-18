@@ -9,21 +9,21 @@
 
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import type { Denomination } from '@/shared/types/vault';
 import { cn } from '@/lib/utils';
-import { ArrowRightLeft } from 'lucide-react';
+import type { Denomination } from '@/shared/types/vault';
+import { ArrowLeftCircle, ArrowRightCircle, ArrowRightLeft, MessageSquare, Star } from 'lucide-react';
+import { useState } from 'react';
 
 type InterLocationTransferFormProps = {
   onSubmit: (
@@ -58,6 +58,7 @@ export default function InterLocationTransferForm({
   const [denominations, setDenominations] = useState<Denomination[]>(
     DEFAULT_DENOMINATIONS.map(denom => ({ denomination: denom, quantity: 0 }))
   );
+  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
   const [notes, setNotes] = useState('');
 
   const totalAmount = denominations.reduce(
@@ -68,9 +69,18 @@ export default function InterLocationTransferForm({
   const updateQuantity = (index: number, quantity: number) => {
     if (quantity < 0) return;
     const newDenominations = [...denominations];
+    const denomVal = newDenominations[index].denomination;
     newDenominations[index] = { ...newDenominations[index], quantity };
     setDenominations(newDenominations as Denomination[]);
+    setTouchedDenominations(prev => {
+        const next = new Set(prev);
+        next.add(Number(denomVal));
+        return next;
+    });
   };
+
+  const isAllTouched = DEFAULT_DENOMINATIONS.every(d => touchedDenominations.has(Number(d)));
+  const isValid = (totalAmount > 0 || isAllTouched);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +96,7 @@ export default function InterLocationTransferForm({
       alert('Source and destination locations must be different');
       return;
     }
-    if (totalAmount === 0) {
+    if (!isValid) {
       alert('Please specify at least one denomination with quantity > 0');
       return;
     }
@@ -109,6 +119,7 @@ export default function InterLocationTransferForm({
           quantity: 0,
         }))
       );
+      setTouchedDenominations(new Set());
     } catch {
       // Error handled by parent
     }
@@ -189,7 +200,10 @@ export default function InterLocationTransferForm({
                     onChange={e =>
                       updateQuantity(index, parseInt(e.target.value) || 0)
                     }
-                    className="text-center"
+                    className={cn(
+                      "text-center transition-all",
+                      touchedDenominations.has(Number(denom.denomination)) && "text-violet-600"
+                    )}
                   />
                 </div>
               ))}
@@ -213,20 +227,47 @@ export default function InterLocationTransferForm({
           </div>
 
           <div>
-            <Label
-              htmlFor="notes"
-              className="text-sm font-medium text-gray-700"
-            >
-              Notes (Optional)
+            <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">
+              Transfer Reason
             </Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Additional notes for the transfer..."
-              className="mt-1"
-              rows={3}
-            />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+              {[
+                { label: 'Replenish', icon: ArrowRightCircle, color: 'text-violet-500', bg: 'hover:bg-violet-50' },
+                { label: 'Excess', icon: ArrowLeftCircle, color: 'text-amber-500', bg: 'hover:bg-amber-50' },
+                { label: 'Special', icon: Star, color: 'text-blue-500', bg: 'hover:bg-blue-50' },
+                { label: 'Other', icon: MessageSquare, color: 'text-gray-500', bg: 'hover:bg-gray-50' }
+              ].map(item => {
+                const isSelected = notes === item.label || (item.label === 'Other' && notes.length > 0 && !['Replenish', 'Excess', 'Special'].includes(notes));
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => setNotes(item.label === 'Other' ? '' : item.label)}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1.5",
+                      notes === item.label 
+                        ? "bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-200" 
+                        : "bg-white border-gray-100 text-gray-600",
+                      !isSelected && item.bg
+                    )}
+                  >
+                    <Icon className={cn("h-4 w-4", notes === item.label ? "text-white" : item.color)} />
+                    <span className="text-[10px] font-black uppercase tracking-tight">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {(notes === 'Other' || (notes.length > 0 && !['Replenish', 'Excess', 'Special'].includes(notes))) && (
+              <Textarea
+                id="transfer-notes"
+                placeholder="Briefly explain the transfer (Optional)..."
+                value={notes === 'Other' ? '' : notes}
+                onChange={e => setNotes(e.target.value)}
+                rows={2}
+                className="resize-none bg-gray-50/50 border-gray-200 rounded-xl focus:bg-white transition-all text-sm mt-3"
+              />
+            )}
           </div>
 
           <Button
@@ -236,7 +277,7 @@ export default function InterLocationTransferForm({
               !fromLocation.trim() ||
               !toLocation.trim() ||
               fromLocation === toLocation ||
-              totalAmount === 0
+              totalAmount === 0 && !isAllTouched
             }
             className="w-full bg-button text-white hover:bg-button/90"
           >

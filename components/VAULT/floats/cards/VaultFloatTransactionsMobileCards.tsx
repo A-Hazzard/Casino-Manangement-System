@@ -86,7 +86,14 @@ export default function VaultFloatTransactionsMobileCards({
                 <div className="mb-3 flex items-start justify-between border-b pb-3">
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      {new Date(tx.timestamp).toLocaleString()}
+                      {new Date(tx.timestamp).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: 'numeric',
+                        hour12: true
+                      })}
                     </p>
                     <p className="text-xs text-gray-500">
                       {tx.performedByName || (isInflow ? tx.toName : tx.fromName)}

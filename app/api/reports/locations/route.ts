@@ -445,12 +445,7 @@ export async function GET(req: NextRequest) {
           (m.smibBoard as string | undefined)?.trim()
       );
 
-      if (
-        !showAllLocations &&
-        totalMachines === 0 &&
-        (metrics.totalDrop as number) === 0
-      )
-        continue;
+
 
       const membershipEnabled = Boolean(
         loc.membershipEnabled ||

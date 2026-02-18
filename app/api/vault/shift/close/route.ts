@@ -164,6 +164,7 @@ export async function POST(request: NextRequest) {
       vaultBalanceAfter: 0,
       vaultShiftId,
       performedBy: userId,
+      performedByName: userPayload.username,
       notes: 'Vault shift closed',
       isVoid: false,
       createdAt: now,

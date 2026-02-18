@@ -76,6 +76,7 @@ export default function VaultHealthGrid({ metrics, refreshing: _refreshing }: Va
           iconBgColor="bg-purple-100"
           tooltipContent="Sum/Total of hand pays and ticket redemptions for the current period."
           onClick={() => openBreakdown('payout', 'Payouts')}
+          formatType="number"
         />
       </div>
 

@@ -17,22 +17,22 @@
 
 'use client';
 
+import CollectionReportEditCollectedMachines from '@/components/CMS/collectionReport/forms/CollectionReportEditCollectedMachines';
+import CollectionReportEditFinancials from '@/components/CMS/collectionReport/forms/CollectionReportEditFinancials';
+import CollectionReportEditFormFields from '@/components/CMS/collectionReport/forms/CollectionReportEditFormFields';
+import CollectionReportEditLocationMachineSelection from '@/components/CMS/collectionReport/forms/CollectionReportEditLocationMachineSelection';
 import { ConfirmationDialog } from '@/components/shared/ui/ConfirmationDialog';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
 import { useEditCollectionModal } from '@/lib/hooks/collectionReport/useEditCollectionModal';
 import { CollectionReportEditCollectionModalProps } from '@/lib/types/components';
 import { useCallback } from 'react';
-import CollectionReportEditCollectedMachines from '@/components/CMS/collectionReport/forms/CollectionReportEditCollectedMachines';
-import CollectionReportEditFinancials from '@/components/CMS/collectionReport/forms/CollectionReportEditFinancials';
-import CollectionReportEditFormFields from '@/components/CMS/collectionReport/forms/CollectionReportEditFormFields';
-import CollectionReportEditLocationMachineSelection from '@/components/CMS/collectionReport/forms/CollectionReportEditLocationMachineSelection';
 
 export default function CollectionReportEditCollectionModal({
   show,
@@ -41,6 +41,9 @@ export default function CollectionReportEditCollectionModal({
   locations = [],
   onRefresh,
 }: CollectionReportEditCollectionModalProps) {
+
+
+
   // ============================================================================
   // Hooks & State (via custom hook)
   // ============================================================================

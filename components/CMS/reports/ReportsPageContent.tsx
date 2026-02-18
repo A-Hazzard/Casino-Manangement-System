@@ -1,32 +1,31 @@
 'use client';
 
-import { type ReactElement, useMemo } from 'react';
+import { type ReactElement, useCallback, useMemo, useState } from 'react';
 
 import { AnimatePresence, motion } from 'framer-motion';
 
 // Layout components
-import PageLayout from '@/components/shared/layout/PageLayout';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useUserStore } from '@/lib/store/userStore';
-import { useReportsTabContent } from '@/lib/hooks/data';
-import { useReportsNavigation } from '@/lib/hooks/navigation';
 import ReportsDateFilters from '@/components/CMS/reports/ReportsDateFilters';
-import {
-  ReportsPageAccessDeniedState,
-  ReportsPageAuthLoadingState,
-  ReportsPageLoadingOverlay,
-} from '@/components/CMS/reports/ReportsPageLoadingStates';
 import ReportsNavigation from '@/components/CMS/reports/ReportsNavigation';
-import { IMAGES } from '@/lib/constants';
-import Image from 'next/image';
+import {
+    ReportsPageAccessDeniedState,
+    ReportsPageAuthLoadingState,
+    ReportsPageLoadingOverlay,
+} from '@/components/CMS/reports/ReportsPageLoadingStates';
 import ReportsLocationsTabWithErrorHandling from '@/components/CMS/reports/tabs/locations/ReportsLocationsTabWithErrorHandling';
 import ReportsMachinesTab from '@/components/CMS/reports/tabs/machines/ReportsMachinesTab';
 import ReportsMetersTab from '@/components/CMS/reports/tabs/meters/ReportsMetersTab';
+import PageLayout from '@/components/shared/layout/PageLayout';
 import {
-  REPORTS_ANIMATIONS,
-  REPORTS_TABS_CONFIG,
+    IMAGES, REPORTS_ANIMATIONS,
+    REPORTS_TABS_CONFIG
 } from '@/lib/constants';
+import { useReportsTabContent } from '@/lib/hooks/data';
+import { useReportsNavigation } from '@/lib/hooks/navigation';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
 import type { ReportView } from '@/lib/types/reports';
+import Image from 'next/image';
 
 /**
  * Reports Page Content Component
@@ -132,16 +131,29 @@ export default function ReportsPageContent() {
     return <ReportsPageAccessDeniedState />;
   }
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Dispatch a custom event that tabs can listen to
+    window.dispatchEvent(new CustomEvent('refreshReports'));
+    // Simulate a brief loading state for the button animation
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setRefreshing(false);
+  }, []);
+
   return (
     <PageLayout
       headerProps={{
         selectedLicencee,
         setSelectedLicencee,
-        disabled: isLoading,
+        disabled: isLoading || refreshing,
       }}
       showToaster={true}
       toasterPosition="top-right"
       toasterRichColors={true}
+      onRefresh={handleRefresh}
+      refreshing={refreshing}
     >
       {/* Title and Icon */}
       <div className="mb-6 flex items-center gap-3">

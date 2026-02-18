@@ -17,7 +17,7 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import type { DateRange } from '@/components/shared/ui/dateRangePicker';
-import { ModernDateRangePicker } from '@/components/shared/ui/ModernDateRangePicker';
+import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import {
     Select,
     SelectContent,
@@ -173,6 +173,7 @@ export default function VaultExpensesPageContent() {
     amount: number;
     description: string;
     date: Date;
+    denominations?: any[]; 
     file?: File;
   }) => {
     try {
@@ -210,12 +211,7 @@ export default function VaultExpensesPageContent() {
     setCategory('all');
   };
 
-  const handleSetLastMonth = () => {
-    const now = new Date();
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    setDateRange({ from: lastMonth, to: lastMonthEnd });
-  };
+
 
   // ============================================================================
   // Render
@@ -332,16 +328,17 @@ export default function VaultExpensesPageContent() {
           </div>
           {showDatePicker && (
             <div className="mt-4">
-              <ModernDateRangePicker
-                value={dateRange}
-                onChange={setDateRange}
-                onGo={() => {
-                  setShowDatePicker(false);
-                  fetchExpenses();
+              <ModernCalendar
+                mode="range"
+                date={dateRange}
+                onSelect={(range) => {
+                  if (range?.from) {
+                    setDateRange({ from: range.from, to: range.to || range.from });
+                  } else {
+                    setDateRange(undefined);
+                  }
                 }}
-                onCancel={() => setShowDatePicker(false)}
-                onSetLastMonth={handleSetLastMonth}
-                enableTimeInputs={false}
+                className="w-full sm:w-auto p-0"
               />
             </div>
           )}
@@ -431,7 +428,11 @@ export default function VaultExpensesPageContent() {
       <VaultRecordExpenseModal
         open={showModal}
         onClose={() => setShowModal(false)}
-        onConfirm={handleRecordExpense}
+        onConfirm={(data) => handleRecordExpense({
+          ...data,
+          description: data.description || '', // Ensure string
+          denominations: data.denominations,
+        })}
       />
       </div>
     </PageLayout>

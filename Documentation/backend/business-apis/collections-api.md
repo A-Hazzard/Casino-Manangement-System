@@ -44,12 +44,23 @@ const allowedLocationIds = await getUserLocationFilter(
   userRoles
 );
 
-// 2. Apply location filter
+// 2. Resolve Location IDs to Names (CRITICAL)
+// The Collections model stores Location NAMES, but permissions use IDs.
+// We must convert allowed IDs to names for the query to work.
+let allowedLocationNames = 'all';
 if (allowedLocationIds !== 'all') {
-  if (allowedLocationIds.length === 0) {
+  const locations = await GamingLocations.find({ 
+    _id: { $in: allowedLocationIds } 
+  }).select('name');
+  allowedLocationNames = locations.map(l => l.name);
+}
+
+// 3. Apply location filter
+if (allowedLocationNames !== 'all') {
+  if (allowedLocationNames.length === 0) {
     return []; // No access
   }
-  filter.location = { $in: allowedLocationIds };
+  filter.location = { $in: allowedLocationNames };
 }
 ```
 
@@ -467,16 +478,27 @@ const collections = await Collections.find({
 console.log('Incomplete collections:', collections.length);
 ```
 
-### Issue: Collections Showing for Wrong Location
+### Issue: Manager Can't See Collections (ID vs Name Mismatch)
 
-**Check:**
-1. `collection.location` is the **location name**, not ID
-2. API is querying location names from user's permission IDs
-3. Name matching is exact (case-sensitive)
+**Symptoms:**
+- Manager can access page but sees 0 collections
+- Admin/Developer sees all collections fine
+- API returns `[]` (empty array)
+
+**Cause:**
+- User permissions return **Location IDs** (e.g., `64f...`)
+- Database stores **Location Names** (e.g., `Test Location`)
+- If API filters by IDs directly against the `location` field, it finds nothing.
+
+**Fix:**
+- Ensure the API resolves Allowed Location IDs to Location Names using `GamingLocations` lookup before filtering.
 
 ---
 
 ## Version History
+
+### 1.1.1 - February 2026
+- ✅ **Critical Fix**: Updated `GET /api/collections` to correctly resolve Location IDs to Location Names for non-admin users (Managers). Fixed empty result set issue.
 
 ### 1.0.0 - November 10, 2025
 - ✅ Implemented location-based permission filtering

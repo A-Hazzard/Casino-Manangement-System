@@ -6,7 +6,7 @@ import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
-import { AlertTriangle, Landmark, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Landmark, MessageSquare, RefreshCw, Trophy, Wrench } from 'lucide-react';
 import { useState } from 'react';
 
 type HandPayFormProps = {
@@ -100,18 +100,49 @@ export default function HandPayForm({
           </div>
         </div>
 
-        {/* Reason Section */}
-        <div className="space-y-1.5">
-          <Label htmlFor="reason" className="text-[11px] font-bold uppercase tracking-wider text-gray-500 ml-1">
+        {/* Reason Selection */}
+        <div className="space-y-3">
+          <Label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 ml-1">
             Reason for Payout
           </Label>
-          <Textarea
-            id="reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Jackpot, Machine Lock-up, etc."
-            className="resize-none h-20 bg-gray-50/50 border-gray-200 focus:bg-white transition-all text-sm"
-          />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { label: 'Jackpot', icon: Trophy, color: 'text-amber-500', bg: 'hover:bg-amber-50' },
+              { label: 'Error', icon: Wrench, color: 'text-red-500', bg: 'hover:bg-red-50' },
+              { label: 'Refund', icon: Landmark, color: 'text-blue-500', bg: 'hover:bg-blue-50' },
+              { label: 'Other', icon: MessageSquare, color: 'text-gray-500', bg: 'hover:bg-gray-50' }
+            ].map(item => {
+              const isSelected = reason === item.label || (item.label === 'Other' && reason !== 'Jackpot' && reason !== 'Error' && reason !== 'Refund' && reason.length > 0);
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => setReason(item.label === 'Other' ? '' : item.label)}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1.5",
+                    reason === item.label 
+                      ? "bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-200" 
+                      : "bg-white border-gray-100 text-gray-600",
+                    !isSelected && item.bg
+                  )}
+                >
+                  <Icon className={cn("h-4 w-4", reason === item.label ? "text-white" : item.color)} />
+                  <span className="text-[10px] font-black uppercase tracking-tight">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          
+          {(reason === 'Other' || (reason !== 'Jackpot' && reason !== 'Error' && reason !== 'Refund' && reason.length > 0)) && (
+            <Textarea
+              id="reason-details"
+              value={reason === 'Other' ? '' : reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Provide more details..."
+              className="resize-none h-20 bg-gray-50/50 border-gray-200 focus:bg-white transition-all text-sm mt-3"
+            />
+          )}
         </div>
 
         {/* Visual Summary Card */}

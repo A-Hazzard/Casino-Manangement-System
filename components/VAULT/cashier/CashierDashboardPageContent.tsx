@@ -347,6 +347,12 @@ export default function CashierDashboardPageContent() {
                     });
                     return;
                   }
+                  if (pendingRequest) {
+                    toast.error('Request Pending', {
+                      description: 'You already have a pending float request. Please wait for the Vault Manager to process it.'
+                    });
+                    return;
+                  }
                   setFloatRequestType(type);
                   setShowFloatRequest(true);
                }}
@@ -355,9 +361,7 @@ export default function CashierDashboardPageContent() {
           )}
 
           {/* Recent Activity Logs */}
-          <div className="pt-4 mt-4 border-t border-gray-100">
-            <CashierActivitySection />
-          </div>
+          <CashierActivitySection />
 
           {/* Integrated Modal Management */}
           <ShiftModals 

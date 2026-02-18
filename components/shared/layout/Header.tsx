@@ -32,11 +32,11 @@ import CurrencyFilter from '@/components/shared/layout/CurrencyFilter';
 import { ClientOnly } from '@/components/shared/ui/ClientOnly';
 import LicenceeSelect from '@/components/shared/ui/LicenceeSelect';
 import { SidebarTrigger, useSidebar } from '@/components/shared/ui/sidebar';
+import { UserRole } from '@/lib/constants';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
-import { logoutUser } from '@/lib/helpers/client';
 import {
-  fetchLicenseeById,
-  fetchLicensees,
+    fetchLicenseeById,
+    fetchLicensees, logoutUser
 } from '@/lib/helpers/client';
 import { fetchMetricsData } from '@/lib/helpers/dashboard';
 import { getCountryCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
@@ -51,7 +51,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { PanelLeft } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { UserRole } from '@/lib/constants';
 
 export default function Header({
   selectedLicencee,
@@ -108,7 +107,7 @@ export default function Header({
   // Show if: admin OR user has multiple licensees (including location admins with multiple licensees)
   // Hide if: user has 0 or 1 licensee (and not admin/dev) OR location admin with single/no licensee
   const shouldShowLicenseeSelect =
-    isAdmin || hasMultipleLicensees;
+    isAdmin || (hasMultipleLicensees && !normalizedRoles.includes('cashier'));
 
   // Determine if we should show licensee name next to "Evolution CMS"
   // Show if: user has exactly one licensee AND not admin/dev AND (not manager OR manager with single licensee)

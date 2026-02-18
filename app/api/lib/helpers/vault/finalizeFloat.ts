@@ -114,6 +114,7 @@ export async function finalizeFloatRequest(
     cashierShiftId: cashierShift._id,
     floatRequestId: floatRequest._id,
     performedBy: userId,
+    performedByName: username,
     notes: customNotes || `Workflow finalized. ${floatRequest.vmNotes || ''}`,
     isVoid: false,
     createdAt: now,

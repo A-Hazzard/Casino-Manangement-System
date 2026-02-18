@@ -15,7 +15,6 @@ import CollectionReportDesktopLayout from '@/components/CMS/collectionReport/tab
 import CollectionReportMobileLayout from '@/components/CMS/collectionReport/tabs/collection/CollectionReportMobileLayout';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
-import { FloatingActionButtons } from '@/components/shared/ui/FloatingActionButtons';
 import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { COLLECTION_TABS_CONFIG } from '@/lib/constants';
@@ -23,7 +22,7 @@ import { useCollectionReportPageData } from '@/lib/hooks/collectionReport/useCol
 import { useCollectorScheduleData } from '@/lib/hooks/collectionReport/useCollectorScheduleData';
 import { useManagerScheduleData } from '@/lib/hooks/collectionReport/useManagerScheduleData';
 import { useMonthlyReportData } from '@/lib/hooks/collectionReport/useMonthlyReportData';
-import { useDashboardScroll } from '@/lib/hooks/data';
+
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import {
@@ -90,7 +89,6 @@ export default function CollectionReportPageContent() {
   const hook = useCollectionReportPageData();
   const { user } = useUserStore();
   const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
-  const { showFloatingRefresh } = useDashboardScroll();
 
   const desktopTableRef = useRef<HTMLDivElement | null>(null);
   const mobileCardsRef = useRef<HTMLDivElement | null>(null);
@@ -167,6 +165,8 @@ export default function CollectionReportPageContent() {
         hideCurrencyFilter
         mainClassName="flex flex-col flex-1 w-full max-w-full p-4 md:p-6 overflow-x-hidden"
         showToaster
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
       >
         {/* Page Header: Title and primary action buttons */}
         <CollectionReportHeader
@@ -241,7 +241,7 @@ export default function CollectionReportPageContent() {
                       sortDirection={filters.sortDirection}
                       onSort={filters.handleSort}
                       selectedLicencee={selectedLicencee}
-                      editableReportIds={new Set()}
+                      editableReportIds={hook.editableReportIds}
                     />
                   </div>
 
@@ -272,7 +272,7 @@ export default function CollectionReportPageContent() {
                       onEdit={handleEdit}
                       onDelete={handleDelete}
                       selectedLicencee={selectedLicencee}
-                      editableReportIds={new Set()}
+                      editableReportIds={hook.editableReportIds}
                     />
                   </div>
 
@@ -363,13 +363,6 @@ export default function CollectionReportPageContent() {
         onConfirmDelete={confirmDelete}
         onRefresh={handleRefresh}
         onRefreshLocations={onRefreshLocations}
-      />
-
-      {/* Responsive Floating Refresh Toggle */}
-      <FloatingActionButtons
-        showRefresh={showFloatingRefresh}
-        refreshing={refreshing}
-        onRefresh={handleRefresh}
       />
     </>
   );

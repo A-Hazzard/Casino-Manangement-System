@@ -86,6 +86,7 @@ const VaultTransactionSchema = new Schema(
 
     // Audit (BR-03)
     performedBy: { type: String, required: true }, // user ID
+    performedByName: { type: String }, // user display name/username
     notes: { type: String },
     auditComment: { type: String }, // Mandatory for reconciliations
 

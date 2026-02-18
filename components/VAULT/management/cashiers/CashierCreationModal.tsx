@@ -69,36 +69,40 @@ export default function CashierCreationModal({
     const newErrors: Record<string, string> = {};
 
     // Username validation
-    if (!formData.username.trim()) {
+    const trimmedUsername = formData.username.trim();
+    if (!trimmedUsername) {
       newErrors.username = 'Username is required';
-    } else if (formData.username.length < 3) {
+    } else if (trimmedUsername.length < 3) {
       newErrors.username = 'Username must be at least 3 characters';
-    } else if (!/^[A-Za-z0-9\s'-]+$/.test(formData.username)) {
+    } else if (!/^[A-Za-z0-9\s'-]+$/.test(trimmedUsername)) {
       newErrors.username =
         'Username may only contain letters, numbers, spaces, hyphens, and apostrophes';
     }
 
     // Name validation
-    if (!formData.firstName.trim()) {
+    const trimmedFirstName = formData.firstName.trim();
+    if (!trimmedFirstName) {
       newErrors.firstName = 'First name is required';
-    } else if (formData.firstName.length < 2) {
+    } else if (trimmedFirstName.length < 2) {
       newErrors.firstName = 'First name must be at least 2 characters';
-    } else if (!/^[A-Za-z\s]+$/.test(formData.firstName)) {
+    } else if (!/^[A-Za-z\s]+$/.test(trimmedFirstName)) {
       newErrors.firstName = 'First name may only contain letters and spaces';
     }
 
-    if (!formData.lastName.trim()) {
+    const trimmedLastName = formData.lastName.trim();
+    if (!trimmedLastName) {
       newErrors.lastName = 'Last name is required';
-    } else if (formData.lastName.length < 2) {
+    } else if (trimmedLastName.length < 2) {
       newErrors.lastName = 'Last name must be at least 2 characters';
-    } else if (!/^[A-Za-z\s]+$/.test(formData.lastName)) {
+    } else if (!/^[A-Za-z\s]+$/.test(trimmedLastName)) {
       newErrors.lastName = 'Last name may only contain letters and spaces';
     }
 
     // Email validation
-    if (!formData.email.trim()) {
+    const trimmedEmail = formData.email.trim();
+    if (!trimmedEmail) {
       newErrors.email = 'Email address is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!/\S+@\S+\.\S+/.test(trimmedEmail)) {
       newErrors.email = 'Please enter a valid email address';
     }
 
@@ -120,10 +124,10 @@ export default function CashierCreationModal({
         await import('@/lib/helpers/vaultHelpers');
 
       const result = await handleCreateCashier({
-        username: formData.username,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
+        username: formData.username.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
         assignedLicensees: formData.assignedLicensees,
         assignedLocations: formData.assignedLocations,
       });

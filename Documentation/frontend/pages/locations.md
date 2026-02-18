@@ -234,7 +234,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 - Geographic coordinates (latitude, longitude)
 - SMIB configuration
 - Local server configuration
-- Membership settings
+- Membership settings (Enable/Disable, Minimum Points, Tiered Bonuses, Birthday Rewards, Billing Settings)
 
 **Edit Location Modal Features:**
 - Same fields as New Location Modal
@@ -508,3 +508,9 @@ The Locations page provides comprehensive management and analytics for gaming lo
 ### Gaming Day Offset Fix (November 2024)
 - Fixed issue where locations showed $0 when viewed before 8 AM
 - Now correctly calculates current gaming day based on location-specific offsets
+
+### Membership Integration (January 2026)
+
+- Added comprehensive membership configuration to location settings.
+- Includes tiered bonuses, birthday rewards, and billing parameter configuration.
+- "Membership Enabled" toggle controls feature availability per location.

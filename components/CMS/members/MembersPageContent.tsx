@@ -1,7 +1,7 @@
 'use client';
 
+import { AnimatePresence, motion } from 'framer-motion';
 import React, { Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster } from 'sonner';
 
 // Layout components
@@ -11,16 +11,16 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
 // Hooks
-import { useMembersNavigation } from '@/lib/hooks/navigation';
 import { useMembersTabContent } from '@/lib/hooks/data';
+import { useMembersNavigation } from '@/lib/hooks/navigation';
 
 // Components
 import MembersNavigation from '@/components/CMS/members/common/MembersNavigation';
-import {
-  MembersListTabSkeleton,
-  MembersSummaryTabSkeleton,
-} from '@/components/shared/ui/skeletons/MembersSkeletons';
 import { MembersHandlersProvider, useMembersHandlers } from '@/components/CMS/members/context/MembersHandlersContext';
+import {
+    MembersListTabSkeleton,
+    MembersSummaryTabSkeleton,
+} from '@/components/shared/ui/skeletons/MembersSkeletons';
 
 // Tab Components
 import MembersListTab from '@/components/CMS/members/tabs/MembersListTab';
@@ -28,8 +28,8 @@ import MembersSummaryTab from '@/components/CMS/members/tabs/MembersSummaryTab';
 
 // Constants
 import {
-  MEMBERS_TABS_CONFIG,
-  MEMBERS_ANIMATIONS,
+    MEMBERS_ANIMATIONS,
+    MEMBERS_TABS_CONFIG,
 } from '@/lib/constants';
 
 // Types
@@ -142,6 +142,8 @@ function MembersPageContentInner() {
         hideLicenceeFilter={true}
         hideCurrencyFilter={true}
         showToaster={false}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
       >
         {/* Navigation */}
         <MembersNavigation

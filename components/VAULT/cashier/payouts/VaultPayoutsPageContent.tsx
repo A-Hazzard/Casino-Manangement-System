@@ -109,6 +109,17 @@ export default function VaultPayoutsPageContent() {
     fetchMachinesData();
   }, [fetchPayouts, fetchMachinesData]);
 
+  // Periodic refresh only if at least 2 items
+  useEffect(() => {
+    if (payouts.length < 2) return;
+
+    const interval = setInterval(() => {
+        fetchPayouts();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [fetchPayouts, payouts.length]);
+
   // -- Computations --
   const rawShiftDate = shift?.openedAt ? new Date(shift.openedAt) : null;
   

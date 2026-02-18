@@ -13,9 +13,20 @@ import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
+import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
-import { AlertTriangle, Coins, RefreshCw } from 'lucide-react';
+import {
+    AlertTriangle,
+    ArrowDownCircle,
+    ArrowUpCircle,
+    Clock,
+    Coins,
+    MessageSquare,
+    RefreshCw,
+    ShieldCheck,
+    Zap
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 type FloatRequestModalProps = {
@@ -48,6 +59,7 @@ export default function FloatRequestModal({
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [reason, setReason] = useState('');
   const [denominations, setDenominations] = useState<Denomination[]>([]);
+  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
 
   // Use user's assigned licensee if available (Cashier context), otherwise dashboard selection (Admin context)
   const effectiveLicenseeId = useMemo(() => {
@@ -63,6 +75,7 @@ export default function FloatRequestModal({
         denomination: denom as Denomination['denomination'], 
         quantity: 0 
       })));
+      setTouchedDenominations(new Set());
     }
   }, [denomsList, open, step]);
 
@@ -70,7 +83,8 @@ export default function FloatRequestModal({
     return denominations.reduce((sum, d) => sum + (d.denomination * d.quantity), 0);
   }, [denominations]);
 
-  const isFormValid = totalAmount > 0;
+  const isAllTouched = useMemo(() => denomsList.every(d => touchedDenominations.has(Number(d))), [denomsList, touchedDenominations]);
+  const isFormValid = totalAmount > 0 || isAllTouched;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +105,7 @@ export default function FloatRequestModal({
       // Reset form
       setReason('');
       setStep('input');
+      setTouchedDenominations(new Set());
       onClose();
     } catch {
       // Error handled by parent
@@ -142,25 +157,60 @@ export default function FloatRequestModal({
                       denominations={denominations}
                       onChange={setDenominations}
                       disabled={loading}
+                      touchedDenominations={touchedDenominations}
+                      onTouchedChange={setTouchedDenominations}
                     />
                   </div>
                 </div>
 
-                {/* Reason Field */}
-                <div className="space-y-2 group">
-                  <Label htmlFor="reason" className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">
-                    Request Notes
+                {/* Reason Selection */}
+                <div className="space-y-3">
+                  <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                    Request Reason
                   </Label>
-                  <Textarea
-                    id="reason"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder={type === 'increase' 
-                      ? "e.g. Busy weekend replenishment..." 
-                      : "e.g. End of shift return..."
-                    }
-                    className="resize-none border-2 border-gray-50 focus:border-violet-500/50 bg-white min-h-[100px] transition-all rounded-xl text-sm"
-                  />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {(type === 'increase' ? [
+                      { label: 'Busy Shift', icon: Zap, color: 'text-amber-500', bg: 'hover:bg-amber-50' },
+                      { label: 'Low Stash', icon: ArrowDownCircle, color: 'text-red-500', bg: 'hover:bg-red-50' },
+                      { label: 'Denoms', icon: RefreshCw, color: 'text-blue-500', bg: 'hover:bg-blue-50' },
+                      { label: 'Other', icon: MessageSquare, color: 'text-gray-500', bg: 'hover:bg-gray-50' }
+                    ] : [
+                      { label: 'Shift End', icon: Clock, color: 'text-violet-500', bg: 'hover:bg-violet-50' },
+                      { label: 'Excess', icon: ArrowUpCircle, color: 'text-emerald-500', bg: 'hover:bg-emerald-50' },
+                      { label: 'Closing', icon: ShieldCheck, color: 'text-blue-500', bg: 'hover:bg-blue-50' },
+                      { label: 'Other', icon: MessageSquare, color: 'text-gray-500', bg: 'hover:bg-gray-50' }
+                    ]).map(item => {
+                      const isSelected = reason === item.label || (item.label === 'Other' && reason.length > 0 && !['Busy Shift', 'Low Stash', 'Denoms', 'Shift End', 'Excess', 'Closing'].includes(reason));
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => setReason(item.label === 'Other' ? '' : item.label)}
+                          className={cn(
+                            "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1.5",
+                            reason === item.label 
+                              ? "bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-200" 
+                              : "bg-white border-gray-100 text-gray-600",
+                            !isSelected && item.bg
+                          )}
+                        >
+                          <Icon className={cn("h-4 w-4", reason === item.label ? "text-white" : item.color)} />
+                          <span className="text-[10px] font-black uppercase tracking-tight leading-tight">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  {(reason === 'Other' || (reason.length > 0 && !['Busy Shift', 'Low Stash', 'Denoms', 'Shift End', 'Excess', 'Closing'].includes(reason))) && (
+                    <Textarea
+                      id="reason-details"
+                      value={reason === 'Other' ? '' : reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      placeholder="Add more details about this request..."
+                      className="resize-none border-2 border-gray-100 focus:border-violet-500/50 bg-white min-h-[80px] transition-all rounded-xl text-sm"
+                    />
+                  )}
                 </div>
               </>
             ) : (

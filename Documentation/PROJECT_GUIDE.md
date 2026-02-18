@@ -179,6 +179,7 @@ Licencee (licencee.ts)
 Machine {
   _id: string;
   serialNumber: string;
+  manufacturer: string;           // Machine manufacturer (mandatory)
   gamingLocation: string;         // Links to GamingLocation
   status: "online" | "offline";
   relayId: string;               // SMIB controller identifier
@@ -278,6 +279,12 @@ GamingLocation {
   geoCoords: {
     latitude: number;
     longitude: number;
+  };
+  membershipEnabled: boolean;     // Feature toggle
+  locationMembershipSettings: {   // Membership configuration
+    minimumPoints: number;
+    billingMethod: string;
+    // ... other settings
   };
   deletedAt?: Date;               // Soft delete flag
 }

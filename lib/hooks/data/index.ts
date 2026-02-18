@@ -10,7 +10,7 @@ export { useCabinetModals } from './useCabinetModals';
 export { useCabinetSorting, type CabinetSortOption } from './useCabinetSorting';
 export { useDashboardFilters } from './useDashboardFilters';
 export { useDashboardRefresh } from './useDashboardRefresh';
-export { useDashboardScroll } from './useDashboardScroll';
+
 export { useLocationData } from './useLocationData';
 export { useLocationMachineStats } from './useLocationMachineStats';
 export { useLocationMembershipStats } from './useLocationMembershipStats';

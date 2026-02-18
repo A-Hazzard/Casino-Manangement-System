@@ -111,6 +111,18 @@ export default function VaultFloatRequestsPageContent() {
     fetchRequests();
   }, [user?.assignedLocations, currentPage]);
 
+  // Periodic refresh only if at least 2 items
+  useEffect(() => {
+    const totalItems = pendingRequests.length + requestHistory.length;
+    if (totalItems === 0) return;
+
+    const interval = setInterval(() => {
+        fetchRequests(true); // Silent refresh
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [user?.assignedLocations, currentPage, pendingRequests.length, requestHistory.length]);
+
   // Actions
   const handleApprove = async (requestId: string) => {
     if (!isVaultReconciled) {

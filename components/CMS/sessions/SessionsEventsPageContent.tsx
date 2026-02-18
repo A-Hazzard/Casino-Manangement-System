@@ -517,6 +517,8 @@ export function SessionsEventsPageContent({
         }}
         mainClassName="flex flex-col flex-1 px-4 py-6 sm:p-8 w-full max-w-full space-y-6 mt-4"
         showToaster={false}
+        onRefresh={handleRefresh}
+        refreshing={loading}
       >
         <div className="flex flex-col space-y-6">
           {/* Navigation Section */}

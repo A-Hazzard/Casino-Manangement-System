@@ -33,16 +33,20 @@ interface VaultCollectionSessionListProps {
   entries: VaultCollectionEntry[];
   onRemove: (machineId: string) => void;
   onEdit?: (machineId: string) => void;
+  onSelect?: (machineId: string) => void;
   containerClassName?: string;
   totalLabel?: string;
+  selectedMachineId?: string | null;
 }
 
 export default function VaultCollectionSessionList({
   entries,
   onRemove,
   onEdit: _onEdit,
+  onSelect,
   containerClassName,
-  totalLabel = "Total Collected"
+  totalLabel = "Total Collected",
+  selectedMachineId
 }: VaultCollectionSessionListProps) {
   const { formatAmount } = useCurrencyFormat();
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
@@ -88,7 +92,13 @@ export default function VaultCollectionSessionList({
                 entries.map((entry) => (
                   <div 
                     key={entry.machineId}
-                    className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm relative group hover:border-violet-200 hover:shadow-md transition-all duration-200"
+                    onClick={() => onSelect?.(entry.machineId)}
+                    className={cn(
+                      "bg-white rounded-xl p-4 border transition-all duration-200 relative group cursor-pointer",
+                      selectedMachineId === entry.machineId 
+                        ? "border-violet-500 shadow-md bg-violet-50/10 ring-1 ring-violet-500/10" 
+                        : "border-gray-100 shadow-sm hover:border-violet-200 hover:shadow-md"
+                    )}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="text-[13px] font-black text-gray-800 line-clamp-1 pr-6 tracking-tight">
@@ -154,7 +164,8 @@ export default function VaultCollectionSessionList({
               <div className="min-w-0 flex-1">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">{totalLabel}</span>
                 <span className={cn(
-                    "font-black text-gray-900 tracking-tighter leading-none block truncate transition-all",
+                    "font-black text-gray-900 tracking-tighter leading-none block transition-all",
+                    formatAmount(totalCollected).length > 18 ? 'text-lg' :
                     formatAmount(totalCollected).length > 15 ? 'text-xl' :
                     formatAmount(totalCollected).length > 12 ? 'text-2xl' : 'text-3xl'
                 )}>

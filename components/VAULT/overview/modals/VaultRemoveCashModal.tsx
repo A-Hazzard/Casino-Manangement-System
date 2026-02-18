@@ -73,12 +73,14 @@ export default function VaultRemoveCashModal({
   // ============================================================================
   const [destination, setDestination] = useState<CashDestination | ''>('');
   const [denominations, setDenominations] = useState<Denomination[]>([]);
+  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
 
   const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
 
   useEffect(() => {
     if (open) {
       setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+      setTouchedDenominations(new Set());
     }
   }, [open, denomsList]);
   const [notes, setNotes] = useState('');
@@ -100,7 +102,8 @@ export default function VaultRemoveCashModal({
    * Check if form is valid for submission
    * Requires destination selection and total amount > 0
    */
-  const isValid = destination !== '' && totalAmount > 0;
+  const isAllTouched = useMemo(() => denomsList.every(d => touchedDenominations.has(Number(d))), [denomsList, touchedDenominations]);
+  const isValid = destination !== '' && (totalAmount > 0 || isAllTouched);
 
   // ============================================================================
   // Event Handlers
@@ -120,6 +123,11 @@ export default function VaultRemoveCashModal({
     if (numValue < 0) return;
 
     setDenominations(prev => prev.map(d => d.denomination === denomination ? { ...d, quantity: numValue } : d));
+    setTouchedDenominations(prev => {
+      const next = new Set(prev);
+      next.add(denomination);
+      return next;
+    });
   };
 
   /**
@@ -164,9 +172,10 @@ export default function VaultRemoveCashModal({
         notes: notes.trim() || undefined,
       });
       // Reset form on success
-      setDestination('');
-      setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
-      setNotes('');
+    setDestination('');
+    setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+    setTouchedDenominations(new Set());
+    setNotes('');
       setErrors({});
       onClose();
     } catch (error) {
@@ -185,6 +194,7 @@ export default function VaultRemoveCashModal({
     if (loading) return;
     setDestination('');
     setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+    setTouchedDenominations(new Set());
     setNotes('');
     setErrors({});
     onClose();
@@ -280,7 +290,8 @@ export default function VaultRemoveCashModal({
                       placeholder="0"
                       className={cn(
                         "w-16 h-9 text-center font-black bg-white rounded-lg border-gray-200 focus-visible:ring-violet-500/30 transition-all",
-                        isOver && "border-red-500 text-red-600"
+                        isOver && "border-red-500 text-red-600",
+                        touchedDenominations.has(denom.denomination) && !isOver && "text-violet-600"
                       )}
                     />
                   </div>
@@ -294,7 +305,7 @@ export default function VaultRemoveCashModal({
              <div className="space-y-2">
                 <Label htmlFor="notes" className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-1">
                    <MessageSquare className="h-3 w-3" />
-                   Removal Reason
+                   Removal Reason (Optional)
                 </Label>
                 <Textarea
                   id="notes"

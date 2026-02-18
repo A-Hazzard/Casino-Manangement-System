@@ -19,6 +19,7 @@ import { Button } from '@/components/shared/ui/button';
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
 import {
+    fetchGlobalVaultOverviewData,
     fetchVaultOverviewData
 } from '@/lib/helpers/vaultHelpers';
 import { useUserStore } from '@/lib/store/userStore';
@@ -56,12 +57,16 @@ import VaultModals from './sections/VaultModals';
 import VaultShiftPromotion from './sections/VaultShiftPromotion';
 
 // Hooks
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
 /**
  * Vault Overview Component
  */
 export default function VaultOverviewPageContent() {
    const { user, setHasActiveVaultShift, setIsVaultReconciled } = useUserStore();
+   
+   // Role Detection
+   const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
   
   // ============================================================================
   // STATE & HOOKS
@@ -77,12 +82,10 @@ export default function VaultOverviewPageContent() {
   const [machines, setMachines] = useState<GamingMachine[]>([]);
   
   // Loading States
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [shiftReviewLoading, setShiftReviewLoading] = useState(false);
-  
-  // Close Day Sequence State
-  const [isClosingDay, setIsClosingDay] = useState(false);
 
   // Modal Visibility State
   const [modals, setModals] = useState({
@@ -91,7 +94,6 @@ export default function VaultOverviewPageContent() {
     recordExpense: false,
     reconcile: false,
     initialize: false,
-    collection: false,
     softCount: false,
     viewDenominations: false,
     closeShift: false
@@ -111,17 +113,29 @@ export default function VaultOverviewPageContent() {
    * Fetch all vault data for the current location
    */
   const fetchData = useCallback(async (isSilent = false) => {
-    const locationId = user?.assignedLocations?.[0];
-    if (!locationId) {
+    // If Admin/Dev, allow global fetch even without assigned location
+    if (!isAdminOrDev && !user?.assignedLocations?.[0]) {
       setLoading(false);
       return;
     }
+    
+    // For normal users, require location
+    const locationId = user?.assignedLocations?.[0];
 
     if (!isSilent) setLoading(true);
     else setRefreshing(true);
 
     try {
-      const data = await fetchVaultOverviewData(locationId, user?.username || '');
+      let data;
+      if (isAdminOrDev) {
+          // fetch global data with licensee filter
+          data = await fetchGlobalVaultOverviewData(selectedLicencee);
+      } else if (locationId) {
+          data = await fetchVaultOverviewData(locationId, user?.username || '');
+      } else {
+          throw new Error("No location assigned");
+      }
+
       setVaultBalance(data.vaultBalance);
       setMetrics(data.metrics);
       setTransactions(data.transactions);
@@ -129,18 +143,21 @@ export default function VaultOverviewPageContent() {
       setFloatRequests(data.floatRequests);
       setCashDesks(data.cashDesks);
       
-      // Fetch machines for selection
-      try {
-        const machinesData = await fetchCabinetsForLocation(
-            locationId, 
-            undefined, 
-            'All Time' 
-        );
-        if (machinesData && machinesData.data) {
-             setMachines(machinesData.data);
+      // Fetch machines for selection (Only for non-admin/dev users with a valid location)
+      // Admins/devs are in read-only mode and don't need machine selection for vault modals
+      if (!isAdminOrDev && locationId) {
+        try {
+            const machinesData = await fetchCabinetsForLocation(
+                locationId, 
+                undefined, 
+                'All Time' 
+            );
+            if (machinesData && machinesData.data) {
+                setMachines(machinesData.data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch machines for vault", err);
         }
-      } catch (err) {
-         console.error("Failed to fetch machines for vault", err);
       }
     } catch (error) {
       console.error('Failed to fetch vault data', error);
@@ -149,11 +166,16 @@ export default function VaultOverviewPageContent() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.assignedLocations, user?.username]);
+  }, [user?.assignedLocations, user?.username, selectedLicencee]);
+
+  /**
+   * Refetch data when location or licensee changes
+   */
+  useEffect(() => {
+    fetchData();
+  }, [user?.assignedLocations, selectedLicencee, fetchData]);
 
   useEffect(() => {
-    fetchData(false);
-
     // STEP: Periodic refresh for float requests and notifications
     const interval = setInterval(() => {
         fetchData(true); // Silent refresh
@@ -312,22 +334,17 @@ export default function VaultOverviewPageContent() {
       case 'recordExpense': endpoint = '/api/vault/expense'; break;
       case 'reconcile': 
         endpoint = '/api/vault/reconcile'; 
-        requestPayload.vaultShiftId = vaultBalance.activeShiftId || null; // Ensure vaultShiftId is added
+        requestPayload.vaultShiftId = vaultBalance.activeShiftId || null;
         break;
       case 'initialize': endpoint = '/api/vault/initialize'; break;
       case 'closeShift': 
         endpoint = '/api/vault/shift/close'; 
-        requestPayload.vaultShiftId = vaultBalance.activeShiftId || null; // Ensure vaultShiftId is added
+        requestPayload.vaultShiftId = vaultBalance.activeShiftId || null;
         break;
     }
 
-    // Special handling for collection and softCount types - wizard handles its own API calls
     if (type === 'collection' || type === 'softCount') {
       setModals(prev => ({ ...prev, [type]: false }));
-      if (type === 'collection' && isClosingDay) {
-        setModals(prev => ({ ...prev, closeShift: true }));
-        setIsClosingDay(false);
-      }
       fetchData(true);
       return;
     }
@@ -335,78 +352,60 @@ export default function VaultOverviewPageContent() {
     if (!endpoint) return;
 
     try {
-
-      // Transform data for Initialize Vault
-      if (type === 'initialize') {
-         // API expects openingBalance, modal provides totalAmount (optional now)
-         if (data?.totalAmount !== undefined) {
-             requestPayload.openingBalance = data.totalAmount;
-         }
+      if (type === 'initialize' && data?.totalAmount !== undefined) {
+         requestPayload.openingBalance = data.totalAmount;
       }
 
-      let requestBody = JSON.stringify(requestPayload);
+      const isExpense = type === 'recordExpense';
+      const isCashMovement = type === 'addCash' || type === 'removeCash';
+      
+      let requestBody: any;
+      const headers: Record<string, string> = {};
 
-      // Transform data for Add/Remove Cash
-      // The modal returns { denominations: [...], totalAmount: 200 }
-      // The API expects { denominations: [{ denomination: 100, quantity: 2 }, ...], amount: 200 }
-      if (type === 'addCash' || type === 'removeCash') {
-         const { denominations, breakdown, totalAmount, ...rest } = data;
-         
-         let denominationsArray = denominations;
-
-         // Fallback for types if needed, but modals should send denominations now
-         if (!denominationsArray && breakdown) {
-            const denominationMap: Record<string, number> = {
-                hundred: 100,
-                fifty: 50,
-                twenty: 20,
-                ten: 10,
-                five: 5,
-                one: 1
-             };
-    
-             const breakdownObj = breakdown || {};
-             denominationsArray = Object.keys(breakdownObj).map((key) => ({
-                 denomination: denominationMap[key] || 0,
-                 quantity: Number(breakdownObj[key as keyof typeof breakdownObj])
-             })).filter(d => d.denomination > 0 && d.quantity > 0);
-         }
-
-         requestBody = JSON.stringify({
+      if (isExpense) {
+        const fd = new FormData();
+        fd.append('category', data.category);
+        fd.append('amount', data.amount.toString());
+        fd.append('description', data.description || '');
+        fd.append('date', data.date instanceof Date ? data.date.toISOString() : data.date);
+        fd.append('denominations', JSON.stringify(data.denominations));
+        fd.append('locationId', user?.assignedLocations?.[0] || '');
+        if (data.file) fd.append('file', data.file);
+        requestBody = fd;
+        // browser sets content-type for FormData
+      } else {
+        headers['Content-Type'] = 'application/json';
+        
+        if (isCashMovement) {
+          const { denominations, totalAmount, ...rest } = data;
+          requestBody = JSON.stringify({
             ...rest,
             amount: totalAmount,
-            denominations: denominationsArray,
+            denominations: denominations,
             locationId: user?.assignedLocations?.[0]
-         });
+          });
+        } else {
+          requestBody = JSON.stringify(requestPayload);
+        }
       }
 
       const res = await fetch(endpoint, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: requestBody
       });
+      
       const result = await res.json();
       if (result.success) {
         toast.success(result.message || 'Action completed');
         setModals(prev => ({ ...prev, [type]: false }));
-        
-        // STEP: Handle auto-trigger of Close Shift after Collection during Close Day sequence
-        if (type === 'collection' && isClosingDay) {
-          setModals(prev => ({ ...prev, closeShift: true }));
-          setIsClosingDay(false); // Reset sequence flag
-        }
-
-        if (type === 'closeShift') {
-          // If vault closed, maybe redirect or just refresh
-          fetchData(false);
-        } else {
-          fetchData(true);
-        }
+        fetchData(true);
       } else {
         toast.error(result.error || 'Action failed');
       }
-    } catch {
-      toast.error('Network error');
+    } catch (error) {
+      console.error('Network error during modal confirmation:', error);
+      toast.error('Network error - check your connection');
     }
   };
 
@@ -444,23 +443,11 @@ export default function VaultOverviewPageContent() {
   const handleAction = (actionKey: keyof typeof modals) => {
     if (!checkShiftStarted(actionKey)) return;
 
-    // STEP: Special handling for Close Day sequence (Collection FIRST)
+    // STEP: Special handling for Close Day sequence (Handled by Header)
     if (actionKey === 'closeShift') {
-       // Validate if we can actually close before starting the flow
-       if (!vaultBalance.canClose) {
-         toast.error('Operation Blocked', {
-           description: vaultBalance.blockReason || 'All cashier shifts and reviews must be completed.'
-         });
-         return;
-       }
-       setIsClosingDay(true);
-       
-       // Skip collection if already done
-       if (vaultBalance.isCollectionDone) {
-          setModals(prev => ({ ...prev, closeShift: true }));
-       } else {
-          setModals(prev => ({ ...prev, collection: true }));
-       }
+       toast.info('Closing Day...', {
+         description: 'Please use the "Close Day" button in the header to start the end-of-day sequence.'
+       });
        return;
     }
 
@@ -471,8 +458,8 @@ export default function VaultOverviewPageContent() {
   // Handlers
   // ============================================================================
 
-  // Check for critical missing user data
-  if (!loading && !user?.assignedLocations?.[0]) {
+  // Check for critical missing user data (Skip check for Admin/Dev)
+  if (!loading && !isAdminOrDev && !user?.assignedLocations?.[0]) {
     return (
       <PageLayout>
         <div className="flex h-64 items-center justify-center text-gray-500">
@@ -491,13 +478,20 @@ export default function VaultOverviewPageContent() {
   }
 
   return (
-    <PageLayout>
+    <PageLayout
+      headerProps={isAdminOrDev ? {
+          selectedLicencee,
+          setSelectedLicencee,
+          disabled: false
+      } : undefined}
+    >
       <div className="space-y-6">
         {/* Header with Title & Notifications */}
         <VaultManagerHeader
-          title="Vault Management"
+          title={isAdminOrDev ? "Global Vault Overview" : "Vault Management"}
           showBack={false}
           onFloatActionComplete={() => fetchData(true)}
+          vaultInventory={vaultBalance.denominations}
           description={
             <div className="flex items-center gap-2">
               <span>
@@ -507,6 +501,7 @@ export default function VaultOverviewPageContent() {
                   month: 'long',
                   day: 'numeric',
                 })}
+                {isAdminOrDev && <span className="ml-2 font-semibold text-orangeHighlight">(Read Only Mode)</span>}
               </span>
               <Button
                 variant="ghost"
@@ -528,10 +523,12 @@ export default function VaultOverviewPageContent() {
 
         {/* Actionable Panels */}
 
-        <VaultShiftPromotion 
-            activeShiftId={vaultBalance.activeShiftId}
-            onStartShift={() => setModals(m => ({ ...m, initialize: true }))}
-        />
+        {!isAdminOrDev && (
+            <VaultShiftPromotion 
+                activeShiftId={vaultBalance.activeShiftId}
+                onStartShift={() => setModals(m => ({ ...m, initialize: true }))}
+            />
+        )}
         
         <div className="flex justify-end">
           <Link href="/vault/management/reports/end-of-day">
@@ -545,7 +542,7 @@ export default function VaultOverviewPageContent() {
         {/* Balance Card Section */}
         <VaultBalanceCard
           balance={vaultBalance}
-          onReconcile={() => setModals(m => ({ ...m, reconcile: true }))}
+          onReconcile={isAdminOrDev ? undefined : () => setModals(m => ({ ...m, reconcile: true }))}
         />
 
         {/* Float Requests Panel */}
@@ -557,21 +554,26 @@ export default function VaultOverviewPageContent() {
               onDeny={handleFloatDeny}
               onEdit={handleFloatEdit}
               onConfirm={handleFloatConfirm}
+              vaultInventory={vaultBalance.denominations}
+              readOnly={isAdminOrDev}
             />
           </div>
         )}
 
         {/* Shift Review Panel */}
-        <div id="shift-review-panel" className="scroll-mt-20">
-          <ShiftReviewPanel
-            pendingShifts={pendingShifts}
-            vaultInventory={vaultBalance.denominations}
-            onResolve={handleResolveShift}
-            onReject={handleShiftReject}
-            onRefresh={() => fetchData(true)}
-            loading={shiftReviewLoading}
-          />
-        </div>
+        {pendingShifts.length > 0 && (
+          <div id="shift-review-panel" className="scroll-mt-20">
+            <ShiftReviewPanel
+              pendingShifts={pendingShifts}
+              vaultInventory={vaultBalance.denominations}
+              onResolve={handleResolveShift}
+              onReject={handleShiftReject}
+              onRefresh={() => fetchData(true)}
+              loading={shiftReviewLoading}
+              readOnly={isAdminOrDev}
+            />
+          </div>
+        )}
 
         {/* Metrics Grid */}
         <VaultHealthGrid metrics={metrics} refreshing={refreshing && !loading} />
@@ -599,21 +601,24 @@ export default function VaultOverviewPageContent() {
         />
 
         {/* Action Area & History */}
-        <VaultQuickActionsSection
-          isShiftActive={isShiftActive}
-          isReconciled={vaultBalance.isReconciled}
-          onAddCash={() => handleAction('addCash')}
-          onRemoveCash={() => handleAction('removeCash')}
-          onRecordExpense={() => handleAction('recordExpense')}
-          onManageCashiers={() => {
-            if (!checkShiftStarted()) return;
-            window.location.href = '/vault/management/cashiers';
-          }}
-          onSoftCount={() => handleAction('softCount')}
-          onViewActivityLog={() => {
-            window.location.href = '/vault/management/activity-log';
-          }}
-        />
+        {/* Action Area & History */}
+        {!isAdminOrDev && (
+            <VaultQuickActionsSection
+            isShiftActive={isShiftActive}
+            isReconciled={vaultBalance.isReconciled}
+            onAddCash={() => handleAction('addCash')}
+            onRemoveCash={() => handleAction('removeCash')}
+            onRecordExpense={() => handleAction('recordExpense')}
+            onManageCashiers={() => {
+                if (!checkShiftStarted()) return;
+                window.location.href = '/vault/management/cashiers';
+            }}
+            onSoftCount={() => handleAction('softCount')}
+            onViewActivityLog={() => {
+                window.location.href = '/vault/management/activity-log';
+            }}
+            />
+        )}
 
         <VaultRecentActivitySection transactions={transactions} />
 
@@ -625,13 +630,10 @@ export default function VaultOverviewPageContent() {
           isInitial={!!vaultBalance.isInitial}
           onClose={(key) => {
              setModals(m => ({ ...m, [key]: false }));
-             if (key === 'collection') setIsClosingDay(false); // Cancel sequence if collection closed
           }}
           onConfirm={handleModalConfirm}
           machines={machines}
           viewDenomsData={viewDenomsData}
-          canCloseVault={vaultBalance.canClose}
-          closeVaultBlockReason={vaultBalance.blockReason}
           currentVaultShiftId={vaultBalance.activeShiftId || undefined}
           currentLocationId={user?.assignedLocations?.[0]}
         />

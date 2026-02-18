@@ -92,21 +92,30 @@ export default function ShiftStatusBanner({
               })()}
 
             </div>
-            {isIncrease && (
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              {isIncrease ? (
+                <Button
+                  onClick={() => onConfirm?.(pendingVmApproval._id)}
+                  className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white shadow-sm font-bold"
+                  size="sm"
+                >
+                  Confirm & Receive Cash
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2 text-xs text-green-600 italic font-bold py-2 px-3 bg-green-100/50 rounded-lg">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  VM is confirming receipt...
+                </div>
+              )}
               <Button
-                onClick={() => onConfirm?.(pendingVmApproval._id)}
-                className="bg-green-600 hover:bg-green-700 text-white shadow-sm"
+                variant="ghost"
                 size="sm"
+                onClick={() => onCancelRequest?.(pendingVmApproval._id)}
+                className="w-full sm:w-auto text-red-600 hover:text-red-700 hover:bg-red-50 font-medium"
               >
-                Confirm & Receive Cash
+                Disapprove
               </Button>
-            )}
-            {!isIncrease && (
-              <div className="flex items-center gap-2 text-xs text-green-600 italic font-medium">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Waiting for VM to confirm receipt...
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

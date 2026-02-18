@@ -17,9 +17,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { cn } from '@/lib/utils';
+import { safeFormatDate } from '@/lib/utils/date/formatting';
 import { getDenominationValues, getInitialDenominationRecord } from '@/lib/utils/vault/denominations';
 import type { Denomination, UnbalancedShiftInfo } from '@/shared/types/vault';
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronLeft, ChevronRight, Info, RefreshCw, Search, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronLeft, ChevronRight, Info, Landmark, MessageSquare, RefreshCw, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 type ShiftReviewPanelProps = {
@@ -37,6 +38,7 @@ type ShiftReviewPanelProps = {
   ) => Promise<void>;
   onRefresh?: () => void;
   loading?: boolean;
+  readOnly?: boolean;
 };
 
 export default function ShiftReviewPanel({
@@ -46,6 +48,7 @@ export default function ShiftReviewPanel({
   onReject,
   onRefresh,
   loading = false,
+  readOnly = false,
 }: ShiftReviewPanelProps) {
   const { formatAmount } = useCurrencyFormat();
   const { selectedLicencee } = useDashBoardStore();
@@ -73,8 +76,7 @@ export default function ShiftReviewPanel({
 
   // Helper to format time only (Trinidad time, UTC-4)
   const formatTimeOnly = (dateStr: string | Date) => {
-    const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
-    return date.toLocaleString('en-US', { 
+    return safeFormatDate(dateStr, { 
       hour: 'numeric', 
       minute: '2-digit',
       hour12: true,
@@ -474,7 +476,8 @@ export default function ShiftReviewPanel({
                         </div>
                         )}
 
-                        {resolvingId === shift.shiftId ? (
+                {!readOnly && (
+                    resolvingId === shift.shiftId ? (
                         <div className="space-y-3 border-t pt-3 mt-4">
                             {!isRejecting ? (
                             <>
@@ -575,15 +578,58 @@ export default function ShiftReviewPanel({
                             )}
                             <div>
                             <Label className="text-sm font-medium text-gray-700">
-                                {isRejecting ? 'Reason for Rejection' : 'Audit Comment'}
+                                {isRejecting ? 'Reason for Rejection' : 'Audit Comment (Optional)'}
                             </Label>
-                            <Textarea
+                            
+                            {isRejecting ? (
+                              <div className="space-y-3 mt-2">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                  {[
+                                    { label: 'Miscount', icon: RefreshCw, color: 'text-amber-500', bg: 'hover:bg-amber-50' },
+                                    { label: 'Denoms', icon: Landmark, color: 'text-blue-500', bg: 'hover:bg-blue-50' },
+                                    { label: 'Incomplete', icon: AlertTriangle, color: 'text-red-500', bg: 'hover:bg-red-50' },
+                                    { label: 'Other', icon: MessageSquare, color: 'text-gray-500', bg: 'hover:bg-gray-50' }
+                                  ].map(item => {
+                                    const isSelected = auditComment === item.label || (item.label === 'Other' && !['Miscount', 'Denoms', 'Incomplete', 'Your count is'].some(r => auditComment.includes(r)));
+                                    const Icon = item.icon;
+                                    return (
+                                      <button
+                                        key={item.label}
+                                        type="button"
+                                        onClick={() => setAuditComment(item.label === 'Other' ? '' : item.label)}
+                                        className={cn(
+                                          "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1.5",
+                                          auditComment === item.label 
+                                            ? "bg-red-600 border-red-600 text-white shadow-md shadow-red-200" 
+                                            : "bg-white border-gray-100 text-gray-600",
+                                          !isSelected && item.bg
+                                        )}
+                                      >
+                                        <Icon className={cn("h-4 w-4", auditComment === item.label ? "text-white" : item.color)} />
+                                        <span className="text-[10px] font-black uppercase tracking-tight">{item.label}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                {(auditComment === 'Other' || (auditComment.length > 0 && !['Miscount', 'Denoms', 'Incomplete'].some(r => auditComment.includes(r)))) && (
+                                  <Textarea
+                                    value={auditComment === 'Other' ? '' : auditComment}
+                                    onChange={e => setAuditComment(e.target.value)}
+                                    placeholder="Provide specific details for the cashier..."
+                                    className="mt-3"
+                                    rows={3}
+                                  />
+                                )}
+                              </div>
+                            ) : (
+                              <Textarea
                                 value={auditComment}
                                 onChange={e => setAuditComment(e.target.value)}
-                                placeholder={isRejecting ? "Tell the cashier what needs correction (optional)" : "Explain the discrepancy resolution (optional)"}
+                                placeholder="Explain the discrepancy resolution (optional)"
                                 className="mt-1"
                                 rows={3}
-                            />
+                              />
+                            )}
                             </div>
 
                             {/* Shortage Alert - Similar to Float Request notification */}
@@ -664,7 +710,8 @@ export default function ShiftReviewPanel({
                             Review & Resolve
                             </Button>
                         </div>
-                        )}
+                    )
+                )}
                         </div>
                     )}
                 </TooltipProvider>

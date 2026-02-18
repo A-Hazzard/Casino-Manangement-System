@@ -159,7 +159,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
         .finally(() => setCountriesLoading(false));
 
       setLicenseesLoading(true);
-      fetchLicensees()
+      fetchLicensees(1, 1000)
         .then(data => {
           if (data && 'licensees' in data) {
             setLicensees((data as { licensees: Licensee[] }).licensees);
@@ -172,10 +172,33 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       setLocationsLoading(true);
       axios
         .get('/api/gaming-locations')
-        .then(res => setLocations(res.data))
+        .then(async res => {
+          const fetchedLocations = res.data;
+          setLocations(fetchedLocations);
+
+          // Check for missing location names
+          if (userData?.assignedLocations) {
+            const missingIds = userData.assignedLocations.filter(
+              id => id !== 'all' && !fetchedLocations.find((l: any) => String(l._id) === id)
+            );
+
+            if (missingIds.length > 0) {
+              try {
+                const missingRes = await axios.get('/api/gaming-locations', {
+                  params: { ids: missingIds.join(','), includeDeleted: true }
+                });
+                if (Array.isArray(missingRes.data)) {
+                  setLocations(prev => [...prev, ...missingRes.data]);
+                }
+              } catch (err) {
+                console.error('Failed to fetch missing locations', err);
+              }
+            }
+          }
+        })
         .finally(() => setLocationsLoading(false));
     }
-  }, [open]);
+  }, [open, userData?.assignedLocations]);
 
   // Options for multi-select
   const licenseeOptions: MultiSelectOption[] = useMemo(

@@ -28,6 +28,7 @@ type VaultMetricCardProps = {
   className?: string;
   tooltipContent?: string;
   onClick?: () => void;
+  formatType?: 'currency' | 'number';
 };
 
 export default function VaultMetricCard({
@@ -39,12 +40,15 @@ export default function VaultMetricCard({
   className,
   tooltipContent,
   onClick,
+  formatType = 'currency',
 }: VaultMetricCardProps) {
   // ===================================
   // Hooks
   // ===================================
   const { formatAmount } = useCurrencyFormat();
-  const formattedValue = formatAmount(value);
+  const formattedValue = formatType === 'currency' 
+    ? formatAmount(value || 0) 
+    : (value || 0).toLocaleString();
 
   // Helper for dynamic font size
   const getDynamicFontSize = (text: string) => {

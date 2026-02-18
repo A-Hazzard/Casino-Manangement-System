@@ -11,23 +11,24 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from '@/components/shared/ui/dialog';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
+import { safeFormatDate } from '@/lib/utils/date/formatting';
 import { Banknote, Calendar, FileText, Loader2, RefreshCw, Ticket, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -67,21 +68,7 @@ export default function VaultPayoutsTable({
   const [selectedCashierId, setSelectedCashierId] = useState<string | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      }).format(date);
-    } catch {
-      return dateString;
-    }
-  };
+  const formatDate = (dateString: string) => safeFormatDate(dateString);
 
   if (payouts.length === 0) {
     return (
@@ -378,9 +365,13 @@ function CashierDetailsModal({ id, open, onOpenChange }: { id: string | null, op
              {/* Main Details */}
              <div className="grid grid-cols-2 gap-y-4 px-1">
                 <DetailItem label="Email Address" value={cashier.emailAddress} />
-                <DetailItem label="Last Login" value={cashier.lastLoginAt ? new Date(cashier.lastLoginAt).toLocaleString() : 'Never'} />
+                <DetailItem label="Last Login" value={safeFormatDate(cashier.lastLoginAt)} />
                 <DetailItem label="Assigned System Roles" value={cashier.roles?.join(', ')} />
-                <DetailItem label="Account Created" value={new Date(cashier.createdAt).toLocaleDateString()} />
+                <DetailItem label="Account Created" value={safeFormatDate(cashier.createdAt, {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric'
+                })} />
              </div>
 
              {/* Shift Balance (if active) */}

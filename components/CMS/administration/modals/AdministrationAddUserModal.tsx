@@ -9,15 +9,16 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import type { MultiSelectOption } from '@/components/shared/ui/common/MultiSelectDropdown';
 import MultiSelectDropdown from '@/components/shared/ui/common/MultiSelectDropdown';
+import { DateTimePicker } from '@/components/shared/ui/date-time-picker';
 import CircleCropModal from '@/components/shared/ui/image/CircleCropModal';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -29,21 +30,21 @@ import type { Country, Licensee } from '@/lib/types/common';
 import type { LocationSelectItem } from '@/lib/types/location';
 import type { AddUserForm } from '@/lib/types/pages';
 import {
-    getPasswordStrengthLabel,
-    isPlaceholderEmail,
-    validateEmail,
-    validatePasswordStrength,
+  getPasswordStrengthLabel,
+  isPlaceholderEmail,
+  validateEmail,
+  validatePasswordStrength,
 } from '@/lib/utils/validation';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
 import {
-    AlertCircle,
-    Camera,
-    Info,
-    Loader2,
-    Save,
-    Trash2,
-    X,
+  AlertCircle,
+  Camera,
+  Info,
+  Loader2,
+  Save,
+  Trash2,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -274,6 +275,7 @@ export default function AdministrationAddUserModal({
       setAllLicenseesSelected(false);
     }
   }, [open, isLocationAdmin, currentUserLicenseeIds]);
+
 
   // Load licensees
   useEffect(() => {
@@ -568,9 +570,9 @@ export default function AdministrationAddUserModal({
         newErrors.firstName = 'First name must be at least 3 characters.';
       } else if (EMAIL_REGEX.test(firstName)) {
         newErrors.firstName = 'First name cannot look like an email address.';
-      } else if (!/^[A-Za-z\s]+$/.test(firstName)) {
+      } else if (!/^[A-Za-z\s'-]+$/.test(firstName)) {
         newErrors.firstName =
-          'First name may only contain letters and spaces.';
+          "First name may only contain letters, spaces, hyphens and apostrophes.";
       }
     }
 
@@ -580,8 +582,8 @@ export default function AdministrationAddUserModal({
         newErrors.lastName = 'Last name must be at least 3 characters.';
       } else if (EMAIL_REGEX.test(lastName)) {
         newErrors.lastName = 'Last name cannot look like an email address.';
-      } else if (!/^[A-Za-z\s]+$/.test(lastName)) {
-        newErrors.lastName = 'Last name may only contain letters and spaces.';
+      } else if (!/^[A-Za-z\s'-]+$/.test(lastName)) {
+        newErrors.lastName = "Last name may only contain letters, spaces, hyphens and apostrophes.";
       }
     }
 
@@ -634,7 +636,36 @@ export default function AdministrationAddUserModal({
       }
     }
 
-    setAccountErrors(prev => ({ ...prev, ...newErrors }));
+    setAccountErrors(prev => {
+      const next = { ...prev };
+      // Clear errors for fields managed by this effect
+      const managedFields = [
+        'username',
+        'email',
+        'firstName',
+        'lastName',
+        'town',
+        'region',
+        'country',
+        'idType',
+        'idNumber',
+      ];
+      managedFields.forEach(field => {
+        // Only clear if the current error is NOT the async validation error
+        if (
+          field === 'username' &&
+          next[field] === 'This username is already taken.'
+        )
+          return;
+        if (
+          field === 'email' &&
+          next[field] === 'This email address is already registered.'
+        )
+          return;
+        delete next[field];
+      });
+      return { ...next, ...newErrors };
+    });
   }, [
     accountData.username,
     accountData.email,
@@ -743,6 +774,33 @@ export default function AdministrationAddUserModal({
     selectedLicenseeIds,
   ]);
 
+  // Sync "all selected" states to prevent Vault Manager restrictions or single-item auto-selection
+  useEffect(() => {
+    if (!open) return;
+    
+    if (isVaultManagerSelected) {
+      if (allLicenseesSelected) setAllLicenseesSelected(false);
+      if (allLocationsSelected) setAllLocationsSelected(false);
+    } else {
+      // Also ensure "All" is not set if count is 1 or 0
+      if (allLicenseesSelected && (licensees.length <= 1 || selectedLicenseeIds.length !== licensees.length)) {
+        setAllLicenseesSelected(false);
+      }
+      if (allLocationsSelected && (availableLocations.length <= 1 || selectedLocationIds.length !== availableLocations.length)) {
+        setAllLocationsSelected(false);
+      }
+    }
+  }, [
+    open,
+    isVaultManagerSelected,
+    allLicenseesSelected,
+    allLocationsSelected,
+    licensees.length,
+    availableLocations.length,
+    selectedLicenseeIds.length,
+    selectedLocationIds.length
+  ]);
+
   const handleAllLocationsChange = (checked: boolean) => {
     if (isVaultManagerSelected && checked) {
       toast.error('Vault Managers cannot be assigned to all locations');
@@ -775,7 +833,7 @@ export default function AdministrationAddUserModal({
 
     setSelectedLicenseeIds(finalIds);
     setAllLicenseesSelected(
-      finalIds.length === licensees.length && licensees.length > 0 && !isVaultManagerSelected
+      finalIds.length === licensees.length && licensees.length > 1 && !isVaultManagerSelected
     );
 
     // Filter locations based on selected licensees
@@ -807,7 +865,7 @@ export default function AdministrationAddUserModal({
     }
     setSelectedLocationIds(finalIds);
     setAllLocationsSelected(
-      finalIds.length === availableLocations.length && availableLocations.length > 0 && !isVaultManagerSelected
+      finalIds.length === availableLocations.length && availableLocations.length > 1 && !isVaultManagerSelected
     );
   };
 
@@ -1444,14 +1502,17 @@ export default function AdministrationAddUserModal({
                     <Label htmlFor="dateOfBirth" className="text-gray-700">
                       Date of Birth
                     </Label>
-                    <Input
-                      id="dateOfBirth"
-                      type="date"
-                      value={formData.dateOfBirth}
-                      onChange={e => handleInputChange('dateOfBirth', e.target.value)}
-                      max={new Date().toISOString().split('T')[0]}
-                      className="mt-2"
-                    />
+                    <div className="mt-2">
+                      <DateTimePicker
+                        date={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
+                        setDate={(date) =>
+                          handleInputChange(
+                            'dateOfBirth',
+                            date ? date.toISOString().split('T')[0] : ''
+                          )
+                        }
+                      />
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="idType" className="text-gray-700">

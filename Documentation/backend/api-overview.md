@@ -456,6 +456,9 @@ All APIs follow a consistent response format:
 | `/firmwares/migrate`       | POST   | Firmware migration     | System updates       |
 | `/licensees`               | GET    | List licensees         | Licensee management  |
 | `/countries`               | GET    | List countries         | Country selection    |
+| `/countries`               | POST   | Create new country     | Country management   |
+| `/countries`               | PUT    | Update country         | Country management   |
+| `/countries`               | DELETE | Delete country         | Country management   |
 | `/collectors`              | GET    | List collectors        | Collector management |
 
 ### 9. Movement & Logistics

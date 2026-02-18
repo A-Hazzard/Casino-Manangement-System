@@ -20,6 +20,7 @@ import {
 } from '@/components/shared/ui/table';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
+import { safeFormatDate } from '@/lib/utils/date/formatting';
 import type { VaultTransfer } from '@/shared/types/vault';
 import { ArrowLeftRight, ArrowRight, CheckCircle2, Clock, FileText, User, X } from 'lucide-react';
 
@@ -53,16 +54,8 @@ export default function VaultTransfersTable({
 }: VaultTransfersTableProps) {
   const { formatAmount } = useCurrencyFormat();
 
-  const formatDate = (dateString: string | Date | undefined) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true,
-    });
+  const formatDate = (dateString: string | Date) => {
+    return safeFormatDate(dateString);
   };
 
   if (transfers.length === 0) {

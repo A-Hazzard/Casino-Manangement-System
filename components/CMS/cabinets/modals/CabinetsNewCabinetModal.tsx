@@ -45,6 +45,7 @@ export default function CabinetsNewCabinetModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+  const [isAddingManufacturer, setIsAddingManufacturer] = useState(false);
 
   const [relayIdError, setRelayIdError] = useState<string>('');
   const [serialNumberError, setSerialNumberError] = useState<string>('');
@@ -163,7 +164,7 @@ export default function CabinetsNewCabinetModal({
   const [formData, setFormData] = useState<NewCabinetFormData>({
     serialNumber: '',
     game: '',
-    gameType: 'Slot',
+    gameType: 'slot',
     isCronosMachine: false,
     accountingDenomination: '',
     cabinetType: 'Standing',
@@ -171,6 +172,7 @@ export default function CabinetsNewCabinetModal({
     gamingLocation: locationId || '',
     relayId: '',
     manufacturer: '',
+    otherGameType: '',
     collectionSettings: {
       multiplier: '1',
       lastCollectionTime: collectionTime.toISOString().slice(0, 16),
@@ -277,10 +279,22 @@ export default function CabinetsNewCabinetModal({
         return;
       }
 
-      // Debug: Log the form data being sent
-      // console.log("Form data being sent:", formData);
+      // Validate manufacturer before submission
+      if (!formData.manufacturer || (isAddingManufacturer && !formData.manufacturer.trim())) {
+        toast.error('Manufacturer is mandatory');
+        setLoading(false);
+        return;
+      }
 
-      const success = await createCabinet(formData);
+      // Build submission data with lowercased gameType
+      const submissionData = {
+        ...formData,
+        gameType: ((formData.gameType === 'other' ? formData.otherGameType : formData.gameType) || '').toLowerCase().trim()
+      };
+
+      // console.log("Form data being sent:", submissionData);
+
+      const success = await createCabinet(submissionData);
       if (success) {
         // Log the cabinet creation activity
         await logActivity(
@@ -313,7 +327,7 @@ export default function CabinetsNewCabinetModal({
     setFormData({
       serialNumber: '',
       game: '',
-      gameType: 'Slot',
+      gameType: 'slot',
       isCronosMachine: false,
       accountingDenomination: '',
       cabinetType: 'Standing',
@@ -321,6 +335,7 @@ export default function CabinetsNewCabinetModal({
       gamingLocation: locationId || '',
       relayId: '',
       manufacturer: '',
+      otherGameType: '',
       collectionSettings: {
         multiplier: '1',
         lastCollectionTime: collectionTime.toISOString().slice(0, 16),
@@ -511,16 +526,20 @@ export default function CabinetsNewCabinetModal({
                         <SelectValue placeholder="Select Game Type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Slot">Slot</SelectItem>
-                        <SelectItem value="Video Poker">Video Poker</SelectItem>
-                        <SelectItem value="Table Game">Table Game</SelectItem>
-                        <SelectItem value="Roulette">Roulette</SelectItem>
-                        <SelectItem value="Blackjack">Blackjack</SelectItem>
-                        <SelectItem value="Poker">Poker</SelectItem>
-                        <SelectItem value="Baccarat">Baccarat</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
+                        <SelectItem value="slot">Slot</SelectItem>
+                        <SelectItem value="roulette">Roulette</SelectItem>
+                        <SelectItem value="pulse">Pulse</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
+                    {formData.gameType === 'other' && (
+                      <Input
+                        placeholder="Enter custom game type"
+                        className="mt-2"
+                        value={formData.otherGameType}
+                        onChange={e => handleInputChange('otherGameType', e.target.value)}
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-buttonActive">
@@ -546,10 +565,26 @@ export default function CabinetsNewCabinetModal({
 
                 {/* Manufacturer */}
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-buttonActive">
-                    Manufacturer
-                  </label>
-                  {manufacturersLoading ? (
+                  <div className="mb-2 flex items-center justify-between">
+                    <label className="text-sm font-medium text-buttonActive">
+                      Manufacturer <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingManufacturer(!isAddingManufacturer)}
+                      className="text-xs text-buttonActive hover:underline"
+                    >
+                      {isAddingManufacturer ? 'Select from list' : '+ Add New'}
+                    </button>
+                  </div>
+                  {isAddingManufacturer ? (
+                    <Input
+                      placeholder="Enter manufacturer name"
+                      value={formData.manufacturer}
+                      onChange={e => handleInputChange('manufacturer', e.target.value)}
+                      className="h-10 border-border bg-container"
+                    />
+                  ) : manufacturersLoading ? (
                     <div className="h-10 animate-pulse rounded-md bg-gray-100" />
                   ) : (
                     <Select

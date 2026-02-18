@@ -8,12 +8,14 @@
  */
 'use client';
 
+import VaultCloseDayModals from '@/components/VAULT/overview/sections/VaultCloseDayModals';
 import DebugSection from '@/components/shared/debug/DebugSection';
 import NotificationBell from '@/components/shared/ui/NotificationBell';
 import { Button } from '@/components/shared/ui/button';
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import { fetchVaultBalance, handleFloatAction, handleFloatConfirm } from '@/lib/helpers/vaultHelpers';
 import { useNotifications } from '@/lib/hooks/vault/useNotifications';
+import { useVaultCloseDay } from '@/lib/hooks/vault/useVaultCloseDay';
 import { useUserStore } from '@/lib/store/userStore';
 import type { Denomination } from '@/shared/types/vault';
 import { ArrowLeft } from 'lucide-react';
@@ -29,6 +31,7 @@ type VaultManagerHeaderProps = {
   children?: React.ReactNode;
   onFloatActionComplete?: () => void; // Callback after float approve/deny
   showNotificationBell?: boolean;
+  vaultInventory?: Denomination[];
 };
 
 export default function VaultManagerHeader({ 
@@ -38,11 +41,20 @@ export default function VaultManagerHeader({
   showBack = true,
   children,
   onFloatActionComplete,
-  showNotificationBell = true
+  showNotificationBell = true,
+  vaultInventory: initialInventory
 }: VaultManagerHeaderProps) {
-  const { user } = useUserStore();
+  const { user, hasActiveVaultShift } = useUserStore();
+  const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
   const locationId = user?.assignedLocations?.[0];
-  const [vaultInventory, setVaultInventory] = useState<Denomination[]>([]);
+  const [vaultInventory, setVaultInventory] = useState<Denomination[]>(initialInventory || []);
+
+  // Sync prop with local state when it changes
+  useEffect(() => {
+    if (initialInventory) {
+      setVaultInventory(initialInventory);
+    }
+  }, [initialInventory]);
 
   const {
     notifications,
@@ -55,6 +67,7 @@ export default function VaultManagerHeader({
   const fetchInventory = useCallback(async () => {
     if (!locationId) return;
     
+    // If we have a prop, we might rely on parent, but manual refresh should still work
     const balance = await fetchVaultBalance(locationId);
     if (balance?.denominations) {
       setVaultInventory(balance.denominations);
@@ -152,6 +165,27 @@ export default function VaultManagerHeader({
     metadata: n.metadata
   }));
 
+  const {
+    activeStep,
+    vaultBalance: closeDayBalance,
+    machines,
+    activeShifts,
+    pendingShifts,
+    showBlockedShifts,
+    setShowBlockedShifts,
+    startCloseDay,
+    handleClose,
+    handleConfirm,
+  } = useVaultCloseDay(locationId, user?.username);
+
+  // Sync notification refresh with close day status if needed
+  useEffect(() => {
+    if (activeStep === null) {
+      refresh();
+      fetchInventory();
+    }
+  }, [activeStep, refresh, fetchInventory]);
+
 
   return (
     <div className="border-b pb-4 mb-6">
@@ -175,24 +209,14 @@ export default function VaultManagerHeader({
         </div>
 
         <div className="flex items-center gap-3">
-          {!user?.roles?.includes('cashier') ? (
-            <Link href="/vault/management/reports/end-of-day">
-              <Button 
-                variant="default" 
-                className="bg-orangeHighlight hover:bg-orangeHighlight/90 text-white"
-              >
-                Close Daily Operations
-              </Button>
-            </Link>
-          ) : (
-            <Link href="/vault/cashier/close-shift">
-              <Button 
-                variant="default" 
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                End Shift
-              </Button>
-            </Link>
+          {!user?.roles?.includes('cashier') && hasActiveVaultShift && !isAdminOrDev && (
+            <Button 
+              variant="default" 
+              className="bg-orangeHighlight hover:bg-orangeHighlight/90 text-white"
+              onClick={startCloseDay}
+            >
+              Close Day
+            </Button>
           )}
           
           {showNotificationBell && (
@@ -206,6 +230,8 @@ export default function VaultManagerHeader({
               onApprove={handleFloatApprove}
               onDeny={handleFloatDeny}
               onConfirm={handleFloatReceiptConfirm}
+              onRefreshInventory={fetchInventory}
+              readOnly={isAdminOrDev}
             />
           )}
         </div>
@@ -217,6 +243,21 @@ export default function VaultManagerHeader({
           {children}
         </div>
       )}
+
+      {/* Global Close Day Sequence Modals */}
+      <VaultCloseDayModals
+        activeStep={activeStep}
+        vaultBalance={closeDayBalance}
+        machines={machines}
+        activeShifts={activeShifts}
+        pendingShifts={pendingShifts}
+        showBlockedShifts={showBlockedShifts}
+        setShowBlockedShifts={setShowBlockedShifts}
+        locationId={locationId}
+        onClose={handleClose}
+        onConfirm={handleConfirm}
+        onRefresh={startCloseDay}
+      />
     </div>
   );
 }

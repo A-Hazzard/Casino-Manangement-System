@@ -15,7 +15,7 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { cn } from '@/lib/utils';
 import { getDenominationValues, getInitialDenominationRecord } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
-import { Info, Landmark, RefreshCw } from 'lucide-react';
+import { Briefcase, FileText, Info, Landmark, RefreshCw, ShieldCheck, Wrench } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 type VaultReconcileModalProps = {
@@ -47,12 +47,17 @@ export default function VaultReconcileModal({
   const denominationsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
   
   const [breakdown, setBreakdown] = useState<Record<number, number>>({});
+  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
   const [reason, setReason] = useState('');
+  const [source, setSource] = useState<string>('Periodic');
 
   // Update breakdown when licensee changes or modal opens
   useEffect(() => {
     if (open) {
       setBreakdown(getInitialDenominationRecord(selectedLicencee) as Record<any, number>);
+      setTouchedDenominations(new Set());
+      setSource('Periodic');
+      setReason('');
     }
   }, [selectedLicencee, open]);
 
@@ -69,18 +74,29 @@ export default function VaultReconcileModal({
     const quantity = parseInt(value) || 0;
     if (quantity < 0) return;
     setBreakdown(prev => ({ ...prev, [denom]: quantity }));
+    setTouchedDenominations(prev => {
+        const next = new Set(prev);
+        next.add(Number(denom));
+        return next;
+    });
   };
+
+  const isAllTouched = denominationsList.every(d => touchedDenominations.has(Number(d)));
+  const isValidCount = totalAmount > 0 || isAllTouched;
 
   const getSystemQuantity = (denom: number) => {
     return systemDenominations.find(d => d.denomination === denom)?.quantity || 0;
   };
 
-  const handleSubmit = async () => {
-    if (reason.trim().length < 10) {
-      alert('Reason must be at least 10 characters.');
-      return;
-    }
+  const RECON_SOURCES = [
+    { label: 'Periodic', icon: FileText },
+    { label: 'Shift', icon: RefreshCw },
+    { label: 'Audit', icon: ShieldCheck },
+    { label: 'Error', icon: Wrench },
+    { label: 'Other', icon: Briefcase }
+  ];
 
+  const handleSubmit = async () => {
     setLoading(true);
     try {
       const denominations: Denomination[] = Object.entries(breakdown).map(
@@ -93,13 +109,15 @@ export default function VaultReconcileModal({
       await onConfirm({
         newBalance: totalAmount,
         denominations,
-        reason: reason.trim() || 'Periodic reconciliation',
+        reason: `${source ? `[${source}] ` : ''}${reason.trim()}` || 'Periodic reconciliation',
         comment: reason.trim(), // Both fields get the same value
       });
       onClose();
       // Reset form
       setBreakdown(getInitialDenominationRecord(selectedLicencee) as Record<any, number>);
+      setTouchedDenominations(new Set());
       setReason('');
+      setSource('Periodic');
     } catch (error) {
       console.error('Reconciliation failed', error);
     } finally {
@@ -113,7 +131,7 @@ export default function VaultReconcileModal({
         <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
             <Landmark className="h-5 w-5 text-violet-600" />
-            Vault Reconciliation Audit
+            Vault Reconciliation
           </DialogTitle>
           <DialogDescription className="text-violet-700/80">
             Compare your physical cash count against system records. Any adjustments will be strictly audited.
@@ -167,7 +185,8 @@ export default function VaultReconcileModal({
                             onChange={e => handleQuantityChange(denom, e.target.value)}
                             className={cn(
                                 "text-center font-black h-11 sm:h-9 rounded-lg bg-white border-2 transition-all",
-                                isDifferent ? 'border-amber-400 focus-visible:ring-amber-400/30' : 'border-gray-100 focus-visible:ring-violet-500/30'
+                                isDifferent ? 'border-amber-400 focus-visible:ring-amber-400/30' : 'border-gray-100 focus-visible:ring-violet-500/30',
+                                touchedDenominations.has(Number(denom)) && "text-violet-600"
                             )}
                             placeholder="0"
                           />
@@ -207,24 +226,49 @@ export default function VaultReconcileModal({
                   </div>
                </div>
 
-               <div className="space-y-3">
-                 <Label htmlFor="reason" className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">Adjustment Reason (10 char min)</Label>
-                 <Textarea
-                   id="reason"
-                   placeholder="Detailed explanation for this audit event..."
-                   value={reason}
-                   onChange={e => setReason(e.target.value)}
-                   rows={6}
-                   className={cn(
-                       "bg-gray-50/50 border-gray-100 rounded-2xl resize-none focus:bg-white transition-all text-sm border-2",
-                       reason.length > 0 && reason.length < 10 ? 'border-red-400 focus-visible:ring-red-400/30' : 'focus:border-violet-500/30'
-                   )}
-                 />
+               <div className="space-y-4">
+                 <div className="space-y-1.5">
+                   <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">Reconciliation Source</Label>
+                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                     {RECON_SOURCES.map(cat => {
+                       const isSelected = source === cat.label;
+                       const Icon = cat.icon;
+                       return (
+                         <button
+                           key={cat.label}
+                           type="button"
+                           onClick={() => setSource(cat.label)}
+                           className={cn(
+                             "flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all gap-1.5",
+                             isSelected 
+                               ? "bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-200" 
+                               : "bg-white border-gray-100 text-gray-600 hover:border-violet-200 hover:bg-violet-50/30"
+                           )}
+                         >
+                           <Icon className={cn("h-4 w-4", isSelected ? "text-white" : "text-violet-500")} />
+                           <span className="text-[9px] font-black uppercase tracking-tight leading-tight">{cat.label}</span>
+                         </button>
+                       );
+                     })}
+                   </div>
+                 </div>
+
+                 <div className="space-y-1.5">
+                   <Label htmlFor="reason" className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">Adjustment Notes (Optional)</Label>
+                   <Textarea
+                     id="reason"
+                     placeholder="Detailed explanation for this audit event..."
+                     value={reason}
+                     onChange={e => setReason(e.target.value)}
+                     rows={4}
+                     className="bg-gray-50/50 border-gray-100 rounded-2xl resize-none focus:bg-white transition-all text-sm border-2"
+                   />
+                 </div>
                </div>
 
                <div className="flex items-start gap-3 rounded-2xl bg-amber-50 p-4 text-[11px] text-amber-800 border border-amber-100/50">
                   <Info className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
-                  <p className="font-medium leading-relaxed">Reconciliation updates the system "Source of Truth" to match your physical count. This is a non-reversible audit event.</p>
+                  <p className="font-medium leading-relaxed">Reconciliation updates the system "Source of Truth" to match your physical cash count. This is a non-reversible adjustment.</p>
                </div>
             </div>
           </div>
@@ -236,7 +280,7 @@ export default function VaultReconcileModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || reason.length < 10}
+            disabled={loading || !isValidCount}
             className="order-1 sm:order-2 flex-1 h-12 bg-violet-600 text-white hover:bg-violet-700 font-black text-base shadow-lg shadow-violet-600/20 active:scale-[0.98] transition-all rounded-xl"
           >
             {loading ? (
@@ -244,7 +288,7 @@ export default function VaultReconcileModal({
                     <RefreshCw className="h-4 w-4 animate-spin" />
                     Reconciling...
                 </div>
-            ) : 'Confirm Audit Adjustment'}
+            ) : 'Confirm Reconciliation'}
           </Button>
         </DialogFooter>
       </DialogContent>

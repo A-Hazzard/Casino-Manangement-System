@@ -19,23 +19,17 @@ export function normalizeStatusValue(
  * Normalize game type value to standard format
  */
 export function normalizeGameTypeValue(value?: string): string {
-  if (!value) return 'Slot';
+  if (!value) return 'slot';
   const trimmed = value.trim();
   const normalized = trimmed.toLowerCase();
   const knownTypes: Record<string, string> = {
-    slot: 'Slot',
-    slots: 'Slot',
-    'video poker': 'Video Poker',
-    videopoker: 'Video Poker',
-    'table game': 'Table Game',
-    tablegame: 'Table Game',
-    roulette: 'Roulette',
-    blackjack: 'Blackjack',
-    poker: 'Poker',
-    baccarat: 'Baccarat',
-    other: 'Other',
+    slot: 'slot',
+    slots: 'slot',
+    roulette: 'roulette',
+    pulse: 'pulse',
+    other: 'other',
   };
-  return knownTypes[normalized] || trimmed;
+  return knownTypes[normalized] || normalized;
 }
 
 

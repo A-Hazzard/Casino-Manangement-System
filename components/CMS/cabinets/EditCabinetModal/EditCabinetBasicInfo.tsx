@@ -18,11 +18,11 @@
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Input } from '@/components/shared/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/shared/ui/select';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
@@ -35,6 +35,7 @@ type EditCabinetBasicInfoProps = {
     cabinetType: string;
     isCronosMachine: boolean;
     accountingDenomination: string;
+    otherGameType?: string;
   };
   cabinetDataLoading: boolean;
   manufacturersLoading: boolean;
@@ -131,16 +132,27 @@ export default function EditCabinetBasicInfo({
               <SelectValue placeholder="Select Game Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Slot">Slot</SelectItem>
-              <SelectItem value="Video Poker">Video Poker</SelectItem>
-              <SelectItem value="Table Game">Table Game</SelectItem>
-              <SelectItem value="Roulette">Roulette</SelectItem>
-              <SelectItem value="Blackjack">Blackjack</SelectItem>
-              <SelectItem value="Poker">Poker</SelectItem>
-              <SelectItem value="Baccarat">Baccarat</SelectItem>
-              <SelectItem value="Other">Other</SelectItem>
+              <SelectItem value="slot">Slot</SelectItem>
+              <SelectItem value="roulette">Roulette</SelectItem>
+              <SelectItem value="pulse">Pulse</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>
+        )}
+        {formData.gameType === 'other' && (
+          <div className="mt-2 text-sm">
+            <Input
+              id="otherGameType"
+              name="otherGameType"
+              value={formData.otherGameType || ''}
+              onChange={e => {
+                onUserModifiedFieldsChange('gameType');
+                onFormDataChange({ otherGameType: e.target.value });
+              }}
+              placeholder="Enter custom game type"
+              className="border-border bg-container"
+            />
+          </div>
         )}
       </div>
 

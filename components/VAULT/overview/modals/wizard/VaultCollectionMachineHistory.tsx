@@ -46,6 +46,16 @@ export default function VaultCollectionMachineHistory({
                <Loader2 className="h-8 w-8 animate-spin mb-3 text-violet-400" />
                <p className="text-xs font-medium">Loading history...</p>
             </div>
+          ) : !machineName || machineName === 'Machine' ? (
+            <div className="flex flex-col items-center justify-center p-10 text-center text-gray-400 py-20">
+               <div className="h-16 w-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                  <HistoryIcon className="h-8 w-8 text-gray-200" />
+               </div>
+               <p className="text-sm font-black text-gray-900 mb-1">No Selection</p>
+               <p className="text-[11px] font-medium text-gray-400 max-w-[180px]">
+                 Select a machine from the list or batch list to view its collection history.
+               </p>
+            </div>
           ) : history.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-10 text-center text-gray-400 bg-white rounded-xl border border-gray-100 mt-4">
                <Clock className="h-10 w-10 mb-3 opacity-20" />

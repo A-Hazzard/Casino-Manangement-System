@@ -18,6 +18,7 @@ import {
 } from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
+import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import {
     Select,
     SelectContent,
@@ -66,8 +67,7 @@ export default function AuditTrailViewer() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date } | undefined>(undefined);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +76,7 @@ export default function AuditTrailViewer() {
 
   useEffect(() => {
     fetchData();
-  }, [user?.assignedLocations, typeFilter, statusFilter, dateFrom, dateTo]);
+  }, [user?.assignedLocations, typeFilter, statusFilter, dateRange]);
 
   const fetchData = async () => {
     const locationId = user?.assignedLocations?.[0];
@@ -89,8 +89,8 @@ export default function AuditTrailViewer() {
         searchTerm,
         type: typeFilter,
         status: statusFilter,
-        dateFrom,
-        dateTo,
+        dateFrom: dateRange?.from?.toISOString(),
+        dateTo: dateRange?.to?.toISOString(),
       });
       setAuditTrail(data.entries);
       setTotalEntries(data.total);
@@ -201,27 +201,18 @@ export default function AuditTrailViewer() {
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="dateFrom">Date From</Label>
-              <Input
-                id="dateFrom"
-                type="date"
-                value={dateFrom}
-                onChange={e => setDateFrom(e.target.value)}
+            <div className="md:col-span-2">
+              <Label>Date Range</Label>
+              <ModernCalendar 
+                mode="range"
+                date={dateRange}
+                onSelect={setDateRange}
+                className="w-full"
               />
             </div>
           </div>
 
           <div className="mt-4 flex gap-4">
-            <div>
-              <Label htmlFor="dateTo">Date To</Label>
-              <Input
-                id="dateTo"
-                type="date"
-                value={dateTo}
-                onChange={e => setDateTo(e.target.value)}
-              />
-            </div>
             <div className="flex items-end gap-2">
               <Button onClick={fetchData} disabled={loading}>
                 Apply Filters
@@ -232,8 +223,7 @@ export default function AuditTrailViewer() {
                   setSearchTerm('');
                   setTypeFilter('all');
                   setStatusFilter('all');
-                  setDateFrom('');
-                  setDateTo('');
+                  setDateRange(undefined);
                 }}
               >
                 Clear

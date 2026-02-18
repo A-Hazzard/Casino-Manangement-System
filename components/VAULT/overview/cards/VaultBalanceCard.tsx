@@ -23,6 +23,7 @@ import {
 } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
+import { safeFormatDate } from '@/lib/utils/date/formatting';
 import type { VaultBalance } from '@/shared/types/vault';
 import { RefreshCw } from 'lucide-react';
 
@@ -41,7 +42,8 @@ export default function VaultBalanceCard({
   const { formatAmount } = useCurrencyFormat();
 
   // Helper to determine font size based on amount string length
-  const getDynamicFontSize = (text: string, baseSize: string, mediumSize: string, smallSize: string) => {
+  const getDynamicFontSize = (text: string, baseSize: string, mediumSize: string, smallSize: string, tinySize: string) => {
+    if (text.length > 18) return tinySize;
     if (text.length > 15) return smallSize;
     if (text.length > 12) return mediumSize;
     return baseSize;
@@ -87,8 +89,8 @@ export default function VaultBalanceCard({
               Current Vault Balance
             </p>
             <p className={cn(
-                "mt-1 font-bold text-gray-900 leading-none transition-all duration-300 truncate",
-                getDynamicFontSize(balanceStr, "text-2xl sm:text-3xl md:text-4xl", "text-xl sm:text-2xl md:text-3xl", "text-lg sm:text-xl md:text-2xl")
+                "mt-1 font-bold text-gray-900 leading-tight transition-all duration-300 break-words",
+                getDynamicFontSize(balanceStr, "text-2xl sm:text-2xl md:text-3xl", "text-xl sm:text-xl md:text-2xl", "text-lg sm:text-lg md:text-xl", "text-base sm:text-base md:text-lg")
             )}>
               {balanceStr}
             </p>
@@ -104,18 +106,11 @@ export default function VaultBalanceCard({
           {/* Horizontal Divider - Mobile Only */}
           <div className="border-t border-gray-200 pt-4 md:hidden"></div>
 
-          {/* Last Audit */}
+          {/* Last Reconcile */}
           <div className="flex-1 md:pt-0 min-w-0">
-            <p className="text-sm font-medium text-gray-600">Last Audit</p>
+            <p className="text-sm font-medium text-gray-600">Last Reconcile</p>
             <p className="mt-1 text-lg text-gray-900 truncate">
-              {balance.lastAudit && balance.lastAudit !== 'Never' ? new Intl.DateTimeFormat('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                hour: 'numeric',
-                minute: 'numeric',
-                hour12: true
-              }).format(new Date(balance.lastAudit)) : 'Never'}
+              {balance.lastAudit && balance.lastAudit !== 'Never' ? safeFormatDate(balance.lastAudit) : 'Never'}
             </p>
           </div>
 
@@ -141,8 +136,8 @@ export default function VaultBalanceCard({
           <div className="flex-1 md:pt-0 min-w-0">
             <p className="text-sm font-medium text-orangeHighlight">Cash on Premises</p>
             <p className={cn(
-                "mt-1 font-bold text-gray-900 leading-none transition-all duration-300 truncate",
-                getDynamicFontSize(premisesStr, "text-2xl", "text-xl", "text-lg")
+                "mt-1 font-bold text-gray-900 leading-tight transition-all duration-300 break-words",
+                getDynamicFontSize(premisesStr, "text-2xl", "text-xl", "text-lg", "text-base")
             )}>
               {premisesStr}
             </p>

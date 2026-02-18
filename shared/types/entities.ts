@@ -138,6 +138,7 @@ export type GamingMachine = {
   game: string;
   installedGame?: string; // Alias for game for UI convenience
   gameType: string;
+  otherGameType?: string;
   isCronosMachine: boolean;
   gameNumber?: string;
 
@@ -576,6 +577,7 @@ export type NewCabinetFormData = {
   gamingLocation: string;
   relayId: string;
   manufacturer: string;
+  otherGameType?: string;
   collectionSettings: {
     multiplier: string;
     lastCollectionTime: string;

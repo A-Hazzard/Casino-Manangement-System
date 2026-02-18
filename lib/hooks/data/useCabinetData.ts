@@ -101,7 +101,7 @@ export const useCabinetData = ({
       // First response was received, now that state has updated, set initialLoading to false
       setInitialLoading(false);
     }
-  }, [allCabinets.length, initialLoading]);
+  }, [allCabinets.length, initialLoading, loading]);
 
   // Removed filteredCabinets state - now using memoized value for better performance
   const [locations, setLocations] = useState<{ _id: string; name: string }[]>(

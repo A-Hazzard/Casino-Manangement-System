@@ -16,6 +16,7 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
+import { DatePicker } from '@/components/shared/ui/date-picker';
 import DenominationInputGrid from '@/components/shared/ui/DenominationInputGrid';
 import {
     Dialog,
@@ -25,7 +26,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/shared/ui/dialog';
-import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -35,7 +35,6 @@ import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination, ExpenseCategory } from '@/shared/types/vault';
 import {
     Briefcase,
-    Calendar as CalendarIcon,
     FileText,
     Lightbulb,
     Receipt,
@@ -55,8 +54,9 @@ type VaultRecordExpenseModalProps = {
     category: ExpenseCategory;
     amount: number;
     denominations: Denomination[];
-    description: string;
+    description?: string;
     date: Date;
+    file?: File;
   }) => Promise<void>;
 };
 
@@ -77,6 +77,7 @@ export default function VaultRecordExpenseModal({
   
   // Denomination State
   const [denominations, setDenominations] = useState<Denomination[]>([]);
+  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
 
   const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
 
@@ -87,6 +88,7 @@ export default function VaultRecordExpenseModal({
         denomination: denom as Denomination['denomination'], 
         quantity: 0 
       })));
+      setTouchedDenominations(new Set());
     }
   }, [denomsList, open]);
 
@@ -111,8 +113,9 @@ export default function VaultRecordExpenseModal({
   /**
    * Check if form is valid for submission
    */
+  const isAllTouched = useMemo(() => denomsList.every(d => touchedDenominations.has(Number(d))), [denomsList, touchedDenominations]);
   const isValid =
-    category !== '' && amountNum > 0 && description.trim().length > 0;
+    category !== '' && (amountNum > 0 || isAllTouched);
 
   // ============================================================================
   // Event Handlers
@@ -133,9 +136,7 @@ export default function VaultRecordExpenseModal({
     if (amountNum <= 0) {
       newErrors.amount = 'Amount must be greater than 0';
     }
-    if (description.trim().length === 0) {
-      newErrors.description = 'Description is required';
-    }
+    // Description is now optional as per user request
     // Date validation - not in future
     const today = new Date();
     today.setHours(23, 59, 59, 999);
@@ -167,7 +168,7 @@ export default function VaultRecordExpenseModal({
       await onConfirm({
         category: category as ExpenseCategory,
         amount: amountNum,
-        denominations, // Pass all denominations (including 0s, backend can filter if needed or we filter here)
+        denominations,
         description: description.trim(),
         date,
       });
@@ -189,6 +190,7 @@ export default function VaultRecordExpenseModal({
       denomination: denom as Denomination['denomination'],
       quantity: 0,
     })));
+    setTouchedDenominations(new Set());
     setDescription('');
     setDate(new Date());
     setErrors({});
@@ -273,37 +275,32 @@ export default function VaultRecordExpenseModal({
                       denominations={denominations}
                       onChange={setDenominations}
                       stock={vaultDenominations}
+                      touchedDenominations={touchedDenominations}
+                      onTouchedChange={setTouchedDenominations}
                     />
                   </div>
                   
-                  <div className="relative group">
-                    <Input
-                      id="date"
-                      type="date"
-                      value={date.toISOString().split('T')[0]}
-                      onChange={e => setDate(new Date(e.target.value))}
-                      max={new Date().toISOString().split('T')[0]}
-                      className="h-10 pl-10 bg-white border-gray-200 rounded-xl focus:border-violet-500/50 transition-all font-bold text-sm"
+                    <DatePicker 
+                      date={date}
+                      setDate={(d: Date | undefined) => setDate(d || new Date())}
                     />
-                    <CalendarIcon className="absolute left-3.5 top-2.5 h-4 w-4 text-gray-400 group-focus-within:text-violet-500 transition-colors" />
+                  </div>
+                </div>
+
+                {/* Summary Card */}
+                <div className="rounded-2xl p-5 bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100 shadow-sm text-violet-900">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">Payout Value</span>
+                    <Receipt className="h-4 w-4 text-violet-500" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-3xl font-black tracking-tight text-violet-700">{formatAmount(amountNum)}</span>
+                    <p className="text-[10px] text-violet-600/60 font-bold uppercase tracking-tight">Total Expense Amount</p>
                   </div>
                 </div>
               </div>
 
-              {/* Summary Card */}
-              <div className="rounded-2xl p-5 bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100 shadow-sm text-violet-900">
-                <div className="flex items-center justify-between mb-2">
-                   <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">Payout Value</span>
-                   <Receipt className="h-4 w-4 text-violet-500" />
-                </div>
-                <div className="space-y-0.5">
-                   <span className="text-3xl font-black tracking-tight text-violet-700">{formatAmount(amountNum)}</span>
-                   <p className="text-[10px] text-violet-600/60 font-bold uppercase tracking-tight">Total Expense Amount</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right side - Description and Upload */}
+            {/* Right side - Description */}
             <div className="md:col-span-7 space-y-6">
               <div className="space-y-3">
                 <Label htmlFor="description" className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-1">
@@ -312,15 +309,13 @@ export default function VaultRecordExpenseModal({
                 </Label>
                 <Textarea
                   id="description"
-                  placeholder="What was this expense for? (e.g. Printer maintenance, office cleaning...)"
+                  placeholder="What was this expense for? (Optional)"
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   rows={4}
                   className="resize-none bg-gray-50/50 border-gray-100 rounded-2xl focus:bg-white transition-all text-sm border-2 focus:border-violet-500/30"
                 />
               </div>
-
-
             </div>
           </div>
         </div>

@@ -27,8 +27,9 @@
 'use client';
 
 import Header from '@/components/shared/layout/Header';
+import { FloatingActionButtons } from '@/components/shared/ui/FloatingActionButtons';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Toaster } from 'sonner';
 
 type PageLayoutProps = {
@@ -49,6 +50,8 @@ type PageLayoutProps = {
   showToaster?: boolean;
   toasterPosition?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
   toasterRichColors?: boolean;
+  onRefresh?: () => void | Promise<void>;
+  refreshing?: boolean;
 };
 
 export default function PageLayout({
@@ -63,11 +66,25 @@ export default function PageLayout({
   showToaster = true,
   toasterPosition = 'top-right',
   toasterRichColors = false,
+  onRefresh,
+  refreshing = false,
 }: PageLayoutProps) {
   // ============================================================================
-  // Hooks & State
-  // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
+
+  // Handle scroll events for the floating refresh button
+  useEffect(() => {
+    if (!onRefresh) return undefined;
+
+    const handleScroll = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      setShowFloatingRefresh(scrollTop > 200);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [onRefresh]);
 
   // ============================================================================
   // Computed Values
@@ -113,6 +130,11 @@ export default function PageLayout({
       {showToaster && (
         <Toaster position={toasterPosition} richColors={toasterRichColors} />
       )}
+      <FloatingActionButtons
+        showRefresh={showFloatingRefresh}
+        refreshing={refreshing}
+        onRefresh={onRefresh || (() => {})}
+      />
     </>
   );
 }

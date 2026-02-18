@@ -20,8 +20,8 @@ import type { CollectionReportData, MachineMetric } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { validateCollectionReportData } from '@/lib/utils/validation';
 import type {
-  CollectionIssue,
-  CollectionIssueDetails,
+    CollectionIssue,
+    CollectionIssueDetails,
 } from '@/shared/types/entities';
 import axios from 'axios';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -314,6 +314,25 @@ export function useCollectionReportDetailsData() {
     setShowCollectionIssueModal(true);
   };
 
+  const handleRefresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchCollectionReportById(reportId);
+      if (data) {
+        setReportData(data);
+        await checkForSasTimeIssues(reportId);
+      }
+      const collectionsData =
+        await fetchCollectionsByLocationReportId(reportId);
+      setCollections(collectionsData);
+    } catch (error) {
+      console.error('Error refreshing report data:', error);
+      toast.error('Failed to refresh report data');
+    } finally {
+      setLoading(false);
+    }
+  }, [reportId, checkForSasTimeIssues]);
+
   const handleFixReportConfirm = async () => {
     setShowFixReportConfirmation(false);
     setIsFixingReport(true);
@@ -486,6 +505,7 @@ export function useCollectionReportDetailsData() {
     // Handlers
     handleSort,
     handleTabChange,
+    handleRefresh,
     handleIssueClick,
     handleFixReportConfirm,
     handleFixReportClick: () => setShowFixReportConfirmation(true),

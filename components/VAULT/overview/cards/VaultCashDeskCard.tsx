@@ -11,6 +11,7 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
+import { safeFormatDate } from '@/lib/utils/date/formatting';
 import type { CashDesk } from '@/shared/types/vault';
 import { AlertCircle, User } from 'lucide-react';
 
@@ -70,7 +71,7 @@ export default function VaultCashDeskCard({ cashDesk, onViewDenominations: _onVi
         {cashDesk.lastAudit && (
            <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
              <AlertCircle className="h-3 w-3" />
-             <span>Last Audit: {new Date(cashDesk.lastAudit).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+             <span>Last Audit: {safeFormatDate(cashDesk.lastAudit, { hour: '2-digit', minute: '2-digit' })}</span>
            </div>
         )}
       </CardContent>

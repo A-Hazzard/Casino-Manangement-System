@@ -7,15 +7,17 @@
  */
 'use client';
 
-import AdministrationActivityLogsTable from '@/components/CMS/administration/tables/AdministrationActivityLogsTable';
-import AdministrationNavigation from '@/components/CMS/administration/AdministrationNavigation';
 import AdministrationFeedbackManagement from '@/components/CMS/administration/AdministrationFeedbackManagement';
+import AdministrationNavigation from '@/components/CMS/administration/AdministrationNavigation';
+import AdministrationCountriesSection from '@/components/CMS/administration/sections/AdministrationCountriesSection';
 import AdministrationLicenseesSection from '@/components/CMS/administration/sections/AdministrationLicenseesSection';
 import AdministrationUsersSection from '@/components/CMS/administration/sections/AdministrationUsersSection';
+import AdministrationActivityLogsTable from '@/components/CMS/administration/tables/AdministrationActivityLogsTable';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { AccessRestricted } from '@/components/shared/ui/AccessRestricted';
 import { Button } from '@/components/shared/ui/button';
 import { ADMINISTRATION_TABS_CONFIG, IMAGES } from '@/lib/constants';
+import { useAdministrationCountries } from '@/lib/hooks/administration/useAdministrationCountries';
 import { useAdministrationLicensees } from '@/lib/hooks/administration/useAdministrationLicensees';
 import { useAdministrationUsers } from '@/lib/hooks/administration/useAdministrationUsers';
 import { useAdministrationNavigation } from '@/lib/hooks/navigation';
@@ -53,6 +55,9 @@ export default function AdministrationPageContent() {
     loadedSections,
     setLoadedSections,
   });
+
+  // Countries state management hook
+  const countriesHook = useAdministrationCountries();
 
   // ============================================================================
   // Effects
@@ -94,7 +99,30 @@ export default function AdministrationPageContent() {
       return <AdministrationFeedbackManagement />;
     }
 
-    // 3. Licensees Section
+    // 3. Countries Section
+    if (activeSection === 'countries') {
+      if (!hasTabAccess(userRoles, 'administration', 'countries')) {
+        return <AccessRestricted sectionName="Countries" />;
+      }
+      return (
+        <AdministrationCountriesSection
+          isAddModalOpen={countriesHook.isAddModalOpen}
+          isEditModalOpen={countriesHook.isEditModalOpen}
+          setIsEditModalOpen={countriesHook.openEditModal}
+          isDeleteModalOpen={countriesHook.isDeleteModalOpen}
+          setIsDeleteModalOpen={countriesHook.openDeleteModal}
+          closeAddModal={countriesHook.closeAddModal}
+          closeEditModal={countriesHook.closeEditModal}
+          closeDeleteModal={countriesHook.closeDeleteModal}
+          selectedCountry={countriesHook.selectedCountry}
+          countries={countriesHook.countries}
+          isLoading={countriesHook.isLoading}
+          onRefresh={countriesHook.refreshCountries}
+        />
+      );
+    }
+
+    // 4. Licensees Section
     if (activeSection === 'licensees') {
       if (!hasTabAccess(userRoles, 'administration', 'licensees')) {
         return <AccessRestricted sectionName="Licensees" />;
@@ -113,6 +141,7 @@ export default function AdministrationPageContent() {
           countries={licenseesHook.countries}
           isCountriesLoading={licenseesHook.isCountriesLoading}
           selectedLicensee={licenseesHook.selectedLicensee}
+          allLicensees={licenseesHook.allLicensees}
           licenseeForm={licenseesHook.licenseeForm}
           selectedLicenseeForPayment={licenseesHook.selectedLicenseeForPayment}
           selectedLicenseeForPaymentChange={
@@ -159,7 +188,7 @@ export default function AdministrationPageContent() {
       );
     }
 
-    // 4. Users Section (Default)
+    // 5. Users Section (Default)
     if (!hasTabAccess(userRoles, 'administration', 'users')) {
       return <AccessRestricted sectionName="Users" />;
     }
@@ -206,7 +235,7 @@ export default function AdministrationPageContent() {
         refreshUsers={usersHook.refreshUsers}
       />
     );
-  }, [activeSection, user, usersHook, licenseesHook, selectedLicencee]);
+  }, [activeSection, user, usersHook, licenseesHook, selectedLicencee, countriesHook]);
 
   // ============================================================================
   // Event Handlers
@@ -223,11 +252,15 @@ export default function AdministrationPageContent() {
         await licenseesHook.refreshLicensees();
       } else if (activeSection === 'feedback') {
         window.dispatchEvent(new CustomEvent('refreshFeedback'));
+      } else if (activeSection === 'countries') {
+        await countriesHook.refreshCountries();
+      } else if (activeSection === 'activity-logs') {
+        window.dispatchEvent(new CustomEvent('refreshActivityLogs'));
       }
     } finally {
       setRefreshing(false);
     }
-  }, [activeSection, usersHook, licenseesHook]);
+  }, [activeSection, usersHook, licenseesHook, countriesHook]);
 
   // Prevent hydration mismatch
   if (!mounted) return null;
@@ -240,6 +273,8 @@ export default function AdministrationPageContent() {
       mainClassName="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full"
       showToaster={false}
       hideCurrencyFilter
+      onRefresh={handleRefresh}
+      refreshing={refreshing}
     >
       {/* Page Header & Desktop Actions */}
       <div className="mt-4 flex w-full max-w-full items-center justify-between md:mt-6">
@@ -299,6 +334,14 @@ export default function AdministrationPageContent() {
               <PlusCircle className="h-4 w-4" />
               Add Licensee
             </Button>
+          ) : activeSection === 'countries' ? (
+            <Button
+              onClick={countriesHook.openAddModal}
+              className="flex items-center gap-2 rounded-md bg-button px-6 py-2 text-lg font-semibold text-white"
+            >
+              <PlusCircle className="h-4 w-4" />
+              Add Country
+            </Button>
           ) : null}
         </div>
 
@@ -323,6 +366,15 @@ export default function AdministrationPageContent() {
               }
               className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Add Licensee"
+            >
+              <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
+            </button>
+          ) : activeSection === 'countries' ? (
+            <button
+              onClick={countriesHook.openAddModal}
+              disabled={refreshing}
+              className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Add Country"
             >
               <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
             </button>

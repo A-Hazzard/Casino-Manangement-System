@@ -1,8 +1,8 @@
 import type {
-  Address,
-  AggregatedLocation,
-  GeoCoordinates,
-  RelationshipInfo,
+    Address,
+    AggregatedLocation,
+    GeoCoordinates,
+    RelationshipInfo,
 } from '@/shared/types';
 
 export type { AggregatedLocation };
@@ -17,6 +17,8 @@ export type UpdateLocationData = {
   geoCoords?: Partial<GeoCoordinates>;
   isLocalServer?: boolean;
   billValidatorOptions?: Record<string, unknown>;
+  membershipEnabled?: boolean;
+  locationMembershipSettings?: Record<string, unknown>;
   updatedAt?: Date;
   [key: string]: unknown;
 };
@@ -69,6 +71,8 @@ export type LocationResponse = {
   onlineMachines?: number;
   isLocalServer?: boolean;
   hasSmib?: boolean;
+  membershipEnabled?: boolean;
+  locationMembershipSettings?: Record<string, unknown>;
 };
 
 import { DateRangeFilter } from '../common/mongo';

@@ -15,24 +15,24 @@
 
 'use client';
 
+import CollectionReportMobileCollectedListPanel from '@/components/CMS/collectionReport/mobile/CollectionReportMobileCollectedListPanel';
+import CollectionReportMobileEditLocationSelector from '@/components/CMS/collectionReport/mobile/CollectionReportMobileEditLocationSelector';
+import CollectionReportMobileEditMachineList from '@/components/CMS/collectionReport/mobile/CollectionReportMobileEditMachineList';
+import CollectionReportMobileFormPanel from '@/components/CMS/collectionReport/mobile/CollectionReportMobileFormPanel';
 import {
-  Dialog,
-  DialogContent,
-  DialogPortal,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogPortal,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { MobileCollectionModalSkeleton } from '@/components/shared/ui/skeletons/MobileCollectionModalSkeleton';
 import { useMobileEditCollectionModal } from '@/lib/hooks/collectionReport/useMobileEditCollectionModal';
 import type {
-  CollectionReportLocationWithMachines,
-  CollectionReportMachineSummary,
+    CollectionReportLocationWithMachines,
+    CollectionReportMachineSummary,
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { toast } from 'sonner';
-import CollectionReportMobileEditLocationSelector from '@/components/CMS/collectionReport/mobile/CollectionReportMobileEditLocationSelector';
-import CollectionReportMobileEditMachineList from '@/components/CMS/collectionReport/mobile/CollectionReportMobileEditMachineList';
-import CollectionReportMobileFormPanel from '@/components/CMS/collectionReport/mobile/CollectionReportMobileFormPanel';
-import CollectionReportMobileCollectedListPanel from '@/components/CMS/collectionReport/mobile/CollectionReportMobileCollectedListPanel';
 
 type CollectionReportMobileEditCollectionModalProps = {
   show: boolean;
@@ -49,6 +49,8 @@ export default function CollectionReportMobileEditCollectionModal({
   locations = [],
   onRefresh,
 }: CollectionReportMobileEditCollectionModalProps) {
+
+
   // ============================================================================
   // Hooks & State
   // ============================================================================

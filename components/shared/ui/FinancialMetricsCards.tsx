@@ -25,9 +25,9 @@ import { getCountryCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import {
-  getGrossColorClass,
-  getMoneyInColorClass,
-  getMoneyOutColorClass,
+    getGrossColorClass,
+    getMoneyInColorClass,
+    getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { useEffect, useState } from 'react';
@@ -144,9 +144,10 @@ export default function FinancialMetricsCards({
 
   const currencyCode = resolvedCurrencyCode || displayCurrency || 'USD';
 
-  // Show skeleton when loading OR when totals is null/undefined (initial state)
-  // This ensures skeleton shows on initial page load before data is fetched
-  if (loading || !totals) {
+  // Show skeleton ONLY when actively loading.
+  // If loading is false but totals is null, it means fetching finished with no data,
+  // in which case we show 0 values instead of getting stuck on a skeleton.
+  if (loading) {
     return <DashboardFinancialMetricsSkeleton />;
   }
 

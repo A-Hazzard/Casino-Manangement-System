@@ -13,19 +13,17 @@
 import DashboardDesktopLayout from '@/components/CMS/dashboard/DashboardDesktopLayout';
 import DashboardMobileLayout from '@/components/CMS/dashboard/DashboardMobileLayout';
 import PageLayout from '@/components/shared/layout/PageLayout';
-import { FloatingActionButtons } from '@/components/shared/ui/FloatingActionButtons';
 import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
 import { PieChartLabelRenderer } from '@/components/shared/ui/PieChartLabelRenderer';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import {
-  fetchMetricsData,
-  fetchTopPerformingDataHelper,
-  loadGamingLocations,
+    fetchMetricsData,
+    fetchTopPerformingDataHelper,
+    loadGamingLocations,
 } from '@/lib/helpers/dashboard';
 import {
-  useDashboardFilters,
-  useDashboardRefresh,
-  useDashboardScroll,
+    useDashboardFilters,
+    useDashboardRefresh,
 } from '@/lib/hooks/data';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
@@ -108,7 +106,7 @@ export default function DashboardPageContent() {
       ) as ChartGranularity
   );
 
-  const { showFloatingRefresh } = useDashboardScroll();
+
 
   const { refreshing, handleRefresh } = useDashboardRefresh({
     selectedLicencee,
@@ -406,6 +404,8 @@ export default function DashboardPageContent() {
       hideLicenceeFilter={false}
       mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
       showToaster={true}
+      onRefresh={handleRefresh}
+      refreshing={refreshing}
     >
       {/* Mobile Layout */}
       <div className="block md:hidden">
@@ -487,12 +487,6 @@ export default function DashboardPageContent() {
           setSortBy={setSortBy}
         />
       </div>
-
-      <FloatingActionButtons
-        showRefresh={showFloatingRefresh}
-        refreshing={refreshing}
-        onRefresh={handleRefresh}
-      />
     </PageLayout>
   );
 }

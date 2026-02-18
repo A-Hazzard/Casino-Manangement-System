@@ -146,6 +146,8 @@ export default function CabinetsPageContent() {
         headerProps={{ setSelectedLicencee }}
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
         showToaster={false}
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
       >
         {/* Page Header: Title, refresh button, and action buttons */}
         <div className="mb-6 mt-4 flex items-center justify-between">

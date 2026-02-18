@@ -15,6 +15,7 @@ import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { useCollectionNavigation } from '@/lib/hooks/navigation';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionView } from '@/lib/types/collection';
 import type { CollectionReportRow } from '@/lib/types/components';
@@ -27,8 +28,9 @@ import { useCollectionReportFilters } from './useCollectionReportFilters';
 
 export function useCollectionReportPageData() {
   const searchParams = useSearchParams();
-  const { selectedLicencee, activeMetricsFilter, customDateRange } =
-    useDashBoardStore();
+   const { selectedLicencee, activeMetricsFilter, customDateRange } =
+     useDashBoardStore();
+   const { user } = useUserStore();
 
   // ============================================================================
   // Tab & View State
@@ -310,6 +312,57 @@ export function useCollectionReportPageData() {
     return Math.ceil(filteredReports.length / itemsPerPage) || 1;
   }, [filteredReports.length, itemsPerPage]);
 
+  // Calculate which reports are editable based on user role and recency
+  const editableReportIds = useMemo(() => {
+    if (!user || !user.roles) return new Set<string>();
+    
+    const userRoles = (user.roles || []) as string[];
+    const isDeveloper = userRoles.includes('developer');
+    const isAdmin = userRoles.includes('admin');
+    const isManager = userRoles.includes('manager');
+
+    // Developers can edit everything
+    if (isDeveloper) {
+      return new Set(allReports.map(r => r.locationReportId));
+    }
+
+    // Admins and Managers can only edit the two most recent reports per location
+    if (isAdmin || isManager) {
+      const reportsByLocation: Record<string, CollectionReportRow[]> = {};
+      
+      // Group reports by location
+      allReports.forEach(report => {
+        const loc = report.location || 'unknown';
+        if (!reportsByLocation[loc]) {
+          reportsByLocation[loc] = [];
+        }
+        reportsByLocation[loc].push(report);
+      });
+
+      const editableIds = new Set<string>();
+
+      // For each location, sort by time and take the top 2
+      Object.keys(reportsByLocation).forEach(loc => {
+        const sorted = [...reportsByLocation[loc]].sort((a, b) => {
+          const aTime = new Date(a.time || 0).getTime();
+          const bTime = new Date(b.time || 0).getTime();
+          return bTime - aTime;
+        });
+
+        sorted.slice(0, 2).forEach(report => {
+          if (report.locationReportId) {
+            editableIds.add(report.locationReportId);
+          }
+        });
+      });
+
+      return editableIds;
+    }
+
+    // Other roles can't edit anything (handled by canEditDelete in table component as well)
+    return new Set<string>();
+  }, [allReports, user]);
+
   return {
     activeTab,
     loading: loading || initialLoading, // Combine both loading states
@@ -330,6 +383,7 @@ export function useCollectionReportPageData() {
     showEditDesktop,
     editingReportId,
     showDeleteConfirmation,
+    editableReportIds, // Export the calculated set
     handleTabChange,
     handleRefresh: useCallback(async () => {
       await refreshReports();

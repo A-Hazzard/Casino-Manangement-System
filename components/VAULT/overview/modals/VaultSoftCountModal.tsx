@@ -232,7 +232,6 @@ export default function VaultSoftCountModal({
             });
             setIsCompleted(true);
             toast.success('Soft count finalized successfully');
-            onConfirm();
         } else {
             toast.error(data.error || 'Failed to finalize session');
         }
@@ -243,10 +242,17 @@ export default function VaultSoftCountModal({
     }
   };
 
+  const handleSuccessClose = () => {
+      onConfirm();
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={(val) => !val && !isCompleted && onClose()}>
-        <DialogContent className="max-w-[98vw] w-full h-[95vh] p-0 overflow-hidden flex flex-col bg-white border-none shadow-2xl rounded-3xl">
+        <DialogContent 
+          className="max-w-[98vw] w-full h-[95vh] p-0 overflow-hidden flex flex-col bg-white border-none shadow-2xl rounded-3xl !z-[200]"
+          backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
+        >
             
             {/* SUCCESS VIEW */}
             {isCompleted ? (
@@ -276,7 +282,7 @@ export default function VaultSoftCountModal({
 
                         <Button 
                             size="lg" 
-                            onClick={onClose}
+                            onClick={handleSuccessClose}
                             className="w-full h-12 text-base font-bold bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200"
                         >
                             Done

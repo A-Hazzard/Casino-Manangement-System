@@ -170,7 +170,12 @@ GamingLocation {
     latitude: number;
     longitude: number;
   };
-  membershipEnabled: boolean;
+  membershipEnabled: boolean;     // Feature toggle
+  locationMembershipSettings: {   // Membership configuration
+    minimumPoints: number;
+    billingMethod: string;
+    // ...
+  };
   isLocalServer: boolean;
   deletedAt?: Date;               // Soft delete flag
 }

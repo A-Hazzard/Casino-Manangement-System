@@ -5,29 +5,83 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useCashierActivity } from '@/lib/hooks/vault/useCashierActivity';
 import {
-    ArrowDownLeft,
-    ArrowUpRight,
-    CheckCircle2,
-    Clock,
-    History,
-    Loader2,
-    XCircle
+  ArrowDownLeft,
+  ArrowUpRight,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  History,
+  Loader2,
+  MessageSquare,
+  Tickets,
+  XCircle
 } from 'lucide-react';
 
-import { useCallback, useEffect } from 'react';
+import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function CashierActivitySection() {
+  const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
   const { activities, loading, refreshing, refresh } = useCashierActivity();
   const { formatAmount } = useCurrencyFormat();
+  const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Poll for updates every 20 seconds
+  const slides = [
+    {
+      title: "Welcome to Your Cash Desk!",
+      description: "You haven't had any shift or float activity yet. Once you start your first shift, your activity logs will appear here.",
+      icon: <History className="h-8 w-8 text-button" />,
+      color: "from-indigo-50"
+    },
+    {
+      title: "Process Payouts & Tickets",
+      description: "Quickly handle player ticket redemptions and hand pay requests. Use the actions menu to manage payouts efficiently.",
+      icon: <Tickets className="h-8 w-8 text-emerald-500" />,
+      color: "from-emerald-50"
+    },
+    {
+      title: "Vault Communications",
+      description: "Stay updated on float request approvals and important vault messages. All your interactions are tracked in real-time.",
+      icon: <MessageSquare className="h-8 w-8 text-orange-500" />,
+      color: "from-orange-50"
+    }
+  ];
+
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
+  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+
+  // Initial and conditional refresh
   useEffect(() => {
+    if (filterDate) {
+      const start = new Date(filterDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(filterDate);
+      end.setHours(23, 59, 59, 999);
+      refresh(false, start.toISOString(), end.toISOString());
+    } else {
+        refresh(false);
+    }
+  }, [filterDate, refresh]);
+
+  // Poll for updates every 20 seconds only if at least 2 items
+  useEffect(() => {
+    if (activities.length < 2) return;
+
     const interval = setInterval(() => {
-      refresh(true);
+      if (filterDate) {
+          const start = new Date(filterDate);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(filterDate);
+          end.setHours(23, 59, 59, 999);
+          refresh(true, start.toISOString(), end.toISOString());
+      } else {
+          refresh(true);
+      }
     }, 20000);
     return () => clearInterval(interval);
-  }, [refresh]);
+  }, [refresh, activities.length, filterDate]);
 
   const handleCancel = useCallback(async (requestId: string) => {
     try {
@@ -49,7 +103,8 @@ export default function CashierActivitySection() {
     }
   }, [refresh]);
 
-  if ((loading || refreshing) && activities.length === 0) {
+  if (loading && activities.length === 0) {
+    // ... skeleton code ...
     return (
       <Card>
         <CardHeader>
@@ -73,6 +128,56 @@ export default function CashierActivitySection() {
         </CardContent>
       </Card>
     );
+  }
+
+
+
+  // If NO activities at all (and no date filter), show the welcome slider
+  if (activities.length === 0 && !filterDate && !loading) {
+      const slide = slides[currentSlide];
+      return (
+          <div className="pt-4 mt-4 border-t border-gray-100">
+            <Card className={`relative rounded-xl border-none shadow-premium bg-gradient-to-br ${slide.color} items-center justify-center border-t-4 border-t-button text-center p-8 transition-all duration-500`}>
+                {/* Navigation Arrows */}
+                <button 
+                  onClick={prevSlide}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/50 hover:bg-white shadow-sm text-gray-400 hover:text-button transition-all z-10"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button 
+                  onClick={nextSlide}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/50 hover:bg-white shadow-sm text-gray-400 hover:text-button transition-all z-10"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+
+                <div className="animate-in fade-in zoom-in-95 duration-500">
+                    <div className="mx-auto w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg mb-4">
+                        {slide.icon}
+                    </div>
+                    <h3 className="text-xl font-black text-gray-900 mb-2">{slide.title}</h3>
+                    <p className="text-sm text-gray-600 max-w-sm mx-auto min-h-[40px]">
+                        {slide.description}
+                    </p>
+                </div>
+
+                <div className="mt-8 flex justify-center gap-3">
+                    {slides.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentSlide(idx)}
+                        className={`transition-all duration-300 rounded-full ${
+                          currentSlide === idx 
+                          ? 'h-2 w-6 bg-button' 
+                          : 'h-2 w-2 bg-button/20 hover:bg-button/40'
+                        }`}
+                      />
+                    ))}
+                </div>
+            </Card>
+          </div>
+      );
   }
 
   const getStatusBadge = (status: string) => {
@@ -105,22 +210,41 @@ export default function CashierActivitySection() {
   };
 
   return (
-    <Card className="rounded-lg bg-container shadow-md border-t-4 border-orangeHighlight animate-in fade-in duration-500">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+    <div className="pt-4 mt-4 border-t border-gray-100">
+      <Card className="rounded-lg bg-container shadow-md border-t-4 border-orangeHighlight animate-in fade-in duration-500">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0 pb-4">
         <CardTitle className="text-base font-bold flex items-center gap-2 text-gray-900">
           <div className="flex h-8 w-8 items-center justify-center rounded border border-gray-300">
               <History className="h-4 w-4 text-orangeHighlight" />
           </div>
           Shift & Float History
         </CardTitle>
-        <button 
-          onClick={() => refresh(true)}
-          disabled={refreshing}
-          className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
-        >
-          {refreshing && <Loader2 className="h-3 w-3 animate-spin" />}
-          Refresh History
-        </button>
+        
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+            <ModernCalendar 
+                mode="single"
+                date={filterDate ? { from: filterDate } : undefined}
+                onSelect={(range) => setFilterDate(range?.from)}
+                className="w-full sm:w-48"
+            />
+            {filterDate && (
+                <button 
+                    onClick={() => setFilterDate(undefined)}
+                    className="text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase tracking-tighter"
+                >
+                    Clear
+                </button>
+            )}
+            <div className="h-4 w-[1px] bg-gray-200 hidden sm:block mx-1"></div>
+            <button 
+              onClick={() => refresh(true)}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 whitespace-nowrap"
+            >
+              {refreshing && <Loader2 className="h-3 w-3 animate-spin" />}
+              Refresh
+            </button>
+        </div>
       </CardHeader>
       <CardContent>
       <div className="space-y-1">
@@ -189,5 +313,6 @@ export default function CashierActivitySection() {
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }

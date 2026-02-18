@@ -12,19 +12,19 @@
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Checkbox } from '@/components/shared/ui/checkbox';
-import DenominationInputGrid from '@/components/shared/ui/DenominationInputGrid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/shared/ui/dialog';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger
 } from '@/components/shared/ui/dropdown-menu';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
-import { AlertTriangle, Bell, Check, Clock, DollarSign, Edit2, Eye, Filter, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Bell, Check, Clock, DollarSign, Edit2, Eye, Filter, RefreshCw, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 export type NotificationType = 'shift_review' | 'float_request' | 'system_alert' | 'low_balance';
@@ -61,6 +61,8 @@ type NotificationBellProps = {
   onApprove?: (id: string, denominations?: Denomination[]) => Promise<void>;
   onDeny?: (id: string, reason?: string) => Promise<void>;
   onConfirm?: (id: string) => Promise<void>;
+  onRefreshInventory?: () => Promise<void>;
+  readOnly?: boolean;
 };
 
 export default function NotificationBell({
@@ -73,8 +75,11 @@ export default function NotificationBell({
   onApprove,
   onDeny,
   onConfirm,
+  onRefreshInventory,
+  readOnly = false,
 }: NotificationBellProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isRefreshingInventory, setIsRefreshingInventory] = useState(false);
   const [viewDetails, setViewDetails] = useState<NotificationItem | null>(null);
   const [showVaultOnMobile, setShowVaultOnMobile] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -150,16 +155,23 @@ export default function NotificationBell({
     }
   };
 
-  const formatTimeAgo = (timestamp: Date) => {
-    const now = new Date();
-    const diffInMinutes = Math.floor(
-      (now.getTime() - timestamp.getTime()) / (1000 * 60)
-    );
+  const formatTimeAgo = (timestampInput: Date | string) => {
+    try {
+      const timestamp = timestampInput instanceof Date ? timestampInput : new Date(timestampInput);
+      if (isNaN(timestamp.getTime())) return '-';
+      
+      const now = new Date();
+      const diffInMinutes = Math.floor(
+        (now.getTime() - timestamp.getTime()) / (1000 * 60)
+      );
 
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+      if (diffInMinutes < 1) return 'Just now';
+      if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+      if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+      return `${Math.floor(diffInMinutes / 1440)}d ago`;
+    } catch {
+      return '-';
+    }
   };
 
   // Calculated shortage based on current state (viewing vs editing)
@@ -468,7 +480,7 @@ export default function NotificationBell({
                 </div>
 
                 {/* Edit Toggle */}
-                {!isEditing && (viewDetails.status === 'unread' || viewDetails.status === 'read') && !viewDetails.metadata?.entityStatus?.includes('approved') && (
+                {!isEditing && !readOnly && (viewDetails.status === 'unread' || viewDetails.status === 'read') && !viewDetails.metadata?.entityStatus?.includes('approved') && (
                     <div className="flex justify-end -mt-2">
                         <Button 
                             variant="ghost" 
@@ -483,79 +495,134 @@ export default function NotificationBell({
                 )}
 
                 {/* Comparison Grid or Edit Grid */}
-                {isEditing ? (
-                    <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
-                        <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-sm font-bold text-orange-800 uppercase tracking-wide">Adjust Denominations</h4>
-                            <div className="text-xs text-orange-600">
-                                Match available vault stock
-                            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 relative">
+                     {/* Left Column: Vault Stock */}
+                      <div className={`${!showVaultOnMobile ? 'hidden sm:block' : 'block'} space-y-3`}>
+                        <div className="flex items-center justify-between pb-1 border-b">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Vault Stock</p>
+                            {onRefreshInventory && (
+                                <button 
+                                    onClick={async () => {
+                                        setIsRefreshingInventory(true);
+                                        await onRefreshInventory();
+                                        setIsRefreshingInventory(false);
+                                    }}
+                                    disabled={isRefreshingInventory}
+                                    className="text-gray-400 hover:text-blue-500 transition-colors"
+                                >
+                                    <RefreshCw className={cn("h-3 w-3", isRefreshingInventory && "animate-spin")} />
+                                </button>
+                            )}
+                          </div>
+                          <Badge variant="outline" className="text-[10px] font-normal">Available</Badge>
                         </div>
-                        <DenominationInputGrid
-                            denominations={editedDenominations}
-                            onChange={setEditedDenominations}
-                        />
-                        <div className="mt-4 p-3 bg-white rounded border border-orange-200 text-xs text-gray-600">
-                            <strong>Note:</strong> Adjusting the breakdown will change what the cashier receives. Ensure the Total Amount effectively matches their need if possible, or explain in notes.
+                        <div className="grid grid-cols-1 gap-2">
+                           {getDenominationValues(selectedLicencee).map(val => {
+                            const stock = vaultInventory.find(v => Number(v.denomination) === Number(val))?.quantity || 0;
+                            return (
+                              <div key={val} className="flex justify-between p-2 rounded bg-gray-50/50 border border-dashed border-gray-200">
+                                <span className="text-gray-500 font-medium">${val}</span>
+                                <span className={`font-bold ${stock === 0 ? 'text-gray-300' : 'text-gray-700'}`}>{stock}</span>
+                              </div>
+                            );
+                          })}
                         </div>
-                    </div>
-                ) : (
-                    // Existing Comparison Grid 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 relative">
-                         {/* Left Column: Vault Stock */}
-                         <div className={`${!showVaultOnMobile ? 'hidden sm:block' : 'block'} space-y-3`}>
-                            <div className="flex items-center justify-between pb-1 border-b">
-                              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Vault Stock</p>
-                              <Badge variant="outline" className="text-[10px] font-normal">Available</Badge>
-                            </div>
-                            <div className="grid grid-cols-1 gap-2">
-                               {getDenominationValues(selectedLicencee).map(val => {
-                                const stock = vaultInventory.find(v => v.denomination === val)?.quantity || 0;
-                                return (
-                                  <div key={val} className="flex justify-between p-2 rounded bg-gray-50/50 border border-dashed border-gray-200">
-                                    <span className="text-gray-500 font-medium">${val}</span>
-                                    <span className={`font-bold ${stock === 0 ? 'text-gray-300' : 'text-gray-700'}`}>{stock}</span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                         </div>
-                         
-                         {/* Right Column: Requested */}
-                         <div className="space-y-3">
-                            <div className="flex items-center justify-between pb-1 border-b">
-                              <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">Requested</p>
-                              <Badge variant="outline" className="text-[10px] font-normal">Required</Badge>
-                            </div>
-                            <div className="grid grid-cols-1 gap-2">
-                              {requested.map((d: any, i: number) => {
-                                const stock = vaultInventory.find(v => v.denomination === d.denomination)?.quantity || 0;
-                                const isShort = d.quantity > stock;
-                                return (
-                                  <div 
-                                    key={i} 
-                                    className={`flex justify-between p-2 rounded border transition-colors ${
-                                      isShort ? 'bg-red-50 border-red-200' : 'bg-blue-50/30 border-blue-100'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      {isShort && <AlertTriangle className="h-3 w-3 text-red-500" />}
-                                      <span className={`font-medium ${isShort ? 'text-red-700' : 'text-blue-700'}`}>${d.denomination}</span>
+                     </div>
+                     
+                     {/* Right Column: Requested (Editable) */}
+                     <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-1 border-b">
+                          <p className={cn("text-xs font-bold uppercase tracking-widest", isEditing ? "text-orange-500" : "text-blue-400")}>
+                              {isEditing ? "Adjust Amounts" : "Requested"}
+                          </p>
+                          <Badge variant="outline" className={cn("text-[10px] font-normal", isEditing && "bg-orange-50 text-orange-600 border-orange-200")}>
+                              {isEditing ? "Editing" : "Required"}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                          {isEditing ? (
+                              // Edit Mode: Show All Denominations as Inputs
+                              editedDenominations.map((denom, index) => {
+                                  // Find the stock for validation
+                                  const stockItem = vaultInventory.find(v => Number(v.denomination) === Number(denom.denomination));
+                                  const available = stockItem ? Number(stockItem.quantity) : 0;
+                                  const requested = Number(denom.quantity);
+                                  const isOver = requested > available;
+
+                                  return (
+                                    <div 
+                                      key={denom.denomination} 
+                                      className={cn(
+                                        "flex justify-between items-center p-1.5 rounded border transition-colors",
+                                        requested > 0 
+                                          ? (isOver ? "bg-red-50 border-red-200" : "bg-white border-orange-200 ring-1 ring-orange-100")
+                                          : "bg-gray-50/30 border-gray-100"
+                                      )}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className={cn("font-medium w-10 text-right", requested > 0 ? "text-orange-700" : "text-gray-400")}>
+                                            ${denom.denomination}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                          {isOver && (
+                                              <span className="text-[9px] font-bold text-red-500 uppercase">Short</span>
+                                          )}
+                                          <input
+                                              type="number"
+                                              min="0"
+                                              value={requested === 0 ? '' : requested}
+                                              onChange={e => {
+                                                  const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                                                  const newDenoms = [...editedDenominations];
+                                                  newDenoms[index] = { ...newDenoms[index], quantity: isNaN(val) ? 0 : val };
+                                                  setEditedDenominations(newDenoms);
+                                              }}
+                                              className={cn(
+                                                  "w-20 h-8 text-right font-bold bg-white rounded border focus:border-orange-500 transition-all outline-none text-sm px-2",
+                                                  isOver && "text-red-600 border-red-300 focus:border-red-500",
+                                                  !isOver && requested > 0 && "text-orange-600 border-orange-200"
+                                              )}
+                                              placeholder="0"
+                                          />
+                                      </div>
                                     </div>
-                                    <div className="text-right">
-                                      <span className="font-bold">x {d.quantity}</span>
-                                      {isShort && <p className="text-[10px] text-red-500 -mt-1 font-bold">Shortage: {d.quantity - stock}</p>}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                              {requested.length === 0 && (
-                                <p className="text-sm text-gray-500 py-4 text-center italic">No breakdown provided</p>
-                              )}
-                            </div>
-                         </div>
-                    </div>
-                )}
+                                  );
+                              })
+                          ) : (
+                              // View Mode: Show Only Requested Items
+                              <>
+                                  {requested.map((d: any, i: number) => {
+                                    const stock = vaultInventory.find(v => Number(v.denomination) === Number(d.denomination))?.quantity || 0;
+                                    const isShort = Number(d.quantity) > Number(stock);
+                                    return (
+                                      <div 
+                                        key={i} 
+                                        className={`flex justify-between p-2 rounded border transition-colors ${
+                                          isShort ? 'bg-red-50 border-red-200' : 'bg-blue-50/30 border-blue-100'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          {isShort && <AlertTriangle className="h-3 w-3 text-red-500" />}
+                                          <span className={`font-medium ${isShort ? 'text-red-700' : 'text-blue-700'}`}>${d.denomination}</span>
+                                        </div>
+                                        <div className="text-right">
+                                          <span className="font-bold">x {d.quantity}</span>
+                                          {isShort && <p className="text-[10px] text-red-500 -mt-1 font-bold">Shortage: {d.quantity - stock}</p>}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                  {requested.length === 0 && (
+                                    <p className="text-sm text-gray-500 py-4 text-center italic">No breakdown provided</p>
+                                  )}
+                              </>
+                          )}
+                        </div>
+                     </div>
+                </div>
+
 
                 {/* Shortage Alert */}
                 {hasShortage && (viewDetails.status === 'unread' || viewDetails.status === 'read') && (
@@ -583,7 +650,7 @@ export default function NotificationBell({
                 </div>
 
                 {/* Final Actions */}
-                {viewDetails.status === 'unread' || viewDetails.status === 'read' ? (
+                {(viewDetails.status === 'unread' || viewDetails.status === 'read') && !readOnly ? (
                   <div className="flex gap-3 pt-4 border-t">
                     {viewDetails.metadata?.entityStatus === 'approved_vm' ? (
                        viewDetails.metadata?.requestType === 'decrease' ? (

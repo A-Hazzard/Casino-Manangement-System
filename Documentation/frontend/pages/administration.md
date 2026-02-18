@@ -19,6 +19,10 @@
      - [Licensee Search Bar](#licensee-search-bar)
      - [Licensee Table/Cards](#licensee-tablecards)
      - [Licensee Modals](#licensee-modals)
+   - [Countries Section](#countries-section)
+     - [Country Search Bar](#country-search-bar)
+     - [Country Table/Cards](#country-tablecards)
+     - [Country Modals](#country-modals)
    - [Activity Logs Section](#activity-logs-section)
    - [Feedback Section](#feedback-section)
 4. [API Endpoints](#api-endpoints)
@@ -36,7 +40,9 @@ The Administration page provides comprehensive user and licensee management func
 - **Authentication:** Required (ProtectedRoute with `requiredPage="administration"`)
 - **Access Level:** Developer, Admin, Manager, Location Admin (role-based section access)
 - **Licensee Filtering:** Supported for Users section
+- **Licensee Filtering:** Supported for Users section
 - **Responsive:** Desktop (table) and Mobile (card) views
+- **Global Refresh:** Header refresh button updates the data for the currently active tab.
 
 ## Page Sections
 
@@ -112,6 +118,7 @@ The Administration page provides comprehensive user and licensee management func
 - **Search Input:** Text search across username, email, firstName, lastName
 - **Role Filter:** Dropdown to filter by role (All, Developer, Admin, Manager, Location Admin, Technician, Collector)
 - **Status Filter:** Dropdown to filter by status (All, Active, Disabled, Deleted)
+- **Visibility:** Only displayed when the total number of users exceeds 20.
 
 **State Management:**
 
@@ -295,6 +302,7 @@ The Administration page provides comprehensive user and licensee management func
 - Text search across licensee name
 - Client-side filtering of licensee list
 - Real-time search as user types
+- **Visibility:** Only displayed when the total number of licensees exceeds 20.
 
 **State Management:**
 
@@ -381,6 +389,92 @@ The Administration page provides comprehensive user and licensee management func
 - `handlePaymentHistory` - Opens payment history modal
 - `handleTogglePaymentStatus` - Opens payment status confirmation modal
 
+   - `handleTogglePaymentStatus` - Opens payment status confirmation modal
+   - `handleConfirmPaymentStatusChange` - Confirms payment status change
+
+---
+
+## Countries Section
+
+### Country Search Bar
+
+**Purpose:** Allows users to search for countries by name or alpha code.
+
+**Components:**
+
+- `components/CMS/administration/AdministrationCountrySearchBar.tsx` - Search input component
+
+**Functionality:**
+
+- Text search across country name, alpha-2, and alpha-3 codes
+- Client-side filtering of country list
+- Real-time search as user types
+
+**State Management:**
+
+- `searchValue` - Current search text
+- Managed by `useAdministrationCountries` hook
+
+---
+
+### Country Table/Cards
+
+**Purpose:** Displays the list of countries in table format (desktop) or card format (mobile).
+
+**Components:**
+
+- `components/CMS/administration/tables/AdministrationCountryTable.tsx` - Desktop table view
+- `components/CMS/administration/cards/AdministrationCountryCard.tsx` - Mobile card view
+- `components/CMS/administration/skeletons/AdministrationCountryTableSkeleton.tsx` - Loading skeleton
+- `components/CMS/administration/skeletons/AdministrationCountryCardSkeleton.tsx` - Loading skeleton
+
+**API Endpoint:**
+
+- `GET /api/countries` - Returns country list
+
+**Data Flow:**
+
+1. `fetchCountries` (inside `AdministrationCountriesSection`) fetches countries on mount
+2. Data filtered client-side by search value
+3. Countries displayed with name
+4. Alpha-2, Alpha-3, and ISO Numeric codes are used for search but not displayed in the simplified table view
+
+**Actions Available:**
+
+- Edit country
+- Delete country
+
+---
+
+### Country Modals
+
+**Purpose:** Provides modals for managing countries.
+
+**Components:**
+
+- `components/CMS/administration/modals/AdministrationAddCountryModal.tsx` - Create new country modal
+- `components/CMS/administration/modals/AdministrationEditCountryModal.tsx` - Edit existing country modal
+- `components/CMS/administration/modals/AdministrationDeleteCountryModal.tsx` - Delete confirmation modal
+
+**Add/Edit Country Modal Features:**
+
+- Name, Alpha-2, Alpha-3, ISO Numeric code fields
+- Form validation
+- GSAP animations for smooth user experience
+
+**API Endpoints:**
+
+- `POST /api/countries` - Create new country
+- `PUT /api/countries` - Update existing country
+- `DELETE /api/countries` - Delete country
+
+**Key Functions:**
+
+- `openAddModal` - Opens add modal
+- `openEditModal` - Opens edit modal
+- `openDeleteModal` - Opens delete modal
+- `fetchCountries` - Refreshes the list after save/delete
+
 ---
 
 ## Activity Logs Section
@@ -401,7 +495,12 @@ The Administration page provides comprehensive user and licensee management func
 - Pagination support
 - Detailed log entries with before/after values
 - IP address logging
+- Filterable by date range, user, action type, resource
+- Pagination support
+- Detailed log entries with before/after values
+- IP address logging
 - Timestamp information
+- **Search Bar:** Only displayed when the total number of logs exceeds 20.
 
 **Access Control:**
 
@@ -431,7 +530,10 @@ The Administration page provides comprehensive user and licensee management func
 - Search by email
 - Archive/unarchive functionality
 - Status management
+- Archive/unarchive functionality
+- Status management
 - Notes and review tracking
+- **Filters/Search:** Only displayed when the total number of feedback items exceeds 20.
 
 **Access Control:**
 
@@ -529,7 +631,22 @@ The Administration page provides comprehensive user and licensee management func
 
 1. **`GET /api/countries`**
    - Returns list of countries
-   - Used by: Licensee modals for country selection
+   - Used by: Administration Countries section and Licensee modals
+
+2. **`POST /api/countries`**
+   - Creates new country
+   - Body: Country creation payload
+   - Used by: `AdministrationAddCountryModal`
+
+3. **`PUT /api/countries`**
+   - Updates existing country
+   - Body: Country update payload
+   - Used by: `AdministrationEditCountryModal`
+
+4. **`DELETE /api/countries`**
+   - Deletes country (soft delete)
+   - Parameters: `id`, `name` (in body)
+   - Used by: `AdministrationDeleteCountryModal`
 
 ---
 
@@ -603,6 +720,34 @@ The Administration page provides comprehensive user and licensee management func
 - `handlePaymentHistory` - Opens payment history modal
 - `handleTogglePaymentStatus` - Opens payment status confirmation
 - `handleConfirmPaymentStatusChange` - Confirms payment status change
+
+### Countries State
+
+**Hook:** `useAdministrationCountries`
+
+**Key State Properties:**
+
+- `isAddModalOpen` - Add modal open state
+- `isEditModalOpen` - Edit modal open state
+- `isDeleteModalOpen` - Delete modal open state
+- `isAddModalOpen` - Add modal open state
+- `isEditModalOpen` - Edit modal open state
+- `isDeleteModalOpen` - Delete modal open state
+- `selectedCountry` - Currently selected country (for edit/delete)
+- `countries` - List of all countries
+- `isLoading` - Loading state for country list
+
+**Key Functions:**
+
+- `setIsAddModalOpen` - Sets add modal state
+- `setIsEditModalOpen` - Sets edit modal state and selected country
+- `setIsDeleteModalOpen` - Sets delete modal state and selected country
+- `closeAddModal` - Closes add modal
+- `closeEditModal` - Closes edit modal
+- `closeAddModal` - Closes add modal
+- `closeEditModal` - Closes edit modal
+- `closeDeleteModal` - Closes delete modal
+- `refreshCountries` - Refreshes country list from API
 
 ### Navigation State
 

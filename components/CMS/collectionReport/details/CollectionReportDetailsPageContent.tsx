@@ -22,19 +22,19 @@ import { CollectionReportIssueModal } from '@/components/CMS/collectionReport/mo
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
 import UnauthorizedError from '@/components/shared/ui/errors/UnauthorizedError';
 import { CollectionReportSkeleton } from '@/components/shared/ui/skeletons/CollectionReportDetailSkeletons';
 import {
-  animateDesktopTabTransition,
-  calculateLocationTotal,
+    animateDesktopTabTransition,
+    calculateLocationTotal,
 } from '@/lib/helpers/collectionReport';
 import { useCollectionReportDetailsData } from '@/lib/hooks/collectionReport/useCollectionReportDetailsData';
 import { useUserStore } from '@/lib/store/userStore';
@@ -77,6 +77,7 @@ export default function CollectionReportDetailsPageContent() {
     setShowCollectionIssueModal,
     handleSort,
     handleTabChange,
+    handleRefresh,
     handleFixReportConfirm,
     handleFixReportClick,
     handleIssueClick,
@@ -175,6 +176,8 @@ export default function CollectionReportDetailsPageContent() {
       hideLicenceeFilter={true}
       mainClassName="flex flex-col flex-1 w-full max-w-full"
       showToaster={false}
+      onRefresh={handleRefresh}
+      refreshing={loading}
     >
       {/* Header Section (Desktop Only): Back button, title, and Fix Report button */}
       <div className="hidden px-2 pt-6 lg:block lg:px-6">

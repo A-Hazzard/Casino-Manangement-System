@@ -7,10 +7,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/shared/ui/dialog';
+import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { cn } from '@/lib/utils';
 import type { Denomination } from '@/shared/types/vault';
-import { AlertTriangle, ArrowRightCircle, Calendar, Landmark, MessageSquare, RefreshCw, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowRightCircle, Calendar, Cloud, Landmark, MessageSquare, Moon, RefreshCw, Sparkles, Sun } from 'lucide-react';
 import { useState } from 'react';
 
 type VaultInitializeModalProps = {
@@ -113,20 +115,50 @@ export default function VaultInitializeModal({
             </div>
           )}
 
-          {/* Notes */}
+          {/* Shift Selection */}
           <div className="space-y-3 px-1">
-            <Label htmlFor="init-notes" className="text-[11px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-               <MessageSquare className="h-3 w-3" />
-               Opening Notes
+            <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+               Select Shift Period
             </Label>
-            <Textarea
-              id="init-notes"
-              placeholder="e.g. Starting Monday morning shift..."
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={3}
-              className="resize-none bg-gray-50/50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm"
-            />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { label: 'Morning', icon: Sun, color: 'text-amber-500', bg: 'hover:bg-amber-50' },
+                { label: 'Afternoon', icon: Cloud, color: 'text-blue-400', bg: 'hover:bg-blue-50' },
+                { label: 'Night', icon: Moon, color: 'text-indigo-500', bg: 'hover:bg-indigo-50' },
+                { label: 'Other', icon: MessageSquare, color: 'text-gray-500', bg: 'hover:bg-gray-50' }
+              ].map(item => {
+                const isSelected = notes === item.label || (item.label === 'Other' && notes.length > 0 && !['Morning', 'Afternoon', 'Night'].includes(notes));
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => setNotes(item.label === 'Other' ? '' : item.label)}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1.5",
+                      notes === item.label 
+                        ? "bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-200" 
+                        : "bg-white border-gray-100 text-gray-600",
+                      !isSelected && item.bg
+                    )}
+                  >
+                    <Icon className={cn("h-4 w-4", notes === item.label ? "text-white" : item.color)} />
+                    <span className="text-[10px] font-black uppercase tracking-tight">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            
+            {(notes === 'Other' || (notes.length > 0 && !['Morning', 'Afternoon', 'Night'].includes(notes))) && (
+              <Textarea
+                id="init-notes"
+                placeholder="e.g. Special event opening..."
+                value={notes === 'Other' ? '' : notes}
+                onChange={e => setNotes(e.target.value)}
+                rows={3}
+                className="resize-none bg-gray-50/50 border-gray-100 rounded-xl focus:bg-white transition-all text-sm mt-2"
+              />
+            )}
           </div>
         </div>
 
@@ -157,4 +189,3 @@ export default function VaultInitializeModal({
   );
 }
 
-import { Label } from '@/components/shared/ui/label';

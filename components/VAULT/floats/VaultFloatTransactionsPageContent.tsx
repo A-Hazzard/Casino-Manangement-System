@@ -106,6 +106,15 @@ export default function VaultFloatTransactionsPageContent() {
     fetchData();
   }, [user?.assignedLocations, currentPage]);
 
+  // Periodic refresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [user?.assignedLocations, currentPage]);
+
   // ============================================================================
   // Computed Values
   // ============================================================================
@@ -490,18 +499,18 @@ export default function VaultFloatTransactionsPageContent() {
                   onSort={handleTransactionSort}
                   onApprove={handleApprove}
                   onReject={handleReject}
-                  showActions={true}
+                  showActions={false}
                   disabled={!isVaultReconciled}
                 />
               </div>
 
               {/* Mobile/Tablet Card View - below lg */}
               <div className="block lg:hidden">
-                <VaultFloatTransactionsMobileCards
+                 <VaultFloatTransactionsMobileCards
                   transactions={sortedFloatTransactions}
                   onApprove={handleApprove}
                   onReject={handleReject}
-                  showActions={true}
+                  showActions={false}
                   disabled={!isVaultReconciled}
                 />
               </div>

@@ -22,12 +22,12 @@
  * @param editableReportIds - Set of report IDs that can be edited
  */
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
 import Image from 'next/image';
 import { useMemo } from 'react';
@@ -43,16 +43,16 @@ import { getLicenseeName } from '@/lib/utils/licensee';
 import { hasAdminAccess, hasManagerAccess } from '@/lib/utils/permissions';
 import detailsIcon from '@/public/details.svg';
 import {
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp,
-  Edit3,
-  Trash2,
+    AlertTriangle,
+    ChevronDown,
+    ChevronUp,
+    Edit3,
+    Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-import CollectionReportTableSkeleton from '../../CollectionReportTableSkeleton';
 import { UserRole } from '@/lib/constants';
+import CollectionReportTableSkeleton from '../../CollectionReportTableSkeleton';
 
 export default function CollectionReportTable({
   data,
@@ -77,9 +77,6 @@ export default function CollectionReportTable({
   const canEditDelete = useMemo(() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles as UserRole[];
-    if (userRoles.includes('collector') || userRoles.includes('technician')) {
-      return false;
-    }
     return hasManagerAccess(userRoles);
   }, [user]);
 
@@ -360,7 +357,6 @@ export default function CollectionReportTable({
                     </Button>
                     {canEditDelete &&
                       (!editableReportIds ||
-                        editableReportIds.size === 0 ||
                         editableReportIds.has(row?.locationReportId || '')) && (
                         <div className="flex gap-1">
                           {onEdit && (

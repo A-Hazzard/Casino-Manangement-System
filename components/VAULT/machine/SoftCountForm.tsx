@@ -64,6 +64,7 @@ export default function SoftCountForm({
   // Form State
   const [notes, setNotes] = useState('');
   const [denominations, setDenominations] = useState<Denomination[]>([]);
+  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
   const [meters, setMeters] = useState({
     moneyIn: 0,
     moneyOut: 0,
@@ -82,6 +83,7 @@ export default function SoftCountForm({
             denomination: denom as any, 
             quantity: 0 
         })));
+        setTouchedDenominations(new Set());
         setNotes('');
         setMeters({ moneyIn: 0, moneyOut: 0, gross: 0, billIn: '' });
         setExpectedDrop('');
@@ -126,17 +128,22 @@ export default function SoftCountForm({
   const updateQuantity = (index: number, quantity: number) => {
     if (quantity < 0) return;
     const newDenominations = [...denominations];
+    const denomVal = newDenominations[index].denomination;
     newDenominations[index] = { ...newDenominations[index], quantity };
     setDenominations(newDenominations as Denomination[]);
+    setTouchedDenominations(prev => {
+      const next = new Set(prev);
+      next.add(Number(denomVal));
+      return next;
+    });
   };
+
+  const isAllTouched = denomsList.every(d => touchedDenominations.has(Number(d)));
+  const isValid = totalPhysical > 0 || isAllTouched;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!machine) return;
-    if (totalPhysical === 0) {
-        toast.error("Cannot submit a zero count");
-        return;
-    }
+    if (!machine || !isValid) return;
     
     const filteredDenominations = denominations.filter(d => d.quantity > 0);
     try {
@@ -291,7 +298,10 @@ export default function SoftCountForm({
                         min="0"
                         value={denom.quantity || ''}
                         onChange={e => updateQuantity(index, parseInt(e.target.value) || 0)}
-                        className="w-12 h-7 border-none bg-transparent text-center font-black p-0 focus-visible:ring-0 text-sm"
+                        className={cn(
+                          "w-12 h-7 border-none bg-transparent text-center font-black p-0 focus-visible:ring-0 text-sm transition-all",
+                          touchedDenominations.has(Number(denom.denomination)) && "text-violet-600"
+                        )}
                         placeholder="0"
                         />
                         
@@ -372,7 +382,7 @@ export default function SoftCountForm({
             <div className="space-y-2">
               <Label htmlFor="notes" className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
                 <MessageSquare className="h-3.5 w-3.5" />
-                Collection Notes
+                Collection Notes (Optional)
               </Label>
               <Textarea
                 id="notes"
@@ -385,7 +395,7 @@ export default function SoftCountForm({
 
             <Button
               type="submit"
-              disabled={loading || !machine || totalPhysical === 0}
+              disabled={loading || !machine || !isValid}
               className="w-full h-14 bg-violet-600 text-white hover:bg-violet-700 font-black text-base shadow-lg shadow-violet-600/20 active:scale-[0.98] transition-all rounded-xl"
             >
               {loading ? (

@@ -41,16 +41,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get('licensee');
     const licensees = searchParams.get('licensees'); // Support multiple licensees (comma-separated)
+    const ids = searchParams.get('ids'); // Support specific IDs (comma-separated)
+    const includeDeleted = searchParams.get('includeDeleted') === 'true';
 
     // ============================================================================
     // STEP 3: Build query filter with deleted location exclusion
     // ============================================================================
-    const query: Record<string, unknown> = {
-      $or: [
+    const query: Record<string, unknown> = {};
+
+    if (!includeDeleted) {
+      query.$or = [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
-      ],
-    };
+      ];
+    }
 
     // ============================================================================
     // STEP 4: Apply licensee filtering
@@ -67,6 +71,17 @@ export async function GET(request: NextRequest) {
     } else if (licensee) {
       // Single licensee filter (backwards compatibility)
       query['rel.licencee'] = licensee;
+    }
+
+    // Filter by specific IDs if provided
+    if (ids) {
+      const idArray = ids.split(',').map(id => id.trim()).filter(id => id);
+      if (idArray.length > 0) {
+        query._id = { $in: idArray };
+        // If IDs are provided, we often want to bypass the licensee filter 
+        // especially for profile display of assigned locations
+        delete query['rel.licencee'];
+      }
     }
 
     // ============================================================================

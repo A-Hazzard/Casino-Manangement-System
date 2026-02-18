@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!category || isNaN(amount) || !description) {
+    if (!category || isNaN(amount)) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
@@ -243,7 +243,8 @@ export async function POST(request: NextRequest) {
         amount,
       vaultShiftId: activeVaultShift._id,
       performedBy: vaultManagerId,
-      notes: `Expense: ${category} - ${description}`,
+      performedByName: username,
+      notes: description ? `Expense: ${category} - ${description}` : `Expense: ${category}`,
       attachmentId,
       attachmentName,
     });

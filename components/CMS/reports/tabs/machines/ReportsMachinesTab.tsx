@@ -25,9 +25,9 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useDebounce } from '@/lib/utils/hooks';
 
 import {
-  calculateOfflineDurationHours,
-  calculateParetoStatement,
-  getPerformanceRating
+    calculateOfflineDurationHours,
+    calculateParetoStatement,
+    getPerformanceRating
 } from '@/lib/helpers/machines';
 import { handleExportMeters as handleExportMetersHelper } from '@/lib/helpers/reports';
 
@@ -577,6 +577,15 @@ export default function ReportsMachinesTab() {
     offlineSelectedLocations,
     setAllOfflineMachines,
   ]);
+
+  // Listen for global refresh events from parent PageLayout
+  useEffect(() => {
+    const handleGlobalRefresh = () => {
+      handleRefresh();
+    };
+    window.addEventListener('refreshReports', handleGlobalRefresh);
+    return () => window.removeEventListener('refreshReports', handleGlobalRefresh);
+  }, [handleRefresh]);
 
   const handleExport = useCallback(
     async (format: 'pdf' | 'excel') => {

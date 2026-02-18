@@ -204,7 +204,14 @@ export default function VaultEndOfDayReportsPageContent() {
       doc.setFontSize(10);
       doc.text(`Location: ${user?.assignedLocations?.[0] || 'N/A'}`, 14, 30);
       doc.text(`Manager: ${user?.username || 'N/A'}`, 14, 35);
-      doc.text(`Date: ${new Date().toLocaleString()}`, 14, 40);
+      doc.text(`Date: ${new Date().toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true
+      })}`, 14, 40);
 
       autoTable(doc, {
         startY: 50,

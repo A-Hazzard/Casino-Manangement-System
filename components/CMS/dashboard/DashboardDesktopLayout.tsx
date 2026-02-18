@@ -27,8 +27,8 @@ import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards'
 import MapPreview from '@/components/shared/ui/MapPreview';
 import { RefreshButtonSkeleton } from '@/components/shared/ui/skeletons/ButtonSkeletons';
 import {
-  DashboardChartSkeleton,
-  DashboardTopPerformingSkeleton,
+    DashboardChartSkeleton,
+    DashboardTopPerformingSkeleton,
 } from '@/components/shared/ui/skeletons/DashboardSkeletons';
 import type { TopPerformingItem } from '@/lib/types';
 import type { DashboardDesktopLayoutProps } from '@/lib/types/components';
@@ -260,9 +260,9 @@ export default function DashboardDesktopLayout(
                       message={`No metrics found for ${props.selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}
                     />
                   ) : (
-                    <div className="flex flex-col items-center gap-6 md:flex-col lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-col items-center gap-6 xl:flex-row xl:justify-between">
                       {/* Items List */}
-                      <ul className="w-full flex-1 space-y-2 md:w-full lg:w-auto">
+                      <ul className="w-full flex-1 min-w-0 space-y-2">
                         {props.topPerformingData.map(
                           (item: TopPerformingItem, index: number) => (
                             <li
@@ -279,7 +279,7 @@ export default function DashboardDesktopLayout(
                               {props.activeTab === 'Cabinets' &&
                               item.machineId ? (
                                 <>
-                                  <span className="flex-1 text-gray-700">
+                                  <span className="flex-1 truncate text-gray-700" title={item.name}>
                                     {item.name}
                                   </span>
                                   <button
@@ -317,8 +317,8 @@ export default function DashboardDesktopLayout(
                                         setIsLocationModalOpen(true);
                                       }
                                     }}
-                                    className="flex-1 cursor-pointer text-left text-gray-700 hover:text-blue-600 hover:underline"
-                                    title="View location preview"
+                                    className="flex-1 truncate text-left text-gray-700 hover:text-blue-600 hover:underline"
+                                    title={`View ${item.name} preview`}
                                   >
                                     {item.name}
                                   </button>
@@ -340,7 +340,7 @@ export default function DashboardDesktopLayout(
                                   </button>
                                 </>
                               ) : (
-                                <span className="flex-1 text-gray-700">
+                                <span className="flex-1 truncate text-gray-700">
                                   {item.name}
                                 </span>
                               )}
@@ -350,7 +350,7 @@ export default function DashboardDesktopLayout(
                       </ul>
 
                       {/* Pie Chart */}
-                      <div className="flex-shrink-0 h-40 min-h-[160px] w-40 min-w-[160px] md:mx-auto lg:mx-0">
+                      <div className="mx-auto h-40 w-40 flex-shrink-0 xl:mx-0">
                         <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
                             <Pie

@@ -141,6 +141,39 @@ export function getNext30DaysDate(): Date {
 }
 
 /**
+ * Formats a date string or Date object to a readable format safely
+ * @param dateInput - Date string, Date object, or timestamp
+ * @param options - Optional Intl.DateTimeFormatOptions
+ * @returns Formatted date string or "-" if parsing fails
+ */
+export function safeFormatDate(
+  dateInput: string | Date | number | undefined | null,
+  options?: Intl.DateTimeFormatOptions
+): string {
+  if (!dateInput) return '-';
+  try {
+    const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(date.getTime())) {
+      return '-';
+    }
+
+    return date.toLocaleString(
+      'en-US',
+      options || {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
+      }
+    );
+  } catch {
+    return '-';
+  }
+}
+
+/**
  * Formats a date string or Date object to a readable format
  * @param dateInput - Date string, Date object, or timestamp
  * @returns Formatted date string or "Invalid Date" if parsing fails

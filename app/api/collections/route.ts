@@ -16,9 +16,9 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-    calculateSasMetrics,
-    createCollectionWithCalculations,
-    getSasTimePeriod,
+  calculateSasMetrics,
+  createCollectionWithCalculations,
+  getSasTimePeriod,
 } from '@/app/api/lib/helpers/collectionReport/creation';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
@@ -26,8 +26,8 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import type {
-    CollectionDocument,
-    CreateCollectionPayload,
+  CollectionDocument,
+  CreateCollectionPayload,
 } from '@/lib/types/collection';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
@@ -124,6 +124,35 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================================================
+    // STEP 4.5: Resolve allowed location IDs to Names
+    // ============================================================================
+    // The Collections model stores location NAMES, not IDs.
+    // We must convert the allowed IDs to names for the query to work.
+    let allowedLocationNames: string[] | 'all' = 'all';
+
+    if (allowedLocationIds !== 'all') {
+      if (allowedLocationIds.length === 0) {
+        return NextResponse.json([]);
+      }
+
+      // Get location names from location IDs
+      const GamingLocations = (await import('@/app/api/lib/models/gaminglocations'))
+        .GamingLocations;
+      const locations = (await GamingLocations.find({
+        _id: { $in: allowedLocationIds },
+      })
+        .select('name')
+        .lean()) as unknown as Array<{ name: string; _id: string }>;
+
+      allowedLocationNames = locations.map(loc => loc.name);
+      
+      // If we found no matching locations for the IDs, user effectively has no access
+      if (allowedLocationNames.length === 0) {
+        return NextResponse.json([]);
+      }
+    }
+
+    // ============================================================================
     // STEP 5: Build filter query
     // ============================================================================
     const filter: Record<string, unknown> = {};
@@ -132,9 +161,9 @@ export async function GET(req: NextRequest) {
     // CRITICAL: Filter by location parameter AND user's accessible locations
     if (location) {
       // Check if user has access to this specific location
-      if (allowedLocationIds === 'all') {
+      if (allowedLocationNames === 'all') {
         filter.location = location;
-      } else if (allowedLocationIds.includes(location)) {
+      } else if (allowedLocationNames.includes(location)) {
         filter.location = location;
       } else {
         // User requested a location they don't have access to
@@ -142,11 +171,8 @@ export async function GET(req: NextRequest) {
       }
     } else {
       // No specific location requested - filter by all accessible locations
-      if (allowedLocationIds !== 'all') {
-        if (allowedLocationIds.length === 0) {
-          return NextResponse.json([]);
-        }
-        filter.location = { $in: allowedLocationIds };
+      if (allowedLocationNames !== 'all') {
+        filter.location = { $in: allowedLocationNames };
       }
     }
 

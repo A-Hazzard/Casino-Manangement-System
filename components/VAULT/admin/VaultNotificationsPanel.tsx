@@ -8,6 +8,7 @@
 import { Button } from '@/components/shared/ui/button';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
+import { safeFormatDate } from '@/lib/utils/date/formatting';
 import {
     AlertCircle,
     Bell,
@@ -192,7 +193,7 @@ export default function VaultNotificationsPanel() {
                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                       <div className="flex items-center gap-1">
                          <Clock className="h-3 w-3" />
-                         {new Date(notif.timestamp).toLocaleString()}
+                         {safeFormatDate(notif.timestamp)}
                       </div>
                    </div>
                 </div>

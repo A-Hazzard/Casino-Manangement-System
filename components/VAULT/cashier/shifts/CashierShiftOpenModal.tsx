@@ -59,6 +59,7 @@ export default function CashierShiftOpenModal({
   const denomsList = useMemo(() => getDenominationValues(effectiveLicenseeId), [effectiveLicenseeId]);
 
   const [denominations, setDenominations] = useState<Denomination[]>([]);
+  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
 
   // Update denominations when licensee changes or modal opens
   useEffect(() => {
@@ -67,6 +68,7 @@ export default function CashierShiftOpenModal({
         denomination: denom as Denomination['denomination'], 
         quantity: 0 
       })));
+      setTouchedDenominations(new Set());
     }
   }, [denomsList, open, step]);
 
@@ -74,19 +76,22 @@ export default function CashierShiftOpenModal({
     (sum, d) => sum + d.denomination * d.quantity,
     0
   );
+  
+  const isAllTouched = useMemo(() => denomsList.every(d => touchedDenominations.has(Number(d))), [denomsList, touchedDenominations]);
+  const isValidCount = totalAmount > 0 || isAllTouched;
 
 
 
   const handleClose = () => {
     setStep('input');
+    setTouchedDenominations(new Set());
     onClose();
   };
 
   const handleReview = () => {
     if (!hasActiveVaultShift || !isVaultReconciled) return;
     
-    const filteredDenominations = denominations.filter(d => d.quantity > 0);
-    if (filteredDenominations.length === 0) {
+    if (!isValidCount) {
       alert('Please specify at least one denomination with quantity > 0');
       return;
     }
@@ -105,6 +110,7 @@ export default function CashierShiftOpenModal({
           quantity: 0,
         }))
       );
+      setTouchedDenominations(new Set());
     } catch {
       // Error handled by parent
     }
@@ -150,6 +156,8 @@ export default function CashierShiftOpenModal({
                     denominations={denominations}
                     onChange={setDenominations}
                     disabled={loading}
+                    touchedDenominations={touchedDenominations}
+                    onTouchedChange={setTouchedDenominations}
                 />
             </div>
           ) : (
@@ -212,7 +220,7 @@ export default function CashierShiftOpenModal({
               <Button
                 type="button"
                 onClick={handleReview}
-                disabled={loading || totalAmount === 0 || !hasActiveVaultShift || !isVaultReconciled}
+                disabled={loading || !isValidCount || !hasActiveVaultShift || !isVaultReconciled}
                 className="bg-violet-600 text-white hover:bg-violet-700 font-black shadow-lg shadow-violet-600/20 px-8 ml-auto"
               >
                 Review Request

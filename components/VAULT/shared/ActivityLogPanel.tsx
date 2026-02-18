@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui
 import { Input } from '@/components/shared/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shared/ui/table';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { safeFormatDate } from '@/lib/utils/date/formatting';
 import { formatActivityType } from '@/lib/utils/formatters';
 import { History, Loader2, Search } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -153,7 +154,7 @@ export default function ActivityLogPanel({
                 filteredActivities.map(activity => (
                   <TableRow key={activity._id} className="transition-colors hover:bg-muted/30">
                     <TableCell isFirstColumn className="text-xs font-mono font-medium text-gray-600">
-                      {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {safeFormatDate(activity.timestamp, { hour: '2-digit', minute: '2-digit' })}
                     </TableCell>
                     <TableCell>
                       <Badge className={getBadgeVariant(activity.type) === 'destructive' ? 'bg-red-100 text-red-700 hover:bg-red-100 border-none' : 'bg-blue-50 text-blue-700 hover:bg-blue-50 border-none'}>
@@ -191,7 +192,7 @@ export default function ActivityLogPanel({
                 <div key={activity._id} className="bg-white rounded-lg border border-gray-100 p-4 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
                      <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-tighter">
-                        {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {safeFormatDate(activity.timestamp, { hour: '2-digit', minute: '2-digit' })}
                      </span>
                      <Badge className={getBadgeVariant(activity.type) === 'destructive' ? 'bg-red-100 text-red-700 hover:bg-red-100 border-none text-[10px]' : 'bg-blue-50 text-blue-700 hover:bg-blue-50 border-none text-[10px]'}>
                         {formatActivityType(activity.type)}

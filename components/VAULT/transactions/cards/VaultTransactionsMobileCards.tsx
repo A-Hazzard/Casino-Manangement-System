@@ -21,6 +21,7 @@ import { Card, CardContent } from '@/components/shared/ui/card';
 import ViewDenominationsModal from '@/components/VAULT/transactions/modals/ViewDenominationsModal';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
+import { safeFormatDate } from '@/lib/utils/date/formatting';
 import type {
     Denomination,
     ExtendedVaultTransaction,
@@ -79,14 +80,7 @@ export default function VaultTransactionsMobileCards({
                 <div className="mb-3 flex items-start justify-between border-b pb-3">
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      {new Date(tx.timestamp).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: 'numeric',
-                        minute: 'numeric',
-                        hour12: true,
-                      })}
+                      {safeFormatDate(tx.timestamp)}
                     </p>
                     <p className="text-xs text-gray-500">
                       {tx.performedByName || 'System'}

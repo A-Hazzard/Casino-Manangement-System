@@ -11,22 +11,22 @@
 
 'use client';
 
-import PageLayout from '@/components/shared/layout/PageLayout';
-import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
+import PageLayout from '@/components/shared/layout/PageLayout';
+import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
+import { CabinetDetailsLoadingState } from '@/components/shared/ui/skeletons/CabinetDetailSkeletons';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licensee';
-import { CabinetDetailsLoadingState } from '@/components/shared/ui/skeletons/CabinetDetailSkeletons';
 
 // Custom Hooks
 import { useMachinePageData } from '@/lib/hooks/machines/useMachinePageData';
 
 // Reusable Sections
-import CabinetsDetailsSummarySection from '@/components/CMS/cabinets/details/CabinetsDetailsSummarySection';
 import CabinetsDetailsAccountingSection from '@/components/CMS/cabinets/details/CabinetsDetailsAccountingSection';
 import CabinetsDetailsSMIBManagementSection from '@/components/CMS/cabinets/details/CabinetsDetailsSMIBManagementSection';
+import CabinetsDetailsSummarySection from '@/components/CMS/cabinets/details/CabinetsDetailsSummarySection';
 
 /**
  * Machine Detail Page Content Component
@@ -80,6 +80,8 @@ export default function MachineDetailsPageContent() {
         hideOptions hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
         showToaster={false}
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
       >
         <div className="flex flex-col gap-6">
           <CabinetsDetailsSummarySection

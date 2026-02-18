@@ -180,7 +180,7 @@ export type VaultTransaction = {
   voidedAt?: Date;
 
   createdAt: Date;
-
+  locationName?: string;
 };
 
 // Machine collection creation
@@ -269,6 +269,7 @@ export type FloatRequest = {
 
   createdAt: Date;
   updatedAt: Date;
+  locationName?: string;
 };
 
 // ============================================================================
@@ -463,7 +464,8 @@ export type VaultBalance = {
 };
 
 export type CashDesk = {
-  _id: string;
+  _id: string; // This is the shiftId
+  cashierId?: string; // The user ID of the cashier
   locationId: string;
   name: string;
   cashierName?: string;
@@ -472,6 +474,7 @@ export type CashDesk = {
   lastAudit: string;
   managerOnDuty?: string;
   status: 'active' | 'inactive';
+  locationName?: string;
 };
 
 export type CashierFloat = {
@@ -553,4 +556,5 @@ export type UnbalancedShiftInfo = {
   enteredDenominations: Denomination[];
   discrepancy: number;
   closedAt: Date;
+  locationName?: string;
 };

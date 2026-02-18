@@ -71,35 +71,8 @@ export async function POST(request: NextRequest) {
     const body: ReconcileVaultRequest = await request.json();
     const { vaultShiftId, newBalance, denominations, reason, comment } = body;
 
-    if (
-      !vaultShiftId ||
-      newBalance === undefined ||
-      !denominations ||
-      (!reason && !comment)
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'Missing required fields: vaultShiftId, newBalance, denominations, and description (reason/comment)',
-        },
-        { status: 400 }
-      );
-    }
-
     // Combine or fallback (VM-1 simplification)
     const finalDescription = (reason || comment || '').trim();
-
-    // Mandatory description for audit (VM-1)
-    if (finalDescription.length < 10) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Reason/Comment must be at least 10 characters for audit purposes',
-        },
-        { status: 400 }
-      );
-    }
 
     // STEP 3: Validate denominations
     const denominationValidation = validateDenominations(denominations);
@@ -218,6 +191,7 @@ export async function POST(request: NextRequest) {
       vaultBalanceAfter: newBalance,
       vaultShiftId,
       performedBy: userId,
+      performedByName: username,
       notes: finalDescription,
       auditComment: finalDescription, // Mandatory for reconciliations
       isVoid: false,

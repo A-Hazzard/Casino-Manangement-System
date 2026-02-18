@@ -50,7 +50,7 @@ export async function fetchVaultOverviewData(
       fetch(
         `/api/cashier/shifts?status=pending_review&locationId=${locationId}`
       ),
-      fetch(`/api/cashier/shifts?status=active&locationId=${locationId}`),
+      fetch(`/api/cashier/shifts?status=active,pending_start&locationId=${locationId}`),
       fetch(`/api/vault/float-request?status=pending&locationId=${locationId}`),
     ]);
 
@@ -147,12 +147,12 @@ export async function fetchVaultOverviewData(
           (shift: CashierShift) => ({
             _id: shift._id,
             locationId: shift.locationId,
-            name: shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId.substring(0, 4)}`,
+            name: (shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId.substring(0, 4)}`) + (shift.status === 'pending_start' ? ' (Pending Start)' : ''),
             cashierName: shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId.substring(0, 4)}`,
-            balance: shift.currentBalance ?? shift.openingBalance,
-            denominations: shift.lastSyncedDenominations ?? shift.openingDenominations, // Pass sync'd denominations for active shifts
-            lastAudit: new Date(shift.openedAt).toISOString(),
-            status: 'active',
+            balance: shift.currentBalance ?? shift.openingBalance ?? 0,
+            denominations: shift.lastSyncedDenominations ?? shift.openingDenominations ?? [], 
+            lastAudit: new Date(shift.openedAt || shift.createdAt || new Date()).toISOString(),
+            status: shift.status || 'active',
           })
         );
         result.cashDesks = activeDesks;
@@ -182,6 +182,138 @@ export async function fetchVaultOverviewData(
     return result;
   } catch (error) {
     console.error('Failed to fetch vault overview data', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch global vault overview data for admin/developer aggregated view
+ * Queries aggregated data from membershipEnabled locations only
+ */
+export async function fetchGlobalVaultOverviewData(
+  licenseeId?: string
+): Promise<{
+    vaultBalance: VaultBalance;
+    metrics: VaultMetrics;
+    transactions: VaultTransaction[];
+    pendingShifts: UnbalancedShiftInfo[];
+    floatRequests: FloatRequest[];
+    cashDesks: CashDesk[];
+    notifications: NotificationItem[];
+}> {
+  try {
+    let url = `/api/vault/overview/global`;
+    if (licenseeId && licenseeId !== 'all') {
+      url += `?licenseeId=${encodeURIComponent(licenseeId)}`;
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+        console.error('Global vault fetch failed:', response.statusText);
+        throw new Error(`Failed to fetch global vault data: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    if (!data.success) {
+        console.error('Global vault fetch returned error:', data.error);
+        throw new Error(data.error || 'Failed to fetch global vault data');
+    }
+
+    const resultData = data.data;
+
+    // Helper to format shifts
+    const formatShifts = (shifts: any[]): UnbalancedShiftInfo[] => {
+      // Handle array or null input gracefully
+      if (!Array.isArray(shifts)) return [];
+      
+      return shifts.map((shift: any) => ({
+        shiftId: shift._id,
+        cashierId: shift.cashierId,
+        cashierName: shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId?.substring(0, 4)}`,
+        expectedBalance: shift.expectedClosingBalance || 0,
+        enteredBalance: shift.cashierEnteredBalance || 0,
+        enteredDenominations: shift.cashierEnteredDenominations || [],
+        discrepancy: shift.discrepancy || 0,
+        closedAt: shift.closedAt ? new Date(shift.closedAt) : new Date(),
+        locationName: shift.locationName // Extra field for global view
+      }));
+    };
+
+    // Helper to format requests
+    const formatRequests = (requests: any[]): FloatRequest[] => {
+      // Handle array or null input gracefully
+      if (!Array.isArray(requests)) return [];
+
+      return requests.map((req: any) => ({
+        ...req,
+        locationName: req.locationName // Extra field for global view
+      }));
+    };
+
+    const notifications: NotificationItem[] = [];
+
+    // Pending Shifts
+    const pendingShifts = formatShifts(resultData.pendingShifts);
+    pendingShifts.forEach(shift => {
+      notifications.push({
+        id: `review-${shift.shiftId}`,
+        type: 'shift_review',
+        title: 'Shift Review Required',
+        message: `${shift.locationName ? `[${shift.locationName}] ` : ''}Shift ${shift.shiftId.substring(0, 6)}... has discrepancy of $${shift.discrepancy}`,
+        timestamp: new Date(shift.closedAt),
+        urgent: true,
+        status: 'unread',
+      });
+    });
+
+    // Float Requests
+    const floatRequests = formatRequests(resultData.floatRequests);
+    floatRequests.forEach(req => {
+      notifications.push({
+        id: req._id,
+        type: 'float_request',
+        title: 'New Float Request',
+        message: `${req.locationName ? `[${req.locationName}] ` : ''}Cashier requested $${req.requestedAmount}`,
+        timestamp: new Date(req.requestedAt),
+        urgent: false,
+        status: 'unread',
+      });
+    });
+
+    // Transform response to match expected structure
+    const result = {
+      vaultBalance: {
+        ...(resultData.vaultBalance || DEFAULT_VAULT_BALANCE),
+        // Ensure defaults for required fields in read-only mode
+        canClose: false,
+        blockReason: 'Global View - Read Only',
+        managerOnDuty: 'Global View',
+        lastAudit: 'N/A',
+        isReconciled: true, // Prevent "Reconciliation Required" warnings
+        activeShiftId: 'global-view', // Prevent "Start Shift" warnings
+        denominations: resultData.vaultBalance?.denominations || []
+      },
+      metrics: resultData.metrics || {
+        totalCashIn: 0,
+        totalCashOut: 0,
+        netCashFlow: 0,
+        discrepancies: 0,
+        pendingReviews: 0
+      },
+      transactions: resultData.transactions || [],
+      pendingShifts,
+      floatRequests,
+      cashDesks: (resultData.cashDesks || []).map((desk: any) => ({
+          ...desk,
+          locationName: desk.locationName
+      })),
+      notifications,
+    };
+
+    return result;
+
+  } catch (error) {
+    console.error('Failed to fetch global vault overview data', error);
     throw error;
   }
 }
@@ -434,12 +566,16 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
         );
 
         // Calculate hourly transaction volume for "Peak Hour" and "Transaction Volume" chart
-        const hourlyStats = new Array(24).fill(0).map((_, i) => ({
-          time: `${i.toString().padStart(2, '0')}:00`,
-          transactions: 0,
-          amount: 0,
-          cashOut: 0, // Track cash out specific amount
-        }));
+        const hourlyStats = new Array(24).fill(0).map((_, i) => {
+          const h = i % 12 || 12;
+          const ampm = i < 12 ? 'AM' : 'PM';
+          return {
+            time: `${h}:00 ${ampm}`,
+            transactions: 0,
+            amount: 0,
+            cashOut: 0, // Track cash out specific amount
+          };
+        });
 
         todayTxs.forEach((tx: any) => {
           // Skip reconciliation transactions for charts/trends
@@ -722,6 +858,7 @@ export async function fetchFloatTransactionsData(
       balanceResponse,
       transactionsResponse,
       floatRequestsResponse,
+      usersResponse,
     ] = await Promise.all([
       fetch(`/api/cashier/shifts?locationId=${locationId}&status=active`),
       fetch(`/api/vault/balance?locationId=${locationId}`),
@@ -729,6 +866,7 @@ export async function fetchFloatTransactionsData(
         `/api/vault/transactions?locationId=${locationId}&type=float_increase,float_decrease,cashier_shift_open,payout&page=${page}&limit=${limit}`
       ),
       fetch(`/api/vault/float-request?locationId=${locationId}`),
+      fetch(`/api/users?role=cashier`),
     ]);
 
     const cashierData = cashierResponse.ok
@@ -743,6 +881,17 @@ export async function fetchFloatTransactionsData(
     const floatRequestsData = floatRequestsResponse.ok
       ? await floatRequestsResponse.json()
       : null;
+    const usersData = usersResponse.ok ? await usersResponse.json() : null;
+
+    // Create user map for name resolution
+    const userMap = new Map<string, string>();
+    if (usersData?.success && Array.isArray(usersData.users)) {
+      usersData.users.forEach((u: any) => {
+        if (u._id && u.username) {
+          userMap.set(u._id, u.username);
+        }
+      });
+    }
 
     const result: {
       cashierFloats: CashierFloat[];
@@ -781,9 +930,29 @@ export async function fetchFloatTransactionsData(
     if (transactionsData?.success) {
       // Still apply a safe filter in case the API didn't handle the multi-type param
       const floatTypes = ['float_increase', 'float_decrease', 'cashier_shift_open', 'payout'];
-      const floatTxs = (transactionsData.items || transactionsData.transactions || []).filter((tx: any) =>
-        floatTypes.includes(tx.type)
-      );
+      const floatTxs = (transactionsData.items || transactionsData.transactions || [])
+        .filter((tx: any) => floatTypes.includes(tx.type))
+        .map((tx: any) => {
+          // Resolve names
+          let toName = tx.toName;
+          if (!toName && tx.to.type === 'cashier' && tx.to.id) {
+            toName = userMap.get(tx.to.id) || tx.to.id;
+          }
+
+          let fromName = tx.fromName;
+          if (!fromName && tx.from.type === 'cashier' && tx.from.id) {
+            fromName = userMap.get(tx.from.id) || tx.from.id;
+          }
+
+          return {
+            ...tx,
+            toName,
+            fromName,
+            timestamp: new Date(tx.timestamp), // Ensure date object
+            performedByName: tx.performedByName || userMap.get(tx.performedBy) || tx.performedBy || 'System',
+          };
+        });
+
       result.floatTransactions = floatTxs;
       result.totalTransactions = transactionsData.pagination?.total || transactionsData.total || 0;
       result.totalPages = transactionsData.pagination?.totalPages || 1;

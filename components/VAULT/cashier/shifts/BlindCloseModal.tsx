@@ -57,10 +57,12 @@ export default function BlindCloseModal({
   const denomsList = useMemo(() => getDenominationValues(effectiveLicenseeId), [effectiveLicenseeId]);
   
   const [denominations, setDenominations] = useState<Denomination[]>([]);
+  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (open) {
       setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+      setTouchedDenominations(new Set());
     }
   }, [open, denomsList]);
 
@@ -72,19 +74,26 @@ export default function BlindCloseModal({
   const updateQuantity = (index: number, quantity: number) => {
     if (quantity < 0) return;
     const newDenominations = [...denominations];
+    const denomVal = newDenominations[index].denomination;
     newDenominations[index] = { ...newDenominations[index], quantity };
     setDenominations(newDenominations as Denomination[]);
+    
+    setTouchedDenominations(prev => {
+      const next = new Set(prev);
+      next.add(denomVal);
+      return next;
+    });
   };
 
+  const isAllTouched = denomsList.every(d => touchedDenominations.has(Number(d)));
+  const isValid = totalAmount > 0 || isAllTouched;
+
   const handleSubmit = async () => {
+    if (!isValid) return;
     const filteredDenominations = denominations.filter((d) => d.quantity > 0);
-    // Even if 0, we allow close (maybe they lost everything?), but usually user should enter something.
-    // We'll proceed with 0 if that's the count.
     
     try {
       await onSubmit(totalAmount, filteredDenominations);
-      // Don't close immediately here? The parent handles it?
-      // Usually parent calls onClose on success
     } catch {
       // Error handled by parent
     }
@@ -92,7 +101,7 @@ export default function BlindCloseModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden">
+      <DialogContent className="max-w-md p-0 overflow-hidden !z-[200]">
         <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
             <AlertTriangle className="h-5 w-5 text-violet-600" />
@@ -155,11 +164,15 @@ export default function BlindCloseModal({
                   <Input
                     type="number"
                     min="0"
-                    value={denom.quantity}
+                    value={denom.quantity || ''}
                     onChange={(e) =>
                       updateQuantity(index, parseInt(e.target.value) || 0)
                     }
-                    className="w-12 h-8 border-none bg-transparent text-center font-black p-0 focus-visible:ring-0 text-sm"
+                    className={cn(
+                      "w-12 h-8 border-none bg-transparent text-center font-black p-0 focus-visible:ring-0 text-sm transition-all",
+                      touchedDenominations.has(denom.denomination) && "text-green-600"
+                    )}
+                    placeholder="0"
                   />
                   
                   <Button
@@ -203,7 +216,7 @@ export default function BlindCloseModal({
           <Button
             type="button"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || !isValid}
             className="bg-violet-600 text-white hover:bg-violet-700 font-black shadow-lg shadow-violet-600/20 px-8"
           >
             {loading ? 'Submitting count...' : 'Finalize & Submit'}

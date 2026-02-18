@@ -123,6 +123,8 @@ export default function LocationsPageContent() {
       <PageLayout
         headerProps={{ selectedLicencee, setSelectedLicencee }}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
       >
         {/* Page Header: Title and primary actions */}
         <LocationsDetailsHeaderSection

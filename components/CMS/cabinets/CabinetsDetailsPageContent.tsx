@@ -13,10 +13,9 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
-import { FloatingActionButtons } from '@/components/shared/ui/FloatingActionButtons';
 import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
 import { CabinetDetailsLoadingState } from '@/components/shared/ui/skeletons/CabinetDetailSkeletons';
-import { useDashboardScroll } from '@/lib/hooks/data';
+
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
@@ -40,7 +39,6 @@ export default function CabinetsDetailsPageContent() {
   const hook = useCabinetPageData();
   const { user } = useUserStore();
   const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
-  const { showFloatingRefresh } = useDashboardScroll();
   const { openEditModal } = useCabinetsActionsStore();
 
   const {
@@ -110,6 +108,8 @@ export default function CabinetsDetailsPageContent() {
         hideOptions
         hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
       >
         <div className="flex w-full min-w-0 max-w-full flex-col gap-6">
           {/* Header & Summary */}
@@ -253,13 +253,6 @@ export default function CabinetsDetailsPageContent() {
           />
         </div>
       </PageLayout>
-
-      {/* Floating Action Buttons */}
-      <FloatingActionButtons
-        showRefresh={showFloatingRefresh}
-        refreshing={refreshing}
-        onRefresh={handleRefresh}
-      />
     </>
   );
 }

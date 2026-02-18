@@ -7,18 +7,18 @@
 import { HIGH_PRIORITY_ROLES } from '@/lib/constants/roles';
 import type { NavigationConfig, NavigationItem } from '@/lib/types/layout/navigation';
 import {
-    ArrowLeftRight,
-    BarChart3,
-    Clock,
-    DollarSign,
-    FileText,
-    History,
-    MapPin,
-    MonitorSpeaker,
-    Receipt,
-    UserCog,
-    Users,
-    Wallet
+  ArrowLeftRight,
+  BarChart3,
+  Clock,
+  DollarSign,
+  FileText,
+  History,
+  MapPin,
+  MonitorSpeaker,
+  Receipt,
+  UserCog,
+  Users,
+  Wallet
 } from 'lucide-react';
 
 /**
@@ -64,19 +64,16 @@ const baseCmsNavigationItems: NavigationItem[] = [
     label: 'Payouts',
     href: '/vault/cashier/payouts',
     icon: DollarSign,
-    permissionCheck: (roles: string[]) => !roles.includes('vault-manager'),
   },
   {
     label: 'Shifts',
     href: '/vault/cashier/shifts',
     icon: Clock,
-    permissionCheck: (roles: string[]) => !roles.includes('vault-manager'),
   },
   {
     label: 'Float Requests',
     href: '/vault/cashier/float-requests',
     icon: ArrowLeftRight,
-    permissionCheck: (roles: string[]) => !roles.includes('vault-manager'),
   },
   {
     label: 'Vault Overview',
@@ -127,19 +124,29 @@ export function getCmsNavigationConfig(userRoles?: string[]): NavigationConfig {
   const hasHighPriorityRole = normalizedHighPriorityRoles.some(role =>
     normalizedRoles.includes(role)
   );
-
-  // TODO: Add more roles here if needed later
-  const allowedVaultRoles = ['developer', 'cashier', 'vault-manager'];
-  const canSeeVaultSections = normalizedRoles.some(role =>
-    allowedVaultRoles.includes(role)
-  );
+  
+  // Specific role checks
+  const isAdminOrDev = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+  const isVaultManager = normalizedRoles.includes('vault-manager') || isAdminOrDev;
+  const isCashier = normalizedRoles.includes('cashier') || isAdminOrDev;
 
   // If user only has cashier or vault-manager roles, return flat structure
   if (!hasHighPriorityRole) {
+    const filteredItems = baseCmsNavigationItems.filter(item => {
+        // Vault Manager Access
+        if (item.href.startsWith('/vault/management')) {
+            return isVaultManager;
+        }
+        // Cashier Access
+        if (item.href.startsWith('/vault/cashier')) {
+            return isCashier;
+        }
+        // Default (allow other links unless specifically restricted elsewhere)
+        return true;
+    });
+
     return {
-      items: canSeeVaultSections 
-        ? baseCmsNavigationItems 
-        : baseCmsNavigationItems.filter(item => !item.href.startsWith('/vault/')),
+      items: filteredItems,
     };
   }
 
@@ -162,33 +169,38 @@ export function getCmsNavigationConfig(userRoles?: string[]): NavigationConfig {
       !item.href.startsWith('/vault/cashier') &&
       !item.href.startsWith('/vault/management')
   );
+  
+  const additionalSections: NavigationItem[] = [];
+  
+  if (isCashier) {
+      additionalSections.push({
+          label: 'Cash Desk',
+          href: '#',
+          icon: DollarSign,
+          children: cashDeskItems,
+      });
+  }
+  
+  if (isVaultManager) {
+      additionalSections.push({
+          label: 'Vault Manager',
+          href: '#',
+          icon: BarChart3,
+          children: [
+            {
+              label: 'Vault Overview',
+              href: '/vault/management',
+              icon: BarChart3,
+            },
+            ...vaultManagerItems,
+          ],
+      });
+  }
 
   return {
     items: [
       ...otherItems,
-      ...(canSeeVaultSections
-        ? [
-            {
-              label: 'Cash Desk',
-              href: '#',
-              icon: DollarSign,
-              children: cashDeskItems,
-            },
-            {
-              label: 'Vault Manager',
-              href: '#',
-              icon: BarChart3,
-              children: [
-                {
-                  label: 'Vault Overview',
-                  href: '/vault/management',
-                  icon: BarChart3,
-                },
-                ...vaultManagerItems,
-              ],
-            },
-          ]
-        : []),
+      ...additionalSections,
     ],
   };
 }

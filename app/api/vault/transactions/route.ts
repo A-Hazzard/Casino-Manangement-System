@@ -14,6 +14,7 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { NextRequest, NextResponse } from 'next/server';
+import { GamingLocations } from '../../lib/models/gaminglocations';
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,13 +51,6 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(requestedLimit, 100); // Cap at 100 items at a time
     const skip = (page - 1) * limit;
 
-    if (!locationId) {
-      return NextResponse.json(
-        { success: false, error: 'locationId is required' },
-        { status: 400 }
-      );
-    }
-
     // ============================================================================
     // STEP 3: Database connection & Licensee filtering
     // ============================================================================
@@ -69,21 +63,25 @@ export async function GET(request: NextRequest) {
       (userPayload?.roles as string[]) || []
     );
 
-    if (
-      allowedLocationIds !== 'all' &&
-      !allowedLocationIds.includes(locationId)
-    ) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied for this location' },
-        { status: 403 }
-      );
-    }
+    const query: any = {};
 
-    // ============================================================================
-    // STEP 4: Fetch transactions
-    // ============================================================================
-    // Build query
-    const query: any = { locationId };
+    if (!locationId || locationId === 'all') {
+      if (allowedLocationIds !== 'all') {
+        query.locationId = { $in: allowedLocationIds };
+      }
+      // If allowedLocationIds is 'all', we don't need a locationId filter (query everything)
+    } else {
+      if (
+        allowedLocationIds !== 'all' &&
+        !allowedLocationIds.includes(locationId as string)
+      ) {
+        return NextResponse.json(
+          { success: false, error: 'Access denied for this location' },
+          { status: 403 }
+        );
+      }
+      query.locationId = locationId;
+    }
 
     const type = searchParams.get('type');
     const status = searchParams.get('status');
@@ -129,13 +127,31 @@ export async function GET(request: NextRequest) {
 
     const total = await VaultTransactionModel.countDocuments(query);
 
+    // If global view, attach location names
+    let finalTransactions = transactions;
+    if (locationId === 'all' || !locationId) {
+        const locations = await GamingLocations.find({ 
+            _id: { $in: transactions.map(tx => tx.locationId) } 
+        }, { name: 1 }).lean();
+        
+        const nameMap = locations.reduce((acc, loc) => {
+            acc[String(loc._id)] = loc.name;
+            return acc;
+        }, {} as Record<string, string>);
+        
+        finalTransactions = transactions.map(tx => ({
+            ...tx,
+            locationName: nameMap[tx.locationId] || 'Unknown'
+        }));
+    }
+
     // ============================================================================
     // STEP 5: Return success response
     // ============================================================================
     return NextResponse.json({
       success: true,
-      items: transactions,
-      transactions, // Keep for backward compatibility
+      items: finalTransactions,
+      transactions: finalTransactions, // Keep for backward compatibility
       total,
       pagination: {
         page,

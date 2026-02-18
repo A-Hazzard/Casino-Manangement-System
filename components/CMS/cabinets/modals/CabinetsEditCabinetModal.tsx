@@ -8,17 +8,14 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import EditCabinetBasicInfo from '../EditCabinetModal/EditCabinetBasicInfo';
-import EditCabinetCollectionSettings from '../EditCabinetModal/EditCabinetCollectionSettings';
-import EditCabinetLocationConfig from '../EditCabinetModal/EditCabinetLocationConfig';
 import { fetchCabinetById, updateCabinet } from '@/lib/helpers/cabinets';
 import { fetchManufacturers } from '@/lib/helpers/machines';
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import {
-  normalizeGameTypeValue,
-  normalizeStatusValue,
+    normalizeGameTypeValue,
+    normalizeStatusValue,
 } from '@/lib/utils/cabinet';
 import {
     detectChanges,
@@ -32,6 +29,9 @@ import axios from 'axios';
 import { gsap } from 'gsap';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import EditCabinetBasicInfo from '../EditCabinetModal/EditCabinetBasicInfo';
+import EditCabinetCollectionSettings from '../EditCabinetModal/EditCabinetCollectionSettings';
+import EditCabinetLocationConfig from '../EditCabinetModal/EditCabinetLocationConfig';
 
 type CabinetFormData = Partial<GamingMachine>;
 
@@ -275,6 +275,7 @@ export default function CabinetsEditCabinetModal({
 
   type ExtendedCabinetFormData = CabinetFormData & {
     cabinetType?: string;
+    otherGameType?: string;
     collectionSettings?: CollectionSettingsForm;
   };
 
@@ -282,11 +283,12 @@ export default function CabinetsEditCabinetModal({
     _id: '',
     assetNumber: '',
     installedGame: '',
-    gameType: 'Slot',
+    gameType: 'slot',
     accountingDenomination: '1',
     collectionMultiplier: '1',
     locationId: '',
     smbId: '',
+    otherGameType: '',
     status: 'functional',
     isCronosMachine: false,
     manufacturer: '',
@@ -331,6 +333,7 @@ export default function CabinetsEditCabinetModal({
         custom: selectedCabinet.custom || { name: '' },
         createdAt: selectedCabinet.createdAt,
         cabinetType: selectedCabinet.cabinetType || 'Standing',
+        otherGameType: !['slot', 'roulette', 'pulse'].includes(normalizeGameTypeValue(selectedCabinet.gameType)) ? selectedCabinet.gameType : '',
         collectionSettings: {
           multiplier: selectedCabinet.collectionMultiplier || '1',
           lastCollectionTime: initialCollectionTime.toISOString(),
@@ -454,6 +457,11 @@ export default function CabinetsEditCabinetModal({
                         ? String(cabinetDetails.collectionMeters.metersOut)
                         : prevData.collectionSettings?.lastMetersOut || '',
                   },
+                  otherGameType: userModifiedFieldsRef.current.has('gameType')
+                    ? prevData.otherGameType
+                    : !['slot', 'roulette', 'pulse'].includes(normalizeGameTypeValue(cabinetDetails.gameType || prevData.gameType)) 
+                      ? (cabinetDetails.gameType || prevData.gameType) 
+                      : '',
                 };
                 // console.log(
                 //   "Updated form data with gameType:",
@@ -658,7 +666,7 @@ export default function CabinetsEditCabinetModal({
       const formDataComparison = {
         assetNumber: formData.assetNumber,
         installedGame: formData.installedGame,
-        gameType: formData.gameType,
+        gameType: (formData.gameType === 'other' ? formData.otherGameType : formData.gameType)?.toLowerCase().trim(),
         accountingDenomination: formData.accountingDenomination,
         collectionMultiplier: formData.collectionMultiplier,
         locationId: formData.locationId,
@@ -718,8 +726,13 @@ export default function CabinetsEditCabinetModal({
               change.newValue;
           }
         } else {
-          updatePayload[fieldPath] =
-            formData[fieldPath as keyof typeof formData];
+          // Special handling for gameType to ensure it's lowercased and uses otherGameType if needed
+          if (fieldPath === 'gameType') {
+            updatePayload.gameType = (formData.gameType === 'other' ? formData.otherGameType : formData.gameType)?.toLowerCase().trim();
+          } else {
+            updatePayload[fieldPath] =
+              formData[fieldPath as keyof typeof formData];
+          }
         }
       });
 

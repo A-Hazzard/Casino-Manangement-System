@@ -11,39 +11,39 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
 import CashierManagementSkeleton from '@/components/ui/skeletons/CashierManagementSkeleton';
 
 import {
-  fetchCashiersData,
-  handleCreateCashier,
-  handleDeleteCashier,
-  handleFloatAction,
-  handleResetCashierPassword,
-  handleUpdateCashierStatus
+    fetchCashiersData,
+    handleCreateCashier,
+    handleDeleteCashier,
+    handleFloatAction,
+    handleResetCashierPassword,
+    handleUpdateCashierStatus
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -51,25 +51,28 @@ import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 
 // Phase 2 Modals
+import { fetchVaultBalance } from '@/lib/helpers/vaultHelpers';
 import { getDenominationValues, getInitialDenominationRecord } from '@/lib/utils/vault/denominations';
-import type { Denomination, FloatRequest } from '@/shared/types/vault';
+import type { Denomination, FloatRequest, UnbalancedShiftInfo } from '@/shared/types/vault';
 import {
-  AlertTriangle,
-  ArrowUpDown,
-  Ban,
-  Check,
-  Copy,
-  Eye,
+    AlertTriangle,
+    ArrowRight,
+    ArrowUpDown,
+    Ban,
+    Check,
+    Copy,
+    Eye,
 
-  Plus,
-  RefreshCw,
-  RotateCcw,
-  Search,
-  Trash2,
-  User
+    Plus,
+    RefreshCw,
+    RotateCcw,
+    Search,
+    Trash2,
+    User
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import VaultShiftReviewModal from '../overview/modals/VaultShiftReviewModal';
 import CashierActionSelectionModal from './modals/CashierActionSelectionModal';
 import CashierActivityLogModal from './modals/CashierActivityLogModal';
 import CashierShiftHistoryModal from './modals/CashierShiftHistoryModal';
@@ -144,6 +147,8 @@ export default function CashierManagementPanel() {
   const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
   const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
   const [isShiftHistoryModalOpen, setIsShiftHistoryModalOpen] = useState(false);
+  const [reviewShift, setReviewShift] = useState<UnbalancedShiftInfo | null>(null);
+  const [vaultBalance, setVaultBalance] = useState<Denomination[]>([]);
 
   const shiftTotal = Object.entries(shiftDenominations).reduce(
     (sum, [val, qty]) => sum + (Number(val) * qty), 
@@ -363,7 +368,10 @@ export default function CashierManagementPanel() {
     setLoading(true);
     try {
       const result = await handleCreateCashier({
-        ...newCashier,
+        username: newCashier.username.trim(),
+        firstName: newCashier.firstName.trim(),
+        lastName: newCashier.lastName.trim(),
+        email: newCashier.email.trim(),
         assignedLicensees: user?.assignedLicensees,
         assignedLocations: user?.assignedLocations,
       });
@@ -458,7 +466,7 @@ export default function CashierManagementPanel() {
           locationId: user.assignedLocations[0],
           denominations: denoms,
           physicalCount: shiftTotal,
-          notes: shiftNotes
+          notes: shiftNotes.trim()
         })
       });
 
@@ -478,6 +486,51 @@ export default function CashierManagementPanel() {
       toast.error('An error occurred');
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Fetch vault balance for resolution stock verification
+   */
+  const fetchVaultInventory = async () => {
+    if (!user?.assignedLocations?.[0]) return;
+    const balance = await fetchVaultBalance(user.assignedLocations[0]);
+    if (balance?.denominations) {
+        setVaultBalance(balance.denominations);
+    }
+  };
+
+  const handleReviewShift = async (cashier: Cashier) => {
+    if (!checkVaultStatus()) return;
+    setLoading(true);
+    try {
+        // Fetch vault inventory for review stocks
+        await fetchVaultInventory();
+
+        // Fetch pending review shift for this cashier
+        const res = await fetch(`/api/cashier/shifts?status=pending_review&locationId=${user?.assignedLocations?.[0]}&cashierId=${cashier._id}`);
+        const data = await res.json();
+        
+        if (data.success && data.shifts && data.shifts.length > 0) {
+            const shift = data.shifts[0];
+            setReviewShift({
+                shiftId: shift._id,
+                cashierId: shift.cashierId,
+                cashierName: cashier.profile ? `${cashier.profile.firstName} ${cashier.profile.lastName}` : cashier.username,
+                expectedBalance: shift.expectedClosingBalance || 0,
+                enteredBalance: shift.cashierEnteredBalance || 0,
+                enteredDenominations: shift.cashierEnteredDenominations || [],
+                discrepancy: shift.discrepancy || 0,
+                closedAt: shift.closedAt ? new Date(shift.closedAt) : new Date(),
+            });
+        } else {
+            toast.error("No pending review shift found for this cashier");
+        }
+    } catch (err) {
+        console.error("Shift review error:", err);
+        toast.error("Failed to fetch shift details");
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -690,6 +743,17 @@ export default function CashierManagementPanel() {
                                  Review Request
                                </Button>
                              )}
+                             {cashier.shiftStatus === 'pending_review' && (
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => handleReviewShift(cashier)}
+                                 className="h-8 w-full gap-2 border-amber-200 text-amber-700 hover:bg-amber-50"
+                               >
+                                 <ArrowRight className="h-4 w-4" />
+                                 Review Shift
+                               </Button>
+                             )}
                              </div>
 
                             {/* Secondary Actions Row */}
@@ -761,7 +825,10 @@ export default function CashierManagementPanel() {
 
       {/* End Shift Modal */}
       <Dialog open={isEndShiftModalOpen} onOpenChange={setIsEndShiftModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent 
+          className="sm:max-w-[500px] !z-[200]"
+          backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RotateCcw className="h-5 w-5 text-red-600" />
@@ -840,7 +907,10 @@ export default function CashierManagementPanel() {
       
       {/* Review Float Request Modal */}
       <Dialog open={isReviewRequestModalOpen} onOpenChange={setIsReviewRequestModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent 
+          className="sm:max-w-[500px] !z-[200]"
+          backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Check className="h-5 w-5 text-purple-600" />
@@ -919,7 +989,10 @@ export default function CashierManagementPanel() {
 
       {/* Create Cashier Modal */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent>
+        <DialogContent 
+          className="!z-[200]"
+          backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
+        >
           <DialogHeader>
             <DialogTitle>Create New Cashier</DialogTitle>
             <DialogDescription>
@@ -995,7 +1068,10 @@ export default function CashierManagementPanel() {
 
       {/* Reset Password Modal */}
       <Dialog open={isResetModalOpen} onOpenChange={setIsResetModalOpen}>
-        <DialogContent>
+        <DialogContent 
+          className="!z-[200]"
+          backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-orange-500" />
@@ -1040,7 +1116,10 @@ export default function CashierManagementPanel() {
         open={isTempPasswordModalOpen}
         onOpenChange={setIsTempPasswordModalOpen}
       >
-        <DialogContent>
+        <DialogContent 
+          className="!z-[200]"
+          backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-green-600">
               <Check className="h-5 w-5" />
@@ -1099,7 +1178,10 @@ export default function CashierManagementPanel() {
         open={isViewPasswordModalOpen}
         onOpenChange={setIsViewPasswordModalOpen}
       >
-        <DialogContent>
+        <DialogContent 
+          className="!z-[200]"
+          backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-blue-600">
               <Eye className="h-5 w-5" />
@@ -1155,7 +1237,10 @@ export default function CashierManagementPanel() {
 
        {/* Delete Confirmation Modal */}
        <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent 
+          className="sm:max-w-[425px] !z-[200]"
+          backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <Trash2 className="h-5 w-5" />
@@ -1198,7 +1283,10 @@ export default function CashierManagementPanel() {
 
       {/* Disable/Enable Confirmation Modal */}
       <Dialog open={isDisableModalOpen} onOpenChange={setIsDisableModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent 
+          className="sm:max-w-[425px] !z-[200]"
+          backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {actionCashier?.isEnabled ? (
@@ -1270,6 +1358,16 @@ export default function CashierManagementPanel() {
           setIsSelectionModalOpen(true);
         }}
         cashier={selectedCashier}
+      />
+
+      <VaultShiftReviewModal
+        open={!!reviewShift}
+        onClose={() => setReviewShift(null)}
+        shift={reviewShift}
+        vaultInventory={vaultBalance}
+        onSuccess={() => {
+          fetchCashiers(currentPage);
+        }}
       />
     </div>
   );

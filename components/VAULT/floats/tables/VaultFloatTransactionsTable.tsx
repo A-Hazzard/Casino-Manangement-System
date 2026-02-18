@@ -20,6 +20,7 @@ import {
 } from '@/components/shared/ui/table';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
+import { safeFormatDate } from '@/lib/utils/date/formatting';
 import type { FloatTransaction } from '@/shared/types/vault';
 import { CheckCircle2, Clock, FileText, User, X } from 'lucide-react';
 
@@ -55,14 +56,7 @@ export default function VaultFloatTransactionsTable({
   const { formatAmount } = useCurrencyFormat();
 
   const formatDate = (dateString: string | Date) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true,
-    });
+    return safeFormatDate(dateString);
   };
 
   if (transactions.length === 0) {
@@ -109,17 +103,21 @@ export default function VaultFloatTransactionsTable({
               return (
                 <TableRow key={tx._id} className="transition-colors hover:bg-muted/30">
                   <TableCell className="text-xs whitespace-nowrap">{formatDate(tx.timestamp)}</TableCell>
-                  <TableCell className="font-medium text-sm">{tx.performedByName}</TableCell>
+                  <TableCell className="font-medium text-sm">
+                    {tx.to?.type === 'cashier' ? (tx.toName || tx.to.id) : 
+                     tx.from?.type === 'cashier' ? (tx.fromName || tx.from.id) : 
+                     tx.performedByName}
+                  </TableCell>
                   <TableCell className="text-center">
                     <Badge className={cn(
-                      'px-2 py-0.5 text-[10px] capitalize', 
-                      isInflow ? 'bg-button' : 'bg-lighterBlueHighlight'
+                      'px-2 py-0.5 text-[10px] capitalize border-none', 
+                      isInflow ? 'bg-green-600 text-white' : 'bg-orangeHighlight text-white'
                     )}>
                       {getLabel(tx.type)}
                     </Badge>
                   </TableCell>
-                  <TableCell className={cn('text-right font-bold', isInflow ? 'text-button' : 'text-lighterBlueHighlight')}>
-                    {isInflow ? '+' : '-'}{formatAmount(Math.abs(tx.amount))}
+                  <TableCell className={cn('text-right font-bold', isInflow ? 'text-green-600' : 'text-orangeHighlight')}>
+                    {formatAmount(Math.abs(tx.amount))}
                   </TableCell>
                   <TableCell className="text-xs text-gray-500 max-w-[150px] truncate">{tx.notes || '-'}</TableCell>
                   <TableCell className="text-center">
@@ -173,7 +171,7 @@ export default function VaultFloatTransactionsTable({
           };
 
           return (
-            <Card key={tx._id} className={cn("overflow-hidden border-l-4 shadow-sm", isInflow ? "border-l-button" : "border-l-lighterBlueHighlight")}>
+            <Card key={tx._id} className={cn("overflow-hidden border-l-4 shadow-sm", isInflow ? "border-l-green-600" : "border-l-orangeHighlight")}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
@@ -182,20 +180,24 @@ export default function VaultFloatTransactionsTable({
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                        <User className="h-3.5 w-3.5 text-gray-400" />
-                       <span className="font-bold text-gray-900 text-sm">{tx.performedByName}</span>
+                       <span className="font-bold text-gray-900 text-sm">
+                         {tx.to?.type === 'cashier' ? (tx.toName || tx.to.id) : 
+                          tx.from?.type === 'cashier' ? (tx.fromName || tx.from.id) : 
+                          tx.performedByName}
+                       </span>
                     </div>
                   </div>
-                  <span className={cn("text-lg font-black", isInflow ? "text-button" : "text-lighterBlueHighlight")}>
-                    {isInflow ? '+' : '-'}{formatAmount(Math.abs(tx.amount))}
+                  <span className={cn("text-lg font-black", isInflow ? "text-green-600" : "text-orangeHighlight")}>
+                    {formatAmount(Math.abs(tx.amount))}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                   <div className="flex items-center gap-2">
-                    <Badge className={cn('px-2 py-0.5 text-[10px] capitalize', isInflow ? 'bg-button' : 'bg-lighterBlueHighlight')}>
+                    <Badge className={cn('px-2 py-0.5 text-[10px] capitalize border-none', isInflow ? 'bg-green-600 text-white' : 'bg-orangeHighlight text-white')}>
                         {getLabel(tx.type)}
                     </Badge>
-                    <Badge className={cn('px-2 py-0.5 text-[10px]', isCompleted ? 'bg-button text-white' : 'bg-orangeHighlight')}>
+                    <Badge className={cn('px-2 py-0.5 text-[10px] border-none', isCompleted ? 'bg-green-600 text-white' : 'bg-orangeHighlight text-white')}>
                       {isCompleted ? 'Completed' : 'Pending'}
                     </Badge>
                   </div>

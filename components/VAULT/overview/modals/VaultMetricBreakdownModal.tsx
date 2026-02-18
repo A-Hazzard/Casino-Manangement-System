@@ -131,7 +131,7 @@ export function VaultMetricBreakdownModal({
                           </div>
                         </TableCell>
                         <TableCell className={cn("text-right font-black tracking-tight", getTxColor(tx))}>
-                          {tx.to.type === 'vault' ? '+' : '-'}${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {tx.to.type === 'vault' ? '+' : '-'}${(tx.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -153,7 +153,7 @@ export function VaultMetricBreakdownModal({
                         </Badge>
                       </div>
                       <div className={cn("text-xl font-black tracking-tight", getTxColor(tx))}>
-                        {tx.to.type === 'vault' ? '+' : '-'}${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {tx.to.type === 'vault' ? '+' : '-'}${(tx.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </div>
                     </div>
                     
@@ -177,7 +177,7 @@ export function VaultMetricBreakdownModal({
         <div className="p-5 bg-gray-50 border-t flex justify-between items-center text-sm">
            <span className="text-[11px] font-black uppercase tracking-widest text-gray-400">Journal Total Counted:</span>
            <span className={cn("text-2xl font-black tracking-tight", type === 'in' ? 'text-violet-600' : 'text-red-500')}>
-              {type === 'in' ? '+' : '-'}${data.reduce((sum, tx) => sum + tx.amount, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              {type === 'in' ? '+' : '-'}${data.reduce((sum, tx) => sum + (tx.amount || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
            </span>
         </div>
       </DialogContent>

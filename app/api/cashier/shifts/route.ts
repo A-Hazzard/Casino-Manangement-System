@@ -42,6 +42,8 @@ export async function GET(request: NextRequest) {
     const locationId = searchParams.get('locationId');
     const cashierIdFromParams = searchParams.get('cashierId');
     const limit = parseInt(searchParams.get('limit') || '20');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
     // SECURITY: If not VM, you can ONLY see your own shifts
     let finalCashierId = cashierIdFromParams;
@@ -50,9 +52,21 @@ export async function GET(request: NextRequest) {
     }
 
     const query: any = {};
-    if (status) query.status = status;
+    if (status) {
+      if (status.includes(',')) {
+        query.status = { $in: status.split(',') };
+      } else {
+        query.status = status;
+      }
+    }
     if (locationId) query.locationId = locationId;
     if (finalCashierId) query.cashierId = finalCashierId;
+
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
 
     // ============================================================================
     // STEP 3: Database connection

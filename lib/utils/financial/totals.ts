@@ -10,8 +10,7 @@
  * - Handle null/empty data gracefully
  */
 
-import type { AggregatedLocation } from '@/shared/types/entities';
-import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import type { AggregatedLocation, GamingMachine as Cabinet } from '@/shared/types/entities';
 
 export type FinancialTotals = {
   moneyIn: number;
@@ -26,9 +25,9 @@ export type FinancialTotals = {
  */
 export function calculateLocationFinancialTotals(
   locations: AggregatedLocation[]
-): FinancialTotals | null {
+): FinancialTotals {
   if (!locations || !Array.isArray(locations) || locations.length === 0) {
-    return null;
+    return { moneyIn: 0, moneyOut: 0, gross: 0 };
   }
 
   const totals = locations.reduce(
@@ -52,13 +51,13 @@ export function calculateLocationFinancialTotals(
 /**
  * Calculates financial totals from cabinet data
  * @param cabinets - Array of cabinet objects with financial data
- * @returns Aggregated financial totals or null if no data
+ * @returns Aggregated financial totals
  */
 export function calculateCabinetFinancialTotals(
   cabinets: Cabinet[]
-): FinancialTotals | null {
+): FinancialTotals {
   if (!cabinets || !Array.isArray(cabinets) || cabinets.length === 0) {
-    return null;
+    return { moneyIn: 0, moneyOut: 0, gross: 0 };
   }
 
   const totals = cabinets.reduce(

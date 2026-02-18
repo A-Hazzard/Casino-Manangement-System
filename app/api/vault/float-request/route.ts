@@ -50,6 +50,8 @@ export async function GET(request: NextRequest) {
     const requestedLimit = parseInt(searchParams.get('limit') || '20');
     const limit = Math.min(requestedLimit, 100);
     const skip = (page - 1) * limit;
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
     // ============================================================================
     // STEP 3: Fetch pending float requests
@@ -79,6 +81,12 @@ export async function GET(request: NextRequest) {
         query.status = 'pending'; 
     }
     // If status === 'all', we don't set query.status, so it returns all.
+
+    if (startDate || endDate) {
+      query.requestedAt = {};
+      if (startDate) query.requestedAt.$gte = new Date(startDate);
+      if (endDate) query.requestedAt.$lte = new Date(endDate);
+    }
 
     const pipeline: any[] = [
       { $match: query },
@@ -357,9 +365,10 @@ export async function DELETE(request: NextRequest) {
         );
     }
 
-    if (requestDoc.status !== 'pending') {
+    const allowedStatuses = ['pending', 'approved_vm'];
+    if (!allowedStatuses.includes(requestDoc.status)) {
         return NextResponse.json(
-            { success: false, error: 'Only pending requests can be cancelled' },
+            { success: false, error: `Only ${allowedStatuses.join(' or ')} requests can be cancelled` },
             { status: 400 }
         );
     }

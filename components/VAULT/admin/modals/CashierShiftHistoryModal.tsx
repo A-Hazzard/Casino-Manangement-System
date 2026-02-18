@@ -20,6 +20,7 @@ import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
+import { safeFormatDate } from '@/lib/utils/date/formatting';
 import { ArrowLeft, BarChart3, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -147,7 +148,10 @@ export default function CashierShiftHistoryModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="max-w-6xl max-h-[90vh] overflow-y-auto !z-[200]"
+        backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
+      >
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Button
@@ -191,7 +195,7 @@ export default function CashierShiftHistoryModal({
                           )}
                           <div>
                             <div className="font-semibold">
-                              {new Date(shift.openedAt).toLocaleString()}
+                               {safeFormatDate(shift.openedAt)}
                             </div>
                             <div className="text-sm text-gray-500">
                               Duration: {calculateShiftDuration(shift.openedAt, shift.closedAt)}
@@ -250,7 +254,7 @@ export default function CashierShiftHistoryModal({
                               </div>
                               {shift.reviewedAt && (
                                 <div className="mt-1 text-xs text-gray-400">
-                                  Reviewed at {new Date(shift.reviewedAt).toLocaleString()}
+                                   Reviewed at {safeFormatDate(shift.reviewedAt)}
                                 </div>
                               )}
                             </div>

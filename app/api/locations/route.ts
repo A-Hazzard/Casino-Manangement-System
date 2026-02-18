@@ -16,8 +16,8 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-    getUserAccessibleLicenseesFromToken,
-    getUserLocationFilter,
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -302,6 +302,8 @@ export async function POST(request: Request) {
       isLocalServer,
       geoCoords,
       billValidatorOptions,
+      membershipEnabled,
+      locationMembershipSettings,
     } = body;
 
     // ============================================================================
@@ -379,7 +381,6 @@ export async function POST(request: Request) {
         latitude: geoCoords?.latitude || 0,
         longitude: geoCoords?.longitude || 0,
       },
-
       billValidatorOptions: billValidatorOptions || {
         denom1: true,
         denom2: true,
@@ -394,6 +395,19 @@ export async function POST(request: Request) {
         denom2000: false,
         denom5000: false,
         denom10000: false,
+      },
+      membershipEnabled: membershipEnabled || false,
+      locationMembershipSettings: locationMembershipSettings || {
+        enableFreePlays: false,
+        pointsRatioMethod: '',
+        gamesPlayedRatio: 0,
+        pointMethodValue: 0,
+        enablePoints: false,
+        freePlayCreditsTimeout: 0,
+        locationLimit: 0,
+        freePlayAmount: 0,
+        pointsMethodGameTypes: [],
+        freePlayGameTypes: [],
       },
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -577,6 +591,8 @@ export async function PUT(request: Request) {
       isLocalServer,
       geoCoords,
       billValidatorOptions,
+      membershipEnabled,
+      locationMembershipSettings,
     } = body;
 
     if (!locationName) {
@@ -710,11 +726,18 @@ export async function PUT(request: Request) {
       }
     }
 
-    // Handle billValidatorOptions
     if (billValidatorOptions) {
       updateData.billValidatorOptions = Object.fromEntries(
         Object.entries(billValidatorOptions).map(([k, v]) => [k, Boolean(v)])
       ) as UpdateLocationData['billValidatorOptions'];
+    }
+
+    if (membershipEnabled !== undefined) {
+      updateData.membershipEnabled = Boolean(membershipEnabled);
+    }
+
+    if (locationMembershipSettings) {
+      updateData.locationMembershipSettings = locationMembershipSettings;
     }
 
     // Always update the updatedAt timestamp
@@ -827,6 +850,20 @@ export async function PUT(request: Request) {
             field: 'geoCoords.longitude',
             oldValue: location.geoCoords?.longitude,
             newValue: geoCoords.longitude,
+          });
+        }
+        if (membershipEnabled !== undefined) {
+          updateChanges.push({
+            field: 'membershipEnabled',
+            oldValue: location.membershipEnabled,
+            newValue: membershipEnabled,
+          });
+        }
+        if (locationMembershipSettings !== undefined) {
+          updateChanges.push({
+            field: 'locationMembershipSettings',
+            oldValue: location.locationMembershipSettings,
+            newValue: locationMembershipSettings,
           });
         }
 

@@ -74,6 +74,8 @@ if (refreshSessions) {
       }}
       mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
       showToaster={false}
+      onRefresh={handleRefresh}
+      refreshing={refreshing}
     >
       <div className="flex flex-col">
         {/* Page Header */}

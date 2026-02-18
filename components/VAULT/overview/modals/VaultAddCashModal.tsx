@@ -67,12 +67,14 @@ export default function VaultAddCashModal({
   // ============================================================================
   const [source, setSource] = useState<CashSource | ''>('');
   const [denominations, setDenominations] = useState<Denomination[]>([]);
+  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
 
   const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
 
   useEffect(() => {
     if (open) {
       setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+      setTouchedDenominations(new Set());
     }
   }, [open, denomsList]);
   const [notes, setNotes] = useState('');
@@ -94,7 +96,8 @@ export default function VaultAddCashModal({
    * Check if form is valid for submission
    * Requires source selection and total amount > 0
    */
-  const isValid = source !== '' && totalAmount > 0;
+  const isAllTouched = useMemo(() => denomsList.every(d => touchedDenominations.has(Number(d))), [denomsList, touchedDenominations]);
+  const isValid = source !== '' && (totalAmount > 0 || isAllTouched);
 
   // ============================================================================
   // Event Handlers
@@ -114,6 +117,11 @@ export default function VaultAddCashModal({
     if (numValue < 0) return;
 
     setDenominations(prev => prev.map(d => d.denomination === denomination ? { ...d, quantity: numValue } : d));
+    setTouchedDenominations(prev => {
+      const next = new Set(prev);
+      next.add(denomination);
+      return next;
+    });
   };
 
   /**
@@ -146,6 +154,7 @@ export default function VaultAddCashModal({
       // Reset form on success
       setSource('');
       setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+      setTouchedDenominations(new Set());
       setNotes('');
       setErrors({});
       onClose();
@@ -165,6 +174,7 @@ export default function VaultAddCashModal({
     if (loading) return;
     setSource('');
     setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+    setTouchedDenominations(new Set());
     setNotes('');
     setErrors({});
     onClose();
@@ -250,7 +260,10 @@ export default function VaultAddCashModal({
                     value={denom.quantity === 0 ? '' : denom.quantity}
                     onChange={e => handleDenominationChange(denom.denomination, e.target.value)}
                     placeholder="0"
-                    className="w-16 h-9 text-center font-black bg-white rounded-lg border-gray-200 focus-visible:ring-violet-500/30 transition-all"
+                    className={cn(
+                        "w-16 h-9 text-center font-black bg-white rounded-lg border-gray-200 focus-visible:ring-violet-500/30 transition-all",
+                        touchedDenominations.has(denom.denomination) && "text-violet-600"
+                    )}
                   />
                 </div>
               ))}
@@ -262,7 +275,7 @@ export default function VaultAddCashModal({
              <div className="space-y-2">
                 <Label htmlFor="notes" className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-1">
                    <MessageSquare className="h-3 w-3" />
-                   Internal Notes
+                   Internal Notes (Optional)
                 </Label>
                 <Textarea
                   id="notes"

@@ -18,6 +18,7 @@ import {
     CardTitle,
 } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { safeFormatDate } from '@/lib/utils/date/formatting';
 import type { Denomination, FloatRequest } from '@/shared/types/vault';
 import { CheckCircle, Edit, Loader2, X } from 'lucide-react';
 import { useState } from 'react';
@@ -37,7 +38,9 @@ type VaultFloatRequestsPanelProps = {
     notes?: string
   ) => Promise<void>;
   onConfirm: (requestId: string) => Promise<void>;
+  vaultInventory?: Denomination[];
   loading?: boolean;
+  readOnly?: boolean;
 };
 
 export default function VaultFloatRequestsPanel({
@@ -46,7 +49,9 @@ export default function VaultFloatRequestsPanel({
   onDeny,
   onEdit,
   onConfirm,
+  vaultInventory = [],
   loading = false,
+  readOnly = false,
 }: VaultFloatRequestsPanelProps) {
   const { formatAmount } = useCurrencyFormat();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -121,7 +126,7 @@ export default function VaultFloatRequestsPanel({
                   Requested: {formatAmount(request.requestedAmount)}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {new Date(request.requestedAt).toLocaleString()}
+                  {safeFormatDate(request.requestedAt)}
                 </p>
               </div>
               <Badge className={
@@ -133,13 +138,31 @@ export default function VaultFloatRequestsPanel({
               </Badge>
             </div>
 
+            {/* Inventory Status (for Managers to see what's available) */}
+            {vaultInventory.length > 0 && request.status === 'pending' && (
+              <div className="rounded-md border bg-gray-50/50 p-2 text-xs">
+                <p className="mb-1 font-semibold text-gray-700">Vault Availability:</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {vaultInventory.filter(d => d.quantity > 0).map(d => (
+                    <span key={d.denomination} className="text-gray-600">
+                      ${d.denomination}: <span className="font-bold text-blue-600">{d.quantity}</span>
+                    </span>
+                  ))}
+                  {vaultInventory.every(d => d.quantity === 0) && (
+                    <span className="text-red-500 italic">No denominations in vault</span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {request.requestNotes && (
               <p className="rounded bg-gray-50 p-2 text-sm text-gray-700">
                 {request.requestNotes}
               </p>
             )}
 
-            {editingId === request._id ? (
+            {!readOnly && (
+            editingId === request._id ? (
               <div className="space-y-3 border-t pt-3">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -241,7 +264,7 @@ export default function VaultFloatRequestsPanel({
                   )
                 )}
               </div>
-            )}
+            ))}
           </div>
         ))}
       </CardContent>

@@ -8,8 +8,6 @@
 'use client';
 
 import VaultAddCashModal from '@/components/VAULT/overview/modals/VaultAddCashModal';
-import VaultCloseShiftModal from '@/components/VAULT/overview/modals/VaultCloseShiftModal';
-import VaultCollectionWizardModal from '@/components/VAULT/overview/modals/VaultCollectionWizardModal';
 import VaultInitializeModal from '@/components/VAULT/overview/modals/VaultInitializeModal';
 import VaultReconcileModal from '@/components/VAULT/overview/modals/VaultReconcileModal';
 import VaultRecordExpenseModal from '@/components/VAULT/overview/modals/VaultRecordExpenseModal';
@@ -27,10 +25,8 @@ type VaultModalsProps = {
     recordExpense: boolean;
     reconcile: boolean;
     initialize: boolean;
-    collection: boolean;
     softCount: boolean;
     viewDenominations: boolean;
-    closeShift: boolean;
   };
   vaultBalance: number;
   onClose: (key: string) => void;
@@ -43,8 +39,6 @@ type VaultModalsProps = {
   } | null;
   currentDenominations: Denomination[];
   isInitial: boolean;
-  canCloseVault: boolean;
-  closeVaultBlockReason?: string;
   currentVaultShiftId?: string;
   currentLocationId?: string;
 };
@@ -58,8 +52,6 @@ export default function VaultModals({
   viewDenomsData,
   currentDenominations,
   isInitial = false,
-  canCloseVault,
-  closeVaultBlockReason,
   currentVaultShiftId,
   currentLocationId,
 }: VaultModalsProps) {
@@ -97,14 +89,6 @@ export default function VaultModals({
         expectedDenominations={currentDenominations}
         isInitial={isInitial}
       />
-      <VaultCollectionWizardModal
-        open={modals.collection}
-        onClose={() => onClose('collection')}
-        onConfirm={() => onConfirm('collection', { success: true })}
-        machines={machines}
-        currentVaultShiftId={currentVaultShiftId}
-        currentLocationId={currentLocationId}
-      />
       <VaultSoftCountModal
         open={modals.softCount}
         onClose={() => onClose('softCount')}
@@ -113,23 +97,12 @@ export default function VaultModals({
         currentVaultShiftId={currentVaultShiftId}
         currentLocationId={currentLocationId}
       />
-      
       <ViewDenominationsModal
         open={modals.viewDenominations}
         onClose={() => onClose('viewDenominations')}
         title={viewDenomsData?.title || 'View Denominations'}
         denominations={viewDenomsData?.denominations || []}
         totalAmount={viewDenomsData?.total || 0}
-      />
-      
-      <VaultCloseShiftModal
-        open={modals.closeShift}
-        onClose={() => onClose('closeShift')}
-        onConfirm={(balance, denominations) => onConfirm('closeShift', { closingBalance: balance, denominations })}
-        currentBalance={vaultBalance}
-        canClose={canCloseVault}
-        blockReason={closeVaultBlockReason}
-        locationId={currentLocationId}
       />
     </>
   );

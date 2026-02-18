@@ -19,6 +19,10 @@ const CountrySchema = new Schema(
       type: String,
       required: true,
     },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

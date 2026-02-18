@@ -19,14 +19,23 @@ export function useCashierActivity() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchActivity = useCallback(async (isSilent = false) => {
+  const fetchActivity = useCallback(async (isSilent = false, startDate?: string, endDate?: string) => {
     try {
       if (!isSilent) setLoading(true);
       else setRefreshing(true);
+
+      const params = new URLSearchParams();
+      params.append('limit', '20');
+      params.append('status', 'all');
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const queryString = params.toString();
+
       // Fetch shifts and requests in parallel
       const [shiftsRes, requestsRes] = await Promise.all([
-        fetch('/api/cashier/shifts?limit=5'),
-        fetch('/api/vault/float-request?limit=5&status=all')
+        fetch(`/api/cashier/shifts?${queryString}`),
+        fetch(`/api/vault/float-request?${queryString}`)
       ]);
 
       if (shiftsRes.ok && requestsRes.ok) {
@@ -74,7 +83,7 @@ export function useCashierActivity() {
 
         // Sort by timestamp desc
         combined.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-        setActivities(combined.slice(0, 5));
+        setActivities(combined.slice(0, 20));
       }
     } catch (error) {
       console.error('Failed to fetch activity', error);

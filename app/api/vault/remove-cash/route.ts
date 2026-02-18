@@ -143,6 +143,7 @@ export async function POST(request: NextRequest) {
         amount,
       vaultShiftId: activeVaultShift._id,
       performedBy: vaultManagerId,
+      performedByName: username,
       notes: `Cash removed to ${destination}${notes ? `: ${notes}` : ''}`,
     });
 

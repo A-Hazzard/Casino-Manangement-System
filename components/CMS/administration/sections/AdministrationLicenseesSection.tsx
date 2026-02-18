@@ -9,17 +9,16 @@
 
 import AdministrationLicenseeSearchBar from '@/components/CMS/administration/AdministrationLicenseeSearchBar';
 import AdministrationLicenseeCard from '@/components/CMS/administration/cards/AdministrationLicenseeCard';
-import AdministrationLicenseeCardSkeleton from '@/components/CMS/administration/skeletons/AdministrationLicenseeCardSkeleton';
-import AdministrationLicenseeTable from '@/components/CMS/administration/tables/AdministrationLicenseeTable';
-import AdministrationLicenseeTableSkeleton from '@/components/CMS/administration/skeletons/AdministrationLicenseeTableSkeleton';
 import AdministrationAddLicenseeModal from '@/components/CMS/administration/modals/AdministrationAddLicenseeModal';
-import AdministrationEditLicenseeModal from '@/components/CMS/administration/modals/AdministrationEditLicenseeModal';
 import AdministrationDeleteLicenseeModal from '@/components/CMS/administration/modals/AdministrationDeleteLicenseeModal';
-import AdministrationPaymentHistoryModal from '@/components/CMS/administration/modals/AdministrationPaymentHistoryModal';
+import AdministrationEditLicenseeModal from '@/components/CMS/administration/modals/AdministrationEditLicenseeModal';
 import AdministrationLicenseeSuccessModal from '@/components/CMS/administration/modals/AdministrationLicenseeSuccessModal';
+import AdministrationPaymentHistoryModal from '@/components/CMS/administration/modals/AdministrationPaymentHistoryModal';
 import AdministrationPaymentStatusConfirmModal from '@/components/CMS/administration/modals/AdministrationPaymentStatusConfirmModal';
-import type { Licensee } from '@/lib/types/common';
-import type { Country } from '@/lib/types/common';
+import AdministrationLicenseeCardSkeleton from '@/components/CMS/administration/skeletons/AdministrationLicenseeCardSkeleton';
+import AdministrationLicenseeTableSkeleton from '@/components/CMS/administration/skeletons/AdministrationLicenseeTableSkeleton';
+import AdministrationLicenseeTable from '@/components/CMS/administration/tables/AdministrationLicenseeTable';
+import type { Country, Licensee } from '@/lib/types/common';
 import type { AddLicenseeForm } from '@/lib/types/pages';
 
 type AdministrationLicenseesSectionProps = {
@@ -35,6 +34,7 @@ type AdministrationLicenseesSectionProps = {
   countries: Country[];
   isCountriesLoading: boolean;
   selectedLicensee: Licensee | null;
+  allLicensees: Licensee[];
   licenseeForm: AddLicenseeForm;
   selectedLicenseeForPayment: Licensee | null;
   selectedLicenseeForPaymentChange: Licensee | null;
@@ -78,6 +78,7 @@ export default function AdministrationLicenseesSection({
   countries,
   isCountriesLoading,
   selectedLicensee,
+  allLicensees,
   licenseeForm,
   selectedLicenseeForPayment,
   selectedLicenseeForPaymentChange,
@@ -118,16 +119,13 @@ export default function AdministrationLicenseesSection({
 
   return (
     <>
-      <AdministrationLicenseeSearchBar
-        searchValue={licenseeSearchValue}
-        setSearchValue={setLicenseeSearchValue}
-      />
-      {!isCountriesLoading && countries.length === 0 && (
-        <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          No countries are available. Please add countries first before creating
-          or updating licensees.
-        </p>
+      {allLicensees && allLicensees.length > 20 && (
+        <AdministrationLicenseeSearchBar
+          searchValue={licenseeSearchValue}
+          setSearchValue={setLicenseeSearchValue}
+        />
       )}
+
       <div className="block lg:hidden">
         {filteredLicensees.length > 0 ? (
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">

@@ -31,10 +31,11 @@ import {
     getTransactionTypeBadge
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { ExtendedVaultTransaction } from '@/shared/types/vault';
 import { ArrowDown, ArrowUp, FileText, Receipt, Search } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import VaultTransactionsMobileCards from './cards/VaultTransactionsMobileCards';
 import type { TransactionSortOption } from './tables/VaultTransactionsTable';
@@ -43,9 +44,10 @@ import VaultTransactionsTable from './tables/VaultTransactionsTable';
 export default function VaultTransactionsPageContent() {
   // ============================================================================
   // Hooks & State
-  // ============================================================================
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<ExtendedVaultTransaction[]>(
     []
@@ -60,14 +62,17 @@ export default function VaultTransactionsPageContent() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Fetch transactions
-  const fetchData = async () => {
-    const locationId = user?.assignedLocations?.[0];
-    if (!locationId) {
+  const fetchData = useCallback(async (isSilent = false) => {
+    // If Admin/Dev, allow global fetch without specific location
+    if (!isAdminOrDev && !user?.assignedLocations?.[0]) {
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    const locationId = user?.assignedLocations?.[0] || 'all';
+
+    if (!isSilent) setLoading(true);
+    
     try {
       const data = await fetchVaultTransactions(
         locationId,
@@ -86,7 +91,7 @@ export default function VaultTransactionsPageContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.assignedLocations, user?.roles, currentPage, selectedType, selectedStatus, searchTerm, isAdminOrDev]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -95,7 +100,18 @@ export default function VaultTransactionsPageContent() {
 
   useEffect(() => {
     fetchData();
-  }, [user?.assignedLocations, currentPage, searchTerm, selectedType, selectedStatus]);
+  }, [fetchData, selectedLicencee]);
+
+  // Periodic refresh only if at least 2 items
+  useEffect(() => {
+    if (transactions.length === 0) return;
+
+    const interval = setInterval(() => {
+        fetchData(true);
+    }, 60000); // 1 minute
+
+    return () => clearInterval(interval);
+  }, [user?.assignedLocations, currentPage, searchTerm, selectedType, selectedStatus, transactions.length]);
 
   // ============================================================================
   // Computed Values
@@ -220,13 +236,19 @@ export default function VaultTransactionsPageContent() {
   // Render
   // ============================================================================
   return (
-    <PageLayout>
+    <PageLayout
+        headerProps={isAdminOrDev ? {
+            selectedLicencee,
+            setSelectedLicencee,
+            disabled: false
+        } : undefined}
+    >
       <div className="space-y-6">
         {/* Header */}
         <VaultManagerHeader
-            title="Transaction History"
-            description="Monitor all vault transaction history"
-            onFloatActionComplete={() => fetchData()}
+            title={isAdminOrDev ? "Global Transactions" : "Transaction History"}
+            description={isAdminOrDev ? "Viewing all vault transactions across locations" : "Monitor all vault transaction history"}
+            onFloatActionComplete={() => fetchData(true)}
         />
 
         {/* Search and Filters */}

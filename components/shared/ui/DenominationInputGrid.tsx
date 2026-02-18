@@ -18,6 +18,8 @@ type DenominationInputGridProps = {
   onChange: (newDenominations: Denomination[]) => void;
   disabled?: boolean;
   stock?: Denomination[]; // Optional stock inventory to validate against
+  touchedDenominations?: Set<number>;
+  onTouchedChange?: (touched: Set<number>) => void;
 };
 
 export default function DenominationInputGrid({
@@ -25,19 +27,28 @@ export default function DenominationInputGrid({
   onChange,
   disabled = false,
   stock,
+  touchedDenominations,
+  onTouchedChange,
 }: DenominationInputGridProps) {
   const updateQuantity = (index: number, quantity: number) => {
     if (quantity < 0) return;
     const newDenominations = [...denominations];
+    const denomVal = newDenominations[index].denomination;
     newDenominations[index] = { ...newDenominations[index], quantity };
     onChange(newDenominations);
+    
+    if (onTouchedChange && touchedDenominations) {
+        const next = new Set(touchedDenominations);
+        next.add(Number(denomVal));
+        onTouchedChange(next);
+    }
   };
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {denominations.map((denom, index) => {
-        const availableCount = stock?.find(s => s.denomination === denom.denomination)?.quantity;
-        const isOverStock = availableCount !== undefined && denom.quantity > availableCount;
+        const availableCount = stock?.find(s => Number(s.denomination) === Number(denom.denomination))?.quantity;
+        const isOverStock = availableCount !== undefined && Number(denom.quantity) > Number(availableCount);
 
         return (
           <div key={denom.denomination} className="space-y-1">
@@ -48,7 +59,7 @@ export default function DenominationInputGrid({
               {availableCount !== undefined && (
                 <span className={cn(
                     "text-[9px] font-bold px-1 rounded",
-                    availableCount > 0 ? "text-gray-500 bg-gray-100" : "text-gray-300"
+                    Number(availableCount) > 0 ? "text-gray-500 bg-gray-100" : "text-gray-300"
                 )}>
                   {availableCount}
                 </span>
@@ -64,8 +75,9 @@ export default function DenominationInputGrid({
               }}
               placeholder="0"
               className={cn(
-                "h-9 text-center font-semibold",
-                isOverStock && "border-red-500 bg-red-50 text-red-900"
+                "h-9 text-center font-semibold transition-all",
+                isOverStock && "border-red-500 bg-red-50 text-red-900",
+                touchedDenominations?.has(Number(denom.denomination)) && !isOverStock && "text-violet-600"
               )}
               disabled={disabled}
             />

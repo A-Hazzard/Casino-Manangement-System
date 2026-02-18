@@ -16,10 +16,10 @@
  */
 
 import {
-  CMS_ACCESS_ROLES,
-  HIGH_PRIORITY_ROLES,
-  ROLE_PRIORITY,
-  UserRole,
+    CMS_ACCESS_ROLES,
+    HIGH_PRIORITY_ROLES,
+    ROLE_PRIORITY,
+    UserRole,
 } from '@/lib/constants';
 
 export type PageName =
@@ -113,6 +113,7 @@ export const hasTabAccess = (
   const tabPermissions: Record<string, UserRole[]> = {
     'administration-users': ['developer', 'admin', 'manager', 'location admin'],
     'administration-licensees': ['developer', 'admin'],
+    'administration-countries': ['developer', 'admin'],
     'administration-activity-logs': [
       'developer',
       'admin',

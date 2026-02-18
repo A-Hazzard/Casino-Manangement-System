@@ -1,6 +1,7 @@
 export type AdministrationSection =
   | 'users'
   | 'licensees'
+  | 'countries'
   | 'activity-logs'
   | 'feedback';
 
@@ -20,6 +21,11 @@ export const ADMINISTRATION_TABS_CONFIG: AdministrationTab[] = [
     id: 'licensees',
     label: 'Licensees',
     icon: '🏢', // Building emoji
+  },
+  {
+    id: 'countries',
+    label: 'Countries',
+    icon: '🌍', // Globe emoji
   },
   {
     id: 'activity-logs',

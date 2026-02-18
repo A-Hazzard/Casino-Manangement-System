@@ -437,8 +437,8 @@ Key features include:
 ### Role-Based Access Control
 
 - **Admin/Developer**: Full access to all features across all licensees
-- **Manager**: Access to assigned licensees, can create/edit/delete reports
-- **Collector/Location Admin**: Access to assigned locations only, can create/edit recent reports
+- **Manager**: Access to assigned licensees. Can edit and delete only the **two most recent** reports per location. Older reports are view-only.
+- **Collector/Location Admin**: Access to assigned locations only.
 - **Technician**: No access (redirected to Cabinets)
 
 ### Collection Report Creation Process

@@ -50,7 +50,10 @@ export default function CashierActionSelectionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent 
+        className="sm:max-w-md !z-[200]"
+        backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />

@@ -7,27 +7,27 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Button } from '@/components/shared/ui/button';
+import { Checkbox } from '@/components/shared/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
-import { Button } from '@/components/shared/ui/button';
 import { Label } from '@/components/shared/ui/label';
-import { Checkbox } from '@/components/shared/ui/checkbox';
-import { toast } from 'sonner';
 import { useUserStore } from '@/lib/store/userStore';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 import axios from 'axios';
 
-import LocationsLocationPickerMap from '../LocationsLocationPickerMap';
-import { SelectedLocation } from '@/lib/types/location';
-import type { NewLocationModalProps } from '@/lib/types/components';
 import { fetchLicensees } from '@/lib/helpers/client';
 import type { Licensee } from '@/lib/types/common';
+import type { NewLocationModalProps } from '@/lib/types/components';
+import { SelectedLocation } from '@/lib/types/location';
+import LocationsLocationPickerMap from '../LocationsLocationPickerMap';
 
 import { fetchCountries } from '@/lib/helpers/countries';
 import type { Country } from '@/lib/types/common';
@@ -69,6 +69,20 @@ export default function LocationsNewLocationModal({
       denom2000: false,
       denom5000: false,
       denom10000: false,
+    },
+    // Membership settings
+    membershipEnabled: false,
+    locationMembershipSettings: {
+      locationLimit: 0,
+      freePlayAmount: 0,
+      enablePoints: false,
+      enableFreePlays: false,
+      pointsRatioMethod: '',
+      pointMethodValue: 0,
+      gamesPlayedRatio: 0,
+      pointsMethodGameTypes: [] as string[],
+      freePlayGameTypes: [] as string[],
+      freePlayCreditsTimeout: 0,
     },
   });
   const [useMap, setUseMap] = useState(false);
@@ -168,6 +182,20 @@ export default function LocationsNewLocationModal({
           denom5000: false,
           denom10000: false,
         },
+        // Membership settings
+        membershipEnabled: false,
+        locationMembershipSettings: {
+          locationLimit: 0,
+          freePlayAmount: 0,
+          enablePoints: false,
+          enableFreePlays: false,
+          pointsRatioMethod: '',
+          pointMethodValue: 0,
+          gamesPlayedRatio: 0,
+          pointsMethodGameTypes: [] as string[],
+          freePlayGameTypes: [] as string[],
+          freePlayCreditsTimeout: 0,
+        },
       });
       setUseMap(false);
     }
@@ -242,6 +270,33 @@ export default function LocationsNewLocationModal({
         [denom]: checked,
       },
     }));
+  };
+  
+  const handleMembershipSettingsChange = (name: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      locationMembershipSettings: {
+        ...prev.locationMembershipSettings,
+        [name]: value,
+      },
+    }));
+  };
+  
+  const handleGameTypeToggle = (setting: 'pointsMethodGameTypes' | 'freePlayGameTypes', gameType: string) => {
+    setFormData(prev => {
+      const current = prev.locationMembershipSettings[setting] || [];
+      const updated = current.includes(gameType)
+        ? current.filter(t => t !== gameType)
+        : [...current, gameType];
+      
+      return {
+        ...prev,
+        locationMembershipSettings: {
+          ...prev.locationMembershipSettings,
+          [setting]: updated,
+        },
+      };
+    });
   };
 
   const handleLocationSelect = (location: SelectedLocation) => {
@@ -342,6 +397,9 @@ export default function LocationsNewLocationModal({
         },
         gameDayOffset: gameDayOffset,
         billValidatorOptions: formData.billValidatorOptions,
+        // Membership data
+        membershipEnabled: formData.membershipEnabled,
+        locationMembershipSettings: formData.locationMembershipSettings,
       };
 
       // Debug: Log the data being sent
@@ -538,6 +596,167 @@ export default function LocationsNewLocationModal({
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Membership Configuration Section */}
+          <div className="mb-4 rounded-lg border border-gray-200 p-4">
+            <div className="mb-4 flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+              <Checkbox
+                id="membershipEnabled"
+                checked={formData.membershipEnabled}
+                onCheckedChange={checked =>
+                  handleCheckboxChange('membershipEnabled', checked === true)
+                }
+                className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+              />
+              <Label
+                htmlFor="membershipEnabled"
+                className="text-lg font-semibold text-gray-800"
+              >
+                Membership Enabled
+              </Label>
+            </div>
+
+            {formData.membershipEnabled && (
+              <div className="mt-4 space-y-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                      Location Limit
+                    </Label>
+                    <Input
+                      type="number"
+                      value={formData.locationMembershipSettings.locationLimit}
+                      onChange={e => handleMembershipSettingsChange('locationLimit', parseInt(e.target.value) || 0)}
+                      className="h-12 w-full border-border bg-container text-base"
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                      Free Play Amount
+                    </Label>
+                    <Input
+                      type="number"
+                      value={formData.locationMembershipSettings.freePlayAmount}
+                      onChange={e => handleMembershipSettingsChange('freePlayAmount', parseInt(e.target.value) || 0)}
+                      className="h-12 w-full border-border bg-container text-base"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+                    <Checkbox
+                      id="enablePoints"
+                      checked={formData.locationMembershipSettings.enablePoints}
+                      onCheckedChange={checked =>
+                        handleMembershipSettingsChange('enablePoints', checked === true)
+                      }
+                    />
+                    <Label htmlFor="enablePoints">Enable Points</Label>
+                  </div>
+                  <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+                    <Checkbox
+                      id="enableFreePlays"
+                      checked={formData.locationMembershipSettings.enableFreePlays}
+                      onCheckedChange={checked =>
+                        handleMembershipSettingsChange('enableFreePlays', checked === true)
+                      }
+                    />
+                    <Label htmlFor="enableFreePlays">Enable Free Plays</Label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                      Points Ratio Method
+                    </Label>
+                    <select
+                      value={formData.locationMembershipSettings.pointsRatioMethod}
+                      onChange={e => handleMembershipSettingsChange('pointsRatioMethod', e.target.value)}
+                      className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+                    >
+                      <option value="">Select Method</option>
+                      <option value="Wager">Wager</option>
+                      <option value="Games Played">Games Played</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                      Point Method Value
+                    </Label>
+                    <Input
+                      type="number"
+                      value={formData.locationMembershipSettings.pointMethodValue}
+                      onChange={e => handleMembershipSettingsChange('pointMethodValue', parseInt(e.target.value) || 0)}
+                      className="h-12 w-full border-border bg-container text-base"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                      Games Played Ratio
+                    </Label>
+                    <Input
+                      type="number"
+                      value={formData.locationMembershipSettings.gamesPlayedRatio}
+                      onChange={e => handleMembershipSettingsChange('gamesPlayedRatio', parseInt(e.target.value) || 0)}
+                      className="h-12 w-full border-border bg-container text-base"
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                      Free Play Credits Timeout (min)
+                    </Label>
+                    <Input
+                      type="number"
+                      value={formData.locationMembershipSettings.freePlayCreditsTimeout}
+                      onChange={e => handleMembershipSettingsChange('freePlayCreditsTimeout', parseInt(e.target.value) || 0)}
+                      className="h-12 w-full border-border bg-container text-base"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                    Points Method Game Types
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2 rounded-md border border-gray-200 p-3 sm:grid-cols-3">
+                    {['IGT', 'Aristocrat', 'Novomatic', 'Bally', 'Ainsworth', 'EGT', 'Amatic', 'Apollo', 'Apex', 'Spintec', 'Interblock', 'Other'].map(type => (
+                      <div key={`points-${type}`} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`points-${type}`}
+                          checked={formData.locationMembershipSettings.pointsMethodGameTypes?.includes(type)}
+                          onCheckedChange={() => handleGameTypeToggle('pointsMethodGameTypes', type)}
+                        />
+                        <Label htmlFor={`points-${type}`} className="text-xs">{type}</Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                    Free Play Game Types
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2 rounded-md border border-gray-200 p-3 sm:grid-cols-3">
+                    {['IGT', 'Aristocrat', 'Novomatic', 'Bally', 'Ainsworth', 'EGT', 'Amatic', 'Apollo', 'Apex', 'Spintec', 'Interblock', 'Other'].map(type => (
+                      <div key={`freeplay-${type}`} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`freeplay-${type}`}
+                          checked={formData.locationMembershipSettings.freePlayGameTypes?.includes(type)}
+                          onCheckedChange={() => handleGameTypeToggle('freePlayGameTypes', type)}
+                        />
+                        <Label htmlFor={`freeplay-${type}`} className="text-xs">{type}</Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Checkboxes - Mobile: Stacked, Desktop: Side by side */}

@@ -21,6 +21,7 @@ import {
 import ViewDenominationsModal from '@/components/VAULT/transactions/modals/ViewDenominationsModal';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
+import { safeFormatDate } from '@/lib/utils/date/formatting';
 import type {
     Denomination,
     ExtendedVaultTransaction,
@@ -66,16 +67,7 @@ export default function VaultTransactionsTable({
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
 
-  const formatDate = (dateString: string | Date) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true,
-    });
-  };
+  const formatDate = (date: string | Date) => safeFormatDate(date);
 
   const totalPages = Math.ceil(transactions.length / itemsPerPage);
   
@@ -110,6 +102,9 @@ export default function VaultTransactionsTable({
               >
                 Date & Time
               </TableHead>
+              {transactions.some(tx => tx.locationName) && (
+                <TableHead className="font-semibold text-white">Location</TableHead>
+              )}
               <TableHead className="font-semibold text-white">Type</TableHead>
               <TableHead className="font-semibold text-white">Amount</TableHead>
               <TableHead className="font-semibold text-white">Source</TableHead>
@@ -129,10 +124,15 @@ export default function VaultTransactionsTable({
                   <TableCell isFirstColumn className="font-medium whitespace-nowrap text-xs">
                     {formatDate(tx.timestamp)}
                   </TableCell>
+                  {tx.locationName && (
+                    <TableCell className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                        {tx.locationName}
+                    </TableCell>
+                  )}
                   <TableCell>{getTransactionTypeBadge(tx.type)}</TableCell>
                   <TableCell>
-                    <span className={cn('font-bold', isPositive ? 'text-button' : 'text-orangeHighlight')}>
-                      {isPositive ? '+' : ''}{formatAmount(Math.abs(tx.amount))}
+                    <span className={cn('font-bold', isPositive ? 'text-green-600' : 'text-orangeHighlight')}>
+                      {formatAmount(Math.abs(tx.amount))}
                     </span>
                   </TableCell>
                   <TableCell className="text-xs truncate max-w-[120px]">{tx.fromName || tx.from.type || '-'}</TableCell>
@@ -176,10 +176,15 @@ export default function VaultTransactionsTable({
                     <div className="text-[10px] text-gray-400 flex items-center gap-1">
                       <Clock className="h-3 w-3" /> {formatDate(tx.timestamp)}
                     </div>
+                    {tx.locationName && (
+                        <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-0.5">
+                            {tx.locationName}
+                        </div>
+                    )}
                     <div className="mt-1">{getTransactionTypeBadge(tx.type)}</div>
                   </div>
-                  <span className={cn("text-lg font-black", isPositive ? "text-button" : "text-orangeHighlight")}>
-                    {isPositive ? '+' : ''}{formatAmount(Math.abs(tx.amount))}
+                  <span className={cn("text-lg font-black", isPositive ? "text-green-600" : "text-orangeHighlight")}>
+                    {formatAmount(Math.abs(tx.amount))}
                   </span>
                 </div>
 
@@ -258,7 +263,7 @@ export default function VaultTransactionsTable({
                       className={cn(
                         "h-8 w-8 p-0 text-xs",
                         currentPage === pageNum ? "bg-button text-white" : ""
-                      )}
+                       )}
                     >
                       {pageNum}
                     </Button>

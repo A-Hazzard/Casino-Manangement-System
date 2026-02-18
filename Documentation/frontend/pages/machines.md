@@ -285,6 +285,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 **New Cabinet Modal Features:**
 
 - Cabinet name, asset number, serial number
+- Manufacturer (mandatory, with manual entry option)
 - Location selection
 - Game type
 - Configuration settings
@@ -745,3 +746,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 - Mobile filter layout: Horizontally scrollable filters
 - Online/Offline status filter: Fixed status filter logic
 - Desktop filter layout: Clean layout without horizontal scrolling
+
+### Cabinet Management (February 2026)
+
+- **Manufacturer Field**: Added mandatory manufacturer field to cabinet creation and editing. Includes support for selecting from existing manufacturers or manually entering a new one.
