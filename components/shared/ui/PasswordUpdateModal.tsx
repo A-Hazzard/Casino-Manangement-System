@@ -1,37 +1,30 @@
 /**
  * Password Update Modal Component
- * Modal for updating user password with strength validation.
+ * Modal for updating user password on first login (cashier temp password change)
+ * or when a weak password is detected.
  *
- * Features:
- * - Password input with show/hide toggle
- * - Password strength validation
- * - Password requirements checklist
- * - Confirm password field
- * - Form validation
- * - Loading states
- * - Success/error handling
+ * Requires:
+ * - currentPassword: The temp password (cashiers) or existing password (others)
+ * - newPassword + confirmPassword: The new strong password
  *
- * @param open - Whether the modal is visible
- * @param onClose - Callback to close the modal
- * @param onUpdate - Callback when password is updated
- * @param loading - Whether update is in progress
+ * @module components/shared/ui/PasswordUpdateModal
  */
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/shared/ui/dialog';
-import { CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
-import { validatePasswordStrength } from '@/lib/utils/auth';
+import { cn } from '@/lib/utils';
+import { validatePasswordStrength } from '@/lib/utils/validation';
+import { CheckCircle, Eye, EyeOff, KeyRound, ShieldAlert, XCircle } from 'lucide-react';
+import { useState } from 'react';
 
 // ============================================================================
 // Types & Constants
@@ -39,67 +32,171 @@ import { validatePasswordStrength } from '@/lib/utils/auth';
 
 type PasswordUpdateModalProps = {
   open: boolean;
-  onClose: () => void;
-  onUpdate: (newPassword: string) => Promise<void>;
+  onClose?: () => void;
+  /** Called with (currentPassword, newPassword, phone?). Return error string or null. */
+  onUpdate: (currentPassword: string, newPassword: string, phone?: string) => Promise<string | null>;
   loading?: boolean;
+  /** If true, the modal cannot be dismissed — cashier must change their temp password. */
+  isForced?: boolean;
+  /** If true, user is a cashier changing their temp password (different messaging). */
+  isCashierTempChange?: boolean;
+  /** Optional logout handler to show a logout button in the footer (usually for forced changes) */
+  onLogout?: () => void;
 };
 
 const PASSWORD_REQUIREMENTS = [
-  {
-    label: '8+ characters',
-    test: (password: string) => password.length >= 8,
-  },
-  {
-    label: 'Uppercase letter',
-    test: (password: string) => /[A-Z]/.test(password),
-  },
-  {
-    label: 'Lowercase letter',
-    test: (password: string) => /[a-z]/.test(password),
-  },
-  {
-    label: 'Number',
-    test: (password: string) => /\d/.test(password),
-  },
+  { label: '8+ characters', test: (p: string) => p.length >= 8 },
+  { label: 'Uppercase letter', test: (p: string) => /[A-Z]/.test(p) },
+  { label: 'Lowercase letter', test: (p: string) => /[a-z]/.test(p) },
+  { label: 'Number', test: (p: string) => /\d/.test(p) },
   {
     label: 'Special character',
-    test: (password: string) =>
-      /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+    test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p),
   },
 ];
+
+// ============================================================================
+// Component
+// ============================================================================
+
+const PasswordInput = ({
+  id,
+  label,
+  value,
+  onChange,
+  show,
+  onToggle,
+  placeholder,
+  error,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  show: boolean;
+  onToggle: () => void;
+  placeholder?: string;
+  error?: string;
+}) => (
+  <div className="space-y-1.5">
+    <Label htmlFor={id} className={cn(error ? 'text-red-600' : 'text-slate-700')}>
+      {label}
+    </Label>
+    <div className="relative">
+      <Input
+        id={id}
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={cn(
+          'border-slate-200 bg-white pr-10 focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0',
+          error && 'border-red-300'
+        )}
+        autoComplete="off"
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+        tabIndex={-1}
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+    {error && (
+      <p className="text-xs font-medium text-red-600 flex items-center gap-1">
+        <XCircle className="w-3 h-3" /> {error}
+      </p>
+    )}
+  </div>
+);
 
 export default function PasswordUpdateModal({
   open,
   onClose,
   onUpdate,
   loading = false,
+  isForced = false,
+  isCashierTempChange = false,
+  onLogout,
 }: PasswordUpdateModalProps) {
-  const [password, setPassword] = useState('');
+  // === State ===
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  // === Computed ===
+  const passwordStrength = newPassword ? validatePasswordStrength(newPassword) : null;
+
+  // === Handlers ===
+  const reset = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPhone('');
+    setErrors({});
+    setServerError(null);
+    setShowCurrent(false);
+    setShowNew(false);
+    setShowConfirm(false);
+  };
+
+  const handleClose = () => {
+    if (isForced) return; // Block dismissal for forced changes
+    reset();
+    onClose?.();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
+    setServerError(null);
 
-    // Validation
     const newErrors: Record<string, string> = {};
 
-    if (!password) {
-      newErrors.password = 'Password is required';
-    } else {
-      const passwordValidation = validatePasswordStrength(password);
-      if (!passwordValidation.isValid) {
-        newErrors.password = passwordValidation.errors.join(', ');
-      }
+    if (!currentPassword) {
+      newErrors.currentPassword = isCashierTempChange
+        ? 'Enter your temporary password.'
+        : 'Current password is required.';
+    }
+    if (!newPassword) {
+      newErrors.newPassword = 'New password is required.';
+    } else if (passwordStrength && !passwordStrength.isValid) {
+      newErrors.newPassword = passwordStrength.feedback[0] || 'Password is too weak.';
+    }
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your new password.';
+    } else if (newPassword !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match.';
     }
 
-    if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+    // Phone: optional — only validate if something was typed
+    if (phone.trim()) {
+      const trimmedPhone = phone.trim();
+      const onlyAllowed = /^[0-9\s+()'\-]+$/.test(trimmedPhone);
+      const plusCount = (trimmedPhone.match(/\+/g) || []).length;
+      const openCount = (trimmedPhone.match(/\(/g) || []).length;
+      const closeCount = (trimmedPhone.match(/\)/g) || []).length;
+      const dashCount = (trimmedPhone.match(/-/g) || []).length;
+      const plusAtStart = !trimmedPhone.includes('+') || trimmedPhone.indexOf('+') === 0;
+      const digits = trimmedPhone.replace(/\D/g, '').length;
+      const phoneOk =
+        onlyAllowed &&
+        plusCount <= 1 && plusAtStart &&
+        openCount <= 1 && closeCount <= 1 &&
+        dashCount <= 1 &&
+        digits >= 7 && digits <= 15;
+      if (!phoneOk) {
+        newErrors.phone =
+          'Enter a valid phone number (e.g. +1 868 492-1566 or (868) 492-1566).';
+      }
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -107,139 +204,209 @@ export default function PasswordUpdateModal({
       return;
     }
 
-    try {
-      await onUpdate(password);
-      setPassword('');
-      setConfirmPassword('');
-      onClose();
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Password update error:', error);
-      }
+    const error = await onUpdate(currentPassword, newPassword, phone.trim() || undefined);
+    if (error) {
+      setServerError(error);
+    } else {
+      reset();
     }
   };
 
-  const handleClose = () => {
-    setPassword('');
-    setConfirmPassword('');
-    setErrors({});
-    onClose();
-  };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Update Your Password</DialogTitle>
-          <DialogDescription>
-            Your current password is weak. Please update it to meet security
-            requirements.
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Password Field */}
-          <div className="space-y-2">
-            <Label htmlFor="password">New Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className={errors.password ? 'border-red-500' : ''}
-                placeholder="Enter new password"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
+      <DialogContent
+        className="sm:max-w-md p-0 overflow-hidden bg-slate-50 border-slate-200 shadow-xl [&>button]:hidden"
+        onInteractOutside={isForced ? (e) => e.preventDefault() : undefined}
+        onEscapeKeyDown={isForced ? (e) => e.preventDefault() : undefined}
+      >
+        {/* Header */}
+        <div className="bg-white border-b px-6 py-4">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+              <span
+                className={cn(
+                  'flex items-center justify-center w-8 h-8 rounded-full',
+                  isCashierTempChange
+                    ? 'bg-amber-100 text-amber-600'
+                    : 'bg-blue-100 text-blue-600'
                 )}
-              </Button>
-            </div>
-            {errors.password && (
-              <p className="text-sm text-red-500">{errors.password}</p>
-            )}
-          </div>
-
-          {/* Confirm Password Field */}
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                className={errors.confirmPassword ? 'border-red-500' : ''}
-                placeholder="Confirm new password"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4" />
+                {isCashierTempChange ? (
+                  <KeyRound className="w-5 h-5" />
                 ) : (
-                  <Eye className="h-4 w-4" />
+                  <ShieldAlert className="w-5 h-5" />
                 )}
-              </Button>
-            </div>
-            {errors.confirmPassword && (
-              <p className="text-sm text-red-500">{errors.confirmPassword}</p>
-            )}
-          </div>
+              </span>
+              {isCashierTempChange ? 'Set Your Password' : 'Update Your Password'}
+            </DialogTitle>
+            <DialogDescription className="text-slate-500 mt-1.5">
+              {isCashierTempChange
+                ? 'You are using a temporary password assigned by your vault manager. For your security, you must set a personal password before continuing.'
+                : 'Your current password does not meet security requirements. Please update it to continue.'}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-          {/* Password Requirements */}
-          {password && (
-            <div className="rounded-md bg-gray-50 p-3">
-              <p className="mb-2 text-xs font-medium text-gray-700">
-                Password Requirements:
-              </p>
-              <div className="space-y-1">
-                {PASSWORD_REQUIREMENTS.map((req, index) => {
-                  const isMet = req.test(password);
-                  return (
-                    <div
-                      key={index}
-                      className={`flex items-center gap-2 text-xs ${
-                        isMet ? 'text-green-700' : 'text-red-700'
-                      }`}
-                    >
-                      {isMet ? (
-                        <CheckCircle className="h-3 w-3" />
-                      ) : (
-                        <XCircle className="h-3 w-3" />
-                      )}
-                      {req.label}
-                    </div>
-                  );
-                })}
-              </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          {serverError && (
+            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-md text-sm font-medium border border-red-100 flex items-center gap-2">
+              <XCircle className="w-4 h-4 shrink-0" />
+              {serverError}
             </div>
           )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose}>
+          <PasswordInput
+            id="currentPassword"
+            label={isCashierTempChange ? 'Temporary Password' : 'Current Password'}
+            value={currentPassword}
+            onChange={setCurrentPassword}
+            show={showCurrent}
+            onToggle={() => setShowCurrent(v => !v)}
+            placeholder={isCashierTempChange ? 'Enter the password given to you' : 'Enter current password'}
+            error={errors.currentPassword}
+          />
+
+          <div className="space-y-3 pt-2 border-t border-slate-100">
+            <PasswordInput
+              id="newPassword"
+              label="New Password"
+              value={newPassword}
+              onChange={setNewPassword}
+              show={showNew}
+              onToggle={() => setShowNew(v => !v)}
+              placeholder="Create a strong password"
+              error={errors.newPassword}
+            />
+
+            {/* Strength Requirements */}
+            {newPassword && passwordStrength && (
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden mb-2">
+                  <div
+                    className={cn(
+                      'h-full transition-all duration-500',
+                      passwordStrength.isValid ? 'bg-green-500 w-full' : 'bg-red-400 w-1/3'
+                    )}
+                  />
+                </div>
+                <ul className="grid grid-cols-2 gap-1">
+                  {PASSWORD_REQUIREMENTS.map(req => {
+                    const met = req.test(newPassword);
+                    return (
+                      <li
+                        key={req.label}
+                        className={cn(
+                          'text-[10px] flex items-center gap-1',
+                          met ? 'text-green-600' : 'text-slate-400'
+                        )}
+                      >
+                        {met ? (
+                          <CheckCircle className="w-3 h-3" />
+                        ) : (
+                          <div className="w-3 h-3 rounded-full border border-slate-300" />
+                        )}
+                        {req.label}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            <PasswordInput
+              id="confirmPassword"
+              label="Confirm New Password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              show={showConfirm}
+              onToggle={() => setShowConfirm(v => !v)}
+              placeholder="Re-enter your new password"
+              error={errors.confirmPassword}
+            />
+          </div>
+
+          {/* Phone: Optional */}
+          <div className="pt-2 border-t border-slate-100 space-y-1.5">
+            <Label
+              htmlFor="phone"
+              className={cn(
+                'text-slate-700 flex items-center gap-1.5',
+                errors.phone && 'text-red-600'
+              )}
+            >
+              Phone Number
+              <span className="text-[10px] font-normal text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                Optional
+              </span>
+            </Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="+1 868 492-1566"
+              className={cn(
+                'border-slate-200 bg-white focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0',
+                errors.phone && 'border-red-300'
+              )}
+              autoComplete="tel"
+            />
+            {errors.phone ? (
+              <p className="text-xs font-medium text-red-600 flex items-center gap-1">
+                <XCircle className="w-3 h-3 shrink-0" /> {errors.phone}
+              </p>
+            ) : (
+              <p className="text-[10px] text-slate-400">
+                Accepted: +1 868 492-1566 · (868) 492-1566 · 18684921566
+              </p>
+            )}
+          </div>
+        </form>
+
+
+        {/* Footer */}
+        <div className="bg-slate-50 border-t px-6 py-4 flex gap-3">
+          {!isForced && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              className="flex-1 border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Updating...' : 'Update Password'}
+          )}
+          {isForced && onLogout && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onLogout}
+              className="flex-1 border-red-200 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
+            >
+              Log Out
             </Button>
-          </DialogFooter>
-        </form>
+          )}
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            className={cn(
+              'text-white font-semibold',
+              isForced ? 'flex-[2]' : 'flex-[2]',
+              isCashierTempChange
+                ? 'bg-amber-500 hover:bg-amber-600'
+                : 'bg-blue-600 hover:bg-blue-700'
+            )}
+          >
+            {loading ? 'Saving...' : 'Save Password & Continue'}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
-

@@ -4,18 +4,19 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useCashierActivity } from '@/lib/hooks/vault/useCashierActivity';
+import { cn } from '@/lib/utils';
 import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  History,
-  Loader2,
-  MessageSquare,
-  Tickets,
-  XCircle
+    ArrowDownLeft,
+    ArrowUpRight,
+    CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    History,
+    Loader2,
+    MessageSquare,
+    Tickets,
+    XCircle
 } from 'lucide-react';
 
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
@@ -268,8 +269,8 @@ export default function CashierActivitySection() {
                     </p>
                     <div className="flex-shrink-0">
                       {activity.amount !== undefined && (
-                        <span className={activity.amount > 0 ? 'text-sm font-bold text-button' : 'text-sm font-bold text-orangeHighlight'}>
-                          {formatAmount(activity.amount)}
+                        <span className={cn('text-sm font-bold', activity.isOutflow ? 'text-red-500' : 'text-button')}>
+                          {activity.isOutflow && '-'}{formatAmount(activity.amount)}
                         </span>
                       )}
                     </div>

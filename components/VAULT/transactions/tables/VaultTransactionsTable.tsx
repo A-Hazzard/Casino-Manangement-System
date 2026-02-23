@@ -18,6 +18,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/shared/ui/table';
+import VaultTransactionDetailsModal from '@/components/VAULT/transactions/modals/VaultTransactionDetailsModal';
 import ViewDenominationsModal from '@/components/VAULT/transactions/modals/ViewDenominationsModal';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
@@ -63,6 +64,8 @@ export default function VaultTransactionsTable({
     denominations: Denomination[];
     amount: number;
   } | null>(null);
+  
+  const [selectedTransactionDetails, setSelectedTransactionDetails] = useState<ExtendedVaultTransaction | null>(null);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -110,13 +113,12 @@ export default function VaultTransactionsTable({
               <TableHead className="font-semibold text-white">Source</TableHead>
               <TableHead className="font-semibold text-white">Destination</TableHead>
               <TableHead className="font-semibold text-white">Status</TableHead>
-              <TableHead className="font-semibold text-white">Denoms</TableHead>
-              <TableHead className="font-semibold text-white">Notes</TableHead>
+              <TableHead className="font-semibold text-white text-center">Actions</TableHead>
+              <TableHead className="font-semibold text-white truncate max-w-[150px]">Notes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {pagedTransactions.map(tx => {
-              const isPositive = tx.amount > 0;
               const isCompleted = !tx.isVoid;
 
               return (
@@ -131,30 +133,40 @@ export default function VaultTransactionsTable({
                   )}
                   <TableCell>{getTransactionTypeBadge(tx.type)}</TableCell>
                   <TableCell>
-                    <span className={cn('font-bold', isPositive ? 'text-green-600' : 'text-orangeHighlight')}>
-                      {formatAmount(Math.abs(tx.amount))}
+                    <span className={cn('font-bold', tx.from?.type === 'vault' ? 'text-red-600' : 'text-green-600')}>
+                      {tx.from?.type === 'vault' && '-'}{formatAmount(Math.abs(tx.amount))}
                     </span>
                   </TableCell>
-                  <TableCell className="text-xs truncate max-w-[120px]">{tx.fromName || tx.from.type || '-'}</TableCell>
-                  <TableCell className="text-xs truncate max-w-[120px]">{tx.toName || tx.to.type || '-'}</TableCell>
+                  <TableCell className="text-xs truncate max-w-[200px]">{tx.fromName || tx.from.type || '-'}</TableCell>
+                  <TableCell className="text-xs truncate max-w-[200px]">{tx.toName || tx.to.type || '-'}</TableCell>
                   <TableCell>
                     <Badge className={cn('px-2 py-0.5 text-[10px]', isCompleted ? 'bg-button text-white' : 'bg-red-600 text-white')}>
                       {isCompleted ? 'Completed' : 'Voided'}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {tx.denominations && tx.denominations.length > 0 ? (
+                    <div className="flex items-center justify-center gap-1">
+                      {tx.denominations && tx.denominations.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-[10px] text-blue-600 px-2"
+                          onClick={() => setSelectedTxDenominations({ denominations: tx.denominations, amount: Math.abs(tx.amount) })}
+                        >
+                          <Eye className="mr-1 h-3 w-3" /> Denoms
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-[10px] text-blue-600 px-2"
-                        onClick={() => setSelectedTxDenominations({ denominations: tx.denominations, amount: Math.abs(tx.amount) })}
+                        className="h-7 text-[10px] text-violet-600 px-2 font-bold"
+                        onClick={() => setSelectedTransactionDetails(tx)}
                       >
-                        <Eye className="mr-1 h-3 w-3" /> View
+                        <FileText className="mr-1 h-3 w-3" /> Details
                       </Button>
-                    ) : '-'}
+                    </div>
                   </TableCell>
-                  <TableCell className="text-xs text-gray-400 truncate max-w-[100px]">{tx.notes || '-'}</TableCell>
+                  <TableCell className="text-xs text-gray-400 whitespace-nowrap truncate max-w-[150px]">{tx.notes || '-'}</TableCell>
                 </TableRow>
               );
             })}
@@ -165,11 +177,10 @@ export default function VaultTransactionsTable({
       {/* Mobile/Tablet Card View */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4">
         {pagedTransactions.map(tx => {
-          const isPositive = tx.amount > 0;
           const isCompleted = !tx.isVoid;
 
           return (
-            <Card key={tx._id} className={cn("overflow-hidden border-l-4 shadow-sm", isPositive ? "border-l-button" : "border-l-orangeHighlight")}>
+            <Card key={tx._id} className={cn("overflow-hidden border-l-4 shadow-sm", tx.from?.type === 'vault' ? "border-l-red-600" : "border-l-green-600")}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
@@ -183,20 +194,20 @@ export default function VaultTransactionsTable({
                     )}
                     <div className="mt-1">{getTransactionTypeBadge(tx.type)}</div>
                   </div>
-                  <span className={cn("text-lg font-black", isPositive ? "text-green-600" : "text-orangeHighlight")}>
-                    {formatAmount(Math.abs(tx.amount))}
+                  <span className={cn("text-lg font-black", tx.from?.type === 'vault' ? "text-red-600" : "text-green-600")}>
+                    {tx.from?.type === 'vault' && '-'}{formatAmount(Math.abs(tx.amount))}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between text-xs py-2 bg-gray-50 rounded px-2">
                    <div className="flex flex-col">
                       <span className="text-[10px] text-gray-400 uppercase tracking-tighter font-bold">From</span>
-                      <span className="font-semibold truncate max-w-[100px]">{tx.fromName || tx.from.type || '-'}</span>
+                      <span className="font-semibold truncate max-w-[160px]">{tx.fromName || tx.from.type || '-'}</span>
                    </div>
                    <ArrowRight className="h-4 w-4 text-gray-300 mx-2" />
                    <div className="flex flex-col items-end text-right">
                       <span className="text-[10px] text-gray-400 uppercase tracking-tighter font-bold">To</span>
-                      <span className="font-semibold truncate max-w-[100px]">{tx.toName || tx.to.type || '-'}</span>
+                      <span className="font-semibold truncate max-w-[160px]">{tx.toName || tx.to.type || '-'}</span>
                    </div>
                 </div>
 
@@ -213,10 +224,16 @@ export default function VaultTransactionsTable({
                             <Eye className="h-3 w-3" /> Denoms
                         </button>
                     )}
+                    <button 
+                        className="text-[10px] text-violet-600 flex items-center gap-1 font-bold underline ml-2"
+                        onClick={() => setSelectedTransactionDetails(tx)}
+                    >
+                        <FileText className="h-3 w-3" /> Details
+                    </button>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-gray-400 max-w-[120px]">
                     <FileText className="h-3 w-3 flex-shrink-0" />
-                    <span className="truncate italic">{tx.notes || 'No notes'}</span>
+                    <span className="whitespace-normal break-words text-xs italic text-gray-400">{tx.notes || 'No notes'}</span>
                   </div>
                 </div>
               </CardContent>
@@ -297,6 +314,11 @@ export default function VaultTransactionsTable({
         onClose={() => setSelectedTxDenominations(null)}
         denominations={selectedTxDenominations?.denominations || []}
         totalAmount={selectedTxDenominations?.amount || 0}
+      />
+      <VaultTransactionDetailsModal
+        open={!!selectedTransactionDetails}
+        onClose={() => setSelectedTransactionDetails(null)}
+        transaction={selectedTransactionDetails}
       />
     </div>
   );

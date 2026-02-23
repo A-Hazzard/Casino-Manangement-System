@@ -1,5 +1,5 @@
-import mongoose, { Schema } from 'mongoose';
 import type { SoftCount } from '@/shared/types/vault';
+import mongoose, { Schema } from 'mongoose';
 
 const softCountSchema = new Schema<SoftCount>(
   {
@@ -14,8 +14,10 @@ const softCountSchema = new Schema<SoftCount>(
       },
     ],
     countedBy: { type: String, required: true },
+    machineId: { type: String },
     transactionId: { type: String, required: true },
     notes: { type: String },
+    isEndOfDay: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

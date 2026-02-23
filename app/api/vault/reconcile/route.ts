@@ -131,14 +131,26 @@ export async function POST(request: NextRequest) {
       (userPayload?.roles as string[]) || []
     );
 
-    if (
-      allowedLocationIds !== 'all' &&
-      !allowedLocationIds.includes(vaultShift.locationId)
-    ) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied for this vault location' },
-        { status: 403 }
-      );
+    if (allowedLocationIds !== 'all' && !allowedLocationIds.includes(String(vaultShift.locationId))) {
+      // Get location names for all parts to explain WHY
+      const { GamingLocations } = await import('@/app/api/lib/models/gaminglocations');
+      const [attemptedLocation, allowedLocations] = await Promise.all([
+        GamingLocations.findOne({ _id: vaultShift.locationId }, { name: 1 }).lean(),
+        Array.isArray(allowedLocationIds) ? GamingLocations.find({ _id: { $in: allowedLocationIds } }, { name: 1 }).lean() : Promise.resolve([])
+      ]);
+
+      const attemptedName = attemptedLocation ? (attemptedLocation as any).name : 'Unknown';
+      const allowedNames = (allowedLocations as any[]).map(l => l.name).join(', ') || 'None';
+      const hasAssignment = (userPayload?.assignedLocations as string[] || []).length > 0;
+
+      let reason = `Access denied for location "${attemptedName}" (${vaultShift.locationId}). `;
+      if (!hasAssignment) {
+        reason += "Analysis: Your user profile has NO assigned locations.";
+      } else {
+        reason += `Analysis: You are assigned to [${allowedNames}], but this vault shift belongs to [${attemptedName}].`;
+      }
+
+      return NextResponse.json({ success: false, error: reason }, { status: 403 });
     }
 
     // ============================================================================

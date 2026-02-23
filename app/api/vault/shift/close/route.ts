@@ -10,13 +10,14 @@
  */
 
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { getAttributionDate } from '@/app/api/lib/helpers/vault/gamingDay';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import {
-    canCloseVaultShift,
-    validateDenominations,
+  canCloseVaultShift,
+  validateDenominations,
 } from '@/lib/helpers/vault/calculations';
 import { generateMongoId } from '@/lib/utils/id';
 import type { CloseVaultShiftRequest } from '@/shared/types/vault';
@@ -82,16 +83,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (denominationValidation.total !== closingBalance) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Denomination total ($${denominationValidation.total}) does not match closing balance ($${closingBalance})`,
-        },
-        { status: 400 }
-      );
-    }
-
     // STEP 4: Connect to database
     await connectDB();
 
@@ -108,6 +99,14 @@ export async function POST(request: NextRequest) {
     if (vaultShift.status === 'closed') {
       return NextResponse.json(
         { success: false, error: 'Vault shift is already closed' },
+        { status: 400 }
+      );
+    }
+
+    // BR: Ensure vault is reconciled before closing
+    if (!vaultShift.isReconciled) {
+      return NextResponse.json(
+        { success: false, error: 'Vault must be reconciled before closing the shift' },
         { status: 400 }
       );
     }
@@ -132,8 +131,13 @@ export async function POST(request: NextRequest) {
 
     // STEP 7: Update vault shift
     const now = new Date();
+    const attributionDate = await getAttributionDate(
+      vaultShift.openedAt,
+      vaultShift.locationId
+    );
+    
     vaultShift.status = 'closed';
-    vaultShift.closedAt = now;
+    vaultShift.closedAt = attributionDate;
     vaultShift.closingBalance = closingBalance;
     vaultShift.closingDenominations = denominations.map((d: any) => ({
       denomination: typeof d.denomination === 'string' 
@@ -149,7 +153,7 @@ export async function POST(request: NextRequest) {
     const transaction = await VaultTransactionModel.create({
       _id: transactionId,
       locationId: vaultShift.locationId,
-      timestamp: now,
+      timestamp: attributionDate,
       type: 'vault_close',
       from: { type: 'vault' },
       to: { type: 'external' },

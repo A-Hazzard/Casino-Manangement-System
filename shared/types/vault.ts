@@ -19,23 +19,14 @@ export type MovementEndpoint = {
   id?: string;
 };
 
-export type DenominationBreakdown = {
-  hundred: number;
-  fifty: number;
-  twenty: number;
-  ten: number;
-  five: number;
-  two: number;
-  one: number;
-};
 
-export type CashSource = 'Bank Withdrawal' | 'Owner Injection' | 'Machine Drop';
-export type CashDestination = 'Bank Deposit' | 'Owner Drawing' | 'ATM Fill';
+export type CashSource = 'Bank' | 'Owner Deposit' | 'Machine';
 export type ExpenseCategory =
-  | 'Supplies'
+  | 'Food/Drinks'
   | 'Repairs'
   | 'Bills'
-  | 'Licenses'
+  | 'Worker/Employee'
+  | 'Bank Account'
   | 'Other';
 
 // ============================================================================
@@ -135,9 +126,11 @@ export type TransactionType =
   | 'float_increase'
   | 'float_decrease'
   | 'payout'
-  | 'machine_collection'
   | 'soft_count'
-  | 'expense';
+  | 'machine_collection'
+  | 'expense'
+  | 'add_cash'
+  | 'remove_cash';
 
 export type VaultTransaction = {
   _id: string;
@@ -167,6 +160,7 @@ export type VaultTransaction = {
   // Audit
   performedBy: string;
   notes?: string;
+  reason?: string;
   auditComment?: string;
 
   // Attachments
@@ -179,23 +173,33 @@ export type VaultTransaction = {
   voidedBy?: string;
   voidedAt?: Date;
 
+  // Expense Specific Data
+  paymentMethod?: 'cash' | 'bank';
+  bankDetails?: {
+    bankName?: string;
+    accountNumber?: string;
+    accountType?: string;
+    transit?: string;
+    branch?: string;
+    nameOnAccount?: string;
+  };
+  expenseDetails?: {
+    vendor?: string;
+    invoiceNumber?: string;
+    serviceProvider?: string;
+    isMachineRepair?: boolean;
+    machineIds?: string[];
+    billerName?: string;
+    billingPeriod?: string;
+    referenceNumber?: string;
+    description?: string;
+    workerName?: string;
+  };
+
   createdAt: Date;
   locationName?: string;
-};
-
-// Machine collection creation
-export type CreateMachineCollectionRequest = {
-  machineId: string;
-  machineName?: string;
-  amount: number;
-  denominations: Denomination[];
-  notes?: string;
-};
-
-export type CreateMachineCollectionResponse = {
-  success: boolean;
-  collection: MachineCollection;
-  transaction: VaultTransaction;
+  fromName?: string;
+  toName?: string;
 };
 
 // Soft count creation
@@ -203,12 +207,7 @@ export type CreateSoftCountRequest = {
   amount: number;
   denominations: Denomination[];
   notes?: string;
-};
-
-export type CreateSoftCountResponse = {
-  success: boolean;
-  softCount: SoftCount;
-  transaction: VaultTransaction;
+  isEndOfDay?: boolean;
 };
 
 // Inter-location transfer creation
@@ -220,22 +219,11 @@ export type CreateInterLocationTransferRequest = {
   notes?: string;
 };
 
-export type CreateInterLocationTransferResponse = {
-  success: boolean;
-  transfer: InterLocationTransfer;
-};
-
 // Transfer approval
 export type ApproveInterLocationTransferRequest = {
   transferId: string;
   approved: boolean;
   notes?: string;
-};
-
-export type ApproveInterLocationTransferResponse = {
-  success: boolean;
-  transfer: InterLocationTransfer;
-  transaction?: VaultTransaction;
 };
 
 export type FloatRequestType = 'increase' | 'decrease';
@@ -270,6 +258,7 @@ export type FloatRequest = {
   createdAt: Date;
   updatedAt: Date;
   locationName?: string;
+  cashierName?: string;
 };
 
 // ============================================================================
@@ -278,66 +267,17 @@ export type FloatRequest = {
 
 export type PayoutType = 'ticket' | 'hand_pay';
 
-export type Payout = {
-  _id: string;
-  locationId: string;
-  cashierId: string;
-  cashierShiftId: string;
-
-  type: PayoutType;
-  amount: number;
-
-  ticketNumber?: string;
-  ticketBarcode?: string;
-  printedAt?: Date; // Date on the physical ticket
-
-  // Hand pay
-  machineId?: string;
-  reason?: string;
-
-  // Validation
-  validated: boolean;
-  validationMethod?: string;
-
-  // Audit
-  timestamp: Date;
-  cashierFloatBefore: number;
-  cashierFloatAfter: number;
-
-  // Transaction reference
-  transactionId: string;
-
-  notes?: string;
-  createdAt: Date;
-};
-
-// ============================================================================
-// Machine Collections & Soft Counts Types (VM-4)
-// ============================================================================
-
-export type MachineCollection = {
-  _id: string;
-  locationId: string;
-  machineId: string;
-  machineName?: string;
-  collectedAt: Date;
-  amount: number;
-  denominations: Denomination[];
-  collectedBy: string;
-  transactionId: string;
-  notes?: string;
-  createdAt: Date;
-};
-
 export type SoftCount = {
   _id: string;
   locationId: string;
+  machineId?: string;
   countedAt: Date;
   amount: number;
   denominations: Denomination[];
   countedBy: string;
   transactionId: string;
   notes?: string;
+  isEndOfDay?: boolean;
   createdAt: Date;
 };
 
@@ -370,20 +310,6 @@ export type InitializeVaultRequest = {
   openingBalance: number;
   denominations: Denomination[];
   notes?: string;
-};
-
-export type InitializeVaultResponse = {
-  success: boolean;
-  vaultShift: VaultShift;
-  transaction: VaultTransaction;
-  logId?: string;
-};
-
-// Vault shift open
-export type OpenVaultShiftRequest = {
-  locationId: string;
-  openingBalance: number;
-  denominations: Denomination[];
 };
 
 // Vault shift close
@@ -420,15 +346,6 @@ export type CloseCashierShiftResponse =
   | { success: true; status: 'closed' | 'pending_review'; message: string; }
   | { success: false; error: string; };
 
-// Float request approval
-export type ApproveFloatRequest = {
-  floatRequestId: string;
-  status: 'approved' | 'denied' | 'edited';
-  approvedAmount?: number;
-  approvedDenominations?: Denomination[];
-  vmNotes?: string;
-};
-
 // Payout creation
 export type CreatePayoutRequest = {
   cashierShiftId: string;
@@ -461,6 +378,10 @@ export type VaultBalance = {
   openingBalance?: number;
   isReconciled?: boolean;
   isCollectionDone?: boolean;
+  openedAt?: Date;
+  isStale?: boolean;
+  physicalCount?: number;
+  variance?: number;
 };
 
 export type CashDesk = {
@@ -473,7 +394,7 @@ export type CashDesk = {
   denominations?: Denomination[];
   lastAudit: string;
   managerOnDuty?: string;
-  status: 'active' | 'inactive';
+  status: CashierShiftStatus;
   locationName?: string;
 };
 
@@ -525,27 +446,6 @@ export type FloatTransaction = ExtendedVaultTransaction;
 
 // This seems to be a more detailed version of VaultTransaction
 export type VaultTransactionType = TransactionType;
-
-export type ActiveCashierInfo = {
-  cashierId: string;
-  cashierName: string;
-  shiftId: string;
-  currentFloat: number;
-  shiftStartTime: Date;
-  payoutsCount: number;
-  payoutsTotal: number;
-};
-
-export type PendingFloatRequestInfo = {
-  requestId: string;
-  cashierId: string;
-  cashierName: string;
-  type: FloatRequestType;
-  requestedAmount: number;
-  requestedDenominations: Denomination[];
-  requestedAt: Date;
-  requestNotes?: string;
-};
 
 export type UnbalancedShiftInfo = {
   shiftId: string;

@@ -17,7 +17,9 @@ import {
     DialogHeader,
     DialogTitle
 } from '@/components/shared/ui/dialog';
+import VaultTransactionsSkeleton from '@/components/ui/skeletons/VaultTransactionsSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
+import StaleShiftDetectedBlock from '@/components/VAULT/shared/StaleShiftDetectedBlock';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
 import { useCashierShift } from '@/lib/hooks/useCashierShift';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -25,7 +27,7 @@ import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
 import type { CreatePayoutRequest } from '@/shared/types/vault';
-import { AlertTriangle, Banknote, CheckCircle2, DollarSign, FileText, Loader2, RefreshCw, Ticket } from 'lucide-react';
+import { Banknote, CheckCircle2, DollarSign, FileText, RefreshCw, Ticket } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -39,6 +41,9 @@ export default function VaultPayoutsPageContent() {
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
   
+  // Role Detection
+  const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
+
   // -- State --
   const [loading, setLoading] = useState(true);
   const [payouts, setPayouts] = useState<any[]>([]);
@@ -56,15 +61,18 @@ export default function VaultPayoutsPageContent() {
     shift, 
     currentBalance, 
     isVaultReconciled,
+    isStaleShift,
     refresh: refreshShift 
   } = useCashierShift();
 
   // -- Data Fetching --
   const fetchPayouts = useCallback(async () => {
-    const locationId = user?.assignedLocations?.[0];
-    if (!locationId) return;
-
     setLoading(true);
+    const locationId = user?.assignedLocations?.[0];
+    if (!locationId) {
+        setLoading(false);
+        return;
+    }
     try {
         const res = await fetch(`/api/vault/payouts?locationId=${locationId}&limit=50`); 
         const data = await res.json();
@@ -120,21 +128,17 @@ export default function VaultPayoutsPageContent() {
     return () => clearInterval(interval);
   }, [fetchPayouts, payouts.length]);
 
-  // -- Computations --
-  const rawShiftDate = shift?.openedAt ? new Date(shift.openedAt) : null;
-  
-  // Normalize to end of the calendar day the shift was opened
+  // Raw shift date calculation for display
+  const rawShiftDate = useMemo(() => {
+    if (!shift?.openedAt) return null;
+    return new Date(shift.openedAt);
+  }, [shift]);
+
   const shiftDate = useMemo(() => {
     if (!rawShiftDate) return null;
     const d = new Date(rawShiftDate);
     d.setHours(23, 59, 59, 999);
     return d;
-  }, [rawShiftDate]);
-
-  const isStaleShift = useMemo(() => {
-    if (!rawShiftDate) return false;
-    const today = new Date();
-    return rawShiftDate.toDateString() !== today.toDateString();
   }, [rawShiftDate]);
 
   const handlePayout = async (data: CreatePayoutRequest) => {
@@ -144,8 +148,7 @@ export default function VaultPayoutsPageContent() {
     }
     
     // Final check before submission
-    const today = new Date();
-    if (rawShiftDate && rawShiftDate.toDateString() !== today.toDateString()) {
+    if (isStaleShift) {
        toast.error('Stale Shift Detected', {
          description: 'This shift is from a previous gaming day. You must close this shift and start a new one.'
        });
@@ -225,9 +228,7 @@ export default function VaultPayoutsPageContent() {
   if (loading && payouts.length === 0) {
       return (
         <PageLayout>
-            <div className="flex h-[50vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-            </div>
+          <VaultTransactionsSkeleton />
         </PageLayout>
       );
   }
@@ -283,30 +284,9 @@ export default function VaultPayoutsPageContent() {
           </Card>
         </div>
 
-        {isStaleShift && (
-          <Card className="border-l-4 border-l-red-500 bg-red-50">
-            <CardContent className="flex items-center gap-3 p-4">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <div className="flex-1">
-                <p className="text-sm font-bold text-red-900">Stale Shift Detected</p>
-                <p className="text-xs text-red-700">
-                  This shift was started on {rawShiftDate?.toLocaleDateString()}. 
-                  You must end this shift and start a new one for today before processing new payouts.
-                </p>
-              </div>
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                onClick={() => router.push('/vault/cashier/close-shift')}
-              >
-                Go to Close Shift
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <StaleShiftDetectedBlock isStale={isStaleShift} openedAt={shift?.openedAt} type="cashier">
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                   <div className="flex h-8 w-8 items-center justify-center rounded border border-gray-300">
                       <DollarSign className="h-4 w-4 text-orangeHighlight" />
@@ -315,131 +295,144 @@ export default function VaultPayoutsPageContent() {
               </div>
               
               <div className="flex items-center gap-2">
-                   <Button 
-                      variant="outline" 
-                      size="sm"                       onClick={() => {
-                        if (!isVaultReconciled) {
-                          toast.error('Vault Not Reconciled', {
-                            description: 'Payouts are blocked until the vault is reconciled.'
-                          });
-                          return;
-                        }
-                        if (isStaleShift) {
-                          toast.error('Stale Shift', {
-                            description: 'You must close this shift before processing payouts for a new gaming day.'
-                          });
-                          return;
-                        }
-                        setShowTicketForm(true);
-                      }}
-                      className={cn(
-                        "border-blue-600 text-blue-600 hover:bg-blue-50",
-                        (!isVaultReconciled || isStaleShift) && "opacity-40 cursor-not-allowed"
-                      )}
-                  >
-                      <Ticket className="h-4 w-4 mr-2" />
-                      Ticket
-                  </Button>
+                   {!isAdminOrDev && (
+                     <>
+                       <Button 
+                          variant="outline" 
+                          size="sm"                       
+                          onClick={() => {
+                            if (!isVaultReconciled) {
+                              toast.error('Vault Not Reconciled', {
+                                description: 'Payouts are blocked until the vault is reconciled.'
+                              });
+                              return;
+                            }
+                            if (isStaleShift) {
+                              toast.error('Stale Shift', {
+                                description: 'You must close this shift before processing payouts for a new gaming day.'
+                              });
+                              return;
+                            }
+                            setShowTicketForm(true);
+                          }}
+                          className={cn(
+                            "border-blue-600 text-blue-600 hover:bg-blue-50",
+                            (!isVaultReconciled || isStaleShift) && "opacity-40 cursor-not-allowed"
+                          )}
+                      >
+                          <Ticket className="h-4 w-4 mr-2" />
+                          Ticket
+                      </Button>
+                      <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            if (!isVaultReconciled) {
+                              toast.error('Vault Not Reconciled', {
+                                description: 'Payouts are blocked until the vault is reconciled.'
+                              });
+                              return;
+                            }
+                            if (isStaleShift) {
+                              toast.error('Stale Shift', {
+                                description: 'You must close this shift before processing payouts for a new gaming day.'
+                              });
+                              return;
+                            }
+                            setShowHandPayForm(true);
+                          }}
+                          className={cn(
+                            "border-purple-600 text-purple-600 hover:bg-purple-50",
+                            (!isVaultReconciled || isStaleShift) && "opacity-40 cursor-not-allowed"
+                          )}
+                      >
+                          <Banknote className="h-4 w-4 mr-2" />
+                          Hand Pay
+                      </Button>
+                    </>
+                   )}
                   <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => {
-                        if (!isVaultReconciled) {
-                          toast.error('Vault Not Reconciled', {
-                            description: 'Payouts are blocked until the vault is reconciled.'
-                          });
-                          return;
-                        }
-                        if (isStaleShift) {
-                          toast.error('Stale Shift', {
-                            description: 'You must close this shift before processing payouts for a new gaming day.'
-                          });
-                          return;
-                        }
-                        setShowHandPayForm(true);
-                      }}
-                      className={cn(
-                        "border-emerald-600 text-emerald-600 hover:bg-emerald-50",
-                        (!isVaultReconciled || isStaleShift) && "opacity-40 cursor-not-allowed"
-                      )}
+                      onClick={fetchPayouts}
+                      disabled={loading}
+                      className="border-gray-300"
                   >
-                      <Banknote className="h-4 w-4 mr-2" />
-                      Hand Pay
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={fetchPayouts}>
-                      <RefreshCw className="h-4 w-4 mr-2"/> Refresh
+                      <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
+                      Refresh
                   </Button>
               </div>
+            </div>
+
+            <VaultPayoutsTable
+              payouts={sortedPayouts}
+              sortOption={sortOption}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+            />
+
+            {/* Modal Management */}
+            <Dialog open={showTicketForm} onOpenChange={setShowTicketForm}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Ticket Redemption</DialogTitle>
+                        <DialogDescription>
+                            Process ticket redemption for the customer.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <TicketRedemptionForm 
+                        currentBalance={currentBalance}
+                        maxDate={shiftDate || new Date()}
+                        onSubmit={async (t: string, a: number, pAt?: Date) => {
+                            await handlePayout({
+                                cashierShiftId: shift?._id || '',
+                                type: 'ticket',
+                                amount: a,
+                                ticketNumber: t,
+                                printedAt: pAt?.toISOString(),
+                                notes: `Ticket ${t}`
+                            });
+                        }}
+                        onRequestCash={() => {
+                            setShowTicketForm(false);
+                            router.push('/vault/cashier'); 
+                        }}
+                        loading={actionLoading} 
+                    />
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showHandPayForm} onOpenChange={setShowHandPayForm}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Hand Pay</DialogTitle>
+                        <DialogDescription>
+                            Process a hand pay payout for machine jackpot or lock-up.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <HandPayForm 
+                        machines={machines || []}
+                        currentBalance={currentBalance}
+                        onSubmit={async (a: number, mid: string, r?: string) => {
+                            await handlePayout({
+                                cashierShiftId: shift?._id || '',
+                                type: 'hand_pay',
+                                amount: a,
+                                machineId: mid,
+                                reason: r,
+                                notes: r || `Hand Pay - Machine ${mid}`
+                            });
+                        }} 
+                        onRequestCash={() => {
+                            setShowHandPayForm(false);
+                            router.push('/vault/cashier');
+                        }}
+                        loading={actionLoading}
+                    />
+                </DialogContent>
+            </Dialog>
           </div>
-
-        <VaultPayoutsTable
-          payouts={sortedPayouts}
-          sortOption={sortOption}
-          sortOrder={sortOrder}
-          onSort={handleSort}
-        />
-      </div>
-
-        {/* Modal Management */}
-        <Dialog open={showTicketForm} onOpenChange={setShowTicketForm}>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle>Ticket Redemption</DialogTitle>
-                    <DialogDescription>
-                        Process ticket redemption for the customer.
-                    </DialogDescription>
-                </DialogHeader>
-                <TicketRedemptionForm 
-                    currentBalance={currentBalance}
-                    maxDate={shiftDate || new Date()}
-                    onSubmit={async (t: string, a: number, pAt?: Date) => {
-                        await handlePayout({
-                            cashierShiftId: shift?._id || '',
-                            type: 'ticket',
-                            amount: a,
-                            ticketNumber: t,
-                            printedAt: pAt?.toISOString(),
-                            notes: `Ticket ${t}`
-                        });
-                    }}
-                    onRequestCash={() => {
-                        setShowTicketForm(false);
-                        router.push('/vault/cashier'); 
-                    }}
-                    loading={actionLoading} 
-                />
-            </DialogContent>
-        </Dialog>
-
-        <Dialog open={showHandPayForm} onOpenChange={setShowHandPayForm}>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle>Hand Pay</DialogTitle>
-                    <DialogDescription>
-                        Process a hand pay payout for machine jackpot or lock-up.
-                    </DialogDescription>
-                </DialogHeader>
-                <HandPayForm 
-                    machines={machines || []}
-                    currentBalance={currentBalance}
-                    onSubmit={async (a: number, mid: string, r?: string) => {
-                        await handlePayout({
-                            cashierShiftId: shift?._id || '',
-                            type: 'hand_pay',
-                            amount: a,
-                            machineId: mid,
-                            reason: r,
-                            notes: r || `Hand Pay - Machine ${mid}`
-                        });
-                    }} 
-                    onRequestCash={() => {
-                        setShowHandPayForm(false);
-                        router.push('/vault/cashier');
-                    }}
-                    loading={actionLoading}
-                />
-            </DialogContent>
-        </Dialog>
+        </StaleShiftDetectedBlock>
       </div>
     </PageLayout>
   );

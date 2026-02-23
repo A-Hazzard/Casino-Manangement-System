@@ -16,7 +16,6 @@ import {
     CheckCircle,
     Clock,
     Info,
-    Loader2,
     Trash2,
     X
 } from 'lucide-react';
@@ -100,9 +99,16 @@ export default function VaultNotificationsPanel() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-20 text-gray-400">
-        <Loader2 className="h-10 w-10 animate-spin mb-4 text-violet-500" />
-        <p className="text-sm font-semibold uppercase tracking-widest animate-pulse">Scanning alerts...</p>
+      <div className="space-y-4 animate-in fade-in duration-500">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="bg-white p-5 rounded-3xl border border-gray-100 flex gap-4 animate-pulse">
+            <div className="h-10 w-10 bg-gray-100 rounded-xl" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-gray-100 rounded w-1/4" />
+              <div className="h-3 bg-gray-100 rounded w-3/4" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

@@ -20,8 +20,7 @@ import {
     DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useUserStore } from '@/lib/store/userStore';
+import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Coins } from 'lucide-react';
@@ -47,14 +46,8 @@ export default function CashierShiftOpenModal({
   loading = false,
 }: CashierShiftOpenModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { selectedLicencee } = useDashBoardStore();
-  const { user } = useUserStore();
+  const { licenseeId: effectiveLicenseeId } = useVaultLicensee();
   const [step, setStep] = useState<'input' | 'review'>('input');
-
-  // Use user's assigned licensee if available (Cashier context), otherwise dashboard selection (Admin context)
-  const effectiveLicenseeId = useMemo(() => {
-    return user?.assignedLicensees?.[0] || selectedLicencee;
-  }, [user?.assignedLicensees, selectedLicencee]);
 
   const denomsList = useMemo(() => getDenominationValues(effectiveLicenseeId), [effectiveLicenseeId]);
 

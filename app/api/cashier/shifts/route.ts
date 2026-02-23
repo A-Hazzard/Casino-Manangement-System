@@ -99,18 +99,52 @@ export async function GET(request: NextRequest) {
         },
       },
       {
+        $lookup: {
+          from: 'gaminglocations', // Collection name for locations
+          localField: 'locationId',
+          foreignField: '_id',
+          as: 'locationInfo',
+        },
+      },
+      {
+        $addFields: {
+          matchedLocation: { $arrayElemAt: ['$locationInfo', 0] },
+        },
+      },
+      {
         $addFields: {
           cashierUsername: '$matchedUser.username',
+          locationName: '$matchedLocation.name',
           cashierName: {
-            $trim: {
-              input: {
-                $concat: [
-                  { $ifNull: ['$matchedUser.profile.firstName', ''] },
-                  ' ',
-                  { $ifNull: ['$matchedUser.profile.lastName', ''] },
-                ],
+            $let: {
+              vars: {
+                fullName: {
+                  $trim: {
+                    input: {
+                      $concat: [
+                        { $ifNull: ['$matchedUser.profile.firstName', ''] },
+                        ' ',
+                        { $ifNull: ['$matchedUser.profile.lastName', ''] },
+                      ],
+                    },
+                  },
+                },
               },
-            },
+              in: {
+                $cond: {
+                  if: { $and: [{ $ne: ['$$fullName', null] }, { $ne: ['$$fullName', ''] }, { $ne: ['$$fullName', ' '] }] },
+                  then: {
+                    $concat: [
+                      { $ifNull: ['$matchedUser.username', 'Cashier'] },
+                      ' (',
+                      '$$fullName',
+                      ')'
+                    ]
+                  },
+                  else: { $ifNull: ['$matchedUser.username', '$cashierId'] }
+                }
+              }
+            }
           },
         },
       },
@@ -118,6 +152,8 @@ export async function GET(request: NextRequest) {
         $project: {
           cashierInfo: 0,
           matchedUser: 0,
+          locationInfo: 0,
+          matchedLocation: 0,
         },
       },
     ]);

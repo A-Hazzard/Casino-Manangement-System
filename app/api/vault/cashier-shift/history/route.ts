@@ -59,8 +59,14 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const query: any = { cashierId };
 
+    const varianceOne = searchParams.get('variance');
+
     if (locationId) {
       query.locationId = locationId;
+    }
+
+    if (varianceOne === 'true') {
+        query.discrepancy = { $ne: 0 };
     }
 
     // ============================================================================

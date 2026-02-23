@@ -264,12 +264,13 @@ export default function AuditTrailViewer() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center">
-                      <RefreshCw className="mx-auto mb-2 h-6 w-6 animate-spin text-gray-400" />
-                      Loading transactions...
-                    </TableCell>
-                  </TableRow>
+                  [...Array(5)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={6}>
+                        <div className="h-4 w-full bg-gray-100 rounded animate-pulse" />
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : auditTrail.length === 0 ? (
                   <TableRow>
                     <TableCell
@@ -300,11 +301,15 @@ export default function AuditTrailViewer() {
                               {formatAmount(entry.balanceBefore)} → {formatAmount(entry.balanceAfter)}
                             </span>
                             <span className={`mt-0.5 ${entry.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              ({entry.amount >= 0 ? '+' : ''}{formatAmount(entry.amount)})
+                              ({entry.amount >= 0 ? '' : '-'}{formatAmount(Math.abs(entry.amount))})
                             </span>
                           </div>
                         ) : (
-                          entry.amount > 0 ? formatAmount(entry.amount) : '-'
+                          entry.amount > 0 ? (
+                            <span className={entry.isOutflow ? 'text-red-600' : 'text-green-600'}>
+                              {entry.isOutflow ? '-' : ''}{formatAmount(entry.amount)}
+                            </span>
+                          ) : '-'
                         )}
                       </TableCell>
                       <TableCell>

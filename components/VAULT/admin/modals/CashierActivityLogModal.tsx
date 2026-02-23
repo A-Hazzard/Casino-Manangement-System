@@ -53,6 +53,7 @@ type CashierActivityLogModalProps = {
   onClose: () => void;
   onBack: () => void;
   cashier: Cashier | null;
+  shiftId?: string | null;
 };
 
 export default function CashierActivityLogModal({
@@ -60,6 +61,7 @@ export default function CashierActivityLogModal({
   onClose,
   onBack,
   cashier,
+  shiftId,
 }: CashierActivityLogModalProps) {
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
@@ -83,6 +85,10 @@ export default function CashierActivityLogModal({
         limit: limit.toString(),
         skip: ((page - 1) * limit).toString(),
       });
+
+      if (shiftId) {
+        params.append('cashierShiftId', shiftId);
+      }
 
       const res = await fetch(`/api/vault/activity-log?${params.toString()}`);
       const data = await res.json();
@@ -219,7 +225,7 @@ export default function CashierActivityLogModal({
                         <TableCell className="text-right font-black text-sm text-gray-900">
                           {formatAmount(activity.amount || 0)}
                         </TableCell>
-                        <TableCell className="max-w-xs truncate text-[11px] font-medium text-gray-500 italic">
+                        <TableCell className="whitespace-normal break-words max-w-[200px] text-[11px] font-medium text-gray-500 italic">
                           {activity.notes ? `"${activity.notes}"` : '—'}
                         </TableCell>
                       </TableRow>

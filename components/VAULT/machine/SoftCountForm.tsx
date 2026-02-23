@@ -2,7 +2,7 @@
  * Soft Count Form Component
  *
  * Form for Vault Manager to record soft count cash removal from machines.
- * Designed to be used within the VaultSoftCountModal wizard.
+ * Designed to be used within the VaultOverviewSoftCountModal wizard.
  *
  * Features:
  * - Fetches live cabinet data (meters/expected drop) on mount/change
@@ -21,7 +21,7 @@ import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { fetchCabinetById } from '@/lib/helpers/cabinets';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { GamingMachine } from '@/shared/types/entities';
@@ -49,20 +49,24 @@ type SoftCountFormProps = {
     meters?: { billIn: number; ticketIn: number; totalIn: number };
     expectedDrop: number;
     variance: number;
+    isEndOfDay: boolean;
   }) => Promise<void>;
   loading?: boolean;
+  isEndOfDayFixed?: boolean;
 };
 
 export default function SoftCountForm({
   machine,
   onSubmit,
   loading = false,
+  isEndOfDayFixed,
 }: SoftCountFormProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { selectedLicencee } = useDashBoardStore();
+  const { licenseeId: selectedLicencee } = useVaultLicensee();
   
   // Form State
   const [notes, setNotes] = useState('');
+  const [isEndOfDay, setIsEndOfDay] = useState(false);
   const [denominations, setDenominations] = useState<Denomination[]>([]);
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
   const [meters, setMeters] = useState({
@@ -85,13 +89,14 @@ export default function SoftCountForm({
         })));
         setTouchedDenominations(new Set());
         setNotes('');
+        setIsEndOfDay(!!isEndOfDayFixed);
         setMeters({ moneyIn: 0, moneyOut: 0, gross: 0, billIn: '' });
         setExpectedDrop('');
         
         // Fetch live details
         fetchMachineDetails(machine._id);
     }
-  }, [machine?._id, denomsList]);
+  }, [machine?._id, denomsList, isEndOfDayFixed]);
 
   const fetchMachineDetails = async (id: string) => {
       setIsFetchingDetails(true);
@@ -157,7 +162,8 @@ export default function SoftCountForm({
             totalIn: 0   
         },
         expectedDrop: parseFloat(expectedDrop) || 0,
-        variance
+        variance,
+        isEndOfDay
       });
     } catch {
       // Error handled by parent
@@ -392,11 +398,10 @@ export default function SoftCountForm({
                 className="bg-gray-50/50 border-gray-100 rounded-xl focus:bg-white transition-all text-xs resize-none min-h-[60px]"
               />
             </div>
-
             <Button
               type="submit"
               disabled={loading || !machine || !isValid}
-              className="w-full h-14 bg-violet-600 text-white hover:bg-violet-700 font-black text-base shadow-lg shadow-violet-600/20 active:scale-[0.98] transition-all rounded-xl"
+              className="w-full h-14 bg-violet-600 text-white hover:bg-violet-700 font-black text-base shadow-lg shadow-violet-600/20 active:scale-[0.98] transition-all rounded-xl mt-6"
             >
               {loading ? (
                 <div className="flex items-center gap-2">

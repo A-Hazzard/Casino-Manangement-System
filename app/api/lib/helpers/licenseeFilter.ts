@@ -216,6 +216,8 @@ export async function getUserLocationFilter(
     normalizedRoles.includes('admin') ||
     normalizedRoles.includes('developer');
   const isManager = normalizedRoles.includes('manager');
+  const isVaultManager = normalizedRoles.includes('vault-manager');
+  const isCashier = normalizedRoles.includes('cashier');
   const isLocationAdmin = normalizedRoles.includes('location admin');
 
   if (isAdmin) {
@@ -300,10 +302,10 @@ export async function getUserLocationFilter(
     return userLocationPermissions.length > 0 ? userLocationPermissions : 'all';
   }
 
-  // LOCATION ADMINS see their assigned locations OR all locations from their assigned licensees
-  if (isLocationAdmin) {
+  // VAULT MANAGERS, CASHIERS and LOCATION ADMINS see their assigned locations
+  if (isLocationAdmin || isVaultManager || isCashier) {
     if (userLocationPermissions.length > 0) {
-      return userLocationPermissions;
+      return userLocationPermissions.map(id => String(id).trim());
     }
     return licenseeLocations;
   }
@@ -382,8 +384,9 @@ export async function checkUserLocationAccess(
         .assignedLocations;
     }
 
+    const normalizedRoles = userRoles.map(role => role?.toLowerCase?.() ?? role);
     const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
 
     // Get user's accessible locations
     const allowedLocationIds = await getUserLocationFilter(

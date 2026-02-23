@@ -58,8 +58,8 @@ export default function DenominationInputGrid({
               </Label>
               {availableCount !== undefined && (
                 <span className={cn(
-                    "text-[9px] font-bold px-1 rounded",
-                    Number(availableCount) > 0 ? "text-gray-500 bg-gray-100" : "text-gray-300"
+                    "text-[11px] font-black px-2 py-0.5 rounded-md",
+                    Number(availableCount) > 0 ? "bg-button text-white shadow-sm" : "bg-gray-200 text-gray-500"
                 )}>
                   {availableCount}
                 </span>

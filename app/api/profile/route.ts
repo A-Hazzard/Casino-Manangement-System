@@ -307,23 +307,38 @@ export async function PUT(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 7: Verify current password if changing password (skip for temp password)
+    // STEP 7: Verify current password if changing password
+    // For cashiers with a temp password, we still verify the entered current password
+    // against their hashed password so they can't bypass with any random input.
     // ============================================================================
-    if (passwordChangeRequested && !isTemporaryPassword) {
-      const matches = await comparePassword(
-        currentPassword,
-        user.password || ''
-      );
+    if (passwordChangeRequested && currentPassword) {
+      const matches = await comparePassword(currentPassword, user.password || '');
       if (!matches) {
         return NextResponse.json(
           {
             success: false,
-            message: 'Current password is incorrect',
-            errors: { currentPassword: 'Current password is incorrect' },
+            message: isTemporaryPassword
+              ? 'Temporary password is incorrect. Please check the password given to you.'
+              : 'Current password is incorrect.',
+            errors: {
+              currentPassword: isTemporaryPassword
+                ? 'Temporary password is incorrect.'
+                : 'Current password is incorrect.',
+            },
           },
           { status: 400 }
         );
       }
+    } else if (passwordChangeRequested && !isTemporaryPassword && !currentPassword) {
+      // Non-cashier must provide current password
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Current password is required.',
+          errors: { currentPassword: 'Current password is required.' },
+        },
+        { status: 400 }
+      );
     }
 
     // ============================================================================
@@ -358,15 +373,7 @@ export async function PUT(request: NextRequest) {
       unsetMap['profile.gender'] = '';
     }
 
-    const existingDob =
-      user.profile?.identification?.dateOfBirth instanceof Date
-        ? user.profile.identification.dateOfBirth
-        : user.profile?.identification?.dateOfBirth
-          ? new Date(user.profile.identification.dateOfBirth as string | number)
-          : null;
-    const existingDobString = existingDob
-      ? new Date(existingDob).toISOString().split('T')[0]
-      : '';
+
 
     const updateOperation: Record<string, unknown> = {
       $set: updateSet,
@@ -384,9 +391,11 @@ export async function PUT(request: NextRequest) {
       updateSet.passwordUpdatedAt = new Date();
       updateSet.tempPasswordChanged = true;
       unsetMap.tempPassword = ''; // Delete plain text temp password after first password change
-      incrementSession = true;
-    } else if (!user.passwordUpdatedAt) {
-      // Force user to set a new password if never set before
+      if (!isTemporaryPassword) {
+        incrementSession = true;
+      }
+    } else if (!user.passwordUpdatedAt && !isTemporaryPassword) {
+      // Non-cashier user (no temp password) must set a new password if never set before
       return NextResponse.json(
         {
           success: false,
@@ -397,17 +406,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (
-      username !== user.username ||
-      emailAddress !== user.emailAddress ||
-      firstName !== (user.profile?.firstName || '') ||
-      lastName !== (user.profile?.lastName || '') ||
-      otherName !== (user.profile?.otherName || '') ||
-      gender !== ((user.profile?.gender as string) || '') ||
-      dateOfBirth !== existingDobString
-    ) {
-      incrementSession = true;
-    }
+
 
     // Update licensees if user can manage assignments and licenseeIds are provided
     if (canManageAssignments && requestedLicenseeIds !== undefined) {

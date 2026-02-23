@@ -21,7 +21,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import { safeFormatDate } from '@/lib/utils/date/formatting';
-import { ArrowLeft, BarChart3, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { ArrowLeft, BarChart3, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -72,8 +72,8 @@ export default function CashierShiftHistoryModal({
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [expandedShiftId, setExpandedShiftId] = useState<string | null>(null);
-  const limit = 20;
+  const [showVarianceOnly, setShowVarianceOnly] = useState(false);
+  const limit = 5;
 
   const locationId = user?.assignedLocations?.[0];
 
@@ -88,6 +88,10 @@ export default function CashierShiftHistoryModal({
         limit: limit.toString(),
         skip: ((page - 1) * limit).toString(),
       });
+
+      if (showVarianceOnly) {
+        params.append('variance', 'true');
+      }
 
       const res = await fetch(`/api/vault/cashier-shift/history?${params.toString()}`);
       const data = await res.json();
@@ -111,7 +115,7 @@ export default function CashierShiftHistoryModal({
       fetchShifts(1);
       setCurrentPage(1);
     }
-  }, [isOpen, cashier]);
+  }, [isOpen, cashier, showVarianceOnly]);
 
   useEffect(() => {
     if (isOpen) {
@@ -153,17 +157,41 @@ export default function CashierShiftHistoryModal({
         backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
       >
         <DialogHeader>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={onBack}
-              variant="ghost"
-              size="sm"
-              className="mr-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <BarChart3 className="h-5 w-5" />
-            <DialogTitle>Shift History - {cashierName}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={onBack}
+                variant="ghost"
+                size="sm"
+                className="mr-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <BarChart3 className="h-5 w-5" />
+              <DialogTitle>Shift History - {cashierName}</DialogTitle>
+            </div>
+            
+            {/* Filter Toggle */}
+            <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+                <button
+                    onClick={() => setShowVarianceOnly(false)}
+                    className={cn(
+                        "px-3 py-1 text-xs font-semibold rounded-md transition-all",
+                        !showVarianceOnly ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-900"
+                    )}
+                >
+                    All Shifts
+                </button>
+                <button
+                    onClick={() => setShowVarianceOnly(true)}
+                    className={cn(
+                        "px-3 py-1 text-xs font-semibold rounded-md transition-all",
+                        showVarianceOnly ? "bg-white shadow text-orangeHighlight" : "text-gray-500 hover:text-gray-900"
+                    )}
+                >
+                    Variance Only
+                </button>
+            </div>
           </div>
         </DialogHeader>
 
@@ -178,100 +206,118 @@ export default function CashierShiftHistoryModal({
             </div>
           ) : (
             <>
-              <div className="space-y-2">
-                {shifts.map((shift) => {
-                  const isExpanded = expandedShiftId === shift._id;
-                  return (
-                    <div key={shift._id} className="rounded-md border">
-                      <div
-                        className="flex cursor-pointer items-center justify-between p-4 hover:bg-gray-50"
-                        onClick={() => setExpandedShiftId(isExpanded ? null : shift._id)}
-                      >
-                        <div className="flex items-center gap-4">
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                          <div>
-                            <div className="font-semibold">
-                               {safeFormatDate(shift.openedAt)}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              Duration: {calculateShiftDuration(shift.openedAt, shift.closedAt)}
-                            </div>
+              <div className="space-y-4">
+                {shifts.map((shift) => (
+                  <div key={shift._id} className="rounded-xl border bg-white shadow-sm overflow-hidden">
+                    {/* Header Row */}
+                    <div className="flex items-center justify-between border-b bg-gray-50/50 px-4 py-3">
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <div className="font-bold text-gray-900">
+                             {safeFormatDate(shift.openedAt)}
+                          </div>
+                          <div className="text-xs text-gray-500 font-medium">
+                             Duration: {calculateShiftDuration(shift.openedAt, shift.closedAt)}
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          {shift.discrepancy !== undefined && shift.discrepancy !== 0 && (
-                            <div className={cn(
-                              'font-mono font-semibold',
-                              shift.discrepancy > 0 ? 'text-green-600' : 'text-red-600'
-                            )}>
-                              {shift.discrepancy > 0 ? '+' : ''}{formatAmount(shift.discrepancy)}
-                            </div>
-                          )}
-                          {getStatusBadge(shift.status)}
+                        {getStatusBadge(shift.status)}
+                      </div>
+                      
+                      {/* Variance Badge in Header if significant */}
+                      {shift.discrepancy !== undefined && shift.discrepancy !== 0 && (
+                         <div className={cn(
+                           "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border",
+                           shift.discrepancy > 0 
+                             ? "bg-green-50 text-green-700 border-green-200" 
+                             : "bg-red-50 text-red-700 border-red-200"
+                         )}>
+                             <span>Variance:</span>
+                             <span>{shift.discrepancy > 0 ? '+' : ''}{formatAmount(shift.discrepancy)}</span>
+                         </div>
+                      )}
+                    </div>
+
+                    {/* Content Grid */}
+                    <div className="p-4">
+                      <div className="grid grid-cols-2 gap-6 md:grid-cols-4 lg:grid-cols-5">
+                        {/* Column 1: Opening */}
+                        <div className="space-y-1">
+                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Opening Balance</div>
+                          <div className="font-mono text-lg font-bold text-gray-900">
+                            {formatAmount(shift.openingBalance)}
+                          </div>
+                        </div>
+
+                        {/* Column 2: Payouts */}
+                        <div className="space-y-1">
+                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Payouts</div>
+                          <div className="font-mono text-lg font-medium text-gray-700">
+                            {formatAmount(shift.payoutsTotal)}
+                            <span className="ml-1 text-xs text-gray-400 font-normal">({shift.payoutsCount})</span>
+                          </div>
+                        </div>
+
+                        {/* Column 3: Float Adjustments */}
+                        <div className="space-y-1">
+                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Float Adj.</div>
+                          <div className="font-mono text-lg font-medium text-gray-700">
+                            {shift.floatAdjustmentsTotal ? formatAmount(shift.floatAdjustmentsTotal) : '-'}
+                          </div>
+                        </div>
+
+                        {/* Column 4: Closing */}
+                        <div className="space-y-1">
+                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Closing Balance</div>
+                          <div className="font-mono text-lg font-bold text-gray-900">
+                            {shift.closingBalance !== undefined ? formatAmount(shift.closingBalance) : '-'}
+                          </div>
+                        </div>
+
+                        {/* Column 5: Variance (Detailed) */}
+                        <div className="space-y-1 bg-gray-50 p-2 rounded-lg border border-gray-100 -my-2 flex flex-col justify-center">
+                           <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Variance</div>
+                           <div className={cn(
+                             "font-mono text-lg font-black",
+                             !shift.discrepancy ? "text-gray-400" : shift.discrepancy > 0 ? "text-green-600" : "text-red-600"
+                           )}>
+                             {shift.discrepancy ? (
+                               <>{shift.discrepancy > 0 ? '+' : ''}{formatAmount(shift.discrepancy)}</>
+                             ) : (
+                               <span className="text-gray-300">—</span>
+                             )}
+                           </div>
                         </div>
                       </div>
-                      {isExpanded && (
-                        <div className="border-t bg-gray-50 p-4">
-                          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                            <div>
-                              <div className="text-sm text-gray-500">Opening Balance</div>
-                              <div className="font-mono font-semibold">
-                                {formatAmount(shift.openingBalance)}
-                              </div>
-                            </div>
-                            {shift.closingBalance !== undefined && (
-                              <div>
-                                <div className="text-sm text-gray-500">Closing Balance</div>
-                                <div className="font-mono font-semibold">
-                                  {formatAmount(shift.closingBalance)}
-                                </div>
-                              </div>
-                            )}
-                            <div>
-                              <div className="text-sm text-gray-500">Payouts</div>
-                              <div className="font-semibold">
-                                {shift.payoutsCount} ({formatAmount(shift.payoutsTotal)})
-                              </div>
-                            </div>
-                            {shift.floatAdjustmentsTotal !== undefined && (
-                              <div>
-                                <div className="text-sm text-gray-500">Float Adjustments</div>
-                                <div className="font-mono font-semibold">
-                                  {formatAmount(shift.floatAdjustmentsTotal)}
-                                </div>
-                              </div>
-                            )}
+
+                      {/* Review Notes Footer */}
+                      {shift.vmReviewNotes && (
+                        <div className="mt-4 border-t pt-3">
+                          <div className="flex items-start gap-2">
+                             <div className="bg-yellow-100 text-yellow-800 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase mt-0.5">Note</div>
+                             <div className="text-sm text-gray-600 italic">
+                                "{shift.vmReviewNotes}"
+                             </div>
                           </div>
-                          {shift.vmReviewNotes && (
-                            <div className="mt-4">
-                              <div className="text-sm text-gray-500">VM Review Notes</div>
-                              <div className="mt-1 rounded bg-yellow-50 p-2 text-sm">
-                                {shift.vmReviewNotes}
-                              </div>
-                              {shift.reviewedAt && (
-                                <div className="mt-1 text-xs text-gray-400">
-                                   Reviewed at {safeFormatDate(shift.reviewedAt)}
-                                </div>
-                              )}
+                          {shift.reviewedAt && (
+                            <div className="mt-1 text-xs text-gray-400 ml-12">
+                               Reviewed: {safeFormatDate(shift.reviewedAt)}
                             </div>
                           )}
                         </div>
                       )}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
 
               {totalPages > 1 && (
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  setCurrentPage={setCurrentPage}
-                />
+                <div className="mt-4">
+                    <PaginationControls
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      setCurrentPage={setCurrentPage}
+                    />
+                </div>
               )}
             </>
           )}

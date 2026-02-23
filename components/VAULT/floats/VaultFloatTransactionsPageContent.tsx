@@ -106,14 +106,6 @@ export default function VaultFloatTransactionsPageContent() {
     fetchData();
   }, [user?.assignedLocations, currentPage]);
 
-  // Periodic refresh
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchData();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
-  }, [user?.assignedLocations, currentPage]);
 
   // ============================================================================
   // Computed Values

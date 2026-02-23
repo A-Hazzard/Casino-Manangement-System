@@ -29,12 +29,15 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/shared/ui/table';
+import StaleShiftDetectedBlock from '@/components/VAULT/shared/StaleShiftDetectedBlock';
+import VaultTransactionDetailsModal from '@/components/VAULT/transactions/modals/VaultTransactionDetailsModal';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useVaultShift } from '@/lib/hooks/vault/useVaultShift';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { TimePeriod } from '@/shared/types';
-import { Download, RefreshCw, Search } from 'lucide-react';
+import { Download, FileText, RefreshCw, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import VaultManagerHeader from '../layout/VaultManagerHeader';
@@ -47,6 +50,11 @@ type ActivityLog = {
   performedBy: string;
   performerName?: string;
   notes?: string;
+  reason?: string;
+  bankDetails?: Record<string, string>;
+  expenseDetails?: Record<string, any>;
+  denominations?: any[];
+  isVoid?: boolean;
   from?: { type: string; id?: string };
   to?: { type: string; id?: string };
 };
@@ -68,6 +76,7 @@ export default function VaultActivityLogPageContent() {
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<any | null>(null);
   
   // Filters
   const [selectedCashier, setSelectedCashier] = useState<string>('all');
@@ -186,19 +195,19 @@ export default function VaultActivityLogPageContent() {
 
   const getTypeStyle = (type: string) => {
     const styles: Record<string, { label: string; bg: string; text: string }> = {
-      vault_open: { label: 'Shift Open', bg: 'bg-emerald-50', text: 'text-emerald-700' },
-      vault_close: { label: 'Shift Close', bg: 'bg-slate-100', text: 'text-slate-700' },
-      vault_reconciliation: { label: 'Audit', bg: 'bg-violet-50', text: 'text-violet-700' },
-      cashier_shift_open: { label: 'Cashier Open', bg: 'bg-blue-50', text: 'text-blue-700' },
-      cashier_shift_close: { label: 'Cashier Close', bg: 'bg-indigo-50', text: 'text-indigo-700' },
-      float_increase: { label: 'Float Up', bg: 'bg-teal-50', text: 'text-teal-700' },
-      float_decrease: { label: 'Float Down', bg: 'bg-orange-50', text: 'text-orange-700' },
-      payout: { label: 'Payout', bg: 'bg-rose-50', text: 'text-rose-700' },
-      machine_collection: { label: 'Collection', bg: 'bg-cyan-50', text: 'text-cyan-700' },
-      soft_count: { label: 'Soft Count', bg: 'bg-amber-50', text: 'text-amber-700' },
-      expense: { label: 'Expense', bg: 'bg-red-50', text: 'text-red-700' },
-      add_cash: { label: 'Treasury In', bg: 'bg-green-50', text: 'text-green-700' },
-      remove_cash: { label: 'Treasury Out', bg: 'bg-stone-50', text: 'text-stone-700' },
+      vault_open: { label: 'Vault Open', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+      vault_close: { label: 'Outflow', bg: 'bg-orangeHighlight', text: 'text-white' },
+      vault_reconciliation: { label: 'Vault Reconciliation', bg: 'bg-violet-50', text: 'text-violet-700' },
+      cashier_shift_open: { label: 'Outflow', bg: 'bg-orangeHighlight', text: 'text-white' },
+      cashier_shift_close: { label: 'Cashier Shift Close', bg: 'bg-indigo-50', text: 'text-indigo-700' },
+      float_increase: { label: 'Outflow', bg: 'bg-orangeHighlight', text: 'text-white' },
+      float_decrease: { label: 'Inflow', bg: 'bg-button', text: 'text-white' },
+      payout: { label: 'Outflow', bg: 'bg-rose-50', text: 'text-rose-700' },
+      machine_collection: { label: 'Inflow', bg: 'bg-button', text: 'text-white' },
+      soft_count: { label: 'Inflow', bg: 'bg-button', text: 'text-white' },
+      expense: { label: 'Expense', bg: 'bg-red-600', text: 'text-white' },
+      add_cash: { label: 'Add Cash', bg: 'bg-green-50', text: 'text-green-700' },
+      remove_cash: { label: 'Remove Cash', bg: 'bg-stone-50', text: 'text-stone-700' },
     };
     return styles[type] || { 
       label: type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), 
@@ -299,11 +308,14 @@ export default function VaultActivityLogPageContent() {
   // Render
   // ============================================================================
 
+  const { isStaleShift, vaultBalance } = useVaultShift();
+
   return (
     <PageLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <VaultManagerHeader
+        <StaleShiftDetectedBlock isStale={isStaleShift} openedAt={vaultBalance?.openedAt} type="vault">
+          <div className="space-y-6">
+            <VaultManagerHeader
           title="Activity Log"
           description="Comprehensive audit trail of all vault operations"
         >
@@ -409,8 +421,15 @@ export default function VaultActivityLogPageContent() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-1/4" />
+                    <div className="h-4 bg-gray-200 rounded w-1/4" />
+                    <div className="h-4 bg-gray-200 rounded w-1/4" />
+                    <div className="h-4 bg-gray-200 rounded w-1/4" />
+                  </div>
+                ))}
               </div>
             ) : activities.length === 0 ? (
               <div className="py-12 text-center text-gray-500">
@@ -426,6 +445,7 @@ export default function VaultActivityLogPageContent() {
                       <TableHead>Performer</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-center">Actions</TableHead>
                       <TableHead>Notes</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -455,10 +475,27 @@ export default function VaultActivityLogPageContent() {
                           </TableCell>
                           <TableCell className="font-semibold text-gray-700">{getActivityDescription(activity)}</TableCell>
                           <TableCell className="text-right py-4">
-                             <div className="flex flex-col items-end">
-                                <span className="font-mono font-black text-gray-900">{formatAmount(activity.amount || 0)}</span>
-                                {activity.amount > 1000 && <span className="text-[8px] font-bold text-amber-600 uppercase tracking-tighter">High Value</span>}
-                             </div>
+                            {(() => {
+                              const isOutflow = activity.from?.type === 'vault';
+                              return (
+                                <div className="flex flex-col items-end">
+                                  <span className={cn("font-mono font-black", isOutflow ? "text-red-600" : "text-green-600")}>
+                                    {isOutflow && '-'}{formatAmount(activity.amount || 0)}
+                                  </span>
+                                  {activity.amount > 1000 && <span className="text-[8px] font-bold text-amber-600 uppercase tracking-tighter">High Value</span>}
+                                </div>
+                              );
+                            })()}
+                          </TableCell>
+                          <TableCell className="text-center">
+                             <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-[10px] text-violet-600 font-bold px-2"
+                                onClick={() => setSelectedActivity(activity)}
+                             >
+                                <FileText className="mr-1 h-3 w-3" /> Details
+                             </Button>
                           </TableCell>
                           <TableCell className="max-w-xs truncate text-xs font-medium text-gray-500">
                             {activity.notes || '—'}
@@ -481,8 +518,16 @@ export default function VaultActivityLogPageContent() {
                 )}
               </>
             )}
+            
+            <VaultTransactionDetailsModal
+              open={!!selectedActivity}
+              onClose={() => setSelectedActivity(null)}
+              transaction={selectedActivity}
+            />
           </CardContent>
         </Card>
+          </div>
+        </StaleShiftDetectedBlock>
       </div>
     </PageLayout>
   );

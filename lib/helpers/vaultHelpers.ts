@@ -9,19 +9,19 @@
 
 import type { NotificationItem } from '@/components/shared/ui/NotificationBell';
 import {
-  DEFAULT_CASHIER_FLOATS,
-  DEFAULT_VAULT_BALANCE,
+    DEFAULT_CASHIER_FLOATS,
+    DEFAULT_VAULT_BALANCE,
 } from '@/components/VAULT/overview/data/defaults';
 import type {
-  CashDesk,
-  CashierFloat,
-  CashierShift,
-  Denomination,
-  FloatRequest,
-  UnbalancedShiftInfo,
-  VaultBalance,
-  VaultMetrics,
-  VaultTransaction,
+    CashDesk,
+    CashierFloat,
+    CashierShift,
+    Denomination,
+    FloatRequest,
+    UnbalancedShiftInfo,
+    VaultBalance,
+    VaultMetrics,
+    VaultTransaction,
 } from '@/shared/types/vault';
 
 // ============================================================================
@@ -522,6 +522,7 @@ export async function fetchAuditTrail(
               description: tx.notes || `${tx.type.replace(/_/g, ' ')}`,
               performedBy: tx.performedByName || tx.performedBy || 'System',
               amount: adj,
+              isOutflow: isReconcile ? adj < 0 : tx.from?.type === 'vault',
               balanceBefore: tx.vaultBalanceBefore,
               balanceAfter: tx.vaultBalanceAfter,
               location: tx.locationId,
@@ -578,8 +579,8 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
         });
 
         todayTxs.forEach((tx: any) => {
-          // Skip reconciliation transactions for charts/trends
-          if (tx.type === 'vault_reconciliation') return;
+          // Skip reconciliation and opening transactions for charts/trends
+          if (['vault_reconciliation', 'vault_open'].includes(tx.type)) return;
 
           const hour = new Date(tx.timestamp).getHours();
                     // For balance trend: if it's cash IN (to vault), add. If cash OUT (from vault), subtract.
@@ -737,20 +738,20 @@ export async function fetchVaultTransactions(
             performedByName: tx.performedByName || tx.performedBy || 'System',
             fromName:
               tx.fromName ||
-              (tx.from.type === 'vault'
+              (tx.from?.type === 'vault'
                 ? 'Vault'
-                : tx.from.type === 'cashier'
+                : tx.from?.type === 'cashier'
                   ? 'Cashier'
-                  : tx.from.type === 'machine'
+                  : tx.from?.type === 'machine'
                     ? `Machine ${tx.from.id}`
-                    : tx.from.id || 'External'),
+                    : tx.from?.id || 'External'),
             toName:
               tx.toName ||
-              (tx.to.type === 'vault'
+              (tx.to?.type === 'vault'
                 ? 'Vault'
-                : tx.to.type === 'cashier'
+                : tx.to?.type === 'cashier'
                   ? 'Cashier'
-                  : tx.to.id || 'External'),
+                  : tx.to?.id || 'External'),
           })),
           total: data.total || data.pagination?.total || txs.length,
           totalPages:
@@ -821,14 +822,16 @@ export async function fetchEndOfDayReportData(
     const vaultBalanceObj = {
         ...DEFAULT_VAULT_BALANCE,
         balance: data.vaultBalance?.systemBalance || 0,
-        // If we have physical count from report (which is same as system for active/closed unless variance), use it?
-        // The default object expects 'balance' as primary (system).
+        physicalCount: data.vaultBalance?.physicalCount || 0,
+        variance: data.vaultBalance?.variance || 0,
     };
 
       return {
       denominationBreakdown: data.denominationBreakdown || {},
       vaultBalance: vaultBalanceObj,
       cashierFloats: data.cashierFloats || [],
+      midDaySoftCounts: data.midDaySoftCounts || [],
+      endOfDaySoftCounts: data.endOfDaySoftCounts || [],
       slotCounts: data.slotCounts || [],
       floatRequests: floatRequestsData?.success
         ? floatRequestsData.data || []
@@ -836,6 +839,7 @@ export async function fetchEndOfDayReportData(
       metrics: metricsData?.success ? metricsData.metrics : null,
       shiftStatus: data.shiftStatus || 'not_started',
       previousShiftActive: data.previousShiftActive || false,
+      previousShiftDate: data.previousShiftDate,
     };
   } catch (error) {
     console.error('Failed to fetch end-of-day report data:', error);
@@ -977,13 +981,18 @@ export async function fetchCashiersData(
   page: number = 1,
   limit: number = 20,
   search?: string,
-  sortConfig?: { key: string; direction: 'ascending' | 'descending' }
+  sortConfig?: { key: string; direction: 'ascending' | 'descending' },
+  varianceFilter: 'all' | 'variance' | 'no-variance' = 'all'
 ): Promise<{ users: any[]; total: number; totalPages: number }> {
   try {
     let url = `/api/users?role=cashier&page=${page}&limit=${limit}`;
     
     if (search) {
       url += `&search=${encodeURIComponent(search)}`;
+    }
+
+    if (varianceFilter !== 'all') {
+      url += `&variance=${varianceFilter}`;
     }
 
     // Since the API might not support direct sort params yet, 
@@ -1645,7 +1654,8 @@ export async function handleResetCashierPassword(
  */
 export function calculateEndOfDayMetrics(reportData: {
   denominationBreakdown: Record<string, number>;
-  slotCounts: any[];
+  midDaySoftCounts: any[];
+  endOfDaySoftCounts: any[];
   cashierFloats: any[];
   vaultBalance: any;
   floatRequests: any[];
@@ -1653,10 +1663,12 @@ export function calculateEndOfDayMetrics(reportData: {
 }) {
   const {
     denominationBreakdown,
-    slotCounts,
+    midDaySoftCounts,
+    endOfDaySoftCounts,
     cashierFloats,
     vaultBalance,
     floatRequests,
+    metrics: apiMetrics,
   } = reportData;
 
   // Process denomination breakdown (calculate total value)
@@ -1670,10 +1682,9 @@ export function calculateEndOfDayMetrics(reportData: {
     0
   );
 
-  const totalMachineBalance = slotCounts.reduce(
-    (sum, m) => sum + (m.closingCount || 0),
-    0
-  );
+  const midDaySum = midDaySoftCounts.reduce((sum, m) => sum + (m.amount || 0), 0);
+  const endOfDaySum = endOfDaySoftCounts.reduce((sum, m) => sum + (m.amount || 0), 0);
+  const totalMachineBalance = midDaySum + endOfDaySum;
 
   const totalCashierFloat = cashierFloats.reduce(
     (sum, f) => sum + (f.balance || 0),
@@ -1685,24 +1696,29 @@ export function calculateEndOfDayMetrics(reportData: {
     0
   );
 
+  // Use values from API metrics if available (these are real-time queried sums for the gaming day)
+  const totalInflows = apiMetrics?.totalCashIn || 0;
+  const totalOutflows = apiMetrics?.totalCashOut || 0;
+  const totalExpenses = apiMetrics?.expenses || 0;
+  const totalPayouts = apiMetrics?.payouts || 0; // Note: This might be count or amount depending on API implementation
+
   return {
     totalDenominationValue,
     totalDenominationCount,
     totalMachineBalance,
     totalCashierFloat,
-    totalCashDeskFloat: totalCashierFloat, // Alias for compatibility
+    totalCashDeskFloat: totalCashierFloat,
     totalFloatRequests,
     vaultBalance: vaultBalance?.balance || 0,
     totalOnPremises:
       (vaultBalance?.balance || 0) + totalMachineBalance + totalCashierFloat,
-    // Additional metrics for EOD reports
     systemBalance: vaultBalance?.balance || 0,
-    totalInflows: 0, // To be calculated from transactions
-    totalOutflows: 0, // To be calculated from transactions
-    totalExpenses: 0, // To be calculated from transactions
-    totalPayouts: 0, // To be calculated from transactions
-    physicalCount: vaultBalance?.balance || 0, // Physical count from closing
-    variance: 0, // Difference between system and physical
+    totalInflows,
+    totalOutflows,
+    totalExpenses,
+    totalPayouts,
+    physicalCount: vaultBalance?.physicalCount ?? (vaultBalance?.balance || 0),
+    variance: vaultBalance?.variance || 0,
     floatRequestsCount: floatRequests.length,
   };
 }
@@ -1809,81 +1825,81 @@ export function getTransactionTypeBadge(type: string): {
   switch (type) {
     case 'vault_open':
       return { 
-        label: 'Shift Open', 
+        label: 'Vault Open', 
         icon: 'none', 
         className: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-50' 
       };
     case 'vault_close':
       return { 
-        label: 'Shift Close', 
-        icon: 'none', 
-        className: 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100' 
+        label: 'Outflow', 
+        icon: 'arrow-up', 
+        className: 'bg-red-600 text-white hover:bg-red-600/90' 
       };
     case 'cashier_shift_open':
       return { 
-        label: 'Cashier Open', 
-        icon: 'arrow-down', 
-        className: 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100' 
+        label: 'Outflow', 
+        icon: 'arrow-up', 
+        className: 'bg-red-600 text-white hover:bg-red-600/90' 
       };
     case 'cashier_shift_close':
       return { 
-        label: 'Cashier Close', 
+        label: 'Cashier Shift Close', 
         icon: 'none', 
         className: 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-50' 
       };
     case 'float_increase':
       return { 
-        label: 'Float Up', 
-        icon: 'arrow-down', 
-        className: 'bg-teal-50 text-teal-700 border-teal-100 hover:bg-teal-50' 
+        label: 'Outflow', 
+        icon: 'arrow-up', 
+        className: 'bg-red-600 text-white hover:bg-red-600/90' 
       };
     case 'float_decrease':
       return { 
-        label: 'Float Down', 
-        icon: 'arrow-up', 
-        className: 'bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-50' 
+        label: 'Inflow', 
+        icon: 'arrow-down', 
+        className: 'bg-button text-white hover:bg-button/90' 
       };
     case 'payout':
       return { 
-        label: 'Payout', 
-        icon: 'arrow-down', 
-        className: 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-50' 
+        label: 'Outflow', 
+        icon: 'arrow-up', 
+        className: 'bg-red-600 text-white hover:bg-red-600/90' 
       };
     case 'machine_collection':
       return { 
-        label: 'Collection', 
-        icon: 'arrow-up', 
-        className: 'bg-cyan-50 text-cyan-700 border-cyan-100 hover:bg-cyan-50' 
+        label: 'Inflow', 
+        icon: 'arrow-down', 
+        className: 'bg-button text-white hover:bg-button/90' 
       };
     case 'soft_count':
       return { 
-        label: 'Soft Count', 
-        icon: 'arrow-up', 
-        className: 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-50' 
+        label: 'Inflow', 
+        icon: 'arrow-down', 
+        className: 'bg-button text-white hover:bg-button/90' 
       };
     case 'expense':
       return { 
         label: 'Expense', 
         icon: 'receipt', 
-        className: 'bg-red-50 text-red-700 border-red-100 hover:bg-red-50' 
+        className: 'bg-red-600 text-white hover:bg-red-600/90' 
       };
     case 'vault_reconciliation':
       return { 
-        label: 'Audit', 
+        label: 'Vault Reconciliation', 
         icon: 'none', 
         className: 'bg-violet-50 text-violet-700 border-violet-100 hover:bg-violet-50' 
       };
     case 'add_cash':
       return { 
-        label: 'Treasury In', 
-        icon: 'arrow-up', 
-        className: 'bg-green-50 text-green-700 border-green-100 hover:bg-green-50' 
+        label: 'Inflow', 
+        icon: 'arrow-down', 
+        className: 'bg-button text-white hover:bg-button/90' 
       };
     case 'remove_cash':
       return { 
-        label: 'Treasury Out', 
-        icon: 'arrow-down', 
-        className: 'bg-stone-50 text-stone-700 border-stone-100 hover:bg-stone-50' 
+        label: 'Outflow', 
+        icon: 'arrow-up', 
+        className: 'bg-red-600 text-white hover:bg-red-600/90' 
       };
     default:
       return { 

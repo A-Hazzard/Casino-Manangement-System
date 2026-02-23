@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
           requestId,
           vmUserId,
           vmUsername,
-          `Return automatically finalized upon VM ${status === 'approved' ? 'approval' : 'edit'}`
+          vmNotes || ''
         );
 
         return NextResponse.json({
@@ -245,7 +245,7 @@ export async function POST(request: NextRequest) {
           action: status === 'approved' ? 'approved' : 'edited',
           performedBy: vmUserId,
           timestamp: now,
-          notes: vmNotes || (status === 'approved' ? 'Approved by VM - Awaiting cashier confirmation' : 'Edited by VM - Awaiting cashier confirmation'),
+          notes: vmNotes || '',
           metadata: { approvedAmount: finalAmount }
         });
       }

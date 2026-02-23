@@ -115,7 +115,7 @@ export async function finalizeFloatRequest(
     floatRequestId: floatRequest._id,
     performedBy: userId,
     performedByName: username,
-    notes: customNotes || `Workflow finalized. ${floatRequest.vmNotes || ''}`,
+    notes: [customNotes, floatRequest.vmNotes].filter(Boolean).join('; '),
     isVoid: false,
     createdAt: now,
   });
@@ -128,7 +128,7 @@ export async function finalizeFloatRequest(
       action: 'confirmed',
       performedBy: userId,
       timestamp: now,
-      notes: customNotes || 'Confirmed and finalized'
+      notes: customNotes || ''
     });
   }
 

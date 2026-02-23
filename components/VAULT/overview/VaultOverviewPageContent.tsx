@@ -11,59 +11,63 @@
 
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
-    DEFAULT_VAULT_BALANCE,
-    DEFAULT_VAULT_METRICS,
+  DEFAULT_VAULT_BALANCE,
+  DEFAULT_VAULT_METRICS,
 } from '@/components/VAULT/overview/data/defaults';
+import StaleShiftDetectedBlock from '@/components/VAULT/shared/StaleShiftDetectedBlock';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
 import {
-    fetchGlobalVaultOverviewData,
-    fetchVaultOverviewData
+  fetchGlobalVaultOverviewData,
+  fetchVaultOverviewData
 } from '@/lib/helpers/vaultHelpers';
 import { useUserStore } from '@/lib/store/userStore';
+import { isShiftStale } from '@/lib/utils/vault/shift';
 import type { GamingMachine } from '@/shared/types/entities';
 import {
-    type CashDesk,
-    type Denomination,
-    type FloatRequest,
-    type UnbalancedShiftInfo,
-    type VaultBalance,
-    type VaultMetrics,
-    type VaultTransaction,
+  type CashDesk,
+  type Denomination,
+  type FloatRequest,
+  type UnbalancedShiftInfo,
+  type VaultBalance,
+  type VaultMetrics,
+  type VaultTransaction,
 } from '@/shared/types/vault';
 import { FileText, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import AdvancedDashboard from './AdvancedDashboard';
+
+// Sections
+import VaultOverviewAdvancedDashboard from './sections/VaultOverviewAdvancedDashboard';
+import VaultOverviewFloatRequestsPanel from './sections/VaultOverviewFloatRequestsPanel';
+import VaultOverviewShiftReviewPanel from './sections/VaultOverviewShiftReviewPanel';
 
 // Skeleton & Base UI
 import VaultOverviewSkeleton from '@/components/ui/skeletons/VaultOverviewSkeleton';
 
 // Panel Components
-import ShiftReviewPanel from '@/components/VAULT/overview/ShiftReviewPanel';
-import VaultFloatRequestsPanel from '@/components/VAULT/overview/VaultFloatRequestsPanel';
-import VaultBalanceCard from '@/components/VAULT/overview/cards/VaultBalanceCard';
-import VaultInventoryCard from '@/components/VAULT/overview/cards/VaultInventoryCard';
-import VaultQuickActionsSection from '@/components/VAULT/overview/sections/VaultQuickActionsSection';
-import VaultRecentActivitySection from '@/components/VAULT/overview/sections/VaultRecentActivitySection';
+import VaultOverviewBalanceCard from '@/components/VAULT/overview/cards/VaultOverviewBalanceCard';
+import VaultOverviewInventoryCard from '@/components/VAULT/overview/cards/VaultOverviewInventoryCard';
+import VaultOverviewQuickActionsSection from '@/components/VAULT/overview/sections/VaultOverviewQuickActionsSection';
+import VaultOverviewRecentActivitySection from '@/components/VAULT/overview/sections/VaultOverviewRecentActivitySection';
 
 // Extracted Sections
-import VaultCashDesksSection from './sections/VaultCashDesksSection';
-import VaultHealthGrid from './sections/VaultHealthGrid';
-import VaultModals from './sections/VaultModals';
-import VaultShiftPromotion from './sections/VaultShiftPromotion';
+import VaultOverviewCashDesksSection from './sections/VaultOverviewCashDesksSection';
+import VaultOverviewHealthGrid from './sections/VaultOverviewHealthGrid';
+import VaultOverviewModals from './sections/VaultOverviewModals';
+import VaultOverviewShiftPromotion from './sections/VaultOverviewShiftPromotion';
 
 // Hooks
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 
 /**
  * Vault Overview Component
  */
 export default function VaultOverviewPageContent() {
-   const { user, setHasActiveVaultShift, setIsVaultReconciled } = useUserStore();
+   const { user, setHasActiveVaultShift, setIsVaultReconciled, setIsStaleShift } = useUserStore();
    
    // Role Detection
    const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
@@ -82,7 +86,7 @@ export default function VaultOverviewPageContent() {
   const [machines, setMachines] = useState<GamingMachine[]>([]);
   
   // Loading States
-  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { licenseeId: selectedLicencee, setLicenseeId: setSelectedLicencee } = useVaultLicensee();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [shiftReviewLoading, setShiftReviewLoading] = useState(false);
@@ -142,6 +146,9 @@ export default function VaultOverviewPageContent() {
       setPendingShifts(data.pendingShifts);
       setFloatRequests(data.floatRequests);
       setCashDesks(data.cashDesks);
+
+      // Sync with global store
+      setIsStaleShift(isShiftStale(data.vaultBalance.openedAt));
       
       // Fetch machines for selection (Only for non-admin/dev users with a valid location)
       // Admins/devs are in read-only mode and don't need machine selection for vault modals
@@ -166,7 +173,7 @@ export default function VaultOverviewPageContent() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.assignedLocations, user?.username, selectedLicencee]);
+  }, [user?.assignedLocations, user?.username, selectedLicencee, isAdminOrDev]);
 
   /**
    * Refetch data when location or licensee changes
@@ -369,6 +376,11 @@ export default function VaultOverviewPageContent() {
         fd.append('description', data.description || '');
         fd.append('date', data.date instanceof Date ? data.date.toISOString() : data.date);
         fd.append('denominations', JSON.stringify(data.denominations));
+        
+        // New Expense Fields
+        if (data.bankDetails) fd.append('bankDetails', JSON.stringify(data.bankDetails));
+        if (data.expenseDetails) fd.append('expenseDetails', JSON.stringify(data.expenseDetails));
+
         fd.append('locationId', user?.assignedLocations?.[0] || '');
         if (data.file) fd.append('file', data.file);
         requestBody = fd;
@@ -398,7 +410,14 @@ export default function VaultOverviewPageContent() {
       const result = await res.json();
       if (result.success) {
         toast.success(result.message || 'Action completed');
-        setModals(prev => ({ ...prev, [type]: false }));
+        setModals(prev => {
+          const next = { ...prev, [type]: false };
+          // If we just initialized a shift, automatically open the reconcile modal
+          if (type === 'initialize') {
+            next.reconcile = true;
+          }
+          return next;
+        });
         fetchData(true);
       } else {
         toast.error(result.error || 'Action failed');
@@ -421,6 +440,10 @@ export default function VaultOverviewPageContent() {
      setIsVaultReconciled(isReconciled);
    }, [isShiftActive, isReconciled, setHasActiveVaultShift, setIsVaultReconciled]);
 
+   const isStaleShift = useMemo(() => {
+     return isShiftStale(vaultBalance.openedAt);
+   }, [vaultBalance.openedAt]);
+
    const checkShiftStarted = useCallback((actionKey?: string) => {
     if (!isShiftActive) {
       toast.error('Operation Blocked', {
@@ -429,8 +452,15 @@ export default function VaultOverviewPageContent() {
       return false;
     }
 
+    if (isStaleShift && actionKey !== 'closeShift' && actionKey !== 'manageCashiers') {
+      toast.error('Stale Shift Detected', {
+        description: 'This shift is from a previous gaming day. You must close this shift first.'
+      });
+      return false;
+    }
+
     // BR-X: Mandatory opening reconciliation
-    if (!vaultBalance.isReconciled && actionKey !== 'reconcile' && actionKey !== 'closeShift') {
+    if (!vaultBalance.isReconciled && actionKey !== 'reconcile' && actionKey !== 'closeShift' && actionKey !== 'manageCashiers') {
       toast.error('Reconciliation Required', {
         description: 'Please perform the mandatory opening reconciliation before continuing with other operations.'
       });
@@ -438,7 +468,7 @@ export default function VaultOverviewPageContent() {
     }
 
     return true;
-  }, [isShiftActive, vaultBalance.isReconciled]);
+  }, [isShiftActive, isStaleShift, vaultBalance.isReconciled]);
 
   const handleAction = (actionKey: keyof typeof modals) => {
     if (!checkShiftStarted(actionKey)) return;
@@ -518,125 +548,132 @@ export default function VaultOverviewPageContent() {
           }
         />
         
-        {/* Helper for viewing denominations from desks */}
-        {/* This bit is handled by the state and passed to VaultModals */}
+        <StaleShiftDetectedBlock isStale={isStaleShift} openedAt={vaultBalance.openedAt} type="vault">
+          <div className="space-y-6">
+            {!isAdminOrDev && (
+                <VaultOverviewShiftPromotion 
+                    activeShiftId={vaultBalance.activeShiftId}
+                    onStartShift={() => setModals(m => ({ ...m, initialize: true }))}
+                />
+            )}
+            
+            <div className="flex justify-end">
+              <Link href="/vault/management/reports/end-of-day">
+                <Button variant="outline" className="gap-2 border-orangeHighlight text-orangeHighlight hover:bg-orangeHighlight/10">
+                  <FileText className="h-4 w-4" />
+                  View End-of-Day Report
+                </Button>
+              </Link>
+            </div>
 
-        {/* Actionable Panels */}
-
-        {!isAdminOrDev && (
-            <VaultShiftPromotion 
-                activeShiftId={vaultBalance.activeShiftId}
-                onStartShift={() => setModals(m => ({ ...m, initialize: true }))}
+            {/* Balance Card Section */}
+            <VaultOverviewBalanceCard
+              balance={vaultBalance}
+              isStaleShift={isStaleShift}
+              onReconcile={isAdminOrDev ? undefined : () => handleAction('reconcile')}
+              onViewDenominations={() => {
+                const isShiftStarted = !!vaultBalance.activeShiftId;
+                setViewDenomsData({
+                  title: isShiftStarted ? "Current Vault Breakdown" : "Last Recorded Vault Balance",
+                  denominations: vaultBalance.denominations,
+                  total: vaultBalance.balance
+                });
+                setModals(m => ({ ...m, viewDenominations: true }));
+              }}
             />
-        )}
-        
-        <div className="flex justify-end">
-          <Link href="/vault/management/reports/end-of-day">
-            <Button variant="outline" className="gap-2 border-orangeHighlight text-orangeHighlight hover:bg-orangeHighlight/10">
-              <FileText className="h-4 w-4" />
-              View End-of-Day Report
-            </Button>
-          </Link>
-        </div>
 
-        {/* Balance Card Section */}
-        <VaultBalanceCard
-          balance={vaultBalance}
-          onReconcile={isAdminOrDev ? undefined : () => setModals(m => ({ ...m, reconcile: true }))}
-        />
+            {/* Float Requests Panel */}
+            {floatRequests.length > 0 && (
+              <div id="float-requests-panel" className="scroll-mt-20">
+                <VaultOverviewFloatRequestsPanel
+                  floatRequests={floatRequests}
+                  onApprove={handleFloatApprove}
+                  onDeny={handleFloatDeny}
+                  onEdit={handleFloatEdit}
+                  onConfirm={handleFloatConfirm}
+                  vaultInventory={vaultBalance.denominations}
+                  readOnly={isAdminOrDev || isStaleShift}
+                />
+              </div>
+            )}
 
-        {/* Float Requests Panel */}
-        {floatRequests.length > 0 && (
-          <div id="float-requests-panel" className="scroll-mt-20">
-            <VaultFloatRequestsPanel
-              floatRequests={floatRequests}
-              onApprove={handleFloatApprove}
-              onDeny={handleFloatDeny}
-              onEdit={handleFloatEdit}
-              onConfirm={handleFloatConfirm}
-              vaultInventory={vaultBalance.denominations}
-              readOnly={isAdminOrDev}
+            {/* Shift Review Panel */}
+            {pendingShifts.length > 0 && (
+              <div id="shift-review-panel" className="scroll-mt-20">
+                <VaultOverviewShiftReviewPanel
+                  pendingShifts={pendingShifts}
+                  vaultInventory={vaultBalance.denominations}
+                  onResolve={handleResolveShift}
+                  onReject={handleShiftReject}
+                  onRefresh={() => fetchData(true)}
+                  loading={shiftReviewLoading}
+                  readOnly={isAdminOrDev}
+                />
+              </div>
+            )}
+
+            {/* Metrics Grid */}
+            <VaultOverviewHealthGrid metrics={metrics} refreshing={refreshing && !loading} />
+
+            {/* Charts Section */}
+            <div className="mt-8">
+              <VaultOverviewAdvancedDashboard />
+            </div>
+
+            {/* Inventory Table */}
+            <VaultOverviewInventoryCard denominations={vaultBalance.denominations} isLoading={loading} />
+
+            {/* Cash Desks Interface */}
+            <VaultOverviewCashDesksSection 
+              cashDesks={cashDesks} 
+              refreshing={refreshing && !loading} 
+              onViewDenominations={(desk) => {
+                setViewDenomsData({
+                  title: `Denominations - ${desk.cashierName || desk.name}`,
+                  denominations: desk.denominations || [],
+                  total: desk.balance
+                });
+                setModals(m => ({ ...m, viewDenominations: true }));
+              }}
+            />
+
+            {/* Action Area & History */}
+            <VaultOverviewQuickActionsSection
+              isAdminOrDev={isAdminOrDev}
+              isShiftActive={isAdminOrDev ? true : isShiftActive}
+              isReconciled={isAdminOrDev ? true : vaultBalance.isReconciled}
+              isStaleShift={isStaleShift}
+              onAddCash={() => isAdminOrDev ? toast.info("Check only mode") : handleAction('addCash')}
+              onRemoveCash={() => isAdminOrDev ? toast.info("Check only mode") : handleAction('removeCash')}
+              onRecordExpense={() => isAdminOrDev ? toast.info("Check only mode") : handleAction('recordExpense')}
+              onManageCashiers={() => {
+                  window.location.href = '/vault/management/cashiers';
+              }}
+              onSoftCount={isAdminOrDev ? undefined : () => handleAction('softCount')}
+              onViewActivityLog={() => {
+                  window.location.href = '/vault/management/activity-log';
+              }}
+            />
+
+            <VaultOverviewRecentActivitySection transactions={transactions} />
+
+            {/* All Vault Modals */}
+            <VaultOverviewModals 
+              modals={modals}
+              vaultBalance={vaultBalance.balance}
+              currentDenominations={vaultBalance.denominations}
+              isInitial={!!vaultBalance.isInitial}
+              onClose={(key) => {
+                 setModals(m => ({ ...m, [key]: false }));
+              }}
+              onConfirm={handleModalConfirm}
+              machines={machines}
+              viewDenomsData={viewDenomsData}
+              currentVaultShiftId={vaultBalance.activeShiftId || undefined}
+              currentLocationId={user?.assignedLocations?.[0]}
             />
           </div>
-        )}
-
-        {/* Shift Review Panel */}
-        {pendingShifts.length > 0 && (
-          <div id="shift-review-panel" className="scroll-mt-20">
-            <ShiftReviewPanel
-              pendingShifts={pendingShifts}
-              vaultInventory={vaultBalance.denominations}
-              onResolve={handleResolveShift}
-              onReject={handleShiftReject}
-              onRefresh={() => fetchData(true)}
-              loading={shiftReviewLoading}
-              readOnly={isAdminOrDev}
-            />
-          </div>
-        )}
-
-        {/* Metrics Grid */}
-        <VaultHealthGrid metrics={metrics} refreshing={refreshing && !loading} />
-
-        {/* Charts Section */}
-        <div className="mt-8">
-          <AdvancedDashboard />
-        </div>
-
-        {/* Inventory Table */}
-        <VaultInventoryCard denominations={vaultBalance.denominations} isLoading={loading} />
-
-        {/* Cash Desks Interface */}
-        <VaultCashDesksSection 
-          cashDesks={cashDesks} 
-          refreshing={refreshing && !loading} 
-          onViewDenominations={(desk) => {
-            setViewDenomsData({
-              title: `Denominations - ${desk.cashierName || desk.name}`,
-              denominations: desk.denominations || [],
-              total: desk.balance
-            });
-            setModals(m => ({ ...m, viewDenominations: true }));
-          }}
-        />
-
-        {/* Action Area & History */}
-        {/* Action Area & History */}
-        {!isAdminOrDev && (
-            <VaultQuickActionsSection
-            isShiftActive={isShiftActive}
-            isReconciled={vaultBalance.isReconciled}
-            onAddCash={() => handleAction('addCash')}
-            onRemoveCash={() => handleAction('removeCash')}
-            onRecordExpense={() => handleAction('recordExpense')}
-            onManageCashiers={() => {
-                if (!checkShiftStarted()) return;
-                window.location.href = '/vault/management/cashiers';
-            }}
-            onSoftCount={() => handleAction('softCount')}
-            onViewActivityLog={() => {
-                window.location.href = '/vault/management/activity-log';
-            }}
-            />
-        )}
-
-        <VaultRecentActivitySection transactions={transactions} />
-
-        {/* All Vault Modals */}
-        <VaultModals 
-          modals={modals}
-          vaultBalance={vaultBalance.balance}
-          currentDenominations={vaultBalance.denominations}
-          isInitial={!!vaultBalance.isInitial}
-          onClose={(key) => {
-             setModals(m => ({ ...m, [key]: false }));
-          }}
-          onConfirm={handleModalConfirm}
-          machines={machines}
-          viewDenomsData={viewDenomsData}
-          currentVaultShiftId={vaultBalance.activeShiftId || undefined}
-          currentLocationId={user?.assignedLocations?.[0]}
-        />
+        </StaleShiftDetectedBlock>
       </div>
     </PageLayout>
   );

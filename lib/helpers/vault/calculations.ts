@@ -29,8 +29,8 @@ export function validateDenominations(denominations: Denomination[]): {
   const errors: string[] = [];
   let total = 0;
 
-  // Allowed denominations
-  const allowedDenominations = [1, 5, 10, 20, 50, 100];
+  // Allowed denominations across all currencies configured
+  const allowedDenominations = [1, 2, 5, 10, 20, 50, 100, 500, 1000, 5000];
 
   for (const denom of denominations) {
     // Check if denomination is allowed

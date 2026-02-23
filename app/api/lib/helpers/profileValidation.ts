@@ -64,6 +64,7 @@ type ProfileLike = {
   };
   passwordUpdatedAt?: Date | string | null;
   tempPasswordChanged?: boolean;
+  tempPassword?: string | null;
 };
 
 function normalizeNullable(value: NullableString): string {
@@ -274,7 +275,8 @@ export function getInvalidProfileFields(
     ? validatePasswordStrength(options.rawPassword)
     : null;
 
-  if (!user.passwordUpdatedAt || user.tempPasswordChanged === false) {
+  // Only ask for password change in profile completion if tempPassword is null
+  if (user.tempPassword === null && (!user.passwordUpdatedAt || user.tempPasswordChanged === false)) {
     if (passwordValidation && passwordValidation.isValid) {
       // Treat as valid if we can confirm current password meets strength rules
       // No action needed, but note for caller

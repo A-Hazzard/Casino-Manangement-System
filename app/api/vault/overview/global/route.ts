@@ -174,10 +174,60 @@ export async function GET(request: NextRequest) {
       status: shift.status === 'pending_start' ? 'inactive' : 'active'
     }));
 
-    const formattedTransactions = recentTransactions.map((tx: any) => ({
+    const formattedTransactionsRaw = recentTransactions.map((tx: any) => ({
       ...tx,
       locationName: locationNameMap[tx.locationId]
     }));
+
+    // Populate Names for Transactions
+    const userIds = new Set<string>();
+    formattedTransactionsRaw.forEach(tx => {
+        if (tx.performedBy) userIds.add(tx.performedBy);
+        if (tx.from?.type === 'cashier' && tx.from.id) userIds.add(tx.from.id);
+        if (tx.to?.type === 'cashier' && tx.to.id) userIds.add(tx.to.id);
+    });
+
+    let formattedTransactions = formattedTransactionsRaw;
+    if (userIds.size > 0) {
+        const UserModel = (await import('@/app/api/lib/models/user')).default;
+        const users = await UserModel.find(
+            { _id: { $in: Array.from(userIds) } }, 
+            { 'profile.firstName': 1, 'profile.lastName': 1, username: 1 }
+        ).lean();
+
+        const userMap = users.reduce((acc: Record<string, any>, u: any) => {
+            acc[String(u._id)] = u;
+            return acc;
+        }, {} as Record<string, any>);
+
+        formattedTransactions = formattedTransactionsRaw.map(tx => {
+            const updatedTx = { ...tx };
+            
+            // Format Performer Name
+            const perfUser = userMap[tx.performedBy];
+            if (perfUser && perfUser.profile?.firstName) {
+                updatedTx.performedByName = `${perfUser.profile.firstName} ${perfUser.profile.lastName}`;
+            }
+
+            // Format Source (if Cashier)
+            if (tx.from?.type === 'cashier' && tx.from.id) {
+                const cashier = userMap[tx.from.id];
+                if (cashier && cashier.profile?.firstName) {
+                    updatedTx.fromName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
+                }
+            }
+
+            // Format Destination (if Cashier)
+            if (tx.to?.type === 'cashier' && tx.to.id) {
+                const cashier = userMap[tx.to.id];
+                if (cashier && cashier.profile?.firstName) {
+                    updatedTx.toName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
+                }
+            }
+
+            return updatedTx;
+        });
+    }
 
     const response = {
       success: true,

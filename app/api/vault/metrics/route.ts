@@ -16,7 +16,7 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { getGamingDayRange } from '@/lib/utils/gamingDayRange';
+import { getGamingDayRange, getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -87,8 +87,10 @@ export async function GET(request: NextRequest) {
     const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
     const gameDayOffset = (locationInfo as any)?.gameDayOffset ?? 8;
     
-    const requestDate = dateStr ? new Date(dateStr) : new Date();
-    const { rangeStart, rangeEnd } = getGamingDayRange(requestDate, gameDayOffset);
+    // Timeframe: Use Today's Gaming Day if no date provided
+    const { rangeStart, rangeEnd } = dateStr 
+      ? getGamingDayRange(new Date(dateStr), gameDayOffset)
+      : getGamingDayRangeForPeriod('Today', gameDayOffset);
 
     // ============================================================================
     // STEP 5: Aggregate Transactions
@@ -107,6 +109,9 @@ export async function GET(request: NextRequest) {
     let expenses = 0;
 
     transactions.forEach(tx => {
+      // Skip reconciliation and opening transactions for cash flow metrics
+      if (['vault_reconciliation', 'vault_open'].includes(tx.type)) return;
+
       if (tx.to.type === 'vault') {
         totalCashIn += tx.amount;
       }
@@ -158,7 +163,7 @@ export async function GET(request: NextRequest) {
     // STEP 6: Performance tracking and return response
     // ============================================================================
     const payoutTxs = transactions.filter(t => t.type === 'payout');
-    payouts = payoutTxs.length;
+    payouts = payoutTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
 
     const duration = Date.now() - startTime;
     if (duration > 1000) {

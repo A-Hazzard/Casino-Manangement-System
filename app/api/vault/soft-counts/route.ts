@@ -11,6 +11,7 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { getAttributionDate } from '@/app/api/lib/helpers/vault/gamingDay';
 import { updateVaultShiftInventory, validateDenominationTotal } from '@/app/api/lib/helpers/vault/inventory';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { SoftCountModel } from '@/app/api/lib/models/softCount';
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     // STEP 2: Parse and validate request body
     // ============================================================================
     const body: CreateSoftCountRequest = await request.json();
-    const { amount, denominations, notes } = body;
+    const { amount, denominations, notes, isEndOfDay } = body;
 
     if (!amount || !denominations) {
       return NextResponse.json(
@@ -84,17 +85,21 @@ export async function POST(request: NextRequest) {
     // STEP 5: Create soft count record
     // ============================================================================
     const softCountId = await generateMongoId();
-    const now = new Date();
+    const attributionDate = await getAttributionDate(
+      activeVaultShift.openedAt,
+      activeVaultShift.locationId
+    );
 
     const softCount = new SoftCountModel({
       _id: softCountId,
-      locationId,
-      countedAt: now,
+      locationId: activeVaultShift.locationId,
+      countedAt: attributionDate,
       amount,
       denominations,
       countedBy: vaultManagerId,
       transactionId: '', // Will be set after transaction creation
       notes,
+      isEndOfDay: !!isEndOfDay,
     });
 
     // ============================================================================
@@ -115,8 +120,8 @@ export async function POST(request: NextRequest) {
 
     const vaultTransaction = new VaultTransactionModel({
       _id: transactionId,
-      locationId,
-      timestamp: now,
+      locationId: activeVaultShift.locationId,
+      timestamp: attributionDate,
       type: 'soft_count',
       from: { type: 'vault' },
       to: { type: 'external' }, // Removed from vault

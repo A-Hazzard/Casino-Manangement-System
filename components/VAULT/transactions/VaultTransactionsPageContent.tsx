@@ -14,6 +14,7 @@
 
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Badge } from '@/components/shared/ui/badge';
+import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
@@ -31,10 +32,11 @@ import {
     getTransactionTypeBadge
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 import { useUserStore } from '@/lib/store/userStore';
+import { cn } from '@/lib/utils';
 import type { ExtendedVaultTransaction } from '@/shared/types/vault';
-import { ArrowDown, ArrowUp, FileText, Receipt, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, FileText, Receipt, RefreshCw, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import VaultTransactionsMobileCards from './cards/VaultTransactionsMobileCards';
@@ -46,7 +48,7 @@ export default function VaultTransactionsPageContent() {
   // Hooks & State
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
-  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { licenseeId: selectedLicencee, setLicenseeId: setSelectedLicencee } = useVaultLicensee();
   const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<ExtendedVaultTransaction[]>(
@@ -158,18 +160,14 @@ export default function VaultTransactionsPageContent() {
   const summaryMetrics = useMemo(() => {
     const totalTransactions = totalItems;
     const totalInflow = transactions
-      .filter(tx => tx.amount > 0)
+      .filter(tx => tx.to?.type === 'vault' && !tx.isVoid)
       .reduce((sum, tx) => sum + tx.amount, 0);
-    const totalOutflow = Math.abs(
-      transactions
-        .filter(tx => tx.amount < 0)
-        .reduce((sum, tx) => sum + tx.amount, 0)
-    );
-    const totalExpenses = Math.abs(
-      transactions
-        .filter(tx => tx.type === 'expense')
-        .reduce((sum, tx) => sum + Math.abs(tx.amount), 0)
-    );
+    const totalOutflow = transactions
+      .filter(tx => tx.from?.type === 'vault' && !tx.isVoid)
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    const totalExpenses = transactions
+      .filter(tx => tx.type === 'expense' && !tx.isVoid)
+      .reduce((sum, tx) => sum + tx.amount, 0);
 
     return {
       totalTransactions,
@@ -249,7 +247,18 @@ export default function VaultTransactionsPageContent() {
             title={isAdminOrDev ? "Global Transactions" : "Transaction History"}
             description={isAdminOrDev ? "Viewing all vault transactions across locations" : "Monitor all vault transaction history"}
             onFloatActionComplete={() => fetchData(true)}
-        />
+        >
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchData()}
+                disabled={loading}
+                className="h-8 gap-2 border-slate-200"
+            >
+                <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+                Refresh
+            </Button>
+        </VaultManagerHeader>
 
         {/* Search and Filters */}
         <div className="flex flex-col gap-4 sm:flex-row">

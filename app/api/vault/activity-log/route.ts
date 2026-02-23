@@ -31,15 +31,16 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId');
     const cashierId = searchParams.get('cashierId'); // NEW: Support cashier filtering
     const machineId = searchParams.get('machineId'); // NEW: Support machine filtering
+    const cashierShiftId = searchParams.get('cashierShiftId'); // NEW: Support shift filtering
     const type = searchParams.get('type');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = parseInt(searchParams.get('skip') || '0');
 
-    if (!locationId && !userId && !cashierId && !machineId) {
+    if (!locationId && !userId && !cashierId && !machineId && !cashierShiftId) {
       return NextResponse.json(
-        { success: false, error: 'Missing filter parameters (locationId, userId, or machineId required)' },
+        { success: false, error: 'Missing filter parameters (locationId, userId, shiftId, or machineId required)' },
         { status: 400 }
       );
     }
@@ -63,6 +64,10 @@ export async function GET(request: NextRequest) {
     } else if (userId) {
       // VM filtering by user ID
       filters.performedBy = userId;
+    }
+
+    if (cashierShiftId) {
+      filters.cashierShiftId = cashierShiftId;
     }
 
     if (machineId) {

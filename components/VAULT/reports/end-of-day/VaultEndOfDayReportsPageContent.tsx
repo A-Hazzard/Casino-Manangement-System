@@ -21,57 +21,62 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { DatePicker } from '@/components/shared/ui/date-picker';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/shared/ui/tabs';
 import VaultEndOfDayReportsSkeleton from '@/components/ui/skeletons/VaultEndOfDayReportsSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
-    DEFAULT_CASHIER_FLOATS,
-    DEFAULT_REPORT_DENOMINATIONS,
-    DEFAULT_REPORT_SLOTS,
-    DEFAULT_VAULT_BALANCE,
-    DEFAULT_VAULT_METRICS,
+  DEFAULT_CASHIER_FLOATS,
+  DEFAULT_REPORT_DENOMINATIONS,
+  DEFAULT_VAULT_BALANCE,
+  DEFAULT_VAULT_METRICS,
 } from '@/components/VAULT/overview/data/defaults';
 import {
-    calculateEndOfDayMetrics,
-    fetchEndOfDayReportData,
+  calculateEndOfDayMetrics,
+  fetchEndOfDayReportData,
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type {
-    CashierFloat,
-    FloatRequest,
-    VaultMetrics,
+  CashierFloat,
+  FloatRequest,
+  VaultMetrics,
 } from '@/shared/types/vault';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
-    AlertTriangle,
-    ChevronDown,
-    Download,
-    Monitor,
-    RefreshCw,
-    Users,
-    Wallet
+  AlertTriangle,
+  ChevronDown,
+  Download,
+  Monitor,
+  RefreshCw,
+  Users,
+  Wallet
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -84,27 +89,54 @@ export default function VaultEndOfDayReportsPageContent() {
   const { formatAmount } = useCurrencyFormat();
   const { user } = useUserStore();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  // Start loading by default
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Pagination State
+  const ITEMS_PER_PAGE = 10;
+  const [midDayPage, setMidDayPage] = useState(1);
+  const [endOfDayPage, setEndOfDayPage] = useState(1);
   const [reportData, setReportData] = useState<{
     denominationBreakdown: Record<string, number>;
-    slotCounts: typeof DEFAULT_REPORT_SLOTS;
+    midDaySoftCounts: Array<{
+      machineId: string;
+      location: string;
+      amount: number;
+      countedAt: Date;
+      variance: number;
+    }>;
+    endOfDaySoftCounts: Array<{
+      machineId: string;
+      location: string;
+      amount: number;
+      countedAt: Date;
+      variance: number;
+    }>;
+    slotCounts: Array<{
+      machineId: string;
+      location: string;
+      closingCount: number;
+      collected: boolean;
+    }>;
     cashierFloats: CashierFloat[];
     vaultBalance: typeof DEFAULT_VAULT_BALANCE;
     floatRequests: FloatRequest[];
     metrics: VaultMetrics | null;
     shiftStatus: 'not_started' | 'active' | 'closed';
     previousShiftActive: boolean;
+    previousShiftDate?: Date | string;
   }>({
     denominationBreakdown: {},
-    slotCounts: DEFAULT_REPORT_SLOTS,
+    midDaySoftCounts: [],
+    endOfDaySoftCounts: [],
+    slotCounts: [],
     cashierFloats: DEFAULT_CASHIER_FLOATS,
     vaultBalance: DEFAULT_VAULT_BALANCE,
     floatRequests: [],
     metrics: DEFAULT_VAULT_METRICS,
     shiftStatus: 'not_started',
     previousShiftActive: false,
+    previousShiftDate: undefined,
   });
 
   // ============================================================================
@@ -137,6 +169,10 @@ export default function VaultEndOfDayReportsPageContent() {
 
   // Auto-fetch on mount or date change
   useEffect(() => {
+    // Reset pagination on date change
+    setMidDayPage(1);
+    setEndOfDayPage(1);
+    
     if (user?.assignedLocations?.[0]) {
       fetchReportData();
     } else if (user && (!user.assignedLocations || user.assignedLocations.length === 0)) {
@@ -148,6 +184,19 @@ export default function VaultEndOfDayReportsPageContent() {
   // Computed Values
   // ============================================================================
   const metrics = calculateEndOfDayMetrics(reportData);
+
+  // Pagination Logic
+  const totalMidDayPages = Math.ceil(reportData.midDaySoftCounts.length / ITEMS_PER_PAGE) || 1;
+  const paginatedMidDayCounts = reportData.midDaySoftCounts.slice(
+    (midDayPage - 1) * ITEMS_PER_PAGE,
+    midDayPage * ITEMS_PER_PAGE
+  );
+
+  const totalEndOfDayPages = Math.ceil(reportData.endOfDaySoftCounts.length / ITEMS_PER_PAGE) || 1;
+  const paginatedEndOfDayCounts = reportData.endOfDaySoftCounts.slice(
+    (endOfDayPage - 1) * ITEMS_PER_PAGE,
+    endOfDayPage * ITEMS_PER_PAGE
+  );
 
   // ============================================================================
   // Event Handlers
@@ -173,7 +222,6 @@ export default function VaultEndOfDayReportsPageContent() {
         { Section: 'Daily Activity Summary', Metric: 'Player Payouts', Value: metrics.totalPayouts },
         { Section: 'Denomination Breakdown', Metric: 'Total Value', Value: metrics.totalDenominationValue },
         { Section: 'Location Breakdown', Metric: 'Vault Balance', Value: metrics.systemBalance },
-        { Section: 'Location Breakdown', Metric: 'Machines', Value: metrics.totalMachineBalance },
         { Section: 'Location Breakdown', Metric: 'Cash Desk Floats', Value: metrics.totalCashDeskFloat },
         { Section: 'Location Breakdown', Metric: 'Total on Premises', Value: metrics.totalOnPremises },
         { Section: 'Variance', Metric: 'System Balance', Value: metrics.systemBalance },
@@ -222,7 +270,6 @@ export default function VaultEndOfDayReportsPageContent() {
           ['Activity', 'Expenses', formatAmount(metrics.totalExpenses)],
           ['Activity', 'Payouts', formatAmount(metrics.totalPayouts)],
           ['Locations', 'Vault', formatAmount(metrics.systemBalance)],
-          ['Locations', 'Machines', formatAmount(metrics.totalMachineBalance)],
           ['Locations', 'Cash Desks', formatAmount(metrics.totalCashDeskFloat)],
           ['Locations', 'Total on Premises', formatAmount(metrics.totalOnPremises)],
           ['Verification', 'System Balance', formatAmount(metrics.systemBalance)],
@@ -253,6 +300,7 @@ export default function VaultEndOfDayReportsPageContent() {
             title="End-of-Day Reports"
             description="Generate and export daily closing reports"
         >
+          <>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500 whitespace-nowrap">Report Date:</span>
@@ -306,6 +354,7 @@ export default function VaultEndOfDayReportsPageContent() {
               </div>
             )}
           </div>
+          </>
         </VaultManagerHeader>
 
         {/* Content Area */}
@@ -343,8 +392,10 @@ export default function VaultEndOfDayReportsPageContent() {
                       Previous Gaming Day Active
                     </h3>
                     <p className="max-w-md text-gray-500">
-                      The shift for the previous gaming day is still active. 
-                      You must close the previous day's shift before you can generate a report for today.
+                      The shift for {reportData.previousShiftDate 
+                        ? new Date(reportData.previousShiftDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                        : 'the previous gaming day'} is still active. 
+                      You must close that shift before you can generate a report for today.
                     </p>
                  </CardContent>
               </Card>
@@ -377,7 +428,15 @@ export default function VaultEndOfDayReportsPageContent() {
 
           // 4. Report Content
           return (
-            <>
+            <Tabs defaultValue="summary" className="w-full space-y-6">
+              <TabsList className="grid w-full grid-cols-4 bg-gray-100/50 p-1">
+                <TabsTrigger value="summary">Summary</TabsTrigger>
+                <TabsTrigger value="cashier-floats">Cashier Floats ({reportData.cashierFloats.length})</TabsTrigger>
+                <TabsTrigger value="mid-day">Mid-Day Drops ({reportData.midDaySoftCounts.length})</TabsTrigger>
+                <TabsTrigger value="end-of-day">End-of-Day Drops ({reportData.endOfDaySoftCounts.length})</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="summary" className="space-y-6">
 
         {/* Summary Statistics */}
         <Card className="rounded-lg bg-container shadow-md border-t-4 border-orangeHighlight">
@@ -610,206 +669,242 @@ export default function VaultEndOfDayReportsPageContent() {
           </CardContent>
         </Card>
 
-        {/* Closing Machine Count */}
-        <Card className="rounded-lg bg-container shadow-md">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Monitor className="h-5 w-5 text-gray-600" />
-              <CardTitle className="text-lg font-semibold text-gray-900">
-                Closing Machine Count
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead isFirstColumn>Machine ID</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Closing Count</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reportData.slotCounts.map(slot => (
-                  <TableRow key={slot.machineId}>
-                    <TableCell isFirstColumn className="font-medium">
-                      {slot.machineId}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {slot.location}
-                    </TableCell>
-                    <TableCell className="font-semibold text-button">
-                      {formatAmount(slot.closingCount)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                <TableRow className="bg-gray-50 font-semibold">
-                  <TableCell isFirstColumn>Total Machine Balance</TableCell>
-                  <TableCell></TableCell>
-                  <TableCell className="text-button">
-                    {formatAmount(metrics.totalMachineBalance)}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        </TabsContent>
 
-        {/* Cash Desk Closing Floats */}
-        <Card className="rounded-lg bg-container shadow-md">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-gray-600" />
-              <CardTitle className="text-lg font-semibold text-gray-900">
-                Cash Desk Closing Floats
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead isFirstColumn>Cashier</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Closing Float</TableHead>
-                  <TableHead>End-of-day Balance</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reportData.cashierFloats.map(float => (
-                  <TableRow key={float._id}>
-                    <TableCell isFirstColumn className="font-medium">
-                      {float.cashierName}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={cn(
-                          'px-2 py-1',
-                          float.status === 'active'
-                            ? 'bg-orangeHighlight text-white hover:bg-orangeHighlight/90'
-                            : 'bg-lighterBlueHighlight text-white hover:bg-lighterBlueHighlight/90'
-                        )}
-                      >
-                        {float.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        'font-semibold',
-                        float.status === 'active'
-                          ? 'text-button'
-                          : 'text-gray-600'
-                      )}
+        <TabsContent value="cashier-floats" className="space-y-6">
+          <Card className="rounded-lg bg-container shadow-md">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-gray-600" />
+                <CardTitle className="text-lg font-semibold text-gray-900">
+                  Cashier Floats
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead isFirstColumn>Cashier</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reportData.cashierFloats.map(float => (
+                    <TableRow key={float._id}>
+                      <TableCell isFirstColumn className="font-medium">
+                        {float.cashierName}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={cn(
+                            'px-2 py-1',
+                            float.status === 'active'
+                              ? 'bg-orangeHighlight text-white hover:bg-orangeHighlight/90'
+                              : 'bg-lighterBlueHighlight text-white hover:bg-lighterBlueHighlight/90'
+                          )}
+                        >
+                          {float.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-button">
+                        {formatAmount(float.balance)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {reportData.cashierFloats.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="h-24 text-center text-gray-500">
+                        No cashier floats found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {reportData.cashierFloats.length > 0 && (
+                     <TableRow className="bg-gray-50 font-semibold">
+                       <TableCell isFirstColumn>Total Cash Desk Float</TableCell>
+                       <TableCell></TableCell>
+                       <TableCell className="text-right text-button">
+                         {formatAmount(metrics.totalCashDeskFloat)}
+                       </TableCell>
+                     </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="mid-day" className="space-y-6">
+          <Card className="rounded-lg bg-container shadow-md">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Monitor className="h-5 w-5 text-gray-600" />
+                <CardTitle className="text-lg font-semibold text-gray-900">
+                  Mid-Day Soft Counts
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead isFirstColumn>Machine ID</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Time</TableHead>
+                    <TableHead className="text-right">Count Amount</TableHead>
+                    <TableHead className="text-right">Variance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedMidDayCounts.map(slot => (
+                    <TableRow key={`${slot.machineId}-${slot.countedAt}`}>
+                      <TableCell isFirstColumn className="font-medium">
+                        {slot.machineId}
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-600">
+                        {slot.location}
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-500">
+                        {new Date(slot.countedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-button">
+                        {formatAmount(slot.amount)}
+                      </TableCell>
+                      <TableCell className={cn("text-right font-semibold", slot.variance >= 0 ? "text-emerald-600" : "text-amber-500")}>
+                        {slot.variance > 0 ? '+' : ''}{formatAmount(slot.variance || 0)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {reportData.midDaySoftCounts.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center text-gray-500">
+                        No mid-day soft counts recorded.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              
+              {totalMidDayPages > 1 && (
+                <div className="flex items-center justify-between px-2 py-4">
+                  <div className="text-sm text-gray-500">
+                    Showing <span className="font-medium">{((midDayPage - 1) * ITEMS_PER_PAGE) + 1}</span> to <span className="font-medium">{Math.min(midDayPage * ITEMS_PER_PAGE, reportData.midDaySoftCounts.length)}</span> of <span className="font-medium">{reportData.midDaySoftCounts.length}</span> results
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMidDayPage(p => Math.max(1, p - 1))}
+                      disabled={midDayPage === 1}
                     >
-                      {formatAmount(float.balance)}
-                    </TableCell>
-                    <TableCell className="font-semibold text-gray-900">
-                      {formatAmount(float.balance)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                <TableRow className="bg-gray-50 font-semibold">
-                  <TableCell isFirstColumn>Total Cash Desk Float</TableCell>
-                  <TableCell></TableCell>
-                  <TableCell></TableCell>
-                  <TableCell className="text-button">
-                    {formatAmount(metrics.totalCashDeskFloat)}
-                  </TableCell>
-                  <TableCell></TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Vault Closing Balance */}
-        <Card className="rounded-lg bg-container shadow-md">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900">
-              Vault Closing Balance
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Summary Metrics */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  System Balance
-                </p>
-                <p className="mt-1 break-words text-xl font-bold text-orangeHighlight sm:text-2xl">
-                  {formatAmount(metrics.systemBalance)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Physical Count
-                </p>
-                <p className="mt-1 break-words text-xl font-bold text-gray-900 sm:text-2xl">
-                  {formatAmount(metrics.physicalCount)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Variance</p>
-                <p className="mt-1 break-words text-xl font-bold text-orangeHighlight sm:text-2xl">
-                  {metrics.variance >= 0 ? '+' : ''}
-                  {formatAmount(metrics.variance)}
-                </p>
-              </div>
-            </div>
-
-            {/* Variance Alert */}
-            {Math.abs(metrics.variance) > 0 && (
-              <div className="rounded-lg border border-orangeHighlight bg-orangeHighlight/10 p-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-orangeHighlight" />
-                  <div>
-                    <p className="font-semibold text-orangeHighlight">
-                      Variance Detected
-                    </p>
-                    <p className="mt-1 text-sm text-gray-600">
-                      Physical count differs from system balance. Please verify
-                      and reconcile.
-                    </p>
+                      Previous
+                    </Button>
+                    <div className="text-sm font-medium text-gray-700">
+                      Page {midDayPage} of {totalMidDayPages}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMidDayPage(p => Math.min(totalMidDayPages, p + 1))}
+                      disabled={midDayPage === totalMidDayPages}
+                    >
+                      Next
+                    </Button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            {/* Balance Breakdown */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Vault</p>
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  {formatAmount(metrics.systemBalance)}
-                </p>
+        <TabsContent value="end-of-day" className="space-y-6">
+          <Card className="rounded-lg bg-container shadow-md">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Monitor className="h-5 w-5 text-gray-600" />
+                <CardTitle className="text-lg font-semibold text-gray-900">
+                  End-of-Day Soft Counts
+                </CardTitle>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Machines</p>
-                <p className="mt-1 text-xl font-bold text-lighterBlueHighlight">
-                  {formatAmount(metrics.totalMachineBalance)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Cash Desks</p>
-                <p className="mt-1 text-xl font-bold text-button">
-                  {formatAmount(metrics.totalCashDeskFloat)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Total on Premises
-                </p>
-                <p className="mt-1 text-xl font-bold text-orangeHighlight">
-                  {formatAmount(metrics.totalOnPremises)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-            </>
-          );
-        })()}
-      </div>
-    </PageLayout>
-  );
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead isFirstColumn>Machine ID</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Time</TableHead>
+                    <TableHead className="text-right">Count Amount</TableHead>
+                    <TableHead className="text-right">Variance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedEndOfDayCounts.map(slot => (
+                    <TableRow key={`${slot.machineId}-${slot.countedAt}`}>
+                      <TableCell isFirstColumn className="font-medium">
+                        {slot.machineId}
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-600">
+                        {slot.location}
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-500">
+                        {new Date(slot.countedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-button">
+                        {formatAmount(slot.amount)}
+                      </TableCell>
+                      <TableCell className={cn("text-right font-semibold", slot.variance >= 0 ? "text-emerald-600" : "text-amber-500")}>
+                        {slot.variance > 0 ? '+' : ''}{formatAmount(slot.variance || 0)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {reportData.endOfDaySoftCounts.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center text-gray-500">
+                        No end-of-day soft counts recorded.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              
+              {totalEndOfDayPages > 1 && (
+                <div className="flex items-center justify-between px-2 py-4">
+                  <div className="text-sm text-gray-500">
+                    Showing <span className="font-medium">{((endOfDayPage - 1) * ITEMS_PER_PAGE) + 1}</span> to <span className="font-medium">{Math.min(endOfDayPage * ITEMS_PER_PAGE, reportData.endOfDaySoftCounts.length)}</span> of <span className="font-medium">{reportData.endOfDaySoftCounts.length}</span> results
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEndOfDayPage(p => Math.max(1, p - 1))}
+                      disabled={endOfDayPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <div className="text-sm font-medium text-gray-700">
+                      Page {endOfDayPage} of {totalEndOfDayPages}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEndOfDayPage(p => Math.min(totalEndOfDayPages, p + 1))}
+                      disabled={endOfDayPage === totalEndOfDayPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        </Tabs>
+        );
+      })()}
+
+    </div>
+  </PageLayout>
+);
 }

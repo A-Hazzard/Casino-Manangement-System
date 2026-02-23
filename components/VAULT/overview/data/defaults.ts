@@ -15,6 +15,8 @@ export const DEFAULT_VAULT_BALANCE: VaultBalance = {
   lastAudit: 'Never',
   managerOnDuty: 'Loading...',
   canClose: false,
+  physicalCount: 0,
+  variance: 0,
 };
 
 export const DEFAULT_VAULT_METRICS: VaultMetrics = {

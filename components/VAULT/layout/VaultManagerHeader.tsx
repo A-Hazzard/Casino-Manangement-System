@@ -8,7 +8,7 @@
  */
 'use client';
 
-import VaultCloseDayModals from '@/components/VAULT/overview/sections/VaultCloseDayModals';
+import VaultOverviewCloseDayModals from '@/components/VAULT/overview/sections/VaultOverviewCloseDayModals';
 import DebugSection from '@/components/shared/debug/DebugSection';
 import NotificationBell from '@/components/shared/ui/NotificationBell';
 import { Button } from '@/components/shared/ui/button';
@@ -44,7 +44,7 @@ export default function VaultManagerHeader({
   showNotificationBell = true,
   vaultInventory: initialInventory
 }: VaultManagerHeaderProps) {
-  const { user, hasActiveVaultShift } = useUserStore();
+  const { user, hasActiveVaultShift, isStaleShift, isVaultReconciled } = useUserStore();
   const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
   const locationId = user?.assignedLocations?.[0];
   const [vaultInventory, setVaultInventory] = useState<Denomination[]>(initialInventory || []);
@@ -212,8 +212,16 @@ export default function VaultManagerHeader({
           {!user?.roles?.includes('cashier') && hasActiveVaultShift && !isAdminOrDev && (
             <Button 
               variant="default" 
-              className="bg-orangeHighlight hover:bg-orangeHighlight/90 text-white"
-              onClick={startCloseDay}
+              className={`text-white ${!isVaultReconciled ? 'bg-orangeHighlight/50 cursor-not-allowed' : 'bg-orangeHighlight hover:bg-orangeHighlight/90'}`}
+              onClick={() => {
+                if (!isVaultReconciled) {
+                  toast.error('Reconciliation Required', {
+                    description: 'You must reconcile the vault balance before closing the day.'
+                  });
+                  return;
+                }
+                startCloseDay();
+              }}
             >
               Close Day
             </Button>
@@ -231,7 +239,7 @@ export default function VaultManagerHeader({
               onDeny={handleFloatDeny}
               onConfirm={handleFloatReceiptConfirm}
               onRefreshInventory={fetchInventory}
-              readOnly={isAdminOrDev}
+              readOnly={isAdminOrDev || isStaleShift}
             />
           )}
         </div>
@@ -245,7 +253,7 @@ export default function VaultManagerHeader({
       )}
 
       {/* Global Close Day Sequence Modals */}
-      <VaultCloseDayModals
+      <VaultOverviewCloseDayModals
         activeStep={activeStep}
         vaultBalance={closeDayBalance}
         machines={machines}

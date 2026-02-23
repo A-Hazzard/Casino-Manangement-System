@@ -56,6 +56,10 @@ export async function GET(request: NextRequest) {
       isVoid: { $ne: true }
     };
 
+    if (type === 'in' || type === 'out') {
+      query.type = { $nin: ['vault_reconciliation', 'vault_open'] };
+    }
+
     if (type === 'in') {
       query['to.type'] = 'vault';
     } else if (type === 'out') {

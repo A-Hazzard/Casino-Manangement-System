@@ -65,7 +65,6 @@ export default function VaultCashierFloatsTable({
                 Cashier
               </TableHead>
               <TableHead className="text-center font-semibold text-white">Start Time</TableHead>
-              <TableHead className="text-center font-semibold text-white">End Time</TableHead>
               <TableHead className="text-right font-semibold text-white">Opening Float</TableHead>
               <TableHead className="text-right font-semibold text-white">Current Float</TableHead>
               <TableHead className="text-right font-semibold text-white">Payouts</TableHead>
@@ -78,9 +77,6 @@ export default function VaultCashierFloatsTable({
                 <TableCell isFirstColumn className="font-medium">{float.cashierName}</TableCell>
                 <TableCell className="text-center text-xs text-gray-500">
                   {float.openedAt ? new Date(float.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                </TableCell>
-                <TableCell className="text-center text-xs text-gray-500">
-                  {float.closedAt ? new Date(float.closedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                 </TableCell>
                 <TableCell className="text-right font-medium text-gray-600">
                   {formatAmount(float.openingBalance || 0)}
@@ -118,12 +114,6 @@ export default function VaultCashierFloatsTable({
                       <Clock className="h-3 w-3" />
                       <span>{float.openedAt ? new Date(float.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                     </div>
-                    {float.closedAt && (
-                      <div className="flex items-center gap-1 text-[10px] text-gray-400 border-l pl-2">
-                        <span className="text-[8px] font-black uppercase">End</span>
-                        <span>{new Date(float.closedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

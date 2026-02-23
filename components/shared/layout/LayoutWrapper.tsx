@@ -17,6 +17,7 @@
 
 import GlobalSidebarWrapper from '@/components/shared/layout/GlobalSidebarWrapper';
 import ProfileValidationGate from '@/components/shared/providers/ProfileValidationGate';
+import TempPasswordGate from '@/components/shared/providers/TempPasswordGate';
 import { SidebarInset, SidebarProvider } from '@/components/shared/ui/sidebar';
 import { getCmsNavigationConfig } from '@/lib/constants';
 import { CurrencyProvider } from '@/lib/contexts/CurrencyContext';
@@ -44,6 +45,7 @@ export default function LayoutWrapper({
       <CurrencyProvider>
         <SidebarProvider>
           <GlobalSidebarWrapper navConfig={navConfig} />
+          <TempPasswordGate />
           <ProfileValidationGate context="CMS" />
           <SidebarInset>{children}</SidebarInset>
         </SidebarProvider>

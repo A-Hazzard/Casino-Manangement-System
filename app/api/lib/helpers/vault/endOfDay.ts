@@ -11,9 +11,11 @@
 
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { MachineCollectionModel } from '@/app/api/lib/models/machineCollection';
+import { SoftCountModel } from '@/app/api/lib/models/softCount';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
+import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRange } from '@/lib/utils/gamingDayRange';
+import mongoose from 'mongoose';
 import { Machine } from '../../models/machines';
 import { Meters } from '../../models/meters';
 
@@ -30,6 +32,7 @@ export type EndOfDayReport = {
   // Status flags
   shiftStatus: 'not_started' | 'active' | 'closed';
   previousShiftActive: boolean;
+  previousShiftDate?: Date | string;
 
   // Detailed sections required by UI
   vaultBalance: {
@@ -44,12 +47,29 @@ export type EndOfDayReport = {
     status: string;
     balance: number;
   }>;
-  slotCounts: Array<{
+  midDaySoftCounts: Array<{
     machineId: string;
     location: string;
-    closingCount: number;
-    collected: boolean;
+    amount: number;
+    countedAt: Date;
+    variance: number;
   }>;
+  endOfDaySoftCounts: Array<{
+    machineId: string;
+    location: string;
+    amount: number;
+    countedAt: Date;
+    variance: number;
+  }>;
+  metrics?: {
+    totalCashIn: number;
+    totalCashOut: number;
+    netCashFlow: number;
+    payouts: number;
+    totalMachineBalance: number;
+    totalCashierFloats: number;
+    expenses: number;
+  };
 };
 
 /**
@@ -70,74 +90,71 @@ export async function generateEndOfDayReport(
   const { rangeStart, rangeEnd } = getGamingDayRange(date, gameDayOffset);
   
   // ============================================================================
-  // 1. Vault Data (Closing Float)
+  // 1. Vault Data (Aggregate all shifts for the day)
   // ============================================================================
-  // Find the vault shift that was ACTIVE or CLOSED during this period.
-  // Ideally, for a specific date, we look for a shift that *closed* in that day,
-  // OR if it's today, the active shift.
-  // We prioritize 'closed' shifts intersecting the day.
-  const vaultShift = await VaultShiftModel.findOne({
+  const vaultShifts = await VaultShiftModel.find({
     locationId,
     $or: [
-      { 
-        status: 'closed', 
-        closedAt: { $gte: rangeStart, $lte: rangeEnd } 
+      {
+        status: 'closed',
+        closedAt: { $gte: rangeStart, $lte: rangeEnd }
       },
-      { 
+      {
         status: 'active',
-        // Only include an active shift if it belongs to this gaming day (started within the range)
-        openedAt: { $gte: rangeStart, $lt: rangeEnd } 
+        openedAt: { $gte: rangeStart, $lte: rangeEnd }
       }
     ]
-  }).sort({ closedAt: -1, openedAt: -1 });
-
-  // Fallback: If no shift found in strictly defined range, and we are looking at "Active" data...
-  // But user specifically wants "Nothing showing if not started".
-  // So strictly enforcing rangeStart is correct.
-
+  }).sort({ openedAt: 1 }).lean();
 
   let vaultSystemBalance = 0;
   let vaultPhysicalCount = 0;
-  const vaultVariance = 0;
+  let vaultVariance = 0;
   let vaultDenominations: any[] = [];
-  let status = 'closed';
-  
   let shiftStatus: 'not_started' | 'active' | 'closed' = 'not_started';
   let previousShiftActive = false;
+  let previousShiftDate: Date | string | undefined = undefined;
 
-  if (vaultShift) {
-    status = vaultShift.status;
-    shiftStatus = vaultShift.status as 'active' | 'closed';
-    
-    // If closed, use closing figures. If active, use current/opening.
-    if (vaultShift.status === 'closed') {
-      vaultSystemBalance = vaultShift.closingBalance || 0; // The validated balance
-      // Physical count isn't explicitly stored as a separate field in schema shown, 
-      // but usually closingBalance IS the physical count in a happy path, or verified.
-      // Reconciliations track adjustments.
-      // For report, we use closingBalance.
-      vaultPhysicalCount = vaultShift.closingBalance || 0; 
-      vaultDenominations = vaultShift.closingDenominations || [];
+  if (vaultShifts.length > 0) {
+    // Determine overall shift status for the day
+    // If ANY shift is active, the day's status is 'active'
+    const hasActiveShift = vaultShifts.some(s => s.status === 'active');
+    shiftStatus = hasActiveShift ? 'active' : 'closed';
+
+    // The current/latest system balance is from the newest shift (last in sorted array)
+    const latestShift = vaultShifts[vaultShifts.length - 1];
+    if (latestShift.status === 'closed') {
+      vaultSystemBalance = latestShift.closingBalance || 0;
     } else {
-      // Active
-      vaultSystemBalance = vaultShift.currentBalance ?? vaultShift.openingBalance;
-      vaultPhysicalCount = vaultSystemBalance; // Assuming matched for active
-      vaultDenominations = vaultShift.currentDenominations ?? vaultShift.openingDenominations ?? [];
+      vaultSystemBalance = latestShift.currentBalance ?? latestShift.openingBalance;
     }
+    vaultPhysicalCount = vaultSystemBalance; // For EOD, we report the consolidated balance
+
+    // Aggregate denominations and variance from all relevant shifts
+    vaultDenominations = latestShift.status === 'closed' 
+      ? (latestShift.closingDenominations || []) 
+      : (latestShift.currentDenominations || latestShift.openingDenominations || []);
+
+    // Sum variance from all shifts in the range
+    vaultShifts.forEach(s => {
+      (s.reconciliations || []).forEach((r: any) => {
+        vaultVariance += (r.newBalance - r.previousBalance);
+      });
+    });
   } else {
     // If no shift found for this day, check if previous day is still active
     const prevActive = await VaultShiftModel.findOne({
       locationId,
       status: 'active',
       openedAt: { $lt: rangeStart }
-    });
+    }).select('openedAt').lean();
+
     if (prevActive) {
       previousShiftActive = true;
+      previousShiftDate = (prevActive as any).openedAt;
     }
   }
 
-  // Transform denominations array to Record<string, count>
-  // Schema: [{ denomination: 100, quantity: 5 }] -> { "100": 5 }
+  // Transform denominations
   const denominationBreakdown: Record<string, number> = {};
   vaultDenominations.forEach((d: { denomination: number; quantity: number }) => {
     const key = String(d.denomination);
@@ -147,20 +164,12 @@ export async function generateEndOfDayReport(
   // ============================================================================
   // 2. Cashier Floats
   // ============================================================================
-  // Find shifts that were active or closed during the day range
   const cashierShifts = await CashierShiftModel.find({
     locationId,
     $or: [
-      { 
-        openedAt: { $gte: rangeStart, $lte: rangeEnd } 
-      },
-      {
-        closedAt: { $gte: rangeStart, $lte: rangeEnd }
-      },
-      {
-        status: 'active',
-        openedAt: { $gte: rangeStart, $lte: rangeEnd }
-      }
+      { openedAt: { $gte: rangeStart, $lte: rangeEnd } },
+      { closedAt: { $gte: rangeStart, $lte: rangeEnd } },
+      { status: 'active', openedAt: { $gte: rangeStart, $lte: rangeEnd } }
     ]
   }).lean();
 
@@ -173,25 +182,29 @@ export async function generateEndOfDayReport(
 
   const totalCashierFloat = cashierFloats.reduce((sum, c) => sum + c.balance, 0);
 
+  // ============================================================================
   // 3. Machine Counts (Drops)
-  // Fetch ALL machines for this location
+  // ============================================================================
+  // Robust machine query matching both string and ObjectId
+  const locationIdObj = mongoose.Types.ObjectId.isValid(locationId) 
+    ? new mongoose.Types.ObjectId(locationId) 
+    : locationId;
+
   const allMachines = await Machine.find({ 
-    gamingLocation: locationId,
+    $or: [
+      { gamingLocation: locationId },
+      { gamingLocation: locationIdObj }
+    ],
     deletedAt: { $exists: false } 
   }).select('_id assetNumber custom.name').lean();
   
   const machineIds = allMachines.map(m => String(m._id));
 
-  // Calculate Machine Drops from Meters (Soft Count)
-  // This matches the logic from balance/route.ts to ensure consistency
   const machineMeters = await Meters.aggregate([
     {
       $match: {
         machine: { $in: machineIds },
-        readAt: {
-          $gte: rangeStart,
-          $lte: rangeEnd,
-        },
+        readAt: { $gte: rangeStart, $lte: rangeEnd },
       },
     },
     {
@@ -202,43 +215,75 @@ export async function generateEndOfDayReport(
     },
   ]);
 
-  // Create a map of drops for easy lookup
   const dropMap = new Map(machineMeters.map(m => [m._id, m.totalDrop]));
 
-  // Find collections performed in range (Physical Count/Hard Count - if available)
-  // Note: Collections might not happen daily. If no collection, we use 0 or Soft Count?
-  // User asked for "Machines' Soft Count" in balance card, here it is "Closing Slot Count".
-  // If we want to show the daily drop, we should use the Meter data (Soft Count).
-  const machineCollections = await MachineCollectionModel.find({
+  const softCounts = await SoftCountModel.find({
     locationId,
-    collectedAt: { $gte: rangeStart, $lte: rangeEnd }
-  }).lean();
+    countedAt: { $gte: rangeStart, $lte: rangeEnd }
+  }).sort({ countedAt: 1 }).lean();
 
-  const collectionMap = new Map(machineCollections.map(mc => [mc.machineId, mc]));
+  const midDaySoftCounts: EndOfDayReport['midDaySoftCounts'] = [];
+  const endOfDaySoftCounts: EndOfDayReport['endOfDaySoftCounts'] = [];
 
-  const slotCounts: EndOfDayReport['slotCounts'] = allMachines.map((machine: any) => {
-    const mId = machine._id.toString();
-    const softCount = dropMap.get(mId) || 0;
-    const collection = collectionMap.get(mId);
-    
-    // Use Soft Count (Meters) as the primary "Closing Count" for End of Day report
-    // unless a physical collection occurred, which might override or be a separate column.
-    // For now, mapping "Closing Count" to the calculate drop from meters.
-    return {
+  softCounts.forEach((sc: any) => {
+    const mId = sc.machineId;
+    const machine = allMachines.find((m: any) => String(m._id) === mId);
+    if (!machine) return;
+
+    const machineDrop = dropMap.get(mId) || 0; 
+    const variance = sc.amount - machineDrop;
+
+    const entry = {
       machineId: mId,
       location: (machine.custom?.name || machine.assetNumber || 'Floor') as string,
-      closingCount: softCount, 
-      collected: !!collection
+      amount: sc.amount,
+      countedAt: sc.countedAt,
+      variance
     };
+
+    if (sc.isEndOfDay) {
+      endOfDaySoftCounts.push(entry);
+    } else {
+      midDaySoftCounts.push(entry);
+    }
   });
-  
-  const totalMachineBalance = slotCounts.reduce((sum, s) => sum + s.closingCount, 0);
+
+  const totalMachineBalance = endOfDaySoftCounts.reduce((sum, s) => sum + s.amount, 0) + 
+                              midDaySoftCounts.reduce((sum, s) => sum + s.amount, 0);
 
   // ============================================================================
-  // 4. Aggregations
+  // 4. Aggregations & Metrics (Sum all shifts for the day)
   // ============================================================================
-  
-  // Total Cash on Premises = Vault + Cashiers + Machines
+  const transactions = await VaultTransactionModel.find({
+    locationId,
+    timestamp: { 
+      $gte: rangeStart,
+      $lte: rangeEnd
+    },
+  }).lean();
+
+  let totalCashIn = 0;
+  let totalCashOut = 0;
+  let totalPayouts = 0;
+  let expenses = 0;
+
+  transactions.forEach((tx: any) => {
+    if (tx.type === 'vault_reconciliation') return;
+
+    if (tx.to?.type === 'vault') {
+      totalCashIn += tx.amount;
+    }
+    if (tx.from?.type === 'vault') {
+      totalCashOut += tx.amount;
+    }
+    if (tx.type === 'expense') {
+      expenses += tx.amount;
+    }
+    if (tx.type === 'payout') {
+      totalPayouts += tx.amount;
+    }
+  });
+
   const totalCash = vaultSystemBalance + totalCashierFloat + totalMachineBalance;
 
   return {
@@ -247,22 +292,29 @@ export async function generateEndOfDayReport(
     totalCash,
     denominationBreakdown,
     transactions: [],
-    
-    // Status flags
     shiftStatus,
     previousShiftActive,
-    
-    // Detailed sections
+    previousShiftDate,
     vaultBalance: {
       systemBalance: vaultSystemBalance,
       physicalCount: vaultPhysicalCount,
-      variance: vaultVariance,
-      status
+      variance: vaultVariance
     },
     cashierFloats,
-    slotCounts
+    midDaySoftCounts,
+    endOfDaySoftCounts,
+    metrics: {
+      totalCashIn,
+      totalCashOut,
+      netCashFlow: totalCashIn - totalCashOut,
+      payouts: totalPayouts,
+      totalMachineBalance,
+      totalCashierFloats: totalCashierFloat,
+      expenses
+    }
   };
 }
+
 
 /**
  * Export report to CSV format
@@ -300,11 +352,19 @@ export function exportReportToCSV(report: EndOfDayReport): string {
   });
   lines.push('');
 
-  // Machines
-  lines.push('Machine Collections');
-  lines.push('Machine ID,Location,Amount,Collected');
-  report.slotCounts.forEach(s => {
-    lines.push(`${s.machineId},${s.location},${s.closingCount},${s.collected ? 'YES' : 'NO'}`);
+  // Machines - Mid Day
+  lines.push('Mid-Day Soft Counts');
+  lines.push('Machine ID,Location,Amount,Variance');
+  report.midDaySoftCounts.forEach(s => {
+    lines.push(`${s.machineId},${s.location},${s.amount},${s.variance}`);
+  });
+  lines.push('');
+
+  // Machines - End of Day
+  lines.push('End-of-Day Soft Counts');
+  lines.push('Machine ID,Location,Amount,Variance');
+  report.endOfDaySoftCounts.forEach(s => {
+    lines.push(`${s.machineId},${s.location},${s.amount},${s.variance}`);
   });
 
   return lines.join('\n');

@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/shared/ui/dropdown-menu';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
@@ -89,7 +89,7 @@ export default function NotificationBell({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { formatAmount } = useCurrencyFormat();
-  const { selectedLicencee } = useDashBoardStore();
+  const { licenseeId: selectedLicencee } = useVaultLicensee();
 
   // Reset editing state when modal closes or changes
   useEffect(() => {
@@ -485,7 +485,14 @@ export default function NotificationBell({
                         <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={() => setIsEditing(true)}
+                            onClick={async () => {
+                                setIsEditing(true);
+                                if (onRefreshInventory) {
+                                    setIsRefreshingInventory(true);
+                                    await onRefreshInventory();
+                                    setIsRefreshingInventory(false);
+                                }
+                            }}
                             className="text-blue-600 hover:bg-blue-50"
                         >
                             <Edit2 className="h-4 w-4 mr-2" />
@@ -518,7 +525,15 @@ export default function NotificationBell({
                           <Badge variant="outline" className="text-[10px] font-normal">Available</Badge>
                         </div>
                         <div className="grid grid-cols-1 gap-2">
-                           {getDenominationValues(selectedLicencee).map(val => {
+                          {isRefreshingInventory ? (
+                            Array.from({ length: getDenominationValues(selectedLicencee).length }).map((_, i) => (
+                              <div key={i} className="flex justify-between items-center p-2 rounded bg-gray-50/50 border border-dashed border-gray-200">
+                                <span className="h-4 w-10 bg-gray-200 rounded animate-pulse" />
+                                <span className="h-4 w-6 bg-gray-200 rounded animate-pulse" />
+                              </div>
+                            ))
+                          ) : (
+                           getDenominationValues(selectedLicencee).map(val => {
                             const stock = vaultInventory.find(v => Number(v.denomination) === Number(val))?.quantity || 0;
                             return (
                               <div key={val} className="flex justify-between p-2 rounded bg-gray-50/50 border border-dashed border-gray-200">
@@ -526,7 +541,8 @@ export default function NotificationBell({
                                 <span className={`font-bold ${stock === 0 ? 'text-gray-300' : 'text-gray-700'}`}>{stock}</span>
                               </div>
                             );
-                          })}
+                          })
+                          )}
                         </div>
                      </div>
                      

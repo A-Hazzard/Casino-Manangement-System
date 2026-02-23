@@ -68,7 +68,7 @@ export default function VaultTransactionsMobileCards({
     <div className="block lg:hidden">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {transactions.map(tx => {
-          const isPositive = tx.amount > 0;
+          const isOutflow = tx.from?.type === 'vault';
 
           return (
             <Card
@@ -107,12 +107,11 @@ export default function VaultTransactionsMobileCards({
                   <p
                     className={cn(
                       'font-bold leading-none transition-all truncate',
-                      isPositive ? 'text-button' : 'text-orangeHighlight',
+                      isOutflow ? 'text-red-600' : 'text-green-600',
                       formatAmount(Math.abs(tx.amount)).length > 12 ? 'text-lg' : 'text-xl'
                     )}
                   >
-                    {isPositive ? '+' : ''}
-                    {formatAmount(Math.abs(tx.amount))}
+                    {isOutflow && '-'}{formatAmount(Math.abs(tx.amount))}
                   </p>
                 </div>
 

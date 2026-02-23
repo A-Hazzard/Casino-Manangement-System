@@ -8,6 +8,7 @@
  */
 
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
+import { isShiftStale } from '@/lib/utils/vault/shift';
 import type {
     CashierShift,
     CloseCashierShiftRequest,
@@ -15,7 +16,7 @@ import type {
     Denomination,
     OpenCashierShiftRequest
 } from '@/shared/types/vault';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './useAuth';
 
@@ -30,6 +31,12 @@ export function useCashierShift() {
   const [refreshing, setRefreshing] = useState(false);
   const [pendingVmApproval, setPendingVmApproval] = useState<any | null>(null);
   const [pendingRequest, setPendingRequest] = useState<any | null>(null);
+
+  const [isStaleFromApi, setIsStaleFromApi] = useState<boolean>(false);
+
+  const isStaleShift = useMemo(() => {
+    return isStaleFromApi || isShiftStale(shift?.openedAt);
+  }, [isStaleFromApi, shift?.openedAt]);
 
   const fetchCurrentShift = useCallback(async (isSilent = false) => {
     try {
@@ -52,6 +59,7 @@ export function useCashierShift() {
           setPendingRequest(data.pendingRequest || null);
           setHasActiveVaultShift(data.hasActiveVaultShift || false);
           setIsVaultReconciled(data.isVaultReconciled || false);
+          setIsStaleFromApi(data.isStale || false);
         }
       }
     } catch (error) {
@@ -214,6 +222,7 @@ export function useCashierShift() {
     isVaultReconciled,
     pendingVmApproval,
     pendingRequest,
+    isStaleShift,
     loading,
     refreshing,
     refresh: fetchCurrentShift,

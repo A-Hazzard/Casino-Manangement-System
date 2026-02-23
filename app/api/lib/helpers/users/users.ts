@@ -496,6 +496,11 @@ export async function createUser(
       }
     }
 
+    // Cashiers with a tempPassword have NOT truly set their own password yet.
+    // We leave passwordUpdatedAt as null so the auth system knows they need to change it on first login.
+    const isCashier = normalizedRoles.includes('cashier');
+    const hasTemp = !!(tempPassword);
+
     newUser = await UserModel.create({
       _id: new (
         await import('mongoose')
@@ -503,7 +508,7 @@ export async function createUser(
       username,
       emailAddress,
       password: hashedPassword,
-      passwordUpdatedAt: new Date(),
+      passwordUpdatedAt: (isCashier && hasTemp) ? null : new Date(),
       roles: normalizedRoles,
       profile,
       isEnabled,
@@ -511,7 +516,7 @@ export async function createUser(
       // Old fields removed - only using assignedLocations and assignedLicensees
       assignedLocations: finalAssignedLocations,
       assignedLicensees: finalAssignedLicensees,
-      tempPasswordChanged: false, // New cashiers must change password on first login
+      tempPasswordChanged: (isCashier && hasTemp) ? false : true, // Cashiers must change on first login
       tempPassword: tempPassword || null, // Store plain text temp password
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
     });
@@ -1614,14 +1619,15 @@ export async function handleCashiersRequest(
   ]);
 
   // Create a map of active shift data by cashier ID
-  const shiftMap = new Map<string, { status: string; balance: number; denominations: any[] }>();
+  const shiftMap = new Map<string, { status: string; balance: number; denominations: any[]; discrepancy: number }>();
   allActiveShifts.forEach((shift: Record<string, any>) => {
     shiftMap.set(String(shift.cashierId), {
       status: String(shift.status),
       balance: (shift.status === 'active' || shift.status === 'pending_review') 
         ? (shift.currentBalance || shift.openingBalance || 0) 
         : (shift.openingBalance || 0),
-      denominations: shift.lastSyncedDenominations ?? shift.openingDenominations ?? []
+      denominations: shift.lastSyncedDenominations ?? shift.openingDenominations ?? [],
+      discrepancy: shift.discrepancy || 0
     });
   });
 
@@ -1642,6 +1648,7 @@ export async function handleCashiersRequest(
       shiftStatus: (shiftMap.get(String(user._id))?.status || 'inactive') as 'active' | 'pending_review' | 'pending_start' | 'closed' | 'inactive',
       currentBalance: shiftMap.get(String(user._id))?.balance || 0,
       denominations: shiftMap.get(String(user._id))?.denominations || [],
+      discrepancy: shiftMap.get(String(user._id))?.discrepancy || 0,
       roles: user.roles,
       profilePicture: user.profilePicture ?? null,
       profile: user.profile,
@@ -1674,6 +1681,13 @@ export async function handleCashiersRequest(
 
   if (search && search.trim()) {
     result = applySearchFilter(result, search, searchMode);
+  }
+
+  const varianceFilter = searchParams.get('variance');
+  if (varianceFilter === 'variance') {
+    result = result.filter(u => Math.abs(u.discrepancy || 0) > 0.01);
+  } else if (varianceFilter === 'no-variance') {
+    result = result.filter(u => Math.abs(u.discrepancy || 0) <= 0.01);
   }
 
   return paginateAndRespond(result, searchParams, startTime, context);

@@ -24,8 +24,7 @@ import {
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useUserStore } from '@/lib/store/userStore';
+import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
@@ -46,13 +45,7 @@ export default function BlindCloseModal({
   loading = false,
 }: BlindCloseModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { selectedLicencee } = useDashBoardStore();
-  const { user } = useUserStore();
-  
-  // Use user's assigned licensee if available (Cashier context), otherwise dashboard selection (Admin context)
-  const effectiveLicenseeId = useMemo(() => {
-    return user?.assignedLicensees?.[0] || selectedLicencee;
-  }, [user?.assignedLicensees, selectedLicencee]);
+  const { licenseeId: effectiveLicenseeId } = useVaultLicensee();
 
   const denomsList = useMemo(() => getDenominationValues(effectiveLicenseeId), [effectiveLicenseeId]);
   

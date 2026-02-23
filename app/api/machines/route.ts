@@ -437,12 +437,14 @@ export async function GET(request: NextRequest) {
     // Integrate meter data with machine data
     if (meterData.length > 0) {
       const aggregatedMeters = meterData[0];
+      const multiplier = Number((machine as any).collectorDenomination) || 1;
       machine.sasMeters = {
-        drop: aggregatedMeters.drop || 0,
-        totalCancelledCredits: aggregatedMeters.totalCancelledCredits || 0,
-        jackpot: aggregatedMeters.jackpot || 0,
-        coinIn: aggregatedMeters.coinIn || 0,
-        coinOut: aggregatedMeters.coinOut || 0,
+        drop: (aggregatedMeters.drop || 0) * multiplier,
+        totalCancelledCredits:
+          (aggregatedMeters.totalCancelledCredits || 0) * multiplier,
+        jackpot: (aggregatedMeters.jackpot || 0) * multiplier,
+        coinIn: (aggregatedMeters.coinIn || 0) * multiplier,
+        coinOut: (aggregatedMeters.coinOut || 0) * multiplier,
         gamesPlayed: aggregatedMeters.gamesPlayed || 0,
         gamesWon: aggregatedMeters.gamesWon || 0,
       };

@@ -13,6 +13,7 @@
 
 import DebugSection from '@/components/shared/debug/DebugSection';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
     Dialog,
@@ -23,6 +24,7 @@ import {
 } from '@/components/shared/ui/dialog';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
 import { useCashierShift } from '@/lib/hooks/useCashierShift';
+import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
 import type { CreatePayoutRequest, Denomination } from '@/shared/types/vault';
@@ -34,10 +36,12 @@ import { toast } from 'sonner';
 import ConfirmationModal from '@/components/shared/ui/ConfirmationModal';
 import CashierDashboardSkeleton from '@/components/ui/skeletons/CashierDashboardSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
+import StaleShiftDetectedBlock from '@/components/VAULT/shared/StaleShiftDetectedBlock';
 import CashierActivitySection from './CashierActivitySection';
 import HandPayForm from './payouts/HandPayForm';
 import TicketRedemptionForm from './payouts/TicketRedemptionForm';
 import ActiveShiftDashboard from './sections/ActiveShiftDashboard';
+import GlobalCashierShiftsView from './sections/GlobalCashierShiftsView';
 import ShiftStatusBanner from './sections/ShiftStatusBanner';
 import BlindCloseModal from './shifts/BlindCloseModal';
 import CashierShiftOpenModal from './shifts/CashierShiftOpenModal';
@@ -45,11 +49,11 @@ import FloatRequestModal, {
     type FloatRequestData,
 } from './shifts/FloatRequestModal';
 
-/**
- * Main Cashier Dashboard Content
- */
 export default function CashierDashboardPageContent() {
   // --- Hooks & State ---
+  const { user } = useUserStore();
+  const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
+
   const { 
     shift, 
     status, 
@@ -64,7 +68,8 @@ export default function CashierDashboardPageContent() {
     refresh,
     pendingVmApproval,
     pendingRequest,
-    cancelFloatRequest // Add this
+    cancelFloatRequest,
+    isStaleShift
   } = useCashierShift();
 
   const [showShiftOpen, setShowShiftOpen] = useState(false);
@@ -75,11 +80,45 @@ export default function CashierDashboardPageContent() {
   const [floatRequestType, setFloatRequestType] = useState<'increase' | 'decrease'>('increase');
   const [machines, setMachines] = useState<GamingMachine[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
+  const [globalCashDesks, setGlobalCashDesks] = useState<any[]>([]);
   
   // Confirmation state for requests
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const [showShiftCancelConfirm, setShowShiftCancelConfirm] = useState(false);
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
+
+  /**
+   * Fetch global shifts (for Admin/Dev view)
+   */
+  const fetchGlobalShifts = useCallback(async () => {
+      if (!isAdminOrDev) return;
+      try {
+          const res = await fetch('/api/cashier/shifts?status=active,pending_start');
+          if (res.ok) {
+              const data = await res.json();
+              if (data.success) {
+                  const mapped = data.shifts.map((s: any) => ({
+                      _id: s._id,
+                      name: s.cashierName || s.cashierUsername || 'Unknown',
+                      cashierName: s.cashierName || s.cashierUsername,
+                      balance: s.currentBalance || s.openingBalance || 0,
+                      lastAudit: s.openedAt || s.createdAt,
+                      status: s.status,
+                      locationName: s.locationName
+                  }));
+                  setGlobalCashDesks(mapped);
+              }
+          }
+      } catch (err) {
+          console.error('Global shifts fetch failed', err);
+      }
+  }, [isAdminOrDev]);
+
+  useEffect(() => {
+      if (isAdminOrDev) {
+          fetchGlobalShifts();
+      }
+  }, [isAdminOrDev, fetchGlobalShifts]);
   
   // --- Logic Handlers ---
 
@@ -220,7 +259,7 @@ export default function CashierDashboardPageContent() {
   
   // --- Render Sections ---
 
-  if (shiftLoading) {
+  if (shiftLoading && !isAdminOrDev) {
      return (
         <PageLayout>
             <CashierDashboardSkeleton />
@@ -240,13 +279,13 @@ export default function CashierDashboardPageContent() {
       <div className="space-y-6">
           {/* Dashboard Header */}
           <VaultManagerHeader
-            title="Cashier Dashboard"
+            title={isAdminOrDev ? "Location Shifts Monitoring" : "Cashier Dashboard"}
             showBack={false}
             showNotificationBell={false}
             description={
               <div className="flex items-center gap-2">
                 <Button
-                  onClick={() => refresh(false)}
+                  onClick={() => isAdminOrDev ? fetchGlobalShifts() : refresh(false)}
                   disabled={refreshing}
                   variant="ghost"
                   size="sm"
@@ -261,12 +300,23 @@ export default function CashierDashboardPageContent() {
                     day: 'numeric'
                   })}
                 </span>
+                {isAdminOrDev && (
+                  <Badge variant="outline" className="text-orangeHighlight border-orangeHighlight/20 bg-orangeHighlight/5">
+                    Read-Only Mode
+                  </Badge>
+                )}
               </div>
             }
           >
-            {isOffShift && (
-               <Button
+            {isOffShift && !isAdminOrDev && (
+                <Button
                 onClick={() => {
+                  if (isStaleShift) {
+                    toast.error('Shift Disabled', {
+                      description: 'You cannot start a new shift while a stale shift is active. Please resolve it first.'
+                    });
+                    return;
+                  }
                   if (!isVaultReconciled) {
                     toast.error('Vault Not Reconciled', {
                       description: 'Please ask a Vault Manager to perform the mandatory opening reconciliation.'
@@ -277,7 +327,7 @@ export default function CashierDashboardPageContent() {
                 }}
                 className={cn(
                   "bg-green-600 text-white hover:bg-green-700",
-                  !isVaultReconciled && "opacity-40 cursor-not-allowed"
+                  (!isVaultReconciled || isStaleShift) && "opacity-40 cursor-not-allowed"
                 )}
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -285,7 +335,7 @@ export default function CashierDashboardPageContent() {
               </Button>
             )}
             
-            {isShiftActive && (
+            {isShiftActive && !isAdminOrDev && (
                <Button
                 onClick={() => setShowShiftClose(true)}
                 className="bg-red-600 text-white hover:bg-red-700"
@@ -296,116 +346,136 @@ export default function CashierDashboardPageContent() {
             )}
           </VaultManagerHeader>
 
-          <div className="flex justify-end -mt-4 mb-2">
-            <DebugSection title="Shift State" data={{ shift, status, currentBalance }} />
-          </div>
+          {!isAdminOrDev && (
+            <div className="flex justify-end -mt-4 mb-2">
+              <DebugSection title="Shift State" data={{ shift, status, currentBalance }} />
+            </div>
+          )}
 
-          {/* Pending Banners */}
-           <ShiftStatusBanner 
-            status={status}
-            shift={shift}
-            refreshing={refreshing}
-            onRefresh={() => refresh(true)}
-            onCancel={handleShiftCancel}
-            pendingVmApproval={pendingVmApproval}
-            pendingRequest={pendingRequest}
-            onConfirm={confirmApproval}
-            onCancelRequest={(requestId) => {
-              setPendingCancelId(requestId);
-              setShowCancelConfirmation(true);
-            }}
-          />
+          <StaleShiftDetectedBlock isStale={isStaleShift} openedAt={shift?.openedAt} type="cashier">
+            {/* Pending Banners */}
+            {!isAdminOrDev && (
+               <ShiftStatusBanner 
+                status={status}
+                shift={shift}
+                refreshing={refreshing}
+                onRefresh={() => refresh(true)}
+                onCancel={handleShiftCancel}
+                pendingVmApproval={pendingVmApproval}
+                pendingRequest={pendingRequest}
+                onConfirm={confirmApproval}
+                onCancelRequest={(requestId) => {
+                  setPendingCancelId(requestId);
+                  setShowCancelConfirmation(true);
+                }}
+              />
+            )}
+          </StaleShiftDetectedBlock>
 
           {/* Active Work Area */}
-          {isShiftActive && shift && (
-            <ActiveShiftDashboard 
-               shift={shift}
-               currentBalance={currentBalance}
-               refreshing={refreshing}
-               onTicketRedeem={() => {
-                 if (!isVaultReconciled) {
-                   toast.error('Vault Not Reconciled', {
-                     description: 'Operations are blocked until the vault is reconciled.'
-                   });
-                   return;
-                 }
-                 setShowTicketForm(true);
-               }}
-               onHandPay={() => {
-                  if (!isVaultReconciled) {
-                    toast.error('Vault Not Reconciled', {
-                      description: 'Operations are blocked until the vault is reconciled.'
-                    });
-                    return;
-                  }
-                  setShowHandPayForm(true);
-               }}
-               onRequestFloat={(type) => {
-                  if (!isVaultReconciled) {
-                    toast.error('Vault Not Reconciled', {
-                      description: 'Operations are blocked until the vault is reconciled.'
-                    });
-                    return;
-                  }
-                  if (pendingRequest) {
-                    toast.error('Request Pending', {
-                      description: 'You already have a pending float request. Please wait for the Vault Manager to process it.'
-                    });
-                    return;
-                  }
-                  setFloatRequestType(type);
-                  setShowFloatRequest(true);
-               }}
-               isVaultReconciled={isVaultReconciled}
-            />
+          {isAdminOrDev ? (
+            <GlobalCashierShiftsView cashDesks={globalCashDesks} refreshing={refreshing} />
+          ) : (
+            isShiftActive && shift && (
+              <ActiveShiftDashboard 
+                 shift={shift}
+                 currentBalance={currentBalance}
+                 refreshing={refreshing}
+                 onTicketRedeem={() => {
+                   if (isStaleShift) return;
+                   if (!isVaultReconciled) {
+                     toast.error('Vault Not Reconciled', {
+                       description: 'Operations are blocked until the vault is reconciled.'
+                     });
+                     return;
+                   }
+                   setShowTicketForm(true);
+                 }}
+                 onHandPay={() => {
+                    if (isStaleShift) return;
+                    if (!isVaultReconciled) {
+                      toast.error('Vault Not Reconciled', {
+                        description: 'Operations are blocked until the vault is reconciled.'
+                      });
+                      return;
+                    }
+                    setShowHandPayForm(true);
+                 }}
+                 onRequestFloat={(type) => {
+                    if (isStaleShift) {
+                      toast.error('Operations Restricted', {
+                        description: 'Float requests are disabled while the shift is stale. Please close your shift.'
+                      });
+                      return;
+                    }
+                    if (!isVaultReconciled) {
+                      toast.error('Vault Not Reconciled', {
+                        description: 'Operations are blocked until the vault is reconciled.'
+                      });
+                      return;
+                    }
+                    if (pendingRequest) {
+                      toast.error('Request Pending', {
+                        description: 'You already have a pending float request. Please wait for the Vault Manager to process it.'
+                      });
+                      return;
+                    }
+                    setFloatRequestType(type);
+                    setShowFloatRequest(true);
+                 }}
+                 isVaultReconciled={isVaultReconciled}
+              />
+            )
           )}
 
           {/* Recent Activity Logs */}
           <CashierActivitySection />
 
           {/* Integrated Modal Management */}
-          <ShiftModals 
-            showOpen={showShiftOpen}
-            showClose={showShiftClose}
-            showTicket={showTicketForm}
-            showHandPay={showHandPayForm}
-            showFloat={showFloatRequest}
-            floatType={floatRequestType}
-            actionLoading={actionLoading}
-            shiftLoading={shiftLoading}
-            hasActiveVaultShift={hasActiveVaultShift}
-            isVaultReconciled={isVaultReconciled}
-            machines={machines}
-            currentBalance={currentBalance}
-            onOpenClose={() => setShowShiftOpen(false)}
-            onCloseClose={() => setShowShiftClose(false)}
-            onTicketClose={() => setShowTicketForm(false)}
-            onHandPayClose={() => setShowHandPayForm(false)}
-            onFloatClose={() => setShowFloatRequest(false)}
-            onOpenSubmit={handleShiftOpen}
-            onCloseSubmit={handleShiftClose}
-            onTicketSubmit={(t: string, a: number, pAt?: Date) => handlePayout({
-              cashierShiftId: shift?._id || '',
-              type: 'ticket',
-              amount: a,
-              ticketNumber: t,
-              printedAt: pAt?.toISOString(),
-              notes: `Ticket ${t}`
-            })}
-            onHandPaySubmit={(a: number, mid: string, r?: string) => handlePayout({
-              cashierShiftId: shift?._id || '',
-              type: 'hand_pay',
-              amount: a,
-              machineId: mid,
-              reason: r,
-              notes: r || `Hand Pay - Machine ${mid}`
-            })}
-            onFloatSubmit={handleFloatRequestSubmit}
-            onRequestCash={() => {
-               setFloatRequestType('increase');
-               setShowFloatRequest(true);
-            }}
-          />
+          {!isAdminOrDev && (
+            <ShiftModals 
+              showOpen={showShiftOpen}
+              showClose={showShiftClose}
+              showTicket={showTicketForm}
+              showHandPay={showHandPayForm}
+              showFloat={showFloatRequest}
+              floatType={floatRequestType}
+              actionLoading={actionLoading}
+              shiftLoading={shiftLoading}
+              hasActiveVaultShift={hasActiveVaultShift}
+              isVaultReconciled={isVaultReconciled}
+              machines={machines}
+              currentBalance={currentBalance}
+              onOpenClose={() => setShowShiftOpen(false)}
+              onCloseClose={() => setShowShiftClose(false)}
+              onTicketClose={() => setShowTicketForm(false)}
+              onHandPayClose={() => setShowHandPayForm(false)}
+              onFloatClose={() => setShowFloatRequest(false)}
+              onOpenSubmit={handleShiftOpen}
+              onCloseSubmit={handleShiftClose}
+              onTicketSubmit={(t: string, a: number, pAt?: Date) => handlePayout({
+                cashierShiftId: shift?._id || '',
+                type: 'ticket',
+                amount: a,
+                ticketNumber: t,
+                printedAt: pAt?.toISOString(),
+                notes: `Ticket ${t}`
+              })}
+              onHandPaySubmit={(a: number, mid: string, r?: string) => handlePayout({
+                cashierShiftId: shift?._id || '',
+                type: 'hand_pay',
+                amount: a,
+                machineId: mid,
+                reason: r,
+                notes: r || `Hand Pay - Machine ${mid}`
+              })}
+              onFloatSubmit={handleFloatRequestSubmit}
+              onRequestCash={() => {
+                 setFloatRequestType('increase');
+                 setShowFloatRequest(true);
+              }}
+            />
+          )}
 
           <ConfirmationModal
             open={showCancelConfirmation}

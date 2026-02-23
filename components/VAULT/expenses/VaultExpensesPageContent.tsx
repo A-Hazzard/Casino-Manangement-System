@@ -34,7 +34,10 @@ import {
     TableRow,
 } from '@/components/shared/ui/table';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
-import VaultRecordExpenseModal from '@/components/VAULT/overview/modals/VaultRecordExpenseModal';
+import VaultOverviewRecordExpenseModal from '@/components/VAULT/overview/modals/VaultOverviewRecordExpenseModal';
+import StaleShiftDetectedBlock from '@/components/VAULT/shared/StaleShiftDetectedBlock';
+import VaultTransactionDetailsModal from '@/components/VAULT/transactions/modals/VaultTransactionDetailsModal';
+import { useVaultShift } from '@/lib/hooks/vault/useVaultShift';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { ExpenseCategory, VaultTransaction } from '@/shared/types/vault';
@@ -58,10 +61,11 @@ type ExpenseSummary = {
 // Constants
 // ============================================================================
 const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  'Supplies',
+  'Food/Drinks',
   'Repairs',
   'Bills',
-  'Licenses',
+  'Worker/Employee',
+  'Bank Account',
   'Other',
 ];
 
@@ -72,11 +76,12 @@ export default function VaultExpensesPageContent() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
-  const { user, hasActiveVaultShift, isVaultReconciled } = useUserStore();
+  const { user, hasActiveVaultShift, isVaultReconciled, isStaleShift } = useUserStore();
   const locationId = user?.assignedLocations?.[0] || '';
   const [expenses, setExpenses] = useState<VaultTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<VaultTransaction | null>(null);
 
   // Filters
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
@@ -175,6 +180,8 @@ export default function VaultExpensesPageContent() {
     date: Date;
     denominations?: any[]; 
     file?: File;
+    bankDetails?: Record<string, string>;
+    expenseDetails?: Record<string, any>;
   }) => {
     try {
       // Use FormData to support file upload
@@ -183,6 +190,13 @@ export default function VaultExpensesPageContent() {
       formData.append('amount', data.amount.toString());
       formData.append('description', data.description);
       formData.append('date', data.date.toISOString());
+      
+      if (data.bankDetails) formData.append('bankDetails', JSON.stringify(data.bankDetails));
+      if (data.expenseDetails) formData.append('expenseDetails', JSON.stringify(data.expenseDetails));
+
+      if (data.denominations) {
+        formData.append('denominations', JSON.stringify(data.denominations));
+      }
 
       if (data.file) {
         formData.append('file', data.file);
@@ -213,18 +227,28 @@ export default function VaultExpensesPageContent() {
 
 
 
+  const { vaultBalance } = useVaultShift();
+
   // ============================================================================
   // Render
   // ============================================================================
   return (
     <PageLayout>
       <div className="flex flex-col gap-6">
+        <StaleShiftDetectedBlock isStale={isStaleShift} openedAt={vaultBalance?.openedAt} type="vault">
+          <div className="flex flex-col gap-6">
         <VaultManagerHeader title="Expenses" description="Manage vault expense records">
           <Button 
             onClick={() => {
               if (!hasActiveVaultShift) {
                 toast.error('Operation Blocked', {
                   description: 'You must start a vault shift before recording expenses.'
+                });
+                return;
+              }
+              if (isStaleShift) {
+                toast.error('Stale Shift Detected', {
+                  description: 'This shift is from a previous gaming day. You must close this shift first.'
                 });
                 return;
               }
@@ -238,7 +262,7 @@ export default function VaultExpensesPageContent() {
             }} 
             className={cn(
               "gap-2",
-              (!hasActiveVaultShift || !isVaultReconciled) && "opacity-40 cursor-not-allowed"
+              (!hasActiveVaultShift || !isVaultReconciled || isStaleShift) && "opacity-40 cursor-not-allowed"
             )}
           >
             <Plus className="h-4 w-4" />
@@ -352,8 +376,10 @@ export default function VaultExpensesPageContent() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-16 w-full bg-gray-100 rounded-lg animate-pulse" />
+              ))}
             </div>
           ) : expenses.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
@@ -370,6 +396,7 @@ export default function VaultExpensesPageContent() {
                       <TableHead>Category</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -392,6 +419,16 @@ export default function VaultExpensesPageContent() {
                         <TableCell className="text-right font-medium text-red-600">
                           -${expense.amount.toFixed(2)}
                         </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-violet-600 font-bold px-3"
+                            onClick={() => setSelectedExpense(expense)}
+                          >
+                            <FileText className="mr-1 h-3.5 w-3.5" /> Details
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -412,9 +449,19 @@ export default function VaultExpensesPageContent() {
                           {expense.notes?.replace('Expense: ', '').split(' - ')[1] || '-'}
                         </p>
                       </div>
-                      <span className="font-bold text-red-600">
-                        -${expense.amount.toFixed(2)}
-                      </span>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className="font-bold text-red-600 text-lg">
+                          -${expense.amount.toFixed(2)}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-[10px] text-violet-600 font-bold px-2 mt-auto"
+                          onClick={() => setSelectedExpense(expense)}
+                        >
+                          <FileText className="mr-1 h-3 w-3" /> Details
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))}
@@ -424,8 +471,7 @@ export default function VaultExpensesPageContent() {
         </CardContent>
       </Card>
 
-      {/* Record Expense Modal */}
-      <VaultRecordExpenseModal
+      <VaultOverviewRecordExpenseModal
         open={showModal}
         onClose={() => setShowModal(false)}
         onConfirm={(data) => handleRecordExpense({
@@ -434,6 +480,14 @@ export default function VaultExpensesPageContent() {
           denominations: data.denominations,
         })}
       />
+
+      <VaultTransactionDetailsModal
+        open={!!selectedExpense}
+        onClose={() => setSelectedExpense(null)}
+        transaction={selectedExpense}
+      />
+          </div>
+        </StaleShiftDetectedBlock>
       </div>
     </PageLayout>
   );

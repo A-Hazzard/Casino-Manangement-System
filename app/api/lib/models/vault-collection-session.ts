@@ -7,13 +7,14 @@ const VaultCollectionSessionSchema = new Schema(
     type: { 
       type: String, 
       enum: ['machine_collection', 'soft_count'], 
-      default: 'machine_collection' 
+      default: 'soft_count' 
     },
     status: { 
       type: String, 
       enum: ['active', 'completed', 'cancelled'], 
       default: 'active' 
     },
+    isEndOfDay: { type: Boolean, default: false },
     startedBy: { type: String, required: true },
     entries: [{
       machineId: { type: String, required: true },
@@ -39,6 +40,7 @@ const VaultCollectionSessionSchema = new Schema(
       variance: { type: Number },
       
       notes: { type: String },
+      isEndOfDay: { type: Boolean, default: false },
       collectedAt: { type: Date, default: Date.now }
     }],
     totalCollected: { type: Number, default: 0 },

@@ -7,18 +7,18 @@
 import { HIGH_PRIORITY_ROLES } from '@/lib/constants/roles';
 import type { NavigationConfig, NavigationItem } from '@/lib/types/layout/navigation';
 import {
-  ArrowLeftRight,
-  BarChart3,
-  Clock,
-  DollarSign,
-  FileText,
-  History,
-  MapPin,
-  MonitorSpeaker,
-  Receipt,
-  UserCog,
-  Users,
-  Wallet
+    ArrowLeftRight,
+    BarChart3,
+    Clock,
+    DollarSign,
+    FileText,
+    History,
+    MapPin,
+    MonitorSpeaker,
+    Receipt,
+    UserCog,
+    Users,
+    Wallet
 } from 'lucide-react';
 
 /**
@@ -90,11 +90,11 @@ const baseCmsNavigationItems: NavigationItem[] = [
     href: '/vault/management/floats',
     icon: Wallet,
   },
-    {
-      label: 'Expenses',
-      href: '/vault/management/expenses',
-      icon: Receipt,
-    },
+  {
+    label: 'Expenses',
+    href: '/vault/management/expenses',
+    icon: Receipt,
+  },
   {
     label: 'Activity Log',
     href: '/vault/management/activity-log',

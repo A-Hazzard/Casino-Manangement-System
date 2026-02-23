@@ -1,5 +1,6 @@
+import { SoftCountModel } from '@/app/api/lib/models/softCount';
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
-import mongoose from 'mongoose';
+import { generateMongoId } from '@/lib/utils/id';
 import { NextResponse } from 'next/server';
 import { updateVaultShiftInventory } from '../../../lib/helpers/vault/inventory';
 import { connectDB } from '../../../lib/middleware/db';
@@ -27,25 +28,54 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Cannot finalize empty session' }, { status: 400 });
     }
 
-    // 3. Create Transactions (One per machine for audit granularity)
-    const transactions = session.entries.map((entry: any) => ({
-      _id: new mongoose.Types.ObjectId().toHexString(),
-      locationId,
-      vaultShiftId, // Attach to current Vault Shift
-      type: session.type === 'soft_count' ? 'soft_count' : 'machine_collection',
-      from: session.type === 'soft_count' ? { type: 'vault' } : { type: 'machine', id: entry.machineId },
-      to: session.type === 'soft_count' ? { type: 'external' } : { type: 'vault' },
-      amount: entry.totalAmount,
-      denominations: entry.denominations,
-      performedBy: userId || session.startedBy,
-      notes: session.type === 'soft_count' 
-        ? `Soft count removal from Machine ${entry.machineName || entry.machineId}${entry.notes ? `: ${entry.notes}` : ''}`
-        : `Collection from Machine ${entry.machineName || entry.machineId}${entry.notes ? `: ${entry.notes}` : ''}`,
-      createdAt: new Date(),
-      externalRef: sessionId
-    }));
+    const newTransactions = [];
+    const newSoftCounts = [];
 
-    await VaultTransactionModel.insertMany(transactions);
+    // 3. Create Transactions and Records
+    for (const entry of session.entries) {
+      const transactionId = await generateMongoId();
+      
+      const transaction = {
+        _id: transactionId,
+        locationId,
+        vaultShiftId, // Attach to current Vault Shift
+        type: 'soft_count',
+        from: { type: 'machine', id: entry.machineId },
+        to: { type: 'vault' },
+        amount: entry.totalAmount,
+        denominations: entry.denominations,
+        performedBy: userId || session.startedBy,
+        notes: session.type === 'soft_count' 
+          ? `Soft count removal from Machine ${entry.machineName || entry.machineId}${entry.notes ? `: ${entry.notes}` : ''}`
+          : `Collection from Machine ${entry.machineName || entry.machineId}${entry.notes ? `: ${entry.notes}` : ''}`,
+        createdAt: new Date(),
+        externalRef: sessionId
+      };
+      
+      newTransactions.push(transaction);
+
+      if (session.type === 'soft_count') {
+        const softCountId = await generateMongoId();
+        newSoftCounts.push({
+          _id: softCountId,
+          locationId,
+          machineId: entry.machineId,
+          countedAt: entry.collectedAt || new Date(),
+          amount: entry.totalAmount,
+          denominations: entry.denominations,
+          countedBy: userId || session.startedBy,
+          transactionId: transactionId,
+          notes: entry.notes,
+          isEndOfDay: entry.isEndOfDay || false,
+        });
+      }
+    }
+
+    await VaultTransactionModel.insertMany(newTransactions);
+    
+    if (newSoftCounts.length > 0) {
+      await SoftCountModel.insertMany(newSoftCounts);
+    }
 
     // 4. Update Vault Balance & Inventory
     const activeVaultShift = await VaultShiftModel.findById(vaultShiftId);
@@ -54,7 +84,7 @@ export async function POST(req: Request) {
     }
 
     const totalCollected = session.entries.reduce((sum: number, e: any) => sum + e.totalAmount, 0);
-    const isAddition = session.type !== 'soft_count';
+    const isAddition = true; // All collection sessions add money from machines to the vault
 
     // Update inventory machine-by-machine to ensure all denoms are tracked
     for (const entry of session.entries) {

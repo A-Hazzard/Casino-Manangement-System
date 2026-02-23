@@ -16,8 +16,8 @@
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
-  getUserLocationFilter,
+    getUserAccessibleLicenseesFromToken,
+    getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -475,9 +475,10 @@ export async function GET(req: NextRequest) {
             meterCount: 0,
           };
 
-          const moneyIn = metrics.moneyIn || 0;
-          const moneyOut = metrics.moneyOut || 0;
-          const jackpot = metrics.jackpot || 0;
+          const multiplier = Number(machine.collectorDenomination) || 1;
+          const moneyIn = (metrics.moneyIn || 0) * multiplier;
+          const moneyOut = (metrics.moneyOut || 0) * multiplier;
+          const jackpot = (metrics.jackpot || 0) * multiplier;
           const gross = moneyIn - moneyOut;
 
           // Get serialNumber with fallback to custom.name
@@ -508,7 +509,8 @@ export async function GET(req: NextRequest) {
             assetStatus: machine.assetStatus || '',
             accountingDenomination:
               machine.gameConfig?.accountingDenomination || '1',
-            collectionMultiplier: '1',
+            collectorDenomination: machine.collectorDenomination || 1,
+            collectionMultiplier: String(machine.collectorDenomination || 1),
             isCronosMachine: false,
             createdAt: machine.createdAt,
             updatedAt: machine.updatedAt,
@@ -523,11 +525,11 @@ export async function GET(req: NextRequest) {
             moneyOut,
             gross,
             jackpot: jackpot || 0,
-            coinIn: metrics.coinIn || 0,
-            coinOut: metrics.coinOut || 0,
+            coinIn: (metrics.coinIn || 0) * multiplier,
+            coinOut: (metrics.coinOut || 0) * multiplier,
             gamesPlayed: metrics.gamesPlayed || 0,
             gamesWon: metrics.gamesWon || 0,
-            handPaidCancelledCredits: metrics.handPaidCancelledCredits || 0,
+            handPaidCancelledCredits: (metrics.handPaidCancelledCredits || 0) * multiplier,
             meterCount: metrics.meterCount || 0,
             rel: location.rel,
             country: location.country,
@@ -802,11 +804,12 @@ export async function GET(req: NextRequest) {
                 meterCount: 0,
               };
 
-              const moneyIn = metrics.moneyIn || 0;
-              const moneyOut = metrics.moneyOut || 0;
-              const jackpot = metrics.jackpot || 0;
-              const coinIn = metrics.coinIn || 0;
-              const coinOut = metrics.coinOut || 0;
+              const multiplier = Number((machine as any).collectorDenomination) || 1;
+              const moneyIn = (metrics.moneyIn || 0) * multiplier;
+              const moneyOut = (metrics.moneyOut || 0) * multiplier;
+              const jackpot = (metrics.jackpot || 0) * multiplier;
+              const coinIn = (metrics.coinIn || 0) * multiplier;
+              const coinOut = (metrics.coinOut || 0) * multiplier;
               const gamesPlayed = metrics.gamesPlayed || 0;
               const gamesWon = metrics.gamesWon || 0;
               const gross = moneyIn - moneyOut;
@@ -837,7 +840,8 @@ export async function GET(req: NextRequest) {
                 accountingDenomination:
                 ((machine.gameConfig as Record<string, unknown>)
                   ?.accountingDenomination as string) || '1',
-                collectionMultiplier: '1',
+                collectorDenomination: (machine as any).collectorDenomination || 1,
+                collectionMultiplier: String((machine as any).collectorDenomination || 1),
                 isCronosMachine: false,
               lastOnline: (machine.lastActivity as Date | undefined) || null,
               lastActivity: (machine.lastActivity as Date | undefined) || null,

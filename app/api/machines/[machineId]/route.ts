@@ -268,14 +268,17 @@ export async function GET(
       meterCount: 0,
     };
 
-    const moneyIn = metrics.moneyIn || 0;
-    const moneyOut = metrics.moneyOut || 0;
-    const jackpot = metrics.jackpot || 0;
-    const coinIn = metrics.coinIn || 0;
-    const coinOut = metrics.coinOut || 0;
+    // Apply collectorDenomination multiplier to monetary metrics
+    const multiplier = Number(machine.collectorDenomination) || 1;
+    const moneyIn = (metrics.moneyIn || 0) * multiplier;
+    const moneyOut = (metrics.moneyOut || 0) * multiplier;
+    const jackpot = (metrics.jackpot || 0) * multiplier;
+    const coinIn = (metrics.coinIn || 0) * multiplier;
+    const coinOut = (metrics.coinOut || 0) * multiplier;
     const gamesPlayed = metrics.gamesPlayed || 0;
     const gamesWon = metrics.gamesWon || 0;
-    const handPaidCancelledCredits = metrics.handPaidCancelledCredits || 0;
+    const handPaidCancelledCredits =
+      (metrics.handPaidCancelledCredits || 0) * multiplier;
 
     const gross = moneyIn - moneyOut;
 
@@ -396,7 +399,8 @@ export async function GET(
       smbId: machine.relayId || '',
       relayId: machine.relayId || '',
       accountingDenomination: machine.gameConfig?.accountingDenomination || '1',
-      collectionMultiplier: machine.collectionMeters ? '1' : '1',
+      collectorDenomination: machine.collectorDenomination || 1,
+      collectionMultiplier: String(machine.collectorDenomination || 1),
       isCronosMachine: false,
       createdAt: machine.createdAt,
       updatedAt: machine.updatedAt,

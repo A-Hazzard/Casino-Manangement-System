@@ -10,6 +10,7 @@
  */
 
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { isShiftStaleBackend } from '@/app/api/lib/helpers/vault/gamingDay';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
@@ -92,6 +93,7 @@ export async function GET(_request: NextRequest) {
       status: shift.status,
       hasActiveVaultShift,
       isVaultReconciled,
+      isStale: await isShiftStaleBackend(shift.openedAt, locationId),
       pendingVmApproval: pendingVmApproval ? pendingVmApproval.toObject() : null,
       pendingRequest: pendingRequest ? pendingRequest.toObject() : null,
     });

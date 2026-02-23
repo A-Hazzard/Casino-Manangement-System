@@ -60,6 +60,8 @@ const VaultTransactionSchema = new Schema(
         'machine_collection',
         'soft_count',
         'expense',
+        'add_cash',
+        'remove_cash',
       ],
       required: true,
       index: true,
@@ -68,6 +70,8 @@ const VaultTransactionSchema = new Schema(
     // Movement tracking
     from: { type: MovementEndpointSchema, required: true },
     to: { type: MovementEndpointSchema, required: true },
+    fromName: { type: String }, // Human-readable source label
+    toName: { type: String },   // Human-readable destination label
 
     amount: { type: Number, required: true },
     denominations: [DenominationSchema],
@@ -88,12 +92,33 @@ const VaultTransactionSchema = new Schema(
     performedBy: { type: String, required: true }, // user ID
     performedByName: { type: String }, // user display name/username
     notes: { type: String },
+    reason: { type: String }, // Mandatory for removals/adjustments
     auditComment: { type: String }, // Mandatory for reconciliations
 
     // Attachments
     attachmentId: { type: Schema.Types.ObjectId }, // GridFS file ID
     attachmentName: { type: String },
 
+    // Expense Specific Data
+    bankDetails: {
+      bankName: { type: String },
+      accountNumber: { type: String },
+      accountType: { type: String },
+      transit: { type: String },
+      branch: { type: String },
+      nameOnAccount: { type: String },
+    },
+    expenseDetails: {
+      vendor: { type: String },
+      invoiceNumber: { type: String },
+      serviceProvider: { type: String },
+      isMachineRepair: { type: Boolean },
+      machineIds: [{ type: String }],
+      billerName: { type: String },
+      billingPeriod: { type: String },
+      referenceNumber: { type: String },
+      description: { type: String }, // Detailed description for 'Other' or general use
+    },
 
     // Immutability - transactions cannot be deleted, only voided
     isVoid: { type: Boolean, default: false },

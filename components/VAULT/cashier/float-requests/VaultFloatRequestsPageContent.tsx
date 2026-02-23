@@ -44,7 +44,14 @@ export default function VaultFloatRequestsPageContent() {
 
   const fetchRequests = async (isManual = false) => {
     const locationId = user?.assignedLocations?.[0];
-    if (!locationId) return;
+    
+    // For Admins/Devs, we could handle global fetch here if API matures, 
+    // but at minimum ensure we don't spin forever
+    if (!locationId) {
+        setLoading(false);
+        setRefreshing(false);
+        return;
+    }
 
     if (isManual) setRefreshing(true);
     else setLoading(true);

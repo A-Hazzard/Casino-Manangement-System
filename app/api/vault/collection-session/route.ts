@@ -16,7 +16,8 @@ export async function GET(req: Request) {
     const vaultShiftId = searchParams.get('vaultShiftId');
     const locationId = searchParams.get('locationId');
     const status = searchParams.get('status');
-    const type = searchParams.get('type') || 'machine_collection';
+    const type = searchParams.get('type') || 'soft_count';
+    const isEndOfDay = searchParams.get('isEndOfDay') === 'true';
 
     if (!vaultShiftId || !locationId) {
       return NextResponse.json({ success: false, error: 'Vault Shift ID and Location ID required' }, { status: 400 });
@@ -28,12 +29,17 @@ export async function GET(req: Request) {
     const query: any = {
       locationId,
       vaultShiftId,
-      type
+      type,
+      isEndOfDay
     };
     
-    // Only filter by status if explicitly provided
+    // Only filter by status if explicitly provided, 
+    // BUT for non-EOD soft counts, we default to only fetching active ones 
+    // if no status is provided, to allow starting new sessions after completion.
     if (status) {
       query.status = status;
+    } else if (!isEndOfDay) {
+      query.status = 'active';
     }
 
     // Find session for this vault shift
@@ -49,7 +55,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { action, locationId, vaultShiftId, machineId, entryData, sessionId, type = 'machine_collection' } = body;
+    const { action, locationId, vaultShiftId, machineId, entryData, sessionId, type = 'soft_count', isEndOfDay = false } = body;
 
     // Get current user (simple mock for now, replace with actual auth)
     // In a real app, use getServerSession(authOptions)
@@ -74,7 +80,8 @@ export async function POST(req: Request) {
         locationId,
         vaultShiftId,
         type,
-        status: 'active'
+        status: 'active',
+        isEndOfDay
       });
 
       if (existing) {
@@ -85,6 +92,7 @@ export async function POST(req: Request) {
         locationId,
         vaultShiftId,
         type,
+        isEndOfDay,
         startedBy: userId || 'system',
         status: 'active',
         entries: [],
@@ -116,6 +124,7 @@ export async function POST(req: Request) {
         expectedDrop: entryData.expectedDrop || 0,
         variance: entryData.variance || 0,
         notes: entryData.notes || '',
+        isEndOfDay: entryData.isEndOfDay || false,
         collectedAt: entryData.collectedAt || new Date()
       };
 

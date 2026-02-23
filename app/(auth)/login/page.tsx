@@ -28,10 +28,11 @@ function LoginPageContent() {
 
   const {
     identifier, password, showPassword, rememberMe, errors, message, messageType,
-    loading, redirecting, authLoading, showPasswordUpdateModal,
+    loading, redirecting, authLoading, showPasswordUpdateModal, isCashierTempChange,
     setIdentifier, setPassword, setShowPassword, setRememberMe, handleLogin,
     setShowPasswordUpdateModal,
-    handlePasswordUpdate
+    handlePasswordUpdate,
+    handleLogout
   } = hook;
 
   // Show loading skeleton while checking authentication status
@@ -73,11 +74,15 @@ function LoginPageContent() {
         onClose={() => setShowPasswordUpdateModal(false)}
         onUpdate={handlePasswordUpdate}
         loading={loading}
+        isForced={isCashierTempChange}
+        isCashierTempChange={isCashierTempChange}
+        onLogout={handleLogout}
       />
 
 
     </>
   );
+
 }
 
 export default function LoginPage() {

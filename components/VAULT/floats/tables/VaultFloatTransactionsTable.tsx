@@ -22,7 +22,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import { safeFormatDate } from '@/lib/utils/date/formatting';
 import type { FloatTransaction } from '@/shared/types/vault';
-import { CheckCircle2, Clock, FileText, User, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, CheckCircle2, Clock, FileText, User, X } from 'lucide-react';
 
 export type FloatTransactionSortOption =
   | 'timestamp'
@@ -110,16 +110,17 @@ export default function VaultFloatTransactionsTable({
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge className={cn(
-                      'px-2 py-0.5 text-[10px] capitalize border-none', 
+                      'px-2 py-0.5 text-[10px] capitalize border-none flex items-center justify-center gap-1 mx-auto w-fit', 
                       isInflow ? 'bg-green-600 text-white' : 'bg-orangeHighlight text-white'
                     )}>
+                      {isInflow ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
                       {getLabel(tx.type)}
                     </Badge>
                   </TableCell>
                   <TableCell className={cn('text-right font-bold', isInflow ? 'text-green-600' : 'text-orangeHighlight')}>
                     {formatAmount(Math.abs(tx.amount))}
                   </TableCell>
-                  <TableCell className="text-xs text-gray-500 max-w-[150px] truncate">{tx.notes || '-'}</TableCell>
+                  <TableCell className="text-xs text-gray-500 whitespace-normal break-words max-w-[200px]">{tx.notes || '-'}</TableCell>
                   <TableCell className="text-center">
                     <Badge className={cn('px-2 py-0.5 text-[10px]', isCompleted ? 'bg-button' : 'bg-orangeHighlight')}>
                       {isCompleted ? 'Completed' : 'Pending'}

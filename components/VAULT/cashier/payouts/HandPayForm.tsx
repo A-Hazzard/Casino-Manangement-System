@@ -79,9 +79,25 @@ export default function HandPayForm({
             <Label htmlFor="amount" className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
               Hand Pay Payout
             </Label>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200">
-                <span className="text-[9px] font-black text-gray-400 uppercase">Stash</span>
-                <span className="text-[11px] font-bold text-gray-700">{formatAmount(currentBalance)}</span>
+            <div className="flex items-center gap-2">
+                {selectedMachine && (
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100">
+                        <span className="text-[9px] font-black text-blue-400 uppercase">Money In</span>
+                        <span className="text-[11px] font-bold text-blue-700">
+                            {formatAmount(
+                                (() => {
+                                    const m = machines.find(m => m._id === selectedMachine);
+                                    // Use collection meter or SAS coinIn
+                                    return (m as any)?.collectionMeters?.metersIn || (m as any)?.sasMeters?.coinIn || 0;
+                                })()
+                            )}
+                        </span>
+                    </div>
+                )}
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200">
+                    <span className="text-[9px] font-black text-gray-400 uppercase">Stash</span>
+                    <span className="text-[11px] font-bold text-gray-700">{formatAmount(currentBalance)}</span>
+                </div>
             </div>
           </div>
           <div className="relative group">

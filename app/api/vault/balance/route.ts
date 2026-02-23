@@ -17,13 +17,14 @@ import UserModel from '@/app/api/lib/models/user';
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type {
-  VaultBalance,
-  VaultShift,
-  VaultTransaction,
+    VaultBalance,
+    VaultShift,
+    VaultTransaction,
 } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
-import { getGamingDayRange } from '../../../../lib/utils/gamingDayRange';
+import { isShiftStaleBackend } from '../../lib/helpers/vault/gamingDay';
 import { GamingLocations } from '../../lib/models/gaminglocations';
 
 export async function GET(request: NextRequest) {
@@ -100,7 +101,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: response });
     }
 
-    const lastTransaction = await VaultTransactionModel.findOne({
+    // Fetch last transaction if needed, or simply don't declare it if unused.
+    await VaultTransactionModel.findOne({
       vaultShiftId: activeShift._id,
     })
       .sort({ timestamp: -1 })
@@ -141,33 +143,37 @@ export async function GET(request: NextRequest) {
     }, { currentBalance: 1 }).lean();
     const totalCashierFloats = activeCashiersData.reduce((sum: number, s: any) => sum + (s.currentBalance || 0), 0);
 
-    // 2. Machine Money In (Drops) - Use Gaming Day of the Shift
+    // 2. Machine Metrics (Drops & Soft Counts)
     const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
     const gameDayOffset = (locationInfo as any)?.gameDayOffset ?? 8;
-    const timezoneOffset = -4; 
+    
+    // Use the standard gaming day range for metrics
+    const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod('Today', gameDayOffset);
 
-    // Calculate Gaming Day Start for the Active Shift
-    const openedAt = new Date(activeShift.openedAt);
-    
-    // Shift to "Local" (Fake UTC) to determine the calendar day and hour relative to offset
-    const openedAtLocalTime = openedAt.getTime() + (timezoneOffset * 60 * 60 * 1000);
-    const openedAtLocal = new Date(openedAtLocalTime);
-    
-    const localHour = openedAtLocal.getUTCHours();
-    
-    // Determine the base date for the gaming day
-    // If the open hour is before the cutoff, it belongs to the previous day
-    const baseGamingDate = new Date(openedAtLocal);
-    if (localHour < gameDayOffset) {
-         baseGamingDate.setDate(baseGamingDate.getDate() - 1);
-    }
-    
-    const { rangeStart, rangeEnd } = getGamingDayRange(baseGamingDate, gameDayOffset, timezoneOffset);
-
-    // We want all meter drops recorded since this vault shift opened.
+    // Get all machine IDs for this location
     const machines = await Machine.find({ gamingLocation: locationId }, { _id: 1 }).lean();
     const machineIds = machines.map(m => String(m._id));
 
+    // A. Physical Soft Count Total for the current shift (completed only)
+    const finalizedSoftCounts = await VaultTransactionModel.aggregate([
+      {
+        $match: {
+          vaultShiftId: activeShift._id,
+          type: 'soft_count',
+          'to.type': 'vault',
+          isVoid: { $ne: true }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amount' }
+        }
+      }
+    ]);
+    const totalPhysicalSoftCount = finalizedSoftCounts.length > 0 ? finalizedSoftCounts[0].total : 0;
+
+    // B. Machine Meter Drops (Theoretic)
     const machineMeters = await Meters.aggregate([
         {
           $match: {
@@ -187,12 +193,13 @@ export async function GET(request: NextRequest) {
     ]);
     const totalMachineMoneyIn = machineMeters.length > 0 ? machineMeters[0].totalMoneyIn : 0;
 
-    const vaultBalanceVal = lastTransaction?.vaultBalanceAfter ?? activeShift.openingBalance;
+    const vaultBalanceVal = activeShift.closingBalance ?? activeShift.openingBalance;
 
-    // Check if collection is done
+    // Check if End-of-Day collection is done
     const isCollectionDone = await VaultCollectionSession.exists({
       vaultShiftId: activeShift._id,
-      status: 'completed'
+      status: 'completed',
+      isEndOfDay: true
     });
 
     // ============================================================================
@@ -203,6 +210,7 @@ export async function GET(request: NextRequest) {
         machineMoneyIn: number;
         cashierFloats: number;
         isCollectionDone: boolean;
+        isStale?: boolean;
     } = {
       balance: vaultBalanceVal,
       // Prefer currentDenominations if set, otherwise fallback to opening
@@ -221,11 +229,13 @@ export async function GET(request: NextRequest) {
         : undefined,
       // Premise metrics
       totalCashOnPremises: vaultBalanceVal + totalCashierFloats + totalMachineMoneyIn,
-      machineMoneyIn: totalMachineMoneyIn,
+      machineMoneyIn: totalPhysicalSoftCount, 
       cashierFloats: totalCashierFloats,
       openingBalance: activeShift.openingBalance,
       isReconciled: activeShift.isReconciled || false,
-      isCollectionDone: !!isCollectionDone
+      isCollectionDone: !!isCollectionDone,
+      openedAt: activeShift.openedAt,
+      isStale: await isShiftStaleBackend(activeShift.openedAt, locationId)
     };
 
     return NextResponse.json({ success: true, data: response });

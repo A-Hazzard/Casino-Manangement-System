@@ -11,8 +11,7 @@ import {
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useUserStore } from '@/lib/store/userStore';
+import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
@@ -54,17 +53,11 @@ export default function FloatRequestModal({
   loading = false,
 }: FloatRequestModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { selectedLicencee } = useDashBoardStore();
-  const { user } = useUserStore();
+  const { licenseeId: effectiveLicenseeId } = useVaultLicensee();
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [reason, setReason] = useState('');
   const [denominations, setDenominations] = useState<Denomination[]>([]);
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
-
-  // Use user's assigned licensee if available (Cashier context), otherwise dashboard selection (Admin context)
-  const effectiveLicenseeId = useMemo(() => {
-    return user?.assignedLicensees?.[0] || selectedLicencee;
-  }, [user?.assignedLicensees, selectedLicencee]);
 
   const denomsList = useMemo(() => getDenominationValues(effectiveLicenseeId), [effectiveLicenseeId]);
 

@@ -141,8 +141,15 @@ export async function GET(request: NextRequest) {
                       },
                       in: {
                         $cond: {
-                          if: { $and: [{ $ne: ['$$fullName', null] }, { $ne: ['$$fullName', ''] }] },
-                          then: '$$fullName',
+                          if: { $and: [{ $ne: ['$$fullName', null] }, { $ne: ['$$fullName', ''] }, { $ne: ['$$fullName', ' ' ] }] },
+                          then: {
+                             $concat: [
+                                { $ifNull: ['$$user.username', 'Cashier'] },
+                                ' (',
+                                '$$fullName',
+                                ')'
+                             ]
+                          },
                           else: { $ifNull: ['$$user.username', '$cashierId'] }
                         }
                       }
@@ -379,7 +386,7 @@ export async function DELETE(request: NextRequest) {
         action: 'cancelled',
         performedBy: userPayload._id,
         timestamp: new Date(),
-        notes: 'Cancelled by user'
+        notes: ''
     });
     
     await requestDoc.save();

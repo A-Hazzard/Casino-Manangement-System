@@ -1,6 +1,6 @@
+import withBundleAnalyzer from '@next/bundle-analyzer';
 import type { NextConfig } from 'next';
 import type { Configuration } from 'webpack';
-import withBundleAnalyzer from '@next/bundle-analyzer';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -123,10 +123,15 @@ const nextConfig: NextConfig = {
 
     return config;
   },
-  // Turbopack configuration for Next.js 16+
-  // Turbopack handles most module resolution automatically
-  // This empty config silences the warning about webpack config with no turbopack config
-  turbopack: {},
+  // Turbopack configuration
+  turbopack: {
+    // @ts-ignore - root is needed to fix the workspace detection issue
+    root: '.',
+  },
+  devIndicators: {
+    // @ts-ignore - Next.js 16+ specific
+    appIsrStatus: false,
+  },
 };
 
 const withAnalyzer = withBundleAnalyzer({

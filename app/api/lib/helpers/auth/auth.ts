@@ -39,7 +39,10 @@ type LeanUserObject = LeanUserDocument & {
   assignedLocations?: string[];
   assignedLicensees?: string[];
   passwordUpdatedAt?: Date | string | null;
+  tempPasswordChanged?: boolean;
+  tempPassword?: string | null;
 };
+
 
 /**
  * Validates user credentials and generates JWT tokens on success.
@@ -240,11 +243,87 @@ export async function authenticateUser(
     } = getInvalidProfileFields(typedUser as never, { rawPassword: password });
 
     const leanUser = typedUser as LeanUserObject;
-    if (!leanUser.passwordUpdatedAt && passwordConfirmedStrong) {
+    const isCashierWithTempPassword =
+      Array.isArray(leanUser.roles) &&
+      leanUser.roles.includes('cashier') &&
+      leanUser.tempPasswordChanged === false;
+
+    // Cashiers with a temp password must NOT get passwordUpdatedAt stamped here.
+    // Only stamp if it's a non-cashier user whose strong password has never been recorded.
+    if (!leanUser.passwordUpdatedAt && passwordConfirmedStrong && !isCashierWithTempPassword) {
       await UserModel.updateOne(
         { _id: typedUser._id },
         { $set: { passwordUpdatedAt: new Date() } }
       );
+    }
+
+    // Cashier with unchanged temp password — force change immediately
+    if (isCashierWithTempPassword) {
+      // Build tokens so the user IS authenticated
+      const userObject = typedUser;
+      const sessionId = userObject._id.toString();
+      const accessToken = await generateAccessToken({
+        _id: userObject._id.toString(),
+        emailAddress: userObject.emailAddress,
+        username: String(userObject.username || ''),
+        isEnabled: userObject.isEnabled,
+        roles: userObject.roles || [],
+        sessionId,
+        sessionVersion: Number(userObject.sessionVersion) || 1,
+        dbContext: {
+          connectionString: getCurrentDbConnectionString(),
+          timestamp: Date.now(),
+        },
+      } as never);
+
+      const refreshToken = await generateRefreshToken(
+        userObject._id.toString(),
+        userObject._id.toString()
+      );
+
+      const userPayload = {
+        _id: userObject._id.toString(),
+        emailAddress: userObject.emailAddress,
+        username: String(userObject.username || ''),
+        isEnabled: userObject.isEnabled,
+        roles: userObject.roles || [],
+        profile: userObject.profile || undefined,
+        assignedLocations: userObject.assignedLocations || undefined,
+        assignedLicensees: userObject.assignedLicensees || undefined,
+        sessionVersion: Number(userObject.sessionVersion) || 1,
+        lastLoginAt: new Date(),
+        loginCount: (Number(userObject.loginCount) || 0) + 1,
+        isLocked: false,
+        lockedUntil: undefined,
+        failedLoginAttempts: 0,
+        requiresProfileUpdate: false,
+        requiresPasswordUpdate: true,
+        tempPasswordChanged: false,
+        tempPassword: userObject.tempPassword ?? null,
+      } as UserAuthPayload;
+
+      await logActivity({
+        action: 'login_success',
+        details: `Cashier login with temp password (force change): ${identifier}`,
+        ipAddress,
+        userAgent,
+        userId: typedUser._id,
+        username: typedUser.username,
+      });
+
+      const expiresAt = new Date(
+        Date.now() + (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
+      ).toISOString();
+
+      return {
+        success: true,
+        token: accessToken,
+        refreshToken,
+        user: userPayload,
+        expiresAt,
+        requiresProfileUpdate: false,
+        requiresPasswordUpdate: true,
+      };
     }
 
     if (passwordConfirmedStrong) {

@@ -46,7 +46,7 @@ import {
     handleUpdateCashierStatus
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 
@@ -60,9 +60,10 @@ import {
     ArrowUpDown,
     Ban,
     Check,
+    CheckCircle,
     Copy,
     Eye,
-
+    Filter,
     Plus,
     RefreshCw,
     RotateCcw,
@@ -72,7 +73,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import VaultShiftReviewModal from '../overview/modals/VaultShiftReviewModal';
+import VaultOverviewShiftReviewModal from '../overview/modals/VaultOverviewShiftReviewModal';
 import CashierActionSelectionModal from './modals/CashierActionSelectionModal';
 import CashierActivityLogModal from './modals/CashierActivityLogModal';
 import CashierShiftHistoryModal from './modals/CashierShiftHistoryModal';
@@ -89,6 +90,7 @@ interface Cashier {
   shiftStatus?: 'active' | 'pending_review' | 'pending_start' | 'closed' | 'inactive';
   currentBalance?: number;
   denominations?: Denomination[];
+  discrepancy?: number;
   lastLoginAt?: string;
   roles: string[];
   tempPassword?: string;
@@ -96,9 +98,10 @@ interface Cashier {
 }
 
 export default function CashierManagementPanel() {
-  const { user, hasActiveVaultShift, isVaultReconciled } = useUserStore();
+  const { user, hasActiveVaultShift, isVaultReconciled, isStaleShift } = useUserStore();
+  const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
   const { formatAmount } = useCurrencyFormat();
-  const { selectedLicencee } = useDashBoardStore();
+  const { licenseeId: selectedLicencee } = useVaultLicensee();
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -117,6 +120,7 @@ export default function CashierManagementPanel() {
 
   // Search and Sort State
   const [searchValue, setSearchValue] = useState('');
+  const [varianceFilter, setVarianceFilter] = useState<'all' | 'variance' | 'no-variance'>('all');
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: 'ascending' | 'descending';
@@ -155,15 +159,29 @@ export default function CashierManagementPanel() {
     0
   );
 
-  const checkVaultStatus = () => {
-    if (!hasActiveVaultShift) {
+  const checkVaultStatus = (actionKey?: string) => {
+    if (!hasActiveVaultShift && actionKey === 'create') {
       toast.error('Operation Blocked', {
-        description: 'You must start a vault shift before managing cashiers.'
+        description: 'You must start a vault shift before creating cashiers.'
       });
       return false;
     }
 
-    if (!isVaultReconciled) {
+    // BR-X: Allow viewing and certain management actions during stale shift
+    // but block "creation" type financial actions if necessary.
+    // In this specific component, we want to allow most navigation, 
+    // but we'll manually check isStaleShift for specific "Create" buttons.
+    if (isStaleShift && (actionKey === 'create')) {
+      toast.error('Stale Shift Detected', {
+        description: 'This shift is from a previous gaming day. You must close this shift first.'
+      });
+      return false;
+    }
+
+    if (hasActiveVaultShift && !isVaultReconciled && actionKey !== 'reconcile') {
+      // Allow navigation/viewing even if not reconciled
+      if (actionKey === 'view' || actionKey === 'navigation') return true;
+      
       toast.error('Reconciliation Required', {
         description: 'Please perform the mandatory opening reconciliation before continuing with other operations.'
       });
@@ -176,7 +194,7 @@ export default function CashierManagementPanel() {
    * Open the create cashier modal
    */
   const openCreateModal = () => {
-    if (!checkVaultStatus()) return;
+    if (!checkVaultStatus('create')) return;
     setIsCreateModalOpen(true);
   };
 
@@ -184,7 +202,7 @@ export default function CashierManagementPanel() {
    * Open the reset password modal
    */
   const openResetModal = (cashier: Cashier) => {
-    if (!checkVaultStatus()) return;
+    if (!checkVaultStatus('management')) return;
     setSelectedCashier(cashier);
     setIsResetModalOpen(true);
   };
@@ -193,7 +211,7 @@ export default function CashierManagementPanel() {
    * Open the end shift modal
    */
   const openEndShiftModal = async (cashier: Cashier) => {
-    if (!checkVaultStatus()) return;
+    if (!checkVaultStatus('management')) return;
     setSelectedCashier(cashier);
     setShiftDenominations(getInitialDenominationRecord(selectedLicencee));
     setShiftNotes('');
@@ -204,7 +222,7 @@ export default function CashierManagementPanel() {
   };
 
   const handleReviewRequest = async (cashier: Cashier) => {
-    if (!checkVaultStatus()) return;
+    if (!checkVaultStatus('management')) return;
     setLoading(true);
     try {
         // Fetch pending request for this cashier
@@ -283,13 +301,13 @@ export default function CashierManagementPanel() {
           }
       }, 300);
       return () => clearTimeout(timer);
-  }, [searchValue, sortConfig]);
+  }, [searchValue, sortConfig, varianceFilter]);
 
   const fetchCashiers = async (page = currentPage) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchCashiersData(page, 20, searchValue, sortConfig);
+      const data = await fetchCashiersData(page, 20, searchValue, sortConfig, varianceFilter);
       setCashiers(data.users || []);
       setTotalPages(data.totalPages || 1);
     } catch (error) {
@@ -571,14 +589,43 @@ export default function CashierManagementPanel() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full max-w-sm">
-           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-           <Input
-             className="w-full pl-9"
-             placeholder="Search cashiers..."
-             value={searchValue}
-             onChange={(e) => setSearchValue(e.target.value)}
-           />
+        <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative w-full max-w-sm">
+             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+             <Input
+               className="w-full pl-9"
+               placeholder="Search cashiers..."
+               value={searchValue}
+               onChange={(e) => setSearchValue(e.target.value)}
+             />
+          </div>
+
+          {/* Variance Filter Button Group */}
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-inner">
+            {[
+              { value: 'all', label: 'All', icon: Filter },
+              { value: 'variance', label: 'Variance', icon: AlertTriangle },
+              { value: 'no-variance', label: 'Perfect', icon: CheckCircle }
+            ].map((item) => {
+              const isSelected = varianceFilter === item.value;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.value}
+                  onClick={() => setVarianceFilter(item.value as any)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-tighter transition-all",
+                    isSelected 
+                      ? "bg-white text-orangeHighlight shadow-sm border border-gray-200" 
+                      : "text-gray-400 hover:text-gray-600 hover:bg-white/50"
+                  )}
+                >
+                  <Icon className={cn("h-3.5 w-3.5", isSelected ? "text-orangeHighlight" : "text-gray-400")} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -586,20 +633,34 @@ export default function CashierManagementPanel() {
             disabled={loading}
             variant="outline"
             size="sm"
-            className="border-gray-300"
+            className="border-gray-300 rounded-xl font-bold"
           >
             <RefreshCw
               className={cn('mr-2 h-4 w-4', loading && 'animate-spin')}
             />
             Refresh
           </Button>
-          <Button
-            onClick={openCreateModal}
-            className="bg-button text-white hover:bg-button/90"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Create Cashier
-          </Button>
+          {user?.roles?.includes('vault-manager') && !isAdminOrDev && (
+            <Button
+              onClick={() => {
+                if (!hasActiveVaultShift) {
+                  toast.error('Operation Blocked', {
+                    description: 'You must start a vault shift before creating cashiers.'
+                  });
+                  return;
+                }
+                openCreateModal();
+              }}
+              disabled={loading || isStaleShift}
+              className={cn(
+                "bg-button text-white hover:bg-button/90 rounded-xl font-bold shadow-md shadow-button/20 active:scale-[0.98] transition-all",
+                (isStaleShift || !hasActiveVaultShift) && "opacity-40 cursor-not-allowed"
+              )}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create Cashier
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1360,7 +1421,7 @@ export default function CashierManagementPanel() {
         cashier={selectedCashier}
       />
 
-      <VaultShiftReviewModal
+      <VaultOverviewShiftReviewModal
         open={!!reviewShift}
         onClose={() => setReviewShift(null)}
         shift={reviewShift}

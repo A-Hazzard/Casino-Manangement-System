@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     // STEP 2: Parse request
     const body = await request.json();
-    const { requestId } = body;
+    const { requestId, notes } = body;
 
     if (!requestId) {
       return NextResponse.json(
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       requestId,
       userId,
       username,
-      floatRequest.type === 'decrease' ? 'Return receipt confirmed by VM' : 'Float receipt confirmed by cashier'
+      notes || ''
     );
 
     return NextResponse.json({

@@ -68,7 +68,10 @@ export type UserDocument = Document & {
 export type LeanUserDocument = Omit<UserDocument, keyof Document> & {
   _id: string;
   __v?: number;
+  tempPasswordChanged?: boolean;
+  tempPassword?: string | null;
 };
+
 
 export type UserAuthPayload = {
   _id: string;

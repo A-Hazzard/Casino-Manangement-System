@@ -483,6 +483,8 @@ export async function GET(request: NextRequest) {
         gamesWon: 0,
       };
 
+      const multiplier = Number(machine.collectorDenomination) || 1;
+
       const serialNumber = (machine.serialNumber as string)?.trim() || '';
       const customName =
         ((machine.custom as Record<string, unknown>)?.name as string)?.trim() ||
@@ -517,13 +519,13 @@ export async function GET(request: NextRequest) {
         status: (machine.assetStatus as string) || '',
         gameType: (machine.gameType as string) || '',
         isCronosMachine: Boolean(machine.isCronosMachine),
-        moneyIn: Number(metrics.moneyIn) || 0,
-        moneyOut: Number(metrics.moneyOut) || 0,
-        gross: Number(metrics.gross) || 0,
-        jackpot: Number(metrics.jackpot) || 0,
+        moneyIn: (Number(metrics.moneyIn) || 0) * multiplier,
+        moneyOut: (Number(metrics.moneyOut) || 0) * multiplier,
+        gross: (Number(metrics.gross) || 0) * multiplier,
+        jackpot: (Number(metrics.jackpot) || 0) * multiplier,
         gamesPlayed: Number(metrics.gamesPlayed) || 0,
         gamesWon: Number(metrics.gamesWon) || 0,
-        cancelledCredits: Number(metrics.moneyOut) || 0,
+        cancelledCredits: (Number(metrics.moneyOut) || 0) * multiplier,
         sasMeters: (machine.sasMeters as Record<string, unknown>) || null,
         online: Boolean(online),
       };

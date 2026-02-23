@@ -99,106 +99,130 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   // Load initial data
   useEffect(() => {
     if (open && authUser?._id) {
-      setIsLoading(true);
-      fetchUserData(authUser._id)
-        .then(data => {
-          if (data) {
-            setUserData(data);
-            setFormData(data.profile || {});
-            setProfilePicture(data.profilePicture || null);
-            setSelectedRoles(data.roles || []);
+      // Only fetch if we don't have user data or it's for a different user
+      if (!userData || userData._id !== authUser._id) {
+        setIsLoading(true);
+        fetchUserData(authUser._id)
+          .then(data => {
+            if (data) {
+              setUserData(data);
+              setFormData(data.profile || {});
+              setProfilePicture(data.profilePicture || null);
+              setSelectedRoles(data.roles || []);
 
-            // Set initial assignments (Support current API fields)
-            if (data.assignedLicensees) {
-               setSelectedLicenseeIds(Array.isArray(data.assignedLicensees) ? data.assignedLicensees : []);
-            } else if (data.rel?.licencee) {
-              // Fallback for legacy data
-              const isAll = data.rel.licencee === 'all';
-              setAllLicenseesSelected(isAll);
-              setSelectedLicenseeIds(
-                isAll
-                  ? []
-                  : Array.isArray(data.rel.licencee)
-                    ? data.rel.licencee
-                    : [data.rel.licencee]
-              );
-            }
+              // Set initial assignments (Support current API fields)
+              if (data.assignedLicensees) {
+                 setSelectedLicenseeIds(Array.isArray(data.assignedLicensees) ? data.assignedLicensees : []);
+              } else if (data.rel?.licencee) {
+                // Fallback for legacy data
+                const isAll = data.rel.licencee === 'all';
+                setAllLicenseesSelected(isAll);
+                setSelectedLicenseeIds(
+                  isAll
+                    ? []
+                    : Array.isArray(data.rel.licencee)
+                      ? data.rel.licencee
+                      : [data.rel.licencee]
+                );
+              }
 
-            if (data.assignedLocations) {
-               setSelectedLocationIds(Array.isArray(data.assignedLocations) ? data.assignedLocations : []);
-            } else if (data.resourcePermissions?.['gaming-locations']?.resources) {
-              // Fallback for legacy data
-              const resources =
-                data.resourcePermissions['gaming-locations'].resources;
-              const isAll = resources === 'all';
-              setAllLocationsSelected(isAll);
-              setSelectedLocationIds(
-                isAll ? [] : Array.isArray(resources) ? resources : [resources]
-              );
+              if (data.assignedLocations) {
+                 setSelectedLocationIds(Array.isArray(data.assignedLocations) ? data.assignedLocations : []);
+              } else if (data.resourcePermissions?.['gaming-locations']?.resources) {
+                // Fallback for legacy data
+                const resources =
+                  data.resourcePermissions['gaming-locations'].resources;
+                const isAll = resources === 'all';
+                setAllLocationsSelected(isAll);
+                setSelectedLocationIds(
+                  isAll ? [] : Array.isArray(resources) ? resources : [resources]
+                );
+              }
+            } else {
+              toast.error('Could not load user profile.');
+              onClose();
             }
-          } else {
-            toast.error('Could not load user profile.');
-            onClose();
-          }
-        })
-        .finally(() => setIsLoading(false));
+          })
+          .finally(() => setIsLoading(false));
+      }
     }
-  }, [open, authUser?._id, onClose]);
+  }, [open, authUser?._id, onClose, userData?._id]);
 
-  // Load countries, licensees, and locations
+  // Fetch static lists (Countries, Licensees, Locations)
   useEffect(() => {
     if (open) {
-      setCountriesLoading(true);
-      fetchCountries()
-        .then(data => {
-          const unique = Array.from(
-            new Map(data.map((c: Country) => [c.name, c])).values()
-          );
-          setCountries(unique as Country[]);
-        })
-        .finally(() => setCountriesLoading(false));
-
-      setLicenseesLoading(true);
-      fetchLicensees(1, 1000)
-        .then(data => {
-          if (data && 'licensees' in data) {
-            setLicensees((data as { licensees: Licensee[] }).licensees);
-          } else {
-            setLicensees(Array.isArray(data) ? data : []);
-          }
-        })
-        .finally(() => setLicenseesLoading(false));
-
-      setLocationsLoading(true);
-      axios
-        .get('/api/gaming-locations')
-        .then(async res => {
-          const fetchedLocations = res.data;
-          setLocations(fetchedLocations);
-
-          // Check for missing location names
-          if (userData?.assignedLocations) {
-            const missingIds = userData.assignedLocations.filter(
-              id => id !== 'all' && !fetchedLocations.find((l: any) => String(l._id) === id)
+      // Fetch Countries if empty
+      if (countries.length === 0 && !countriesLoading) {
+        setCountriesLoading(true);
+        fetchCountries()
+          .then(data => {
+            const unique = Array.from(
+              new Map(data.map((c: Country) => [c.name, c])).values()
             );
+            setCountries(unique as Country[]);
+          })
+          .finally(() => setCountriesLoading(false));
+      }
 
-            if (missingIds.length > 0) {
-              try {
-                const missingRes = await axios.get('/api/gaming-locations', {
-                  params: { ids: missingIds.join(','), includeDeleted: true }
-                });
-                if (Array.isArray(missingRes.data)) {
-                  setLocations(prev => [...prev, ...missingRes.data]);
-                }
-              } catch (err) {
-                console.error('Failed to fetch missing locations', err);
-              }
+      // Fetch Licensees if empty
+      if (licensees.length === 0 && !licenseesLoading) {
+        setLicenseesLoading(true);
+        fetchLicensees(1, 1000)
+          .then(data => {
+            if (data && 'licensees' in data) {
+              setLicensees((data as { licensees: Licensee[] }).licensees);
+            } else {
+              setLicensees(Array.isArray(data) ? data : []);
             }
-          }
-        })
-        .finally(() => setLocationsLoading(false));
+          })
+          .finally(() => setLicenseesLoading(false));
+      }
+
+      // Fetch Locations if empty
+      if (locations.length === 0 && !locationsLoading) {
+        setLocationsLoading(true);
+        axios
+          .get('/api/gaming-locations')
+          .then(res => {
+            setLocations(res.data || []);
+          })
+          .finally(() => setLocationsLoading(false));
+      }
     }
-  }, [open, userData?.assignedLocations]);
+  }, [open, countries.length, countriesLoading, licensees.length, licenseesLoading, locations.length, locationsLoading]);
+
+  const attemptedMissingIdsRef = useRef<string | null>(null);
+
+  // Handle missing location names specifically for the current user
+  useEffect(() => {
+    if (open && userData?.assignedLocations && locations.length > 0) {
+      const missingIds = userData.assignedLocations.filter(
+        id => id !== 'all' && !locations.find((l: any) => String(l._id) === id)
+      );
+
+      if (missingIds.length > 0) {
+        // We only try to fetch missing locations if we haven't already tried for these specific IDs
+        const missingKey = missingIds.sort().join(',');
+        
+        if (attemptedMissingIdsRef.current !== missingKey) {
+          attemptedMissingIdsRef.current = missingKey;
+          axios.get('/api/gaming-locations', {
+            params: { ids: missingKey, includeDeleted: true }
+          }).then(res => {
+            if (Array.isArray(res.data)) {
+              setLocations(prev => {
+                const existingIds = new Set(prev.map(p => String(p._id)));
+                const newOnly = res.data.filter((d: any) => !existingIds.has(String(d._id)));
+                return [...prev, ...newOnly];
+              });
+            }
+          }).catch(err => {
+            console.error('Failed to fetch missing locations', err);
+          });
+        }
+      }
+    }
+  }, [open, userData?.assignedLocations, locations.length]);
 
   // Options for multi-select
   const licenseeOptions: MultiSelectOption[] = useMemo(

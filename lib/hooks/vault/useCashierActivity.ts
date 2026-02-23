@@ -12,6 +12,7 @@ export type CashierActivityItem = {
   timestamp: Date;
   notes?: string;
   details?: string;
+  isOutflow?: boolean;
 };
 
 export function useCashierActivity() {
@@ -60,7 +61,8 @@ export function useCashierActivity() {
             amount: s.openingBalance,
             status: s.status,
             timestamp: new Date(s.openedAt || s.createdAt),
-            notes: s.notes
+            notes: s.notes,
+            isOutflow: s.status === 'closed'
           });
         });
 
@@ -77,7 +79,8 @@ export function useCashierActivity() {
             status: r.status,
             timestamp: new Date(r.requestedAt),
             notes: r.vmNotes || r.requestNotes,
-            details: r.status === 'denied' ? `Reason: ${r.vmNotes || ''}` : undefined
+            details: r.status === 'denied' ? `Reason: ${r.vmNotes || ''}` : undefined,
+            isOutflow: r.type === 'decrease'
           });
         });
 

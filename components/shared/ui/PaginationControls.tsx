@@ -15,13 +15,13 @@
  * @param setCurrentPage - Callback to change current page
  */
 import { Button } from '@/components/shared/ui/button';
-import {
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from '@radix-ui/react-icons';
 import type { PaginationControlsProps } from '@/lib/types/components';
+import {
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    DoubleArrowLeftIcon,
+    DoubleArrowRightIcon,
+} from '@radix-ui/react-icons';
 
 export default function PaginationControls({
   currentPage,
@@ -30,8 +30,8 @@ export default function PaginationControls({
   totalCount,
   limit = 20,
 }: PaginationControlsProps) {
-  if (totalPages <= 0) {
-    return null; // Don't render pagination if there are no pages
+  if (totalPages <= 1) {
+    return null; // Don't render pagination if there is only 1 page or less
   }
 
   const handlePageChange = (page: number) => {

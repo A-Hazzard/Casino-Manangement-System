@@ -7,7 +7,7 @@ import type { CashDesk, UnbalancedShiftInfo, VaultBalance } from '@/shared/types
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
-export type CloseDayStep = 'collection' | 'softCount' | 'closeShift' | null;
+export type CloseDayStep = 'softCount' | null;
 
 export function useVaultCloseDay(locationId?: string, username?: string) {
   const [activeStep, setActiveStep] = useState<CloseDayStep>(null);
@@ -70,10 +70,12 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
         return;
       }
 
-      // Start sequence: Collection -> Soft Count -> Close Shift
+      // Start sequence: Soft Count (Machine Removals)
       if (!balance.isCollectionDone) {
-        setActiveStep('collection');
+        setActiveStep('softCount');
       } else {
+        // If collection is done, we still open the soft count modal 
+        // which will show the "Success" summary view and allow the user to click "Done" to close the shift.
         setActiveStep('softCount');
       }
     } catch (err) {
@@ -85,32 +87,32 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
   }, [locationId, username]);
 
   const handleNextStep = useCallback(() => {
-    if (activeStep === 'collection') {
-      setActiveStep('softCount');
-    } else if (activeStep === 'softCount') {
-      setActiveStep('closeShift');
-    } else {
-      setActiveStep(null);
-    }
-  }, [activeStep]);
+    setActiveStep(null);
+  }, []);
 
   const handleClose = useCallback(() => {
     setActiveStep(null);
   }, []);
 
-  const handleConfirm = useCallback(async (type: string, data?: any) => {
-    if (type === 'closeShift') {
-      // Perform actual close API call
+  const handleConfirm = useCallback(async (type: string, _data?: any) => {
+    if (type === 'softCount') {
+      // 1. Fetch latest balance to ensure we close with correct data
+      setLoading(true);
       try {
+        const balanceRes = await fetchVaultBalance(locationId!);
+        
+        // 2. Perform actual close API call using calculated data
         const res = await fetch('/api/vault/shift/close', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...data,
             locationId,
-            vaultShiftId: vaultBalance?.activeShiftId
+            vaultShiftId: vaultBalance?.activeShiftId,
+            closingBalance: balanceRes?.balance || vaultBalance?.balance || 0,
+            denominations: balanceRes?.denominations || vaultBalance?.denominations || []
           })
         });
+        
         const result = await res.json();
         if (result.success) {
           toast.success('Vault closed successfully');
@@ -120,15 +122,15 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
         } else {
           toast.error(result.error || 'Failed to close vault');
         }
-      } catch {
-        toast.error('Network error');
+      } catch (err) {
+        console.error('Error closing vault after soft count:', err);
+        toast.error('Network error closing vault');
+      } finally {
+        setLoading(false);
       }
-    } else {
-      // For collection and softCount, the wizards handle their own API calls.
-      // We just move to the next step.
-      handleNextStep();
     }
-  }, [activeStep, locationId, vaultBalance, handleNextStep, fetchStatus]);
+  }, [locationId, vaultBalance, fetchStatus]);
+
 
   return {
     activeStep,

@@ -304,26 +304,47 @@ export function containsPhonePattern(value: string): boolean {
 
 /**
  * Validates phone numbers for required profile fields.
- * Allows digits, spaces, hyphens, parentheses, plus, and dots.
+ *
+ * Accepted formats (non-exhaustive):
+ *  - +1 868 402-1566
+ *  - +18684921566
+ *  - +1 868 4921566
+ *  - 18684921566
+ *  - (868) 492-1566
+ *  - 868-492-1566
+ *
+ * Rules:
+ *  - Only digits, spaces, +, (, ), - allowed
+ *  - + may appear at most once and only at the very start
+ *  - ( may appear at most once
+ *  - ) may appear at most once
+ *  - - may appear at most once
+ *  - Total digit count must be 7–15
  */
 export function validatePhoneNumber(value: string | undefined | null): boolean {
   if (!value) return false;
   const trimmed = value.trim();
+  if (!trimmed) return false;
 
-  // Strip all non-digit characters to check for minimum digit count
-  // Trinidad and Tobago numbers are 10 digits (868 + 7 digits)
-  // We allow 7 to 15 digits to cover local and international formats
+  // Only allow: digits, spaces, +, (, ), -
+  if (/[^0-9\s+()\-]/.test(trimmed)) return false;
+
+  // + only at the very start
+  if ((trimmed.match(/\+/g) || []).length > 1) return false;
+  if (trimmed.includes('+') && trimmed.indexOf('+') !== 0) return false;
+
+  // At most 1 open paren, 1 close paren
+  if ((trimmed.match(/\(/g) || []).length > 1) return false;
+  if ((trimmed.match(/\)/g) || []).length > 1) return false;
+
+  // At most 1 dash
+  if ((trimmed.match(/-/g) || []).length > 1) return false;
+
+  // Digit count check
   const digitCount = trimmed.replace(/\D/g, '').length;
-  if (digitCount < 7 || digitCount > 15) return false;
-
-  // Extremely permissive regex for the visual format
-  // Allows digits, spaces, hyphens, parentheses, plus, dots, and common separators
-  const phoneRegex = /^[+0-9\s\-().,]{7,35}$/;
-  if (!phoneRegex.test(trimmed)) {
-    return false;
-  }
-  return true;
+  return digitCount >= 7 && digitCount <= 15;
 }
+
 
 /**
  * Normalizes phone numbers by stripping everything except digits.
