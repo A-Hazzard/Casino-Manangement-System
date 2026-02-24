@@ -181,9 +181,20 @@ Denominations are required for:
 - **Blue Info**: General informational notifications.
 
 ### Notification Bell (Vault Manager)
-- Real-time polling for float requests and shift discrepancies.
-- Integrated action buttons (Approve/Deny) for rapid response.
-- Badge count for pending items.
+- **Floating Behavior**: The notification bell floats on the bottom-right of the screen during scroll, ensuring constant visibility of pending alerts.
+- **Dynamic Polling**: Combined state for float requests and shift discrepancies with real-time UI updates.
+- **Integrated Action Buttons**: Approve/Deny directly from the notification detail view for rapid response.
+- **Badge Count**: Visual indicator for unread/pending items requiring immediate attention.
+
+---
+
+## Responsive Design & UX
+
+### Full-Screen Mobile Modals
+Following the latest architectural guidelines, all vault-specific dialogs (Floats, Payouts, Collections, Soft Counts) utilize a **Full-Screen Mobile Pattern**:
+- **Breakpoint**: `md` (768px). Under this width, dialogs expand to `h-[100dvh]` and `w-full`.
+- **Scrolling**: Forms use `flex-1 overflow-y-auto` to handle long denomination grids without losing access to the "Submit" and "Close" buttons.
+- **Speed Over Inventory**: Payout forms for cashiers are amount-only, while Vault Manager forms require full bill breakdowns to maintain ledger integrity.
 
 ---
 

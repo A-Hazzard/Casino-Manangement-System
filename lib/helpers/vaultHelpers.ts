@@ -146,6 +146,7 @@ export async function fetchVaultOverviewData(
         const activeDesks: CashDesk[] = data.shifts.map(
           (shift: CashierShift) => ({
             _id: shift._id,
+            cashierId: shift.cashierId,    // real cashier user ID
             locationId: shift.locationId,
             name: (shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId.substring(0, 4)}`) + (shift.status === 'pending_start' ? ' (Pending Start)' : ''),
             cashierName: shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId.substring(0, 4)}`,
@@ -749,7 +750,7 @@ export async function fetchVaultTransactions(
                 : tx.from?.type === 'cashier'
                   ? 'Cashier'
                   : tx.from?.type === 'machine'
-                    ? `Machine ${tx.from.id}`
+                    ? 'Machine'
                     : tx.from?.id || 'External'),
             toName:
               tx.toName ||
@@ -757,7 +758,9 @@ export async function fetchVaultTransactions(
                 ? 'Vault'
                 : tx.to?.type === 'cashier'
                   ? 'Cashier'
-                  : tx.to?.id || 'External'),
+                  : tx.to?.type === 'machine'
+                    ? 'Machine'
+                    : tx.to?.id || 'External'),
           })),
           total: data.total || data.pagination?.total || txs.length,
           totalPages:

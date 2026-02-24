@@ -93,6 +93,7 @@ export default function NotificationBell({
   const [editedDenominations, setEditedDenominations] = useState<Denomination[]>([]);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const { formatAmount } = useCurrencyFormat();
   const { licenseeId: selectedLicencee } = useVaultLicensee();
@@ -102,6 +103,7 @@ export default function NotificationBell({
     if (!viewDetails) {
         setIsEditing(false);
         setEditedDenominations([]);
+        setRejectionReason('');
     } else {
         // Initialize edited denominations from request
         const requested = viewDetails.metadata?.requestedDenominations || [];
@@ -111,6 +113,7 @@ export default function NotificationBell({
             quantity: requested.find((r: any) => Number(r.denomination) === d)?.quantity || 0
         }));
         setEditedDenominations(initialDenoms);
+        setRejectionReason('');
     }
   }, [viewDetails]);
 
@@ -725,6 +728,8 @@ export default function NotificationBell({
                       className="w-full p-2 text-sm border rounded-md bg-gray-50 focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all outline-none min-h-[60px] resize-none"
                       placeholder="Enter reason for rejection (optional)..."
                       id="rejection-reason"
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
                     />
                   </div>
 
@@ -787,11 +792,14 @@ export default function NotificationBell({
                                 className="flex-1 font-bold h-11"
                                 onClick={async () => {
                                   if (onDeny) {
-                                    const reasonEl = document.getElementById('rejection-reason') as HTMLTextAreaElement;
-                                    const reason = reasonEl?.value || '';
                                     const targetId = viewDetails.relatedEntityId || viewDetails.id;
-                                    await onDeny(targetId, reason);
-                                    setViewDetails(null);
+                                    console.log('Rejecting request:', targetId, 'Reason:', rejectionReason);
+                                    try {
+                                      await onDeny(targetId, rejectionReason);
+                                      setViewDetails(null);
+                                    } catch (err) {
+                                      console.error('Error rejecting request:', err);
+                                    }
                                   }
                                 }}
                               >

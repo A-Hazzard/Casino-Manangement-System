@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     // STEP 2: Parse and validate request body
     // ============================================================================
     const body = await request.json();
-    const { source, amount, denominations, notes, bankDetails } = body;
+    const { source, amount, denominations, notes, bankDetails, machineIds } = body;
 
     if (!source || !amount || !denominations) {
       return NextResponse.json(
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
       locationId: activeVaultShift.locationId,
       timestamp: now,
       type: 'add_cash',
-      from: { type: 'external', id: source },
+      from: { type: source === 'Machine' ? 'machine' : 'external', id: source === 'Machine' && machineIds?.length === 1 ? machineIds[0] : source },
       to: { type: 'vault' },
       fromName: source,
       toName: 'Vault',
@@ -164,6 +164,11 @@ export async function POST(request: NextRequest) {
       performedBy: vaultManagerId,
       performedByName: username,
       bankDetails,
+      expenseDetails: machineIds?.length ? {
+        machineIds,
+        isMachineRepair: false,
+        description: `Cash added from machine(s): ${machineIds.join(', ')}`
+      } : undefined,
       notes: `Cash added from ${source}${notes ? `: ${notes}` : ''}`,
     });
 

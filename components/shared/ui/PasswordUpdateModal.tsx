@@ -13,18 +13,19 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 import { cn } from '@/lib/utils';
 import { validatePasswordStrength } from '@/lib/utils/validation';
 import { CheckCircle, Eye, EyeOff, KeyRound, ShieldAlert, XCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // ============================================================================
 // Types & Constants
@@ -131,9 +132,101 @@ export default function PasswordUpdateModal({
   const [showConfirm, setShowConfirm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  // === Debouncing ===
+  const debouncedPhone = useDebounce(phone, 2000);
+  const debouncedNewPassword = useDebounce(newPassword, 2000);
+  const debouncedConfirmPassword = useDebounce(confirmPassword,2000);
 
   // === Computed ===
   const passwordStrength = newPassword ? validatePasswordStrength(newPassword) : null;
+
+  // === Real-time Validation Effects ===
+  // Phone validation
+  useEffect(() => {
+    if (!debouncedPhone.trim()) {
+      setErrors(prev => {
+        const { phone: _, ...rest } = prev;
+        return rest;
+      });
+      return;
+    }
+
+    const trimmedPhone = debouncedPhone.trim();
+    const onlyAllowed = /^[0-9\s+()'\-]+$/.test(trimmedPhone);
+    const plusCount = (trimmedPhone.match(/\+/g) || []).length;
+    const openCount = (trimmedPhone.match(/\(/g) || []).length;
+    const closeCount = (trimmedPhone.match(/\)/g) || []).length;
+    const dashCount = (trimmedPhone.match(/-/g) || []).length;
+    const plusAtStart = !trimmedPhone.includes('+') || trimmedPhone.indexOf('+') === 0;
+    const digits = trimmedPhone.replace(/\D/g, '').length;
+    const phoneOk =
+      onlyAllowed &&
+      plusCount <= 1 && plusAtStart &&
+      openCount <= 1 && closeCount <= 1 &&
+      dashCount <= 1 &&
+      digits >= 7 && digits <= 15;
+
+    if (!phoneOk) {
+      setErrors(prev => ({
+        ...prev,
+        phone: 'Enter a valid phone number (e.g. +1 868 492-1566 or (868) 492-1566).',
+      }));
+    } else {
+      setErrors(prev => {
+        const { phone: _, ...rest } = prev;
+        return rest;
+      });
+    }
+  }, [debouncedPhone]);
+
+  // New password validation
+  useEffect(() => {
+    if (!debouncedNewPassword) {
+      setErrors(prev => {
+        const { newPassword: _, ...rest } = prev;
+        return rest;
+      });
+      return;
+    }
+
+    const strength = validatePasswordStrength(debouncedNewPassword);
+    if (!strength.isValid) {
+      setErrors(prev => ({
+        ...prev,
+        newPassword: strength.feedback[0] || 'Password is too weak.',
+      }));
+    } else {
+      setErrors(prev => {
+        const { newPassword: _, ...rest } = prev;
+        return rest;
+      });
+    }
+  }, [debouncedNewPassword]);
+
+  // Confirm password validation
+  useEffect(() => {
+    if (!debouncedConfirmPassword) {
+      setErrors(prev => {
+        const { confirmPassword: _, ...rest } = prev;
+        return rest;
+      });
+      return;
+    }
+
+    if (newPassword !== debouncedConfirmPassword) {
+      setErrors(prev => ({
+        ...prev,
+        confirmPassword: 'Passwords do not match.',
+      }));
+    } else {
+      setErrors(prev => {
+        const { confirmPassword: _, ...rest } = prev;
+        return rest;
+      });
+    }
+  }, [debouncedConfirmPassword, newPassword]);
 
   // === Handlers ===
   const reset = () => {
@@ -208,7 +301,12 @@ export default function PasswordUpdateModal({
     if (error) {
       setServerError(error);
     } else {
-      reset();
+      setIsSuccess(true);
+      // Wait a moment for the user to see the success state before calling reset
+      // (The parent component will likely unmount us anyway)
+      setTimeout(() => {
+        reset();
+      }, 1500);
     }
   };
 
@@ -252,160 +350,178 @@ export default function PasswordUpdateModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
-          {serverError && (
-            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-md text-sm font-medium border border-red-100 flex items-center gap-2">
-              <XCircle className="w-4 h-4 shrink-0" />
-              {serverError}
-            </div>
-          )}
-
-          <PasswordInput
-            id="currentPassword"
-            label={isCashierTempChange ? 'Temporary Password' : 'Current Password'}
-            value={currentPassword}
-            onChange={setCurrentPassword}
-            show={showCurrent}
-            onToggle={() => setShowCurrent(v => !v)}
-            placeholder={isCashierTempChange ? 'Enter the password given to you' : 'Enter current password'}
-            error={errors.currentPassword}
-          />
-
-          <div className="space-y-3 pt-2 border-t border-slate-100">
-            <PasswordInput
-              id="newPassword"
-              label="New Password"
-              value={newPassword}
-              onChange={setNewPassword}
-              show={showNew}
-              onToggle={() => setShowNew(v => !v)}
-              placeholder="Create a strong password"
-              error={errors.newPassword}
-            />
-
-            {/* Strength Requirements */}
-            {newPassword && passwordStrength && (
-              <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden mb-2">
-                  <div
-                    className={cn(
-                      'h-full transition-all duration-500',
-                      passwordStrength.isValid ? 'bg-green-500 w-full' : 'bg-red-400 w-1/3'
-                    )}
-                  />
-                </div>
-                <ul className="grid grid-cols-2 gap-1">
-                  {PASSWORD_REQUIREMENTS.map(req => {
-                    const met = req.test(newPassword);
-                    return (
-                      <li
-                        key={req.label}
-                        className={cn(
-                          'text-[10px] flex items-center gap-1',
-                          met ? 'text-green-600' : 'text-slate-400'
-                        )}
-                      >
-                        {met ? (
-                          <CheckCircle className="w-3 h-3" />
-                        ) : (
-                          <div className="w-3 h-3 rounded-full border border-slate-300" />
-                        )}
-                        {req.label}
-                      </li>
-                    );
-                  })}
-                </ul>
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {isSuccess ? (
+            <div className="flex flex-col items-center justify-center h-full px-6 py-12 text-center space-y-4 animate-in fade-in zoom-in duration-300">
+              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-10 h-10" />
               </div>
-            )}
-
-            <PasswordInput
-              id="confirmPassword"
-              label="Confirm New Password"
-              value={confirmPassword}
-              onChange={setConfirmPassword}
-              show={showConfirm}
-              onToggle={() => setShowConfirm(v => !v)}
-              placeholder="Re-enter your new password"
-              error={errors.confirmPassword}
-            />
-          </div>
-
-          {/* Phone: Optional */}
-          <div className="pt-2 border-t border-slate-100 space-y-1.5">
-            <Label
-              htmlFor="phone"
-              className={cn(
-                'text-slate-700 flex items-center gap-1.5',
-                errors.phone && 'text-red-600'
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-slate-800">Password Updated!</h3>
+                <p className="text-slate-500 max-w-xs mx-auto">
+                  Your new password has been saved. Redirecting you to the dashboard...
+                </p>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+              {serverError && (
+                <div className="bg-red-50 text-red-600 px-4 py-3 rounded-md text-sm font-medium border border-red-100 flex items-center gap-2">
+                  <XCircle className="w-4 h-4 shrink-0" />
+                  {serverError}
+                </div>
               )}
-            >
-              Phone Number
-              <span className="text-[10px] font-normal text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                Optional
-              </span>
-            </Label>
-            <Input
-              id="phone"
-              type="tel"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="+1 868 492-1566"
-              className={cn(
-                'border-slate-200 bg-white focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0',
-                errors.phone && 'border-red-300'
-              )}
-              autoComplete="tel"
-            />
-            {errors.phone ? (
-              <p className="text-xs font-medium text-red-600 flex items-center gap-1">
-                <XCircle className="w-3 h-3 shrink-0" /> {errors.phone}
-              </p>
-            ) : (
-              <p className="text-[10px] text-slate-400">
-                Accepted: +1 868 492-1566 · (868) 492-1566 · 18684921566
-              </p>
-            )}
-          </div>
-        </form>
+
+              <PasswordInput
+                id="currentPassword"
+                label={isCashierTempChange ? 'Temporary Password' : 'Current Password'}
+                value={currentPassword}
+                onChange={setCurrentPassword}
+                show={showCurrent}
+                onToggle={() => setShowCurrent(v => !v)}
+                placeholder={isCashierTempChange ? 'Enter the password given to you' : 'Enter current password'}
+                error={errors.currentPassword}
+              />
+
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <PasswordInput
+                  id="newPassword"
+                  label="New Password"
+                  value={newPassword}
+                  onChange={setNewPassword}
+                  show={showNew}
+                  onToggle={() => setShowNew(v => !v)}
+                  placeholder="Create a strong password"
+                  error={errors.newPassword}
+                />
+
+                {/* Strength Requirements */}
+                {newPassword && passwordStrength && (
+                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                    <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden mb-2">
+                      <div
+                        className={cn(
+                          'h-full transition-all duration-500',
+                          passwordStrength.isValid ? 'bg-green-500 w-full' : 'bg-red-400 w-1/3'
+                        )}
+                      />
+                    </div>
+                    <ul className="grid grid-cols-2 gap-1">
+                      {PASSWORD_REQUIREMENTS.map(req => {
+                        const met = req.test(newPassword);
+                        return (
+                          <li
+                            key={req.label}
+                            className={cn(
+                              'text-[10px] flex items-center gap-1',
+                              met ? 'text-green-600' : 'text-slate-400'
+                            )}
+                          >
+                            {met ? (
+                              <CheckCircle className="w-3 h-3" />
+                            ) : (
+                              <div className="w-3 h-3 rounded-full border border-slate-300" />
+                            )}
+                            {req.label}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+
+                <PasswordInput
+                  id="confirmPassword"
+                  label="Confirm New Password"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  show={showConfirm}
+                  onToggle={() => setShowConfirm(v => !v)}
+                  placeholder="Re-enter your new password"
+                  error={errors.confirmPassword}
+                />
+              </div>
+
+              {/* Phone: Optional */}
+              <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                <Label
+                  htmlFor="phone"
+                  className={cn(
+                    'text-slate-700 flex items-center gap-1.5',
+                    errors.phone && 'text-red-600'
+                  )}
+                >
+                  Phone Number
+                  <span className="text-[10px] font-normal text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                    Optional
+                  </span>
+                </Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="+1 868 492-1566"
+                  className={cn(
+                    'border-slate-200 bg-white focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0',
+                    errors.phone && 'border-red-300'
+                  )}
+                  autoComplete="tel"
+                />
+                {errors.phone ? (
+                  <p className="text-xs font-medium text-red-600 flex items-center gap-1">
+                    <XCircle className="w-3 h-3 shrink-0" /> {errors.phone}
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-slate-400">
+                    Accepted: +1 868 492-1566 · (868) 492-1566 · 18684921566
+                  </p>
+                )}
+              </div>
+            </form>
+          )}
+        </div>
 
 
         {/* Footer */}
-        <div className="bg-slate-50 border-t px-6 py-4 flex gap-3">
-          {!isForced && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              className="flex-1 border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            >
-              Cancel
-            </Button>
-          )}
-          {isForced && onLogout && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onLogout}
-              className="flex-1 border-red-200 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
-            >
-              Log Out
-            </Button>
-          )}
-          <Button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading}
-            className={cn(
-              'text-white font-semibold',
-              isForced ? 'flex-[2]' : 'flex-[2]',
-              isCashierTempChange
-                ? 'bg-amber-500 hover:bg-amber-600'
-                : 'bg-blue-600 hover:bg-blue-700'
+        {!isSuccess && (
+          <div className="bg-slate-50 border-t px-6 py-4 flex gap-3">
+            {!isForced && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                className="flex-1 border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </Button>
             )}
-          >
-            {loading ? 'Saving...' : 'Save Password & Continue'}
-          </Button>
-        </div>
+            {isForced && onLogout && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onLogout}
+                className="flex-1 border-red-200 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                Log Out
+              </Button>
+            )}
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading}
+              className={cn(
+                'text-white font-semibold',
+                isForced ? 'flex-[2]' : 'flex-[2]',
+                isCashierTempChange
+                  ? 'bg-amber-500 hover:bg-amber-600'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              )}
+            >
+              {loading ? 'Saving...' : 'Save Password & Continue'}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

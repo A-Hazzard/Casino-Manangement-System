@@ -34,20 +34,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Insufficient permissions' }, { status: 403 });
     }
 
-    const { cashierId, locationId, denominations, physicalCount, notes } = await request.json();
+    const { cashierId, shiftId, locationId, denominations, physicalCount, notes } = await request.json();
 
-    if (!cashierId || !locationId || !denominations || physicalCount === undefined) {
+    console.log('[force-close] Received:', { shiftId, cashierId, locationId });
+
+    if (!locationId || physicalCount === undefined) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+    }
+
+    if (!cashierId && !shiftId) {
+      return NextResponse.json({ success: false, error: 'cashierId or shiftId is required' }, { status: 400 });
     }
 
     await connectDB();
 
-    // Find active shift for this cashier
-    const cashierShift = await CashierShiftModel.findOne({ 
-      cashierId, 
-      locationId,
-      status: 'active'
-    });
+    // STEP 1: Find the shift — accept active OR pending_start status
+    // (the active shifts list in the UI shows both statuses)
+    const activeStatuses = ['active', 'pending_start'];
+    let cashierShift = null;
+
+    if (shiftId) {
+      cashierShift = await CashierShiftModel.findOne({ _id: shiftId, status: { $in: activeStatuses } });
+      console.log('[force-close] Lookup by shiftId:', shiftId, '→ found:', !!cashierShift);
+    }
+
+    if (!cashierShift && cashierId) {
+      cashierShift = await CashierShiftModel.findOne({ cashierId, locationId, status: { $in: activeStatuses } });
+      console.log('[force-close] Lookup by cashierId:', cashierId, '→ found:', !!cashierShift);
+    }
+
+    // Diagnostic: check if it exists with any status
+    if (!cashierShift) {
+      const anyShift = await CashierShiftModel.findOne({ _id: shiftId });
+      console.log('[force-close] Any shift by _id:', shiftId, '→', anyShift ? `status=${anyShift.status}` : 'not found in DB at all');
+      const anyByCashier = shiftId ? null : await CashierShiftModel.findOne({ cashierId, locationId });
+      if (anyByCashier) console.log('[force-close] Any shift by cashierId:', `status=${anyByCashier.status}`);
+    }
 
     if (!cashierShift) {
       return NextResponse.json({ success: false, error: 'No active shift found for this cashier' }, { status: 404 });

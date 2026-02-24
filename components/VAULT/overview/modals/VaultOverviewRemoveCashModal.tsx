@@ -37,6 +37,7 @@ import type {
 import { ArrowDownRight, Info, MessageSquare, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type VaultOverviewRemoveCashModalProps = {
   open: boolean;
@@ -76,6 +77,7 @@ export default function VaultOverviewRemoveCashModal({
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   // ============================================================================
   // Computed Values
@@ -153,6 +155,11 @@ export default function VaultOverviewRemoveCashModal({
       return;
     }
 
+    // Trigger TOTP verification
+    setShowAuthenticator(true);
+  };
+
+  const handleAuthVerified = async () => {
     setLoading(true);
     try {
       await onConfirm({
@@ -162,10 +169,10 @@ export default function VaultOverviewRemoveCashModal({
         notes: notes.trim() || undefined,
       });
       // Reset form on success
-    setReason('');
-    setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
-    setTouchedDenominations(new Set());
-    setNotes('');
+      setReason('');
+      setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+      setTouchedDenominations(new Set());
+      setNotes('');
       setErrors({});
       onClose();
     } catch (error) {
@@ -194,7 +201,8 @@ export default function VaultOverviewRemoveCashModal({
   // Render
   // ============================================================================
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="md:max-w-2xl p-0 overflow-hidden flex flex-col">
         <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
@@ -334,5 +342,12 @@ export default function VaultOverviewRemoveCashModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <VaultAuthenticatorModal
+      open={showAuthenticator}
+      onClose={() => setShowAuthenticator(false)}
+      onVerified={handleAuthVerified}
+      actionName="Remove Cash from Vault"
+    />
+    </>
   );
 }

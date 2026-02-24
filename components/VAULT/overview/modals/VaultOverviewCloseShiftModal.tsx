@@ -27,6 +27,7 @@ import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, CheckCircle2, Landmark, Minus, Plus, RefreshCw, XCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 import VaultOverviewCollectionTallyList from '../sections/VaultOverviewCollectionTallyList';
 
 type VaultOverviewCloseShiftModalProps = {
@@ -71,15 +72,21 @@ export default function VaultOverviewCloseShiftModal({
   const matchesExpected = totalAmount === currentBalance;
   const isAllTouched = useMemo(() => denomsList.every(d => touchedDenominations.has(Number(d))), [denomsList, touchedDenominations]);
   const isValid = totalAmount > 0 || isAllTouched;
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   const handleSubmit = async () => {
     if (!isValid) return;
+    setShowAuthenticator(true);
+  };
+
+  const handleAuthVerified = async () => {
     await onConfirm(totalAmount, denominations.filter(d => d.quantity > 0));
     setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
   };
 
   return (
-    <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+    <>
+      <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
       <DialogContent className="md:max-w-2xl p-0 overflow-hidden flex flex-col">
         <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
@@ -272,5 +279,12 @@ export default function VaultOverviewCloseShiftModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <VaultAuthenticatorModal
+      open={showAuthenticator}
+      onClose={() => setShowAuthenticator(false)}
+      onVerified={handleAuthVerified}
+      actionName="Close Vault Shift"
+    />
+    </>
   );
 }

@@ -33,6 +33,7 @@ import type { GamingMachine } from '@/shared/types/entities';
 import { CheckCheck, CheckCircle2, Coins, LayoutGrid, ListChecks, Loader2, Monitor, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 interface VaultOverviewSoftCountModalProps {
   open: boolean;
@@ -72,6 +73,7 @@ export default function VaultOverviewSoftCountModal({
 
   // Confirmation State
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   // Mobile UI States
   const [activeTabMobile, setActiveTabMobile] = useState<'selector' | 'form' | 'summary'>('selector');
@@ -236,6 +238,10 @@ export default function VaultOverviewSoftCountModal({
     if (!sessionId) return;
     // Allow finalize with 0 entries only if the location has no machines
     if (entries.length === 0 && !hasNoMachines) return;
+    setShowAuthenticator(true);
+  };
+
+  const handleAuthVerified = () => {
     setShowConfirmModal(true);
   };
 
@@ -545,6 +551,12 @@ export default function VaultOverviewSoftCountModal({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <VaultAuthenticatorModal
+        open={showAuthenticator}
+        onClose={() => setShowAuthenticator(false)}
+        onVerified={handleAuthVerified}
+        actionName="Finalize Soft Count"
+      />
     </>
   );
 }

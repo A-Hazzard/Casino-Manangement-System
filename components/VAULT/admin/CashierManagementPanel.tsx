@@ -74,6 +74,7 @@ import {
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import VaultOverviewShiftReviewModal from '../overview/modals/VaultOverviewShiftReviewModal';
+import VaultAuthenticatorModal from '../shared/VaultAuthenticatorModal';
 import CashierActionSelectionModal from './modals/CashierActionSelectionModal';
 import CashierActivityLogModal from './modals/CashierActivityLogModal';
 import CashierShiftHistoryModal from './modals/CashierShiftHistoryModal';
@@ -165,6 +166,8 @@ export default function CashierManagementPanel({
   const [isShiftHistoryModalOpen, setIsShiftHistoryModalOpen] = useState(false);
   const [reviewShift, setReviewShift] = useState<UnbalancedShiftInfo | null>(null);
   const [vaultBalance, setVaultBalance] = useState<Denomination[]>([]);
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
+  const [pendingCashier, setPendingCashier] = useState<Cashier | null>(null);
 
   const shiftTotal = Object.entries(shiftDenominations).reduce(
     (sum, [val, qty]) => sum + (Number(val) * qty), 
@@ -572,9 +575,17 @@ export default function CashierManagementPanel({
   const openViewPasswordModal = (cashier: Cashier) => {
     if (!checkVaultStatus()) return;
     if (cashier.tempPassword) {
-      setTempPassword(cashier.tempPassword);
+      setPendingCashier(cashier);
+      setShowAuthenticator(true);
+    }
+  };
+
+  const handleAuthVerified = () => {
+    if (pendingCashier?.tempPassword) {
+      setTempPassword(pendingCashier.tempPassword);
       setTempPasswordAction('view');
       setIsViewPasswordModalOpen(true);
+      setPendingCashier(null);
     }
   };
 
@@ -1564,6 +1575,16 @@ export default function CashierManagementPanel({
         onSuccess={() => {
           fetchCashiers(currentPage);
         }}
+      />
+
+      <VaultAuthenticatorModal
+        open={showAuthenticator}
+        onClose={() => {
+          setShowAuthenticator(false);
+          setPendingCashier(null);
+        }}
+        onVerified={handleAuthVerified}
+        actionName="View Cashier Password"
       />
     </div>
   );

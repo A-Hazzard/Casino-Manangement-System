@@ -20,6 +20,7 @@
 import PasswordUpdateModal from '@/components/shared/ui/PasswordUpdateModal';
 import { logoutUser } from '@/lib/helpers/client';
 import { useUserStore } from '@/lib/store/userStore';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
 export default function TempPasswordGate() {
@@ -28,6 +29,7 @@ export default function TempPasswordGate() {
   // ============================================================================
   const { user, setUser, clearUser } = useUserStore();
   const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   // ============================================================================
   // Computed Values
@@ -84,20 +86,13 @@ export default function TempPasswordGate() {
           );
         }
 
-        // Update store with the returned user so tempPasswordChanged becomes true
-        // and the gate re-evaluates and closes automatically.
+        // Update store and invalidate query to prevent stale data flicker
         if (data.user) {
           setUser({ ...user!, ...data.user, tempPasswordChanged: true });
-        } else {
-          // Fallback: refresh from server
-          const refreshRes = await fetch('/api/auth/current-user', {
-            credentials: 'include',
-          });
-          if (refreshRes.ok) {
-            const refreshData = await refreshRes.json();
-            if (refreshData.user) setUser(refreshData.user);
-          }
         }
+        
+        // Invalidate current-user query so that other components get the fresh data
+        await queryClient.invalidateQueries({ queryKey: ['current-user'] });
 
         return null; // success
       } catch {

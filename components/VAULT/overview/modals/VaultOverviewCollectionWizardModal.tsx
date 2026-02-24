@@ -32,6 +32,7 @@ import type { GamingMachine } from '@/shared/types/entities';
 import { CheckCheck, CheckCircle2, Coins, History as HistoryIcon, LayoutGrid, ListChecks, Loader2, Monitor, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 import VaultOverviewCollectionEntryForm from '@/components/VAULT/overview/modals/wizard/VaultOverviewCollectionEntryForm';
 import VaultOverviewCollectionMachineHistory from '@/components/VAULT/overview/modals/wizard/VaultOverviewCollectionMachineHistory';
@@ -74,6 +75,7 @@ export default function VaultOverviewCollectionWizardModal({
 
   // Confirmation State
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   // History State
   const [viewMode, setViewMode] = useState<'session' | 'history'>('session');
@@ -261,6 +263,10 @@ export default function VaultOverviewCollectionWizardModal({
 
   const handleFinalizeClick = () => {
     if (!sessionId || entries.length === 0) return;
+    setShowAuthenticator(true);
+  };
+
+  const handleAuthVerified = () => {
     setShowConfirmModal(true);
   };
 
@@ -576,6 +582,12 @@ export default function VaultOverviewCollectionWizardModal({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <VaultAuthenticatorModal
+        open={showAuthenticator}
+        onClose={() => setShowAuthenticator(false)}
+        onVerified={handleAuthVerified}
+        actionName="Finalize Machine Collection"
+      />
     </>
   );
 }

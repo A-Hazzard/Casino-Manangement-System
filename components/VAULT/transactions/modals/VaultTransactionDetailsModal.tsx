@@ -30,7 +30,6 @@ export default function VaultTransactionDetailsModal({
 
   // Format bank details for display
   const hasBankDetails = transaction.bankDetails && Object.keys(transaction.bankDetails).length > 0;
-  const hasExpenseDetails = transaction.expenseDetails && Object.keys(transaction.expenseDetails).length > 0;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen: boolean) => !isOpen && onClose()}>
@@ -70,12 +69,12 @@ export default function VaultTransactionDetailsModal({
             <div className="grid grid-cols-2 bg-white">
                 <div className="flex flex-col p-5 border-r border-b border-gray-100">
                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Source (From)</span>
-                   <span className="text-sm font-semibold text-gray-900">{transaction.from.id || transaction.from.type}</span>
+                   <span className="text-sm font-semibold text-gray-900">{transaction.fromName || transaction.from.id || transaction.from.type}</span>
                 </div>
-                <div className="flex flex-col p-5 border-b border-gray-100 items-end text-right">
-                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Destination (To)</span>
-                   <span className="text-sm font-semibold text-gray-900">{transaction.to.id || transaction.to.type}</span>
-                </div>
+                 <div className="flex flex-col p-5 border-b border-gray-100 items-end text-right">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Destination (To)</span>
+                    <span className="text-sm font-semibold text-gray-900">{transaction.toName || transaction.to.id || transaction.to.type}</span>
+                 </div>
                 <div className="flex flex-col p-5 border-r border-gray-100">
                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Performed By</span>
                    <span className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
@@ -162,70 +161,68 @@ export default function VaultTransactionDetailsModal({
             </div>
           )}
 
-          {/* Expense Details Section */}
-          {hasExpenseDetails && (
+          {/* Category Details Section */}
+          {transaction.expenseDetails && Object.keys(transaction.expenseDetails).length > 0 && (
+            <div className="flex flex-col space-y-4 p-5 rounded-xl border border-gray-200 shadow-sm bg-white">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                <Receipt className="h-4.5 w-4.5 text-gray-500" />
+                <h4 className="text-xs font-black uppercase tracking-widest text-gray-700">Category Details</h4>
+              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+                {Object.entries(transaction.expenseDetails!).map(([key, val]) => {
+                  if (val === undefined || val === null || val === '') return null;
+                  if (['machineNames', 'machineDetails', 'machineIds'].includes(key)) return null;
+
+                  if (typeof val === 'boolean') {
+                    return (
+                      <div key={key} className="flex flex-col col-span-2">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                          {key.replace(/([A-Z])/g, ' $1').trim()}
+                        </span>
+                        <span className="text-sm font-semibold text-gray-900">{val ? 'Yes' : 'No'}</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={key} className="flex flex-col">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                        {key.replace(/([A-Z])/g, ' $1').trim()}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-900">{String(val)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Machine Details Section */}
+          {(transaction as any).machineDetails && (transaction as any).machineDetails.length > 0 && (
              <div className="flex flex-col space-y-4 p-5 rounded-xl border border-gray-200 shadow-sm bg-white">
                <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
                  <Receipt className="h-4.5 w-4.5 text-gray-500" />
-                 <h4 className="text-xs font-black uppercase tracking-widest text-gray-700">Category Details</h4>
+                 <h4 className="text-xs font-black uppercase tracking-widest text-gray-700">Related Machines</h4>
                </div>
-               <div className="grid grid-cols-2 gap-x-6 gap-y-5">
-                  {Object.entries(transaction.expenseDetails!).map(([key, val]) => {
-                     if (val === undefined || val === null || val === '') return null;
-                     if (key === 'machineNames') return null; // hide backwards compat field
-                     if (key === 'machineDetails' && Array.isArray(val) && val.length > 0) {
-                         return (
-                            <div key={key} className="flex flex-col col-span-2 mt-2">
-                               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Related Machines</span>
-                               <div className="rounded-md border border-gray-200 overflow-hidden">
-                                  <table className="w-full text-sm text-left">
-                                     <thead className="bg-gray-50 border-b border-gray-200 text-[10px] text-gray-500 uppercase tracking-wider">
-                                        <tr>
-                                           <th className="px-3 py-2 font-bold leading-tight">Machine</th>
-                                           <th className="px-3 py-2 font-bold leading-tight">Game</th>
-                                           <th className="px-3 py-2 font-bold leading-tight">Game Type</th>
-                                        </tr>
-                                     </thead>
-                                     <tbody className="divide-y divide-gray-100 bg-white">
-                                        {val.map((m: any, idx: number) => (
-                                           <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                                              <td className="px-3 py-2.5 font-semibold text-gray-900">{m.identifier || 'N/A'}</td>
-                                              <td className="px-3 py-2.5 text-gray-600 truncate max-w-[150px]">{m.game || <span className="text-red-600 italic">no game provided</span>}</td>
-                                              <td className="px-3 py-2.5 text-gray-600">{m.gameType || 'N/A'}</td>
-                                           </tr>
-                                        ))}
-                                     </tbody>
-                                  </table>
-                               </div>
-                            </div>
-                         );
-                     }
-                     if (key === 'machineIds' && Array.isArray(val)) {
-                         const details = (transaction.expenseDetails as any).machineDetails;
-                         if (details && Array.isArray(details) && details.length > 0) return null; // let machineDetails handle it
-                         return (
-                            <div key={key} className="flex flex-col col-span-2">
-                               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Related Machines</span>
-                               <span className="text-sm font-semibold text-gray-900">{val.join(', ')}</span>
-                            </div>
-                         );
-                     }
-                     if (typeof val === 'boolean') {
-                         return (
-                            <div key={key} className="flex flex-col col-span-2">
-                               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                               <span className="text-sm font-semibold text-gray-900">{val ? 'Yes' : 'No'}</span>
-                            </div>
-                         );
-                     }
-                     
-                     return (
-                        <div key={key} className="flex flex-col">
-                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                           <span className="text-sm font-semibold text-gray-900">{String(val)}</span>
-                        </div>
-                     );
-                  })}
+               <div className="rounded-md border border-gray-200 overflow-hidden">
+                  <table className="w-full text-sm text-left">
+                     <thead className="bg-gray-50 border-b border-gray-200 text-[10px] text-gray-500 uppercase tracking-wider">
+                        <tr>
+                           <th className="px-3 py-2 font-bold leading-tight">Machine</th>
+                           <th className="px-3 py-2 font-bold leading-tight">Game</th>
+                           <th className="px-3 py-2 font-bold leading-tight">Game Type</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-100 bg-white">
+                        {(transaction as any).machineDetails.map((m: any, idx: number) => (
+                           <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                              <td className="px-3 py-2.5 font-semibold text-gray-900">{m.identifier || 'N/A'}</td>
+                              <td className="px-3 py-2.5 text-gray-600 truncate max-w-[150px]">{m.game || <span className="text-red-600 italic">no game provided</span>}</td>
+                              <td className="px-3 py-2.5 text-gray-600">{m.gameType || 'N/A'}</td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
                </div>
              </div>
           )}

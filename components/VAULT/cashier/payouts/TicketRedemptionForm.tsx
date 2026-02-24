@@ -6,6 +6,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, RefreshCw, Ticket } from 'lucide-react';
 import { useState } from 'react';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type TicketRedemptionFormProps = {
   currentBalance: number;
@@ -32,20 +33,25 @@ export default function TicketRedemptionForm({
   const isOverBalance = numAmount > currentBalance;
   const isDateValid = printedAt !== undefined && (!maxDate || printedAt <= maxDate);
   const isFormValid = ticketNumber.trim().length > 0 && numAmount > 0 && !isOverBalance && isDateValid;
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
+  const [pendingData, setPendingData] = useState<{ ticketNumber: string; amount: number; printedAt: Date } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
+    // Cache data and trigger TOTP
+    setPendingData({ ticketNumber: ticketNumber.trim(), amount: numAmount, printedAt: printedAt || new Date() });
+    setShowAuthenticator(true);
+  };
 
+  const handleAuthVerified = async () => {
+    if (!pendingData) return;
     try {
-      await onSubmit(
-        ticketNumber.trim(), 
-        numAmount, 
-        printedAt || new Date()
-      );
+      await onSubmit(pendingData.ticketNumber, pendingData.amount, pendingData.printedAt);
       setTicketNumber('');
       setAmount('');
       setPrintedAt(undefined);
+      setPendingData(null);
     } catch {
       // Error handled by parent
     }
@@ -178,6 +184,12 @@ export default function TicketRedemptionForm({
           )}
         </div>
       </form>
+      <VaultAuthenticatorModal
+        open={showAuthenticator}
+        onClose={() => setShowAuthenticator(false)}
+        onVerified={handleAuthVerified}
+        actionName="Redeem Ticket"
+      />
     </div>
   );
 }

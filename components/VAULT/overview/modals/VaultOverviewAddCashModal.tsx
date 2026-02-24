@@ -36,6 +36,7 @@ import type { CashSource, Denomination } from '@/shared/types/vault';
 import axios from 'axios';
 import { ArrowUpRight, Info, Landmark, Loader2, MessageSquare, Plus, RefreshCw, Wallet } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type VaultOverviewAddCashModalProps = {
   open: boolean;
@@ -126,6 +127,7 @@ export default function VaultOverviewAddCashModal({
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   // ============================================================================
   // Computed Values
@@ -195,6 +197,11 @@ export default function VaultOverviewAddCashModal({
       return;
     }
 
+    // Trigger TOTP verification
+    setShowAuthenticator(true);
+  };
+
+  const handleAuthVerified = async () => {
     setLoading(true);
     try {
       await onConfirm({
@@ -242,6 +249,7 @@ export default function VaultOverviewAddCashModal({
   // Render
   // ============================================================================
   return (
+    <>
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="md:max-w-2xl p-0 overflow-hidden flex flex-col">
         <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
@@ -432,5 +440,12 @@ export default function VaultOverviewAddCashModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <VaultAuthenticatorModal
+      open={showAuthenticator}
+      onClose={() => setShowAuthenticator(false)}
+      onVerified={handleAuthVerified}
+      actionName="Add Cash to Vault"
+    />
+  </>
   );
 }

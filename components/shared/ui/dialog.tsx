@@ -60,7 +60,7 @@ const DialogContent = React.forwardRef<
         isMobileFullScreen 
           ? 'inset-0 w-full h-[100dvh] p-6 max-w-none rounded-none' 
           : 'left-[50%] top-[50%] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] p-6 rounded-lg',
-        'md:left-[50%] md:top-[50%] md:translate-x-[-50%] md:translate-y-[-50%] md:w-full md:max-w-lg md:h-auto md:p-6 md:rounded-lg md:inset-auto md:max-h-[90vh]',
+        'md:inset-auto md:left-[50%] md:top-[50%] md:translate-x-[-50%] md:translate-y-[-50%] md:w-full md:max-w-lg md:h-auto md:p-6 md:rounded-lg md:max-h-[90vh]',
         className
       )}
       {...props}

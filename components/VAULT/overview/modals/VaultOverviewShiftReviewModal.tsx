@@ -8,14 +8,12 @@
 'use client';
 
 import {
-    AlertTriangle,
-    BarChart3,
-    History as HistoryIcon,
-    Info,
-    Landmark,
-    MessageSquare,
-    RefreshCw,
-    RotateCcw
+  AlertTriangle,
+  BarChart3,
+  History as HistoryIcon,
+  Landmark,
+  RefreshCw,
+  RotateCcw
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -24,16 +22,16 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import DenominationInputGrid from '@/components/shared/ui/DenominationInputGrid';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/shared/ui/tooltip';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 import { cn } from '@/lib/utils';
@@ -207,304 +205,277 @@ export default function VaultOverviewShiftReviewModal({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent 
         className={cn(
-          "md:max-w-[550px] md:max-h-[90vh] overflow-y-auto !z-[200] transition-all duration-300",
+          "w-full h-[100dvh] md:h-auto md:max-w-[650px] flex flex-col p-0 overflow-hidden rounded-none md:rounded-2xl border-none shadow-2xl transition-all duration-300",
           isOverlayOpen && "blur-sm brightness-50 pointer-events-none scale-[0.98]"
         )}
         backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
       >
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-              <AlertTriangle className="h-5 w-5 text-orangeHighlight" />
-              Review Shift: {shift.cashierName}
-            </DialogTitle>
-            <Badge className="bg-orangeHighlight text-white font-bold px-3">
-              Review Required
-            </Badge>
+        {/* Premium Header */}
+        <DialogHeader className="p-6 bg-gradient-to-r from-orange-600 to-amber-600 shrink-0 text-left relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12">
+             <AlertTriangle className="h-24 w-24 text-white" />
           </div>
-          <DialogDescription>
-            Verify the shift counts and resolve discrepancies or return to cashier.
-          </DialogDescription>
+          <div className="relative z-10 space-y-1">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                        <Landmark className="h-4 w-4 text-white" />
+                    </div>
+                    <DialogTitle className="text-xl font-black text-white tracking-tight">
+                        Shift Review
+                    </DialogTitle>
+                </div>
+                <Badge className="bg-white/20 hover:bg-white/30 text-white border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 backdrop-blur-md">
+                    Action Required
+                </Badge>
+            </div>
+            <DialogDescription className="text-orange-50/90 font-bold text-sm">
+                Resolving discrepancy for <span className="text-white underline decoration-white/30 underline-offset-4">{shift.cashierName}</span>
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-6 pt-4">
-          <TooltipProvider>
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-3 gap-4 bg-orange-50 border border-orange-100 rounded-lg p-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 text-gray-500">
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Expected</span>
-                  <Tooltip delayDuration={0}>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3 w-3 opacity-50 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>The balance the system expects.</TooltipContent>
-                  </Tooltip>
-                </div>
-                <p className="text-sm font-black text-gray-900">{formatAmount(shift.expectedBalance)}</p>
-              </div>
-
-              <div className="space-y-1 border-x border-orange-200 px-4">
-                <div className="flex items-center gap-1 text-gray-500">
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Entered</span>
-                  <Tooltip delayDuration={0}>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3 w-3 opacity-50 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>The actual physical count submitted by cashier.</TooltipContent>
-                  </Tooltip>
-                </div>
-                <p className="text-sm font-black text-gray-900">{formatAmount(shift.enteredBalance)}</p>
-              </div>
-
-              <div className="space-y-1 pl-4">
-                <div className="flex items-center gap-1 text-gray-500">
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Discrepancy</span>
-                </div>
-                <p className={cn(
-                  "text-sm font-black",
-                  shift.discrepancy > 0 ? "text-red-600" : shift.discrepancy < 0 ? "text-green-600" : "text-gray-600"
-                )}>
-                  {shift.discrepancy > 0 ? '+' : ''}{formatAmount(shift.discrepancy)}
-                </p>
-              </div>
-            </div>
-
-            {/* Cashier Count Breakdown */}
-            {shift.enteredDenominations && shift.enteredDenominations.length > 0 && !isEditingBreakdown && (
-              <div className="bg-white rounded-md p-4 border border-gray-100">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Cashier Count Breakdown</p>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {shift.enteredDenominations
-                    .filter(d => d.quantity > 0)
-                    .sort((a, b) => b.denomination - a.denomination)
-                    .map((d, i) => (
-                      <div key={i} className="flex flex-col items-center bg-gray-50 rounded border border-gray-100 py-1.5 shadow-sm">
-                        <span className="text-[10px] text-gray-500 font-bold">${d.denomination}</span>
-                        <span className="text-sm font-black text-gray-900">{d.quantity}</span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* Quick Access Logs */}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 h-10 text-[10px] uppercase font-bold border-orange-200 text-orange-700 hover:bg-orange-100 gap-1.5 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-                onClick={() => setIsHistoryModalOpen(true)}
-              >
-                <BarChart3 className="h-4 w-4" />
-                Shift History
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 h-10 text-[10px] uppercase font-bold border-orange-200 text-orange-700 hover:bg-orange-100 gap-1.5 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-                onClick={() => setIsActivityModalOpen(true)}
-              >
-                <HistoryIcon className="h-4 w-4" />
-                Audit Logs
-              </Button>
-            </div>
-
-            {/* Reconciliation UI */}
-            <div className="space-y-4 border-t pt-4">
-              {!isRejecting ? (
-                <>
-                  <div className="flex items-end justify-between gap-4">
-                    <div className="flex-1">
-                      <Label className="text-sm font-medium text-gray-700">Final Balance</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={isEditingBreakdown ? shiftTotal : finalBalance}
-                        onChange={e => !isEditingBreakdown && setFinalBalance(e.target.value)}
-                        disabled={isEditingBreakdown}
-                        className="mt-1"
-                      />
+        {/* Content Body */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 bg-[#fcfcfd] custom-scrollbar md:max-h-[70vh]">
+            {/* Discrepancy Hero Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-xl p-6 relative overflow-hidden">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-400">Financial Variance</h3>
+                    <div className={cn(
+                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
+                        shift.discrepancy > 0 ? "bg-red-50 text-red-600" : shift.discrepancy < 0 ? "bg-green-50 text-green-600" : "bg-gray-50 text-gray-600"
+                    )}>
+                        {shift.discrepancy > 0 ? 'Shortage Identified' : shift.discrepancy < 0 ? 'Overage Identified' : 'Balanced'}
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (!isEditingBreakdown) {
-                          if (!finalBalance) setFinalBalance(shiftTotal.toString());
-                        }
-                        setIsEditingBreakdown(!isEditingBreakdown);
-                      }}
-                      className={cn(isEditingBreakdown && "bg-orange-100 border-orange-300 text-orange-900")}
+                </div>
+
+                <div className="grid grid-cols-2 gap-8 relative z-10">
+                    <div className="space-y-1">
+                        <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Expected Balance</span>
+                        <p className="text-2xl font-black text-gray-900 tracking-tighter">{formatAmount(shift.expectedBalance)}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Cashier Submission</span>
+                        <p className="text-2xl font-black text-gray-900 tracking-tighter">{formatAmount(shift.enteredBalance)}</p>
+                    </div>
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-gray-50 flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-500">Calculated Discrepancy:</span>
+                    <span className={cn(
+                        "text-3xl font-black tracking-tighter",
+                        shift.discrepancy > 0 ? "text-red-600" : shift.discrepancy < 0 ? "text-green-600" : "text-gray-900"
+                    )}>
+                        {shift.discrepancy > 0 ? '-' : shift.discrepancy < 0 ? '+' : ''}{formatAmount(Math.abs(shift.discrepancy))}
+                    </span>
+                </div>
+            </div>
+
+            {/* Verification Tools */}
+            <div className="space-y-4">
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-400 px-1">Verification Tools</h3>
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        onClick={() => setIsHistoryModalOpen(true)}
+                        className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-orange-200 transition-all text-left group"
                     >
-                      {isEditingBreakdown ? "Cancel Edit Breakdown" : "Edit Breakdown"}
-                    </Button>
-                  </div>
-
-                  {isEditingBreakdown && (
-                    <div className="bg-white p-4 rounded-lg border border-orange-200">
-                      <div className="flex items-center justify-between mb-3 px-1">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-orange-400">
-                          Adjust Breakdown
-                        </Label>
-                        <div className="flex flex-col items-end">
-                          <span className="text-[9px] font-bold text-gray-400 uppercase">Calculated Total</span>
-                          <span className="text-base font-black text-orange-600">{formatAmount(shiftTotal)}</span>
+                        <div className="h-10 w-10 bg-orange-50 rounded-lg flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
+                            <BarChart3 className="h-5 w-5" />
                         </div>
-                      </div>
-                      
-                      <DenominationInputGrid
-                        denominations={Object.entries(shiftDenominations).map(([d, q]) => ({ denomination: Number(d) as any, quantity: q }))}
-                        onChange={(newDenoms: Denomination[]) => {
-                          const newRecord: Record<string, number> = {};
-                          newDenoms.forEach((d: Denomination) => {
-                            newRecord[d.denomination.toString()] = d.quantity;
-                          });
-                          setShiftDenominations(newRecord);
-                        }}
-                        stock={vaultInventory}
-                        touchedDenominations={new Set(Array.from(touchedDenominations).map(Number))}
-                        onTouchedChange={(newTouched: Set<number>) => {
-                          setTouchedDenominations(new Set(Array.from(newTouched).map(String)));
-                        }}
-                      />
-                      
-                      <div className="mt-4 p-3 bg-orange-50 rounded border border-orange-100 text-[11px] text-orange-700 leading-relaxed font-medium">
-                         <strong>Vault Manager Override:</strong> Adjusting the denominations here will update the physical count that will be received into the vault. Use this to correct obvious cashier errors.
-                      </div>
-                    </div>
-                  )}
-
-                  {hasShortage && (
-                    <div className="p-3 bg-red-50 border border-red-100 rounded-md flex items-start gap-3">
-                      <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-xs font-bold text-red-800 uppercase tracking-tight">Insufficient Stock</p>
-                        <p className="text-[11px] text-red-700">Adjusted breakdown exceeds vault inventory. Verify counts before resolving.</p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                   <div className="flex items-center gap-2 text-red-700 font-bold text-xs uppercase mb-1">
-                      <RotateCcw className="h-4 w-4" />
-                      Returning to Cashier
-                   </div>
-                   <p className="text-xs text-red-600 leading-relaxed">
-                      This will revert the shift to <strong>Active</strong>. The cashier must re-count and resubmit based on your comments.
-                   </p>
+                        <div>
+                            <p className="text-xs font-black text-gray-900 uppercase tracking-tight">Shift History</p>
+                            <p className="text-[10px] text-gray-400 font-bold">Past performances</p>
+                        </div>
+                    </button>
+                    <button
+                        onClick={() => setIsActivityModalOpen(true)}
+                        className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-orange-200 transition-all text-left group"
+                    >
+                        <div className="h-10 w-10 bg-orange-50 rounded-lg flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
+                            <HistoryIcon className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-black text-gray-900 uppercase tracking-tight">Audit Logs</p>
+                            <p className="text-[10px] text-gray-400 font-bold">Trace transactions</p>
+                        </div>
+                    </button>
                 </div>
-              )}
+            </div>
 
-              <div>
-                <Label className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
-                  <MessageSquare className="h-4 w-4" />
-                  {isRejecting ? 'Reason for Rejection' : 'Audit Comment (Optional)'}
-                </Label>
-                
-                {isRejecting ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {[
-                        { label: 'Miscount', icon: RefreshCw, color: 'text-amber-500', bg: 'hover:bg-amber-50' },
-                        { label: 'Variance', icon: Landmark, color: 'text-blue-500', bg: 'hover:bg-blue-50' },
-                        { label: 'Denoms', icon: Landmark, color: 'text-purple-500', bg: 'hover:bg-purple-50' },
-                        { label: 'Other', icon: MessageSquare, color: 'text-gray-500', bg: 'hover:bg-gray-50' }
-                      ].map(item => {
-                        const isSelected = auditComment.includes(item.label) || (item.label === 'Other' && auditComment.length > 0 && !['Miscount', 'Variance', 'Denoms'].some(r => auditComment.includes(r)));
-                        const Icon = item.icon;
-                        return (
-                          <button
-                            key={item.label}
-                            type="button"
-                            onClick={() => {
-                              if (item.label === 'Other') setAuditComment('');
-                              else {
-                                const suggested = getSuggestedRejectionReason(shift);
-                                setAuditComment(`[${item.label.toUpperCase()}] ${suggested}`);
-                              }
-                            }}
+            {/* Resolution Form */}
+            <div className="space-y-6">
+                <div className="flex items-center justify-between px-1">
+                    <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-400">Resolution Strategy</h3>
+                    {!isRejecting && (
+                        <button 
+                            onClick={() => setIsEditingBreakdown(!isEditingBreakdown)}
                             className={cn(
-                              "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1.5",
-                              auditComment.includes(item.label) 
-                                ? "bg-red-600 border-red-600 text-white shadow-md shadow-red-200" 
-                                : "bg-white border-gray-100 text-gray-600",
-                                !isSelected && item.bg
+                                "text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border transition-all",
+                                isEditingBreakdown ? "bg-orange-600 border-orange-600 text-white" : "border-gray-200 text-gray-400 hover:border-orange-400 hover:text-orange-600"
                             )}
-                          >
-                            <Icon className={cn("h-4 w-4", auditComment.includes(item.label) ? "text-white" : item.color)} />
-                            <span className="text-[10px] font-black uppercase tracking-tight leading-tight">{item.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <Textarea
-                      value={auditComment}
-                      onChange={e => setAuditComment(e.target.value)}
-                      placeholder="Provide specific details for the cashier..."
-                      className="mt-3 border-2 border-gray-100 focus:border-red-500/50 min-h-[100px] rounded-xl text-sm"
-                      rows={3}
-                    />
-                  </div>
-                ) : (
-                  <Textarea
-                    value={auditComment}
-                    onChange={e => setAuditComment(e.target.value)}
-                    placeholder="Explain resolution (optional)..."
-                    className="mt-1 border-2 border-gray-100 focus:border-orangeHighlight/50 rounded-xl text-sm"
-                    rows={3}
-                  />
-                )}
-              </div>
+                        >
+                            {isEditingBreakdown ? 'Disable Breakdown Edit' : 'Adjust Breakdown'}
+                        </button>
+                    )}
+                </div>
 
-              <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
                 {!isRejecting ? (
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Button
-                      onClick={handleResolve}
-                      disabled={loading || hasShortage || !isValidResolution}
-                      className="flex-1 h-12 bg-button text-white hover:bg-button/90 font-black text-sm shadow-lg shadow-button/20 active:scale-[0.98] transition-all rounded-xl"
-                    >
-                      {loading ? (
-                        <div className="flex items-center gap-2">
-                           <RefreshCw className="h-4 w-4 animate-spin" />
-                           Processing...
+                    <div className="space-y-6">
+                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                            {!isEditingBreakdown ? (
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Final Agreed Balance</Label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-xl">$</div>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={finalBalance}
+                                            onChange={e => setFinalBalance(e.target.value)}
+                                            className="h-14 pl-10 text-2xl font-black text-gray-900 border-2 border-gray-50 focus:border-orange-500/30 rounded-xl bg-gray-50/30"
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                                    <div className="bg-orange-50 p-4 rounded-xl flex items-center justify-between border border-orange-100">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-orange-700">Calculated Adjustment</span>
+                                        </div>
+                                        <span className="text-xl font-black text-orange-600">{formatAmount(shiftTotal)}</span>
+                                    </div>
+
+                                    <DenominationInputGrid
+                                        denominations={Object.entries(shiftDenominations).map(([d, q]) => ({ denomination: Number(d) as any, quantity: q }))}
+                                        onChange={(newDenoms: Denomination[]) => {
+                                            const newRecord: Record<string, number> = {};
+                                            newDenoms.forEach((d: Denomination) => {
+                                                newRecord[d.denomination.toString()] = d.quantity;
+                                            });
+                                            setShiftDenominations(newRecord);
+                                        }}
+                                        stock={vaultInventory}
+                                        touchedDenominations={new Set(Array.from(touchedDenominations).map(Number))}
+                                        onTouchedChange={(newTouched: Set<number>) => {
+                                            setTouchedDenominations(new Set(Array.from(newTouched).map(String)));
+                                        }}
+                                    />
+
+                                    {hasShortage && (
+                                        <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3">
+                                            <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                                            <p className="text-[10px] text-red-700 font-bold leading-relaxed">
+                                                INVENTORY ALERT: The selected denominations exceed current vault stock.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Resolution Audit Note</Label>
+                                <Textarea
+                                    value={auditComment}
+                                    onChange={e => setAuditComment(e.target.value)}
+                                    placeholder="Briefly explain the cause of discrepancy..."
+                                    className="min-h-[100px] border-2 border-gray-50 focus:border-orange-500/30 rounded-xl bg-gray-50/30 text-sm font-medium"
+                                />
+                            </div>
                         </div>
-                      ) : hasShortage ? "Insufficient Stock" : !isValidResolution ? "Enter Count" : "Confirm & Resolve Shift"}
+                    </div>
+                ) : (
+                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm space-y-6 animate-in fade-in duration-300">
+                        <div className="flex items-start gap-4 p-4 bg-red-50 rounded-xl border border-red-100">
+                            <RotateCcw className="h-5 w-5 text-red-600 shrink-0 mt-1" />
+                            <div>
+                                <h4 className="font-black text-red-900 text-xs uppercase tracking-widest mb-1">Returning to Cashier</h4>
+                                <p className="text-[11px] text-red-700 font-medium leading-relaxed">
+                                    The shift will be sent back to the cashier's dashboard as "Active". They will be forced to re-count and resubmit based on your instructions.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Rejection Primary Reason</h4>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {['Miscount', 'Variance', 'Denoms', 'Other'].map(r => (
+                                    <button
+                                        key={r}
+                                        onClick={() => {
+                                            if (r === 'Other') setAuditComment('');
+                                            else setAuditComment(`[${r.toUpperCase()}] ${getSuggestedRejectionReason(shift)}`);
+                                        }}
+                                        className={cn(
+                                            "p-3 rounded-xl border-2 font-black text-[10px] uppercase tracking-tighter transition-all",
+                                            auditComment.includes(r.toUpperCase()) 
+                                                ? "bg-red-600 border-red-600 text-white shadow-xl shadow-red-200" 
+                                                : "bg-gray-50 border-transparent text-gray-400 hover:border-red-200 hover:text-red-600"
+                                        )}
+                                    >
+                                        {r}
+                                    </button>
+                                ))}
+                            </div>
+                            <Textarea
+                                value={auditComment}
+                                onChange={e => setAuditComment(e.target.value)}
+                                placeholder="Instructions for the cashier..."
+                                className="min-h-[120px] border-2 border-red-50 focus:border-red-500/30 rounded-xl bg-red-50/20 text-sm font-medium"
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+
+        {/* Footer */}
+        <DialogFooter className="p-4 md:p-6 bg-gray-50 border-t shrink-0 flex-col gap-3">
+             {!isRejecting ? (
+                 <div className="flex flex-col sm:flex-row gap-3 w-full">
+                    <Button
+                        onClick={handleResolve}
+                        disabled={loading || hasShortage || !isValidResolution}
+                        className="flex-[2] h-12 bg-orange-600 text-white hover:bg-orange-700 font-black uppercase text-[10px] tracking-widest shadow-xl shadow-orange-200 transition-all active:scale-[0.98] rounded-xl"
+                    >
+                        {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Confirm Resolution"}
                     </Button>
                     <Button
-                      variant="ghost"
-                      onClick={startRejection}
-                      disabled={loading}
-                      className="h-12 text-red-600 hover:text-red-700 hover:bg-red-50 font-black text-sm rounded-xl"
+                        variant="ghost"
+                        onClick={startRejection}
+                        disabled={loading}
+                        className="flex-1 h-12 text-red-600 hover:text-red-700 hover:bg-red-50 font-black uppercase text-[10px] tracking-widest rounded-xl"
                     >
-                      Reject for Correction
+                        Return to Start
                     </Button>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={handleReject}
-                    disabled={loading || auditComment.length < 5}
-                    className="w-full h-12 bg-red-600 text-white hover:bg-red-700 font-black text-sm shadow-lg shadow-red-600/20 active:scale-[0.98] transition-all rounded-xl"
-                  >
-                    {loading ? (
-                       <div className="flex items-center gap-2">
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                          Processing...
-                       </div>
-                    ) : "Return to Cashier"}
-                  </Button>
-                )}
-                <Button variant="ghost" onClick={onClose} disabled={loading} className="w-full text-gray-400 font-black hover:text-gray-600">
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </TooltipProvider>
-        </div>
+                 </div>
+             ) : (
+                 <div className="flex flex-col sm:flex-row gap-3 w-full">
+                    <Button
+                        onClick={handleReject}
+                        disabled={loading || auditComment.length < 5}
+                        className="flex-[2] h-12 bg-red-600 text-white hover:bg-red-700 font-black uppercase text-[10px] tracking-widest shadow-xl shadow-red-200 transition-all active:scale-[0.98] rounded-xl"
+                    >
+                        {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Execute Return"}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        onClick={() => {
+                            setIsRejecting(false);
+                            setAuditComment('');
+                        }}
+                        disabled={loading}
+                        className="flex-1 h-12 text-gray-400 font-black uppercase text-[10px] tracking-widest rounded-xl"
+                    >
+                        Cancel Rejection
+                    </Button>
+                 </div>
+             )}
+             <Button variant="ghost" onClick={onClose} disabled={loading} className="w-full text-gray-300 font-black uppercase text-[10px] tracking-widest hover:text-gray-500">
+                Close
+             </Button>
+        </DialogFooter>
       </DialogContent>
       
       {/* History & Activity Modals */}

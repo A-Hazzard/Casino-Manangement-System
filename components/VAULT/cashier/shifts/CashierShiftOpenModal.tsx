@@ -25,6 +25,7 @@ import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Coins } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type CashierShiftOpenModalProps = {
   open: boolean;
@@ -48,6 +49,7 @@ export default function CashierShiftOpenModal({
   const { formatAmount } = useCurrencyFormat();
   const { licenseeId: effectiveLicenseeId } = useVaultLicensee();
   const [step, setStep] = useState<'input' | 'review'>('input');
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   const denomsList = useMemo(() => getDenominationValues(effectiveLicenseeId), [effectiveLicenseeId]);
 
@@ -92,6 +94,11 @@ export default function CashierShiftOpenModal({
   };
 
   const handleSubmit = async () => {
+    // Show TOTP before final submission
+    setShowAuthenticator(true);
+  };
+
+  const handleAuthVerified = async () => {
     const filteredDenominations = denominations.filter(d => d.quantity > 0);
     try {
       await onSubmit(filteredDenominations);
@@ -110,7 +117,8 @@ export default function CashierShiftOpenModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="md:max-w-md p-0 overflow-hidden flex flex-col">
         <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
@@ -243,5 +251,12 @@ export default function CashierShiftOpenModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <VaultAuthenticatorModal
+      open={showAuthenticator}
+      onClose={() => setShowAuthenticator(false)}
+      onVerified={handleAuthVerified}
+      actionName="Open Cashier Shift"
+    />
+    </>
   );
 }

@@ -241,6 +241,8 @@ const UserSchema = new Schema(
     deletedAt: { type: Schema.Types.Mixed, default: null }, // allow for { $date: { $numberLong: "-1" } }
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date },
+    totpSecret: { type: String, default: null }, // Secret for Google Authenticator (TOTP)
+    totpEnabled: { type: Boolean, default: false }, // Flag to track if TOTP setup is confirmed
     __v: { type: Number, select: false, default: 0 }, // add missing __v field, default to 0, hide by default
   },
   { timestamps: true }

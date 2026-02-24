@@ -66,6 +66,7 @@ export default function VaultOverviewCloseDayModals({
         onClose={() => setShowBlockedShifts(false)}
         activeShifts={activeShifts}
         pendingShifts={pendingShifts}
+        isBlurred={!!forceCloseCashier}
         onReviewShift={(shiftId) => {
            // Find the shift info from the pending list
            const shiftObj = pendingShifts.find(s => s.shiftId === shiftId);
@@ -95,6 +96,8 @@ export default function VaultOverviewCloseDayModals({
         licenseeId={selectedLicencee}
         locationId={locationId}
         onSuccess={() => {
+          setForceCloseCashier(null);
+          setShowBlockedShifts(false);
           onRefresh?.();
         }}
       />

@@ -30,6 +30,7 @@ import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Minus, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type BlindCloseModalProps = {
   open: boolean;
@@ -51,6 +52,7 @@ export default function BlindCloseModal({
   
   const [denominations, setDenominations] = useState<Denomination[]>([]);
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -83,8 +85,11 @@ export default function BlindCloseModal({
 
   const handleSubmit = async () => {
     if (!isValid) return;
+    setShowAuthenticator(true);
+  };
+
+  const handleAuthVerified = async () => {
     const filteredDenominations = denominations.filter((d) => d.quantity > 0);
-    
     try {
       await onSubmit(totalAmount, filteredDenominations);
     } catch {
@@ -93,7 +98,8 @@ export default function BlindCloseModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <>
+      <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="md:max-w-md p-0 overflow-hidden !z-[200] flex flex-col">
         <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
@@ -217,5 +223,12 @@ export default function BlindCloseModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <VaultAuthenticatorModal
+      open={showAuthenticator}
+      onClose={() => setShowAuthenticator(false)}
+      onVerified={handleAuthVerified}
+      actionName="Close Shift (Blind Close)"
+    />
+    </>
   );
 }

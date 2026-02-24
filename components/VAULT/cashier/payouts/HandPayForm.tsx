@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
 import { AlertTriangle, Landmark, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type HandPayFormProps = {
   machines: GamingMachine[];
@@ -33,18 +34,24 @@ export default function HandPayForm({
   const numAmount = parseFloat(amount) || 0;
   const isOverBalance = numAmount > currentBalance;
   const isFormValid = numAmount > 0 && !isOverBalance && selectedMachine;
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
+  const [pendingData, setPendingData] = useState<{ amount: number; machineId: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
+    // Cache data and trigger TOTP
+    setPendingData({ amount: numAmount, machineId: selectedMachine });
+    setShowAuthenticator(true);
+  };
 
+  const handleAuthVerified = async () => {
+    if (!pendingData) return;
     try {
-      await onSubmit(
-        numAmount,
-        selectedMachine
-      );
+      await onSubmit(pendingData.amount, pendingData.machineId);
       setSelectedMachine('');
       setAmount('');
+      setPendingData(null);
     } catch {
       // Error handled by parent
     }
@@ -177,6 +184,12 @@ export default function HandPayForm({
           )}
         </div>
       </form>
+      <VaultAuthenticatorModal
+        open={showAuthenticator}
+        onClose={() => setShowAuthenticator(false)}
+        onVerified={handleAuthVerified}
+        actionName="Process Hand Pay"
+      />
     </div>
   );
 }

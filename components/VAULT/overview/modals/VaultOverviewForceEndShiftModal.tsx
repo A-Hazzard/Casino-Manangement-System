@@ -17,13 +17,11 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/shared/ui/dialog';
-import { Input } from '@/components/shared/ui/input';
-import { Label } from '@/components/shared/ui/label';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues, getInitialDenominationRecord, recordToDenominations } from '@/lib/utils/vault/denominations';
-import { AlertCircle, MessageSquare, RefreshCw, ShieldAlert, UserMinus } from 'lucide-react';
+import { AlertCircle, Landmark, RefreshCw, ShieldAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -53,7 +51,6 @@ export default function VaultOverviewForceEndShiftModal({
   const { licenseeId: effectiveLicenseeId } = useVaultLicensee();
   const [denominations, setDenominations] = useState<Record<string, number>>({});
   const [touchedDenominations, setTouchedDenominations] = useState<Set<string>>(new Set());
-  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
   const finalLicenseeId = licenseeId || effectiveLicenseeId;
@@ -63,7 +60,6 @@ export default function VaultOverviewForceEndShiftModal({
     if (open) {
       setDenominations(getInitialDenominationRecord(finalLicenseeId));
       setTouchedDenominations(new Set());
-      setNotes('');
     }
   }, [open, finalLicenseeId]);
 
@@ -83,18 +79,18 @@ export default function VaultOverviewForceEndShiftModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cashierId: cashier.cashierId || cashier._id, // Use cashierId if available
+          shiftId: cashier._id,                          // The cashier shift's _id (most reliable)
+          cashierId: cashier.cashierId || cashier._id,   // Fallback: cashier user ID
           locationId: locationId,
           denominations: denoms,
           physicalCount: shiftTotal,
-          notes: notes.trim()
         })
       });
 
       const result = await res.json();
 
       if (result.success) {
-        toast.success(`Shift ended for ${cashier.username}. Move to Pending Review.`);
+        toast.success(`Shift ended for ${cashier.cashierName || cashier.username}. Move to Pending Review.`);
         onSuccess();
         onClose();
       } else {
@@ -113,109 +109,118 @@ export default function VaultOverviewForceEndShiftModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="md:max-w-[500px] p-0 overflow-hidden flex flex-col">
-        <DialogHeader className="p-6 bg-red-50 border-b border-red-100 shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-red-900">
-            <RefreshCw className="h-5 w-5 text-red-600" />
-            Force End Shift: {cashier?.username}
-          </DialogTitle>
-          <DialogDescription className="text-red-700/80">
-            This will immediately stop the cashier's shift. Use this ONLY if the cashier cannot perform a regular close.
-          </DialogDescription>
+      <DialogContent
+        className="w-full h-[100dvh] md:h-auto md:max-w-[550px] flex flex-col p-0 overflow-hidden rounded-none md:rounded-2xl border-none shadow-2xl"
+        backdropClassName="bg-black/80 backdrop-blur-md"
+      >
+        {/* Premium Header */}
+        <DialogHeader className="p-6 bg-gradient-to-r from-red-600 to-red-700 shrink-0 text-left relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12">
+             <ShieldAlert className="h-24 w-24 text-white" />
+          </div>
+          <div className="relative z-10 space-y-1">
+            <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <RefreshCw className="h-4 w-4 text-white animate-pulse" />
+                </div>
+                <DialogTitle className="text-xl font-black text-white tracking-tight">
+                  Force End Shift
+                </DialogTitle>
+            </div>
+            <DialogDescription className="text-red-100/90 font-bold text-sm">
+                Ending shift for <span className="text-white underline decoration-white/30 underline-offset-4">{cashier?.cashierName || cashier?.username}</span>
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 md:max-h-[70vh] custom-scrollbar">
-           <div className="grid grid-cols-1 gap-y-4">
-              {denomValues.map(denom => (
-                <div key={denom} className="flex items-center gap-4">
-                   <div className="flex-1 space-y-1.5">
-                      <Label htmlFor={`force-denom-${denom}`} className="text-xs text-gray-400 font-bold uppercase tracking-wider">
-                        ${denom} Notes (Count)
-                      </Label>
-                      <Input
-                        id={`force-denom-${denom}`}
-                        type="number"
-                        min="0"
-                        className={`h-12 text-lg font-bold transition-all ${touchedDenominations.has(denom.toString()) ? 'border-green-500 bg-green-50' : ''}`}
-                        value={denominations[denom.toString()] || ''}
-                        onChange={(e) => {
-                           const val = Math.max(0, parseInt(e.target.value) || 0);
-                           setDenominations(prev => ({
-                              ...prev,
-                              [denom.toString()]: val
-                            }));
-                           setTouchedDenominations(prev => {
-                              const next = new Set(prev);
-                              next.add(denom.toString());
-                              return next;
-                           });
-                        }}
-                        placeholder="0"
-                      />
-                   </div>
-                </div>
-              ))}
-           </div>
-
-           <div className="bg-red-50 p-4 rounded-lg flex items-center justify-between border border-red-200">
-              <span className="font-semibold text-red-800">Total Collected:</span>
-              <span className="text-2xl font-black text-red-600">{formatAmount(shiftTotal)}</span>
-           </div>
-
-           <div className="space-y-3">
-              <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">
-                Reason for Force Ending
-              </Label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { label: 'No-Show', icon: UserMinus, color: 'text-orange-500', bg: 'hover:bg-orange-50' },
-                  { label: 'Lockout', icon: ShieldAlert, color: 'text-red-500', bg: 'hover:bg-red-50' },
-                  { label: 'Emergency', icon: AlertCircle, color: 'text-blue-500', bg: 'hover:bg-blue-50' },
-                  { label: 'Other', icon: MessageSquare, color: 'text-gray-500', bg: 'hover:bg-gray-50' }
-                ].map(item => {
-                  const isSelected = notes === item.label || (item.label === 'Other' && notes.length > 0 && !['No-Show', 'Lockout', 'Emergency'].includes(notes));
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={() => setNotes(item.label === 'Other' ? '' : item.label)}
-                      className={cn(
-                        "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1.5",
-                        notes === item.label 
-                          ? "bg-red-600 border-red-600 text-white shadow-md shadow-red-200" 
-                          : "bg-white border-gray-100 text-gray-600",
-                        !isSelected && item.bg
-                      )}
-                    >
-                      <Icon className={cn("h-4 w-4", notes === item.label ? "text-white" : item.color)} />
-                      <span className="text-[10px] font-black uppercase tracking-tight">{item.label}</span>
-                    </button>
-                  );
-                })}
+        {/* Content Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-[#fcfcfd] custom-scrollbar md:max-h-[65vh]">
+           {/* Info Banner */}
+           <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-start gap-4 shadow-sm">
+              <div className="h-10 w-10 flex-shrink-0 bg-red-100 rounded-full flex items-center justify-center text-red-600">
+                  <AlertCircle className="h-5 w-5" />
               </div>
-              {(notes === 'Other' || (notes.length > 0 && !['No-Show', 'Lockout', 'Emergency'].includes(notes))) && (
-                <textarea
-                  id="force-shift-notes"
-                  className="w-full p-3 text-sm border-2 border-gray-100 rounded-xl min-h-[80px] focus:bg-white bg-gray-50/50 transition-all focus:border-red-500/30"
-                  placeholder="Provide additional context for this force action..."
-                  value={notes === 'Other' ? '' : notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              )}
+              <div>
+                  <h4 className="font-black text-red-900 text-xs uppercase tracking-widest mb-1">Security Warning</h4>
+                  <p className="text-xs text-red-700/80 leading-relaxed font-medium">
+                      This action immediately stops the cashier's active session. Use this ONLY if the cashier is physically unable to perform a regular blind close.
+                  </p>
+              </div>
            </div>
+
+           {/* Denomination Grid Section */}
+           <div className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-400">Inventory to Collect</h3>
+                {allTouched && <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full uppercase tracking-tight">Verified</span>}
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                 {denomValues.map(denom => (
+                   <div key={denom} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4 group hover:border-red-200 transition-all">
+                      <div className="h-10 w-10 bg-gray-50 rounded-lg flex items-center justify-center font-black text-xs text-gray-500 group-hover:bg-red-50 group-hover:text-red-600 transition-colors">
+                         ${denom}
+                      </div>
+                      <div className="flex-1">
+                         <input
+                           type="number"
+                           id={`force-denom-${denom}`}
+                           min="0"
+                           className={cn(
+                             "w-full bg-transparent border-none focus:ring-0 text-xl font-black text-gray-900 p-0 placeholder:text-gray-200",
+                             touchedDenominations.has(denom.toString()) && "text-red-600"
+                           )}
+                           value={denominations[denom.toString()] || ''}
+                           onChange={(e) => {
+                              const val = Math.max(0, parseInt(e.target.value) || 0);
+                              setDenominations(prev => ({ ...prev, [denom.toString()]: val }));
+                              setTouchedDenominations(prev => {
+                                 const next = new Set(prev);
+                                 next.add(denom.toString());
+                                 return next;
+                              });
+                           }}
+                           placeholder="0"
+                         />
+                         <p className="text-[9px] font-black text-gray-300 uppercase tracking-tighter">Enter Count</p>
+                      </div>
+                   </div>
+                 ))}
+              </div>
+           </div>
+
+           {/* Collection Total Card */}
+           <div className="bg-white p-6 rounded-2xl border-2 border-dashed border-red-100 flex flex-col items-center justify-center gap-1 shadow-sm relative overflow-hidden">
+              <div className="absolute -left-10 -bottom-10 opacity-[0.03] rotate-45 select-none pointer-events-none">
+                  <Landmark className="h-40 w-40" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total physical cash to be received</span>
+              <span className="text-4xl font-black text-red-600 tracking-tighter">{formatAmount(shiftTotal)}</span>
+           </div>
+
+
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            Cancel
+        {/* Footer */}
+        <DialogFooter className="p-4 md:p-6 bg-gray-50 border-t shrink-0 flex-row gap-3">
+          <Button 
+            variant="outline" 
+            onClick={onClose} 
+            disabled={loading}
+            className="flex-1 h-12 rounded-xl border-2 font-black uppercase text-[10px] tracking-widest text-gray-500 hover:bg-white"
+          >
+            Abort
           </Button>
           <Button 
             onClick={handleSubmit} 
             disabled={loading || !isValid}
-            className="bg-red-600 hover:bg-red-700 text-white"
+            className="flex-[2] h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black uppercase text-[10px] tracking-widest shadow-xl shadow-red-200 transition-all active:scale-[0.98]"
           >
-            {loading ? 'Processing...' : 'Confirm & End Shift'}
+            {loading ? (
+                <span className="flex items-center gap-2">
+                    <RefreshCw className="h-3 w-3 animate-spin" /> Processing...
+                </span>
+            ) : 'Proceed & Finalize'}
           </Button>
         </DialogFooter>
       </DialogContent>

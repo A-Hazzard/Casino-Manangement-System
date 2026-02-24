@@ -35,9 +35,12 @@ export default function VaultOverviewCollectionMachineSelector({
 }: VaultOverviewCollectionMachineSelectorProps) {
   
   const filteredMachines = useMemo(() => {
-    if (!searchTerm) return machines;
+    // Sort machines by most moneyIn (descending)
+    const sortedMachines = [...machines].sort((a, b) => (b.moneyIn || 0) - (a.moneyIn || 0));
+
+    if (!searchTerm) return sortedMachines;
     const lowerTerm = searchTerm.toLowerCase();
-    return machines.filter(
+    return sortedMachines.filter(
       (m) =>
         m.custom?.name.toLowerCase().includes(lowerTerm) ||
         m.serialNumber?.toLowerCase().includes(lowerTerm) ||

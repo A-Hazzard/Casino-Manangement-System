@@ -19,6 +19,7 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type FloatRequestModalProps = {
   open: boolean;
@@ -48,6 +49,7 @@ export default function FloatRequestModal({
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [denominations, setDenominations] = useState<Denomination[]>([]);
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   const denomsList = useMemo(() => getDenominationValues(effectiveLicenseeId), [effectiveLicenseeId]);
 
@@ -78,6 +80,11 @@ export default function FloatRequestModal({
       return;
     }
 
+    // On confirm step, show TOTP before actual submission
+    setShowAuthenticator(true);
+  };
+
+  const handleAuthVerified = async () => {
     try {
       await onSubmit({
         type,
@@ -96,7 +103,8 @@ export default function FloatRequestModal({
 
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <>
+      <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="md:max-w-[600px] p-0 overflow-hidden flex flex-col">
         <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
@@ -209,5 +217,12 @@ export default function FloatRequestModal({
         </form>
       </DialogContent>
     </Dialog>
+    <VaultAuthenticatorModal
+      open={showAuthenticator}
+      onClose={() => setShowAuthenticator(false)}
+      onVerified={handleAuthVerified}
+      actionName={`Float ${type === 'increase' ? 'Increase' : 'Decrease'} Request`}
+    />
+    </>
   );
 }

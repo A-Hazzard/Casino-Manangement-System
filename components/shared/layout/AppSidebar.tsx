@@ -11,7 +11,6 @@
  * - Slide-in/out on mobile
  * - User profile section with avatar
  * - Profile modal integration
- * - Currency selector
  * - Logout functionality
  * - Dynamic user data fetching with caching
  * - Permission checks for each menu item
@@ -24,29 +23,19 @@
 
 import ProfileModal from '@/components/shared/layout/ProfileModal';
 import { ClientOnly } from '@/components/shared/ui/ClientOnly';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/shared/ui/select';
 import { SidebarContainer, useSidebar } from '@/components/shared/ui/sidebar';
 import { cmsNavigationConfig } from '@/lib/constants';
-import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { logoutUser } from '@/lib/helpers/client';
 import { fetchUserId } from '@/lib/helpers/user';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import {
+    CACHE_KEYS,
+    fetchUserWithCache,
+} from '@/lib/services/userCacheService';
 import { useUserStore } from '@/lib/store/userStore';
 import type { NavigationConfig } from '@/lib/types/layout/navigation';
 import { cn } from '@/lib/utils';
 import { shouldShowNoRoleMessage } from '@/lib/utils/licensee';
 import { shouldShowNavigationLinkDb } from '@/lib/utils/permissions';
-import {
-  CACHE_KEYS,
-  fetchUserWithCache,
-} from '@/lib/services/userCacheService';
-import type { CurrencyCode } from '@/shared/types/currency';
 import { ChevronDown, ChevronUp, PanelLeft } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -70,8 +59,6 @@ export default function AppSidebar({
   const { collapsed, toggleCollapsed, setIsOpen } = useSidebar();
   const { user, clearUser } = useUserStore();
   const pathname = usePathname();
-  const { displayCurrency, setDisplayCurrency } = useCurrency();
-  const { setDisplayCurrency: setDashboardCurrency } = useDashBoardStore();
   const [profileOpen, setProfileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -902,51 +889,6 @@ export default function AppSidebar({
                 })
             )}
           </nav>
-          {/* Currency Filter Section - Mobile Only */}
-          {collapsed && (
-            <div className="border-t border-border/50 px-3 py-3 md:hidden">
-              <div className="mb-2 text-xs font-medium text-gray-700">
-                Currency
-              </div>
-              <div className="w-full">
-                <Select
-                  value={displayCurrency}
-                  onValueChange={value => {
-                    const newCurrency = value as CurrencyCode;
-                    // Update BOTH currency states to keep them in sync
-                    setDisplayCurrency(newCurrency);
-                    setDashboardCurrency(newCurrency);
-
-                    // Close sidebar immediately on mobile after selecting a currency
-                    if (
-                      typeof window !== 'undefined' &&
-                      window.innerWidth < 768
-                    ) {
-                      setIsOpen(false);
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-full text-sm [&>span:first-child]:absolute [&>span:first-child]:left-0 [&>span:first-child]:right-0 [&>span:first-child]:flex [&>span:first-child]:justify-center [&>span:first-child]:text-center">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="z-[100000]">
-                    <SelectItem value="USD" className="text-center">
-                      $ USD
-                    </SelectItem>
-                    <SelectItem value="TTD" className="text-center">
-                      TT$ TTD
-                    </SelectItem>
-                    <SelectItem value="GYD" className="text-center">
-                      GY$ GYD
-                    </SelectItem>
-                    <SelectItem value="BBD" className="text-center">
-                      Bds$ BBD
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
 
           {/* User Profile Section: User information and profile controls */}
           <div className="relative mt-auto border-t border-border/50 px-3 py-3">

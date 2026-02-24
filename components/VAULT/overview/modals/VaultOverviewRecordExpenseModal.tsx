@@ -52,6 +52,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type VaultOverviewRecordExpenseModalProps = {
   open: boolean;
@@ -103,6 +104,7 @@ export default function VaultOverviewRecordExpenseModal({
   const [date, setDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   // Category Specific State
   const [bankDetails, setBankDetails] = useState({
@@ -233,6 +235,11 @@ export default function VaultOverviewRecordExpenseModal({
       return;
     }
 
+    // Trigger TOTP verification
+    setShowAuthenticator(true);
+  };
+
+  const handleAuthVerified = async () => {
     setLoading(true);
     try {
       await onConfirm({
@@ -300,7 +307,8 @@ export default function VaultOverviewRecordExpenseModal({
   // Render
   // ============================================================================
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="md:max-w-3xl p-0 overflow-hidden flex flex-col">
         <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
@@ -545,5 +553,12 @@ export default function VaultOverviewRecordExpenseModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <VaultAuthenticatorModal
+      open={showAuthenticator}
+      onClose={() => setShowAuthenticator(false)}
+      onVerified={handleAuthVerified}
+      actionName="Record Expense"
+    />
+    </>
   );
 }

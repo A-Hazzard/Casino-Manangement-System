@@ -193,7 +193,7 @@ export default function SoftCountForm({
       <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
          <div>
             <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black text-gray-900">{machine.custom?.name || 'Unknown Machine'}</h2>
+                <h2 className="text-lg font-black text-gray-900">{machine.custom?.name || (machine as any).name || (machine as any).machineName || `Machine ${machine.assetNumber || machine.serialNumber}`}</h2>
                 <Badge variant="outline" className="bg-white text-gray-500 border-gray-200">
                     {machine.assetNumber || machine.serialNumber}
                 </Badge>
@@ -327,7 +327,7 @@ export default function SoftCountForm({
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 p-5 text-white shadow-lg shadow-violet-500/20 flex flex-col justify-center min-h-[120px]">
                 <div className="relative z-10">
                   <p className="text-[9px] font-black uppercase tracking-widest text-violet-100/60 mb-2">Physical Total</p>

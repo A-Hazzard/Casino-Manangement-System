@@ -17,6 +17,7 @@ import { getDenominationValues, getInitialDenominationRecord } from '@/lib/utils
 import type { Denomination } from '@/shared/types/vault';
 import { Briefcase, FileText, Info, Landmark, RefreshCw, ShieldCheck, Wrench } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type VaultOverviewReconcileModalProps = {
   open: boolean;
@@ -50,6 +51,7 @@ export default function VaultOverviewReconcileModal({
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
   const [reason, setReason] = useState('');
   const [source, setSource] = useState<string>('Periodic');
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   // Update breakdown when licensee changes or modal opens
   useEffect(() => {
@@ -97,6 +99,11 @@ export default function VaultOverviewReconcileModal({
   ];
 
   const handleSubmit = async () => {
+    // Instead of immediately submitting, show the authenticator modal
+    setShowAuthenticator(true);
+  };
+
+  const handleAuthVerified = async () => {
     setLoading(true);
     try {
       const denominations: Denomination[] = Object.entries(breakdown).map(
@@ -292,6 +299,13 @@ export default function VaultOverviewReconcileModal({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <VaultAuthenticatorModal
+        open={showAuthenticator}
+        onClose={() => setShowAuthenticator(false)}
+        onVerified={handleAuthVerified}
+        actionName="Vault Reconciliation"
+      />
     </Dialog>
   );
 }

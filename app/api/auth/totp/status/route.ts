@@ -1,0 +1,34 @@
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import UserModel from '@/app/api/lib/models/user';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * GET /api/auth/totp/status
+ * 
+ * Checks if the current user has enabled Google Authenticator.
+ */
+export async function GET(_req: NextRequest) {
+  try {
+    const session = await getUserFromServer();
+    if (!session || !session._id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectDB();
+    const user = await UserModel.findById(session._id).select('totpEnabled');
+    
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ 
+      enabled: !!user.totpEnabled,
+      hasSecret: !!user.totpSecret,
+      needsSetup: !user.totpEnabled
+    });
+  } catch (error: any) {
+    console.error('TOTP Status Error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

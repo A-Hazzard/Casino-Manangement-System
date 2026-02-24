@@ -27,7 +27,7 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
         setVaultBalance(balance);
       }
       
-      const machinesData = await fetchCabinetsForLocation(locationId, undefined, 'All Time');
+      const machinesData = await fetchCabinetsForLocation(locationId, undefined, 'Today');
       if (machinesData && machinesData.data) {
         setMachines(machinesData.data);
       }
@@ -52,7 +52,7 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
       setPendingShifts(data.pendingShifts || []);
 
       // 2. Fetch machines for collection selector - ensures they are available
-      const machinesData = await fetchCabinetsForLocation(locationId, undefined, 'All Time');
+      const machinesData = await fetchCabinetsForLocation(locationId, undefined, 'Today');
       if (machinesData && machinesData.data) {
         setMachines(machinesData.data);
       }

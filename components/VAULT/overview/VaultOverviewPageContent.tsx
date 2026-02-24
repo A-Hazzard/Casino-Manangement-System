@@ -157,7 +157,7 @@ export default function VaultOverviewPageContent() {
             const machinesData = await fetchCabinetsForLocation(
                 locationId, 
                 undefined, 
-                'All Time' 
+                'Today' 
             );
             if (machinesData && machinesData.data) {
                 setMachines(machinesData.data);

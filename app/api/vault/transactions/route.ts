@@ -146,14 +146,26 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Populate Names (Cashiers and Performers)
+    // STEP 4: Populate Names (Cashiers, Performers, and Machines)
     // ============================================================================
     const userIds = new Set<string>();
-    finalTransactions.forEach(tx => {
+    const machineIds = new Set<string>();
+
+    finalTransactions.forEach((tx: any) => {
         if (tx.performedBy) userIds.add(tx.performedBy);
         if (tx.from?.type === 'cashier' && tx.from.id) userIds.add(tx.from.id);
         if (tx.to?.type === 'cashier' && tx.to.id) userIds.add(tx.to.id);
+        
+        if (tx.from?.type === 'machine' && tx.from.id) machineIds.add(tx.from.id);
+        if (tx.to?.type === 'machine' && tx.to.id) machineIds.add(tx.to.id);
+
+        if (tx.expenseDetails?.isMachineRepair && tx.expenseDetails.machineIds?.length > 0) {
+            tx.expenseDetails.machineIds.forEach((id: string) => machineIds.add(id));
+        }
     });
+
+    const userMap: Record<string, any> = {};
+    const machineMap: Record<string, any> = {};
 
     if (userIds.size > 0) {
         const UserModel = (await import('@/app/api/lib/models/user')).default;
@@ -162,83 +174,97 @@ export async function GET(request: NextRequest) {
             { 'profile.firstName': 1, 'profile.lastName': 1, username: 1 }
         ).lean();
 
-        const userMap = users.reduce((acc: Record<string, any>, u: any) => {
-            acc[String(u._id)] = u;
-            return acc;
-        }, {} as Record<string, any>);
-
-        finalTransactions = finalTransactions.map(tx => {
-            const updatedTx = { ...tx };
-            
-            // Format Performer Name
-            const perfUser = userMap[tx.performedBy];
-            if (perfUser && perfUser.profile?.firstName) {
-                updatedTx.performedByName = `${perfUser.profile.firstName} ${perfUser.profile.lastName}`;
-            }
-
-            // Format Source (if Cashier)
-            if (tx.from?.type === 'cashier' && tx.from.id) {
-                const cashier = userMap[tx.from.id];
-                if (cashier && cashier.profile?.firstName) {
-                    updatedTx.fromName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
-                }
-            }
-
-            // Format Destination (if Cashier)
-            if (tx.to?.type === 'cashier' && tx.to.id) {
-                const cashier = userMap[tx.to.id];
-                if (cashier && cashier.profile?.firstName) {
-                    updatedTx.toName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
-                }
-            }
-
-            return updatedTx;
+        users.forEach((u: any) => {
+            userMap[String(u._id)] = u;
         });
     }
 
-    // ============================================================================
-    // STEP 4.5: Populate machineDetails for older transactions
-    // ============================================================================
-    const missingMachineIds = new Set<string>();
-    finalTransactions.forEach((tx: any) => {
-       if (tx.expenseDetails?.isMachineRepair && tx.expenseDetails.machineIds?.length > 0) {
-           if (!tx.expenseDetails.machineDetails || tx.expenseDetails.machineDetails.length === 0) {
-               tx.expenseDetails.machineIds.forEach((id: string) => missingMachineIds.add(id));
-           }
-       }
-    });
+    if (machineIds.size > 0) {
+        const { Machine } = await import('@/app/api/lib/models/machines');
+        const machines = await Machine.find(
+            { _id: { $in: Array.from(machineIds) } },
+            { serialNumber: 1, 'custom.name': 1, game: 1, installedGame: 1, gameType: 1 }
+        ).lean();
 
-    if (missingMachineIds.size > 0) {
-       const { Machine } = await import('@/app/api/lib/models/machines');
-       const mList = await Machine.find({ _id: { $in: Array.from(missingMachineIds) } }).lean();
-
-       finalTransactions.forEach((tx: any) => {
-           if (tx.expenseDetails?.isMachineRepair && tx.expenseDetails.machineIds?.length > 0) {
-               if (!tx.expenseDetails.machineDetails || tx.expenseDetails.machineDetails.length === 0) {
-                   tx.expenseDetails.machineDetails = tx.expenseDetails.machineIds.map((id: string) => {
-                        const m = mList.find((x: any) => String(x._id) === id || String(x.machineId) === id || x.serialNumber === id);
-                        if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
-                        
-                        const serialNumberRaw = m.serialNumber?.trim() || '';
-                        const customName = m.custom?.name?.trim() || '';
-                        const game = m.game || m.installedGame || '';
-                        const gameType = m.gameType || '';
-                        const mainIdentifier = serialNumberRaw || customName || 'N/A';
-                        
-                        return {
-                           identifier: customName && customName !== mainIdentifier ? `${mainIdentifier} (${customName})` : mainIdentifier,
-                           game: game.trim(),
-                           gameType: gameType.trim()
-                        };
-                   });
-                   // For backward compatibility while frontend handles both, maybe we clean up old machineNames
-                   delete tx.expenseDetails.machineNames;
-               }
-           }
-       });
+        machines.forEach((m: any) => {
+            machineMap[String(m._id)] = m;
+        });
     }
 
-    // Remove machineIds from response
+    finalTransactions = finalTransactions.map((tx: any) => {
+        const updatedTx = { ...tx };
+        
+        // 1. Performer Name
+        const perfUser = userMap[tx.performedBy];
+        if (perfUser && perfUser.profile?.firstName) {
+            updatedTx.performedByName = `${perfUser.profile.firstName} ${perfUser.profile.lastName}`;
+        }
+
+        // 2. Source Name
+        if (tx.from?.type === 'cashier' && tx.from.id) {
+            const cashier = userMap[tx.from.id];
+            if (cashier && cashier.profile?.firstName) {
+                updatedTx.fromName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
+            }
+        } else if (tx.from?.type === 'machine' && tx.from.id) {
+            const machine = machineMap[tx.from.id];
+            if (machine) {
+                const sn = machine.serialNumber?.trim();
+                const name = machine.custom?.name?.trim();
+                updatedTx.fromName = `Machine (${sn || name || tx.from.id})`;
+            } else {
+                updatedTx.fromName = `Machine (${tx.from.id})`;
+            }
+        }
+
+        // 3. Destination Name
+        if (tx.to?.type === 'cashier' && tx.to.id) {
+            const cashier = userMap[tx.to.id];
+            if (cashier && cashier.profile?.firstName) {
+                updatedTx.toName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
+            }
+        } else if (tx.to?.type === 'machine' && tx.to.id) {
+            const machine = machineMap[tx.to.id];
+            if (machine) {
+                const sn = machine.serialNumber?.trim();
+                const name = machine.custom?.name?.trim();
+                updatedTx.toName = `Machine (${sn || name || tx.to.id})`;
+            } else {
+                updatedTx.toName = `Machine (${tx.to.id})`;
+            }
+        }
+
+        // 4. Populate machineDetails for details modal (BR-03 compliance)
+        const allAssociatedMachineIds = new Set<string>();
+        if (tx.from?.type === 'machine' && tx.from.id) allAssociatedMachineIds.add(tx.from.id);
+        if (tx.to?.type === 'machine' && tx.to.id) allAssociatedMachineIds.add(tx.to.id);
+        if (tx.expenseDetails?.machineIds?.length > 0) {
+            tx.expenseDetails.machineIds.forEach((id: string) => allAssociatedMachineIds.add(id));
+        }
+
+        if (allAssociatedMachineIds.size > 0) {
+            updatedTx.machineDetails = Array.from(allAssociatedMachineIds).map((id: string) => {
+                const m = machineMap[id];
+                if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
+                
+                const sn = m.serialNumber?.trim() || '';
+                const name = m.custom?.name?.trim() || '';
+                const game = m.game || m.installedGame || '';
+                const gameType = m.gameType || '';
+                const mainId = sn || name || 'N/A';
+                
+                return {
+                   identifier: name && name !== mainId ? `${mainId} (${name})` : mainId,
+                   game: game.trim(),
+                   gameType: gameType.trim()
+                };
+            });
+        }
+
+        return updatedTx;
+    });
+
+    // Final cleanup of internal IDs from response
     finalTransactions.forEach((tx: any) => {
         if (tx.expenseDetails && tx.expenseDetails.machineIds) {
             delete tx.expenseDetails.machineIds;

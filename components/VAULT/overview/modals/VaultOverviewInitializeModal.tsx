@@ -11,6 +11,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, ArrowRightCircle, Calendar, Landmark, RefreshCw, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type VaultOverviewInitializeModalProps = {
   open: boolean;
@@ -35,8 +36,13 @@ export default function VaultOverviewInitializeModal({
 }: VaultOverviewInitializeModalProps) {
   const { formatAmount } = useCurrencyFormat();
   const [loading, setLoading] = useState(false);
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   const handleSubmit = async () => {
+    setShowAuthenticator(true);
+  };
+
+  const handleAuthVerified = async () => {
     setLoading(true);
     try {
       await onConfirm({});
@@ -53,7 +59,8 @@ export default function VaultOverviewInitializeModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="md:max-w-md p-0 overflow-hidden flex flex-col">
         <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
@@ -131,5 +138,12 @@ export default function VaultOverviewInitializeModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <VaultAuthenticatorModal
+      open={showAuthenticator}
+      onClose={() => setShowAuthenticator(false)}
+      onVerified={handleAuthVerified}
+      actionName={isInitial ? "Initialize New Vault" : "Open Vault Shift"}
+    />
+    </>
   );
 }
