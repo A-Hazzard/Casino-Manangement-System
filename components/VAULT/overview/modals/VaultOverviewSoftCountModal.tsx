@@ -30,7 +30,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
-import { CheckCheck, CheckCircle2, Coins, LayoutGrid, ListChecks, Loader2, Monitor } from 'lucide-react';
+import { CheckCheck, CheckCircle2, Coins, LayoutGrid, ListChecks, Loader2, Monitor, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -230,8 +230,12 @@ export default function VaultOverviewSoftCountModal({
     }
   };
 
+  const hasNoMachines = machines.length === 0;
+
   const handleFinalizeClick = () => {
-    if (!sessionId || entries.length === 0) return;
+    if (!sessionId) return;
+    // Allow finalize with 0 entries only if the location has no machines
+    if (entries.length === 0 && !hasNoMachines) return;
     setShowConfirmModal(true);
   };
 
@@ -349,13 +353,14 @@ export default function VaultOverviewSoftCountModal({
                                 variant="ghost" 
                                 size="sm"
                                 onClick={onClose} 
-                                className="hidden xs:flex text-gray-400 hover:text-gray-600 font-bold text-xs md:text-sm tracking-tight"
+                                className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 font-bold text-xs md:text-sm tracking-tight"
                             >
-                                Cancel
+                                <X className="h-4 w-4 md:h-5 md:w-5" />
+                                <span className="hidden xs:inline">Cancel</span>
                             </Button>
                             <Button 
                                 onClick={handleFinalizeClick} 
-                                disabled={loading || entries.length === 0}
+                                disabled={loading || (entries.length === 0 && !hasNoMachines)}
                                 className="h-9 md:h-11 px-3 md:px-6 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs md:text-sm rounded-lg md:rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
                             >
                                 {loading ? <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" /> : <CheckCheck className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />}
@@ -368,6 +373,27 @@ export default function VaultOverviewSoftCountModal({
                     {/* Responsive Panels Layout */}
                     <div className="flex-1 flex flex-col lg:flex-row min-h-0 bg-white overflow-hidden relative">
                         
+                        {/* No Machines Empty State */}
+                        {hasNoMachines ? (
+                          <div className="flex-1 flex flex-col items-center justify-center p-10 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+                              <div className="w-20 h-20 md:w-24 md:h-24 bg-amber-50 rounded-3xl flex items-center justify-center mb-6 shadow-sm border border-amber-100">
+                                  <Monitor className="h-8 w-8 md:h-10 md:w-10 text-amber-300" />
+                              </div>
+                              <h3 className="text-lg md:text-xl font-black text-gray-800 mb-2 tracking-tight">No Machines at This Location</h3>
+                              <p className="text-gray-400 text-xs md:text-sm max-w-[320px] font-medium leading-relaxed mb-6">
+                                  This location has no machines to count. You can finalize the session immediately to proceed with closing the vault.
+                              </p>
+                              <Button
+                                onClick={handleFinalizeClick}
+                                disabled={loading || !sessionId}
+                                className="h-12 px-8 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
+                              >
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCheck className="mr-2 h-4 w-4" />}
+                                Finalize Session
+                              </Button>
+                          </div>
+                        ) : (
+                        <>
                         {/* Left: Machine Selector - Hidden on mobile unless active */}
                         <div className={cn(
                           "flex-col lg:flex h-full lg:w-1/4 min-w-0", 
@@ -491,6 +517,8 @@ export default function VaultOverviewSoftCountModal({
                             <span className="text-[10px] font-black uppercase tracking-widest">Review</span>
                           </Button>
                         </div>
+                        </>
+                        )}
                     </div>
                 </>
             )}
@@ -503,7 +531,10 @@ export default function VaultOverviewSoftCountModal({
           <AlertDialogHeader>
             <AlertDialogTitle>Finalize Soft Count?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to finalize soft count removals for {entries.length} machines? This will record the transactions and update the vault balance.
+              {hasNoMachines 
+                ? 'This location has no machines. Finalizing will mark the soft count as complete so you can proceed with closing the vault.'
+                : `Are you sure you want to finalize soft count removals for ${entries.length} machines? This will record the transactions and update the vault balance.`
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -19,17 +19,18 @@ import { Card, CardContent } from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import VaultTransactionsSkeleton from '@/components/ui/skeletons/VaultTransactionsSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
+import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import {
-    fetchVaultTransactions,
-    getTransactionTypeBadge
+  fetchVaultTransactions,
+  getTransactionTypeBadge
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
@@ -106,14 +107,14 @@ export default function VaultTransactionsPageContent() {
 
   // Periodic refresh only if at least 2 items
   useEffect(() => {
-    if (transactions.length === 0) return;
+    if (transactions.length < 2) return;
 
     const interval = setInterval(() => {
         fetchData(true);
-    }, 60000); // 1 minute
+    }, DEFAULT_POLL_INTERVAL); 
 
     return () => clearInterval(interval);
-  }, [user?.assignedLocations, currentPage, searchTerm, selectedType, selectedStatus, transactions.length]);
+  }, [fetchData, transactions.length]);
 
   // ============================================================================
   // Computed Values
@@ -235,6 +236,8 @@ export default function VaultTransactionsPageContent() {
   // ============================================================================
   return (
     <PageLayout
+        onRefresh={() => fetchData(true)}
+        refreshing={loading}
         headerProps={isAdminOrDev ? {
             selectedLicencee,
             setSelectedLicencee,
@@ -260,61 +263,14 @@ export default function VaultTransactionsPageContent() {
             </Button>
         </VaultManagerHeader>
 
-        {/* Search and Filters */}
-        <div className="flex flex-col gap-4 sm:flex-row">
-          <div className="relative flex-1">
-            <Input
-              type="text"
-              placeholder="Search transactions..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
-            />
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          </div>
-          <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="h-9 w-full sm:w-[180px]">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="vault_open">Vault Open</SelectItem>
-              <SelectItem value="vault_close">Vault Close</SelectItem>
-              <SelectItem value="cashier_shift_open">Cashier Shift Open</SelectItem>
-              <SelectItem value="cashier_shift_close">Cashier Shift Close</SelectItem>
-              <SelectItem value="machine_collection">Machine Collection</SelectItem>
-              <SelectItem value="float_increase">Float Increase</SelectItem>
-              <SelectItem value="float_decrease">Float Decrease</SelectItem>
-              <SelectItem value="payout">Payout</SelectItem>
-              <SelectItem value="expense">Expense</SelectItem>
-              <SelectItem value="vault_reconciliation">Reconciliation</SelectItem>
-              <SelectItem value="soft_count">Soft Count</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="h-9 w-full sm:w-[180px]">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="voided">Voided</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Summary Cards */}
+        {/* Summary Cards — always visible, above search bar */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Card className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">
-                    Transactions
-                  </p>
-                  <p className="text-lg font-black text-gray-900 sm:text-xl">
-                    {summaryMetrics.totalTransactions}
-                  </p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Transactions</p>
+                  <p className="text-lg font-black text-gray-900 sm:text-xl">{summaryMetrics.totalTransactions}</p>
                 </div>
                 <div className="h-8 w-8 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:bg-violet-50 group-hover:border-violet-100 transition-colors">
                   <FileText className="h-4 w-4 text-gray-400 group-hover:text-violet-600" />
@@ -322,17 +278,12 @@ export default function VaultTransactionsPageContent() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">
-                    Total Inflow
-                  </p>
-                  <p className="text-lg font-black text-emerald-600 sm:text-xl">
-                    {formatAmount(summaryMetrics.totalInflow)}
-                  </p>
+                  <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">Total Inflow</p>
+                  <p className="text-lg font-black text-emerald-600 sm:text-xl">{formatAmount(summaryMetrics.totalInflow)}</p>
                 </div>
                 <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center border border-emerald-100 group-hover:bg-emerald-100 transition-colors">
                   <ArrowUp className="h-4 w-4 text-emerald-600" />
@@ -340,17 +291,12 @@ export default function VaultTransactionsPageContent() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none">
-                    Total Outflow
-                  </p>
-                  <p className="text-lg font-black text-orange-600 sm:text-xl">
-                    {formatAmount(summaryMetrics.totalOutflow)}
-                  </p>
+                  <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none">Total Outflow</p>
+                  <p className="text-lg font-black text-orange-600 sm:text-xl">{formatAmount(summaryMetrics.totalOutflow)}</p>
                 </div>
                 <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center border border-orange-100 group-hover:bg-orange-100 transition-colors">
                   <ArrowDown className="h-4 w-4 text-orange-600" />
@@ -358,17 +304,12 @@ export default function VaultTransactionsPageContent() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-red-500 uppercase tracking-widest leading-none">
-                    Total Expenses
-                  </p>
-                  <p className="text-lg font-black text-red-600 sm:text-xl">
-                    {formatAmount(summaryMetrics.totalExpenses)}
-                  </p>
+                  <p className="text-[10px] font-black text-red-500 uppercase tracking-widest leading-none">Total Expenses</p>
+                  <p className="text-lg font-black text-red-600 sm:text-xl">{formatAmount(summaryMetrics.totalExpenses)}</p>
                 </div>
                 <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center border border-red-100 group-hover:bg-red-100 transition-colors">
                   <Receipt className="h-4 w-4 text-red-600" />
@@ -378,19 +319,55 @@ export default function VaultTransactionsPageContent() {
           </Card>
         </div>
 
-        {/* Transaction Details: Responsive Views */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded border border-gray-300">
-              <Receipt className="h-4 w-4 text-gray-600" />
-            </div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Transaction Details
-            </h2>
+        {/* Search and Filters */}
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            <Input
+              type="text"
+              placeholder="Search transactions..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
+            />
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           </div>
+          <div className="flex gap-3">
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger className="h-9 flex-1 sm:w-[180px] sm:flex-none">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="vault_open">Vault Open</SelectItem>
+                <SelectItem value="vault_close">Vault Close</SelectItem>
+                <SelectItem value="cashier_shift_open">Cashier Shift Open</SelectItem>
+                <SelectItem value="cashier_shift_close">Cashier Shift Close</SelectItem>
+                <SelectItem value="machine_collection">Machine Collection</SelectItem>
+                <SelectItem value="float_increase">Float Increase</SelectItem>
+                <SelectItem value="float_decrease">Float Decrease</SelectItem>
+                <SelectItem value="payout">Payout</SelectItem>
+                <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="vault_reconciliation">Reconciliation</SelectItem>
+                <SelectItem value="soft_count">Soft Count</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="h-9 flex-1 sm:w-[180px] sm:flex-none">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="voided">Voided</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-          {/* Desktop Table View - lg and above */}
-          <div className={loading ? 'pointer-events-none opacity-50' : ''}>
+        {/* Transaction Details */}
+        <div className="space-y-4">
+          {/* Desktop Table */}
+          <div className={loading ? 'pointer-events-none opacity-50 hidden lg:block' : 'hidden lg:block'}>
             <VaultTransactionsTable
               transactions={filteredAndSortedTransactions}
               sortOption={sortOption}
@@ -401,31 +378,27 @@ export default function VaultTransactionsPageContent() {
             />
           </div>
 
-          {/* Mobile/Tablet Card View - below lg */}
-          <div
-            className={
-              loading ? 'pointer-events-none opacity-50' : 'block lg:hidden'
-            }
-          >
+          {/* Mobile Cards */}
+          <div className={loading ? 'pointer-events-none opacity-50 lg:hidden' : 'lg:hidden'}>
             <VaultTransactionsMobileCards
               transactions={filteredAndSortedTransactions}
               getTransactionTypeBadge={getTransactionBadge}
             />
           </div>
-
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="mt-4">
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                setCurrentPage={setCurrentPage}
-                totalCount={totalItems}
-                limit={20}
-              />
-            </div>
-          )}
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-4">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              setCurrentPage={setCurrentPage}
+              totalCount={totalItems}
+              limit={20}
+            />
+          </div>
+        )}
       </div>
     </PageLayout>
   );

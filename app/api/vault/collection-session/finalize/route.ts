@@ -23,8 +23,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Session not found or already completed' }, { status: 404 });
     }
 
-    // 2. Validate Entries
-    if (session.entries.length === 0) {
+    // 2. Validate Entries (allow empty for end-of-day sessions — location may have no machines)
+    if (session.entries.length === 0 && !session.isEndOfDay) {
       return NextResponse.json({ success: false, error: 'Cannot finalize empty session' }, { status: 400 });
     }
 

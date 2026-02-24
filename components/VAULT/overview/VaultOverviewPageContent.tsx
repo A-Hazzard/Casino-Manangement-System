@@ -11,8 +11,8 @@
 
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
-  DEFAULT_VAULT_BALANCE,
-  DEFAULT_VAULT_METRICS,
+    DEFAULT_VAULT_BALANCE,
+    DEFAULT_VAULT_METRICS,
 } from '@/components/VAULT/overview/data/defaults';
 import StaleShiftDetectedBlock from '@/components/VAULT/shared/StaleShiftDetectedBlock';
 import PageLayout from '@/components/shared/layout/PageLayout';
@@ -20,20 +20,20 @@ import { Button } from '@/components/shared/ui/button';
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
 import {
-  fetchGlobalVaultOverviewData,
-  fetchVaultOverviewData
+    fetchGlobalVaultOverviewData,
+    fetchVaultOverviewData
 } from '@/lib/helpers/vaultHelpers';
 import { useUserStore } from '@/lib/store/userStore';
 import { isShiftStale } from '@/lib/utils/vault/shift';
 import type { GamingMachine } from '@/shared/types/entities';
 import {
-  type CashDesk,
-  type Denomination,
-  type FloatRequest,
-  type UnbalancedShiftInfo,
-  type VaultBalance,
-  type VaultMetrics,
-  type VaultTransaction,
+    type CashDesk,
+    type Denomination,
+    type FloatRequest,
+    type UnbalancedShiftInfo,
+    type VaultBalance,
+    type VaultMetrics,
+    type VaultTransaction,
 } from '@/shared/types/vault';
 import { FileText, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
@@ -509,6 +509,8 @@ export default function VaultOverviewPageContent() {
 
   return (
     <PageLayout
+      onRefresh={() => fetchData(false)}
+      refreshing={refreshing}
       headerProps={isAdminOrDev ? {
           selectedLicencee,
           setSelectedLicencee,

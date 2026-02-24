@@ -15,6 +15,7 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
+import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import { useUserStore } from '@/lib/store/userStore';
 import { CheckCircle2, Clock, Loader2, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -120,12 +121,12 @@ export default function VaultFloatRequestsPageContent() {
 
   // Periodic refresh only if at least 2 items
   useEffect(() => {
-    const totalItems = pendingRequests.length + requestHistory.length;
-    if (totalItems === 0) return;
+    const totalItemsCount = pendingRequests.length + requestHistory.length;
+    if (totalItemsCount < 2) return;
 
     const interval = setInterval(() => {
         fetchRequests(true); // Silent refresh
-    }, 30000); // 30 seconds
+    }, DEFAULT_POLL_INTERVAL); 
 
     return () => clearInterval(interval);
   }, [user?.assignedLocations, currentPage, pendingRequests.length, requestHistory.length]);
@@ -229,7 +230,7 @@ export default function VaultFloatRequestsPageContent() {
   }
 
   return (
-    <PageLayout>
+    <PageLayout onRefresh={() => fetchRequests(true)} refreshing={refreshing}>
       <div className="space-y-6">
         <VaultManagerHeader
           title="Float Requests"

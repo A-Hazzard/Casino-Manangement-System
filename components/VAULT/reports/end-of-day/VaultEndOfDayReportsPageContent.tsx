@@ -21,62 +21,62 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import { DatePicker } from '@/components/shared/ui/date-picker';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
 } from '@/components/shared/ui/tabs';
 import VaultEndOfDayReportsSkeleton from '@/components/ui/skeletons/VaultEndOfDayReportsSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
-  DEFAULT_CASHIER_FLOATS,
-  DEFAULT_REPORT_DENOMINATIONS,
-  DEFAULT_VAULT_BALANCE,
-  DEFAULT_VAULT_METRICS,
+    DEFAULT_CASHIER_FLOATS,
+    DEFAULT_REPORT_DENOMINATIONS,
+    DEFAULT_VAULT_BALANCE,
+    DEFAULT_VAULT_METRICS,
 } from '@/components/VAULT/overview/data/defaults';
 import {
-  calculateEndOfDayMetrics,
-  fetchEndOfDayReportData,
+    calculateEndOfDayMetrics,
+    fetchEndOfDayReportData,
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type {
-  CashierFloat,
-  FloatRequest,
-  VaultMetrics,
+    CashierFloat,
+    FloatRequest,
+    VaultMetrics,
 } from '@/shared/types/vault';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
-  AlertTriangle,
-  ChevronDown,
-  Download,
-  Monitor,
-  RefreshCw,
-  Users,
-  Wallet
+    AlertTriangle,
+    ChevronDown,
+    Download,
+    Monitor,
+    RefreshCw,
+    Users,
+    Wallet
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -293,7 +293,7 @@ export default function VaultEndOfDayReportsPageContent() {
   // ============================================================================
   
   return (
-    <PageLayout>
+    <PageLayout onRefresh={handleRefresh} refreshing={loading}>
       <div className="space-y-6">
         {/* Header - Always Visible */}
         <VaultManagerHeader
@@ -426,15 +426,66 @@ export default function VaultEndOfDayReportsPageContent() {
             );
           }
 
+          // 3b. Shift Still Active (Day Not Yet Closed)
+          if (reportData.shiftStatus === 'active') {
+            const isToday = selectedDate?.toDateString() === new Date().toDateString();
+            // Only block the report if viewing today's date — the shift hasn't been closed yet
+            if (isToday) {
+              return (
+                <Card className="border-l-4 border-l-orangeHighlight">
+                  <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+                    <div className="mb-4 rounded-full bg-orange-50 p-4">
+                      <AlertTriangle className="h-12 w-12 text-orangeHighlight" />
+                    </div>
+                    <h3 className="mb-2 text-xl font-bold text-gray-900">
+                      Shift Still In Progress
+                    </h3>
+                    <p className="max-w-md text-gray-500">
+                      Today&apos;s vault shift is still active and has not been closed yet.
+                      End-of-day reports are only available after the shift has been closed.
+                    </p>
+                    <p className="mt-3 text-sm text-gray-400">
+                      Close the current vault shift to generate today&apos;s end-of-day report.
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            }
+            // For past dates where shift was somehow left active — show report with a warning
+          }
+
           // 4. Report Content
           return (
             <Tabs defaultValue="summary" className="w-full space-y-6">
-              <TabsList className="grid w-full grid-cols-4 bg-gray-100/50 p-1">
-                <TabsTrigger value="summary">Summary</TabsTrigger>
-                <TabsTrigger value="cashier-floats">Cashier Floats ({reportData.cashierFloats.length})</TabsTrigger>
-                <TabsTrigger value="mid-day">Mid-Day Drops ({reportData.midDaySoftCounts.length})</TabsTrigger>
-                <TabsTrigger value="end-of-day">End-of-Day Drops ({reportData.endOfDaySoftCounts.length})</TabsTrigger>
-              </TabsList>
+              {/* Scrollable tab slider — works on all screen sizes */}
+              <div className="overflow-x-auto -mx-1 px-1">
+                <TabsList className="inline-flex h-11 min-w-max rounded-xl border border-gray-200 bg-white p-1 shadow-sm gap-1">
+                  <TabsTrigger
+                    value="summary"
+                    className="whitespace-nowrap rounded-lg px-5 text-sm font-semibold text-gray-500 transition-all data-[state=active]:bg-button data-[state=active]:text-white data-[state=active]:shadow-none"
+                  >
+                    Summary
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="cashier-floats"
+                    className="whitespace-nowrap rounded-lg px-5 text-sm font-semibold text-gray-500 transition-all data-[state=active]:bg-button data-[state=active]:text-white data-[state=active]:shadow-none"
+                  >
+                    Cashier Floats ({reportData.cashierFloats.length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="mid-day"
+                    className="whitespace-nowrap rounded-lg px-5 text-sm font-semibold text-gray-500 transition-all data-[state=active]:bg-button data-[state=active]:text-white data-[state=active]:shadow-none"
+                  >
+                    Mid-Day Drops ({reportData.midDaySoftCounts.length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="end-of-day"
+                    className="whitespace-nowrap rounded-lg px-5 text-sm font-semibold text-gray-500 transition-all data-[state=active]:bg-button data-[state=active]:text-white data-[state=active]:shadow-none"
+                  >
+                    End-of-Day Drops ({reportData.endOfDaySoftCounts.length})
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               <TabsContent value="summary" className="space-y-6">
 

@@ -207,6 +207,7 @@ export default function AuditTrailViewer() {
                 mode="range"
                 date={dateRange}
                 onSelect={setDateRange}
+                maxDate={new Date()}
                 className="w-full"
               />
             </div>

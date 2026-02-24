@@ -22,14 +22,15 @@
  */
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Check, ChevronDown, X, Search } from 'lucide-react';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Input } from '@/components/shared/ui/input';
+import { Check, ChevronDown, Search, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 export type MultiSelectOption = {
   id: string;
   label: string;
+  displayNode?: React.ReactNode;
   disabled?: boolean;
 };
 
@@ -140,7 +141,7 @@ export default function MultiSelectDropdown({
                   key={option.id}
                   className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800"
                 >
-                  {option.label}
+                  {option.displayNode || option.label}
                   {!disabled && (
                     <button
                       type="button"
@@ -217,7 +218,7 @@ export default function MultiSelectDropdown({
                     className="h-4 w-4"
                   />
                   <span className="flex-1 text-sm text-gray-900">
-                    {option.label}
+                    {option.displayNode || option.label}
                   </span>
                   {selectedIds.includes(option.id) && (
                     <Check className="h-4 w-4 text-blue-600" />

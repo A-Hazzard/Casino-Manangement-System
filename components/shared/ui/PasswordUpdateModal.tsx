@@ -219,12 +219,12 @@ export default function PasswordUpdateModal({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="sm:max-w-md p-0 overflow-hidden bg-slate-50 border-slate-200 shadow-xl [&>button]:hidden"
+        className="md:max-w-md md:max-h-[90vh] p-0 overflow-hidden bg-slate-50 border-slate-200 shadow-xl [&>button]:hidden flex flex-col"
         onInteractOutside={isForced ? (e) => e.preventDefault() : undefined}
         onEscapeKeyDown={isForced ? (e) => e.preventDefault() : undefined}
       >
         {/* Header */}
-        <div className="bg-white border-b px-6 py-4">
+        <div className="bg-white border-b px-6 py-4 shrink-0">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
               <span
@@ -252,7 +252,7 @@ export default function PasswordUpdateModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
           {serverError && (
             <div className="bg-red-50 text-red-600 px-4 py-3 rounded-md text-sm font-medium border border-red-100 flex items-center gap-2">
               <XCircle className="w-4 h-4 shrink-0" />

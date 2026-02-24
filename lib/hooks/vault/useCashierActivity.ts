@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 export type CashierActivityItem = {
   id: string;
-  type: 'shift' | 'float_request';
+  type: 'shift' | 'float_request' | 'payout';
   action: string;
   amount?: number;
   status: string;
@@ -33,15 +33,17 @@ export function useCashierActivity() {
 
       const queryString = params.toString();
 
-      // Fetch shifts and requests in parallel
-      const [shiftsRes, requestsRes] = await Promise.all([
+      // Fetch shifts, requests and payouts in parallel
+      const [shiftsRes, requestsRes, payoutsRes] = await Promise.all([
         fetch(`/api/cashier/shifts?${queryString}`),
-        fetch(`/api/vault/float-request?${queryString}`)
+        fetch(`/api/vault/float-request?${queryString}`),
+        fetch(`/api/cashier/payout?${queryString}`)
       ]);
 
-      if (shiftsRes.ok && requestsRes.ok) {
+      if (shiftsRes.ok && requestsRes.ok && payoutsRes.ok) {
         const shiftsData = await shiftsRes.json();
         const requestsData = await requestsRes.json();
+        const payoutsData = await payoutsRes.json();
 
         const combined: CashierActivityItem[] = [];
 
@@ -82,6 +84,20 @@ export function useCashierActivity() {
             details: r.status === 'denied' ? `Reason: ${r.vmNotes || ''}` : undefined,
             isOutflow: r.type === 'decrease'
           });
+        });
+
+        // Map payouts
+        (payoutsData.payouts || []).forEach((p: any) => {
+            combined.push({
+                id: p._id,
+                type: 'payout',
+                action: p.type === 'ticket' ? `Ticket Redemption` : `Hand Pay`,
+                amount: p.amount,
+                status: 'completed',
+                timestamp: new Date(p.timestamp),
+                notes: p.type === 'ticket' ? `Ticket: ${p.ticketNumber}` : `Machine: ${p.machineSerialNumber || p.machineId}${p.notes ? ` - ${p.notes}` : ''}`,
+                isOutflow: true
+            });
         });
 
         // Sort by timestamp desc

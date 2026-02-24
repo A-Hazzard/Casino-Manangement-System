@@ -19,12 +19,11 @@ import {
     XCircle
 } from 'lucide-react';
 
-import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function CashierActivitySection() {
-  const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
   const { activities, loading, refreshing, refresh } = useCashierActivity();
   const { formatAmount } = useCurrencyFormat();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -53,36 +52,20 @@ export default function CashierActivitySection() {
   const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
   const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
 
-  // Initial and conditional refresh
+  // Initial refresh
   useEffect(() => {
-    if (filterDate) {
-      const start = new Date(filterDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(filterDate);
-      end.setHours(23, 59, 59, 999);
-      refresh(false, start.toISOString(), end.toISOString());
-    } else {
-        refresh(false);
-    }
-  }, [filterDate, refresh]);
+    refresh(false);
+  }, [refresh]);
 
-  // Poll for updates every 20 seconds only if at least 2 items
+  // Poll for updates every 30 seconds only if at least 2 items
   useEffect(() => {
     if (activities.length < 2) return;
 
     const interval = setInterval(() => {
-      if (filterDate) {
-          const start = new Date(filterDate);
-          start.setHours(0, 0, 0, 0);
-          const end = new Date(filterDate);
-          end.setHours(23, 59, 59, 999);
-          refresh(true, start.toISOString(), end.toISOString());
-      } else {
-          refresh(true);
-      }
-    }, 20000);
+      refresh(true);
+    }, 30000); // 30 seconds polling
     return () => clearInterval(interval);
-  }, [refresh, activities.length, filterDate]);
+  }, [refresh, activities.length]);
 
   const handleCancel = useCallback(async (requestId: string) => {
     try {
@@ -134,7 +117,7 @@ export default function CashierActivitySection() {
 
 
   // If NO activities at all (and no date filter), show the welcome slider
-  if (activities.length === 0 && !filterDate && !loading) {
+  if (activities.length === 0 && !loading) {
       const slide = slides[currentSlide];
       return (
           <div className="pt-4 mt-4 border-t border-gray-100">
@@ -185,7 +168,8 @@ export default function CashierActivitySection() {
     switch (status) {
       case 'active':
       case 'approved':
-        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none">APPROVED</Badge>;
+      case 'completed':
+        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none uppercase">{status === 'active' ? 'APPROVED' : status}</Badge>;
       case 'pending':
       case 'pending_start':
         return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 border-none">PENDING</Badge>;
@@ -207,6 +191,8 @@ export default function CashierActivitySection() {
     if (action.includes('Increase')) return <ArrowUpRight className="h-5 w-5 text-blue-400" />;
     if (action.includes('Decrease')) return <ArrowDownLeft className="h-5 w-5 text-purple-400" />;
     
+    if (type === 'payout') return <Tickets className="h-5 w-5 text-red-400" />;
+    
     return <CheckCircle2 className="h-5 w-5 text-green-400" />;
   };
 
@@ -222,21 +208,6 @@ export default function CashierActivitySection() {
         </CardTitle>
         
         <div className="flex items-center gap-3 w-full sm:w-auto">
-            <ModernCalendar 
-                mode="single"
-                date={filterDate ? { from: filterDate } : undefined}
-                onSelect={(range) => setFilterDate(range?.from)}
-                className="w-full sm:w-48"
-            />
-            {filterDate && (
-                <button 
-                    onClick={() => setFilterDate(undefined)}
-                    className="text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase tracking-tighter"
-                >
-                    Clear
-                </button>
-            )}
-            <div className="h-4 w-[1px] bg-gray-200 hidden sm:block mx-1"></div>
             <button 
               onClick={() => refresh(true)}
               disabled={refreshing}
@@ -254,62 +225,68 @@ export default function CashierActivitySection() {
               No recent activity found
             </div>
           ) : (
-            activities.map((activity) => (
-              <div 
-                key={activity.id} 
-                className="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
-              >
-                <div className="mt-1">
-                  {getIcon(activity.type, activity.action, activity.status)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-bold text-gray-900 truncate">
-                      {activity.action}
-                    </p>
-                    <div className="flex-shrink-0">
-                      {activity.amount !== undefined && (
-                        <span className={cn('text-sm font-bold', activity.isOutflow ? 'text-red-500' : 'text-button')}>
-                          {activity.isOutflow && '-'}{formatAmount(activity.amount)}
-                        </span>
-                      )}
-                    </div>
+            <AnimatePresence initial={false}>
+              {activities.map((activity) => (
+                <motion.div 
+                  key={activity.id} 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
+                >
+                  <div className="mt-1">
+                    {getIcon(activity.type, activity.action, activity.status)}
                   </div>
-                  
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] text-gray-400 font-mono uppercase tracking-wider">
-                      {activity.timestamp.toLocaleDateString()} {activity.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <span className="text-gray-300">•</span>
-                    {getStatusBadge(activity.status)}
-                  </div>
-
-                  {activity.notes && (
-                    <p className="mt-2 text-xs text-gray-600 bg-gray-100/50 p-2 rounded italic line-clamp-2">
-                        {activity.notes}
-                    </p>
-                  )}
-
-                  {activity.details && (
-                    <p className="mt-1 text-[11px] font-bold text-red-600">
-                      {activity.details}
-                    </p>
-                  )}
-                  
-                  {/* Cancel Action for Pending Requests */}
-                  {activity.status === 'pending' && (
-                    <div className="mt-2 flex justify-end">
-                      <button
-                        onClick={() => handleCancel(activity.id)}
-                        className="text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 py-1 px-2 rounded transition-colors border border-transparent hover:border-red-100"
-                      >
-                        Cancel Request
-                      </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-bold text-gray-900 truncate">
+                        {activity.action}
+                      </p>
+                      <div className="flex-shrink-0">
+                        {activity.amount !== undefined && (
+                          <span className={cn('text-sm font-bold', activity.isOutflow ? 'text-red-500' : 'text-button')}>
+                            {activity.isOutflow && '-'}{formatAmount(activity.amount)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            ))
+                    
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-gray-400 font-mono uppercase tracking-wider">
+                        {activity.timestamp.toLocaleDateString()} {activity.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span className="text-gray-300">•</span>
+                      {getStatusBadge(activity.status)}
+                    </div>
+  
+                    {activity.notes && (
+                      <p className="mt-2 text-xs text-gray-600 bg-gray-100/50 p-2 rounded italic line-clamp-2">
+                          {activity.notes}
+                      </p>
+                    )}
+  
+                    {activity.details && (
+                      <p className="mt-1 text-[11px] font-bold text-red-600">
+                        {activity.details}
+                      </p>
+                    )}
+                    
+                    {/* Cancel Action for Pending Requests */}
+                    {activity.status === 'pending' && (
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          onClick={() => handleCancel(activity.id)}
+                          className="text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 py-1 px-2 rounded transition-colors border border-transparent hover:border-red-100"
+                        >
+                          Cancel Request
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           )}
         </div>
       </CardContent>

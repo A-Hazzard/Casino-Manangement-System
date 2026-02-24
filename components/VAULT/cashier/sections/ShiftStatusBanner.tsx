@@ -122,45 +122,6 @@ export default function ShiftStatusBanner({
     );
   }
 
-  if (pendingRequest) {
-    const isIncrease = pendingRequest.type === 'increase';
-    return (
-      <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <Clock className="h-5 w-5 text-blue-400" aria-hidden="true" />
-          </div>
-          <div className="ml-3 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-             <div>
-               <p className="text-sm font-medium text-blue-800">
-                 {isIncrease ? 'Float Increase Requested' : 'Float Return Requested'}
-               </p>
-               <p className="text-sm text-blue-700 mt-1">
-                 Your request for <strong>{formatAmount(pendingRequest.requestedAmount)}</strong> is waiting for Vault Manager approval.
-               </p>
-             </div>
-             <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={onRefresh} className="text-blue-700 border-blue-200">
-                    Refresh Status
-                </Button>
-                {onCancelRequest && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => onCancelRequest(pendingRequest._id)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    Cancel Request
-                  </Button>
-                )}
-                {refreshing && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
-             </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (status === 'active' && shift?.vmReviewNotes) {
     const discrepancy = (shift.cashierEnteredBalance || 0) - (shift.expectedClosingBalance || 0);
 
@@ -224,8 +185,6 @@ export default function ShiftStatusBanner({
       </div>
     );
   }
-
-  if (!isPendingStart && !isPendingReview) return null;
 
   if (isPendingStart) {
     return (
@@ -318,6 +277,46 @@ export default function ShiftStatusBanner({
                 </Button>
                 {refreshing && <Loader2 className="h-4 w-4 animate-spin text-orange-500" />}
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Generic Pending Request (Float increase/decrease for active shifts)
+  if (pendingRequest) {
+    const isIncrease = pendingRequest.type === 'increase';
+    return (
+      <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <Clock className="h-5 w-5 text-blue-400" aria-hidden="true" />
+          </div>
+          <div className="ml-3 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+             <div>
+               <p className="text-sm font-medium text-blue-800">
+                 {isIncrease ? 'Float Increase Requested' : 'Float Return Requested'}
+               </p>
+               <p className="text-sm text-blue-700 mt-1">
+                 Your request for <strong>{formatAmount(pendingRequest.requestedAmount)}</strong> is waiting for Vault Manager approval.
+               </p>
+             </div>
+             <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={onRefresh} className="text-blue-700 border-blue-200">
+                    Refresh Status
+                </Button>
+                {onCancelRequest && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => onCancelRequest(pendingRequest._id)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    Cancel Request
+                  </Button>
+                )}
+                {refreshing && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+             </div>
           </div>
         </div>
       </div>

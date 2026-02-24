@@ -12,6 +12,7 @@
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
+import { Machine } from '@/app/api/lib/models/machines';
 import PayoutModel from '@/app/api/lib/models/payout';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
@@ -104,6 +105,13 @@ export async function POST(request: NextRequest) {
         );
     }
 
+    // STEP 3.7: Fetch Machine Serial if Hand Pay
+    let machineSerialNumber = '';
+    if (type === 'hand_pay' && machineId) {
+        const machine = await Machine.findOne({ _id: machineId }, { origSerialNumber: 1, 'custom.name': 1 }).lean();
+        machineSerialNumber = (machine as any)?.custom?.name || (machine as any)?.origSerialNumber || machineId;
+    }
+
     // STEP 4: Process Payout
     const now = new Date();
     const payoutId = await generateMongoId();
@@ -130,6 +138,7 @@ export async function POST(request: NextRequest) {
         if (printedAt) payoutData.printedAt = new Date(printedAt);
     } else if (type === 'hand_pay') {
         payoutData.machineId = machineId;
+        payoutData.machineSerialNumber = machineSerialNumber;
         payoutData.reason = reason;
     }
 
@@ -147,7 +156,7 @@ export async function POST(request: NextRequest) {
         payoutId,
         cashierShiftId: shift._id,
         performedBy: userId,
-        notes: `Payout (${type})`,
+        notes: type === 'hand_pay' ? `Payout (Hand Pay - ${machineSerialNumber})` : `Payout (Ticket Redemption - ${ticketNumber})`,
         isVoid: false,
         createdAt: now
     });
@@ -166,6 +175,88 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error processing payout:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    // STEP 1: Authorization
+    const userPayload = await getUserFromServer();
+    if (!userPayload) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    const userId = userPayload._id as string;
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const isVM = userRoles.some(role =>
+      ['developer', 'admin', 'manager', 'vault-manager'].includes(
+        role.toLowerCase()
+      )
+    );
+
+    // STEP 2: Parse query parameters
+    const { searchParams } = new URL(request.url);
+    const cashierShiftId = searchParams.get('cashierShiftId');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    // STEP 3: Build Query
+    await connectDB();
+    const query: any = {};
+    
+    // SECURITY: If not VM, can only see their own payouts
+    if (!isVM) {
+        query.cashierId = userId;
+    } else {
+        const queryCashierId = searchParams.get('cashierId');
+        if (queryCashierId) query.cashierId = queryCashierId;
+    }
+
+    if (cashierShiftId) query.cashierShiftId = cashierShiftId;
+    
+    if (startDate || endDate) {
+      query.timestamp = {};
+      if (startDate) query.timestamp.$gte = new Date(startDate);
+      if (endDate) query.timestamp.$lte = new Date(endDate);
+    }
+
+    // STEP 4: Fetch Payouts
+    const payouts = await PayoutModel.find(query)
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .lean();
+
+    // Backward compatibility: Populate machineSerialNumber if missing
+    const handPayPayouts = payouts.filter(p => p.type === 'hand_pay' && !p.machineSerialNumber && p.machineId);
+    if (handPayPayouts.length > 0) {
+        const machineIds = [...new Set(handPayPayouts.map(p => p.machineId))];
+        const machines = await Machine.find({ _id: { $in: machineIds } }, { origSerialNumber: 1, 'custom.name': 1 }).lean();
+        const machineMap = machines.reduce((acc, m) => {
+            acc[String(m._id)] = (m as any)?.custom?.name || (m as any)?.origSerialNumber || String(m._id);
+            return acc;
+        }, {} as Record<string, string>);
+
+        payouts.forEach(p => {
+            if (p.type === 'hand_pay' && !p.machineSerialNumber && p.machineId) {
+                p.machineSerialNumber = machineMap[p.machineId] || p.machineId;
+            }
+        });
+    }
+
+    return NextResponse.json({
+      success: true,
+      payouts
+    });
+
+  } catch (error) {
+    console.error('Error fetching payouts:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

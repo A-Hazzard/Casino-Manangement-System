@@ -26,6 +26,7 @@ const PayoutSchema = new Schema(
 
     // Hand pay (C-2.2)
     machineId: { type: String },
+    machineSerialNumber: { type: String },
     reason: { type: String },
 
     // Validation

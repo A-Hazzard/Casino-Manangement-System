@@ -23,7 +23,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues, getInitialDenominationRecord, recordToDenominations } from '@/lib/utils/vault/denominations';
-import { AlertCircle, MessageSquare, RotateCcw, ShieldAlert, UserMinus } from 'lucide-react';
+import { AlertCircle, MessageSquare, RefreshCw, ShieldAlert, UserMinus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -113,22 +113,18 @@ export default function VaultOverviewForceEndShiftModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent 
-        className="sm:max-w-[500px] !z-[200]"
-        backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
-      >
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <RotateCcw className="h-5 w-5 text-red-600" />
-            Force End Shift
+      <DialogContent className="md:max-w-[500px] p-0 overflow-hidden flex flex-col">
+        <DialogHeader className="p-6 bg-red-50 border-b border-red-100 shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-red-900">
+            <RefreshCw className="h-5 w-5 text-red-600" />
+            Force End Shift: {cashier?.username}
           </DialogTitle>
-          <DialogDescription>
-            Collect the remaining float from <strong>{cashier?.username}</strong> to end their shift.
-            This will move the shift to <strong>Pending Review</strong>.
+          <DialogDescription className="text-red-700/80">
+            This will immediately stop the cashier's shift. Use this ONLY if the cashier cannot perform a regular close.
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="space-y-6 py-4 max-h-[60vh] overflow-y-auto pr-2">
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 md:max-h-[70vh] custom-scrollbar">
            <div className="grid grid-cols-1 gap-y-4">
               {denomValues.map(denom => (
                 <div key={denom} className="flex items-center gap-4">

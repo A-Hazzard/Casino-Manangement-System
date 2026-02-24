@@ -2,11 +2,10 @@ import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { MachineSearchSelect } from '@/components/shared/ui/machine/MachineSearchSelect';
-import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
-import { AlertTriangle, Landmark, MessageSquare, RefreshCw, Trophy, Wrench } from 'lucide-react';
+import { AlertTriangle, Landmark, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
 type HandPayFormProps = {
@@ -14,8 +13,7 @@ type HandPayFormProps = {
   currentBalance: number;
   onSubmit: (
     amount: number,
-    machineId: string,
-    reason?: string
+    machineId: string
   ) => Promise<void>;
   onRequestCash: () => void;
   loading?: boolean;
@@ -31,7 +29,6 @@ export default function HandPayForm({
   const { formatAmount } = useCurrencyFormat();
   const [selectedMachine, setSelectedMachine] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
-  const [reason, setReason] = useState('');
 
   const numAmount = parseFloat(amount) || 0;
   const isOverBalance = numAmount > currentBalance;
@@ -44,12 +41,10 @@ export default function HandPayForm({
     try {
       await onSubmit(
         numAmount,
-        selectedMachine,
-        reason.trim() || undefined
+        selectedMachine
       );
       setSelectedMachine('');
       setAmount('');
-      setReason('');
     } catch {
       // Error handled by parent
     }
@@ -95,7 +90,7 @@ export default function HandPayForm({
                     </div>
                 )}
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200">
-                    <span className="text-[9px] font-black text-gray-400 uppercase">Stash</span>
+                    <span className="text-[9px] font-black text-gray-400 uppercase">Cashier Register</span>
                     <span className="text-[11px] font-bold text-gray-700">{formatAmount(currentBalance)}</span>
                 </div>
             </div>
@@ -116,50 +111,7 @@ export default function HandPayForm({
           </div>
         </div>
 
-        {/* Reason Selection */}
-        <div className="space-y-3">
-          <Label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 ml-1">
-            Reason for Payout
-          </Label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {[
-              { label: 'Jackpot', icon: Trophy, color: 'text-amber-500', bg: 'hover:bg-amber-50' },
-              { label: 'Error', icon: Wrench, color: 'text-red-500', bg: 'hover:bg-red-50' },
-              { label: 'Refund', icon: Landmark, color: 'text-blue-500', bg: 'hover:bg-blue-50' },
-              { label: 'Other', icon: MessageSquare, color: 'text-gray-500', bg: 'hover:bg-gray-50' }
-            ].map(item => {
-              const isSelected = reason === item.label || (item.label === 'Other' && reason !== 'Jackpot' && reason !== 'Error' && reason !== 'Refund' && reason.length > 0);
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => setReason(item.label === 'Other' ? '' : item.label)}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1.5",
-                    reason === item.label 
-                      ? "bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-200" 
-                      : "bg-white border-gray-100 text-gray-600",
-                    !isSelected && item.bg
-                  )}
-                >
-                  <Icon className={cn("h-4 w-4", reason === item.label ? "text-white" : item.color)} />
-                  <span className="text-[10px] font-black uppercase tracking-tight">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-          
-          {(reason === 'Other' || (reason !== 'Jackpot' && reason !== 'Error' && reason !== 'Refund' && reason.length > 0)) && (
-            <Textarea
-              id="reason-details"
-              value={reason === 'Other' ? '' : reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Provide more details..."
-              className="resize-none h-20 bg-gray-50/50 border-gray-200 focus:bg-white transition-all text-sm mt-3"
-            />
-          )}
-        </div>
+
 
         {/* Visual Summary Card */}
         <div className={cn(

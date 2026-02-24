@@ -18,11 +18,14 @@
 
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
-import { RefreshCw, MessageSquare } from 'lucide-react';
+import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import FeedbackForm from '@/components/shared/ui/FeedbackForm';
-import { useState, useEffect } from 'react';
+import NotificationBell from '@/components/shared/ui/NotificationBell';
+import { useNotificationStore } from '@/lib/store/notificationStore';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Bell, MessageSquare, RefreshCw } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 type FloatingActionButtonsProps = {
   showRefresh: boolean;
@@ -42,6 +45,14 @@ export const FloatingActionButtons = ({
     setMounted(true);
   }, []);
 
+  const { 
+    notifications: storeNotifications, 
+    unreadCount,
+    onMarkAsRead,
+    onMarkAllAsRead,
+    onDismiss
+  } = useNotificationStore();
+
   // Avoid rendering on the server to prevent hydration mismatches
   if (!mounted) {
     return null;
@@ -50,8 +61,45 @@ export const FloatingActionButtons = ({
   return (
     <>
       <div
-        className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3"
+        className="fixed bottom-6 right-6 z-[100] flex flex-col gap-4 items-center"
       >
+        {/* Floating Notification Bell - appears on scroll if there are unread notifications */}
+        <AnimatePresence>
+          {showRefresh && unreadCount > 0 && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
+              <NotificationBell
+                notifications={storeNotifications as any}
+                unreadCount={unreadCount}
+                onMarkAsRead={onMarkAsRead}
+                onMarkAllAsRead={onMarkAllAsRead}
+                onNotificationClick={() => {}}
+                onDismiss={onDismiss}
+                trigger={
+                  <motion.button
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-orangeHighlight p-3 text-white shadow-lg transition-all duration-200 hover:bg-orangeHighlight/90 hover:scale-110 active:scale-95 relative"
+                    aria-label="View notifications"
+                  >
+                    <Bell className="h-6 w-6 fill-white" />
+                    {unreadCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center p-0 text-[10px] font-bold border-2 border-white"
+                      >
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </Badge>
+                    )}
+                  </motion.button>
+                }
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Refresh Button - appears on scroll */}
         <AnimatePresence>
           {showRefresh && (

@@ -7,7 +7,6 @@
  */
 'use client';
 
-import { Badge } from '@/components/shared/ui/badge';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import {
     Table,
@@ -33,8 +32,6 @@ type VaultCashierFloatsTableProps = {
 
 export default function VaultCashierFloatsTable({
   floats,
-  sortOption: _sortOption,
-  sortOrder: _sortOrder = 'asc',
   onSort,
 }: VaultCashierFloatsTableProps) {
   const { formatAmount } = useCurrencyFormat();
@@ -64,33 +61,23 @@ export default function VaultCashierFloatsTable({
               >
                 Cashier
               </TableHead>
-              <TableHead className="text-center font-semibold text-white">Start Time</TableHead>
               <TableHead className="text-right font-semibold text-white">Opening Float</TableHead>
-              <TableHead className="text-right font-semibold text-white">Current Float</TableHead>
               <TableHead className="text-right font-semibold text-white">Payouts</TableHead>
-              <TableHead className="font-semibold text-white text-center">Status</TableHead>
+              <TableHead className="text-center font-semibold text-white">Shift Time</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {floats.map(float => (
               <TableRow key={float._id} className="transition-colors hover:bg-muted/30">
                 <TableCell isFirstColumn className="font-medium">{float.cashierName}</TableCell>
-                <TableCell className="text-center text-xs text-gray-500">
-                  {float.openedAt ? new Date(float.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                </TableCell>
                 <TableCell className="text-right font-medium text-gray-600">
                   {formatAmount(float.openingBalance || 0)}
-                </TableCell>
-                <TableCell className="text-right font-bold text-button">
-                  {formatAmount(float.balance)}
                 </TableCell>
                 <TableCell className="text-right font-bold text-orangeHighlight">
                   {formatAmount(float.payoutsTotal || 0)}
                 </TableCell>
-                <TableCell className="text-center">
-                  <Badge className={cn('px-2 py-0.5 text-[10px]', float.status === 'active' ? 'bg-orangeHighlight' : 'bg-gray-400')}>
-                    {float.status}
-                  </Badge>
+                <TableCell className="text-center text-xs text-gray-500">
+                  {float.openedAt ? new Date(float.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                 </TableCell>
               </TableRow>
             ))}
@@ -117,23 +104,16 @@ export default function VaultCashierFloatsTable({
                   </div>
                 </div>
               </div>
-              <Badge className={cn('px-2 py-0.5 text-[10px]', float.status === 'active' ? 'bg-orangeHighlight' : 'bg-gray-400')}>
-                {float.status}
-              </Badge>
             </CardContent>
 
-            <div className="grid grid-cols-3 gap-2 border-t bg-gray-50/50 px-4 py-3">
+            <div className="grid grid-cols-2 gap-2 border-t bg-gray-50/50 px-4 py-3">
                <div className="flex flex-col">
                   <span className="text-[9px] text-gray-400 uppercase font-black tracking-tighter">Opening</span>
                   <span className="text-xs font-bold text-gray-600 truncate">{formatAmount(float.openingBalance || 0)}</span>
                </div>
-               <div className="flex flex-col border-x border-gray-100 px-3">
+               <div className="flex flex-col border-l border-gray-100 pl-3">
                   <span className="text-[9px] text-gray-400 uppercase font-black tracking-tighter">Payouts</span>
                   <span className="text-xs font-bold text-orangeHighlight truncate">{formatAmount(float.payoutsTotal || 0)}</span>
-               </div>
-               <div className="flex flex-col items-end">
-                  <span className="text-[9px] text-gray-400 uppercase font-black tracking-tighter">Current</span>
-                  <span className="text-sm font-black text-button truncate">{formatAmount(float.balance)}</span>
                </div>
             </div>
           </Card>

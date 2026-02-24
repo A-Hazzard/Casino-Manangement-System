@@ -14,8 +14,10 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Meters } from '@/app/api/lib/models/meters';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -133,6 +135,8 @@ export async function GET(request: NextRequest) {
     let totalIn = 0;
     let totalOut = 0;
     let totalDiscrepancies = 0;
+    let payouts = 0;
+    let payoutsCount = 0;
 
     // Use transactions to calculate global metrics for "today"
     const todayTransactions = await VaultTransactionModel.find({
@@ -143,7 +147,41 @@ export async function GET(request: NextRequest) {
     todayTransactions.forEach((tx: any) => {
       if (tx.to?.type === 'vault') totalIn += tx.amount;
       if (tx.from?.type === 'vault') totalOut += tx.amount;
+      if (tx.type === 'payout') {
+        payouts += tx.amount;
+        payoutsCount += 1;
+      }
     });
+
+    // STEP 5.5: Calculate Cash on Premises (Machines & Cashiers)
+    
+    // A. All Active Cashier Floats sum (across all locations)
+    const totalCashierFloats = activeCashierShifts.reduce((sum: number, s: any) => sum + (s.currentBalance || 0), 0) + 
+                             pendingCashierShifts.reduce((sum: number, s: any) => sum + (s.currentBalance || 0), 0);
+
+    // B. Machine Meter Drops (Theoretic) - Today's Gaming Day
+    // Use a default 8 AM offset for global dashboard query or aggregate ranges?
+    // For global overview performance, we'll use a standard global range based on 8 AM offset.
+    const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod('Today', 8);
+
+    const machineMeters = await Meters.aggregate([
+        {
+          $match: {
+            location: { $in: locationIds },
+            readAt: {
+              $gte: rangeStart,
+              $lte: rangeEnd,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
+          },
+        },
+    ]);
+    const totalMachineMoneyIn = machineMeters.length > 0 ? machineMeters[0].totalMoneyIn : 0;
 
     pendingCashierShifts.forEach((shift: any) => {
       totalDiscrepancies += Math.abs(shift.discrepancy || 0);
@@ -237,19 +275,26 @@ export async function GET(request: NextRequest) {
           denominations: Object.entries(aggregatedDenominations).map(([denom, qty]) => ({
             denomination: Number(denom),
             quantity: qty
-          }))
+          })),
+          totalCashOnPremises: totalBalance + totalCashierFloats + totalMachineMoneyIn,
+          machineMoneyIn: totalMachineMoneyIn,
+          cashierFloats: totalCashierFloats
         },
         metrics: {
           totalCashIn: totalIn,
           totalCashOut: totalOut,
           netCashFlow: totalIn - totalOut,
+          payouts,
+          payoutsCount,
           discrepancies: totalDiscrepancies,
           pendingReviews: pendingCashierShifts.length
         },
         transactions: formattedTransactions,
         pendingShifts: formattedPendingShifts,
         floatRequests: formattedFloatRequests,
-        cashDesks: formattedCashDesks
+        cashDesks: formattedCashDesks,
+        rangeStart: rangeStart.toISOString(),
+        rangeEnd: rangeEnd.toISOString()
       }
     };
 

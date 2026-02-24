@@ -243,9 +243,32 @@ export async function POST(request: NextRequest) {
     if (formData.get('bankDetails')) {
         try { bankDetails = JSON.parse(formData.get('bankDetails') as string); } catch(e) { console.error("Error parsing bankDetails", e); }
     }
-    let expenseDetails = undefined;
+    let expenseDetails: any = undefined;
     if (formData.get('expenseDetails')) {
         try { expenseDetails = JSON.parse(formData.get('expenseDetails') as string); } catch(e) { console.error("Error parsing expenseDetails", e); }
+    }
+
+    if (expenseDetails?.isMachineRepair && expenseDetails?.machineIds?.length > 0) {
+      const { Machine } = await import('@/app/api/lib/models/machines');
+      const mList = await Machine.find({ _id: { $in: expenseDetails.machineIds } }).lean();
+      
+      const machineDetails = expenseDetails.machineIds.map((id: string) => {
+        const m = mList.find((x: any) => String(x._id) === id || String(x.machineId) === id || x.serialNumber === id);
+        if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
+        
+        const serialNumberRaw = m.serialNumber?.trim() || '';
+        const customName = m.custom?.name?.trim() || '';
+        const game = m.game || m.installedGame || '';
+        const gameType = m.gameType || '';
+        const mainIdentifier = serialNumberRaw || customName || 'N/A';
+        
+        return {
+           identifier: customName && customName !== mainIdentifier ? `${mainIdentifier} (${customName})` : mainIdentifier,
+           game: game.trim(),
+           gameType: gameType.trim()
+        };
+      });
+      expenseDetails.machineDetails = machineDetails;
     }
 
     const vaultTransaction = new VaultTransactionModel({
@@ -403,9 +426,7 @@ export async function GET(request: NextRequest) {
         query.timestamp.$gte = new Date(startDate);
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        query.timestamp.$lte = end;
+        query.timestamp.$lte = new Date(endDate);
       }
     }
 
@@ -415,12 +436,59 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 6: Fetch expenses
+    // STEP 6: Fetch expenses and aggregate machineNames for older records
     // ============================================================================
     const expenses = await VaultTransactionModel.find(query)
       .sort({ timestamp: -1 })
       .limit(500)
       .lean();
+
+    // collect all missing machine IDs
+    const missingMachineIds = new Set<string>();
+    expenses.forEach((expense: any) => {
+       if (expense.expenseDetails?.isMachineRepair && expense.expenseDetails.machineIds?.length > 0) {
+           if (!expense.expenseDetails.machineDetails || expense.expenseDetails.machineDetails.length === 0) {
+               expense.expenseDetails.machineIds.forEach((id: string) => missingMachineIds.add(id));
+           }
+       }
+    });
+
+    if (missingMachineIds.size > 0) {
+       const { Machine } = await import('@/app/api/lib/models/machines');
+       const mList = await Machine.find({ _id: { $in: Array.from(missingMachineIds) } }).lean();
+
+       expenses.forEach((expense: any) => {
+           if (expense.expenseDetails?.isMachineRepair && expense.expenseDetails.machineIds?.length > 0) {
+               if (!expense.expenseDetails.machineDetails || expense.expenseDetails.machineDetails.length === 0) {
+                   expense.expenseDetails.machineDetails = expense.expenseDetails.machineIds.map((id: string) => {
+                        const m = mList.find((x: any) => String(x._id) === id || String(x.machineId) === id || x.serialNumber === id);
+                        if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
+                        
+                        const serialNumberRaw = m.serialNumber?.trim() || '';
+                        const customName = m.custom?.name?.trim() || '';
+                        const game = m.game || m.installedGame || '';
+                        const gameType = m.gameType || '';
+                        const mainIdentifier = serialNumberRaw || customName || 'N/A';
+                        
+                        return {
+                           identifier: customName && customName !== mainIdentifier ? `${mainIdentifier} (${customName})` : mainIdentifier,
+                           game: game.trim(),
+                           gameType: gameType.trim()
+                        };
+                   });
+                   // For backward compatibility while frontend handles both, maybe we clean up old machineNames
+                   delete expense.expenseDetails.machineNames;
+               }
+           }
+       });
+    }
+
+    // Remove machineIds from response
+    expenses.forEach((expense: any) => {
+        if (expense.expenseDetails && expense.expenseDetails.machineIds) {
+            delete expense.expenseDetails.machineIds;
+        }
+    });
 
     const duration = Date.now() - startTime;
     if (duration > 1000) {

@@ -396,6 +396,9 @@ export type CashDesk = {
   managerOnDuty?: string;
   status: CashierShiftStatus;
   locationName?: string;
+  openedAt?: string | Date;
+  openingBalance?: number;
+  payoutsTotal?: number;
 };
 
 export type CashierFloat = {
@@ -430,6 +433,7 @@ export type VaultMetrics = {
   totalCashOut: number;
   netCashFlow: number;
   payouts: number;
+  payoutsCount?: number;
   drops: number;
   fills: number;
 };

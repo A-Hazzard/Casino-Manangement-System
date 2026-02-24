@@ -20,6 +20,7 @@ import {
 import VaultTransactionsSkeleton from '@/components/ui/skeletons/VaultTransactionsSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import StaleShiftDetectedBlock from '@/components/VAULT/shared/StaleShiftDetectedBlock';
+import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
 import { useCashierShift } from '@/lib/hooks/useCashierShift';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -123,7 +124,7 @@ export default function VaultPayoutsPageContent() {
 
     const interval = setInterval(() => {
         fetchPayouts();
-    }, 30000); // 30 seconds
+    }, DEFAULT_POLL_INTERVAL); 
 
     return () => clearInterval(interval);
   }, [fetchPayouts, payouts.length]);
@@ -234,7 +235,7 @@ export default function VaultPayoutsPageContent() {
   }
 
   return (
-    <PageLayout>
+    <PageLayout onRefresh={fetchPayouts} refreshing={loading}>
       <div className="space-y-6">
         <VaultManagerHeader 
           title="Player Payouts" 
@@ -373,62 +374,66 @@ export default function VaultPayoutsPageContent() {
 
             {/* Modal Management */}
             <Dialog open={showTicketForm} onOpenChange={setShowTicketForm}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
+                <DialogContent className="md:max-w-[500px] p-0 overflow-hidden flex flex-col">
+                    <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
                         <DialogTitle>Ticket Redemption</DialogTitle>
                         <DialogDescription>
                             Process ticket redemption for the customer.
                         </DialogDescription>
                     </DialogHeader>
-                    <TicketRedemptionForm 
-                        currentBalance={currentBalance}
-                        maxDate={shiftDate || new Date()}
-                        onSubmit={async (t: string, a: number, pAt?: Date) => {
-                            await handlePayout({
-                                cashierShiftId: shift?._id || '',
-                                type: 'ticket',
-                                amount: a,
-                                ticketNumber: t,
-                                printedAt: pAt?.toISOString(),
-                                notes: `Ticket ${t}`
-                            });
-                        }}
-                        onRequestCash={() => {
-                            setShowTicketForm(false);
-                            router.push('/vault/cashier'); 
-                        }}
-                        loading={actionLoading} 
-                    />
+                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar md:max-h-[80vh]">
+                      <TicketRedemptionForm 
+                          currentBalance={currentBalance}
+                          maxDate={shiftDate || new Date()}
+                          onSubmit={async (t: string, a: number, pAt?: Date) => {
+                              await handlePayout({
+                                  cashierShiftId: shift?._id || '',
+                                  type: 'ticket',
+                                  amount: a,
+                                  ticketNumber: t,
+                                  printedAt: pAt?.toISOString(),
+                                  notes: `Ticket ${t}`
+                              });
+                          }}
+                          onRequestCash={() => {
+                              setShowTicketForm(false);
+                              router.push('/vault/cashier'); 
+                          }}
+                          loading={actionLoading} 
+                      />
+                    </div>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={showHandPayForm} onOpenChange={setShowHandPayForm}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
+                <DialogContent className="md:max-w-[500px] p-0 overflow-hidden flex flex-col">
+                    <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
                         <DialogTitle>Hand Pay</DialogTitle>
                         <DialogDescription>
                             Process a hand pay payout for machine jackpot or lock-up.
                         </DialogDescription>
                     </DialogHeader>
-                    <HandPayForm 
-                        machines={machines || []}
-                        currentBalance={currentBalance}
-                        onSubmit={async (a: number, mid: string, r?: string) => {
-                            await handlePayout({
-                                cashierShiftId: shift?._id || '',
-                                type: 'hand_pay',
-                                amount: a,
-                                machineId: mid,
-                                reason: r,
-                                notes: r || `Hand Pay - Machine ${mid}`
-                            });
-                        }} 
-                        onRequestCash={() => {
-                            setShowHandPayForm(false);
-                            router.push('/vault/cashier');
-                        }}
-                        loading={actionLoading}
-                    />
+                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar md:max-h-[80vh]">
+                      <HandPayForm 
+                          machines={machines || []}
+                          currentBalance={currentBalance}
+                          onSubmit={async (a: number, mid: string, r?: string) => {
+                              await handlePayout({
+                                  cashierShiftId: shift?._id || '',
+                                  type: 'hand_pay',
+                                  amount: a,
+                                  machineId: mid,
+                                  reason: r,
+                                  notes: r || `Hand Pay - Machine ${mid}`
+                              });
+                          }} 
+                          onRequestCash={() => {
+                              setShowHandPayForm(false);
+                              router.push('/vault/cashier');
+                          }}
+                          loading={actionLoading}
+                      />
+                    </div>
                 </DialogContent>
             </Dialog>
           </div>

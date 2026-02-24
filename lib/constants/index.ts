@@ -22,4 +22,4 @@ export const POLL_INTERVALS = {
   SLOW: 60000,       // 1 minute
 } as const;
 
-export const DEFAULT_POLL_INTERVAL = POLL_INTERVALS.VERY_FAST;
+export const DEFAULT_POLL_INTERVAL = POLL_INTERVALS.MEDIUM;

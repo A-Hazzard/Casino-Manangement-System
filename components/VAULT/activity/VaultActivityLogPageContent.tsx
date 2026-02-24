@@ -311,7 +311,7 @@ export default function VaultActivityLogPageContent() {
   const { isStaleShift, vaultBalance } = useVaultShift();
 
   return (
-    <PageLayout>
+    <PageLayout onRefresh={() => fetchActivities(currentPage)} refreshing={loading}>
       <div className="space-y-6">
         <StaleShiftDetectedBlock isStale={isStaleShift} openedAt={vaultBalance?.openedAt} type="vault">
           <div className="space-y-6">
@@ -437,74 +437,136 @@ export default function VaultActivityLogPageContent() {
               </div>
             ) : (
               <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Timestamp</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Performer</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-center">Actions</TableHead>
-                      <TableHead>Notes</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {activities.map((activity: ActivityLog) => {
-                      const style = getTypeStyle(activity.type);
-                      return (
-                        <TableRow key={activity._id} className="group hover:bg-gray-50/50 transition-colors">
-                          <TableCell className="py-4">
-                            {formatTimestamp(activity.timestamp)}
-                          </TableCell>
-                          <TableCell>
-                            <span className={cn(
-                              "inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border",
-                              style.bg,
-                              style.text,
-                              "border-current/10"
-                            )}>
-                              {style.label}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold text-gray-900">{activity.performerName || 'Unknown'}</span>
-                              <span className="text-[10px] text-gray-400 font-mono tracking-tighter">{activity.performedBy}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-semibold text-gray-700">{getActivityDescription(activity)}</TableCell>
-                          <TableCell className="text-right py-4">
-                            {(() => {
-                              const isOutflow = activity.from?.type === 'vault';
-                              return (
-                                <div className="flex flex-col items-end">
-                                  <span className={cn("font-mono font-black", isOutflow ? "text-red-600" : "text-green-600")}>
-                                    {isOutflow && '-'}{formatAmount(activity.amount || 0)}
-                                  </span>
-                                  {activity.amount > 1000 && <span className="text-[8px] font-bold text-amber-600 uppercase tracking-tighter">High Value</span>}
-                                </div>
-                              );
-                            })()}
-                          </TableCell>
-                          <TableCell className="text-center">
-                             <Button
+                {/* Desktop Table */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-button hover:bg-button">
+                        <TableHead className="font-semibold text-white">Type</TableHead>
+                        <TableHead className="font-semibold text-white">Performer</TableHead>
+                        <TableHead className="font-semibold text-white">Description</TableHead>
+                        <TableHead className="font-semibold text-white text-right">Amount</TableHead>
+                        <TableHead className="font-semibold text-white">Notes</TableHead>
+                        <TableHead className="font-semibold text-white text-center">Actions</TableHead>
+                        <TableHead className="font-semibold text-white">Timestamp</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activities.map((activity: ActivityLog) => {
+                        const style = getTypeStyle(activity.type);
+                        const isOutflow = activity.from?.type === 'vault';
+                        return (
+                          <TableRow key={activity._id} className="group hover:bg-gray-50/50 transition-colors">
+                            <TableCell>
+                              <span className={cn(
+                                "inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border",
+                                style.bg,
+                                style.text,
+                                "border-current/10"
+                              )}>
+                                {style.label}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-gray-900">{activity.performerName || 'Unknown'}</span>
+                                <span className="text-[10px] text-gray-400 font-mono tracking-tighter">{activity.performedBy}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-semibold text-gray-700">{getActivityDescription(activity)}</TableCell>
+                            <TableCell className="text-right py-4">
+                              <div className="flex flex-col items-end">
+                                <span className={cn("font-mono font-black", isOutflow ? "text-red-600" : "text-green-600")}>
+                                  {isOutflow && '-'}{formatAmount(activity.amount || 0)}
+                                </span>
+                                {activity.amount > 1000 && <span className="text-[8px] font-bold text-amber-600 uppercase tracking-tighter">High Value</span>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate text-xs font-medium text-gray-500">
+                              {activity.notes || '—'}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-7 text-[10px] text-violet-600 font-bold px-2"
                                 onClick={() => setSelectedActivity(activity)}
-                             >
+                              >
                                 <FileText className="mr-1 h-3 w-3" /> Details
-                             </Button>
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate text-xs font-medium text-gray-500">
-                            {activity.notes || '—'}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                              </Button>
+                            </TableCell>
+                            <TableCell className="py-4">
+                              {formatTimestamp(activity.timestamp)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-3">
+                  {activities.map((activity: ActivityLog) => {
+                    const style = getTypeStyle(activity.type);
+                    const isOutflow = activity.from?.type === 'vault';
+                    return (
+                      <Card key={activity._id} className={cn(
+                        'overflow-hidden border-l-4 shadow-sm',
+                        isOutflow ? 'border-l-red-500' : 'border-l-green-500'
+                      )}>
+                        <CardContent className="p-4 space-y-3">
+                          {/* Header: type badge + amount */}
+                          <div className="flex items-start justify-between">
+                            <span className={cn(
+                              'inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border',
+                              style.bg,
+                              style.text,
+                              'border-current/10'
+                            )}>
+                              {style.label}
+                            </span>
+                            <div className="flex flex-col items-end">
+                              <span className={cn('text-lg font-black', isOutflow ? 'text-red-600' : 'text-green-600')}>
+                                {isOutflow && '-'}{formatAmount(activity.amount || 0)}
+                              </span>
+                              {activity.amount > 1000 && (
+                                <span className="text-[8px] font-bold text-amber-600 uppercase tracking-tighter">High Value</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Description + Performer */}
+                          <div className="space-y-1">
+                            <p className="text-sm font-semibold text-gray-700">{getActivityDescription(activity)}</p>
+                            <div className="flex items-center gap-1 text-xs text-gray-400">
+                              <span className="font-bold text-gray-600">{activity.performerName || 'Unknown'}</span>
+                              <span className="text-[10px] font-mono">· {activity.performedBy}</span>
+                            </div>
+                          </div>
+
+                          {/* Notes + timestamp + action */}
+                          <div className="flex items-end justify-between gap-2 pt-2 border-t border-gray-100">
+                            <div className="flex flex-col gap-0.5">
+                              {activity.notes && (
+                                <p className="text-[11px] text-gray-500 italic line-clamp-2">{activity.notes}</p>
+                              )}
+                              <p className="text-[10px] text-gray-400">{formatTimestamp(activity.timestamp)}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-[10px] text-violet-600 font-bold px-2 shrink-0"
+                              onClick={() => setSelectedActivity(activity)}
+                            >
+                              <FileText className="mr-1 h-3 w-3" /> Details
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
 
                 {/* Pagination */}
                 {totalPages > 1 && (

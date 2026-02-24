@@ -254,7 +254,7 @@ export default function VaultTransfersPageContent() {
   // Render
   // ============================================================================
   return (
-    <PageLayout>
+    <PageLayout onRefresh={fetchData} refreshing={loading}>
       <div className="space-y-6">
         <VaultManagerHeader 
           title="Transfers" 

@@ -19,10 +19,15 @@ import { Card, CardContent } from '@/components/shared/ui/card';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { TableSkeleton } from '@/components/shared/ui/skeletons/CommonSkeletons';
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from '@/components/shared/ui/tabs';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import {
-    DEFAULT_CASHIER_FLOATS,
-    DEFAULT_VAULT_BALANCE,
+    DEFAULT_CASHIER_FLOATS
 } from '@/components/VAULT/overview/data/defaults';
 import {
     fetchFloatTransactionsData,
@@ -64,8 +69,6 @@ export default function VaultFloatTransactionsPageContent() {
     DEFAULT_CASHIER_FLOATS
   );
   const [floatTransactions, setFloatTransactions] = useState<any[]>([]);
-  const [vaultBalance, setVaultBalance] = useState(DEFAULT_VAULT_BALANCE);
-  const [floatRequests, setFloatRequests] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -88,9 +91,7 @@ export default function VaultFloatTransactionsPageContent() {
         20
       );
       setCashierFloats(data.cashierFloats);
-      setVaultBalance(data.vaultBalance);
       setFloatTransactions(data.floatTransactions);
-      setFloatRequests(data.floatRequests);
       setTotalPages(data.totalPages);
     } catch (error) {
       console.error('Failed to fetch float data:', error);
@@ -126,10 +127,6 @@ export default function VaultFloatTransactionsPageContent() {
     [cashierFloats]
   );
 
-  /**
-   * Count of pending float transaction requests
-   */
-  const pendingRequests = floatRequests.length;
 
   /**
    * Sort cashier floats based on sort option and order
@@ -324,7 +321,7 @@ export default function VaultFloatTransactionsPageContent() {
   }
 
   return (
-    <PageLayout>
+    <PageLayout onRefresh={handleRefresh} refreshing={loading}>
       <div className="space-y-6">
         <VaultManagerHeader
             title="Float Transactions"
@@ -346,10 +343,10 @@ export default function VaultFloatTransactionsPageContent() {
         </VaultManagerHeader>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
           {loading ? (
             <>
-              {[1, 2, 3, 4].map(i => (
+              {[1, 2].map(i => (
                 <Card key={i} className="rounded-lg bg-container shadow-md">
                   <CardContent className="p-6">
                     <Skeleton className="h-4 w-24 mb-2" />
@@ -391,123 +388,101 @@ export default function VaultFloatTransactionsPageContent() {
                 </CardContent>
               </Card>
 
-              <Card className="rounded-lg bg-container shadow-md">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">
-                        Pending Requests
-                      </p>
-                      <p className="break-words text-xl font-bold text-gray-900 sm:text-2xl">
-                        {pendingRequests}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-lg bg-container shadow-md">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">
-                        Vault Available
-                      </p>
-                      <p className="break-words text-xl font-bold text-lighterBlueHighlight sm:text-2xl">
-                        {formatAmount(vaultBalance.balance)}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </>
           )}
         </div>
 
+        {/* Current Cashier Floats + Float Transactions:
+             Desktop: stacked sections
+             Mobile: tab slider to switch between them */}
 
+        {/* Desktop: both sections stacked */}
+        <div className="hidden lg:block space-y-6">
+          {/* Current Cashier Floats */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Current Cashier Floats</h2>
+            {loading ? (
+              <TableSkeleton rows={5} cols={7} />
+            ) : (
+              <VaultCashierFloatsTable
+                floats={sortedCashierFloats}
+                sortOption={floatSortOption}
+                sortOrder={floatSortOrder}
+                onSort={handleFloatSort}
+              />
+            )}
+          </div>
 
-        {/* Current Cashier Floats: Responsive Views */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Current Cashier Floats
-          </h2>
+          {/* Float Transaction History */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Float Transaction History</h2>
+            {loading ? (
+              <TableSkeleton rows={5} cols={6} />
+            ) : (
+              <VaultFloatTransactionsTable
+                transactions={sortedFloatTransactions}
+                sortOption={transactionSortOption}
+                sortOrder={transactionSortOrder}
+                onSort={handleTransactionSort}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                showActions={false}
+                disabled={!isVaultReconciled}
+              />
+            )}
+          </div>
+        </div>
 
-          {loading ? (
-            <div className="space-y-4">
-              <div className="hidden lg:block">
-                <TableSkeleton rows={5} cols={7} />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4">
-                {[1, 2, 3, 4].map(i => (
-                  <Card key={i} className="h-32 animate-pulse bg-gray-50" />
-                ))}
-              </div>
+        {/* Mobile: tab slider */}
+        <div className="lg:hidden">
+          <Tabs defaultValue="floats">
+            <div className="overflow-x-auto -mx-1 px-1 mb-4">
+              <TabsList className="inline-flex h-11 min-w-max rounded-xl border border-gray-200 bg-white p-1 shadow-sm gap-1">
+                <TabsTrigger
+                  value="floats"
+                  className="whitespace-nowrap rounded-lg px-5 text-sm font-semibold text-gray-500 transition-all data-[state=active]:bg-button data-[state=active]:text-white data-[state=active]:shadow-none"
+                >
+                  Cashier Floats
+                </TabsTrigger>
+                <TabsTrigger
+                  value="history"
+                  className="whitespace-nowrap rounded-lg px-5 text-sm font-semibold text-gray-500 transition-all data-[state=active]:bg-button data-[state=active]:text-white data-[state=active]:shadow-none"
+                >
+                  Float History
+                </TabsTrigger>
+              </TabsList>
             </div>
-          ) : (
-            <>
-              {/* Desktop Table View - lg and above */}
-              <div className="hidden lg:block">
-                <VaultCashierFloatsTable
-                  floats={sortedCashierFloats}
-                  sortOption={floatSortOption}
-                  sortOrder={floatSortOrder}
-                  onSort={handleFloatSort}
-                />
-              </div>
 
-              {/* Mobile/Tablet Card View - below lg */}
-              <div className="block lg:hidden">
+            <TabsContent value="floats">
+              {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <Card key={i} className="h-32 animate-pulse bg-gray-50" />
+                  ))}
+                </div>
+              ) : (
                 <VaultCashierFloatsMobileCards floats={sortedCashierFloats} />
-              </div>
-            </>
-          )}
-        </div>
+              )}
+            </TabsContent>
 
-        {/* Float Transaction History: Responsive Views */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Float Transaction History
-          </h2>
-
-          {loading ? (
-            <div className="space-y-4">
-              <div className="hidden lg:block">
-                <TableSkeleton rows={5} cols={6} />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4">
-                {[1, 2, 3, 4].map(i => (
-                  <Card key={i} className="h-32 animate-pulse bg-gray-50" />
-                ))}
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Desktop Table View - lg and above */}
-              <div className="hidden lg:block">
-                <VaultFloatTransactionsTable
-                  transactions={sortedFloatTransactions}
-                  sortOption={transactionSortOption}
-                  sortOrder={transactionSortOrder}
-                  onSort={handleTransactionSort}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                  showActions={false}
-                  disabled={!isVaultReconciled}
-                />
-              </div>
-
-              {/* Mobile/Tablet Card View - below lg */}
-              <div className="block lg:hidden">
-                 <VaultFloatTransactionsMobileCards
+            <TabsContent value="history">
+              {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <Card key={i} className="h-32 animate-pulse bg-gray-50" />
+                  ))}
+                </div>
+              ) : (
+                <VaultFloatTransactionsMobileCards
                   transactions={sortedFloatTransactions}
                   onApprove={handleApprove}
                   onReject={handleReject}
                   showActions={false}
                   disabled={!isVaultReconciled}
                 />
-              </div>
-            </>
-          )}
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Pagination Controls */}

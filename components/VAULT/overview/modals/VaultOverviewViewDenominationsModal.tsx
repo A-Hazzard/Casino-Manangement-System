@@ -51,15 +51,15 @@ export default function VaultOverviewViewDenominationsModal({
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="max-w-md p-0 overflow-hidden">
-        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+      <DialogContent className="md:max-w-md p-0 overflow-hidden flex flex-col">
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
             <Coins className="h-5 w-5 text-violet-600" />
             {title}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="max-h-[75vh] overflow-y-auto p-6 space-y-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 md:max-h-[75vh] custom-scrollbar">
           <div className="grid grid-cols-2 gap-3">
             {displayDenoms.map((d) => (
               <div 

@@ -111,8 +111,8 @@ export default function CashierShiftOpenModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden">
-        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+      <DialogContent className="md:max-w-md p-0 overflow-hidden flex flex-col">
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
             <Coins className="h-5 w-5 text-violet-600" />
             {step === 'input' ? 'Start New Shift' : 'Review Float Request'}
@@ -124,7 +124,7 @@ export default function CashierShiftOpenModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[75vh] overflow-y-auto p-6 space-y-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 md:max-h-[75vh] custom-scrollbar">
           {!hasActiveVaultShift && (
             <div className="flex items-center gap-3 rounded-xl bg-red-50 p-4 text-xs text-red-700 border border-red-100 mb-2 shadow-sm">
               <AlertTriangle className="h-5 w-5 shrink-0 text-red-500" />

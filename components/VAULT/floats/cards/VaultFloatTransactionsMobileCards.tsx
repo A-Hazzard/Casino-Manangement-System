@@ -22,7 +22,7 @@ import { Card, CardContent } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import type { FloatTransaction } from '@/shared/types/vault';
-import { CheckCircle2, Clock, Minus, Plus } from 'lucide-react';
+import { CheckCircle2, Minus, Plus } from 'lucide-react';
 
 type VaultFloatTransactionsMobileCardsProps = {
   transactions: FloatTransaction[];
@@ -99,26 +99,6 @@ export default function VaultFloatTransactionsMobileCards({
                       {tx.performedByName || (isInflow ? tx.toName : tx.fromName)}
                     </p>
                   </div>
-                  <Badge
-                    className={cn(
-                      'px-2 py-1 text-xs',
-                      isCompleted
-                        ? 'bg-button text-white hover:bg-button/90'
-                        : 'bg-orangeHighlight text-white hover:bg-orangeHighlight/90'
-                    )}
-                  >
-                    {isCompleted ? (
-                      <>
-                        <CheckCircle2 className="mr-1 h-3 w-3" />
-                        Approved
-                      </>
-                    ) : (
-                      <>
-                        <Clock className="mr-1 h-3 w-3" />
-                        Pending
-                      </>
-                    )}
-                  </Badge>
                 </div>
 
                 {/* Type Badge */}
@@ -127,8 +107,8 @@ export default function VaultFloatTransactionsMobileCards({
                     className={cn(
                       'px-2 py-1 capitalize',
                       isInflow
-                        ? 'bg-button text-white hover:bg-button/90'
-                        : 'bg-lighterBlueHighlight text-white hover:bg-lighterBlueHighlight/90'
+                        ? 'bg-green-600 text-white hover:bg-green-600/90'
+                        : 'bg-orangeHighlight text-white hover:bg-orangeHighlight/90'
                     )}
                   >
                     {isInflow ? (
@@ -146,7 +126,7 @@ export default function VaultFloatTransactionsMobileCards({
                   <p
                     className={cn(
                       'text-xl font-bold',
-                      isInflow ? 'text-button' : 'text-lighterBlueHighlight'
+                      isInflow ? 'text-green-600' : 'text-orangeHighlight'
                     )}
                   >
                     {isInflow ? '+' : '-'}

@@ -45,9 +45,6 @@ type VaultTransfersTableProps = {
 
 export default function VaultTransfersTable({
   transfers,
-  sortOption: _sortOption,
-  sortOrder: _sortOrder = 'asc',
-  onSort: _onSort,
   onApprove,
   onReject,
   showActions = false,

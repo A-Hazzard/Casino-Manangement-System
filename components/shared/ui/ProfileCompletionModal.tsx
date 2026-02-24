@@ -2,32 +2,32 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/shared/ui/select';
 import { logoutUser } from '@/lib/helpers/client';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
-  ProfileValidationFormData,
-  ProfileValidationModalData,
+    ProfileValidationFormData,
+    ProfileValidationModalData,
 } from '@/lib/types/auth';
 import { cn } from '@/lib/utils';
 import { validatePasswordStrength } from '@/lib/utils/validation';
 import type {
-  InvalidProfileFields,
-  ProfileValidationReasons,
+    InvalidProfileFields,
+    ProfileValidationReasons,
 } from '@/shared/types/auth';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import * as React from 'react';
@@ -294,7 +294,7 @@ export default function ProfileCompletionModal({
   return (
     <Dialog open={open}>
       <DialogContent 
-        className="max-w-md p-0 overflow-hidden bg-slate-50 border-slate-200 shadow-xl [&>button]:hidden"
+        className="md:max-w-md p-0 overflow-hidden bg-slate-50 border-slate-200 shadow-xl [&>button]:hidden flex flex-col"
         onInteractOutside={handleInteractOutside}
         onEscapeKeyDown={handleInteractOutside}
       >
@@ -314,7 +314,7 @@ export default function ProfileCompletionModal({
         </div>
 
         {/* Scrollable Form Area */}
-        <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6 flex-1 md:max-h-[70vh] overflow-y-auto custom-scrollbar">
           
           {serverError && (
             <div className="bg-red-50 text-red-600 px-4 py-3 rounded-md text-sm font-medium border border-red-100 flex items-start gap-2">

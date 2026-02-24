@@ -45,9 +45,6 @@ type VaultFloatTransactionsTableProps = {
 
 export default function VaultFloatTransactionsTable({
   transactions,
-  sortOption: _sortOption,
-  sortOrder: _sortOrder = 'asc',
-  onSort: _onSort,
   onApprove,
   onReject,
   showActions = false,
@@ -74,12 +71,11 @@ export default function VaultFloatTransactionsTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-button hover:bg-button text-white">
-              <TableHead className="font-semibold text-white">Date/Time</TableHead>
-              <TableHead className="font-semibold text-white">Cashier</TableHead>
+              <TableHead isFirstColumn className="font-semibold text-white">Cashier</TableHead>
               <TableHead className="font-semibold text-white text-center">Type</TableHead>
               <TableHead className="font-semibold text-white text-right">Amount</TableHead>
               <TableHead className="font-semibold text-white">Reason</TableHead>
-              <TableHead className="font-semibold text-white text-center">Status</TableHead>
+              <TableHead className="font-semibold text-white">Date/Time</TableHead>
               {showActions && <TableHead className="font-semibold text-white text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -102,8 +98,7 @@ export default function VaultFloatTransactionsTable({
 
               return (
                 <TableRow key={tx._id} className="transition-colors hover:bg-muted/30">
-                  <TableCell className="text-xs whitespace-nowrap">{formatDate(tx.timestamp)}</TableCell>
-                  <TableCell className="font-medium text-sm">
+                  <TableCell isFirstColumn className="font-medium text-sm">
                     {tx.to?.type === 'cashier' ? (tx.toName || tx.to.id) : 
                      tx.from?.type === 'cashier' ? (tx.fromName || tx.from.id) : 
                      tx.performedByName}
@@ -121,11 +116,7 @@ export default function VaultFloatTransactionsTable({
                     {formatAmount(Math.abs(tx.amount))}
                   </TableCell>
                   <TableCell className="text-xs text-gray-500 whitespace-normal break-words max-w-[200px]">{tx.notes || '-'}</TableCell>
-                  <TableCell className="text-center">
-                    <Badge className={cn('px-2 py-0.5 text-[10px]', isCompleted ? 'bg-button' : 'bg-orangeHighlight')}>
-                      {isCompleted ? 'Completed' : 'Pending'}
-                    </Badge>
-                  </TableCell>
+                  <TableCell className="text-xs whitespace-nowrap">{formatDate(tx.timestamp)}</TableCell>
                   {showActions && (
                     <TableCell className="text-right">
                        {!isCompleted && (
@@ -197,9 +188,6 @@ export default function VaultFloatTransactionsTable({
                   <div className="flex items-center gap-2">
                     <Badge className={cn('px-2 py-0.5 text-[10px] capitalize border-none', isInflow ? 'bg-green-600 text-white' : 'bg-orangeHighlight text-white')}>
                         {getLabel(tx.type)}
-                    </Badge>
-                    <Badge className={cn('px-2 py-0.5 text-[10px] border-none', isCompleted ? 'bg-green-600 text-white' : 'bg-orangeHighlight text-white')}>
-                      {isCompleted ? 'Completed' : 'Pending'}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-gray-400">

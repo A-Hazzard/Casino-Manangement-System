@@ -56,22 +56,49 @@ export default function VaultCashDeskCard({ cashDesk, onViewDenominations: _onVi
       </CardHeader>
       
       <CardContent className="px-4 pb-4 pt-2">
-        <div className="mt-2 flex items-center justify-between rounded-lg bg-gray-50 p-3">
-          <div>
-            <p className="text-xs text-gray-500">Current Float</p>
+        <div className="mt-2 grid grid-cols-2 gap-y-4 gap-x-2 rounded-lg bg-gray-50 p-3">
+          <div className="flex flex-col">
+            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Opening Float</p>
             <p className={cn(
-                "font-bold text-gray-900 leading-none transition-all truncate",
-                formatAmount(cashDesk.balance).length > 12 ? 'text-base' : 'text-lg'
+                "font-black text-gray-900 leading-none transition-all truncate",
+                formatAmount(cashDesk.openingBalance || cashDesk.balance).length > 10 ? 'text-sm' : 'text-base'
             )}>
-              {formatAmount(cashDesk.balance)}
+              {formatAmount(cashDesk.openingBalance || cashDesk.balance)}
             </p>
+          </div>
+
+          <div className="flex flex-col">
+            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Total Payout</p>
+            <p className={cn(
+                "font-black text-red-600 leading-none transition-all truncate",
+                formatAmount(cashDesk.payoutsTotal || 0).length > 10 ? 'text-sm' : 'text-base'
+            )}>
+              {formatAmount(cashDesk.payoutsTotal || 0)}
+            </p>
+          </div>
+
+          <div className="flex flex-col col-span-2 border-t border-gray-100 pt-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Started At</p>
+                <p className="text-xs font-mono text-gray-600">
+                  {cashDesk.openedAt ? new Date(cashDesk.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '---'}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Net balance</p>
+                <p className="text-sm font-black text-emerald-600">
+                  {formatAmount(cashDesk.balance)}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
         {cashDesk.lastAudit && (
-           <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
-             <AlertCircle className="h-3 w-3" />
-             <span>Last Audit: {safeFormatDate(cashDesk.lastAudit, { hour: '2-digit', minute: '2-digit' })}</span>
+           <div className="mt-2 flex items-center gap-1.5 text-[10px] text-gray-400">
+             <AlertCircle className="h-2.5 w-2.5" />
+             <span>Last Activity: {safeFormatDate(cashDesk.lastAudit, { hour: '2-digit', minute: '2-digit' })}</span>
            </div>
         )}
       </CardContent>

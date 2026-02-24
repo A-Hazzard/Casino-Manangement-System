@@ -1,15 +1,15 @@
 'use client';
 
 import {
-  endOfMonth,
-  endOfWeek,
-  format,
-  isSameDay,
-  startOfDay,
-  startOfMonth,
-  startOfWeek,
-  subDays,
-  subMonths,
+    endOfMonth,
+    endOfWeek,
+    format,
+    isSameDay,
+    startOfDay,
+    startOfMonth,
+    startOfWeek,
+    subDays,
+    subMonths,
 } from 'date-fns';
 import { Calendar as CalendarIcon, Check } from 'lucide-react';
 import * as React from 'react';
@@ -18,9 +18,9 @@ import 'react-datepicker/dist/react-datepicker.css';
 
 import { Button } from '@/components/shared/ui/button';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
 } from '@/components/shared/ui/popover';
 import { cn } from '@/lib/utils';
 
@@ -125,6 +125,7 @@ type ModernCalendarProps = {
   enableTimeInputs?: boolean;
   mode?: 'single' | 'range';
   disabled?: boolean;
+  maxDate?: Date;
 }
 
 export function ModernCalendar({
@@ -134,6 +135,7 @@ export function ModernCalendar({
   enableTimeInputs = false,
   mode = 'range',
   disabled = false,
+  maxDate,
 }: ModernCalendarProps) {
   const [startDate, setStartDate] = React.useState<Date | null>(
     date?.from || null
@@ -505,6 +507,7 @@ export function ModernCalendar({
                   }
                   startDate={startDate || undefined}
                   endDate={endDate || undefined}
+                  maxDate={maxDate}
                   selectsRange
                   inline
                   dateFormat="MMMM d, yyyy"
@@ -515,6 +518,7 @@ export function ModernCalendar({
                 <DatePicker
                   selected={startDate}
                   onChange={onChange as (date: Date | null) => void}
+                  maxDate={maxDate}
                   inline
                   dateFormat="MMMM d, yyyy"
                   calendarClassName="modern-calendar"

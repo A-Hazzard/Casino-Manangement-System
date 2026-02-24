@@ -17,11 +17,18 @@ import CashierManagementPanel from '@/components/VAULT/admin/CashierManagementPa
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import StaleShiftDetectedBlock from '@/components/VAULT/shared/StaleShiftDetectedBlock';
 import { useVaultShift } from '@/lib/hooks/vault/useVaultShift';
+import { useCallback, useRef, useState } from 'react';
 
 export default function CashierManagementPage() {
-  const { vaultBalance, isStaleShift, loading } = useVaultShift();
+  const { vaultBalance, isStaleShift, loading: shiftLoading } = useVaultShift();
+  const [panelLoading, setPanelLoading] = useState(true);
+  const refreshFnRef = useRef<() => void>(() => {});
 
-  if (loading && !vaultBalance) {
+  const handleRefresh = useCallback(() => {
+    refreshFnRef.current();
+  }, []);
+
+  if (shiftLoading && !vaultBalance) {
     return (
       <PageLayout pageTitle="Cashier Management">
         <div className="space-y-6">
@@ -35,12 +42,19 @@ export default function CashierManagementPage() {
   return (
     <ProtectedRoute requiredPage="vault-management">
       <PageErrorBoundary>
-        <PageLayout pageTitle="Cashier Management">
+        <PageLayout
+          pageTitle="Cashier Management"
+          onRefresh={handleRefresh}
+          refreshing={panelLoading}
+        >
           <div className="space-y-6">
             <VaultManagerHeader />
 
             <StaleShiftDetectedBlock isStale={isStaleShift} openedAt={vaultBalance?.openedAt} type="vault">
-              <CashierManagementPanel />
+              <CashierManagementPanel
+                onLoadingChange={setPanelLoading}
+                onRefresh={(fn) => { refreshFnRef.current = fn; }}
+              />
             </StaleShiftDetectedBlock>
           </div>
         </PageLayout>

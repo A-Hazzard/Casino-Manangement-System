@@ -11,12 +11,12 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import VaultTransactionDetailsModal from '@/components/VAULT/transactions/modals/VaultTransactionDetailsModal';
 import ViewDenominationsModal from '@/components/VAULT/transactions/modals/ViewDenominationsModal';
@@ -24,10 +24,11 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import { safeFormatDate } from '@/lib/utils/date/formatting';
 import type {
-    Denomination,
-    ExtendedVaultTransaction,
-    VaultTransactionType,
+  Denomination,
+  ExtendedVaultTransaction,
+  VaultTransactionType,
 } from '@/shared/types/vault';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, ChevronLeft, ChevronRight, Clock, Eye, FileText } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -52,8 +53,6 @@ type VaultTransactionsTableProps = {
 
 export default function VaultTransactionsTable({
   transactions,
-  sortOption: _sortOption,
-  sortOrder: _sortOrder = 'asc',
   onSort,
   getTransactionTypeBadge,
   itemsPerPage = 10,
@@ -95,8 +94,17 @@ export default function VaultTransactionsTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-button hover:bg-button">
+              {transactions.some(tx => tx.locationName) && (
+                <TableHead isFirstColumn className="font-semibold text-white">Location</TableHead>
+              )}
+              <TableHead className={cn("font-semibold text-white", !transactions.some(tx => tx.locationName) && "pl-4")}>Type</TableHead>
+              <TableHead className="font-semibold text-white">Amount</TableHead>
+              <TableHead className="font-semibold text-white">Source</TableHead>
+              <TableHead className="font-semibold text-white">Destination</TableHead>
+              <TableHead className="font-semibold text-white">Status</TableHead>
+              <TableHead className="font-semibold text-white text-center">Actions</TableHead>
+              <TableHead className="font-semibold text-white truncate max-w-[150px]">Notes</TableHead>
               <TableHead
-                isFirstColumn
                 className={cn(
                   'relative cursor-pointer select-none font-semibold text-white',
                   onSort && 'hover:bg-button/90'
@@ -105,141 +113,149 @@ export default function VaultTransactionsTable({
               >
                 Date & Time
               </TableHead>
-              {transactions.some(tx => tx.locationName) && (
-                <TableHead className="font-semibold text-white">Location</TableHead>
-              )}
-              <TableHead className="font-semibold text-white">Type</TableHead>
-              <TableHead className="font-semibold text-white">Amount</TableHead>
-              <TableHead className="font-semibold text-white">Source</TableHead>
-              <TableHead className="font-semibold text-white">Destination</TableHead>
-              <TableHead className="font-semibold text-white">Status</TableHead>
-              <TableHead className="font-semibold text-white text-center">Actions</TableHead>
-              <TableHead className="font-semibold text-white truncate max-w-[150px]">Notes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pagedTransactions.map(tx => {
-              const isCompleted = !tx.isVoid;
-
-              return (
-                <TableRow key={tx._id} className="transition-colors hover:bg-muted/30">
-                  <TableCell isFirstColumn className="font-medium whitespace-nowrap text-xs">
-                    {formatDate(tx.timestamp)}
-                  </TableCell>
-                  {tx.locationName && (
-                    <TableCell className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
-                        {tx.locationName}
+            <AnimatePresence initial={false}>
+              {pagedTransactions.map(tx => {
+                const isCompleted = !tx.isVoid;
+  
+                return (
+                  <motion.tr 
+                    key={tx._id} 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className="transition-colors hover:bg-muted/30"
+                  >
+                    {tx.locationName && (
+                      <TableCell isFirstColumn className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                          {tx.locationName}
+                      </TableCell>
+                    )}
+                    <TableCell className={cn(!tx.locationName && "pl-4")}>{getTransactionTypeBadge(tx.type)}</TableCell>
+                    <TableCell>
+                      <span className={cn('font-bold', tx.from?.type === 'vault' ? 'text-red-600' : 'text-green-600')}>
+                        {tx.from?.type === 'vault' && '-'}{formatAmount(Math.abs(tx.amount))}
+                      </span>
                     </TableCell>
-                  )}
-                  <TableCell>{getTransactionTypeBadge(tx.type)}</TableCell>
-                  <TableCell>
-                    <span className={cn('font-bold', tx.from?.type === 'vault' ? 'text-red-600' : 'text-green-600')}>
-                      {tx.from?.type === 'vault' && '-'}{formatAmount(Math.abs(tx.amount))}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-xs truncate max-w-[200px]">{tx.fromName || tx.from.type || '-'}</TableCell>
-                  <TableCell className="text-xs truncate max-w-[200px]">{tx.toName || tx.to.type || '-'}</TableCell>
-                  <TableCell>
-                    <Badge className={cn('px-2 py-0.5 text-[10px]', isCompleted ? 'bg-button text-white' : 'bg-red-600 text-white')}>
-                      {isCompleted ? 'Completed' : 'Voided'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-center gap-1">
-                      {tx.denominations && tx.denominations.length > 0 && (
+                    <TableCell className="text-xs truncate max-w-[200px]">{tx.fromName || tx.from.type || '-'}</TableCell>
+                    <TableCell className="text-xs truncate max-w-[200px]">{tx.toName || tx.to.type || '-'}</TableCell>
+                    <TableCell>
+                      <Badge className={cn('px-2 py-0.5 text-[10px]', isCompleted ? 'bg-button text-white' : 'bg-red-600 text-white')}>
+                        {isCompleted ? 'Completed' : 'Voided'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-1">
+                        {tx.denominations && tx.denominations.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-[10px] text-blue-600 px-2"
+                            onClick={() => setSelectedTxDenominations({ denominations: tx.denominations, amount: Math.abs(tx.amount) })}
+                          >
+                            <Eye className="mr-1 h-3 w-3" /> Denoms
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 text-[10px] text-blue-600 px-2"
-                          onClick={() => setSelectedTxDenominations({ denominations: tx.denominations, amount: Math.abs(tx.amount) })}
+                          className="h-7 text-[10px] text-violet-600 px-2 font-bold"
+                          onClick={() => setSelectedTransactionDetails(tx)}
                         >
-                          <Eye className="mr-1 h-3 w-3" /> Denoms
+                          <FileText className="mr-1 h-3 w-3" /> Details
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-[10px] text-violet-600 px-2 font-bold"
-                        onClick={() => setSelectedTransactionDetails(tx)}
-                      >
-                        <FileText className="mr-1 h-3 w-3" /> Details
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs text-gray-400 whitespace-nowrap truncate max-w-[150px]">{tx.notes || '-'}</TableCell>
-                </TableRow>
-              );
-            })}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-gray-400 whitespace-nowrap truncate max-w-[150px]">{tx.notes || '-'}</TableCell>
+                    <TableCell className="font-medium whitespace-nowrap text-xs">
+                      {formatDate(tx.timestamp)}
+                    </TableCell>
+                  </motion.tr>
+                );
+              })}
+            </AnimatePresence>
           </TableBody>
         </Table>
       </div>
 
-      {/* Mobile/Tablet Card View */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4">
-        {pagedTransactions.map(tx => {
-          const isCompleted = !tx.isVoid;
-
-          return (
-            <Card key={tx._id} className={cn("overflow-hidden border-l-4 shadow-sm", tx.from?.type === 'vault' ? "border-l-red-600" : "border-l-green-600")}>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> {formatDate(tx.timestamp)}
-                    </div>
-                    {tx.locationName && (
-                        <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-0.5">
-                            {tx.locationName}
+        <AnimatePresence initial={false}>
+          {pagedTransactions.map(tx => {
+            const isCompleted = !tx.isVoid;
+  
+            return (
+              <motion.div 
+                key={tx._id}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card className={cn("overflow-hidden border-l-4 shadow-sm", tx.from?.type === 'vault' ? "border-l-red-600" : "border-l-green-600")}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <div className="text-[10px] text-gray-400 flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> {formatDate(tx.timestamp)}
                         </div>
-                    )}
-                    <div className="mt-1">{getTransactionTypeBadge(tx.type)}</div>
-                  </div>
-                  <span className={cn("text-lg font-black", tx.from?.type === 'vault' ? "text-red-600" : "text-green-600")}>
-                    {tx.from?.type === 'vault' && '-'}{formatAmount(Math.abs(tx.amount))}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between text-xs py-2 bg-gray-50 rounded px-2">
-                   <div className="flex flex-col">
-                      <span className="text-[10px] text-gray-400 uppercase tracking-tighter font-bold">From</span>
-                      <span className="font-semibold truncate max-w-[160px]">{tx.fromName || tx.from.type || '-'}</span>
-                   </div>
-                   <ArrowRight className="h-4 w-4 text-gray-300 mx-2" />
-                   <div className="flex flex-col items-end text-right">
-                      <span className="text-[10px] text-gray-400 uppercase tracking-tighter font-bold">To</span>
-                      <span className="font-semibold truncate max-w-[160px]">{tx.toName || tx.to.type || '-'}</span>
-                   </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-2 pt-1">
-                  <div className="flex items-center gap-2">
-                    <Badge className={cn('px-2 py-0.5 text-[10px]', isCompleted ? 'bg-button' : 'bg-red-600')}>
-                        {isCompleted ? 'Completed' : 'Voided'}
-                    </Badge>
-                    {tx.denominations && tx.denominations.length > 0 && (
+                        {tx.locationName && (
+                            <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-0.5">
+                                {tx.locationName}
+                            </div>
+                        )}
+                        <div className="mt-1">{getTransactionTypeBadge(tx.type)}</div>
+                      </div>
+                      <span className={cn("text-lg font-black", tx.from?.type === 'vault' ? "text-red-600" : "text-green-600")}>
+                        {tx.from?.type === 'vault' && '-'}{formatAmount(Math.abs(tx.amount))}
+                      </span>
+                    </div>
+    
+                    <div className="flex items-center justify-between text-xs py-2 bg-gray-50 rounded px-2">
+                       <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-400 uppercase tracking-tighter font-bold">From</span>
+                          <span className="font-semibold truncate max-w-[160px]">{tx.fromName || tx.from.type || '-'}</span>
+                       </div>
+                       <ArrowRight className="h-4 w-4 text-gray-300 mx-2" />
+                       <div className="flex flex-col items-end text-right">
+                          <span className="text-[10px] text-gray-400 uppercase tracking-tighter font-bold">To</span>
+                          <span className="font-semibold truncate max-w-[160px]">{tx.toName || tx.to.type || '-'}</span>
+                       </div>
+                    </div>
+    
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <div className="flex items-center gap-2">
+                        <Badge className={cn('px-2 py-0.5 text-[10px]', isCompleted ? 'bg-button' : 'bg-red-600')}>
+                            {isCompleted ? 'Completed' : 'Voided'}
+                        </Badge>
+                        {tx.denominations && tx.denominations.length > 0 && (
+                            <button 
+                                className="text-[10px] text-blue-600 flex items-center gap-1 font-medium underline"
+                                onClick={() => setSelectedTxDenominations({ denominations: tx.denominations, amount: Math.abs(tx.amount) })}
+                            >
+                                <Eye className="h-3 w-3" /> Denoms
+                            </button>
+                        )}
                         <button 
-                            className="text-[10px] text-blue-600 flex items-center gap-1 font-medium underline"
-                            onClick={() => setSelectedTxDenominations({ denominations: tx.denominations, amount: Math.abs(tx.amount) })}
+                            className="text-[10px] text-violet-600 flex items-center gap-1 font-bold underline ml-2"
+                            onClick={() => setSelectedTransactionDetails(tx)}
                         >
-                            <Eye className="h-3 w-3" /> Denoms
+                            <FileText className="h-3 w-3" /> Details
                         </button>
-                    )}
-                    <button 
-                        className="text-[10px] text-violet-600 flex items-center gap-1 font-bold underline ml-2"
-                        onClick={() => setSelectedTransactionDetails(tx)}
-                    >
-                        <FileText className="h-3 w-3" /> Details
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400 max-w-[120px]">
-                    <FileText className="h-3 w-3 flex-shrink-0" />
-                    <span className="whitespace-normal break-words text-xs italic text-gray-400">{tx.notes || 'No notes'}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-400 max-w-[120px]">
+                        <FileText className="h-3 w-3 flex-shrink-0" />
+                        <span className="whitespace-normal break-words text-xs italic text-gray-400">{tx.notes || 'No notes'}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
 
       {/* Pagination Controls */}

@@ -94,7 +94,7 @@ export default function TicketRedemptionForm({
               Redemption Amount
             </Label>
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200">
-                <span className="text-[9px] font-black text-gray-400 uppercase">Stash</span>
+                <span className="text-[9px] font-black text-gray-400 uppercase">Cash Register</span>
                 <span className="text-[11px] font-bold text-gray-700">{formatAmount(currentBalance)}</span>
             </div>
           </div>

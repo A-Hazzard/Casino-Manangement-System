@@ -54,8 +54,8 @@ export default function VaultOverviewInitializeModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden">
-        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+      <DialogContent className="md:max-w-md p-0 overflow-hidden flex flex-col">
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
             {isInitial ? <Sparkles className="h-5 w-5 text-amber-500" /> : <Calendar className="h-5 w-5 text-violet-600" />}
             {isInitial ? "Initialize New Vault" : "Open Vault Shift"}
@@ -67,7 +67,7 @@ export default function VaultOverviewInitializeModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[75vh] overflow-y-auto p-6 space-y-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 md:max-h-[75vh] custom-scrollbar">
           {/* Expected Balance Card - Premium Style */}
           {!isInitial && (
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100 p-6 shadow-sm">

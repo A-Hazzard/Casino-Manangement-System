@@ -153,6 +153,9 @@ export async function fetchVaultOverviewData(
             denominations: shift.lastSyncedDenominations ?? shift.openingDenominations ?? [], 
             lastAudit: new Date(shift.openedAt || shift.createdAt || new Date()).toISOString(),
             status: shift.status || 'active',
+            openedAt: shift.openedAt,
+            openingBalance: shift.openingBalance,
+            payoutsTotal: shift.payoutsTotal || 0,
           })
         );
         result.cashDesks = activeDesks;
@@ -305,7 +308,10 @@ export async function fetchGlobalVaultOverviewData(
       floatRequests,
       cashDesks: (resultData.cashDesks || []).map((desk: any) => ({
           ...desk,
-          locationName: desk.locationName
+          locationName: desk.locationName,
+          openedAt: desk.openedAt,
+          openingBalance: desk.openingBalance,
+          payoutsTotal: desk.payoutsTotal || 0,
       })),
       notifications,
     };
@@ -558,12 +564,12 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
         const { metrics } = metricsData;
         const transactions = transactionsData.transactions;
 
-        // Filter transactions for TODAY only
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
+        // Filter transactions for TODAY (Gaming Day) only
+        const rangeStart = metricsData.rangeStart ? new Date(metricsData.rangeStart) : new Date();
+        if (!metricsData.rangeStart) rangeStart.setHours(0, 0, 0, 0);
         
         const todayTxs = transactions.filter((tx: any) => 
-          new Date(tx.timestamp).getTime() >= startOfDay.getTime()
+          new Date(tx.timestamp).getTime() >= rangeStart.getTime()
         );
 
         // Calculate hourly transaction volume for "Peak Hour" and "Transaction Volume" chart

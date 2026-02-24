@@ -18,12 +18,12 @@
 import { Button } from '@/components/shared/ui/button';
 import MultiSelectDropdown from '@/components/shared/ui/common/MultiSelectDropdown';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -243,8 +243,8 @@ export default function VaultOverviewAddCashModal({
   // ============================================================================
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden">
-        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+      <DialogContent className="md:max-w-2xl p-0 overflow-hidden flex flex-col">
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
             <ArrowUpRight className="h-5 w-5 text-violet-600" />
             Add Cash to Vault
@@ -254,7 +254,7 @@ export default function VaultOverviewAddCashModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[75vh] overflow-y-auto p-6 space-y-8 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 md:max-h-[75vh] custom-scrollbar">
           {/* Source Selection - Premium Layout */}
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">

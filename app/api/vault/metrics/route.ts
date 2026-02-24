@@ -13,7 +13,6 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRange, getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
@@ -134,26 +133,20 @@ export async function GET(request: NextRequest) {
 
     // B. Machine Money In (Drops) - Use Gaming Day Logic
     // Using the same range calculated above
-    const gamingDayRange = { rangeStart, rangeEnd };
-
-    // Get all machine IDs for this location
-    const machines = await Machine.find({ gamingLocation: locationId }, { _id: 1 }).lean();
-    const machineIds = machines.map((m: any) => String(m._id));
-
     const machineMeters = await Meters.aggregate([
         {
           $match: {
-            machine: { $in: machineIds },
+            location: locationId,
             readAt: {
-              $gte: gamingDayRange.rangeStart,
-              $lte: gamingDayRange.rangeEnd,
+              $gte: rangeStart,
+              $lte: rangeEnd,
             },
           },
         },
         {
           $group: {
             _id: null,
-            totalMoneyIn: { $sum: '$movement.drop' },
+            totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
           },
         },
     ]);
@@ -164,6 +157,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const payoutTxs = transactions.filter(t => t.type === 'payout');
     payouts = payoutTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
+    const payoutsCount = payoutTxs.length;
 
     const duration = Date.now() - startTime;
     if (duration > 1000) {
@@ -179,10 +173,13 @@ export async function GET(request: NextRequest) {
         totalCashOut,
         netCashFlow,
         payouts,
+        payoutsCount,
         totalMachineBalance,
         totalCashierFloats,
         expenses,
       },
+      rangeStart: rangeStart.toISOString(),
+      rangeEnd: rangeEnd.toISOString(),
     });
   } catch (error) {
     console.error('Error fetching vault metrics:', error);

@@ -34,7 +34,7 @@ export default function VaultTransactionDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen: boolean) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="md:max-w-[600px] md:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="text-xl font-bold text-gray-900">Transaction Details</span>
@@ -172,7 +172,37 @@ export default function VaultTransactionDetailsModal({
                <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                   {Object.entries(transaction.expenseDetails!).map(([key, val]) => {
                      if (val === undefined || val === null || val === '') return null;
+                     if (key === 'machineNames') return null; // hide backwards compat field
+                     if (key === 'machineDetails' && Array.isArray(val) && val.length > 0) {
+                         return (
+                            <div key={key} className="flex flex-col col-span-2 mt-2">
+                               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Related Machines</span>
+                               <div className="rounded-md border border-gray-200 overflow-hidden">
+                                  <table className="w-full text-sm text-left">
+                                     <thead className="bg-gray-50 border-b border-gray-200 text-[10px] text-gray-500 uppercase tracking-wider">
+                                        <tr>
+                                           <th className="px-3 py-2 font-bold leading-tight">Machine</th>
+                                           <th className="px-3 py-2 font-bold leading-tight">Game</th>
+                                           <th className="px-3 py-2 font-bold leading-tight">Game Type</th>
+                                        </tr>
+                                     </thead>
+                                     <tbody className="divide-y divide-gray-100 bg-white">
+                                        {val.map((m: any, idx: number) => (
+                                           <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                              <td className="px-3 py-2.5 font-semibold text-gray-900">{m.identifier || 'N/A'}</td>
+                                              <td className="px-3 py-2.5 text-gray-600 truncate max-w-[150px]">{m.game || <span className="text-red-600 italic">no game provided</span>}</td>
+                                              <td className="px-3 py-2.5 text-gray-600">{m.gameType || 'N/A'}</td>
+                                           </tr>
+                                        ))}
+                                     </tbody>
+                                  </table>
+                               </div>
+                            </div>
+                         );
+                     }
                      if (key === 'machineIds' && Array.isArray(val)) {
+                         const details = (transaction.expenseDetails as any).machineDetails;
+                         if (details && Array.isArray(details) && details.length > 0) return null; // let machineDetails handle it
                          return (
                             <div key={key} className="flex flex-col col-span-2">
                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Related Machines</span>

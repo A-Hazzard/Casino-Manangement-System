@@ -197,6 +197,55 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
+    // STEP 4.5: Populate machineDetails for older transactions
+    // ============================================================================
+    const missingMachineIds = new Set<string>();
+    finalTransactions.forEach((tx: any) => {
+       if (tx.expenseDetails?.isMachineRepair && tx.expenseDetails.machineIds?.length > 0) {
+           if (!tx.expenseDetails.machineDetails || tx.expenseDetails.machineDetails.length === 0) {
+               tx.expenseDetails.machineIds.forEach((id: string) => missingMachineIds.add(id));
+           }
+       }
+    });
+
+    if (missingMachineIds.size > 0) {
+       const { Machine } = await import('@/app/api/lib/models/machines');
+       const mList = await Machine.find({ _id: { $in: Array.from(missingMachineIds) } }).lean();
+
+       finalTransactions.forEach((tx: any) => {
+           if (tx.expenseDetails?.isMachineRepair && tx.expenseDetails.machineIds?.length > 0) {
+               if (!tx.expenseDetails.machineDetails || tx.expenseDetails.machineDetails.length === 0) {
+                   tx.expenseDetails.machineDetails = tx.expenseDetails.machineIds.map((id: string) => {
+                        const m = mList.find((x: any) => String(x._id) === id || String(x.machineId) === id || x.serialNumber === id);
+                        if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
+                        
+                        const serialNumberRaw = m.serialNumber?.trim() || '';
+                        const customName = m.custom?.name?.trim() || '';
+                        const game = m.game || m.installedGame || '';
+                        const gameType = m.gameType || '';
+                        const mainIdentifier = serialNumberRaw || customName || 'N/A';
+                        
+                        return {
+                           identifier: customName && customName !== mainIdentifier ? `${mainIdentifier} (${customName})` : mainIdentifier,
+                           game: game.trim(),
+                           gameType: gameType.trim()
+                        };
+                   });
+                   // For backward compatibility while frontend handles both, maybe we clean up old machineNames
+                   delete tx.expenseDetails.machineNames;
+               }
+           }
+       });
+    }
+
+    // Remove machineIds from response
+    finalTransactions.forEach((tx: any) => {
+        if (tx.expenseDetails && tx.expenseDetails.machineIds) {
+            delete tx.expenseDetails.machineIds;
+        }
+    });
+
+    // ============================================================================
     // STEP 5: Return success response
     // ============================================================================
     return NextResponse.json({

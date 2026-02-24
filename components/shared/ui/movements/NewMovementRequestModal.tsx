@@ -1,34 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from '@/components/shared/ui/dialog';
 import { Button } from '@/components/shared/ui/button';
-import { Input } from '@/components/shared/ui/input';
-import { Textarea } from '@/components/shared/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/shared/ui/select';
 import Chip from '@/components/shared/ui/common/Chip';
-import { PlusCircledIcon } from '@radix-ui/react-icons';
-import { fetchAllGamingLocations } from '@/lib/helpers/locations';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/shared/ui/dialog';
+import { Input } from '@/components/shared/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/shared/ui/select';
+import { Textarea } from '@/components/shared/ui/textarea';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets';
+import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { createMovementRequest } from '@/lib/helpers/movementRequests';
-import type { MovementRequest } from '@/lib/types/movement';
-import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { useUserStore } from '@/lib/store/userStore';
 import type { NewMovementModalProps } from '@/lib/types/components';
+import type { MovementRequest } from '@/lib/types/movement';
 import type { MachineMovementRecord } from '@/lib/types/reports';
 import { generateMongoId } from '@/lib/utils/id';
-import { useUserStore } from '@/lib/store/userStore';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { PlusCircledIcon } from '@radix-ui/react-icons';
 import axios from 'axios';
+import React, { useEffect, useState } from 'react';
 
 const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
   isOpen,
@@ -295,13 +295,13 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl overflow-hidden bg-white p-0">
-        <DialogHeader className="border-b border-gray-200 p-6">
+      <DialogContent className="md:max-w-3xl md:max-h-[90vh] overflow-hidden bg-white p-0 flex flex-col">
+        <DialogHeader className="border-b border-gray-200 p-6 shrink-0">
           <DialogTitle className="text-2xl font-bold text-gray-800">
             New Movement Request
           </DialogTitle>
         </DialogHeader>
-        <div className="grid max-h-[70vh] grid-cols-1 gap-6 overflow-y-auto p-6 md:grid-cols-2">
+        <div className="grid flex-1 grid-cols-1 gap-6 overflow-y-auto p-6 md:grid-cols-2 custom-scrollbar">
           {/* Left Column */}
           <div className="flex flex-col gap-4">
             {/* Movement Type */}

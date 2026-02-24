@@ -12,10 +12,10 @@ import VaultOverviewCloseDayModals from '@/components/VAULT/overview/sections/Va
 import DebugSection from '@/components/shared/debug/DebugSection';
 import NotificationBell from '@/components/shared/ui/NotificationBell';
 import { Button } from '@/components/shared/ui/button';
-import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import { fetchVaultBalance, handleFloatAction, handleFloatConfirm } from '@/lib/helpers/vaultHelpers';
 import { useNotifications } from '@/lib/hooks/vault/useNotifications';
 import { useVaultCloseDay } from '@/lib/hooks/vault/useVaultCloseDay';
+import { useNotificationStore } from '@/lib/store/notificationStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { Denomination } from '@/shared/types/vault';
 import { ArrowLeft } from 'lucide-react';
@@ -58,6 +58,7 @@ export default function VaultManagerHeader({
 
   const {
     notifications,
+    unreadCount,
     markAsRead,
     refresh,
     dismissNotification
@@ -86,7 +87,7 @@ export default function VaultManagerHeader({
     const interval = setInterval(() => {
       refresh();
       fetchInventory(); // Also refresh inventory
-    }, DEFAULT_POLL_INTERVAL);
+    }, 5000); // Poll every 5 seconds for vault manager
 
     return () => clearInterval(interval);
   }, [locationId, refresh, fetchInventory, showNotificationBell]);
@@ -164,6 +165,32 @@ export default function VaultManagerHeader({
     relatedEntityId: n.relatedEntityId,
     metadata: n.metadata
   }));
+
+  // Update global notification store for floating bell
+  const setNotifications = useNotificationStore(state => state.setNotifications);
+  const setHandlers = useNotificationStore(state => state.setHandlers);
+  const clearNotifications = useNotificationStore(state => state.clearNotifications);
+
+  const handleMarkAllRead = useCallback(() => {
+      const unreadIds = notifications.filter(n => n.status === 'unread').map(n => n._id);
+      if (unreadIds.length > 0) {
+          markAsRead(unreadIds);
+      }
+  }, [notifications, markAsRead]);
+
+  useEffect(() => {
+    setNotifications(bellNotifications, unreadCount);
+    setHandlers({
+      onMarkAsRead: markAsRead,
+      onMarkAllAsRead: handleMarkAllRead,
+      onDismiss: dismissNotification
+    });
+  }, [bellNotifications, unreadCount, setNotifications, setHandlers, markAsRead, dismissNotification, handleMarkAllRead]);
+
+  // Separate cleanup effect to avoid re-triggering during active session
+  useEffect(() => {
+    return () => clearNotifications();
+  }, [clearNotifications]);
 
   const {
     activeStep,

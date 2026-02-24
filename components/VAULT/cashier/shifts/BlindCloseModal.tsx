@@ -94,8 +94,8 @@ export default function BlindCloseModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden !z-[200]">
-        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+      <DialogContent className="md:max-w-md p-0 overflow-hidden !z-[200] flex flex-col">
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
             <AlertTriangle className="h-5 w-5 text-violet-600" />
             End Shift / Blind Close
@@ -105,7 +105,7 @@ export default function BlindCloseModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[75vh] overflow-y-auto p-6 space-y-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 md:max-h-[75vh] custom-scrollbar">
            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
               <div className="h-8 w-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 mt-0.5">
                  <AlertTriangle className="h-4 w-4 text-amber-600" />

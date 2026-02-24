@@ -71,12 +71,13 @@ export default function VaultOverviewHealthGrid({ metrics, refreshing: _refreshi
         <VaultOverviewMetricCard
           title="Payouts"
           value={metrics.payouts}
+          subValue={metrics.payoutsCount || 0}
           icon={Receipt}
           iconColor="text-purple-600"
           iconBgColor="bg-purple-100"
           tooltipContent="Sum/Total of hand pays and ticket redemptions for the current period."
           onClick={() => openBreakdown('payout', 'Payouts')}
-          formatType="number"
+          formatType="currency"
         />
       </div>
 

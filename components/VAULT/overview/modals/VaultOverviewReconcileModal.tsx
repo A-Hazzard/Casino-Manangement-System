@@ -127,8 +127,8 @@ export default function VaultOverviewReconcileModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden">
-        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+      <DialogContent className="md:max-w-4xl p-0 overflow-hidden flex flex-col">
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
             <Landmark className="h-5 w-5 text-violet-600" />
             Vault Reconciliation
@@ -138,7 +138,7 @@ export default function VaultOverviewReconcileModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[75vh] overflow-y-auto p-6 space-y-8 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 md:max-h-[75vh] custom-scrollbar">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
             {/* Left: Denomination Grid */}
             <div className="lg:col-span-3 space-y-4">

@@ -47,7 +47,7 @@ import {
   Save,
   Trash2,
   X,
-  XCircle,
+  XCircle
 } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -66,6 +66,7 @@ const ROLE_OPTIONS = [
   { label: 'Manager', value: 'manager' },
   { label: 'Location Admin', value: 'location admin' },
   { label: 'Vault Manager', value: 'vault-manager' },
+  { label: 'Cashier', value: 'cashier' },
   { label: 'Technician', value: 'technician' },
   { label: 'Collector', value: 'collector' },
 ];
@@ -226,6 +227,9 @@ export default function AdministrationUserModal({
     },
   });
   const isVaultManagerSelected = roles.includes('vault-manager');
+  const isCashierSelected = roles.includes('cashier');
+  const hasRestrictedAssignments = isVaultManagerSelected || isCashierSelected;
+  const isAssignmentsEnabled = roles.length > 0;
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
@@ -915,21 +919,46 @@ export default function AdministrationUserModal({
   };
 
   const handleRoleChange = (role: string, checked: boolean) => {
-    const newRoles = checked ? [...roles, role] : roles.filter(r => r !== role);
+    let newRoles: string[];
+
+    if (checked) {
+      if (role === 'vault-manager' || role === 'cashier') {
+        // Vault Manager and Cashier are exclusive from all other roles
+        newRoles = [role];
+        if (roles.length > 0) {
+          toast.info(
+            `${role === 'vault-manager' ? 'Vault Manager' : 'Cashier'} cannot be combined with other roles. Other selections cleared.`
+          );
+        }
+      } else {
+        // Other roles are exclusive from Vault Manager and Cashier
+        newRoles = [...roles, role].filter(
+          r => r !== 'vault-manager' && r !== 'cashier'
+        );
+        if (roles.includes('vault-manager') || roles.includes('cashier')) {
+          toast.info(
+            'Cannot combine with restricted roles. Restricted roles cleared.'
+          );
+        }
+      }
+    } else {
+      newRoles = roles.filter(r => r !== role);
+    }
+    
     setRoles(newRoles);
 
-    // Enforce single selection if vault-manager is selected
-    if (checked && role === 'vault-manager') {
+    // Enforce single selection if vault-manager or cashier is selected
+    if (checked && (role === 'vault-manager' || role === 'cashier')) {
       if (selectedLicenseeIds.length > 1) {
         setSelectedLicenseeIds([selectedLicenseeIds[0]]);
         toast.info(
-          'Vault Managers are limited to a single licensee. Assignments have been adjusted.'
+          `${role === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to a single licensee. Assignments have been adjusted.`
         );
       }
       if (selectedLocationIds.length > 1) {
         setSelectedLocationIds([selectedLocationIds[0]]);
         toast.info(
-          'Vault Managers are limited to a single location. Assignments have been adjusted.'
+          `${role === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to a single location. Assignments have been adjusted.`
         );
       }
       setAllLicenseesSelected(false);
@@ -964,7 +993,7 @@ export default function AdministrationUserModal({
   useEffect(() => {
     if (!open) return;
     
-    if (isVaultManagerSelected) {
+    if (hasRestrictedAssignments) {
       if (allLicenseesSelected) setAllLicenseesSelected(false);
       if (allLocationsSelected) setAllLocationsSelected(false);
     } else {
@@ -1142,8 +1171,8 @@ export default function AdministrationUserModal({
   ]);
 
   const handleAllLocationsChange = (checked: boolean) => {
-    if (isVaultManagerSelected && checked) {
-      toast.error('Vault Managers cannot be assigned to all locations');
+    if (hasRestrictedAssignments && checked) {
+      toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} cannot be assigned to all locations`);
       return;
     }
     setAllLocationsSelected(checked);
@@ -1166,14 +1195,14 @@ export default function AdministrationUserModal({
 
   const handleLicenseeChange = (newSelectedIds: string[]) => {
     let finalIds = newSelectedIds;
-    if (isVaultManagerSelected && newSelectedIds.length > 1) {
+    if (hasRestrictedAssignments && newSelectedIds.length > 1) {
       finalIds = [newSelectedIds[newSelectedIds.length - 1]];
-      toast.info('Vault Managers are limited to a single licensee.');
+      toast.info(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single licensee.`);
     }
 
     setSelectedLicenseeIds(finalIds);
     setAllLicenseesSelected(
-      finalIds.length === licensees.length && licensees.length > 1 && !isVaultManagerSelected
+      finalIds.length === licensees.length && licensees.length > 1 && !hasRestrictedAssignments
     );
 
     setSelectedLocationIds(prevLocationIds => {
@@ -1200,13 +1229,13 @@ export default function AdministrationUserModal({
 
   const handleLocationChange = (newSelectedIds: string[]) => {
     let finalIds = newSelectedIds;
-    if (isVaultManagerSelected && newSelectedIds.length > 1) {
+    if (hasRestrictedAssignments && newSelectedIds.length > 1) {
       finalIds = [newSelectedIds[newSelectedIds.length - 1]];
-      toast.info('Vault Managers are limited to a single location.');
+      toast.info(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single location.`);
     }
     setSelectedLocationIds(finalIds);
     setAllLocationsSelected(
-      finalIds.length === availableLocations.length && availableLocations.length > 1 && !isVaultManagerSelected
+      finalIds.length === availableLocations.length && availableLocations.length > 1 && !hasRestrictedAssignments
     );
   };
 
@@ -1224,13 +1253,13 @@ export default function AdministrationUserModal({
   };
 
   const handleSave = async () => {
-    if (roles.includes('vault-manager')) {
+    if (hasRestrictedAssignments) {
       if (selectedLicenseeIds.length !== 1 || allLicenseesSelected) {
-        toast.error('Vault Managers must be assigned to exactly one licensee');
+        toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one licensee`);
         return;
       }
       if (selectedLocationIds.length !== 1 || allLocationsSelected) {
-        toast.error('Vault Managers must be assigned to exactly one location');
+        toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one location`);
         return;
       }
     }
@@ -2089,12 +2118,243 @@ export default function AdministrationUserModal({
 
             <Card>
               <CardHeader>
-                <CardTitle>Assignments</CardTitle>
+                <CardTitle>Roles & Permissions</CardTitle>
+                <CardDescription>
+                  User roles, password management, and access control
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {isEditMode && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-base font-medium text-gray-900">
+                        Password
+                      </Label>
+                      <Input
+                        type="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="Leave blank to keep current password"
+                        className="mt-1 rounded-md"
+                      />
+                      {password && (
+                        <div className="mt-2 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-700">Strength:</span>
+                            <div className="flex gap-1">
+                              {[1, 2, 3, 4, 5].map(level => (
+                                <div
+                                  key={level}
+                                  className={`h-2 w-8 rounded ${
+                                    level <= passwordStrength.score
+                                      ? passwordStrength.score <= 2
+                                        ? 'bg-red-500'
+                                        : passwordStrength.score === 3
+                                          ? 'bg-yellow-500'
+                                          : 'bg-green-500'
+                                      : 'bg-gray-200'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span
+                              className={`text-sm font-medium ${
+                                passwordStrength.score <= 2
+                                  ? 'text-red-500'
+                                  : passwordStrength.score === 3
+                                    ? 'text-yellow-600'
+                                    : 'text-green-600'
+                              }`}
+                            >
+                              {passwordStrength.label}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                             <div className={`flex items-center gap-1 ${passwordStrength.requirements.length ? 'text-green-600' : 'text-gray-400'}`}>
+                                {passwordStrength.requirements.length ? '✓' : '✗'} 8+ chars
+                             </div>
+                             <div className={`flex items-center gap-1 ${passwordStrength.requirements.uppercase ? 'text-green-600' : 'text-gray-400'}`}>
+                                {passwordStrength.requirements.uppercase ? '✓' : '✗'} Uppercase
+                             </div>
+                             <div className={`flex items-center gap-1 ${passwordStrength.requirements.lowercase ? 'text-green-600' : 'text-gray-400'}`}>
+                                {passwordStrength.requirements.lowercase ? '✓' : '✗'} Lowercase
+                             </div>
+                             <div className={`flex items-center gap-1 ${passwordStrength.requirements.number ? 'text-green-600' : 'text-gray-400'}`}>
+                                {passwordStrength.requirements.number ? '✓' : '✗'} Number
+                             </div>
+                             <div className={`flex items-center gap-1 ${passwordStrength.requirements.special ? 'text-green-600' : 'text-gray-400'}`}>
+                                {passwordStrength.requirements.special ? '✓' : '✗'} Special
+                             </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-base font-medium text-gray-900">
+                        Confirm Password
+                      </Label>
+                      <Input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={e => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm password"
+                        className={`mt-1 rounded-md ${
+                          confirmPassword &&
+                          password &&
+                          password !== confirmPassword
+                            ? 'border-red-500 focus:ring-red-500'
+                            : confirmPassword &&
+                                password &&
+                                password === confirmPassword
+                              ? 'border-green-500 focus:ring-green-500'
+                              : ''
+                        }`}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-medium text-gray-900">
+                      Roles
+                    </Label>
+                    <button
+                        type="button"
+                        onClick={() =>
+                          setRolePermissionsDialog({
+                            open: true,
+                            role: 'info',
+                            roleLabel: 'Role Information',
+                          })
+                        }
+                        className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
+                        title="View role descriptions"
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                  </div>
+                  
+                  {isEditMode ? (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {availableRoles.map(role => {
+                        const isRestrictedRole = role.value === 'vault-manager' || role.value === 'cashier';
+                        const isVMRestricted = isRestrictedRole && (
+                          selectedLicenseeIds.length > 1 || 
+                          allLicenseesSelected || 
+                          selectedLocationIds.length > 1 || 
+                          allLocationsSelected
+                        );
+
+                        return (
+                          <div key={role.value} className="flex flex-col gap-1">
+                            <label
+                              className={`flex flex-1 cursor-pointer items-center gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-2.5 transition-all ${
+                                roles.includes(role.value) ? 'border-blue-200 bg-blue-50/50 ring-1 ring-blue-100' : ''
+                              } ${isVMRestricted ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+                            >
+                              <Checkbox
+                                id={`role-${role.value}`}
+                                checked={roles.includes(role.value)}
+                                onCheckedChange={checked =>
+                                  handleRoleChange(role.value, checked === true)
+                                }
+                                disabled={isVMRestricted}
+                              />
+                              <span className={`text-sm font-medium ${isVMRestricted ? 'text-gray-400' : 'text-gray-900'}`}>
+                                {role.label}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setRolePermissionsDialog({
+                                    open: true,
+                                    role: role.value,
+                                    roleLabel: role.label,
+                                  });
+                                }}
+                                className="ml-auto text-gray-400 hover:text-blue-600"
+                              >
+                                <Info className="h-3.5 w-3.5" />
+                              </button>
+                            </label>
+                            {isVMRestricted && (
+                              <p className="px-1 text-[10px] font-bold text-red-600 leading-tight">
+                                {role.value === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to 1 Licensee & Location
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                       {roles.length > 0 ? roles.map(r => (
+                          <span key={r} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                             {ROLE_OPTIONS.find(opt => opt.value === r)?.label || r}
+                          </span>
+                       )) : (
+                          <span className="text-sm text-gray-500 italic">No roles assigned</span>
+                       )}
+                    </div>
+                  )}
+                </div>
+
+                {isEditMode && (isDeveloper || isAdmin || isManager) && (
+                  <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                    <Checkbox
+                      id="isEnabled"
+                      checked={isEnabled}
+                      onCheckedChange={checked => setIsEnabled(checked === true)}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label
+                        htmlFor="isEnabled"
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        Account Enabled
+                      </Label>
+                      <p className="text-xs text-gray-500">
+                        Whether this user can log into the system
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className={!isAssignmentsEnabled && isEditMode ? 'opacity-50 grayscale select-none' : ''}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Assignments
+                  {!isAssignmentsEnabled && isEditMode && (
+                     <span className="text-xs font-normal text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                        Select a role first
+                     </span>
+                  )}
+                </CardTitle>
                 <CardDescription>
                   Licensee and location access permissions
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative">
+                {!isAssignmentsEnabled && isEditMode && (
+                   <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/20 backdrop-blur-[2px] rounded-b-lg">
+                      <div className="group flex flex-col items-center gap-4 rounded-2xl bg-amber-50 px-8 py-6 text-center shadow-xl ring-1 ring-amber-200 transition-transform hover:scale-105">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-50">
+                          <AlertCircle className="h-6 w-6 animate-pulse text-amber-600" />
+                        </div>
+                        <div className="space-y-1">
+                           <p className="text-sm font-bold text-amber-900">Action Required</p>
+                           <p className="text-xs font-medium text-amber-700 max-w-[200px]">
+                              Please select a <span className="underline">Role</span> above to unlock assignments.
+                           </p>
+                        </div>
+                      </div>
+                   </div>
+                )}
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="space-y-3">
                     <div className="mb-4">
@@ -2145,7 +2405,7 @@ export default function AdministrationUserModal({
                             onCheckedChange={checked =>
                               handleAllLicenseesChange(checked === true)
                             }
-                            disabled={!canEditLicensees || isVaultManagerSelected}
+                            disabled={!canEditLicensees || hasRestrictedAssignments || !isAssignmentsEnabled}
                           />
                           <Label
                             htmlFor="allLicensees"
@@ -2163,7 +2423,8 @@ export default function AdministrationUserModal({
                             placeholder="Select licensees..."
                             searchPlaceholder="Search licensees..."
                             label="licensees"
-                            showSelectAll={!isVaultManagerSelected}
+                            showSelectAll={!hasRestrictedAssignments}
+                            disabled={!isAssignmentsEnabled}
                           />
                         )}
 
@@ -2239,7 +2500,7 @@ export default function AdministrationUserModal({
                               onCheckedChange={checked =>
                                 handleAllLocationsChange(checked === true)
                               }
-                              disabled={isVaultManagerSelected}
+                              disabled={hasRestrictedAssignments || !isAssignmentsEnabled}
                               className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
                             />
                             All Locations{' '}
@@ -2266,8 +2527,8 @@ export default function AdministrationUserModal({
                               }
                               searchPlaceholder="Search locations..."
                               label="locations"
-                              showSelectAll={!isVaultManagerSelected}
-                              disabled={availableLocations.length === 0}
+                              showSelectAll={!hasRestrictedAssignments}
+                              disabled={availableLocations.length === 0 || !isAssignmentsEnabled}
                             />
                           )}
 
@@ -2661,336 +2922,7 @@ export default function AdministrationUserModal({
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Roles & Permissions</CardTitle>
-                <CardDescription>
-                  User roles, password management, and access control
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {isEditMode && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-base font-medium">Password</label>
-                      <Input
-                        type="password"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        placeholder="Leave blank to keep current password"
-                        className="mt-1 rounded-md"
-                      />
-                      {password && (
-                        <div className="mt-2 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">
-                              Strength:
-                            </span>
-                            <div className="flex gap-1">
-                              {[1, 2, 3, 4, 5].map(level => (
-                                <div
-                                  key={level}
-                                  className={`h-2 w-8 rounded ${
-                                    level <= passwordStrength.score
-                                      ? passwordStrength.score <= 2
-                                        ? 'bg-red-500'
-                                        : passwordStrength.score === 3
-                                          ? 'bg-yellow-500'
-                                          : 'bg-green-500'
-                                      : 'bg-gray-200'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                            <span
-                              className={`text-sm font-medium ${
-                                passwordStrength.score <= 2
-                                  ? 'text-red-600'
-                                  : passwordStrength.score === 3
-                                    ? 'text-yellow-600'
-                                    : 'text-green-600'
-                              }`}
-                            >
-                              {passwordStrength.label}
-                            </span>
-                          </div>
 
-                          <div className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
-                            <div
-                              className={`flex items-center gap-2 ${
-                                passwordStrength.requirements.length
-                                  ? 'text-green-600'
-                                  : 'text-red-600'
-                              }`}
-                            >
-                              <span>
-                                {passwordStrength.requirements.length
-                                  ? '✓'
-                                  : '✗'}
-                              </span>
-                              <span>At least 8 characters</span>
-                            </div>
-                            <div
-                              className={`flex items-center gap-2 ${
-                                passwordStrength.requirements.uppercase
-                                  ? 'text-green-600'
-                                  : 'text-red-600'
-                              }`}
-                            >
-                              <span>
-                                {passwordStrength.requirements.uppercase
-                                  ? '✓'
-                                  : '✗'}
-                              </span>
-                              <span>Uppercase letter</span>
-                            </div>
-                            <div
-                              className={`flex items-center gap-2 ${
-                                passwordStrength.requirements.lowercase
-                                  ? 'text-green-600'
-                                  : 'text-red-600'
-                              }`}
-                            >
-                              <span>
-                                {passwordStrength.requirements.lowercase
-                                  ? '✓'
-                                  : '✗'}
-                              </span>
-                              <span>Lowercase letter</span>
-                            </div>
-                            <div
-                              className={`flex items-center gap-2 ${
-                                passwordStrength.requirements.number
-                                  ? 'text-green-600'
-                                  : 'text-red-600'
-                              }`}
-                            >
-                              <span>
-                                {passwordStrength.requirements.number
-                                  ? '✓'
-                                  : '✗'}
-                              </span>
-                              <span>Number</span>
-                            </div>
-                            <div
-                              className={`flex items-center gap-2 ${
-                                passwordStrength.requirements.special
-                                  ? 'text-green-600'
-                                  : 'text-orange-600'
-                              }`}
-                            >
-                              <span>
-                                {passwordStrength.requirements.special
-                                  ? '✓'
-                                  : '!'}
-                              </span>
-                              <span>Special character</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-base font-medium">
-                        Confirm Password
-                      </label>
-                      <Input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={e => setConfirmPassword(e.target.value)}
-                        placeholder="Confirm new password"
-                        className={`mt-1 rounded-md ${
-                          confirmPassword &&
-                          password &&
-                          password !== confirmPassword
-                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                            : confirmPassword &&
-                                password &&
-                                password === confirmPassword
-                              ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
-                              : ''
-                        }`}
-                      />
-                      {confirmPassword &&
-                        password &&
-                        password !== confirmPassword && (
-                          <p className="mt-1 text-sm text-red-600">
-                            Passwords do not match
-                          </p>
-                        )}
-                      {confirmPassword &&
-                        password &&
-                        password === confirmPassword && (
-                          <p className="mt-1 text-sm text-green-600">
-                            Passwords match
-                          </p>
-                        )}
-                    </div>
-                  </div>
-                )}
-
-                {isEditMode && (isDeveloper || isAdmin || isManager) && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-base font-medium">
-                        Account Status
-                      </label>
-                      <div className="mt-2 flex items-center gap-2">
-                        <Checkbox
-                          id="isEnabled"
-                          checked={isEnabled}
-                          onCheckedChange={checked =>
-                            setIsEnabled(checked === true)
-                          }
-                          className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
-                        />
-                        <label
-                          htmlFor="isEnabled"
-                          className="cursor-pointer text-sm font-medium text-gray-900"
-                        >
-                          Account Enabled
-                        </label>
-                      </div>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {isEnabled
-                          ? 'User can log in and access the system'
-                          : 'User account is disabled and cannot log in'}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <div className="mb-3 flex items-center gap-2">
-                    <Label className="text-base font-medium text-gray-900">
-                      Roles
-                    </Label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setRolePermissionsDialog({
-                          open: true,
-                          role: 'info',
-                          roleLabel: 'Role Information',
-                        })
-                      }
-                      className="rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                      aria-label="View role descriptions"
-                    >
-                      <Info className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className={`relative rounded-xl border-2 border-transparent transition-all duration-300 ${isEditMode && ((!allLicenseesSelected && selectedLicenseeIds.length === 0) || (!allLocationsSelected && selectedLocationIds.length === 0)) ? 'border-dashed border-amber-200 bg-gray-50/50 opacity-60 grayscale' : 'border-solid border-transparent'}`}>
-                    {isEditMode && ((!allLicenseesSelected && selectedLicenseeIds.length === 0) || (!allLocationsSelected && selectedLocationIds.length === 0)) && (
-                      <div className="absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl bg-white/40 p-6 backdrop-blur-[2px]">
-                        <div className="group flex flex-col items-center gap-4 rounded-2xl bg-amber-50 px-8 py-6 text-center shadow-xl ring-1 ring-amber-200 transition-transform hover:scale-105">
-                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-50">
-                            <AlertCircle className="h-8 w-8 animate-pulse text-amber-600" />
-                          </div>
-                          <div className="space-y-1">
-                            <h4 className="text-lg font-bold text-amber-900">Action Required</h4>
-                            <p className="max-w-[280px] text-sm font-medium leading-relaxed text-amber-700">
-                              Please select a <span className="font-bold underline">Licensee</span> and <span className="font-bold underline">Location</span> above to unlock available roles.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {isEditMode ? (
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-                        {availableRoles.map(role => {
-                          const isVaultManagerRole = role.value === 'vault-manager';
-                          const isVMRestricted = isVaultManagerRole && (
-                            selectedLicenseeIds.length > 1 || 
-                            allLicenseesSelected || 
-                            selectedLocationIds.length > 1 || 
-                            allLocationsSelected
-                          );
-
-                          return (
-                            <div key={role.value} className="flex flex-col gap-1">
-                              <label
-                                className={`flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 transition-colors ${isVMRestricted ? 'opacity-60 cursor-not-allowed grayscale' : 'hover:bg-gray-100'}`}
-                              >
-                                <Checkbox
-                                  id={role.value}
-                                  checked={roles.includes(role.value)}
-                                  onCheckedChange={checked =>
-                                    handleRoleChange(role.value, checked === true)
-                                  }
-                                  disabled={isVMRestricted}
-                                />
-                                <span className={`text-sm font-medium ${isVMRestricted ? 'text-gray-500' : 'text-gray-900'}`}>
-                                  {role.label}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={e => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setRolePermissionsDialog({
-                                      open: true,
-                                      role: role.value,
-                                      roleLabel: role.label,
-                                    });
-                                  }}
-                                  className="ml-auto rounded-full p-1 text-gray-400 hover:bg-white hover:text-blue-600"
-                                  title={`View pages accessible to ${role.label}`}
-                                >
-                                  <Info className="h-4 w-4" />
-                                </button>
-                              </label>
-                              {isVMRestricted && (
-                                <p className="px-2 text-[10px] font-bold text-red-600 leading-tight">
-                                  Vault Managers are limited to 1 Licensee & Location
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {roles && roles.length > 0 ? (
-                        roles.map(roleValue => {
-                          const roleOption = ROLE_OPTIONS.find(
-                            r => r.value === roleValue
-                          );
-                          if (!roleOption) return null;
-                          return (
-                            <span
-                              key={roleValue}
-                              className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10"
-                            >
-                              {roleOption.label}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setRolePermissionsDialog({
-                                    open: true,
-                                    role: roleValue,
-                                    roleLabel: roleOption.label,
-                                  })
-                                }
-                                className="rounded-full text-blue-600 hover:text-blue-800"
-                                title={`View pages accessible to ${roleOption.label}`}
-                              >
-                                <Info className="h-3.5 w-3.5" />
-                              </button>
-                            </span>
-                          );
-                        })
-                      ) : (
-                        <p className="text-sm text-gray-500">
-                          No roles assigned
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {isEditMode && (

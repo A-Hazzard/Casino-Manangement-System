@@ -29,7 +29,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
-import { CheckCheck, CheckCircle2, Coins, History as HistoryIcon, LayoutGrid, ListChecks, Loader2, Monitor } from 'lucide-react';
+import { CheckCheck, CheckCircle2, Coins, History as HistoryIcon, LayoutGrid, ListChecks, Loader2, Monitor, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -371,9 +371,10 @@ export default function VaultOverviewCollectionWizardModal({
                             size="sm"
                             onClick={onClose} 
                             disabled={loading} 
-                            className="hidden xs:flex text-gray-400 hover:text-gray-600 font-bold text-xs md:text-sm tracking-tight"
+                            className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 font-bold text-xs md:text-sm tracking-tight"
                           >
-                              Cancel
+                              <X className="h-4 w-4 md:h-5 md:w-5" />
+                              <span className="hidden xs:inline">Cancel</span>
                           </Button>
                           <Button 
                             onClick={handleFinalizeClick} 

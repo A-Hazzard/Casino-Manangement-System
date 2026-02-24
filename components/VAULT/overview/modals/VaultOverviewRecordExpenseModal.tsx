@@ -29,6 +29,7 @@ import {
     DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Label } from '@/components/shared/ui/label';
+import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { CARIBBEAN_BANKS } from '@/lib/constants/banks';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -124,7 +125,7 @@ export default function VaultOverviewRecordExpenseModal({
     workerName: '',
   });
 
-  const [machines, setMachines] = useState<{id: string, label: string}[]>([]);
+  const [machines, setMachines] = useState<{id: string, label: string, displayNode?: React.ReactNode}[]>([]);
   const [loadingMachines, setLoadingMachines] = useState(false);
 
   useEffect(() => {
@@ -143,7 +144,12 @@ export default function VaultOverviewRecordExpenseModal({
           setMachines(
             fetchedMachines.map((m: any) => ({
               id: m.machineId || m._id || m.serialNumber,
-              label: m.game ? `${m.serialNumber} (${m.game})` : m.serialNumber,
+              label: m.serialNumber || m.customName || m.custom?.name || 'N/A', // fallback text label for dropdown search filter
+              displayNode: formatMachineDisplayNameWithBold({
+                  ...m,
+                  game: m.gameTitle === '(game name not provided)' ? '' : (m.gameTitle || m.game),
+                  custom: m.custom || { name: m.customName }
+              })
             }))
           );
         } catch (error) {
@@ -295,8 +301,8 @@ export default function VaultOverviewRecordExpenseModal({
   // ============================================================================
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl p-0 overflow-hidden">
-        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100">
+      <DialogContent className="md:max-w-3xl p-0 overflow-hidden flex flex-col">
+        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-violet-900">
             <Receipt className="h-5 w-5 text-violet-600" />
             Record Operation Expense
@@ -306,7 +312,7 @@ export default function VaultOverviewRecordExpenseModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[75vh] overflow-y-auto p-6 space-y-8 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 md:max-h-[75vh] custom-scrollbar">
           {/* Category Selection */}
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
@@ -368,6 +374,7 @@ export default function VaultOverviewRecordExpenseModal({
                     <DatePicker 
                       date={date}
                       setDate={(d: Date | undefined) => setDate(d || new Date())}
+                      disabledDates={{ after: new Date() }}
                     />
                   </div>
                 </div>
@@ -460,7 +467,9 @@ export default function VaultOverviewRecordExpenseModal({
                     )}
                     {category === 'Repairs' && (
                       <>
-                        <input type="text" placeholder="Service Provider" value={expenseDetails.serviceProvider} onChange={e => setExpenseDetails({...expenseDetails, serviceProvider: e.target.value})} className="w-full px-3 py-2 rounded-xl border" />
+                        {!expenseDetails.isMachineRepair && (
+                          <input type="text" placeholder="Service Provider" value={expenseDetails.serviceProvider} onChange={e => setExpenseDetails({...expenseDetails, serviceProvider: e.target.value})} className="w-full px-3 py-2 rounded-xl border" />
+                        )}
                         <label className="flex items-center gap-2 text-sm text-gray-600">
                           <input type="checkbox" checked={expenseDetails.isMachineRepair} onChange={e => setExpenseDetails({...expenseDetails, isMachineRepair: e.target.checked})} className="rounded text-violet-600 focus:ring-violet-500" />
                           Is this a machine-related repair?

@@ -114,6 +114,11 @@ const VaultTransactionSchema = new Schema(
       serviceProvider: { type: String },
       isMachineRepair: { type: Boolean },
       machineIds: [{ type: String }],
+      machineDetails: [{ 
+         identifier: { type: String },
+         game: { type: String },
+         gameType: { type: String }
+      }],
       billerName: { type: String },
       billingPeriod: { type: String },
       referenceNumber: { type: String },

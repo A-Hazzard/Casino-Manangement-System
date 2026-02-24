@@ -207,7 +207,7 @@ export default function VaultOverviewShiftReviewModal({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent 
         className={cn(
-          "sm:max-w-[550px] max-h-[90vh] overflow-y-auto !z-[200] transition-all duration-300",
+          "md:max-w-[550px] md:max-h-[90vh] overflow-y-auto !z-[200] transition-all duration-300",
           isOverlayOpen && "blur-sm brightness-50 pointer-events-none scale-[0.98]"
         )}
         backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"

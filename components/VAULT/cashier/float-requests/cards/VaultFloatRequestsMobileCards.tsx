@@ -20,8 +20,8 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { CheckCircle2, Minus, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CheckCircle2, Minus, Plus } from 'lucide-react';
 
 type FloatRequest = {
   id: string;
@@ -118,8 +118,8 @@ export default function VaultFloatRequestsMobileCards({
                     className={cn(
                       'px-2 py-1',
                       isIncrease
-                        ? 'bg-orangeHighlight text-white hover:bg-orangeHighlight/90'
-                        : 'bg-lighterBlueHighlight text-white hover:bg-lighterBlueHighlight/90'
+                        ? 'bg-green-600 text-white hover:bg-green-600/90'
+                        : 'bg-red-600 text-white hover:bg-red-600/90'
                     )}
                   >
                     {isIncrease ? (
@@ -142,7 +142,7 @@ export default function VaultFloatRequestsMobileCards({
                   <p
                     className={cn(
                       'text-xl font-bold',
-                      isIncrease ? 'text-button' : 'text-lighterBlueHighlight'
+                      isIncrease ? 'text-green-600' : 'text-red-600'
                     )}
                   >
                     {isIncrease ? '+' : ''}

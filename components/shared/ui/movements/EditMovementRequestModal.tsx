@@ -1,30 +1,30 @@
-import { useEffect, useState } from 'react';
+import { Button } from '@/components/shared/ui/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/shared/ui/dialog';
+import { Input } from '@/components/shared/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/shared/ui/select';
+import { Textarea } from '@/components/shared/ui/textarea';
+import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets';
+import { fetchAllGamingLocations } from '@/lib/helpers/locations';
+import { updateMovementRequest } from '@/lib/helpers/movementRequests';
 import { useMovementRequestActionsStore } from '@/lib/store/movementRequestActionsStore';
 import { MovementRequest } from '@/lib/types/movement';
-import { Button } from '@/components/shared/ui/button';
-import { Input } from '@/components/shared/ui/input';
-import { Textarea } from '@/components/shared/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from '@/components/shared/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/shared/ui/select';
-import { Cross2Icon } from '@radix-ui/react-icons';
-import { updateMovementRequest } from '@/lib/helpers/movementRequests';
-import { fetchAllGamingLocations } from '@/lib/helpers/locations';
-import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { Cross2Icon } from '@radix-ui/react-icons';
 import axios from 'axios';
+import { useEffect, useState } from 'react';
 
 export default function EditMovementRequestModal({
   onSaved,
@@ -245,14 +245,14 @@ export default function EditMovementRequestModal({
 
   return (
     <Dialog open={isEditModalOpen} onOpenChange={closeEditModal}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="md:max-h-[90vh] md:max-w-4xl overflow-hidden p-0 flex flex-col">
+        <DialogHeader className="border-b border-gray-200 p-6 shrink-0">
           <DialogTitle className="text-xl font-semibold text-gray-900">
             Edit Movement Request
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid max-h-[70vh] grid-cols-1 gap-6 overflow-y-auto p-6 md:grid-cols-2">
+        <div className="grid flex-1 grid-cols-1 gap-6 overflow-y-auto p-6 md:grid-cols-2 custom-scrollbar">
           {/* Left Column */}
           <div className="flex flex-col gap-4">
             {/* Movement Type */}

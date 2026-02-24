@@ -97,7 +97,13 @@ interface Cashier {
   tempPasswordChanged?: boolean;
 }
 
-export default function CashierManagementPanel() {
+export default function CashierManagementPanel({
+  onLoadingChange,
+  onRefresh,
+}: {
+  onLoadingChange?: (loading: boolean) => void;
+  onRefresh?: (fn: () => void) => void;
+}) {
   const { user, hasActiveVaultShift, isVaultReconciled, isStaleShift } = useUserStore();
   const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
   const { formatAmount } = useCurrencyFormat();
@@ -144,6 +150,12 @@ export default function CashierManagementPanel() {
 
   
   const [loading, setLoading] = useState(true);
+
+  // Notify parent of loading state changes
+  const setLoadingState = (val: boolean) => {
+    setLoading(val);
+    onLoadingChange?.(val);
+  };
   const [error, setError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -304,7 +316,7 @@ export default function CashierManagementPanel() {
   }, [searchValue, sortConfig, varianceFilter]);
 
   const fetchCashiers = async (page = currentPage) => {
-    setLoading(true);
+    setLoadingState(true);
     setError(null);
     try {
       const data = await fetchCashiersData(page, 20, searchValue, sortConfig, varianceFilter);
@@ -315,9 +327,14 @@ export default function CashierManagementPanel() {
       setError('Failed to load cashiers');
       toast.error('Failed to load cashiers');
     } finally {
-      setLoading(false);
+      setLoadingState(false);
     }
   };
+
+  // Register refresh callback with parent
+  useEffect(() => {
+    onRefresh?.(() => fetchCashiers(currentPage));
+  }, [currentPage]);
 
   const handleDeleteCashierSubmit = async () => {
     if (!actionCashier) return;
@@ -673,202 +690,320 @@ export default function CashierManagementPanel() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className={loading ? 'pointer-events-none opacity-50' : ''}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('name')}
-                  >
-                    Name <ArrowUpDown className="ml-2 inline h-4 w-4" />
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('username')}
-                  >
-                    Username <ArrowUpDown className="ml-2 inline h-4 w-4" />
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('email')}
-                  >
-                    Email <ArrowUpDown className="ml-2 inline h-4 w-4" />
-                  </TableHead>
-                  <TableHead>Status</TableHead>
-                   <TableHead>Current Float</TableHead>
-                   <TableHead>Last Login</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cashiers.length === 0 ? (
+        <div className={loading ? 'pointer-events-none opacity-50' : ''}>
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="py-8 text-center text-gray-500"
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('name')}
                     >
-                      No cashiers found. Create one to get started.
-                    </TableCell>
+                      Name <ArrowUpDown className="ml-2 inline h-4 w-4" />
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('username')}
+                    >
+                      Username <ArrowUpDown className="ml-2 inline h-4 w-4" />
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('email')}
+                    >
+                      Email <ArrowUpDown className="ml-2 inline h-4 w-4" />
+                    </TableHead>
+                    <TableHead>Status</TableHead>
+                     <TableHead>Current Float</TableHead>
+                     <TableHead>Last Login</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ) : (
-                  cashiers
-                    .filter(c => c._id !== user?._id)
-                    .map(cashier => (
-                    <TableRow key={cashier._id}>
-                      <TableCell 
-                        className="font-medium cursor-pointer text-purple-600 hover:text-purple-800 hover:underline"
-                        onClick={() => {
-                          setSelectedCashier(cashier);
-                          setIsSelectionModalOpen(true);
-                        }}
+                </TableHeader>
+                <TableBody>
+                  {cashiers.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="py-8 text-center text-gray-500"
                       >
-                        {cashier.profile && cashier.profile.firstName
-                          ? `${cashier.profile.firstName} ${cashier.profile.lastName}`
-                          : 'Unspecified'}
+                        No cashiers found. Create one to get started.
                       </TableCell>
-                      <TableCell 
-                        className="cursor-pointer hover:text-purple-600"
-                        onClick={() => {
-                          setSelectedCashier(cashier);
-                          setIsSelectionModalOpen(true);
-                        }}
-                      >
-                        {cashier.username}
-                      </TableCell>
-                      <TableCell>{cashier.emailAddress}</TableCell>
-                      <TableCell>
-                        {!cashier.isEnabled ? (
-                          <span className="inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-800">
-                            Disabled
-                          </span>
-                        ) : cashier.shiftStatus === 'active' ? (
-                          <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
-                            <span className="mr-1 h-1.5 w-1.5 animate-pulse rounded-full bg-green-500"></span>
-                            On-Shift
-                          </span>
-                        ) : cashier.shiftStatus === 'pending_start' ? (
-                          <span className="inline-flex rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 animate-pulse">
-                            Pending Approval
-                          </span>
-                        ) : cashier.shiftStatus === 'pending_review' ? (
-                          <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
-                            Review Required
-                          </span>
-                        ) : (
-                          <span className="inline-flex rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
-                            Off-Shift
-                          </span>
-                         )}
-                       </TableCell>
-                       <TableCell className="font-mono font-medium">
-                         {cashier.shiftStatus && cashier.shiftStatus !== 'inactive' && cashier.shiftStatus !== 'closed' 
-                           ? formatAmount(cashier.currentBalance || 0) 
-                           : '—'}
-                       </TableCell>
-                       <TableCell>
-                        {cashier.lastLoginAt
-                          ? new Date(cashier.lastLoginAt).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: 'numeric',
-                              minute: 'numeric',
-                              hour12: true,
-                            })
-                          : 'Never'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-2">
-                           {/* Main Action Button */}
-                            <div className="flex flex-col gap-2 w-full">
-                            {cashier.shiftStatus === 'active' && (
+                    </TableRow>
+                  ) : (
+                    cashiers
+                      .filter(c => c._id !== user?._id)
+                      .map(cashier => (
+                      <TableRow key={cashier._id}>
+                        <TableCell 
+                          className="font-medium cursor-pointer text-purple-600 hover:text-purple-800 hover:underline"
+                          onClick={() => {
+                            setSelectedCashier(cashier);
+                            setIsSelectionModalOpen(true);
+                          }}
+                        >
+                          {cashier.profile && cashier.profile.firstName
+                            ? `${cashier.profile.firstName} ${cashier.profile.lastName}`
+                            : 'Unspecified'}
+                        </TableCell>
+                        <TableCell 
+                          className="cursor-pointer hover:text-purple-600"
+                          onClick={() => {
+                            setSelectedCashier(cashier);
+                            setIsSelectionModalOpen(true);
+                          }}
+                        >
+                          {cashier.username}
+                        </TableCell>
+                        <TableCell>{cashier.emailAddress}</TableCell>
+                        <TableCell>
+                          {!cashier.isEnabled ? (
+                            <span className="inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-800">
+                              Disabled
+                            </span>
+                          ) : cashier.shiftStatus === 'active' ? (
+                            <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
+                              <span className="mr-1 h-1.5 w-1.5 animate-pulse rounded-full bg-green-500"></span>
+                              On-Shift
+                            </span>
+                          ) : cashier.shiftStatus === 'pending_start' ? (
+                            <span className="inline-flex rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 animate-pulse">
+                              Pending Approval
+                            </span>
+                          ) : cashier.shiftStatus === 'pending_review' ? (
+                            <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+                              Review Required
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
+                              Off-Shift
+                            </span>
+                           )}
+                         </TableCell>
+                         <TableCell className="font-mono font-medium">
+                           {cashier.shiftStatus && cashier.shiftStatus !== 'inactive' && cashier.shiftStatus !== 'closed' 
+                             ? formatAmount(cashier.currentBalance || 0) 
+                             : '—'}
+                         </TableCell>
+                         <TableCell>
+                          {cashier.lastLoginAt
+                            ? new Date(cashier.lastLoginAt).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: 'numeric',
+                                hour12: true,
+                              })
+                            : 'Never'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-2">
+                             {/* Main Action Button */}
+                              <div className="flex flex-col gap-2 w-full">
+                              {cashier.shiftStatus === 'active' && (
+                                   <Button
+                                     variant="outline"
+                                     size="sm"
+                                     onClick={() => openEndShiftModal(cashier)}
+                                     className="h-8 w-full gap-2 border-red-200 text-red-700 hover:bg-red-50"
+                                   >
+                                     <RotateCcw className="h-4 w-4" />
+                                     End Shift
+                                   </Button>
+                                 )}
+                               {cashier.shiftStatus === 'pending_start' && (
                                  <Button
                                    variant="outline"
                                    size="sm"
-                                   onClick={() => openEndShiftModal(cashier)}
-                                   className="h-8 w-full gap-2 border-red-200 text-red-700 hover:bg-red-50"
+                                   onClick={() => handleReviewRequest(cashier)}
+                                   className="h-8 w-full gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
                                  >
-                                   <RotateCcw className="h-4 w-4" />
-                                   End Shift
+                                   <Check className="h-4 w-4" />
+                                   Review Request
                                  </Button>
                                )}
-                             {cashier.shiftStatus === 'pending_start' && (
-                               <Button
-                                 variant="outline"
-                                 size="sm"
-                                 onClick={() => handleReviewRequest(cashier)}
-                                 className="h-8 w-full gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
-                               >
-                                 <Check className="h-4 w-4" />
-                                 Review Request
-                               </Button>
-                             )}
-                             {cashier.shiftStatus === 'pending_review' && (
-                               <Button
-                                 variant="outline"
-                                 size="sm"
-                                 onClick={() => handleReviewShift(cashier)}
-                                 className="h-8 w-full gap-2 border-amber-200 text-amber-700 hover:bg-amber-50"
-                               >
-                                 <ArrowRight className="h-4 w-4" />
-                                 Review Shift
-                               </Button>
-                             )}
-                             </div>
+                               {cashier.shiftStatus === 'pending_review' && (
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() => handleReviewShift(cashier)}
+                                   className="h-8 w-full gap-2 border-amber-200 text-amber-700 hover:bg-amber-50"
+                                 >
+                                   <ArrowRight className="h-4 w-4" />
+                                   Review Shift
+                                 </Button>
+                               )}
+                               </div>
 
-                            {/* Secondary Actions Row */}
-                            <div className="flex justify-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openResetModal(cashier)}
-                              className="h-8 w-8 p-0 text-gray-500 hover:text-orange-600"
-                              title="Reset Password"
-                            >
-                              <RefreshCw className="h-4 w-4" />
-                            </Button>
-
-                             {/* Disable/Enable Button */}
-                             <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => { setActionCashier(cashier); setIsDisableModalOpen(true); }}
-                                className={cn("h-8 w-8 p-0", !cashier.isEnabled ? "text-red-600" : "text-gray-500 hover:text-red-600")}
-                                title={!cashier.isEnabled ? "Enable Account" : "Disable Account"}
-                              >
-                                {cashier.isEnabled ? <Ban className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                              </Button>
-
-                              {/* Delete Button */}
+                              {/* Secondary Actions Row */}
+                              <div className="flex justify-center gap-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => { setActionCashier(cashier); setIsDeleteModalOpen(true); }}
-                                className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
-                                title="Delete Cashier"
+                                onClick={() => openResetModal(cashier)}
+                                className="h-8 w-8 p-0 text-gray-500 hover:text-orange-600"
+                                title="Reset Password"
                               >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+
+                               {/* Disable/Enable Button */}
+                               <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => { setActionCashier(cashier); setIsDisableModalOpen(true); }}
+                                  className={cn("h-8 w-8 p-0", !cashier.isEnabled ? "text-red-600" : "text-gray-500 hover:text-red-600")}
+                                  title={!cashier.isEnabled ? "Enable Account" : "Disable Account"}
+                                >
+                                  {cashier.isEnabled ? <Ban className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                                </Button>
+
+                                {/* Delete Button */}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => { setActionCashier(cashier); setIsDeleteModalOpen(true); }}
+                                  className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                                  title="Delete Cashier"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+
+                              {cashier.tempPassword && !cashier.tempPasswordChanged && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openViewPasswordModal(cashier)}
+                                  className="w-full text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 mt-1 h-auto py-1"
+                                >
+                                  View Password
+                                </Button>
+                              )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-4">
+              {cashiers.length === 0 ? (
+                <div className="col-span-2 py-8 text-center text-gray-500">
+                  No cashiers found. Create one to get started.
+                </div>
+              ) : (
+                cashiers
+                  .filter(c => c._id !== user?._id)
+                  .map(cashier => {
+                    const cashierName = cashier.profile?.firstName
+                      ? `${cashier.profile.firstName} ${cashier.profile.lastName}`
+                      : 'Unspecified';
+                    const isActive = cashier.shiftStatus === 'active';
+                    const isPendingStart = cashier.shiftStatus === 'pending_start';
+                    const isPendingReview = cashier.shiftStatus === 'pending_review';
+
+                    return (
+                      <Card key={cashier._id} className="overflow-hidden shadow-sm border-l-4 border-l-button">
+                        <CardContent className="p-4 space-y-3">
+                          {/* Header: name + status */}
+                          <div className="flex items-start justify-between">
+                            <div
+                              className="cursor-pointer"
+                              onClick={() => {
+                                setSelectedCashier(cashier);
+                                setIsSelectionModalOpen(true);
+                              }}
+                            >
+                              <p className="font-bold text-sm text-purple-700 hover:underline">{cashierName}</p>
+                              <p className="text-xs text-gray-500">@{cashier.username}</p>
+                              <p className="text-[11px] text-gray-400 truncate max-w-[140px]">{cashier.emailAddress}</p>
+                            </div>
+                            <div>
+                              {!cashier.isEnabled ? (
+                                <span className="inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-800">Disabled</span>
+                              ) : isActive ? (
+                                <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
+                                  <span className="mr-1 h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
+                                  On-Shift
+                                </span>
+                              ) : isPendingStart ? (
+                                <span className="inline-flex rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 animate-pulse">Pending Approval</span>
+                              ) : isPendingReview ? (
+                                <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">Review Required</span>
+                              ) : (
+                                <span className="inline-flex rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Off-Shift</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Float + Last Login */}
+                          <div className="grid grid-cols-2 gap-3 text-xs border-t border-gray-100 pt-2">
+                            <div>
+                              <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">Float</p>
+                              <p className="font-mono font-semibold text-gray-800">
+                                {cashier.shiftStatus && cashier.shiftStatus !== 'inactive' && cashier.shiftStatus !== 'closed'
+                                  ? formatAmount(cashier.currentBalance || 0)
+                                  : '—'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">Last Login</p>
+                              <p className="text-gray-600 text-[11px]">
+                                {cashier.lastLoginAt
+                                  ? new Date(cashier.lastLoginAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })
+                                  : 'Never'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Primary Actions */}
+                          <div className="flex flex-col gap-2 border-t border-gray-100 pt-2">
+                            {isActive && (
+                              <Button variant="outline" size="sm" onClick={() => openEndShiftModal(cashier)} className="h-8 w-full gap-2 border-red-200 text-red-700 hover:bg-red-50">
+                                <RotateCcw className="h-3.5 w-3.5" /> End Shift
+                              </Button>
+                            )}
+                            {isPendingStart && (
+                              <Button variant="outline" size="sm" onClick={() => handleReviewRequest(cashier)} className="h-8 w-full gap-2 border-purple-200 text-purple-700 hover:bg-purple-50">
+                                <Check className="h-3.5 w-3.5" /> Review Request
+                              </Button>
+                            )}
+                            {isPendingReview && (
+                              <Button variant="outline" size="sm" onClick={() => handleReviewShift(cashier)} className="h-8 w-full gap-2 border-amber-200 text-amber-700 hover:bg-amber-50">
+                                <ArrowRight className="h-3.5 w-3.5" /> Review Shift
+                              </Button>
+                            )}
+
+                            {/* Icon Actions */}
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => openResetModal(cashier)} className="h-8 w-8 p-0 text-gray-500 hover:text-orange-600" title="Reset Password">
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setActionCashier(cashier); setIsDisableModalOpen(true); }} className={cn("h-8 w-8 p-0", !cashier.isEnabled ? "text-red-600" : "text-gray-500 hover:text-red-600")} title={!cashier.isEnabled ? "Enable Account" : "Disable Account"}>
+                                {cashier.isEnabled ? <Ban className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setActionCashier(cashier); setIsDeleteModalOpen(true); }} className="h-8 w-8 p-0 text-gray-500 hover:text-red-600" title="Delete Cashier">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
 
                             {cashier.tempPassword && !cashier.tempPasswordChanged && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openViewPasswordModal(cashier)}
-                                className="w-full text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 mt-1 h-auto py-1"
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => openViewPasswordModal(cashier)} className="w-full text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-auto py-1">
                                 View Password
                               </Button>
                             )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+              )}
+            </div>
           </div>
 
           {/* Pagination Controls */}

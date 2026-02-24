@@ -458,16 +458,13 @@ export default function CashierDashboardPageContent() {
                 type: 'ticket',
                 amount: a,
                 ticketNumber: t,
-                printedAt: pAt?.toISOString(),
-                notes: `Ticket ${t}`
+                printedAt: pAt?.toISOString()
               })}
-              onHandPaySubmit={(a: number, mid: string, r?: string) => handlePayout({
+              onHandPaySubmit={(a: number, mid: string) => handlePayout({
                 cashierShiftId: shift?._id || '',
                 type: 'hand_pay',
                 amount: a,
-                machineId: mid,
-                reason: r,
-                notes: r || `Hand Pay - Machine ${mid}`
+                machineId: mid
               })}
               onFloatSubmit={handleFloatRequestSubmit}
               onRequestCash={() => {
@@ -543,37 +540,41 @@ function ShiftModals({
       />
 
       <Dialog open={showTicket} onOpenChange={onTicketClose}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
+        <DialogContent className="md:max-w-[500px] p-0 overflow-hidden flex flex-col">
+          <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
             <DialogTitle>Ticket Redemption</DialogTitle>
             <DialogDescription>
               Process ticket redemption for the customer.
             </DialogDescription>
           </DialogHeader>
-          <TicketRedemptionForm 
-              currentBalance={currentBalance}
-              onSubmit={onTicketSubmit}
-              onRequestCash={onRequestCash}
-              loading={actionLoading} 
-            />
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar md:max-h-[80vh]">
+            <TicketRedemptionForm 
+                currentBalance={currentBalance}
+                onSubmit={onTicketSubmit}
+                onRequestCash={onRequestCash}
+                loading={actionLoading} 
+              />
+          </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showHandPay} onOpenChange={onHandPayClose}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
+        <DialogContent className="md:max-w-[500px] p-0 overflow-hidden flex flex-col">
+          <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
             <DialogTitle>Hand Pay</DialogTitle>
             <DialogDescription>
               Process a hand pay payout for machine jackpot or lock-up.
             </DialogDescription>
           </DialogHeader>
-          <HandPayForm 
-            machines={machines || []}
-            currentBalance={currentBalance || 0}
-            onSubmit={onHandPaySubmit} 
-            onRequestCash={onRequestCash}
-            loading={actionLoading}
-          />
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar md:max-h-[80vh]">
+            <HandPayForm 
+              machines={machines || []}
+              currentBalance={currentBalance || 0}
+              onSubmit={onHandPaySubmit} 
+              onRequestCash={onRequestCash}
+              loading={actionLoading}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 

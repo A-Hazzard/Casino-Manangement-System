@@ -22,6 +22,8 @@ import type { LucideIcon } from 'lucide-react';
 type VaultMetricCardProps = {
   title: string;
   value: number;
+  subValue?: number | string;
+  subValueLabel?: string;
   icon: LucideIcon;
   iconColor?: string;
   iconBgColor?: string;
@@ -34,6 +36,8 @@ type VaultMetricCardProps = {
 export default function VaultMetricCard({
   title,
   value,
+  subValue,
+  subValueLabel = 'Count',
   icon: Icon,
   iconColor = 'text-blue-600',
   iconBgColor = 'bg-blue-100',
@@ -73,12 +77,35 @@ export default function VaultMetricCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-2">
             <p className="text-sm font-medium text-gray-600 truncate">{title}</p>
-            <p className={cn(
-                "font-bold text-gray-900 leading-tight transition-all truncate",
-                getDynamicFontSize(formattedValue)
-            )}>
-              {formattedValue}
-            </p>
+            {subValue !== undefined && subValue !== null ? (
+              <div className="grid grid-cols-2 divide-x divide-gray-200 mt-1">
+                <div className="pr-4">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Amount</p>
+                  <p className={cn(
+                      "font-bold text-gray-900 leading-tight transition-all truncate",
+                      getDynamicFontSize(formattedValue)
+                  )}>
+                    {formattedValue}
+                  </p>
+                </div>
+                <div className="pl-4">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">{subValueLabel}</p>
+                  <p className={cn(
+                      "font-bold text-gray-900 leading-tight transition-all truncate",
+                      getDynamicFontSize(String(subValue))
+                  )}>
+                    {subValue}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className={cn(
+                  "font-bold text-gray-900 leading-tight transition-all truncate",
+                  getDynamicFontSize(formattedValue)
+              )}>
+                {formattedValue}
+              </p>
+            )}
           </div>
           <div className={cn('flex-shrink-0 rounded-lg p-3', iconBgColor)}>
             <Icon className={cn('h-6 w-6', iconColor)} />

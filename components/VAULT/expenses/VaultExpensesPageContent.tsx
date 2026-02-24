@@ -43,7 +43,7 @@ import { cn } from '@/lib/utils';
 import type { ExpenseCategory, VaultTransaction } from '@/shared/types/vault';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { DollarSign, FileText, Paperclip, Plus, Receipt } from 'lucide-react';
+import { DollarSign, FileText, Paperclip, Plus, Receipt, RefreshCw } from 'lucide-react';
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -91,7 +91,7 @@ export default function VaultExpensesPageContent() {
     return { from, to };
   });
   const [category, setCategory] = useState<string>('all');
-  const [showDatePicker, setShowDatePicker] = useState(false);
+
 
   // Summary
   const [summary, setSummary] = useState<ExpenseSummary>({
@@ -111,10 +111,14 @@ export default function VaultExpensesPageContent() {
         params.append('locationId', locationId);
       }
       if (dateRange?.from) {
-        params.append('startDate', dateRange.from.toISOString());
+        const startDate = new Date(dateRange.from);
+        startDate.setHours(0, 0, 0, 0);
+        params.append('startDate', startDate.toISOString());
       }
       if (dateRange?.to) {
-        params.append('endDate', dateRange.to.toISOString());
+        const endDate = new Date(dateRange.to);
+        endDate.setHours(23, 59, 59, 999);
+        params.append('endDate', endDate.toISOString());
       }
       if (category && category !== 'all') {
         params.append('category', category);
@@ -233,41 +237,55 @@ export default function VaultExpensesPageContent() {
   // Render
   // ============================================================================
   return (
-    <PageLayout>
+    <PageLayout onRefresh={fetchExpenses} refreshing={loading}>
       <div className="flex flex-col gap-6">
         <StaleShiftDetectedBlock isStale={isStaleShift} openedAt={vaultBalance?.openedAt} type="vault">
           <div className="flex flex-col gap-6">
         <VaultManagerHeader title="Expenses" description="Manage vault expense records">
-          <Button 
-            onClick={() => {
-              if (!hasActiveVaultShift) {
-                toast.error('Operation Blocked', {
-                  description: 'You must start a vault shift before recording expenses.'
-                });
-                return;
-              }
-              if (isStaleShift) {
-                toast.error('Stale Shift Detected', {
-                  description: 'This shift is from a previous gaming day. You must close this shift first.'
-                });
-                return;
-              }
-              if (!isVaultReconciled) {
-                toast.error('Reconciliation Required', {
-                  description: 'Please perform the mandatory opening reconciliation before recording expenses.'
-                });
-                return;
-              }
-              setShowModal(true);
-            }} 
-            className={cn(
-              "gap-2",
-              (!hasActiveVaultShift || !isVaultReconciled || isStaleShift) && "opacity-40 cursor-not-allowed"
-            )}
-          >
-            <Plus className="h-4 w-4" />
-            Record Expense
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                fetchExpenses();
+                toast.success('Expenses refreshed');
+              }}
+              className="gap-2 text-violet-600 border-violet-200 hover:bg-violet-50"
+              disabled={loading}
+            >
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+              Refresh
+            </Button>
+            <Button 
+              onClick={() => {
+                if (!hasActiveVaultShift) {
+                  toast.error('Operation Blocked', {
+                    description: 'You must start a vault shift before recording expenses.'
+                  });
+                  return;
+                }
+                if (isStaleShift) {
+                  toast.error('Stale Shift Detected', {
+                    description: 'This shift is from a previous gaming day. You must close this shift first.'
+                  });
+                  return;
+                }
+                if (!isVaultReconciled) {
+                  toast.error('Reconciliation Required', {
+                    description: 'Please perform the mandatory opening reconciliation before recording expenses.'
+                  });
+                  return;
+                }
+                setShowModal(true);
+              }} 
+              className={cn(
+                "gap-2",
+                (!hasActiveVaultShift || !isVaultReconciled || isStaleShift) && "opacity-40 cursor-not-allowed"
+              )}
+            >
+              <Plus className="h-4 w-4" />
+              Record Expense
+            </Button>
+          </div>
         </VaultManagerHeader>
 
       {/* Summary Cards */}
@@ -310,23 +328,19 @@ export default function VaultExpensesPageContent() {
           <div className="flex flex-wrap gap-4 items-end">
             <div className="flex flex-col gap-1">
               <label className="text-sm text-muted-foreground">Date Range</label>
-              <Button
-                variant="outline"
-                onClick={() => setShowDatePicker(!showDatePicker)}
-                className="w-48 justify-start text-left font-normal"
-              >
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <>
-                      {dateRange.from.toLocaleDateString()} - {dateRange.to.toLocaleDateString()}
-                    </>
-                  ) : (
-                    dateRange.from.toLocaleDateString()
-                  )
-                ) : (
-                  <span>Select date range</span>
-                )}
-              </Button>
+              <ModernCalendar
+                mode="range"
+                date={dateRange}
+                onSelect={(range) => {
+                  if (range?.from) {
+                    setDateRange({ from: range.from, to: range.to || range.from });
+                  } else {
+                    setDateRange(undefined);
+                  }
+                }}
+                maxDate={new Date()}
+                className="w-48 sm:w-64"
+              />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-sm text-muted-foreground">Category</label>
@@ -350,23 +364,7 @@ export default function VaultExpensesPageContent() {
               </Button>
             </div>
           </div>
-          {showDatePicker && (
-            <div className="mt-4">
-              <ModernCalendar
-                mode="range"
-                date={dateRange}
-                onSelect={(range) => {
-                  if (range?.from) {
-                    setDateRange({ from: range.from, to: range.to || range.from });
-                  } else {
-                    setDateRange(undefined);
-                  }
-                }}
-                className="w-full sm:w-auto p-0"
-              />
-            </div>
-          )}
-        </CardContent>
+          </CardContent>
       </Card>
 
       {/* Expense Table */}
@@ -392,19 +390,16 @@ export default function VaultExpensesPageContent() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Date</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {expenses.map(expense => (
                       <TableRow key={expense._id}>
-                        <TableCell>
-                          {format(new Date(expense.timestamp), 'MMM d, yyyy h:mm a')}
-                        </TableCell>
                         <TableCell>{expense.to?.id || 'N/A'}</TableCell>
                         <TableCell className="max-w-xs truncate">
                           <div className="flex items-center gap-2">
@@ -418,6 +413,9 @@ export default function VaultExpensesPageContent() {
                         </TableCell>
                         <TableCell className="text-right font-medium text-red-600">
                           -${expense.amount.toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(expense.timestamp), 'MMM d, yyyy h:mm a')}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
@@ -474,6 +472,7 @@ export default function VaultExpensesPageContent() {
       <VaultOverviewRecordExpenseModal
         open={showModal}
         onClose={() => setShowModal(false)}
+        vaultDenominations={vaultBalance?.denominations || []}
         onConfirm={(data) => handleRecordExpense({
           ...data,
           description: data.description || '', // Ensure string

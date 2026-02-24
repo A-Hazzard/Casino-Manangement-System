@@ -11,7 +11,6 @@
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
-import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import UserModel from '@/app/api/lib/models/user';
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
@@ -150,34 +149,11 @@ export async function GET(request: NextRequest) {
     // Use the standard gaming day range for metrics
     const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod('Today', gameDayOffset);
 
-    // Get all machine IDs for this location
-    const machines = await Machine.find({ gamingLocation: locationId }, { _id: 1 }).lean();
-    const machineIds = machines.map(m => String(m._id));
-
-    // A. Physical Soft Count Total for the current shift (completed only)
-    const finalizedSoftCounts = await VaultTransactionModel.aggregate([
-      {
-        $match: {
-          vaultShiftId: activeShift._id,
-          type: 'soft_count',
-          'to.type': 'vault',
-          isVoid: { $ne: true }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: '$amount' }
-        }
-      }
-    ]);
-    const totalPhysicalSoftCount = finalizedSoftCounts.length > 0 ? finalizedSoftCounts[0].total : 0;
-
-    // B. Machine Meter Drops (Theoretic)
+    // B. Machine Meter Drops (Theoretic) - Use Location Field directly
     const machineMeters = await Meters.aggregate([
         {
           $match: {
-            machine: { $in: machineIds },
+            location: locationId,
             readAt: {
               $gte: rangeStart, 
               $lte: rangeEnd,
@@ -187,7 +163,7 @@ export async function GET(request: NextRequest) {
         {
           $group: {
             _id: null,
-            totalMoneyIn: { $sum: '$movement.drop' },
+            totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
           },
         },
     ]);
@@ -229,7 +205,7 @@ export async function GET(request: NextRequest) {
         : undefined,
       // Premise metrics
       totalCashOnPremises: vaultBalanceVal + totalCashierFloats + totalMachineMoneyIn,
-      machineMoneyIn: totalPhysicalSoftCount, 
+      machineMoneyIn: totalMachineMoneyIn, 
       cashierFloats: totalCashierFloats,
       openingBalance: activeShift.openingBalance,
       isReconciled: activeShift.isReconciled || false,
