@@ -16,9 +16,9 @@ import mongoose, { Model, Schema } from 'mongoose';
 
 export type NotificationType =
   | 'float_request'
-  | 'shift_review'
   | 'system_alert'
-  | 'low_balance';
+  | 'low_balance'
+  | '2fa_recovery_request';
 
 export type NotificationStatus = 'unread' | 'read' | 'actioned' | 'dismissed' | 'cancelled';
 
@@ -85,7 +85,7 @@ const VaultNotificationSchema = new Schema<IVaultNotification>(
     },
     type: {
       type: String,
-      enum: ['float_request', 'shift_review', 'system_alert', 'low_balance'],
+      enum: ['float_request', 'shift_review', 'system_alert', 'low_balance', '2fa_recovery_request'],
       required: true,
       index: true,
     },

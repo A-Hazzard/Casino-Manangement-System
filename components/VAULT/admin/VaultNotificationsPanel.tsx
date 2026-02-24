@@ -16,6 +16,7 @@ import {
     CheckCircle,
     Clock,
     Info,
+    ShieldCheck,
     Trash2,
     X
 } from 'lucide-react';
@@ -24,11 +25,16 @@ import { toast } from 'sonner';
 
 interface VaultNotification {
   _id: string;
-  type: 'info' | 'warning' | 'error' | 'success';
+  type: string;
   title: string;
   message: string;
-  timestamp: string;
-  isRead: boolean;
+  createdAt: string;
+  status: string;
+  metadata?: {
+    cashierId?: string;
+    cashierName?: string;
+    [key: string]: any;
+  };
 }
 
 export default function VaultNotificationsPanel() {
@@ -69,7 +75,7 @@ export default function VaultNotificationsPanel() {
       const data = await res.json();
       if (data.success) {
         if (action === 'mark_read') {
-          setNotifications(prev => prev.map(n => ids.includes(n._id) ? { ...n, isRead: true } : n));
+          setNotifications(prev => prev.map(n => ids.includes(n._id) ? { ...n, status: 'read' } : n));
         } else {
           setNotifications(prev => prev.filter(n => !ids.includes(n._id)));
         }
@@ -81,8 +87,28 @@ export default function VaultNotificationsPanel() {
     }
   };
 
+  const handleReset2FA = async (userId: string, notificationId: string) => {
+    try {
+      const res = await fetch('/api/auth/totp/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, notificationId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNotifications(prev => prev.map(n => n._id === notificationId ? { ...n, status: 'actioned' } : n));
+        toast.success(data.message || '2FA has been reset');
+      } else {
+        toast.error(data.error || 'Failed to reset 2FA');
+      }
+    } catch (error) {
+      console.error('Failed to reset 2FA:', error);
+      toast.error('Connection error');
+    }
+  };
+
   const markAllRead = () => {
-    const unreadIds = notifications.filter(n => !n.isRead).map(n => n._id);
+    const unreadIds = notifications.filter(n => n.status === 'unread').map(n => n._id);
     if (unreadIds.length > 0) {
       handleAction('mark_read', unreadIds);
     }
@@ -90,9 +116,12 @@ export default function VaultNotificationsPanel() {
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'warning': return <AlertCircle className="h-5 w-5 text-amber-500" />;
-      case 'error': return <AlertCircle className="h-5 w-5 text-red-500" />;
+      case 'warning':
+      case 'float_request': return <AlertCircle className="h-5 w-5 text-amber-500" />;
+      case 'error':
+      case 'low_balance': return <AlertCircle className="h-5 w-5 text-red-500" />;
       case 'success': return <CheckCircle className="h-5 w-5 text-emerald-500" />;
+      case '2fa_recovery_request': return <ShieldCheck className="h-5 w-5 text-violet-500" />;
       default: return <Info className="h-5 w-5 text-blue-500" />;
     }
   };
@@ -124,7 +153,7 @@ export default function VaultNotificationsPanel() {
            <div>
               <h2 className="text-xl font-black text-gray-900 tracking-tight">Vault Notifications</h2>
               <p className="text-sm text-gray-500 font-medium">
-                {notifications.filter(n => !n.isRead).length} unread alerts requiring attention
+                {notifications.filter(n => n.status === 'unread').length} unread alerts requiring attention
               </p>
            </div>
         </div>
@@ -135,7 +164,7 @@ export default function VaultNotificationsPanel() {
              size="sm" 
              className="rounded-xl border-gray-200 hover:bg-violet-50 hover:text-violet-700 font-bold"
              onClick={markAllRead}
-             disabled={notifications.filter(n => !n.isRead).length === 0}
+             disabled={notifications.filter(n => n.status === 'unread').length === 0}
            >
              <Check className="h-4 w-4 mr-2" />
              Mark All Read
@@ -169,7 +198,7 @@ export default function VaultNotificationsPanel() {
               key={notif._id}
               className={cn(
                 "group relative bg-white p-5 rounded-2xl border transition-all duration-300 hover:shadow-md",
-                notif.isRead 
+                notif.status !== 'unread' 
                   ? "border-gray-100 opacity-75" 
                   : "border-violet-100 shadow-sm shadow-violet-500/5 ring-1 ring-violet-50"
               )}
@@ -177,19 +206,20 @@ export default function VaultNotificationsPanel() {
               <div className="flex items-start gap-4">
                 <div className={cn(
                   "h-10 w-10 shrink-0 rounded-xl flex items-center justify-center",
-                  notif.type === 'warning' ? "bg-amber-100" :
-                  notif.type === 'error' ? "bg-red-100" :
-                  notif.type === 'success' ? "bg-emerald-100" : "bg-blue-100"
+                  notif.type === 'warning' || notif.type === 'float_request' ? "bg-amber-100" :
+                  notif.type === 'error' || notif.type === 'low_balance' ? "bg-red-100" :
+                  notif.type === 'success' ? "bg-emerald-100" : 
+                  notif.type === '2fa_recovery_request' ? "bg-violet-100" : "bg-blue-100" // Added 2fa_recovery_request styling
                 )}>
                   {getIcon(notif.type)}
                 </div>
                 
                 <div className="flex-1 min-w-0 pr-12">
                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className={cn("text-sm font-black tracking-tight truncate", notif.isRead ? "text-gray-600" : "text-gray-900")}>
+                      <h3 className={cn("text-sm font-black tracking-tight truncate", notif.status !== 'unread' ? "text-gray-600" : "text-gray-900")}>
                         {notif.title}
                       </h3>
-                      {!notif.isRead && (
+                      {notif.status === 'unread' && (
                         <span className="h-2 w-2 rounded-full bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.5)] animate-pulse" />
                       )}
                    </div>
@@ -199,13 +229,29 @@ export default function VaultNotificationsPanel() {
                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                       <div className="flex items-center gap-1">
                          <Clock className="h-3 w-3" />
-                         {safeFormatDate(notif.timestamp)}
+                         {safeFormatDate(notif.createdAt)}
                       </div>
                    </div>
+
+                    {notif.type === '2fa_recovery_request' && notif.status === 'unread' && (
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                          size="sm"
+                          className="bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl"
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to reset 2FA for ${notif.metadata?.cashierName}?`)) {
+                              handleReset2FA(notif.metadata?.cashierId!, notif._id);
+                            }
+                          }}
+                        >
+                          Reset 2FA for {notif.metadata?.cashierName}
+                        </Button>
+                      </div>
+                    )}
                 </div>
 
                 <div className="absolute right-4 top-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                   {!notif.isRead && (
+                   {notif.status === 'unread' && (
                      <Button 
                        variant="ghost" 
                        size="icon" 

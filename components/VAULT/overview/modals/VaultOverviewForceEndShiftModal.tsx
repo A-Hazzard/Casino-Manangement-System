@@ -110,8 +110,8 @@ export default function VaultOverviewForceEndShiftModal({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        className="w-full h-[100dvh] md:h-auto md:max-w-[550px] flex flex-col p-0 overflow-hidden rounded-none md:rounded-2xl border-none shadow-2xl"
-        backdropClassName="bg-black/80 backdrop-blur-md"
+        className="w-full h-[100dvh] md:h-auto md:max-w-[550px] flex flex-col p-0 overflow-hidden rounded-none md:rounded-2xl border-none shadow-2xl !z-[200]"
+        backdropClassName="bg-black/60 backdrop-blur-md !z-[190]"
       >
         {/* Premium Header */}
         <DialogHeader className="p-6 bg-gradient-to-r from-red-600 to-red-700 shrink-0 text-left relative overflow-hidden">

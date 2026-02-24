@@ -8,12 +8,12 @@
 'use client';
 
 import {
-  AlertTriangle,
-  BarChart3,
-  History as HistoryIcon,
-  Landmark,
-  RefreshCw,
-  RotateCcw
+    AlertTriangle,
+    BarChart3,
+    History as HistoryIcon,
+    Landmark,
+    RefreshCw,
+    RotateCcw
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -22,12 +22,12 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import DenominationInputGrid from '@/components/shared/ui/DenominationInputGrid';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -205,10 +205,10 @@ export default function VaultOverviewShiftReviewModal({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent 
         className={cn(
-          "w-full h-[100dvh] md:h-auto md:max-w-[650px] flex flex-col p-0 overflow-hidden rounded-none md:rounded-2xl border-none shadow-2xl transition-all duration-300",
+          "w-full h-[100dvh] md:h-auto md:max-w-[650px] flex flex-col p-0 overflow-hidden rounded-none md:rounded-2xl border-none shadow-2xl transition-all duration-300 !z-[200]",
           isOverlayOpen && "blur-sm brightness-50 pointer-events-none scale-[0.98]"
         )}
-        backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
+        backdropClassName="bg-black/60 backdrop-blur-md !z-[190]"
       >
         {/* Premium Header */}
         <DialogHeader className="p-6 bg-gradient-to-r from-orange-600 to-amber-600 shrink-0 text-left relative overflow-hidden">

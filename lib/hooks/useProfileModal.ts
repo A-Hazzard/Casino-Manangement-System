@@ -93,6 +93,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
+  const [emailAddress, setEmailAddress] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -107,6 +108,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
             if (data) {
               setUserData(data);
               setFormData(data.profile || {});
+              setEmailAddress(data.emailAddress || data.email || '');
               setProfilePicture(data.profilePicture || null);
               setSelectedRoles(data.roles || []);
 
@@ -360,6 +362,13 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       }
     }
 
+    // Email validation
+    if (!emailAddress) {
+      errors.emailAddress = 'Email address is required.';
+    } else if (!EMAIL_REGEX.test(emailAddress)) {
+      errors.emailAddress = 'Please enter a valid email address.';
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -387,6 +396,8 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
 
       const updatedUser = {
         ...userData,
+        emailAddress: emailAddress.trim(),
+        email: emailAddress.trim(),
         profile: formData
           ? {
               ...formData,
@@ -466,6 +477,8 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     userData,
     formData,
     setFormData,
+    emailAddress,
+    setEmailAddress,
     passwordData,
     setPasswordData,
     isLoading,

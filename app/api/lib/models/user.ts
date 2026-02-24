@@ -243,6 +243,8 @@ const UserSchema = new Schema(
     updatedAt: { type: Date },
     totpSecret: { type: String, default: null }, // Secret for Google Authenticator (TOTP)
     totpEnabled: { type: Boolean, default: false }, // Flag to track if TOTP setup is confirmed
+    totpRecoveryToken: { type: String, default: null }, // Token for 2FA email recovery
+    totpRecoveryExpires: { type: Date, default: null }, // Expiration for recovery token
     __v: { type: Number, select: false, default: 0 }, // add missing __v field, default to 0, hide by default
   },
   { timestamps: true }

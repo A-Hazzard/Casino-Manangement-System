@@ -7,11 +7,11 @@
 'use client';
 
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -25,6 +25,7 @@ type ProfileBasicInfoProps = {
   formData: Partial<User['profile']>;
   isEditMode: boolean;
   profilePicture: string | null;
+  emailAddress: string;
   onInputChange: (field: string, value: string) => void;
   onEditProfilePicture: () => void;
   onRemoveProfilePicture: () => void;
@@ -41,6 +42,7 @@ export default function ProfileBasicInfo({
   formData,
   isEditMode,
   profilePicture,
+  emailAddress,
   onInputChange,
   onEditProfilePicture,
   onRemoveProfilePicture,
@@ -132,9 +134,33 @@ export default function ProfileBasicInfo({
               </div>
               <div>
                 <Label>Email Address</Label>
-                <p className="mt-2 text-sm text-gray-900">
-                  {userData.email || userData.emailAddress || '-'}
-                </p>
+                {isEditMode ? (
+                  <>
+                    <Input
+                      type="email"
+                      value={emailAddress}
+                      onChange={e =>
+                        handleInputChangeWithValidation(
+                          'emailAddress',
+                          e.target.value
+                        )
+                      }
+                      placeholder="Enter email address"
+                      className={`mt-2 ${
+                        validationErrors.emailAddress ? 'border-red-500' : ''
+                      }`}
+                    />
+                    {validationErrors.emailAddress && (
+                      <p className="mt-1.5 text-sm text-red-600">
+                        {validationErrors.emailAddress}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-900">
+                    {emailAddress || '-'}
+                  </p>
+                )}
               </div>
               <div>
                 <Label>Phone Number</Label>

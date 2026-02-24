@@ -153,6 +153,37 @@ export async function createLowBalanceNotification(
   return notification;
 }
 
+/**
+ * Create a 2FA recovery request notification
+ */
+export async function create2FARecoveryNotification(
+  locationId: string,
+  vaultManagerId: string,
+  cashierId: string,
+  cashierName: string
+): Promise<IVaultNotification> {
+  const notification = await VaultNotificationModel.create({
+    locationId,
+    type: '2fa_recovery_request' as NotificationType,
+    recipientId: vaultManagerId,
+    recipientRole: 'vault-manager',
+    title: '2FA Reset Requested',
+    message: `${cashierName} has requested a 2FA reset (Authenticator lost).`,
+    urgent: true,
+    relatedEntityType: 'vault_shift',
+    relatedEntityId: cashierId,
+    metadata: {
+      cashierId,
+      cashierName,
+      requestType: '2fa_recovery',
+    },
+    status: 'unread',
+    actionUrl: `/vault/management?cashierId=${cashierId}&tab=notifications`,
+  });
+
+  return notification;
+}
+
 // ============================================================================
 // Notification Status Management
 // ============================================================================

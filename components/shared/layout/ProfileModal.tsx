@@ -67,6 +67,8 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
     passwordStrength,
     validationErrors,
     setValidationErrors,
+    emailAddress,
+    setEmailAddress,
   } = useProfileModal({ open, onClose });
 
   const handleInputChange = (
@@ -74,7 +76,9 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
     value: string,
     section?: 'address' | 'identification'
   ) => {
-      if (section && formData) {
+    if (field === 'emailAddress') {
+      setEmailAddress(value);
+    } else if (section && formData) {
       setFormData({
         ...formData,
         [section]: {
@@ -110,6 +114,7 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
                   formData={formData}
                   isEditMode={isEditMode}
                   profilePicture={profilePicture}
+                  emailAddress={emailAddress}
                   onInputChange={handleInputChange}
                   onEditProfilePicture={() => fileInputRef.current?.click()}
                   onRemoveProfilePicture={() => {
