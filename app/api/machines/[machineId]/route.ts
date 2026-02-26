@@ -17,7 +17,7 @@ import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import {
@@ -149,7 +149,7 @@ export async function GET(
           name?: string;
           locationName?: string;
           gameDayOffset?: number;
-          rel?: { licencee?: string };
+          rel?: { licensee?: string };
         } | null;
 
         if (location) {
@@ -302,7 +302,7 @@ export async function GET(
     if (shouldConvert) {
       // Get location details to determine native currency
       let locationData: {
-        rel?: { licencee?: string };
+        rel?: { licensee?: string };
         country?: string;
       } | null = null;
       if (machine.gamingLocation) {
@@ -312,7 +312,7 @@ export async function GET(
           })
             .select('rel country')
             .lean()) as {
-            rel?: { licencee?: string };
+            rel?: { licensee?: string };
             country?: string;
           } | null;
         } catch (error) {
@@ -325,11 +325,11 @@ export async function GET(
 
       // Determine native currency from licensee or country
       let nativeCurrency: CurrencyCode = 'USD';
-      if (locationData?.rel?.licencee) {
+      if (locationData?.rel?.licensee) {
         try {
-          // Licencee _id is stored as a String in this project, not ObjectId
-          const licenseeDoc = await Licencee.findOne({
-            _id: locationData.rel.licencee,
+          // Licensee _id is stored as a String in this project, not ObjectId
+          const licenseeDoc = await Licensee.findOne({
+            _id: locationData.rel.licensee,
           })
             .select('name')
             .lean();

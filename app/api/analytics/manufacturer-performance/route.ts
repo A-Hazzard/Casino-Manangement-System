@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const licencee = searchParams.get('licencee');
+    const licensee = searchParams.get('licensee');
 
     if (!locationId || locationId === 'all') {
       return NextResponse.json(
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       timePeriod,
       startDate,
       endDate,
-      licencee
+      licensee
     );
 
     // ============================================================================

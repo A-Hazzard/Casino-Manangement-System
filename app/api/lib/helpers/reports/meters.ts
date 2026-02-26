@@ -27,7 +27,7 @@ export type ParsedMetersReportParams = {
   page: number;
   limit: number;
   search: string;
-  licencee: string | null;
+  licensee: string | null;
   displayCurrency: CurrencyCode;
   includeHourlyData: boolean;
   requestedLocationList: string[];
@@ -42,7 +42,7 @@ export type LocationWithGamingDay = {
   _id: string;
   name: string;
   gameDayOffset: number;
-  rel?: { licencee?: string };
+  rel?: { licensee?: string };
   country?: string;
 };
 /**
@@ -123,7 +123,7 @@ export function parseMetersReportParams(
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const search = searchParams.get('search') || '';
-  const licencee = searchParams.get('licencee');
+  const licensee = searchParams.get('licensee');
   const includeHourlyData = searchParams.get('includeHourlyData') === 'true';
 
   // Validate required parameters
@@ -145,8 +145,8 @@ export function parseMetersReportParams(
   let displayCurrency =
     (searchParams.get('currency') as CurrencyCode) || undefined;
 
-  if (!displayCurrency && licencee && licencee !== 'all') {
-    displayCurrency = getLicenseeCurrency(licencee);
+  if (!displayCurrency && licensee && licensee !== 'all') {
+    displayCurrency = getLicenseeCurrency(licensee);
   }
 
   displayCurrency = displayCurrency || 'USD';
@@ -188,7 +188,7 @@ export function parseMetersReportParams(
     page,
     limit,
     search,
-    licencee,
+    licensee,
     displayCurrency,
     includeHourlyData,
     requestedLocationList,
@@ -268,7 +268,7 @@ export async function fetchLocationData(
     _id: String(loc._id),
     name: (loc.name as string) || 'Unknown Location',
     gameDayOffset: (loc.gameDayOffset as number) ?? 8, // Default to 8 AM
-    rel: (loc.rel as { licencee?: string }) || undefined,
+    rel: (loc.rel as { licensee?: string }) || undefined,
     country: (loc.country as string) || undefined,
   }));
 }
@@ -324,12 +324,12 @@ export function calculateGamingDayRanges(
  * Fetch machines data for the selected locations
  *
  * @param locationList - List of location IDs to filter by
- * @param licencee - Optional licensee ID to filter by
+ * @param licensee - Optional licensee ID to filter by
  * @returns Array of machine data
  */
 export async function fetchMachinesData(
   locationList: string[],
-  licencee: string | null
+  licensee: string | null
 ): Promise<MachineData[]> {
   // Build query filter for machines
   const machineMatchStage: Record<string, unknown> = {
@@ -356,9 +356,9 @@ export async function fetchMachinesData(
     .exec();
 
   // Filter by licensee if provided
-  if (licencee && licencee !== 'all') {
+  if (licensee && licensee !== 'all') {
     const licenseeLocations = await GamingLocations.find(
-      { 'rel.licencee': licencee },
+      { 'rel.licensee': licensee },
       { _id: 1 }
     )
       .lean()

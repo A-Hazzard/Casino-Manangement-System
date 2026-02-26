@@ -10,7 +10,7 @@
 
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
@@ -46,7 +46,7 @@ function buildMachineHourlyPipeline(
   endDate: Date,
   targetLocations: string[],
   targetMachines: string[],
-  licencee: string | null
+  licensee: string | null
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [
     {
@@ -73,10 +73,10 @@ function buildMachineHourlyPipeline(
     },
   ];
 
-  if (licencee && licencee !== 'all') {
+  if (licensee && licensee !== 'all') {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licencee': licencee,
+        'locationDetails.rel.licensee': licensee,
       },
     } as PipelineStage);
   }
@@ -235,11 +235,11 @@ function calculateHourlyTotals(
 async function getLocationCurrenciesForMachineHourly(
   locationsData: Array<{
     _id: unknown;
-    rel?: { licencee?: unknown };
+    rel?: { licensee?: unknown };
     country?: unknown;
   }>
 ): Promise<Map<string, string>> {
-  const licenseesData = await Licencee.find(
+  const licenseesData = await Licensee.find(
     {
       $or: [
         { deletedAt: null },
@@ -266,7 +266,7 @@ async function getLocationCurrenciesForMachineHourly(
 
   const locationCurrencies = new Map<string, string>();
   locationsData.forEach(loc => {
-    const locationLicenseeId = loc.rel?.licencee;
+    const locationLicenseeId = loc.rel?.licensee;
     if (locationLicenseeId) {
       const licenseeName =
         licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
@@ -378,7 +378,7 @@ export async function getMachineHourlyData(
   locationIds: string | null,
   machineIds: string | null,
   timePeriod: TimePeriod,
-  licencee: string | null,
+  licensee: string | null,
   startDateParam: string | null,
   endDateParam: string | null,
   displayCurrency: CurrencyCode
@@ -428,7 +428,7 @@ export async function getMachineHourlyData(
     endDate,
     targetLocations,
     targetMachines,
-    licencee
+    licensee
   );
 
   // Use cursor for Meters aggregation
@@ -468,7 +468,7 @@ export async function getMachineHourlyData(
   let convertedHourlyTrends = hourlyTrends;
   let convertedTotals = totals;
 
-  if (shouldApplyCurrencyConversion(licencee)) {
+  if (shouldApplyCurrencyConversion(licensee)) {
     const locationCurrencies = await getLocationCurrenciesForMachineHourly(
       locationsData
     );
@@ -495,7 +495,7 @@ export async function getMachineHourlyData(
     locations: Object.keys(locationHourlyData),
     locationNames,
     currency: displayCurrency,
-    converted: shouldApplyCurrencyConversion(licencee),
+    converted: shouldApplyCurrencyConversion(licensee),
   };
 }
 

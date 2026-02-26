@@ -31,7 +31,7 @@ const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
 
 export function useCabinetsPageData() {
   const activeMetricsFilter = useDashBoardStore(state => state.activeMetricsFilter);
-  const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
+  const selectedLicensee = useDashBoardStore(state => state.selectedLicensee);
   const customDateRange = useDashBoardStore(state => state.customDateRange);
   const displayCurrency = useDashBoardStore(state => state.displayCurrency);
 
@@ -70,7 +70,7 @@ export function useCabinetsPageData() {
     totalCount,
     loadCabinets,
   } = useCabinetData({
-    selectedLicencee,
+    selectedLicensee,
     activeMetricsFilter,
     customDateRange,
     displayCurrency,
@@ -200,7 +200,7 @@ export function useCabinetsPageData() {
           activeMetricsFilter as TimePeriod,
           customDateRange?.startDate,
           customDateRange?.endDate,
-          selectedLicencee,
+          selectedLicensee,
           displayCurrency,
           signal,
           chartGranularity,
@@ -228,7 +228,7 @@ export function useCabinetsPageData() {
   }, [
     activeMetricsFilter,
     customDateRange,
-    selectedLicencee,
+    selectedLicensee,
     displayCurrency,
     chartGranularity,
     selectedLocation,

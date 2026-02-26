@@ -57,7 +57,7 @@ export function useLocationsTabData({
   // ============================================================================
   // Store & Hooks
   // ============================================================================
-  const { activeMetricsFilter, customDateRange, selectedLicencee } =
+  const { activeMetricsFilter, customDateRange, selectedLicensee } =
     useDashBoardStore();
   const { setLoading } = useReportsStore();
   const { displayCurrency } = useCurrencyFormat();
@@ -238,8 +238,8 @@ export function useLocationsTabData({
       try {
         const params = new URLSearchParams();
         // Always pass licensee parameter so API knows user's selection
-        if (selectedLicencee) {
-          params.append('licencee', selectedLicencee);
+        if (selectedLicensee) {
+          params.append('licensee', selectedLicensee);
         }
 
         const response = await axios.get(
@@ -261,7 +261,7 @@ export function useLocationsTabData({
         setGamingLocationsLoading(false);
       }
     });
-  }, [selectedLicencee, makeGamingLocationsRequest]);
+  }, [selectedLicensee, makeGamingLocationsRequest]);
 
   /**
    * Fetch location aggregation data for map (same API as dashboard)
@@ -303,8 +303,8 @@ export function useLocationsTabData({
           return;
         }
 
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.append('licencee', selectedLicencee);
+        if (selectedLicensee && selectedLicensee !== 'all') {
+          params.append('licensee', selectedLicensee);
         }
 
         if (displayCurrency) {
@@ -360,7 +360,7 @@ export function useLocationsTabData({
   }, [
     activeMetricsFilter,
     customDateRange,
-    selectedLicencee,
+    selectedLicensee,
     displayCurrency,
     makeLocationAggregationRequest,
   ]);
@@ -370,8 +370,8 @@ export function useLocationsTabData({
    */
   const fetchBatch = useCallback(
     async (page: number = 1, limit: number = 50, signal?: AbortSignal) => {
-      const effectiveLicencee =
-        selectedLicencee && selectedLicencee !== 'all' ? selectedLicencee : '';
+      const effectiveLicensee =
+        selectedLicensee && selectedLicensee !== 'all' ? selectedLicensee : '';
 
       // Build date range for custom dates
       let dateRange: { from: Date; to: Date } | undefined;
@@ -407,7 +407,7 @@ export function useLocationsTabData({
 
       return await fetchAggregatedLocationsData(
         timePeriod,
-        effectiveLicencee,
+        effectiveLicensee,
         '', // No filter string for reports page
         dateRange,
         displayCurrency,
@@ -421,7 +421,7 @@ export function useLocationsTabData({
       activeMetricsFilter,
       customDateRange,
       displayCurrency,
-      selectedLicencee,
+      selectedLicensee,
       activeTab,
       selectedSasLocations,
       selectedRevenueLocations,
@@ -441,7 +441,7 @@ export function useLocationsTabData({
           startDate: new Date(),
           endDate: new Date(),
         },
-        selectedLicencee,
+        selectedLicensee,
         (totals: DashboardTotals | null) => {
           setMetricsTotals(totals);
           setMetricsTotalsLoading(false);
@@ -456,7 +456,7 @@ export function useLocationsTabData({
       console.error('Error fetching metrics totals:', error);
       setMetricsTotalsLoading(false);
     }
-  }, [activeMetricsFilter, customDateRange, selectedLicencee, displayCurrency]);
+  }, [activeMetricsFilter, customDateRange, selectedLicensee, displayCurrency]);
 
   /**
    * Simplified data fetching for locations with batch loading
@@ -551,8 +551,8 @@ export function useLocationsTabData({
           summary: 'true',
         };
 
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.licencee = selectedLicencee;
+        if (selectedLicensee && selectedLicensee !== 'all') {
+          params.licensee = selectedLicensee;
         }
 
         if (displayCurrency) {
@@ -770,7 +770,7 @@ export function useLocationsTabData({
       }
     },
     [
-      selectedLicencee,
+      selectedLicensee,
       activeTab,
       fetchGamingLocationsAsync,
       selectedSasLocations,
@@ -812,8 +812,8 @@ export function useLocationsTabData({
           }
         }
 
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.licencee = selectedLicencee;
+        if (selectedLicensee && selectedLicensee !== 'all') {
+          params.licensee = selectedLicensee;
         }
 
         buildTimePeriodParams(params);
@@ -862,7 +862,7 @@ export function useLocationsTabData({
     selectedSasLocations,
     selectedRevenueLocations,
     activeTab,
-    selectedLicencee,
+    selectedLicensee,
     buildTimePeriodParams,
     makeTopMachinesRequest,
   ]);
@@ -894,8 +894,8 @@ export function useLocationsTabData({
           }
         }
 
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.licencee = selectedLicencee;
+        if (selectedLicensee && selectedLicensee !== 'all') {
+          params.licensee = selectedLicensee;
         }
 
         buildTimePeriodParams(params);
@@ -947,7 +947,7 @@ export function useLocationsTabData({
     selectedSasLocations,
     selectedRevenueLocations,
     activeTab,
-    selectedLicencee,
+    selectedLicensee,
     buildTimePeriodParams,
     makeBottomMachinesRequest,
   ]);
@@ -976,8 +976,8 @@ export function useLocationsTabData({
             locationIds: locationsToFetch.join(','),
           };
 
-          if (selectedLicencee && selectedLicencee !== 'all') {
-            params.licencee = selectedLicencee;
+          if (selectedLicensee && selectedLicensee !== 'all') {
+            params.licensee = selectedLicensee;
           }
 
           if (displayCurrency) {
@@ -1017,7 +1017,7 @@ export function useLocationsTabData({
       selectedSasLocations,
       selectedRevenueLocations,
       activeTab,
-      selectedLicencee,
+      selectedLicensee,
       displayCurrency,
       chartGranularity,
       makeTrendDataRequest,
@@ -1057,7 +1057,7 @@ export function useLocationsTabData({
   }, [
     activeMetricsFilter,
     dateRangeKey,
-    selectedLicencee,
+    selectedLicensee,
     displayCurrency,
     fetchLocationDataAsync,
     fetchMetricsTotals,

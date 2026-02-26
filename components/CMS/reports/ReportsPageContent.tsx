@@ -45,7 +45,7 @@ export default function ReportsPageContent() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
-  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
   const { user } = useUserStore();
 
   // Check user roles
@@ -145,8 +145,8 @@ export default function ReportsPageContent() {
   return (
     <PageLayout
       headerProps={{
-        selectedLicencee,
-        setSelectedLicencee,
+        selectedLicensee,
+        setSelectedLicensee,
         disabled: isLoading || refreshing,
       }}
       showToaster={true}

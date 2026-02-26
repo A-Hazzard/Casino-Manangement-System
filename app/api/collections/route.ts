@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
 
     // Support both licensee spellings
     const licensee =
-      searchParams.get('licensee') || searchParams.get('licencee');
+      searchParams.get('licensee') || searchParams.get('licensee');
 
     // ============================================================================
     // STEP 4: Determine allowed location IDs

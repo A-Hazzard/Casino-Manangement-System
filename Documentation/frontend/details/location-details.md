@@ -227,7 +227,7 @@ Key features include:
 
 **Data Flow:**
 
-1.  `useLocationCabinetsData` hook fetches aggregated financial data (`financialTotals`) for the specific `locationId` and currently selected `activeMetricsFilter`/`customDateRange`/`selectedLicencee`.
+1.  `useLocationCabinetsData` hook fetches aggregated financial data (`financialTotals`) for the specific `locationId` and currently selected `activeMetricsFilter`/`customDateRange`/`selectedLicensee`.
 2.  `FinancialMetricsCards` displays these `financialTotals` (Money In, Money Out, Gross).
 
 **Key Functions:**
@@ -370,13 +370,13 @@ Key features include:
 ### Hooks
 
 -   **`useLocationCabinetsData`** (`lib/hooks/locations/useLocationCabinetsData.ts`)
-    *   **Parameters:** `locationId`, `selectedLicencee`, `activeMetricsFilter`, `customDateRange`, `dateFilterInitialized`, `filtersInitialized`, `isAdminUser`, `setDateFilterInitialized`, `setFiltersInitialized`.
+    *   **Parameters:** `locationId`, `selectedLicensee`, `activeMetricsFilter`, `customDateRange`, `dateFilterInitialized`, `filtersInitialized`, `isAdminUser`, `setDateFilterInitialized`, `setFiltersInitialized`.
     *   **Purpose:** Fetches and manages the list of machines/cabinets for the specified `locationId`, including their aggregated financial data.
     *   **Features:** Handles pagination, search, game type, and status filtering. Manages internal loading states and initial data fetching to ensure filters are applied correctly. Provides `locationName`, `locationMembershipEnabled`, `financialTotals`, `filteredCabinets`, `gameTypes`, `locations`, and various filter states and setters.
     *   **Provides:** `financialTotals`, `filteredCabinets`, `gameTypes`, `locationName`, `locationMembershipEnabled`, `loading`, `cabinetsLoading`, `refreshing`, filter states, setters, and `refreshCabinets` function.
 
 -   **`useLocationChartData`** (`lib/hooks/locations/useLocationChartData.ts`)
-    *   **Parameters:** `locationId`, `selectedLicencee`, `activeMetricsFilter`, `customDateRange`, `activeView`, `status`, `gameType`.
+    *   **Parameters:** `locationId`, `selectedLicensee`, `activeMetricsFilter`, `customDateRange`, `activeView`, `status`, `gameType`.
     *   **Purpose:** Manages fetching and processing chart data for the location.
     *   **Features:** Dynamically selects API endpoints based on `activeMetricsFilter` and `granularity`. Includes abort controller support for request cancellation, granularity detection, and manual override options. Filters chart data based on machine `status` and `gameType` from the machines filter bar.
     *   **Provides:** `chartData`, `loadingChartData`, `chartGranularity`, `setChartGranularity`, `showGranularitySelector`, `availableGranularityOptions`, `refreshChart` function.
@@ -399,10 +399,10 @@ Key features include:
 ### Stores
 
 -   **`useDashBoardStore`** (`lib/store/dashboardStore.ts`) - Zustand store
-    *   `selectedLicencee` - Selected licensee filter.
+    *   `selectedLicensee` - Selected licensee filter.
     *   `activeMetricsFilter` - Active date filter type.
     *   `customDateRange` - Custom date range.
-    *   `setSelectedLicencee` - Licensee selection setter.
+    *   `setSelectedLicensee` - Licensee selection setter.
 
 -   **`useUserStore`** (`lib/store/userStore.ts`) - Zustand store
     *   `user` - Current user object.

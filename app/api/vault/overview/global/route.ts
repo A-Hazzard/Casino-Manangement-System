@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     };
 
     if (licenseeId && licenseeId !== 'all') {
-      locationQuery['rel.licencee'] = licenseeId;
+      locationQuery['rel.licensee'] = licenseeId;
     }
 
     const locations = await GamingLocations.find(locationQuery, { _id: 1, name: 1, gameDayOffset: 1 }).lean();

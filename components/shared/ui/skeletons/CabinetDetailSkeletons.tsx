@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 type CabinetDetailsLoadingStateProps = {
-  selectedLicencee: string;
-  setSelectedLicencee: (licencee: string) => void;
+  selectedLicensee: string;
+  setSelectedLicensee: (licensee: string) => void;
   error?: string | null;
 };
 
@@ -196,18 +196,18 @@ const CabinetDetailPageSkeleton = () => (
  * Loading state component for cabinet details page
  */
 export const CabinetDetailsLoadingState = ({
-  selectedLicencee,
-  setSelectedLicencee,
+  selectedLicensee,
+  setSelectedLicensee,
   error,
 }: CabinetDetailsLoadingStateProps) => (
   <PageLayout
     headerProps={{
-      selectedLicencee,
-      setSelectedLicencee,
+      selectedLicensee,
+      setSelectedLicensee,
     }}
     pageTitle=""
     hideOptions={true}
-    hideLicenceeFilter={false}
+    hideLicenseeFilter={false}
     mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
     showToaster={false}
   >

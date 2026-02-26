@@ -58,8 +58,8 @@ export default function DashboardDesktopLayout(
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const licenseeName =
-    getLicenseeName(props.selectedLicencee) ||
-    props.selectedLicencee ||
+    getLicenseeName(props.selectedLicensee) ||
+    props.selectedLicensee ||
     'any licensee';
 
   const NoDataMessage = ({ message }: { message: string }) => (
@@ -257,7 +257,7 @@ export default function DashboardDesktopLayout(
                     <DashboardTopPerformingSkeleton />
                   ) : props.topPerformingData.length === 0 ? (
                     <NoDataMessage
-                      message={`No metrics found for ${props.selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}
+                      message={`No metrics found for ${props.selectedLicensee === 'all' ? 'any licensee' : licenseeName}`}
                     />
                   ) : (
                     <div className="flex flex-col items-center gap-6 xl:flex-row xl:justify-between">

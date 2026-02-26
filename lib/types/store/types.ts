@@ -87,8 +87,8 @@ export type DashBoardStore = {
   gamingLocations: locations;
   setGamingLocations: (state: locations) => void;
 
-  selectedLicencee: string;
-  setSelectedLicencee: (state: string) => void;
+  selectedLicensee: string;
+  setSelectedLicensee: (state: string) => void;
 
   // Sorting for top performing data
   sortBy: 'totalDrop' | 'totalWin';

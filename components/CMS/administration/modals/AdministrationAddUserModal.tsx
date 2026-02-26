@@ -334,56 +334,21 @@ export default function AdministrationAddUserModal({
     if (!open) return;
     let cancelled = false;
 
-    const loadLocations = async () => {
+    const loadLocationsData = async () => {
       try {
-        const response = await fetch(
-          '/api/locations?showAll=true&forceAll=true',
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+        const formattedLocs = await administrationUtils.locationManagement.loadLocations({
+          showAll: true,
+          forceAll: true
+        });
 
         if (cancelled) return;
-
-        if (!response.ok) {
-          console.error('Failed to fetch locations');
-          return;
-        }
-
-        const data = await response.json();
-        const locationsList = data.locations || [];
-
-        let formattedLocs = locationsList.map(
-          (loc: {
-            _id?: string;
-            id?: string;
-            name?: string;
-            locationName?: string;
-            licenseeId?: string | null;
-          }) => ({
-            _id: loc._id?.toString() || loc.id?.toString() || '',
-            name: loc.name || loc.locationName || 'Unknown Location',
-            licenseeId: loc.licenseeId ? String(loc.licenseeId) : null,
-          })
-        );
-
-        // Filter locations for location admins
-        if (isLocationAdmin && currentUserLocationPermissions.length > 0) {
-          formattedLocs = formattedLocs.filter((loc: LocationSelectItem) =>
-            currentUserLocationPermissions.includes(loc._id)
-          );
-        }
-
         setLocations(formattedLocs);
       } catch (error) {
-        console.error('Error loading locations:', error);
+        console.error('Error loading locations in modal:', error);
       }
     };
 
-    void loadLocations();
+    void loadLocationsData();
     return () => {
       cancelled = true;
     };
@@ -1725,7 +1690,7 @@ export default function AdministrationAddUserModal({
                             searchPlaceholder="Search licensees..."
                             label="licensees"
                             showSelectAll={!hasRestrictedAssignments}
-                            disabled={(isLocationAdmin && currentUserLicenseeIds.length === 1) || hasRestrictedAssignments || !isAssignmentsEnabled}
+                            disabled={(isLocationAdmin && currentUserLicenseeIds.length === 1) || !isAssignmentsEnabled}
                           />
                         )}
 

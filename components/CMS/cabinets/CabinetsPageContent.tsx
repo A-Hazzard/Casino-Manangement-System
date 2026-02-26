@@ -57,7 +57,7 @@ export default function CabinetsPageContent() {
   const cabinetsPageData = useCabinetsPageData();
   const { user } = useUserStore();
   const {
-    setSelectedLicencee,
+    setSelectedLicensee,
     activeMetricsFilter,
   } = useDashBoardStore();
 
@@ -109,7 +109,7 @@ export default function CabinetsPageContent() {
   if (shouldShowNoLicenseeMessage(user)) {
     return (
       <PageLayout
-        headerProps={{ setSelectedLicencee }}
+        headerProps={{ setSelectedLicensee }}
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
         showToaster={false}
       >
@@ -143,7 +143,7 @@ export default function CabinetsPageContent() {
       />
 
       <PageLayout
-        headerProps={{ setSelectedLicencee }}
+        headerProps={{ setSelectedLicensee }}
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
         showToaster={false}
         onRefresh={handleRefresh}

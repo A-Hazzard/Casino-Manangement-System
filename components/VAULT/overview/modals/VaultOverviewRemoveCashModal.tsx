@@ -58,7 +58,7 @@ export default function VaultOverviewRemoveCashModal({
   onConfirm,
 }: VaultOverviewRemoveCashModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee } = useVaultLicensee();
   // ============================================================================
   // hooks & State
   // ============================================================================
@@ -66,7 +66,7 @@ export default function VaultOverviewRemoveCashModal({
   const [denominations, setDenominations] = useState<Denomination[]>([]);
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
 
-  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
+  const denomsList = useMemo(() => getDenominationValues(selectedLicensee), [selectedLicensee]);
 
   useEffect(() => {
     if (open) {

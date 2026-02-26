@@ -26,7 +26,7 @@ const dummyState: DashBoardStore = {
   totals: null,
   chartData: null,
   gamingLocations: [],
-  selectedLicencee: '',
+  selectedLicensee: '',
   sortBy: 'totalDrop',
   customDateRange: {
     startDate: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -52,7 +52,7 @@ const dummyState: DashBoardStore = {
   setTotals: () => {},
   setChartData: () => {},
   setGamingLocations: () => {},
-  setSelectedLicencee: () => {},
+  setSelectedLicensee: () => {},
   setSortBy: () => {},
   setCustomDateRange: () => {},
   setPendingCustomDateRange: () => {},
@@ -88,7 +88,7 @@ const createStore = () => {
         totals: null,
         chartData: null,
         gamingLocations: [],
-  selectedLicencee: '',
+  selectedLicensee: '',
   sortBy: 'totalDrop',
   customDateRange: {
           startDate: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -118,8 +118,8 @@ const createStore = () => {
         setTotals: totals => set({ totals }),
         setChartData: chartData => set({ chartData }),
         setGamingLocations: gamingLocations => set({ gamingLocations }),
-        setSelectedLicencee: selectedLicencee => {
-          set({ selectedLicencee });
+        setSelectedLicensee: selectedLicensee => {
+          set({ selectedLicensee });
         },
         setSortBy: sortBy => set({ sortBy }),
         setCustomDateRange: customDateRange => set({ customDateRange }),
@@ -134,7 +134,7 @@ const createStore = () => {
         name: 'dashboard-store',
         partialize: state =>
           ({
-            selectedLicencee: state.selectedLicencee,
+            selectedLicensee: state.selectedLicensee,
             activeMetricsFilter: state.activeMetricsFilter,
             customDateRange: state.customDateRange,
           }) as unknown as DashBoardStore,

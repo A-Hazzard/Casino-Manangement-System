@@ -35,14 +35,14 @@ export async function GET(req: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
-    const licencee = searchParams.get('licencee') || undefined;
+    const licensee = searchParams.get('licensee') || undefined;
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10); // Default limit to 10
 
     // ============================================================================
     // STEP 3: Fetch paginated collectors
     // ============================================================================
-    const collectors = await getCollectorsPaginated(page, limit, licencee);
+    const collectors = await getCollectorsPaginated(page, limit, licensee);
 
     // ============================================================================
     // STEP 4: Return collectors list

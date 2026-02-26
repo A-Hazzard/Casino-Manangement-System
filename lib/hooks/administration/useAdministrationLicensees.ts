@@ -10,13 +10,12 @@
 import { fetchLicensees } from '@/lib/helpers/client';
 import { fetchCountries } from '@/lib/helpers/countries';
 import { useUserStore } from '@/lib/store/userStore';
-import type { Country } from '@/lib/types/common';
-import type { Licensee } from '@/lib/types/common';
+import type { Country, Licensee } from '@/lib/types/common';
 import type { AddLicenseeForm } from '@/lib/types/pages';
 import {
-  detectChanges,
-  filterMeaningfulChanges,
-  getChangesSummary,
+    detectChanges,
+    filterMeaningfulChanges,
+    getChangesSummary,
 } from '@/lib/utils/changeDetection';
 import { getNext30Days } from '@/lib/utils/licensee';
 import axios from 'axios';
@@ -288,7 +287,6 @@ export function useAdministrationLicensees({
 
     const licenseeData: {
       name: string;
-      description?: string;
       country: string;
       startDate?: Date | string;
       expiryDate?: Date | string;
@@ -297,9 +295,6 @@ export function useAdministrationLicensees({
       country: licenseeForm.country,
     };
 
-    if (licenseeForm.description) {
-      licenseeData.description = licenseeForm.description;
-    }
     if (licenseeForm.startDate) {
       licenseeData.startDate = licenseeForm.startDate;
     }
@@ -404,7 +399,6 @@ export function useAdministrationLicensees({
       setLicenseeForm({
         _id: licensee._id,
         name: licensee.name,
-        description: licensee.description,
         country: licensee.country,
         startDate: licensee.startDate
           ? new Date(licensee.startDate)
@@ -430,7 +424,6 @@ export function useAdministrationLicensees({
 
       const originalData = {
         name: selectedLicensee.name,
-        description: selectedLicensee.description,
         country: selectedLicensee.country,
         startDate: selectedLicensee.startDate,
         expiryDate: selectedLicensee.expiryDate,
@@ -441,7 +434,6 @@ export function useAdministrationLicensees({
 
       const formDataComparison = {
         name: licenseeForm.name,
-        description: licenseeForm.description,
         country: licenseeForm.country,
         startDate: licenseeForm.startDate,
         expiryDate: licenseeForm.expiryDate,

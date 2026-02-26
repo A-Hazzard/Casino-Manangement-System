@@ -46,8 +46,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const sortBy = searchParams.get('sortBy') || 'startTime';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
-    const licencee =
-      searchParams.get('licencee') || searchParams.get('licensee') || '';
+    const licensee =
+      searchParams.get('licensee') || searchParams.get('licensee') || '';
     const dateFilter = searchParams.get('dateFilter') || 'all';
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
@@ -170,28 +170,28 @@ export async function GET(request: NextRequest) {
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Stage 6: Lookup licencee details for each location
+      // Stage 6: Lookup licensee details for each location
       {
         $lookup: {
-          from: 'licencees',
-          localField: 'location.rel.licencee',
+          from: 'licensees',
+          localField: 'location.rel.licensee',
           foreignField: '_id',
-          as: 'licencee',
+          as: 'licensee',
         },
       },
-      // Stage 7: Unwind licencee array (preserve locations with no licencee)
+      // Stage 7: Unwind licensee array (preserve locations with no licensee)
       {
         $unwind: {
-          path: '$licencee',
+          path: '$licensee',
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Stage 8: Filter by licencee if specified
-      ...(licencee && licencee !== 'All Licensees'
+      // Stage 8: Filter by licensee if specified
+      ...(licensee && licensee !== 'All Licensees'
         ? [
             {
               $match: {
-                'licencee.name': licencee,
+                'licensee.name': licensee,
               },
             },
           ]
@@ -246,28 +246,28 @@ export async function GET(request: NextRequest) {
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Stage 6: Lookup licencee details for each location
+      // Stage 6: Lookup licensee details for each location
       {
         $lookup: {
-          from: 'licencees',
-          localField: 'location.rel.licencee',
+          from: 'licensees',
+          localField: 'location.rel.licensee',
           foreignField: '_id',
-          as: 'licencee',
+          as: 'licensee',
         },
       },
-      // Stage 7: Unwind licencee array (preserve locations with no licencee)
+      // Stage 7: Unwind licensee array (preserve locations with no licensee)
       {
         $unwind: {
-          path: '$licencee',
+          path: '$licensee',
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Stage 8: Filter by licencee if specified
-      ...(licencee && licencee !== 'All Licensees'
+      // Stage 8: Filter by licensee if specified
+      ...(licensee && licensee !== 'All Licensees'
         ? [
             {
               $match: {
-                'licencee.name': licencee,
+                'licensee.name': licensee,
               },
             },
           ]

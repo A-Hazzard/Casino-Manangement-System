@@ -267,7 +267,7 @@ Retrieves a paginated list of gaming sessions with advanced filtering and search
 - `search` (string, optional): Search by session ID, machine ID, or member ID
 - `sortBy` (string, default: "startTime"): Sort field (startTime, handle, won, gamesPlayed, duration)
 - `sortOrder` (string, default: "desc"): Sort direction (asc, desc)
-- `licencee` (string, optional): Filter by licensee name
+- `licensee` (string, optional): Filter by licensee name
 - `dateFilter` (string, optional): Date filter (today, yesterday, week, month, custom)
 - `startDate` (string, optional): Custom start date (ISO string)
 - `endDate` (string, optional): Custom end date (ISO string)
@@ -608,7 +608,7 @@ type SessionEvent = {
 - Applies date range and licensee filters
 - Calculates session metrics and performance data
 - Returns paginated results
-**Query Parameters**: `page`, `limit`, `search`, `sortBy`, `sortOrder`, `licencee`, `dateFilter`, `startDate`, `endDate`
+**Query Parameters**: `page`, `limit`, `search`, `sortBy`, `sortOrder`, `licensee`, `dateFilter`, `startDate`, `endDate`
 **Response Fields**: Array of session objects with calculated metrics
 **Used By**: Session listing page, session search functionality
 

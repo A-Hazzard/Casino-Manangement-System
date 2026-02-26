@@ -9,7 +9,7 @@
 import type { TimePeriod, dateRange } from '@/lib/types/index';
 
 export type UseDashboardFiltersProps = {
-  selectedLicencee: string;
+  selectedLicensee: string;
 };
 
 export type UseDashboardFiltersReturn = {

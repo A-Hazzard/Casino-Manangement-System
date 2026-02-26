@@ -64,7 +64,7 @@ export default function CollectionReportTable({
   sortDirection = 'desc',
   onSort,
   editableReportIds,
-  selectedLicencee,
+  selectedLicensee,
 }: CollectionReportTableProps) {
   useCurrencyFormat();
   const router = useRouter();
@@ -88,8 +88,8 @@ export default function CollectionReportTable({
   // Only show "No Data Available" when NOT loading and data is empty
   if (!loading && (!data || data.length === 0)) {
     const licenseeName =
-      getLicenseeName(selectedLicencee || undefined) ||
-      selectedLicencee ||
+      getLicenseeName(selectedLicensee || undefined) ||
+      selectedLicensee ||
       'the selected period';
     const emptyMessage = `No collection reports found for ${licenseeName}.`;
 

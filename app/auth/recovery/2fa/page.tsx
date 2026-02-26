@@ -70,7 +70,7 @@ function TwoFactorRecoveryContent() {
       } else {
         toast.error(data.error || 'Invalid verification code');
       }
-    } catch (_error) {
+    } catch {
       toast.error('Failed to confirm authenticator');
     } finally {
       setVerifyingCode(false);

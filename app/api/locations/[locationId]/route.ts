@@ -18,7 +18,7 @@ import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
         {
           _id: 1,
           name: 1,
-          'rel.licencee': 1,
+          'rel.licensee': 1,
         }
       );
 
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
 
       // Handle licensee field - it's stored as string | null in the database
       // Convert to array format for consistent API response
-      const licenseeId = location.rel?.licencee;
+      const licenseeId = location.rel?.licensee;
       const licenseeIdArray = licenseeId
         ? Array.isArray(licenseeId)
           ? licenseeId
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 5: Parse query parameters
     // ============================================================================
-    const licencee = url.searchParams.get('licencee');
+    const licensee = url.searchParams.get('licensee');
     const searchTerm = url.searchParams.get('search');
     const timePeriod = url.searchParams.get('timePeriod') as TimePeriod;
     const customStartDate = url.searchParams.get('startDate');
@@ -268,9 +268,9 @@ export async function GET(request: NextRequest) {
     }
 
     // CRITICAL SECURITY CHECK: Verify the location belongs to the selected licensee (if provided)
-    if (licencee && locationCheck.rel?.licencee !== licencee) {
+    if (licensee && locationCheck.rel?.licensee !== licensee) {
       console.error(
-        `Access denied: Location ${locationId} does not belong to licensee ${licencee}`
+        `Access denied: Location ${locationId} does not belong to licensee ${licensee}`
       );
       return NextResponse.json(
         { error: 'Access denied: Location not found for selected licensee' },
@@ -544,7 +544,7 @@ export async function GET(request: NextRequest) {
     // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
     const location = await GamingLocations.findOne(
       { _id: locationId },
-      { 'rel.licencee': 1, country: 1 }
+      { 'rel.licensee': 1, country: 1 }
     )
       .lean()
       .exec();
@@ -553,10 +553,10 @@ export async function GET(request: NextRequest) {
     let nativeCurrency: CurrencyCode = 'USD';
     if (location) {
       const locationData = location as {
-        rel?: { licencee?: string };
+        rel?: { licensee?: string };
         country?: string;
       };
-      const locationLicenseeId = locationData.rel?.licencee as
+      const locationLicenseeId = locationData.rel?.licensee as
         | string
         | undefined;
       if (!locationLicenseeId) {
@@ -578,7 +578,7 @@ export async function GET(request: NextRequest) {
       } else {
         // Get licensee's native currency
         // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
-        const licensee = await Licencee.findOne(
+        const licensee = await Licensee.findOne(
           { _id: locationLicenseeId },
           { name: 1 }
         )

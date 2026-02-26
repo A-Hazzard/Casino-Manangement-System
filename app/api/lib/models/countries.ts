@@ -7,18 +7,6 @@ const CountrySchema = new Schema(
       type: String,
       required: true,
     },
-    alpha2: {
-      type: String,
-      required: true,
-    },
-    alpha3: {
-      type: String,
-      required: true,
-    },
-    isoNumeric: {
-      type: String,
-      required: true,
-    },
     deletedAt: {
       type: Date,
       default: null,

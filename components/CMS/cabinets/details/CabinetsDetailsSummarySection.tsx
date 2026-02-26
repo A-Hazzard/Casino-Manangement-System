@@ -27,7 +27,7 @@ import RefreshButton from '@/components/shared/ui/RefreshButton';
 type CabinetsDetailsSummarySectionProps = {
   cabinet: Cabinet | null;
   locationName: string;
-  selectedLicencee: string | null;
+  selectedLicensee: string | null;
   isOnline: boolean;
   refreshing: boolean;
   canEditMachines: boolean;
@@ -41,7 +41,7 @@ type CabinetsDetailsSummarySectionProps = {
 export default function CabinetsDetailsSummarySection({
   cabinet,
   locationName,
-  selectedLicencee,
+  selectedLicensee,
   isOnline,
   refreshing,
   canEditMachines,
@@ -148,7 +148,7 @@ export default function CabinetsDetailsSummarySection({
                   <ExternalLink className="h-4 w-4 text-gray-500 hover:text-blue-600" />
                 </button>
               )}
-              <span className="text-gray-400">, {selectedLicencee === 'TTG' ? 'Trinidad and Tobago' : 'International'}</span>
+              <span className="text-gray-400">, {selectedLicensee === 'TTG' ? 'Trinidad and Tobago' : 'International'}</span>
             </p>
           </div>
 

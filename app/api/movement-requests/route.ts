@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
     // Get user's accessible locations
     const { searchParams } = new URL(req.url);
     const licensee =
-      searchParams.get('licensee') || searchParams.get('licencee');
+      searchParams.get('licensee') || searchParams.get('licensee');
     const allowedLocationIds = await getUserLocationFilter(
       isAdminOrDev ? 'all' : userAccessibleLicensees,
       licensee && licensee !== 'all' ? licensee : undefined,
@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
     if (licensee && licensee !== 'all') {
       const licenseeLocations = await GamingLocations.find(
         {
-          'rel.licencee': licensee,
+          'rel.licensee': licensee,
           $or: [
             { deletedAt: null },
             { deletedAt: { $lt: new Date('2025-01-01') } },

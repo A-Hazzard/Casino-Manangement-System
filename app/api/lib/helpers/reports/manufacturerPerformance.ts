@@ -79,14 +79,14 @@ function calculateManufacturerDateRange(
  * @param locationId - Location ID to filter by
  * @param startDate - Start date
  * @param endDate - End date
- * @param licencee - Optional licensee to filter by
+ * @param licensee - Optional licensee to filter by
  * @returns Aggregation pipeline stages
  */
 function buildManufacturerPerformancePipeline(
   locationId: string,
   startDate: Date,
   endDate: Date,
-  licencee?: string | null
+  licensee?: string | null
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [
     {
@@ -119,10 +119,10 @@ function buildManufacturerPerformancePipeline(
     },
   ];
 
-  if (licencee && licencee !== 'all') {
+  if (licensee && licensee !== 'all') {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licencee': licencee,
+        'locationDetails.rel.licensee': licensee,
       },
     } as PipelineStage);
   }
@@ -259,7 +259,7 @@ function calculateManufacturerPercentages(
  * @param timePeriod - Time period
  * @param startDate - Optional custom start date
  * @param endDate - Optional custom end date
- * @param licencee - Optional licensee to filter by
+ * @param licensee - Optional licensee to filter by
  * @returns Array of manufacturer performance items
  */
 export async function getManufacturerPerformance(
@@ -267,7 +267,7 @@ export async function getManufacturerPerformance(
   timePeriod: TimePeriod,
   startDate?: string | null,
   endDate?: string | null,
-  licencee?: string | null
+  licensee?: string | null
 ): Promise<ManufacturerPerformanceItem[]> {
   const { startDate: startDateFilter, endDate: endDateFilter } =
     calculateManufacturerDateRange(timePeriod, startDate, endDate);
@@ -276,7 +276,7 @@ export async function getManufacturerPerformance(
     locationId,
     startDateFilter,
     endDateFilter,
-    licencee
+    licensee
   );
 
   const manufacturerData: ManufacturerDataItem[] = [];

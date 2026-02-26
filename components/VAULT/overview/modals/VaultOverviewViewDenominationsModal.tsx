@@ -37,10 +37,10 @@ export default function VaultOverviewViewDenominationsModal({
   totalAmount,
 }: VaultOverviewViewDenominationsModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee } = useVaultLicensee();
 
   // Ensure all denominations are present even if quantity is 0
-  const standardDenoms = getDenominationValues(selectedLicencee);
+  const standardDenoms = getDenominationValues(selectedLicensee);
   const displayDenoms = standardDenoms.map(val => {
     const found = denominations.find(d => d.denomination === val);
     return {

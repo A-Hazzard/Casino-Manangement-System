@@ -38,7 +38,7 @@ import CabinetsDetailsSummarySection from '@/components/CMS/cabinets/details/Cab
 export default function CabinetsDetailsPageContent() {
   const hook = useCabinetPageData();
   const { user } = useUserStore();
-  const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
+  const { setSelectedLicensee, selectedLicensee } = useDashBoardStore();
   const { openEditModal } = useCabinetsActionsStore();
 
   const {
@@ -72,10 +72,10 @@ export default function CabinetsDetailsPageContent() {
   if (shouldShowNoLicenseeMessage(user)) {
     return (
       <PageLayout
-        headerProps={{ selectedLicencee, setSelectedLicencee }}
+        headerProps={{ selectedLicensee, setSelectedLicensee }}
         pageTitle=""
         hideOptions
-        hideLicenceeFilter
+        hideLicenseeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
       >
         <NoLicenseeAssigned />
@@ -86,8 +86,8 @@ export default function CabinetsDetailsPageContent() {
   if (!cabinet && !error) {
     return (
       <CabinetDetailsLoadingState
-        selectedLicencee={selectedLicencee}
-        setSelectedLicencee={setSelectedLicencee}
+        selectedLicensee={selectedLicensee}
+        setSelectedLicensee={setSelectedLicensee}
         error={error}
       />
     );
@@ -103,10 +103,10 @@ export default function CabinetsDetailsPageContent() {
       <CabinetsDeleteCabinetModal />
 
       <PageLayout
-        headerProps={{ selectedLicencee, setSelectedLicencee }}
+        headerProps={{ selectedLicensee, setSelectedLicensee }}
         pageTitle=""
         hideOptions
-        hideLicenceeFilter
+        hideLicenseeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
         onRefresh={handleRefresh}
         refreshing={refreshing}
@@ -116,7 +116,7 @@ export default function CabinetsDetailsPageContent() {
           <CabinetsDetailsSummarySection
             cabinet={cabinet}
             locationName={locationName}
-            selectedLicencee={selectedLicencee}
+            selectedLicensee={selectedLicensee}
             isOnline={isOnline}
             refreshing={refreshing}
             canEditMachines={canEditMachines}

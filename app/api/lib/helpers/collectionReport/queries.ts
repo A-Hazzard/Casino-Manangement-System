@@ -301,7 +301,7 @@ export async function determineAllowedLocationIds(
     const { GamingLocations } = await import('@/app/api/lib/models/gaminglocations');
     const managerLocations = await GamingLocations.find(
         {
-          'rel.licencee': { $in: userLicensees },
+          'rel.licensee': { $in: userLicensees },
           $or: [
             { deletedAt: null },
             { deletedAt: { $lt: new Date('2025-01-01') } },
@@ -355,14 +355,14 @@ export async function getLocationNamesFromIds(
  * @param startDate - Start date for filtering.
  * @param endDate - End date for filtering.
  * @param locationName - Optional location name to filter.
- * @param licencee - Optional licencee to filter.
+ * @param licensee - Optional licensee to filter.
  * @returns Promise<{ drop: string; cancelledCredits: string; gross: string; sasGross: string; }> Aggregated sums for the summary table.
  */
 export async function getMonthlyCollectionReportSummary(
   startDate: Date,
   endDate: Date,
   locationFilter?: string | string[],
-  licencee?: string
+  licensee?: string
 ): Promise<{
   drop: string;
   cancelledCredits: string;
@@ -393,8 +393,8 @@ export async function getMonthlyCollectionReportSummary(
 
   let pipeline: PipelineStage[] = [];
 
-  if (licencee) {
-    // If licencee is specified, we need to join with gaminglocations to filter by licencee
+  if (licensee) {
+    // If licensee is specified, we need to join with gaminglocations to filter by licensee
     pipeline = [
       {
         $lookup: {
@@ -405,7 +405,7 @@ export async function getMonthlyCollectionReportSummary(
         },
       },
       { $unwind: '$locationDetails' },
-      { $match: { 'locationDetails.rel.licencee': licencee, ...match } },
+      { $match: { 'locationDetails.rel.licensee': licensee, ...match } },
       {
         $group: {
           _id: null,
@@ -417,7 +417,7 @@ export async function getMonthlyCollectionReportSummary(
       },
     ];
   } else {
-    // No licencee filter, use simple aggregation
+    // No licensee filter, use simple aggregation
     pipeline = [
       { $match: match },
       {
@@ -455,14 +455,14 @@ export async function getMonthlyCollectionReportSummary(
  * @param startDate - Start date for filtering.
  * @param endDate - End date for filtering.
  * @param locationName - Optional location name to filter.
- * @param licencee - Optional licencee to filter.
+ * @param licensee - Optional licensee to filter.
  * @returns Promise<Array<{ location: string; drop: string; win: string; gross: string; sasGross: string }>> Aggregated data per location for the details table.
  */
 export async function getMonthlyCollectionReportByLocation(
   startDate: Date,
   endDate: Date,
   locationFilter?: string | string[],
-  licencee?: string
+  licensee?: string
 ): Promise<
   Array<{
     location: string;
@@ -496,8 +496,8 @@ export async function getMonthlyCollectionReportByLocation(
 
   let pipeline: PipelineStage[] = [];
 
-  if (licencee) {
-    // If licencee is specified, we need to join with gaminglocations to filter by licencee
+  if (licensee) {
+    // If licensee is specified, we need to join with gaminglocations to filter by licensee
     pipeline = [
       {
         $lookup: {
@@ -508,7 +508,7 @@ export async function getMonthlyCollectionReportByLocation(
         },
       },
       { $unwind: '$locationDetails' },
-      { $match: { 'locationDetails.rel.licencee': licencee, ...match } },
+      { $match: { 'locationDetails.rel.licensee': licensee, ...match } },
       {
         $group: {
           _id: '$locationName',
@@ -521,7 +521,7 @@ export async function getMonthlyCollectionReportByLocation(
       { $sort: { _id: 1 } },
     ];
   } else {
-    // No licencee filter, use simple aggregation
+    // No licensee filter, use simple aggregation
     pipeline = [
       { $match: match },
       {

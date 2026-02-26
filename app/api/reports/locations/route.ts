@@ -27,7 +27,7 @@ import {
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
@@ -62,8 +62,8 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
-    const licencee =
-      searchParams.get('licensee') || searchParams.get('licencee') || undefined;
+    const licensee =
+      searchParams.get('licensee') || searchParams.get('licensee') || undefined;
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;
     let displayCurrency: CurrencyCode = currencyParam || 'USD';
     const searchTerm = searchParams.get('search')?.trim() || '';
@@ -107,7 +107,7 @@ export async function GET(req: NextRequest) {
     // STEP 3: Determine accessible locations and display currency
     // ============================================================================
     let resolvedLicensee =
-      licencee && licencee !== 'all' ? licencee : undefined;
+      licensee && licensee !== 'all' ? licensee : undefined;
     if (
       !resolvedLicensee &&
       userAccessibleLicensees !== 'all' &&
@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!currencyParam && resolvedLicensee) {
-      const licenseeDoc = await Licencee.findOne(
+      const licenseeDoc = await Licensee.findOne(
         { _id: resolvedLicensee },
         { name: 1 }
       ).lean();
@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
 
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,
-      licencee || undefined,
+      licensee || undefined,
       userLocationPermissions,
       userRoles
     );
@@ -159,8 +159,8 @@ export async function GET(req: NextRequest) {
       locationMatchStage._id = { $in: specificLocations };
     }
 
-    if (licencee && licencee !== 'all') {
-      locationMatchStage['rel.licencee'] = licencee;
+    if (licensee && licensee !== 'all') {
+      locationMatchStage['rel.licensee'] = licensee;
     }
 
     if (searchTerm) {
@@ -499,7 +499,7 @@ export async function GET(req: NextRequest) {
     const paginated = locationResults.slice(skip, skip + limit);
     const converted = await applyLocationsCurrencyConversion(
       paginated,
-      licencee,
+      licensee,
       displayCurrency,
       isAdminOrDev
     );
@@ -518,7 +518,7 @@ export async function GET(req: NextRequest) {
         hasPrevPage: page > 1,
       },
       currency: displayCurrency,
-      converted: isAdminOrDev && (licencee === 'all' || !licencee),
+      converted: isAdminOrDev && (licensee === 'all' || !licensee),
       performance: { totalTime: Date.now() - perfStart },
     });
   } catch (err) {

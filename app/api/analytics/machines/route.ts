@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = Number(searchParams.get('limit')) || 5;
     const selectedLicensee =
-      searchParams.get('licensee') || searchParams.get('licencee') || undefined;
+      searchParams.get('licensee') || searchParams.get('licensee') || undefined;
     const selectedLocation = searchParams.get('location') || undefined;
 
     // ============================================================================

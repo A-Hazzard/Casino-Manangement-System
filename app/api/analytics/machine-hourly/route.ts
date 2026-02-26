@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse and validate request parameters (locationIds, machineIds, timePeriod, licencee, startDate, endDate, currency)
+ * 2. Parse and validate request parameters (locationIds, machineIds, timePeriod, licensee, startDate, endDate, currency)
  * 3. Execute the core machine hourly fetching logic via `getMachineHourlyData` helper
  * 4. Return machine hourly trends data
  */
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     const machineIds = searchParams.get('machineIds');
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = searchParams.get('licencee');
+    const licensee = searchParams.get('licensee');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
     const displayCurrency =
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
       locationIds,
       machineIds,
       timePeriod,
-      licencee,
+      licensee,
       startDateParam,
       endDateParam,
       displayCurrency

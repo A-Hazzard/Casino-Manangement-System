@@ -333,7 +333,7 @@ export default function MapPreview(props: MapPreviewProps) {
   const router = useRouter();
 
   // Get Zustand state for reactivity
-  const { selectedLicencee, activeMetricsFilter, customDateRange } =
+  const { selectedLicensee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
 
   // Initialize Leaflet on client side
@@ -389,7 +389,7 @@ export default function MapPreview(props: MapPreviewProps) {
     };
   }, [mapReady]);
 
-  const normalizedSelected = (selectedLicencee || '').toLowerCase();
+  const normalizedSelected = (selectedLicensee || '').toLowerCase();
 
   const getLocationCenter = (location: Location): [number, number] | null => {
     if (!location?.geoCoords || !location.geoCoords.latitude) {
@@ -402,15 +402,15 @@ export default function MapPreview(props: MapPreviewProps) {
     return [location.geoCoords.latitude, longitude];
   };
 
-  const matchesLicencee = (
+  const matchesLicensee = (
     location: Location,
-    licenceeKey: string
+    licenseeKey: string
   ): boolean => {
-    if (!licenceeKey) return false;
+    if (!licenseeKey) return false;
 
     const metadata = location as Location & {
       licenseeId?: string | null;
-      rel?: { licencee?: string | string[] | null };
+      rel?: { licensee?: string | string[] | null };
     };
 
     const licenseeCandidates: string[] = [];
@@ -419,22 +419,22 @@ export default function MapPreview(props: MapPreviewProps) {
       licenseeCandidates.push(String(metadata.licenseeId).toLowerCase());
     }
 
-    const relLicencee = metadata.rel?.licencee;
-    if (Array.isArray(relLicencee)) {
-      relLicencee.forEach(value => {
+    const relLicensee = metadata.rel?.licensee;
+    if (Array.isArray(relLicensee)) {
+      relLicensee.forEach(value => {
         if (value) {
           licenseeCandidates.push(String(value).toLowerCase());
         }
       });
-    } else if (relLicencee) {
-      licenseeCandidates.push(String(relLicencee).toLowerCase());
+    } else if (relLicensee) {
+      licenseeCandidates.push(String(relLicensee).toLowerCase());
     }
 
     if (metadata.name) {
       licenseeCandidates.push(String(metadata.name).toLowerCase());
     }
 
-    return licenseeCandidates.includes(licenceeKey);
+    return licenseeCandidates.includes(licenseeKey);
   };
 
   const validLocations = useMemo(() => {
@@ -460,7 +460,7 @@ export default function MapPreview(props: MapPreviewProps) {
       return validLocations;
     }
     return validLocations.filter((location: any) =>
-      matchesLicencee(location, normalizedSelected)
+      matchesLicensee(location, normalizedSelected)
     );
   }, [normalizedSelected, validLocations]);
 
@@ -484,7 +484,7 @@ export default function MapPreview(props: MapPreviewProps) {
 
   // Update map center when licensee or locations change
   useEffect(() => {
-    const fallbackCenter = getMapCenterByLicensee(selectedLicencee);
+    const fallbackCenter = getMapCenterByLicensee(selectedLicensee);
     let nextCenter: [number, number] | null = null;
 
     if (normalizedSelected && normalizedSelected !== 'all') {
@@ -501,7 +501,7 @@ export default function MapPreview(props: MapPreviewProps) {
     setUserDefaultCenter(prev =>
       centersEqual(prev, resolved) ? prev : resolved
     );
-  }, [selectedLicencee, normalizedSelected, filteredLocations, validLocations]);
+  }, [selectedLicensee, normalizedSelected, filteredLocations, validLocations]);
 
   // Handle external props vs internal fetch
   useEffect(() => {
@@ -552,8 +552,8 @@ export default function MapPreview(props: MapPreviewProps) {
         // No valid timePeriod, skip the request
         return;
       }
-      if (selectedLicencee) {
-        params.append('licencee', selectedLicencee);
+      if (selectedLicensee) {
+        params.append('licensee', selectedLicensee);
       }
 
       const requestKey = `/api/locationAggregation?${params.toString()}`;
@@ -586,7 +586,7 @@ export default function MapPreview(props: MapPreviewProps) {
   }, [
     activeMetricsFilter,
     customDateRange,
-    selectedLicencee,
+    selectedLicensee,
     props.locationAggregates,
   ]);
 

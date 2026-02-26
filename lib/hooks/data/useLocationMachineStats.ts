@@ -25,7 +25,7 @@ export function useLocationMachineStats(
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null);
   const [machineStatsLoading, setMachineStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
+  const selectedLicensee = useDashBoardStore(state => state.selectedLicensee);
   const makeRequest = useAbortableRequest();
 
   // Fetch machine stats
@@ -35,7 +35,7 @@ export function useLocationMachineStats(
 
     try {
       // Use selected licensee or 'all' if not selected
-      const licensee = selectedLicencee || 'all';
+      const licensee = selectedLicensee || 'all';
       const stats = await fetchMachineStats(
         licensee,
         locationId,
@@ -62,14 +62,14 @@ export function useLocationMachineStats(
     } finally {
       setMachineStatsLoading(false);
     }
-  }, [selectedLicencee, locationId, machineTypeFilter, search, gameTypeFilter]);
+  }, [selectedLicensee, locationId, machineTypeFilter, search, gameTypeFilter]);
 
   // Refresh machine stats
   const refreshMachineStats = useCallback(async () => {
     await fetchMachineStatsData();
   }, [fetchMachineStatsData]);
 
-  // Load machine stats on mount and when selectedLicencee, locationId, or machineTypeFilter changes
+  // Load machine stats on mount and when selectedLicensee, locationId, or machineTypeFilter changes
   useEffect(() => {
     const loadMachineStats = async () => {
       setMachineStatsLoading(true);
@@ -77,7 +77,7 @@ export function useLocationMachineStats(
 
       try {
         const result = await makeRequest(async signal => {
-          const licensee = selectedLicencee || 'all';
+          const licensee = selectedLicensee || 'all';
           const stats = await fetchMachineStats(
             licensee,
             locationId,
@@ -114,7 +114,7 @@ export function useLocationMachineStats(
     };
 
     loadMachineStats();
-  }, [selectedLicencee, locationId, machineTypeFilter, search, gameTypeFilter, makeRequest]);
+  }, [selectedLicensee, locationId, machineTypeFilter, search, gameTypeFilter, makeRequest]);
 
   return {
     machineStats,

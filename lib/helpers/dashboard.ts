@@ -49,7 +49,7 @@ import axios from 'axios';
  */
 export const loadGamingLocations = async (
   setGamingLocations: (locations: locations) => void,
-  selectedLicencee?: string,
+  selectedLicensee?: string,
   options?: {
     forceAll?: boolean;
   }
@@ -59,8 +59,8 @@ export const loadGamingLocations = async (
     const params = new URLSearchParams();
     params.append('minimal', '1');
     // Always pass licensee parameter (even if 'all' or empty) so API knows user's selection
-    if (selectedLicencee) {
-      params.append('licencee', selectedLicencee);
+    if (selectedLicensee) {
+      params.append('licensee', selectedLicensee);
     }
     if (options?.forceAll) {
       params.append('forceAll', 'true');
@@ -93,11 +93,11 @@ export const loadGamingLocations = async (
 
     // Fallback to original method
     try {
-      const fallbackLicencee =
-        options?.forceAll && (!selectedLicencee || selectedLicencee === 'all')
+      const fallbackLicensee =
+        options?.forceAll && (!selectedLicensee || selectedLicensee === 'all')
           ? undefined
-          : selectedLicencee;
-      const locationsData = await getAllGamingLocations(fallbackLicencee);
+          : selectedLicensee;
+      const locationsData = await getAllGamingLocations(fallbackLicensee);
       setGamingLocations(locationsData);
       return locationsData;
     } catch (fallbackError) {
@@ -120,7 +120,7 @@ export const loadGamingLocations = async (
 export const fetchDashboardTotals = async (
   activeMetricsFilter: TimePeriod,
   customDateRange: DateRange,
-  selectedLicencee: string | undefined,
+  selectedLicensee: string | undefined,
   setTotals: (totals: DashboardTotals | null) => void,
   displayCurrency?: string,
   signal?: AbortSignal,
@@ -141,8 +141,8 @@ export const fetchDashboardTotals = async (
       url += `&startDate=${fromDate}&endDate=${toDate}`;
     }
 
-    if (selectedLicencee && selectedLicencee !== 'all') {
-      url += `&licencee=${selectedLicencee}`;
+    if (selectedLicensee && selectedLicensee !== 'all') {
+      url += `&licensee=${selectedLicensee}`;
     }
 
     if (displayCurrency) {
@@ -389,7 +389,7 @@ export const fetchDashboardTotals = async (
 export const fetchMetricsData = async (
   activeMetricsFilter: TimePeriod,
   customDateRange: DateRange,
-  selectedLicencee: string | undefined,
+  selectedLicensee: string | undefined,
   setTotals: (totals: DashboardTotals | null) => void,
   setChartData: (data: dashboardData[]) => void,
   setActiveFilters: (filters: ActiveFilters) => void,
@@ -404,12 +404,12 @@ export const fetchMetricsData = async (
     fetchDashboardTotals(
       activeMetricsFilter,
       customDateRange,
-      selectedLicencee,
+      selectedLicensee,
       setTotals,
       displayCurrency,
       signal
     ),
-    selectedLicencee
+    selectedLicensee
       ? switchFilter(
           activeMetricsFilter,
           () => {}, // Don't set totals here, we already did it above
@@ -420,7 +420,7 @@ export const fetchMetricsData = async (
           activeMetricsFilter === 'Custom'
             ? customDateRange.endDate
             : undefined,
-          selectedLicencee,
+          selectedLicensee,
           setActiveFilters,
           setShowDatePicker,
           displayCurrency,
@@ -455,7 +455,7 @@ export const fetchTopPerformingDataHelper = async (
   activePieChartFilter: TimePeriod,
   setTopPerformingData: (data: TopPerformingData) => void,
   setLoadingTopPerforming: (loading: boolean) => void,
-  selectedLicencee?: string,
+  selectedLicensee?: string,
   currency?: string,
   signal?: AbortSignal,
   customDateRange?: DateRange
@@ -477,7 +477,7 @@ export const fetchTopPerformingDataHelper = async (
     const data = await fetchTopPerformingData(
       activeTab,
       activePieChartFilter,
-      selectedLicencee,
+      selectedLicensee,
       currency,
       signal,
       activePieChartFilter === 'Custom'
@@ -516,7 +516,7 @@ export const fetchTopPerformingDataHelper = async (
 export const handleDashboardRefresh = async (
   activeMetricsFilter: TimePeriod,
   customDateRange: DateRange,
-  selectedLicencee: string | undefined,
+  selectedLicensee: string | undefined,
   activeTab: ActiveTab,
   activePieChartFilter: TimePeriod,
   setRefreshing: (refreshing: boolean) => void,
@@ -537,8 +537,8 @@ export const handleDashboardRefresh = async (
     // In refresh: also refetch gaming locations to ensure map data stays in sync
     const locationsParams = new URLSearchParams();
     locationsParams.append('minimal', '1');
-    if (selectedLicencee && selectedLicencee !== 'all') {
-      locationsParams.append('licencee', selectedLicencee);
+    if (selectedLicensee && selectedLicensee !== 'all') {
+      locationsParams.append('licensee', selectedLicensee);
     }
 
     // Parallelize metrics + top-performing + a lightweight locations ping to warm caches
@@ -546,7 +546,7 @@ export const handleDashboardRefresh = async (
       fetchMetricsData(
         activeMetricsFilter,
         customDateRange,
-        selectedLicencee,
+        selectedLicensee,
         setTotals,
         setChartData,
         setActiveFilters,
@@ -556,7 +556,7 @@ export const handleDashboardRefresh = async (
       fetchTopPerformingData(
         activeTab,
         activePieChartFilter,
-        selectedLicencee,
+        selectedLicensee,
         displayCurrency,
         undefined,
         activePieChartFilter === 'Custom'

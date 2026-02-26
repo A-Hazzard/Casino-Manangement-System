@@ -16,14 +16,14 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-  getUserAccessibleLicenseesFromToken,
-  getUserLocationFilter,
+    getUserAccessibleLicenseesFromToken,
+    getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { UpdateLocationData } from '@/lib/types/location';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
@@ -61,9 +61,9 @@ export async function GET(request: Request) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    // Support both 'licensee' and 'licencee' spelling for backwards compatibility
-    const licencee =
-      searchParams.get('licensee') || searchParams.get('licencee');
+    // Support both 'licensee' and 'licensee' spelling for backwards compatibility
+    const licensee =
+      searchParams.get('licensee') || searchParams.get('licensee');
     const minimal = searchParams.get('minimal') === '1';
 
     // Note: Collectors can access location data via API for collection reports
@@ -109,13 +109,13 @@ export async function GET(request: Request) {
 
     // Determine the licensee filter to use
     // If forceAll is true and user is admin, ignore licensee filter (show all)
-    // If licencee is 'all' or empty, pass undefined to getUserLocationFilter to return all locations
+    // If licensee is 'all' or empty, pass undefined to getUserLocationFilter to return all locations
     // Otherwise, use the licensee parameter from query string
     const licenseeFilterToUse =
       forceAll && isAdminOrDeveloper
         ? undefined
-        : licencee && licencee !== 'all'
-          ? licencee
+        : licensee && licensee !== 'all'
+          ? licensee
           : undefined;
 
     // Apply location filtering based on licensee + location permissions
@@ -140,7 +140,7 @@ export async function GET(request: Request) {
           // Resolve licensee ID (could be ID or name)
           let resolvedLicenseeId = licenseeFilterToUse;
           try {
-            const licenseeDoc = await Licencee.findOne(
+            const licenseeDoc = await Licensee.findOne(
               {
                 $or: [
                   { _id: licenseeFilterToUse },
@@ -161,7 +161,15 @@ export async function GET(request: Request) {
             // If resolution fails, use as-is
           }
 
-          queryFilter['rel.licencee'] = resolvedLicenseeId;
+          if (!queryFilter.$and) {
+            queryFilter.$and = [];
+          }
+          (queryFilter.$and as any[]).push({
+            $or: [
+              { 'rel.licensee': resolvedLicenseeId },
+              { 'rel.licencee': resolvedLicenseeId },
+            ],
+          });
           console.log(
             `[Locations API] Applied licensee filter: ${resolvedLicenseeId} (from ${licenseeFilterToUse})`
           );
@@ -175,7 +183,7 @@ export async function GET(request: Request) {
         // Resolve licensee ID (could be ID or name)
         let resolvedLicenseeId = licenseeFilterToUse;
         try {
-          const licenseeDoc = await Licencee.findOne(
+          const licenseeDoc = await Licensee.findOne(
             {
               $or: [
                 { _id: licenseeFilterToUse },
@@ -198,7 +206,15 @@ export async function GET(request: Request) {
           );
         }
 
-        queryFilter['rel.licencee'] = resolvedLicenseeId;
+        if (!queryFilter.$and) {
+          queryFilter.$and = [];
+        }
+        (queryFilter.$and as any[]).push({
+          $or: [
+            { 'rel.licensee': resolvedLicenseeId },
+            { 'rel.licencee': resolvedLicenseeId },
+          ],
+        });
         console.log(
           `[Locations API] Applied licensee filter (admin): ${resolvedLicenseeId} (from ${licenseeFilterToUse})`
         );
@@ -209,7 +225,7 @@ export async function GET(request: Request) {
     // STEP 5: Fetch locations with optional minimal projection
     // ============================================================================
     const projection = minimal
-      ? { _id: 1, name: 1, geoCoords: 1, 'rel.licencee': 1 }
+      ? { _id: 1, name: 1, geoCoords: 1, 'rel.licensee': 1 }
       : undefined;
     const locations = await GamingLocations.find(queryFilter, projection)
       .sort({ name: 1 })
@@ -219,16 +235,16 @@ export async function GET(request: Request) {
     // STEP 6: Add licenseeId field for frontend filtering
     // ============================================================================
     const locationsWithLicenseeId = locations.map(loc => {
-      const licenceeRaw = loc.rel?.licencee;
+      const licenseeRaw = loc.rel?.licensee || (loc.rel as any)?.licencee;
       let licenseeId: string | null = null;
 
-      if (Array.isArray(licenceeRaw)) {
+      if (Array.isArray(licenseeRaw)) {
         licenseeId =
-          licenceeRaw.length > 0 && licenceeRaw[0]
-            ? String(licenceeRaw[0])
+          licenseeRaw.length > 0 && licenseeRaw[0]
+            ? String(licenseeRaw[0])
             : null;
-      } else if (licenceeRaw) {
-        licenseeId = String(licenceeRaw);
+      } else if (licenseeRaw) {
+        licenseeId = String(licenseeRaw);
       }
 
       return {
@@ -372,7 +388,7 @@ export async function POST(request: Request) {
         city: address?.city || '',
       },
       rel: {
-        licencee: (rel?.licencee as string[] | undefined) || [],
+        licensee: (rel?.licensee as string[] | undefined) || [],
       },
       profitShare: profitShare || 50,
       gameDayOffset: gameDayOffset ?? 8,
@@ -450,9 +466,9 @@ export async function POST(request: Request) {
             newValue: address?.city || '',
           },
           {
-            field: 'rel.licencee',
+            field: 'rel.licensee',
             oldValue: null,
-            newValue: rel?.licencee || '',
+            newValue: rel?.licensee || '',
           },
           { field: 'profitShare', oldValue: null, newValue: profitShare || 50 },
           {
@@ -534,7 +550,7 @@ export async function POST(request: Request) {
       const friendlyFieldMap: Record<string, string> = {
         name: 'Location Name',
         location: 'Location ID',
-        'rel.licencee': 'Licensee',
+        'rel.licensee': 'Licensee',
       };
 
       const displayField = friendlyFieldMap[fieldName] || fieldName;
@@ -695,7 +711,7 @@ export async function PUT(request: Request) {
 
     if (rel) {
       updateData.rel = {};
-      if (rel.licencee !== undefined) updateData.rel.licencee = rel.licencee;
+      if (rel.licensee !== undefined) updateData.rel.licensee = rel.licensee;
     }
 
     // Handle primitive types with explicit checks to handle zero values
@@ -810,11 +826,11 @@ export async function PUT(request: Request) {
             newValue: address.city,
           });
         }
-        if (rel?.licencee !== undefined) {
+        if (rel?.licensee !== undefined) {
           updateChanges.push({
-            field: 'rel.licencee',
-            oldValue: location.rel?.licencee,
-            newValue: rel.licencee,
+            field: 'rel.licensee',
+            oldValue: location.rel?.licensee,
+            newValue: rel.licensee,
           });
         }
         if (profitShare !== undefined) {
@@ -927,7 +943,7 @@ export async function PUT(request: Request) {
       const friendlyFieldMap: Record<string, string> = {
         name: 'Location Name',
         location: 'Location ID',
-        'rel.licencee': 'Licensee',
+        'rel.licensee': 'Licensee',
       };
 
       const displayField = friendlyFieldMap[fieldName] || fieldName;
@@ -1025,8 +1041,8 @@ export async function DELETE(request: Request) {
             newValue: null,
           },
           {
-            field: 'rel.licencee',
-            oldValue: locationToDelete.rel?.licencee || '',
+            field: 'rel.licensee',
+            oldValue: locationToDelete.rel?.licensee || '',
             newValue: null,
           },
           {

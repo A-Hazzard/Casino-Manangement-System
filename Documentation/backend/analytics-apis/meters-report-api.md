@@ -52,7 +52,7 @@ This ensures that financial metrics and meter readings are calculated based on t
 - `timePeriod` - "Today", "Yesterday", "7d", "30d", "Custom"
 - `startDate` - Custom start date (ISO format)
 - `endDate` - Custom end date (ISO format)
-- `licencee` - Licensee filter
+- `licensee` - Licensee filter
 - `locationIds` - Comma-separated location IDs
 
 **Response:**
@@ -371,7 +371,7 @@ type MetersReportParams = {
   page?: number;                  // Pagination page number (default: 1)
   limit?: number;                 // Items per page (default: 10, max: 100)
   search?: string;                // Search term for machine ID, location name, serial number, or custom name
-  licencee?: string;              // Filter by licensee ID (triggers location refetch)
+  licensee?: string;              // Filter by licensee ID (triggers location refetch)
   includeHourlyData?: boolean;    // Include hourly chart data in response
   hourlyDataMachineIds?: string;  // Comma-separated machine IDs for filtered hourly chart data
   currency?: string;              // Display currency code (USD, TTD, GYD, BBD)
@@ -876,7 +876,7 @@ const params = new URLSearchParams({
   page: '1',
   limit: '10',
   search: 'machine123',
-  licencee: 'licensee_id',
+  licensee: 'licensee_id',
 });
 
 const response = await fetch(`/api/reports/meters?${params}`);

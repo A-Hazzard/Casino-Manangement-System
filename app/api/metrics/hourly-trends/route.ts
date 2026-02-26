@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     const locationIds = searchParams.get('locationIds');
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = searchParams.get('licencee');
+    const licensee = searchParams.get('licensee');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
 
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
       timePeriod,
       startDateParam,
       endDateParam,
-      licencee
+      licensee
     );
 
     // ============================================================================

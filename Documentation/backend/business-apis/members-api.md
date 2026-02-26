@@ -231,7 +231,7 @@ Retrieves a paginated list of members with search and filtering capabilities, in
 - `limit` (number, default: 10): Number of members per page
 - `sortBy` (string, default: "createdAt"): Sort field (name, playerId, lastSession, createdAt, locationName, winLoss, lastLogin)
 - `sortOrder` (string, default: "desc"): Sort direction (asc, desc)
-- `licencee` (string, optional): Filter by licensee ID
+- `licensee` (string, optional): Filter by licensee ID
 
 **Response (Success - 200):**
 ```json
@@ -295,7 +295,7 @@ Retrieves a paginated summary of members with additional filtering options, incl
 
 **Query Parameters:**
 
-- `licencee` (string, optional): Filter by licensee ID
+- `licensee` (string, optional): Filter by licensee ID
 - `dateFilter` (string, default: "all"): Date filter (all, yesterday, week, month, custom)
 - `startDate` (string, optional): Start date for custom date filtering (ISO format)
 - `endDate` (string, optional): End date for custom date filtering (ISO format)
@@ -771,7 +771,7 @@ SessionHistoryEntry {
 - Applies licensee and location filters
 - Calculates win/loss from session data
 - Returns paginated results
-  **Query Parameters**: `search`, `page`, `limit`, `sortBy`, `sortOrder`, `licencee`
+  **Query Parameters**: `search`, `page`, `limit`, `sortBy`, `sortOrder`, `licensee`
   **Response Fields**: Array of `Member` objects with calculated financial metrics
   **Used By**: Member listing page, member search functionality
 
@@ -784,7 +784,7 @@ SessionHistoryEntry {
 - Applies date range filtering
 - Calculates summary statistics
 - Returns paginated results with summary data
-  **Query Parameters**: `licencee`, `dateFilter`, `startDate`, `endDate`, `search`, `location`
+  **Query Parameters**: `licensee`, `dateFilter`, `startDate`, `endDate`, `search`, `location`
   **Response Fields**: Member summary with aggregated statistics
   **Used By**: Member analytics, CSV export functionality
 
@@ -901,7 +901,7 @@ dateFilter = FIND(sessions WHERE startTime BETWEEN startDate AND endDate)
 
 // Licensee Filter
 licenseeFilter = FIND(members WHERE gamingLocation IN (
-  SELECT _id FROM gaminglocations WHERE rel.licencee = licenseeId
+  SELECT _id FROM gaminglocations WHERE rel.licensee = licenseeId
 ))
 ```
 
@@ -979,7 +979,7 @@ Member location information is populated via MongoDB `$lookup` operations:
 
 **Licensee Filtering:**
 
-- Filters members by `gaminglocations.rel.licencee` field
+- Filters members by `gaminglocations.rel.licensee` field
 - Ensures multi-tenant data isolation
 - Applied via aggregation pipeline matching
 

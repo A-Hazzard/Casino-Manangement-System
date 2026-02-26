@@ -88,7 +88,7 @@ export default function CollectionReportPageContent() {
   // ============================================================================
   const hook = useCollectionReportPageData();
   const { user } = useUserStore();
-  const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
+  const { setSelectedLicensee, selectedLicensee } = useDashBoardStore();
 
   const desktopTableRef = useRef<HTMLDivElement | null>(null);
   const mobileCardsRef = useRef<HTMLDivElement | null>(null);
@@ -123,10 +123,10 @@ export default function CollectionReportPageContent() {
   } = hook;
 
   // Initialize specialized hooks for secondary tabs
-  const monthlyHook = useMonthlyReportData(selectedLicencee);
-  const collectorHook = useCollectorScheduleData(selectedLicencee, locations);
+  const monthlyHook = useMonthlyReportData(selectedLicensee);
+  const collectorHook = useCollectorScheduleData(selectedLicensee, locations);
   const managerHook = useManagerScheduleData(
-    selectedLicencee,
+    selectedLicensee,
     locations,
     collectorHook.collectors
   );
@@ -139,10 +139,10 @@ export default function CollectionReportPageContent() {
   if (shouldShowNoLicenseeMessage(user)) {
     return (
       <PageLayout
-        headerProps={{ setSelectedLicencee }}
+        headerProps={{ setSelectedLicensee }}
         pageTitle="Collection Reports"
         hideOptions
-        hideLicenceeFilter
+        hideLicenseeFilter
         hideCurrencyFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
         showToaster
@@ -160,8 +160,8 @@ export default function CollectionReportPageContent() {
   return (
     <>
       <PageLayout
-        headerProps={{ setSelectedLicencee, disabled: false }}
-        hideLicenceeFilter={!shouldShowLicenseeFilter(user)}
+        headerProps={{ setSelectedLicensee, disabled: false }}
+        hideLicenseeFilter={!shouldShowLicenseeFilter(user)}
         hideCurrencyFilter
         mainClassName="flex flex-col flex-1 w-full max-w-full p-4 md:p-6 overflow-x-hidden"
         showToaster
@@ -240,7 +240,7 @@ export default function CollectionReportPageContent() {
                       sortField={filters.sortField}
                       sortDirection={filters.sortDirection}
                       onSort={filters.handleSort}
-                      selectedLicencee={selectedLicencee}
+                      selectedLicensee={selectedLicensee}
                       editableReportIds={hook.editableReportIds}
                     />
                   </div>
@@ -271,7 +271,7 @@ export default function CollectionReportPageContent() {
                       isSearching={isSearching}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
-                      selectedLicencee={selectedLicencee}
+                      selectedLicensee={selectedLicensee}
                       editableReportIds={hook.editableReportIds}
                     />
                   </div>

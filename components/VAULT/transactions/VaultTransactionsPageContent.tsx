@@ -49,7 +49,7 @@ export default function VaultTransactionsPageContent() {
   // Hooks & State
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicencee, setLicenseeId: setSelectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee, setLicenseeId: setSelectedLicensee } = useVaultLicensee();
   const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<ExtendedVaultTransaction[]>(
@@ -103,7 +103,7 @@ export default function VaultTransactionsPageContent() {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData, selectedLicencee]);
+  }, [fetchData, selectedLicensee]);
 
   // Periodic refresh only if at least 2 items
   useEffect(() => {
@@ -239,8 +239,8 @@ export default function VaultTransactionsPageContent() {
         onRefresh={() => fetchData(true)}
         refreshing={loading}
         headerProps={isAdminOrDev ? {
-            selectedLicencee,
-            setSelectedLicencee,
+            selectedLicensee,
+            setSelectedLicensee,
             disabled: false
         } : undefined}
     >

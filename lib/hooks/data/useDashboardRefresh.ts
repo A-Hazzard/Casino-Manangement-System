@@ -24,7 +24,7 @@ import { TimePeriod } from '@/shared/types/common';
 import { useCallback } from 'react';
 
 export function useDashboardRefresh({
-  selectedLicencee,
+  selectedLicensee,
   activeMetricsFilter,
   activePieChartFilter,
   customDateRange,
@@ -54,7 +54,7 @@ export function useDashboardRefresh({
     await handleDashboardRefresh(
       activeMetricsFilter as TimePeriod,
       customDateRange || { startDate: new Date(), endDate: new Date() },
-      selectedLicencee,
+      selectedLicensee,
       activeTab as 'Cabinets' | 'locations',
       activePieChartFilter as TimePeriod,
       setRefreshing,
@@ -72,7 +72,7 @@ export function useDashboardRefresh({
     canRefresh,
     activeMetricsFilter,
     customDateRange,
-    selectedLicencee,
+    selectedLicensee,
     activeTab,
     activePieChartFilter,
     displayCurrency, // Include currency in dependencies

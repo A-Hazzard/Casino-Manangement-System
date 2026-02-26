@@ -451,11 +451,11 @@ export const updateCabinet = async (
  */
 export const fetchCabinetLocations = async (licensee?: string) => {
   try {
-    // Note: API might expect either "licencee" or "licensee" so we'll try both formats
+    // Note: API might expect either "licensee" or "licensee" so we'll try both formats
     let params: Record<string, string> = {};
     if (licensee) {
       // Include both parameter naming conventions to be safe
-      params = { licensee, licencee: licensee };
+      params = { licensee };
     }
 
     const response = await axios.get('/api/machines/locations', {
@@ -487,7 +487,7 @@ export const fetchCabinetLocations = async (licensee?: string) => {
  * Fetch cabinets for a specific location, with optional filters.
  *
  * @param locationId - The unique identifier for the location.
- * @param licencee - (Optional) Licencee filter.
+ * @param licensee - (Optional) Licensee filter.
  * @param timePeriod - (Optional) Time period filter.
  * @param searchTerm - (Optional) Search term filter.
  * @param customDateRange - (Optional) Custom date range for timePeriod \"Custom\".
@@ -498,7 +498,7 @@ export const fetchCabinetLocations = async (licensee?: string) => {
  */
 export async function fetchCabinetsForLocation(
   locationId: string,
-  licencee?: string,
+  licensee?: string,
   timePeriod?: string,
   searchTerm?: string,
   customDateRange?: DateRange,
@@ -529,11 +529,11 @@ export async function fetchCabinetsForLocation(
       timePeriod: timePeriod,
     };
 
-    if (licencee) {
+    if (licensee) {
       // Convert licensee name to ObjectId for API compatibility
-      const licenseeObjectId = getLicenseeObjectId(licencee);
+      const licenseeObjectId = getLicenseeObjectId(licensee);
       if (licenseeObjectId) {
-        params.licencee = licenseeObjectId;
+        params.licensee = licenseeObjectId;
       }
     }
 
@@ -658,7 +658,7 @@ export async function fetchCabinetsForLocation(
 export async function fetchCabinetTotals(
   activeMetricsFilter: string,
   customDateRange: import('@/lib/types').dateRange | undefined,
-  selectedLicencee: string | undefined,
+  selectedLicensee: string | undefined,
   displayCurrency?: string,
   signal?: AbortSignal,
   locationId?: string | string[],
@@ -682,8 +682,8 @@ export async function fetchCabinetTotals(
       }
     }
 
-    if (selectedLicencee && selectedLicencee !== 'all') {
-      url += `&licensee=${selectedLicencee}`;
+    if (selectedLicensee && selectedLicensee !== 'all') {
+      url += `&licensee=${selectedLicensee}`;
     }
 
     if (displayCurrency) {

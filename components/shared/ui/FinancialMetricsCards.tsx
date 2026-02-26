@@ -52,7 +52,7 @@ export default function FinancialMetricsCards({
   title = 'Financial Metrics',
   className = '',
 }: FinancialMetricsCardsProps) {
-  const { selectedLicencee } = useDashBoardStore();
+  const { selectedLicensee } = useDashBoardStore();
   const { displayCurrency } = useCurrencyFormat();
   const [resolvedCurrencyCode, setResolvedCurrencyCode] =
     useState<CurrencyCode>(displayCurrency);
@@ -62,9 +62,9 @@ export default function FinancialMetricsCards({
 
     const resolveCurrency = async () => {
       const isAll =
-        !selectedLicencee ||
-        selectedLicencee === 'all' ||
-        selectedLicencee === '';
+        !selectedLicensee ||
+        selectedLicensee === 'all' ||
+        selectedLicensee === '';
 
       if (isAll) {
         if (!cancelled) {
@@ -73,7 +73,7 @@ export default function FinancialMetricsCards({
         return;
       }
 
-      const cacheKey = selectedLicencee.trim();
+      const cacheKey = selectedLicensee.trim();
       const cachedValue =
         licenseeCurrencyCache[cacheKey] ||
         licenseeCurrencyCache[cacheKey.toLowerCase()] ||
@@ -125,7 +125,7 @@ export default function FinancialMetricsCards({
         if (process.env.NODE_ENV === 'development') {
           console.error(
             '[FinancialMetricsCards] Failed to resolve licensee currency:',
-            selectedLicencee,
+            selectedLicensee,
             error
           );
         }
@@ -140,7 +140,7 @@ export default function FinancialMetricsCards({
     return () => {
       cancelled = true;
     };
-  }, [selectedLicencee, displayCurrency]);
+  }, [selectedLicensee, displayCurrency]);
 
   const currencyCode = resolvedCurrencyCode || displayCurrency || 'USD';
 

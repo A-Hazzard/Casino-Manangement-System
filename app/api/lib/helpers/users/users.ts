@@ -609,8 +609,8 @@ export async function updateUser(
   updateFields: Record<string, unknown>,
   request: NextRequest
 ) {
-  // Find user with password field included (needed for password verification)
-  const user = await UserModel.findOne({ _id }).select('+password');
+  // Find user with password field included (needed for password verification and history)
+  const user = await UserModel.findOne({ _id }).select('+password +previousPasswords');
   if (!user) {
     throw new Error('User not found');
   }
@@ -1048,6 +1048,20 @@ export async function updateUser(
         throw new Error('Current password is incorrect');
       }
 
+      // Ensure new password is not the same as current password
+      if (passwordObj.current === passwordObj.new) {
+        throw new Error('New password cannot be the same as current password');
+      }
+
+      // Check against previous passwords
+      if (user.previousPasswords && user.previousPasswords.length > 0) {
+        for (const prevHashed of user.previousPasswords) {
+          if (await comparePassword(passwordObj.new, prevHashed)) {
+            throw new Error('New password cannot match any previously used password');
+          }
+        }
+      }
+
       // Validate new password strength
       const { validatePasswordStrength } =
         await import('@/lib/utils/validation');
@@ -1060,11 +1074,22 @@ export async function updateUser(
         );
       }
 
-      // Hash the new password before saving
+      // Update password history and current password
+      const oldPasswordHash = user.password;
       updateFields.password = await hashPassword(passwordObj.new);
       updateFields.passwordUpdatedAt = new Date();
+      updateFields.previousPassword = oldPasswordHash;
+      
+      // Update previousPasswords array
+      const previousPasswords = [...(user.previousPasswords || [])];
+      if (oldPasswordHash) {
+        previousPasswords.push(oldPasswordHash);
+      }
+      // Keep only last 5 unique passwords in history
+      const uniquePrevious = Array.from(new Set(previousPasswords)).slice(-5);
+      updateFields.previousPasswords = uniquePrevious;
     } else if (typeof updateFields.password === 'string') {
-      // Legacy support: if password is a string, validate and hash it
+      // Legacy support or Admin password reset: if password is a string, validate and hash it
       const { validatePasswordStrength } =
         await import('@/lib/utils/validation');
       const passwordValidation = validatePasswordStrength(
@@ -1077,9 +1102,33 @@ export async function updateUser(
           )}`
         );
       }
-      // Hash the password before saving
+
+      // Check if resetting to current password
+      if (await comparePassword(updateFields.password, user.password || '')) {
+        throw new Error('New password cannot be the same as current password');
+      }
+
+      // Check against previous passwords
+      if (user.previousPasswords && user.previousPasswords.length > 0) {
+        for (const prevHashed of user.previousPasswords) {
+          if (await comparePassword(updateFields.password, prevHashed)) {
+            throw new Error('New password cannot match any previously used password');
+          }
+        }
+      }
+
+      // Hash the password and update history
+      const oldPasswordHash = user.password;
       updateFields.password = await hashPassword(updateFields.password);
       updateFields.passwordUpdatedAt = new Date();
+      updateFields.previousPassword = oldPasswordHash;
+
+      const previousPasswords = [...(user.previousPasswords || [])];
+      if (oldPasswordHash) {
+        previousPasswords.push(oldPasswordHash);
+      }
+      const uniquePrevious = Array.from(new Set(previousPasswords)).slice(-5);
+      updateFields.previousPasswords = uniquePrevious;
     } else {
       // Invalid password format
       throw new Error(

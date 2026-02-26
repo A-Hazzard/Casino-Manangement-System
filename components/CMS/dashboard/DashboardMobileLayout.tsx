@@ -57,8 +57,8 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const licenseeName =
-    getLicenseeName(props.selectedLicencee) ||
-    props.selectedLicencee ||
+    getLicenseeName(props.selectedLicensee) ||
+    props.selectedLicensee ||
     'any licensee';
 
 
@@ -224,7 +224,7 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
         topPerformingData={props.topPerformingData}
         activeTab={props.activeTab}
         setActiveTab={props.setActiveTab}
-        selectedLicencee={props.selectedLicencee}
+        selectedLicensee={props.selectedLicensee}
         licenseeName={licenseeName}
         renderCustomizedLabel={props.renderCustomizedLabel}
         onViewMachine={item => {

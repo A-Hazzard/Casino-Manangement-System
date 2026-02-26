@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = searchParams.get('licencee');
+    const licensee = searchParams.get('licensee');
     const locationIds = searchParams.get('locationIds');
     const limit = parseInt(searchParams.get('limit') || '5');
 
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const topMachines = await getTopMachinesDetailed(
       timePeriod,
-      licencee,
+      licensee,
       locationIds,
       limit
     );

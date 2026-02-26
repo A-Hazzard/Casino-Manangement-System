@@ -1,7 +1,6 @@
 export type Licensee = {
   _id: string;
   name: string;
-  description?: string;
   country: string;
   countryName?: string; // For populated country name
   startDate?: Date | string;

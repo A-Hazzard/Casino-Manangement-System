@@ -96,7 +96,7 @@ export default function NotificationBell({
   const [rejectionReason, setRejectionReason] = useState('');
 
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee } = useVaultLicensee();
 
   // Reset editing state when modal closes or changes
   useEffect(() => {
@@ -107,7 +107,7 @@ export default function NotificationBell({
     } else {
         // Initialize edited denominations from request
         const requested = viewDetails.metadata?.requestedDenominations || [];
-        const denomsList = getDenominationValues(selectedLicencee);
+        const denomsList = getDenominationValues(selectedLicensee);
         const initialDenoms: Denomination[] = denomsList.map(d => ({
             denomination: d as any,
             quantity: requested.find((r: any) => Number(r.denomination) === d)?.quantity || 0
@@ -592,14 +592,14 @@ export default function NotificationBell({
                           </div>
                           <div className="grid grid-cols-1 gap-2">
                             {isRefreshingInventory ? (
-                              Array.from({ length: getDenominationValues(selectedLicencee).length }).map((_, i) => (
+                              Array.from({ length: getDenominationValues(selectedLicensee).length }).map((_, i) => (
                                 <div key={i} className="flex justify-between items-center p-2 rounded bg-gray-50/50 border border-dashed border-gray-200">
                                   <span className="h-4 w-10 bg-gray-200 rounded animate-pulse" />
                                   <span className="h-4 w-6 bg-gray-200 rounded animate-pulse" />
                                 </div>
                               ))
                             ) : (
-                             getDenominationValues(selectedLicencee).map(val => {
+                             getDenominationValues(selectedLicensee).map(val => {
                               const stock = vaultInventory.find(v => Number(v.denomination) === Number(val))?.quantity || 0;
                               return (
                                 <div key={val} className="flex justify-between p-2 rounded bg-gray-50/50 border border-dashed border-gray-200">

@@ -232,6 +232,8 @@ const UserSchema = new Schema(
     },
     profilePicture: { type: String, default: null }, // default null for missing entries
     password: { type: String, required: true },
+    previousPassword: { type: String, default: null }, // Store the immediate previous password (hashed)
+    previousPasswords: [{ type: String }], // Array of previous passwords (hashed) to prevent re-use
     tempPassword: { type: String, default: null }, // Plain text temporary password for new cashiers
     passwordUpdatedAt: { type: Date, default: null },
     sessionVersion: { type: Number, default: 1 },

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(request.url);
     const licensee =
-      searchParams.get('licensee') || searchParams.get('licencee');
+      searchParams.get('licensee') || searchParams.get('licensee');
     const effectiveLicensee =
       licensee && licensee.toLowerCase() !== 'all' ? licensee : null;
 

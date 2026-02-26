@@ -68,14 +68,14 @@ import Link from 'next/link';
 function LocationMembersContent({
   locationId,
   locationName,
-  selectedLicencee,
+  selectedLicensee,
   activeTab,
   handleTabClick,
   onRefreshReady,
 }: {
   locationId: string;
   locationName: string;
-  selectedLicencee: string | null;
+  selectedLicensee: string | null;
   activeTab: string;
   handleTabClick: (tabId: string) => void;
   onRefreshReady?: (refreshHandler: (() => void) | undefined) => void;
@@ -96,7 +96,7 @@ function LocationMembersContent({
         availableTabs={MEMBERS_TABS_CONFIG}
         activeTab={activeTab as 'members' | 'summary-report'}
         onTabChange={handleTabClick}
-        selectedLicencee={selectedLicencee || undefined}
+        selectedLicensee={selectedLicensee || undefined}
         onRefresh={onRefresh}
         onNewMember={onNewMember}
         refreshing={refreshing}
@@ -125,7 +125,7 @@ function LocationMembersContent({
               <MembersListTab forcedLocationId={locationId} />
             ) : (
               <MembersSummaryTab 
-                selectedLicencee={selectedLicencee || ''} 
+                selectedLicensee={selectedLicensee || ''} 
                 forcedLocationId={locationId}
               />
             )}
@@ -150,8 +150,8 @@ export default function LocationsDetailsPageContent() {
   const tabParam = searchParams.get('tab');
 
   const {
-    selectedLicencee,
-    setSelectedLicencee,
+    selectedLicensee,
+    setSelectedLicensee,
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
@@ -197,7 +197,7 @@ export default function LocationsDetailsPageContent() {
   // ============================================================================
   const cabinetsData = useLocationCabinetsData({
     locationId,
-    selectedLicencee,
+    selectedLicensee,
     activeMetricsFilter,
     customDateRange,
     dateFilterInitialized,
@@ -209,7 +209,7 @@ export default function LocationsDetailsPageContent() {
 
   const chartDataHook = useLocationChartData({
     locationId,
-    selectedLicencee,
+    selectedLicensee,
     activeMetricsFilter: activeMetricsFilter || null,
     customDateRange,
     activeView,
@@ -357,13 +357,13 @@ export default function LocationsDetailsPageContent() {
     return (
       <PageLayout
         headerProps={{
-          selectedLicencee,
-          setSelectedLicencee,
+          selectedLicensee,
+          setSelectedLicensee,
           disabled: false,
         }}
         pageTitle=""
         hideOptions={true}
-        hideLicenceeFilter={true}
+        hideLicenseeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
@@ -386,8 +386,8 @@ export default function LocationsDetailsPageContent() {
     <>
       <PageLayout
         headerProps={{
-          selectedLicencee,
-          setSelectedLicencee,
+          selectedLicensee,
+          setSelectedLicensee,
           disabled:
             cabinetsData.loading ||
             cabinetsData.cabinetsLoading ||
@@ -395,7 +395,7 @@ export default function LocationsDetailsPageContent() {
         }}
         pageTitle=""
         hideOptions={true}
-        hideLicenceeFilter={true}
+        hideLicenseeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
         onRefresh={handleRefresh}
@@ -582,7 +582,7 @@ export default function LocationsDetailsPageContent() {
             <LocationMembersContent
               locationId={locationId}
               locationName={cabinetsData.locationName}
-              selectedLicencee={selectedLicencee}
+              selectedLicensee={selectedLicensee}
               activeTab={activeTab}
               handleTabClick={handleTabClick}
               onRefreshReady={handler => {

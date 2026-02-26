@@ -36,7 +36,7 @@ This document provides comprehensive documentation of the database models and re
 ## Core Entity Hierarchy
 
 ```
-Licencee (licencee.ts)
+Licensee (licensee.ts)
 ├── GamingLocation (gaminglocations.ts)
 │   ├── Machine (machines.ts) - Primary UI data source
 │   │   ├── Meter (meters.ts) - Financial metrics source
@@ -163,7 +163,7 @@ Meter {
 GamingLocation {
   _id: string;
   name: string;                   // Location name for UI display
-  "rel.licencee": string;         // Links to Licencee
+  "rel.licensee": string;         // Links to Licensee
   gameDayOffset: number;          // Gaming day start hour (0-23, default 8)
   country: string;                // Links to Country for currency detection
   geoCoords: {                    // Geographic coordinates for map display

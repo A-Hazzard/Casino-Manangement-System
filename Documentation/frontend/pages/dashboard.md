@@ -79,7 +79,7 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 **Data Flow:**
 
 1. `fetchDashboardTotals` (from `lib/helpers/dashboard.ts`) calls the API
-2. Data filtered by `selectedLicencee`, `activeMetricsFilter`, and `customDateRange`
+2. Data filtered by `selectedLicensee`, `activeMetricsFilter`, and `customDateRange`
 3. Currency conversion applied if viewing "All Licensees" as Admin/Developer
 4. Totals stored in Zustand store via `setTotals`
 
@@ -153,15 +153,15 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 **Data Flow:**
 
 1. `PcLayout` component fetches location aggregates via `useEffect` when `activeMetricsFilter` is available
-2. `loadGamingLocations` fetches location list from `GET /api/locations?minimal=1` with explicit `rel.licencee` filter
-3. Data filtered by `activeMetricsFilter`, `customDateRange`, and `selectedLicencee`
+2. `loadGamingLocations` fetches location list from `GET /api/locations?minimal=1` with explicit `rel.licensee` filter
+3. Data filtered by `activeMetricsFilter`, `customDateRange`, and `selectedLicensee`
 4. Location aggregates combined with `gamingLocations` data (already filtered by licensee)
 5. Map markers colored based on financial performance (excellent, good, average, poor)
 6. Clickable markers show location details modal with financial metrics
 
 **Licensee Filtering:**
 
-- `GET /api/locations` now explicitly filters by `rel.licencee` when a specific licensee is selected
+- `GET /api/locations` now explicitly filters by `rel.licensee` when a specific licensee is selected
 - Frontend filters `filteredLocations` (already licensee-filtered) for map display
 - Search bar filters only the licensee-filtered locations, not all locations
 - Map center automatically adjusts based on selected licensee
@@ -243,7 +243,7 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 **Data Flow:**
 
 1. `fetchTopPerformingDataHelper` called when tab or filters change
-2. Data filtered by `activeTab` (locations/cabinets), `activePieChartFilter`, `selectedLicencee`, `customDateRange`
+2. Data filtered by `activeTab` (locations/cabinets), `activePieChartFilter`, `selectedLicensee`, `customDateRange`
 3. Top performing items sorted by gross revenue (descending)
 4. Data stored in Zustand store via `setTopPerformingData`
 
@@ -312,17 +312,17 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 1. **`GET /api/locationAggregation`**
    - Returns aggregated financial totals (money in, money out, gross) or map data
-   - Parameters: `timePeriod`, `licencee`, `startDate`, `endDate`, `currency`
+   - Parameters: `timePeriod`, `licensee`, `startDate`, `endDate`, `currency`
    - Used by: `fetchDashboardTotals` and `PcLayout` (map)
 
 2. **`GET /api/dashboard/chart`**
    - Returns time-series chart data
-   - Parameters: `timePeriod`, `licencee`, `startDate`, `endDate`, `currency`, `granularity`
+   - Parameters: `timePeriod`, `licensee`, `startDate`, `endDate`, `currency`, `granularity`
    - Used by: `switchFilter` function
 
 3. **`GET /api/top-performing/locations`**
    - Returns top performing locations ranked by gross revenue
-   - Parameters: `timePeriod`, `licencee`, `startDate`, `endDate`, `currency`
+   - Parameters: `timePeriod`, `licensee`, `startDate`, `endDate`, `currency`
    - Used by: `fetchTopPerformingData` function
 
 4. **`GET /api/top-performing/cabinets`**
@@ -332,12 +332,12 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 5. **`GET /api/locationAggregation`**
    - Returns location financial aggregates for map visualization
-   - Parameters: `timePeriod`, `licencee`, `startDate`, `endDate`
+   - Parameters: `timePeriod`, `licensee`, `startDate`, `endDate`
    - Used by: `PcLayout` component (map section)
 
 6. **`GET /api/locations`**
    - Returns list of gaming locations (minimal projection for map)
-   - Parameters: `minimal=1`, `licencee`, `forceAll`, `showAll`
+   - Parameters: `minimal=1`, `licensee`, `forceAll`, `showAll`
    - Used by: `loadGamingLocations` function
 
 7. **`GET /api/analytics/machines/stats`**
@@ -366,7 +366,7 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 - `chartData` - Chart time-series data (`dashboardData[]` type)
 - `topPerformingData` - Top performing items (`TopPerformingData` type)
 - `gamingLocations` - List of gaming locations
-- `selectedLicencee` - Currently selected licensee filter
+- `selectedLicensee` - Currently selected licensee filter
 - `customDateRange` - Custom date range object
 - `chartGranularity` - Chart granularity ('hourly' | 'minute')
 - `pieChartSortIsOpen` - Pie chart sort dropdown state
@@ -385,27 +385,27 @@ The Dashboard page is the main landing page of the Evolution One Casino Manageme
 
 1. **`fetchMetricsData`**
    - Orchestrates parallel fetching of totals and chart data
-   - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicencee`, setters, `displayCurrency`, `signal`, `granularity`
+   - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicensee`, setters, `displayCurrency`, `signal`, `granularity`
    - Calls: `fetchDashboardTotals` and `switchFilter` in parallel
 
 2. **`fetchDashboardTotals`**
    - Fetches financial totals from `/api/locationAggregation`
-   - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicencee`, `setTotals`, `displayCurrency`, `signal`
+   - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicensee`, `setTotals`, `displayCurrency`, `signal`
    - Updates Zustand store via `setTotals`
 
 3. **`switchFilter`**
    - Fetches chart data based on selected filter type
-   - Parameters: `activeMetricsFilter`, `setChartData`, date range, `selectedLicencee`, `displayCurrency`, `signal`, `granularity`
+   - Parameters: `activeMetricsFilter`, `setChartData`, date range, `selectedLicensee`, `displayCurrency`, `signal`, `granularity`
    - Routes to appropriate API endpoint based on filter type
 
 4. **`fetchTopPerformingDataHelper`**
    - Orchestrates top performing data fetch
-   - Parameters: `activeTab`, `activePieChartFilter`, `setTopPerformingData`, `setLoadingTopPerforming`, `selectedLicencee`, `currency`, `signal`, `customDateRange`
+   - Parameters: `activeTab`, `activePieChartFilter`, `setTopPerformingData`, `setLoadingTopPerforming`, `selectedLicensee`, `currency`, `signal`, `customDateRange`
    - Calls: `fetchTopPerformingData` with appropriate parameters
 
 5. **`loadGamingLocations`**
    - Fetches gaming locations list (minimal projection)
-   - Parameters: `setGamingLocations`, `selectedLicencee`, `options`
+   - Parameters: `setGamingLocations`, `selectedLicensee`, `options`
    - Used for map component location list
 
 ### Hook Functions

@@ -22,7 +22,7 @@ import type { SortKey, User } from '@/lib/types/administration';
 import type { UserAuthPayload } from '@/shared/types/auth';
 
 type AdministrationUsersSectionProps = {
-  selectedLicencee: string | null;
+  selectedLicensee: string | null;
   isLoading: boolean;
   isSearching: boolean;
   processedUsers: User[];
@@ -61,7 +61,7 @@ type AdministrationUsersSectionProps = {
 };
 
 export default function AdministrationUsersSection({
-  selectedLicencee,
+  selectedLicensee,
   isLoading,
   isSearching,
   processedUsers,
@@ -97,7 +97,7 @@ export default function AdministrationUsersSection({
   // Data Fetching - User Counts
   // ============================================================================
   const { counts, isLoading: countsLoading } =
-    useAdministrationUserCounts(selectedLicencee);
+    useAdministrationUserCounts(selectedLicensee);
 
   return (
     <>

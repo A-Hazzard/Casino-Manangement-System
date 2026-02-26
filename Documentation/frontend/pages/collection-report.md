@@ -99,7 +99,7 @@ Key features include:
 
 **Key Functions:**
 - `useCollectionReportPageData` (`lib/hooks/collectionReport/useCollectionReportPageData.ts`) - Main data hook
-- `fetchCollectionReportsByLicencee` (`lib/helpers/collectionReport.ts`) - Fetch reports
+- `fetchCollectionReportsByLicensee` (`lib/helpers/collectionReport.ts`) - Fetch reports
 - `getLocationsWithMachines` (`lib/helpers/collectionReport.ts`) - Fetch locations for modals
 - `handleRefresh` - Refresh reports data
 - `handleEdit` - Open edit modal
@@ -256,7 +256,7 @@ Key features include:
 - **GET `/api/collectionReport`**
   - **Purpose:** Fetch collection reports with pagination and filtering
   - **Query Parameters:**
-    - `licencee` - Licensee filter (optional)
+    - `licensee` - Licensee filter (optional)
     - `timePeriod` - Time period filter (today, yesterday, week, month, custom)
     - `startDate` - Custom start date (ISO string, required if timePeriod=custom)
     - `endDate` - Custom end date (ISO string, required if timePeriod=custom)
@@ -308,7 +308,7 @@ Key features include:
 
 - **GET `/api/locations`**
   - **Purpose:** Fetch gaming locations
-  - **Query Parameters:** `licencee` - Licensee filter (optional)
+  - **Query Parameters:** `licensee` - Licensee filter (optional)
   - **Response:** `{ locations: Location[] }`
   - **Used By:** Collection modals, filters
 
@@ -340,10 +340,10 @@ Key features include:
   - Provides managers and schedules
 
 - **`useDashBoardStore`** (`lib/store/dashboardStore.ts`) - Zustand store
-  - `selectedLicencee` - Selected licensee for filtering
+  - `selectedLicensee` - Selected licensee for filtering
   - `activeMetricsFilter` - Active date filter type
   - `customDateRange` - Custom date range (if Custom filter selected)
-  - `setSelectedLicencee` - Licensee selection setter
+  - `setSelectedLicensee` - Licensee selection setter
 
 ### State Properties
 
@@ -367,7 +367,7 @@ Key features include:
 
 ### Data Fetching
 
-- **`fetchCollectionReportsByLicencee`** (`lib/helpers/collectionReport.ts`)
+- **`fetchCollectionReportsByLicensee`** (`lib/helpers/collectionReport.ts`)
   - Fetches collection reports with pagination and filtering
   - Handles date range and time period mapping
   - Returns reports array and pagination data

@@ -22,7 +22,7 @@ const EMAIL_REGEX = /\S+@\S+\.\S+/;
 // Extended User type for profile-specific fields
 type User = AdminUser & {
   rel?: {
-    licencee?: string | string[];
+    licensee?: string | string[];
   };
   resourcePermissions?: {
     'gaming-locations'?: {
@@ -115,16 +115,16 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
               // Set initial assignments (Support current API fields)
               if (data.assignedLicensees) {
                  setSelectedLicenseeIds(Array.isArray(data.assignedLicensees) ? data.assignedLicensees : []);
-              } else if (data.rel?.licencee) {
+              } else if (data.rel?.licensee) {
                 // Fallback for legacy data
-                const isAll = data.rel.licencee === 'all';
+                const isAll = data.rel.licensee === 'all';
                 setAllLicenseesSelected(isAll);
                 setSelectedLicenseeIds(
                   isAll
                     ? []
-                    : Array.isArray(data.rel.licencee)
-                      ? data.rel.licencee
-                      : [data.rel.licencee]
+                    : Array.isArray(data.rel.licensee)
+                      ? data.rel.licensee
+                      : [data.rel.licensee]
                 );
               }
 
@@ -416,7 +416,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
         // Legacy fields for backward compatibility if needed by SMIB/other systems
         rel: {
           ...userData.rel,
-          licencee: allLicenseesSelected ? 'all' : selectedLicenseeIds,
+          licensee: allLicenseesSelected ? 'all' : selectedLicenseeIds,
         },
         resourcePermissions: {
           ...userData.resourcePermissions,

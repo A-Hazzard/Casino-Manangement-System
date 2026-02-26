@@ -1,10 +1,9 @@
 import { model, models, Schema } from 'mongoose';
 
-const LicenceeSchema = new Schema(
+const LicenseeSchema = new Schema(
   {
     _id: { type: String },
     name: { type: String, required: true },
-    description: { type: String },
     country: { type: String },
     startDate: { type: Date },
     expiryDate: { type: Date, default: null },
@@ -25,8 +24,8 @@ const LicenceeSchema = new Schema(
   { timestamps: true, versionKey: false }
 );
 
-LicenceeSchema.index({ status: 1 });
+LicenseeSchema.index({ status: 1 });
 
-export const Licencee =
-  models.Licencee || model('Licencee', LicenceeSchema, 'licencees');
+export const Licensee =
+  models.Licensee || model('Licensee', LicenseeSchema, 'licensees');
 

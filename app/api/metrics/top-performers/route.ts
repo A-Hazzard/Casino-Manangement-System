@@ -25,14 +25,14 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param locationId - Location ID to filter by
  * @param startDate - Start date
  * @param endDate - End date
- * @param licencee - Optional licensee to filter by
+ * @param licensee - Optional licensee to filter by
  * @returns Aggregation pipeline stages
  */
 function buildTopPerformerPipeline(
   locationId: string,
   startDate: Date,
   endDate: Date,
-  licencee?: string | null
+  licensee?: string | null
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [
     {
@@ -65,10 +65,10 @@ function buildTopPerformerPipeline(
     },
   ];
 
-  if (licencee) {
+  if (licensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licencee': licencee,
+        'locationDetails.rel.licensee': licensee,
       },
     } as PipelineStage);
   }
@@ -141,7 +141,7 @@ function buildTopPerformerPipeline(
  * @param timePeriod - Time period
  * @param startDateParam - Optional custom start date
  * @param endDateParam - Optional custom end date
- * @param licencee - Optional licensee to filter by
+ * @param licensee - Optional licensee to filter by
  * @returns Top performer data or null
  */
 async function getTopPerformer(
@@ -149,7 +149,7 @@ async function getTopPerformer(
   timePeriod: TimePeriod,
   startDateParam?: string | null,
   endDateParam?: string | null,
-  licencee?: string | null
+  licensee?: string | null
 ): Promise<unknown | null> {
   let startDate: Date | undefined;
   let endDate: Date | undefined;
@@ -173,7 +173,7 @@ async function getTopPerformer(
     locationId,
     startDate!,
     endDate!,
-    licencee
+    licensee
   );
 
   // Use cursor for Meters aggregation
@@ -205,7 +205,7 @@ export async function GET(req: NextRequest) {
     const locationId = searchParams.get('locationId');
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = searchParams.get('licencee');
+    const licensee = searchParams.get('licensee');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
 
@@ -235,7 +235,7 @@ export async function GET(req: NextRequest) {
       timePeriod,
       startDateParam,
       endDateParam,
-      licencee
+      licensee
     );
 
     // ============================================================================

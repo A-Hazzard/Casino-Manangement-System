@@ -10,7 +10,7 @@ import axios from 'axios';
 /**
  * Fetches collection reports with filtering and pagination
  */
-export async function fetchCollectionReportsByLicencee(
+export async function fetchCollectionReportsByLicensee(
   licensee?: string,
   dateRange?: { from?: Date; to?: Date },
   timePeriod?: string,
@@ -106,7 +106,7 @@ export async function fetchMonthlyReportSummaryAndDetails(params: {
   locationName?: string;
   locationId?: string;
   locationIds?: string[];
-  licencee?: string;
+  licensee?: string;
 }) {
   const searchParams = new URLSearchParams();
   searchParams.append('startDate', params.startDate.toISOString());
@@ -122,8 +122,8 @@ export async function fetchMonthlyReportSummaryAndDetails(params: {
     searchParams.append('locationIds', params.locationIds.join(','));
   }
   
-  if (params.licencee && params.licencee !== 'all') {
-    searchParams.append('licensee', params.licencee);
+  if (params.licensee && params.licensee !== 'all') {
+    searchParams.append('licensee', params.licensee);
   }
 
   const response = await axios.get(

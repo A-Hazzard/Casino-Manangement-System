@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = searchParams.get('licencee');
+    const licensee = searchParams.get('licensee');
     const locationIds = searchParams.get('locationIds');
 
     // ============================================================================
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const playsTrends = await getPlaysTrends(
       timePeriod,
-      licencee,
+      licensee,
       locationIds
     );
 

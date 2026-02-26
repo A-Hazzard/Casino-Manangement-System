@@ -8,7 +8,7 @@
 
 import { COLLECTION_TABS_CONFIG } from '@/lib/constants';
 import {
-    fetchCollectionReportsByLicencee,
+    fetchCollectionReportsByLicensee,
     getLocationsWithMachines,
 } from '@/lib/helpers/collectionReport';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
@@ -28,7 +28,7 @@ import { useCollectionReportFilters } from './useCollectionReportFilters';
 
 export function useCollectionReportPageData() {
   const searchParams = useSearchParams();
-   const { selectedLicencee, activeMetricsFilter, customDateRange } =
+   const { selectedLicensee, activeMetricsFilter, customDateRange } =
      useDashBoardStore();
    const { user } = useUserStore();
 
@@ -115,8 +115,8 @@ export function useCollectionReportPageData() {
       
       setLoading(true);
       try {
-        const result = await fetchCollectionReportsByLicencee(
-          selectedLicencee || undefined,
+        const result = await fetchCollectionReportsByLicensee(
+          selectedLicensee || undefined,
           activeMetricsFilter === 'Custom'
             ? { from: customDateRange.startDate, to: customDateRange.endDate }
             : undefined,
@@ -152,7 +152,7 @@ export function useCollectionReportPageData() {
     },
     [
       activeTab,
-      selectedLicencee,
+      selectedLicensee,
       activeMetricsFilter,
       customDateRange,
       debouncedSearch,
@@ -236,13 +236,13 @@ export function useCollectionReportPageData() {
   // Effects
   // ============================================================================
   useEffect(() => {
-    fetchAllGamingLocations(selectedLicencee || undefined).then(locs => {
+    fetchAllGamingLocations(selectedLicensee || undefined).then(locs => {
       setLocations(locs.map(l => ({ _id: l.id, name: l.name })));
     });
-    getLocationsWithMachines(selectedLicencee || undefined).then(
+    getLocationsWithMachines(selectedLicensee || undefined).then(
       setLocationsWithMachines
     );
-  }, [selectedLicencee]);
+  }, [selectedLicensee]);
 
   // Load initial batch on mount and when filters change
   useEffect(() => {
@@ -400,13 +400,13 @@ export function useCollectionReportPageData() {
     setShowDeleteConfirmation,
     setEditingReportId,
     onRefreshLocations: useCallback(async () => {
-      const locs = await fetchAllGamingLocations(selectedLicencee || undefined);
+      const locs = await fetchAllGamingLocations(selectedLicensee || undefined);
       setLocations(locs.map(l => ({ _id: l.id, name: l.name })));
       const locsWithMachines = await getLocationsWithMachines(
-        selectedLicencee || undefined
+        selectedLicensee || undefined
       );
       setLocationsWithMachines(locsWithMachines);
-    }, [selectedLicencee]),
+    }, [selectedLicensee]),
   };
 }
 

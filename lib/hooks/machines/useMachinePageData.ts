@@ -19,7 +19,7 @@ export function useMachinePageData() {
   const slug = pathname.split('/').pop() || '';
   const { user } = useUserStore();
   const {
-    selectedLicencee,
+    selectedLicensee,
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
@@ -36,7 +36,7 @@ export function useMachinePageData() {
     handleCabinetUpdated,
   } = useCabinetDetailsData({
     slug,
-    selectedLicencee,
+    selectedLicensee,
     activeMetricsFilter,
     customDateRange,
     dateFilterInitialized,
@@ -113,7 +113,7 @@ export function useMachinePageData() {
     activeTab,
     refreshing,
     canManageMachines,
-    selectedLicencee,
+    selectedLicensee,
     smibHook,
     handleTabChange,
     handleRefresh,

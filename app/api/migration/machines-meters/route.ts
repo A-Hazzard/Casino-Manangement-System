@@ -1,7 +1,7 @@
 import { connectDB, disconnectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import UserModel from '@/app/api/lib/models/user';
@@ -22,7 +22,7 @@ const TIMEZONE_OFFSET = -4;
 // --- Migration Types ---
 type MigrationPeriod = 'Today' | 'Yesterday';
 
-type LeanLicencee = {
+type LeanLicensee = {
     _id: string;
     name: string;
 };
@@ -30,9 +30,9 @@ type LeanLicencee = {
 type LeanLocation = {
     _id: string;
     gameDayOffset?: number;
-    licencee?: string;
+    licensee?: string;
     rel?: {
-        licencee?: string;
+        licensee?: string;
     };
 };
 
@@ -84,9 +84,9 @@ export async function POST(request: Request) {
 
         // 1. Export Licensees
         log('🏢 Fetching licensees...');
-        const licensees = (await Licencee.find({}).lean()) as unknown as LeanLicencee[];
+        const licensees = (await Licensee.find({}).lean()) as unknown as LeanLicensee[];
         if (licensees.length > 0) {
-            await fs.writeFile(path.join(EXPORT_DIR, 'licencees.json'), JSON.stringify(licensees, null, 2));
+            await fs.writeFile(path.join(EXPORT_DIR, 'licensees.json'), JSON.stringify(licensees, null, 2));
             log(`   ✅ ${licensees.length} Licensees exported.`);
         }
 
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
                 const offset = loc.gameDayOffset ?? 8;
                 locationOffsets.set(loc._id.toString(), offset);
                 
-                if (loc.licencee?.toString() === targetLicenseeId || loc.rel?.licencee?.toString() === targetLicenseeId) {
+                if (loc.licensee?.toString() === targetLicenseeId || loc.rel?.licensee?.toString() === targetLicenseeId) {
                     targetLocationIds.push(loc._id.toString());
                 }
             });

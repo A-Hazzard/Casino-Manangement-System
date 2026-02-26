@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const licensee =
-      searchParams.get('licensee') || searchParams.get('licencee');
+      searchParams.get('licensee') || searchParams.get('licensee');
     const effectiveLicensee =
       licensee && licensee.toLowerCase() !== 'all' ? licensee : undefined;
     const locationId = searchParams.get('locationId');
@@ -159,7 +159,7 @@ export async function GET(req: NextRequest) {
     if (effectiveLicensee) {
       aggregationPipeline.push({
         $match: {
-          'locationDetails.rel.licencee': effectiveLicensee,
+          'locationDetails.rel.licensee': effectiveLicensee,
         },
       });
     }

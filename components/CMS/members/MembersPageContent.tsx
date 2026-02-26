@@ -52,7 +52,7 @@ function MembersPageContentInner() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
-  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
   const { onRefresh, onNewMember, refreshing } = useMembersHandlers();
 
   // All authenticated users have access to members
@@ -66,7 +66,7 @@ function MembersPageContentInner() {
   // Tab content rendering
   const tabComponents: Record<MembersView, React.ReactElement> = {
     members: <MembersListTab />,
-    'summary-report': <MembersSummaryTab selectedLicencee={selectedLicencee} />,
+    'summary-report': <MembersSummaryTab selectedLicensee={selectedLicensee} />,
   };
 
   const { getTabAnimationProps, currentTabComponent } = useMembersTabContent({
@@ -81,11 +81,11 @@ function MembersPageContentInner() {
       <>
         <PageLayout
           headerProps={{
-            selectedLicencee,
-            setSelectedLicencee,
+            selectedLicensee,
+            setSelectedLicensee,
             disabled: false,
           }}
-          hideLicenceeFilter={true}
+          hideLicenseeFilter={true}
           showToaster={false}
         >
           <div className="flex min-h-[400px] items-center justify-center">
@@ -135,11 +135,11 @@ function MembersPageContentInner() {
     <>
       <PageLayout
         headerProps={{
-          selectedLicencee,
-          setSelectedLicencee,
+          selectedLicensee,
+          setSelectedLicensee,
           disabled: false,
         }}
-        hideLicenceeFilter={true}
+        hideLicenseeFilter={true}
         hideCurrencyFilter={true}
         showToaster={false}
         onRefresh={onRefresh}
@@ -150,7 +150,7 @@ function MembersPageContentInner() {
           availableTabs={availableTabs}
           activeTab={activeTab}
           onTabChange={handleTabClick}
-          selectedLicencee={selectedLicencee}
+          selectedLicensee={selectedLicensee}
           onRefresh={onRefresh}
           onNewMember={onNewMember}
           refreshing={refreshing}

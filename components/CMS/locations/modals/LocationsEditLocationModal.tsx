@@ -45,7 +45,7 @@ type LocationDetails = {
   profitShare?: number;
   gameDayOffset?: number;
   rel?: {
-    licencee: string;
+    licensee: string;
   };
   isLocalServer?: boolean;
   geoCoords?: {
@@ -197,7 +197,7 @@ export default function LocationsEditLocationModal({
     city: '',
     country: '',
     profitShare: '',
-    licencee: '',
+    licensee: '',
     isLocalServer: false,
     latitude: '',
     longitude: '',
@@ -344,7 +344,7 @@ export default function LocationsEditLocationModal({
         city: '', // Will be loaded from locationDetails
         country: '', // Will be loaded from locationDetails
         profitShare: '', // Will be loaded from locationDetails
-        licencee: '', // Will be loaded from locationDetails
+        licensee: '', // Will be loaded from locationDetails
         isLocalServer: selectedLocation.isLocalServer || false,
         latitude: '', // Will be loaded from locationDetails
         longitude: '', // Will be loaded from locationDetails
@@ -485,7 +485,7 @@ export default function LocationsEditLocationModal({
         city: locationDetails.address?.city || '',
         country: countryId || '',
         profitShare: locationDetails.profitShare?.toString() || '',
-        licencee: locationDetails.rel?.licencee || '',
+        licensee: locationDetails.rel?.licensee || '',
         isLocalServer: locationDetails.isLocalServer || false,
         latitude: locationDetails.geoCoords?.latitude?.toString() || '',
         longitude: locationDetails.geoCoords?.longitude?.toString() || '',
@@ -686,7 +686,7 @@ export default function LocationsEditLocationModal({
         gameDayOffset:
           parseInt(originalFormData.dayStartTime.split(':')[0]) || 8,
         rel: {
-          licencee: originalFormData.licencee,
+          licensee: originalFormData.licensee,
         },
         isLocalServer: originalFormData.isLocalServer,
         geoCoords:
@@ -711,7 +711,7 @@ export default function LocationsEditLocationModal({
         profitShare: parseInt(formData.profitShare) || 0,
         gameDayOffset: gameDayOffset,
         rel: {
-          licencee: formData.licencee,
+          licensee: formData.licensee,
         },
         isLocalServer: formData.isLocalServer,
         geoCoords:
@@ -1113,10 +1113,10 @@ export default function LocationsEditLocationModal({
                     Licensee <span className="text-red-500">*</span>
                   </label>
                   <select
-                    name="licencee"
-                    value={formData.licencee}
+                    name="licensee"
+                    value={formData.licensee}
                     onChange={e =>
-                      handleSelectChange('licencee', e.target.value)
+                      handleSelectChange('licensee', e.target.value)
                     }
                     className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
                     required

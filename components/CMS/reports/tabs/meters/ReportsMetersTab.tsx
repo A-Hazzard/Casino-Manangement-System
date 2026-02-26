@@ -61,7 +61,7 @@ export default function ReportsMetersTab() {
   // Hooks & Store
   // ============================================================================
   const {
-    selectedLicencee,
+    selectedLicensee,
     activeMetricsFilter,
     customDateRange,
     displayCurrency,
@@ -209,7 +209,7 @@ export default function ReportsMetersTab() {
         locations,
         activeMetricsFilter: activeMetricsFilter || 'Today',
         customDateRange,
-        selectedLicencee,
+        selectedLicensee,
         displayCurrency,
         searchTerm,
         format,
@@ -220,7 +220,7 @@ export default function ReportsMetersTab() {
       locations,
       activeMetricsFilter,
       customDateRange,
-      selectedLicencee,
+      selectedLicensee,
       displayCurrency,
       searchTerm,
     ]

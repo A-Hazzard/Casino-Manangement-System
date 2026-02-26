@@ -7,7 +7,7 @@
  * @module app/api/lib/helpers/locationsReport
  */
 
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Countries } from '@/app/api/lib/models/countries';
 import { Machine } from '@/app/api/lib/models/machines';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -27,11 +27,11 @@ import { NextResponse } from 'next/server';
  */
 export async function applyLocationsCurrencyConversion(
   paginatedData: AggregatedLocation[],
-  licencee: string | undefined,
+  licensee: string | undefined,
   displayCurrency: CurrencyCode,
   isAdminOrDev: boolean
 ): Promise<AggregatedLocation[]> {
-  if (!isAdminOrDev || !shouldApplyCurrencyConversion(licencee)) {
+  if (!isAdminOrDev || !shouldApplyCurrencyConversion(licensee)) {
     return paginatedData;
   }
 
@@ -39,7 +39,7 @@ export async function applyLocationsCurrencyConversion(
     await connectDB();
     
     // Get licensee details for currency mapping
-    const licenseesData = await Licencee.find({
+    const licenseesData = await Licensee.find({
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
@@ -67,7 +67,7 @@ export async function applyLocationsCurrencyConversion(
 
     // Convert each location's financial data
     return paginatedData.map(location => {
-      const locationLicenseeId = location.rel?.licencee as string | undefined;
+      const locationLicenseeId = location.rel?.licensee as string | undefined;
       let nativeCurrency: CurrencyCode = 'USD';
 
       if (!locationLicenseeId) {

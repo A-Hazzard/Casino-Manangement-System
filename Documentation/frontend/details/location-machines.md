@@ -348,10 +348,10 @@ Key features include:
 ### Stores
 
 - **`useDashBoardStore`** (`lib/store/dashboardStore.ts`) - Zustand store
-  - `selectedLicencee` - Selected licensee filter
+  - `selectedLicensee` - Selected licensee filter
   - `activeMetricsFilter` - Active date filter type
   - `customDateRange` - Custom date range
-  - `setSelectedLicencee` - Licensee selection setter
+  - `setSelectedLicensee` - Licensee selection setter
 
 - **`useUserStore`** (`lib/store/userStore.ts`) - Zustand store
   - `user` - Current user object

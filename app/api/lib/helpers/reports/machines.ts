@@ -9,7 +9,7 @@
 
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
@@ -32,7 +32,7 @@ export async function getMachineStats(
   locationMatchStage: Record<string, unknown>,
   startDate: Date | undefined,
   endDate: Date | undefined,
-  licencee: string | undefined,
+  licensee: string | undefined,
   displayCurrency: CurrencyCode,
   isAdminOrDev: boolean
 ) {
@@ -56,11 +56,11 @@ export async function getMachineStats(
   if (
     locationMatchStage &&
     typeof locationMatchStage === 'object' &&
-    'rel.licencee' in locationMatchStage
+    'rel.licensee' in locationMatchStage
   ) {
     aggregationPipeline.push({
       $match: {
-        'locationDetails.rel.licencee': locationMatchStage['rel.licencee'],
+        'locationDetails.rel.licensee': locationMatchStage['rel.licensee'],
       },
     });
   }
@@ -98,12 +98,12 @@ export async function getMachineStats(
     // Add location filter if licensee is specified
     ...(locationMatchStage &&
     typeof locationMatchStage === 'object' &&
-    'rel.licencee' in locationMatchStage
+    'rel.licensee' in locationMatchStage
       ? [
           {
             $match: {
-              'locationDetails.rel.licencee':
-                locationMatchStage['rel.licencee'],
+              'locationDetails.rel.licensee':
+                locationMatchStage['rel.licensee'],
             },
           },
         ]
@@ -193,8 +193,8 @@ export async function getMachineStats(
   // Apply currency conversion if needed
   let convertedTotals = totals;
 
-  if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
-    const licensees = await Licencee.find({}).lean();
+  if (isAdminOrDev && shouldApplyCurrencyConversion(licensee)) {
+    const licensees = await Licensee.find({}).lean();
     const licenseeIdToCurrency = new Map<string, string>();
     licensees.forEach(licensee => {
       if (licensee._id) {
@@ -229,12 +229,12 @@ export async function getMachineStats(
       },
       ...(locationMatchStage &&
       typeof locationMatchStage === 'object' &&
-      'rel.licencee' in locationMatchStage
+      'rel.licensee' in locationMatchStage
         ? [
             {
               $match: {
-                'locationDetails.rel.licencee':
-                  locationMatchStage['rel.licencee'],
+                'locationDetails.rel.licensee':
+                  locationMatchStage['rel.licensee'],
               },
             },
           ]
@@ -288,7 +288,7 @@ export async function getMachineStats(
               { $ifNull: ['$meterData.moneyOut', 0] },
             ],
           },
-          licenceeId: '$locationDetails.rel.licencee',
+          licenseeId: '$locationDetails.rel.licensee',
           countryId: '$locationDetails.country',
         },
       },
@@ -302,7 +302,7 @@ export async function getMachineStats(
       batchSize: 1000,
     });
     for await (const machine of conversionCursor) {
-      const machineLicenseeId = machine.licenceeId?.toString();
+      const machineLicenseeId = machine.licenseeId?.toString();
       const countryId = machine.countryId?.toString();
 
       let nativeCurrency = 'USD';
@@ -337,7 +337,7 @@ export async function getMachineStats(
     totalDrop: convertedTotals.totalDrop || 0,
     totalCancelledCredits: convertedTotals.totalCancelledCredits || 0,
     currency: displayCurrency,
-    converted: isAdminOrDev && shouldApplyCurrencyConversion(licencee),
+    converted: isAdminOrDev && shouldApplyCurrencyConversion(licensee),
   });
 }
 
@@ -371,10 +371,10 @@ export async function getOverviewMachines(
     { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
   ];
 
-  if (locationMatchStage && locationMatchStage['rel.licencee']) {
+  if (locationMatchStage && locationMatchStage['rel.licensee']) {
     aggregationPipeline.push({
       $match: {
-        'locationDetails.rel.licencee': locationMatchStage['rel.licencee'],
+        'locationDetails.rel.licensee': locationMatchStage['rel.licensee'],
       },
     });
   }
@@ -590,10 +590,10 @@ export async function getOverviewMachines(
     { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
   ];
 
-  if (locationMatchStage && locationMatchStage['rel.licencee']) {
+  if (locationMatchStage && locationMatchStage['rel.licensee']) {
     countPipeline.push({
       $match: {
-        'locationDetails.rel.licencee': locationMatchStage['rel.licencee'],
+        'locationDetails.rel.licensee': locationMatchStage['rel.licensee'],
       },
     });
   }
@@ -652,10 +652,10 @@ export async function getAllMachines(
     { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
   ];
 
-  if (locationMatchStage['rel.licencee']) {
+  if (locationMatchStage['rel.licensee']) {
     aggregationPipeline.push({
       $match: {
-        'locationDetails.rel.licencee': locationMatchStage['rel.licencee'],
+        'locationDetails.rel.licensee': locationMatchStage['rel.licensee'],
       },
     });
   }
@@ -940,10 +940,10 @@ export async function getOfflineMachines(
     { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
   ];
 
-  if (locationMatchStage && locationMatchStage['rel.licencee']) {
+  if (locationMatchStage && locationMatchStage['rel.licensee']) {
     aggregationPipeline.push({
       $match: {
-        'locationDetails.rel.licencee': locationMatchStage['rel.licencee'],
+        'locationDetails.rel.licensee': locationMatchStage['rel.licensee'],
       },
     });
   }

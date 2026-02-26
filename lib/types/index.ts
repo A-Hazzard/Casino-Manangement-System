@@ -129,7 +129,7 @@ export type ActiveTab = 'overview' | 'sas-evaluation' | 'revenue-analysis' | 'ma
 
 export type ActiveFilters = {
   timePeriod?: string;
-  licencee?: string;
+  licensee?: string;
   locationIds?: string[];
   customDateRange?: dateRange;
   Today?: boolean;

@@ -18,7 +18,7 @@ type SaveUserParams = {
   updated: Partial<User> & { password?: string };
   currentUser: User | null;
   getUserDisplayName: () => string;
-  selectedLicencee: string | null;
+  selectedLicensee: string | null;
   selectedStatus: string;
   itemsPerBatch: number;
   onSuccess: (updatedUserData: User) => void;

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const searchParams = request.nextUrl.searchParams;
-    const licencee = searchParams.get('licencee');
+    const licensee = searchParams.get('licensee');
     const location = searchParams.get('location');
     const collector = searchParams.get('collector');
     const status = searchParams.get('status');
@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const query: Record<string, MongoDBQueryValue> = {};
 
-    if (licencee && licencee.toLowerCase() !== 'all') {
-      query.licencee = licencee;
+    if (licensee && licensee.toLowerCase() !== 'all') {
+      query.licensee = licensee;
     }
 
     if (location && location.toLowerCase() !== 'all') {

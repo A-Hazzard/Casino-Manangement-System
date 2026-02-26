@@ -13,13 +13,24 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
 export default function CashierManagementSkeleton() {
   return (
     <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="mt-2 h-4 w-64" />
+      {/* Header Section Skeleton */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center flex-1">
+          {/* Search Skeleton */}
+          <Skeleton className="h-10 w-full md:max-w-[280px] rounded-xl" />
+          {/* Filter Group Skeleton */}
+          <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100 w-fit">
+            <Skeleton className="h-8 w-16 rounded-lg" />
+            <Skeleton className="h-8 w-20 rounded-lg" />
+            <Skeleton className="h-8 w-16 rounded-lg" />
+          </div>
         </div>
-        <Skeleton className="h-10 w-32" />
+        
+        {/* Action Buttons Skeleton */}
+        <div className="flex items-center gap-2 justify-end">
+          <Skeleton className="h-10 w-24 rounded-xl" />
+          <Skeleton className="h-10 w-32 rounded-xl" />
+        </div>
       </div>
 
       {/* Cashiers Table Card */}

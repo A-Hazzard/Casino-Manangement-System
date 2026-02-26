@@ -20,7 +20,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * Main GET handler for fetching jackpot trends data
  *
  * Flow:
- * 1. Parse and validate request parameters (timePeriod, licencee, locationIds)
+ * 1. Parse and validate request parameters (timePeriod, licensee, locationIds)
  * 2. Connect to database
  * 3. Execute the core jackpot trends fetching logic via `getJackpotTrends` helper
  * 4. Return jackpot trends data
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = searchParams.get('licencee');
+    const licensee = searchParams.get('licensee');
     const locationIds = searchParams.get('locationIds');
 
     // ============================================================================
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const jackpotTrends = await getJackpotTrends(
       timePeriod,
-      licencee,
+      licensee,
       locationIds
     );
 

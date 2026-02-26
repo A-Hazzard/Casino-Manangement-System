@@ -1,5 +1,6 @@
 'use client';
 
+import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Label } from '@/components/shared/ui/label';
 
@@ -84,8 +85,13 @@ export default function CollectionReportFormMachineMeters({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Meters In */}
         <div>
-          <label className="block text-sm font-medium mb-1">
-            Meters In: <span className="text-red-500">*</span>
+          <label className="flex items-center text-sm font-medium mb-1">
+            Meters In: <span className="text-red-500 ml-1">*</span>
+            <CalculationHelp 
+              title="Meters In" 
+              formula="Current In - Previous In" 
+              description="Calculates the total credits or cash inserted into the machine since the last collection."
+            />
           </label>
           <input
             type="text"
@@ -116,8 +122,13 @@ export default function CollectionReportFormMachineMeters({
 
         {/* Meters Out */}
         <div>
-          <label className="block text-sm font-medium mb-1">
-            Meters Out: <span className="text-red-500">*</span>
+          <label className="flex items-center text-sm font-medium mb-1">
+            Meters Out: <span className="text-red-500 ml-1">*</span>
+            <CalculationHelp 
+              title="Meters Out" 
+              formula="Current Out - Previous Out" 
+              description="Calculates the total payouts or credits won by players since the last collection."
+            />
           </label>
           <input
             type="text"
@@ -160,6 +171,11 @@ export default function CollectionReportFormMachineMeters({
           className="text-sm font-medium cursor-pointer"
         >
           RAM Clear
+          <CalculationHelp 
+            title="RAM Clear" 
+            formula="(RAM_Clear_Meters - Previous_Meters) + Current_Meters" 
+            description="Used when machine meters are reset to zero. This formula ensures no data is lost during the reset."
+          />
         </Label>
       </div>
 

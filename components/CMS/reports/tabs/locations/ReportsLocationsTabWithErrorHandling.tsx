@@ -23,15 +23,15 @@ import axios from 'axios';
  * Main ReportsLocationsTabWithErrorHandling Component
  */
 export default function ReportsLocationsTabWithErrorHandling() {
-  const { selectedLicencee } = useDashBoardStore();
+  const { selectedLicensee } = useDashBoardStore();
   const [connectionError, setConnectionError] = useState<Error | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
 
   // API function for fetching locations data
   const fetchLocationsData = useCallback(async () => {
     const params = new URLSearchParams();
-    if (selectedLicencee && selectedLicencee !== 'all') {
-      params.append('licencee', selectedLicencee);
+    if (selectedLicensee && selectedLicensee !== 'all') {
+      params.append('licensee', selectedLicensee);
     }
     params.append('timePeriod', '30d');
     params.append('showAllLocations', 'true');
@@ -40,7 +40,7 @@ export default function ReportsLocationsTabWithErrorHandling() {
       `/api/reports/locations?${params.toString()}`
     );
     return response;
-  }, [selectedLicencee]);
+  }, [selectedLicensee]);
 
   // Use the retry hook for API calls
   const { data, loading, execute } = useApiWithRetry(fetchLocationsData, {

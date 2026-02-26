@@ -8,20 +8,20 @@
 
 import CollectionReportMobileCollectedListPanel from '@/components/CMS/collectionReport/mobile/CollectionReportMobileCollectedListPanel';
 import CollectionReportMobileFormPanel from '@/components/CMS/collectionReport/mobile/CollectionReportMobileFormPanel';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/shared/ui/dialog';
+import CollectionReportMobileMachineList from '@/components/CMS/collectionReport/mobile/CollectionReportMobileMachineList';
+import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
 import { ConfirmationDialog } from '@/components/shared/ui/ConfirmationDialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/shared/ui/dialog';
+import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import { Skeleton } from '@/components/shared/ui/skeleton';
 import { useMobileCollectionModal } from '@/lib/hooks/collectionReport/useMobileCollectionModal';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
-import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
-import { Skeleton } from '@/components/shared/ui/skeleton';
-import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
-import CollectionReportMobileMachineList from '@/components/CMS/collectionReport/mobile/CollectionReportMobileMachineList';
 
 type CollectionReportMobileNewCollectionModalProps = {
   show: boolean;
@@ -250,7 +250,7 @@ export default function CollectionReportMobileNewCollectionModal({
 
                   {/* Machine Cards Container - 2x2 Grid */}
                   <div
-                    className="min-h-0 flex-1 grid grid-cols-1 gap-3 overflow-y-auto pb-4 sm:grid-cols-2"
+                    className="min-h-0 flex-1 grid grid-cols-1 gap-3 overflow-y-auto pb-4 sm:grid-cols-2 items-start"
                     style={{
                       scrollbarWidth: 'thin',
                       scrollbarColor: '#d1d5db #f3f4f6',

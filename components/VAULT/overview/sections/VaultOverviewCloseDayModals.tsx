@@ -45,7 +45,7 @@ export default function VaultOverviewCloseDayModals({
   onConfirm,
   onRefresh
 }: VaultOverviewCloseDayModalsProps) {
-  const { licenseeId: selectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee } = useVaultLicensee();
   const [forceCloseCashier, setForceCloseCashier] = useState<any>(null);
   const [reviewShift, setReviewShift] = useState<UnbalancedShiftInfo | null>(null);
 
@@ -93,7 +93,7 @@ export default function VaultOverviewCloseDayModals({
         open={!!forceCloseCashier}
         onClose={() => setForceCloseCashier(null)}
         cashier={forceCloseCashier}
-        licenseeId={selectedLicencee}
+        licenseeId={selectedLicensee}
         locationId={locationId}
         onSuccess={() => {
           setForceCloseCashier(null);

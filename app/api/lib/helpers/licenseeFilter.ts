@@ -1,6 +1,6 @@
 import { connectDB } from '../middleware/db';
 import { GamingLocations } from '../models/gaminglocations';
-import { Licencee } from '../models/licencee';
+import { Licensee } from '../models/licensee';
 import UserModel from '../models/user';
 import { getUserFromServer } from './users';
 
@@ -103,7 +103,7 @@ export async function getUserAccessibleLicenseesFromToken(userPayloadOverride?: 
     const uniqueValues = Array.from(new Set(userLicensees));
 
     try {
-      const licenceeDocs = await Licencee.find(
+      const licenseeDocs = await Licensee.find(
         {
           $or: [
             { _id: { $in: uniqueValues } },
@@ -115,9 +115,9 @@ export async function getUserAccessibleLicenseesFromToken(userPayloadOverride?: 
         .lean()
         .exec();
 
-      const idSet = new Set(licenceeDocs.map(doc => String(doc._id)));
+      const idSet = new Set(licenseeDocs.map(doc => String(doc._id)));
       const nameToId = new Map(
-        licenceeDocs.map(doc => [doc.name.toLowerCase(), String(doc._id)])
+        licenseeDocs.map(doc => [doc.name.toLowerCase(), String(doc._id)])
       );
 
       const normalizedIds = uniqueValues.reduce<string[]>((acc, value) => {
@@ -175,11 +175,20 @@ async function getLicenseeLocationFilter(
 
   const locations = await GamingLocations.find(
     {
-      'rel.licencee': { $in: userAccessibleLicensees },
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2025-01-01') } },
-      ],
+      $and: [
+        {
+          $or: [
+            { 'rel.licensee': { $in: userAccessibleLicensees } },
+            { 'rel.licencee': { $in: userAccessibleLicensees } },
+          ],
+        },
+        {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
+          ],
+        }
+      ]
     },
     { _id: 1 }
   ).lean();
@@ -257,7 +266,7 @@ export async function getUserLocationFilter(
 
     // Check if it's a name by trying to find the licensee by name
     try {
-      const licenseeDoc = await Licencee.findOne(
+      const licenseeDoc = await Licensee.findOne(
         {
           $or: [
             { _id: selectedLicenseeFilter },
@@ -277,14 +286,23 @@ export async function getUserLocationFilter(
     }
 
     // Now query locations by licensee ID
-    // rel.licencee is stored as a String, so we can query directly
+    // rel.licensee is stored as a String, so we can query directly
     const locations = await GamingLocations.find(
       {
-        'rel.licencee': licenseeId,
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2025-01-01') } },
-        ],
+        $and: [
+          {
+            $or: [
+              { 'rel.licensee': licenseeId },
+              { 'rel.licencee': licenseeId },
+            ],
+          },
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ],
+          }
+        ]
       },
       { _id: 1 }
     ).lean();

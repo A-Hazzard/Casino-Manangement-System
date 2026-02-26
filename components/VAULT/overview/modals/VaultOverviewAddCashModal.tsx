@@ -70,7 +70,7 @@ export default function VaultOverviewAddCashModal({
   onConfirm,
 }: VaultOverviewAddCashModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee } = useVaultLicensee();
   // ============================================================================
   // Hooks & State
   // ============================================================================
@@ -85,7 +85,7 @@ export default function VaultOverviewAddCashModal({
   const [loadingMachines, setLoadingMachines] = useState(false);
   const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
 
-  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
+  const denomsList = useMemo(() => getDenominationValues(selectedLicensee), [selectedLicensee]);
 
   useEffect(() => {
     if (open) {
@@ -103,7 +103,7 @@ export default function VaultOverviewAddCashModal({
             params: {
               type: 'overview',
               limit: 1000,
-              licencee: selectedLicencee !== 'all' ? selectedLicencee : undefined,
+              licensee: selectedLicensee !== 'all' ? selectedLicensee : undefined,
             },
           });
           const fetchedMachines = response.data.data || [];
@@ -122,7 +122,7 @@ export default function VaultOverviewAddCashModal({
       
       fetchMachines();
     }
-  }, [open, source, selectedLicencee]);
+  }, [open, source, selectedLicensee]);
 
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);

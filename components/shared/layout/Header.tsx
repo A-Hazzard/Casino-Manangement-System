@@ -18,11 +18,11 @@
  *
  * Large component (~664 lines) managing top-level navigation and controls.
  *
- * @param selectedLicencee - Currently selected licensee ID
+ * @param selectedLicensee - Currently selected licensee ID
  * @param pageTitle - Title to display in header
- * @param setSelectedLicencee - Callback to update selected licensee
+ * @param setSelectedLicensee - Callback to update selected licensee
  * @param hideOptions - Hide user menu options
- * @param hideLicenceeFilter - Hide licensee dropdown
+ * @param hideLicenseeFilter - Hide licensee dropdown
  * @param containerPaddingMobile - Custom mobile padding
  * @param disabled - Disable interactive elements
  * @param hideCurrencyFilter - Hide currency filter
@@ -30,7 +30,7 @@
 'use client';
 import CurrencyFilter from '@/components/shared/layout/CurrencyFilter';
 import { ClientOnly } from '@/components/shared/ui/ClientOnly';
-import LicenceeSelect from '@/components/shared/ui/LicenceeSelect';
+import LicenseeSelect from '@/components/shared/ui/LicenseeSelect';
 import { SidebarTrigger, useSidebar } from '@/components/shared/ui/sidebar';
 import { UserRole } from '@/lib/constants';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
@@ -53,10 +53,10 @@ import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export default function Header({
-  selectedLicencee,
+  selectedLicensee,
   pageTitle,
-  setSelectedLicencee,
-  hideLicenceeFilter,
+  setSelectedLicensee,
+  hideLicenseeFilter,
   containerPaddingMobile,
   disabled = false,
   hideCurrencyFilter = false,
@@ -113,9 +113,9 @@ export default function Header({
   // Show if: user has exactly one licensee AND not admin/dev AND (not manager OR manager with single licensee)
   const shouldShowLicenseeName =
     hasSingleLicensee && !isAdmin && (!isManager || hasSingleLicensee);
-  const selectedLicenceeValue = selectedLicencee ?? '';
+  const selectedLicenseeValue = selectedLicensee ?? '';
   const isAllLicenseeSelected =
-    selectedLicenceeValue === '' || selectedLicenceeValue === 'all';
+    selectedLicenseeValue === '' || selectedLicenseeValue === 'all';
   // Check if the current path is related to members
   const isMembersPath =
     pathname === '/members' || pathname.startsWith('/members/');
@@ -270,8 +270,8 @@ export default function Header({
 
   // Wrapper function to handle licensee changes
   const handleLicenseeChange = async (newLicensee: string) => {
-    if (setSelectedLicencee) {
-      setSelectedLicencee(newLicensee);
+    if (setSelectedLicensee) {
+      setSelectedLicensee(newLicensee);
     }
 
     // Update currency context based on licensee selection
@@ -308,8 +308,8 @@ export default function Header({
       }
     }
 
-    // For reports page, the tabs will automatically re-fetch when selectedLicencee changes
-    // because they have selectedLicencee in their useEffect dependencies
+    // For reports page, the tabs will automatically re-fetch when selectedLicensee changes
+    // because they have selectedLicensee in their useEffect dependencies
   };
 
   // Check if the current path is related to locations
@@ -328,15 +328,15 @@ export default function Header({
     let cancelled = false;
     const syncCurrency = async () => {
       const isAll =
-        !selectedLicencee ||
-        selectedLicencee === 'all' ||
-        selectedLicencee === '';
+        !selectedLicensee ||
+        selectedLicensee === 'all' ||
+        selectedLicensee === '';
       if (isAll) {
         setDisplayCurrency('USD');
         return;
       }
 
-      const currency = await resolveLicenseeCurrency(selectedLicencee);
+      const currency = await resolveLicenseeCurrency(selectedLicensee);
       if (!cancelled) {
         setDisplayCurrency(currency);
       }
@@ -347,7 +347,7 @@ export default function Header({
     return () => {
       cancelled = true;
     };
-  }, [selectedLicencee, setDisplayCurrency, resolveLicenseeCurrency]);
+  }, [selectedLicensee, setDisplayCurrency, resolveLicenseeCurrency]);
 
   // Check if the current path is the specific location details page
   const isSpecificLocationPath =
@@ -387,9 +387,9 @@ export default function Header({
             </div>
 
             {/* Right side: Filters */}
-            {(!hideLicenceeFilter && shouldShowLicenseeSelect) || shouldRenderCurrencyFilter ? (
+            {(!hideLicenseeFilter && shouldShowLicenseeSelect) || shouldRenderCurrencyFilter ? (
               <div className="flex min-w-0 shrink items-center gap-1 sm:gap-2">
-                {!hideLicenceeFilter && shouldShowLicenseeSelect && (
+                {!hideLicenseeFilter && shouldShowLicenseeSelect && (
                   <div
                     className="min-w-0 overflow-hidden md:w-auto md:max-w-[200px] lg:max-w-[220px] xl:max-w-none"
                     style={{
@@ -397,8 +397,8 @@ export default function Header({
                         'clamp(120px, calc((100vw - 240px) * 0.5 + 120px), 200px)',
                     }}
                   >
-                    <LicenceeSelect
-                      selected={selectedLicencee || ''}
+                    <LicenseeSelect
+                      selected={selectedLicensee || ''}
                       onChange={handleLicenseeChange}
                       userLicenseeIds={isAdmin ? undefined : userLicensees}
                       disabled={disabled}
@@ -418,7 +418,7 @@ export default function Header({
                         fetchMetricsData(
                           activeMetricsFilter,
                           customDateRange,
-                          selectedLicencee,
+                          selectedLicensee,
                           setTotals,
                           setChartData,
                           setActiveFilters,
@@ -639,7 +639,7 @@ export default function Header({
                               fetchMetricsData(
                                 activeMetricsFilter,
                                 customDateRange,
-                                selectedLicencee,
+                                selectedLicensee,
                                 setTotals,
                                 setChartData,
                                 setActiveFilters,

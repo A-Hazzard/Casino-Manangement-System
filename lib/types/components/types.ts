@@ -88,7 +88,7 @@ export type ReportsLocationsRevenueTableProps = {
   onLocationClick?: (location: AggregatedLocation) => void;
   timePeriod?: string;
   locationIds?: string[];
-  licencee?: string;
+  licensee?: string;
   className?: string;
 };
 
@@ -159,7 +159,7 @@ export type CollectorSchedule = {
   startTime: string | Date;
   endTime: string | Date;
   status: 'pending' | 'completed' | 'cancelled' | 'scheduled' | 'in-progress';
-  licencee?: string;
+  licensee?: string;
   createdAt: string;
   updatedAt: string;
 };

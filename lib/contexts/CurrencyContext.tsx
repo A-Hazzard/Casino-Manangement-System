@@ -36,7 +36,7 @@ export function CurrencyProvider({
 }: CurrencyProviderProps) {
   const [displayCurrency, setDisplayCurrency] =
     useState<CurrencyCode>(initialCurrency);
-  const { selectedLicencee, setDisplayCurrency: setDashboardCurrency } =
+  const { selectedLicensee, setDisplayCurrency: setDashboardCurrency } =
     useDashBoardStore();
   const user = useUserStore(state => state.user);
   const lastAutoSetUserId = useRef<string | null>(null); // Track which user we auto-set currency for
@@ -44,7 +44,7 @@ export function CurrencyProvider({
 
   // Determine if we're in "All Licensee" mode
   const isAllLicensee =
-    !selectedLicencee || selectedLicencee === 'all' || selectedLicencee === '';
+    !selectedLicensee || selectedLicensee === 'all' || selectedLicensee === '';
 
   const handleSetDisplayCurrency = useCallback(
     (currency: CurrencyCode) => {

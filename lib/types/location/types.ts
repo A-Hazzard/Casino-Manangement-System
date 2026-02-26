@@ -55,7 +55,7 @@ export type LocationResponse = {
   city?: string;
   state?: string;
   country: string;
-  licencee?: string;
+  licensee?: string;
   latitude?: number;
   longitude?: number;
   coordinates?: [number, number];
@@ -79,7 +79,7 @@ import { DateRangeFilter } from '../common/mongo';
 
 export type MeterMatchStage = {
   readAt: DateRangeFilter;
-  'rel.licencee'?: string;
+  'rel.licensee'?: string;
   [key: string]: unknown;
 };
 

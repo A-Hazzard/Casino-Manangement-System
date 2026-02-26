@@ -1,15 +1,15 @@
-import {
-  createUser,
-  fetchUsers,
-  filterAndSortUsers,
-  updateUser,
-} from './data';
 import { fetchLicensees } from '@/lib/helpers/client';
 import type { SortKey, User } from '@/lib/types/administration';
 import type { Licensee } from '@/lib/types/common';
 import type { AddLicenseeForm, AddUserForm } from '@/lib/types/pages';
 import { getNext30Days } from '@/lib/utils/licensee';
 import { validateEmail, validatePassword } from '@/lib/utils/validation';
+import {
+  createUser,
+  fetchUsers,
+  filterAndSortUsers,
+  updateUser,
+} from './data';
 // AdministrationSection and AppRouterInstance imports removed - handleSectionChange function was removed
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -172,6 +172,18 @@ const userManagement = {
       toast.error('A user must be assigned to at least one licensee');
       return;
     }
+
+    if (roles.includes('vault-manager') || roles.includes('cashier')) {
+      if (licenseeIds.length > 1) {
+        toast.error('Vault Managers and Cashiers can only be assigned to one licensee');
+        return;
+      }
+      if (allowedLocations && allowedLocations.length > 1) {
+        toast.error('Vault Managers and Cashiers can only be assigned to one location');
+        return;
+      }
+    }
+
     payload.assignedLicensees = licenseeIds;
 
     // Include location assignments if provided
@@ -281,7 +293,6 @@ const licenseeManagement = {
         },
         body: JSON.stringify({
           name: licenseeForm.name,
-          description: licenseeForm.description,
           country: licenseeForm.country,
           startDate: licenseeForm.startDate,
           expiryDate: licenseeForm.expiryDate,
@@ -450,6 +461,39 @@ const licenseeManagement = {
 };
 
 /**
+ * Handles location management operations
+ */
+const locationManagement = {
+  /**
+   * Loads all locations for the administration user
+   * @param options - Optional filters (showAll, forceAll)
+   * @returns Promise resolving to an array of locations
+   */
+  loadLocations: async (options: { showAll?: boolean; forceAll?: boolean } = {}) => {
+    try {
+      const { showAll = true, forceAll = true } = options;
+      const response = await axios.get('/api/locations', {
+        params: { showAll, forceAll }
+      });
+      
+      const locationsList = response.data?.locations || [];
+      
+      return locationsList.map((loc: any) => ({
+        _id: loc._id?.toString() || loc.id?.toString() || '',
+        name: loc.name || loc.locationName || 'Unknown Location',
+        licenseeId: loc.licenseeId ? String(loc.licenseeId) : null,
+      }));
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to fetch locations:', error);
+      }
+      toast.error('Failed to load locations');
+      return [];
+    }
+  },
+};
+
+/**
  * Handles section changes with smooth transitions and URL updates
  */
 // handleSectionChange function removed - not used (hooks have their own implementations)
@@ -467,6 +511,11 @@ export const administrationUtils = {
    * Licensee management operations
    */
   licenseeManagement,
+
+  /**
+   * Location management operations
+   */
+  locationManagement,
 
   // handleSectionChange removed - not used (hooks have their own implementations)
 

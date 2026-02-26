@@ -15,16 +15,16 @@
  */
 'use client';
 
+import { Button } from '@/components/shared/ui/button';
 import type { Licensee } from '@/lib/types/common';
 import {
-  isLicenseePaid,
-  formatLicenseeDate,
-  canChangePaymentStatus,
+    canChangePaymentStatus,
+    formatLicenseeDate,
+    isLicenseePaid,
 } from '@/lib/utils/licensee';
-import { useState, useEffect, useRef } from 'react';
 import { ChevronDownIcon } from '@radix-ui/react-icons';
 import { CreditCard, Pencil, Trash2 } from 'lucide-react';
-import { Button } from '@/components/shared/ui/button';
+import { useEffect, useRef, useState } from 'react';
 
 type AdministrationLicenseeCardProps = {
   licensee: Licensee;
@@ -73,12 +73,6 @@ function AdministrationLicenseeCard({
       </div>
       <div className="p-3">
         <div className="mb-3 space-y-2">
-          {licensee.description && (
-            <div className="text-sm text-gray-600">
-              <span className="font-semibold">Description:</span>{' '}
-              {licensee.description}
-            </div>
-          )}
           <div className="text-sm text-gray-600">
             <span className="font-semibold">Country:</span>{' '}
             {licensee.countryName || licensee.country}

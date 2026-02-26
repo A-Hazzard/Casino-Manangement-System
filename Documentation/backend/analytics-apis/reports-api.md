@@ -81,7 +81,7 @@ Aggregates location-level metrics including machine counts, SAS status, and fina
 - `timePeriod`: "Today", "Yesterday", "7d", "30d", "All Time", "Custom"
 - `startDate`: ISO date string for custom range
 - `endDate`: ISO date string for custom range
-- `licencee`: Filter by licensee ID or name
+- `licensee`: Filter by licensee ID or name
 - `machineTypeFilter`: Comma-separated categories:
   - `LocalServersOnly`, `SMIBLocationsOnly`, `NoSMIBLocation`, `MembershipOnly`
   - `MissingCoordinates`, `HasCoordinates`
@@ -101,7 +101,7 @@ Provides detailed machine performance analysis.
 - `onlineStatus`: `online`, `offline`, `all`
 - `search`: Search term for machine ID or name
 - `locationId`: Filter by location(s)
-- `licencee`: Filter by licensee
+- `licensee`: Filter by licensee
 
 ### 3. Location Reports API
 **Endpoint:** `GET /api/reports/locations`
@@ -111,7 +111,7 @@ Aggregates performance metrics at the location level with detailed breakdown.
 
 #### Query Parameters
 - `timePeriod`: Today, Yesterday, 7d, 30d, Custom
-- `licencee`: Filter by licensee
+- `licensee`: Filter by licensee
 - `search`: Search by location name
 - `machineTypeFilter`: Status filters
 - `summary`: If true, returns simplified summary data
@@ -532,7 +532,7 @@ const locationPipeline = [
 - `page` - Pagination page number (default: 1)
 - `limit` - Items per page (default: 10, max: 10)
 - `search` - Search term for machine ID or location name
-- `licencee` - Filter by licensee ID
+- `licensee` - Filter by licensee ID
 
 **Response Fields:**
 
@@ -688,7 +688,7 @@ try {
     db,
     { startDate, endDate },
     showAllLocations,
-    licencee,
+    licensee,
     machineTypeFilter,
     page,
     limit
@@ -788,7 +788,7 @@ console.log(`Location aggregation completed in ${duration}ms`);
 console.error('❌ LocationAggregation API Error:', {
   error: error.message,
   stack: error.stack,
-  params: { timePeriod, licencee, page, limit },
+  params: { timePeriod, licensee, page, limit },
   timestamp: new Date().toISOString(),
 });
 ```
@@ -818,7 +818,7 @@ console.error('❌ LocationAggregation API Error:', {
   deletedAt: Date | null; // Soft delete flag
   isLocalServer: boolean; // Server type flag
   rel: {
-    licencee: string; // Licensee reference
+    licensee: string; // Licensee reference
   }
 }
 ```
@@ -867,7 +867,7 @@ type GamingLocation = {
   deletedAt: Date | null; // Soft delete flag
   isLocalServer: boolean; // Server type flag
   rel: {
-    licencee: string; // Licensee reference
+    licensee: string; // Licensee reference
   };
   // ... other location fields
 };
@@ -970,7 +970,7 @@ type MetersReportParams = {
   page?: number; // Pagination page number (default: 1)
   limit?: number; // Items per page (default: 10, max: 10)
   search?: string; // Search term for machine ID or location name
-  licencee?: string; // Filter by licensee ID
+  licensee?: string; // Filter by licensee ID
 };
 ```
 

@@ -613,7 +613,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 
 **Key Properties Used:**
 
-- `selectedLicencee` - Selected licensee filter
+- `selectedLicensee` - Selected licensee filter
 - `activeMetricsFilter` - Current time period filter
 - `customDateRange` - Custom date range
 - `chartData` - Chart data
@@ -640,7 +640,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 
 3. **`fetchCabinetTotals`**
    - Fetches aggregated financial totals
-   - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicencee`, `displayCurrency`, `signal`
+   - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicensee`, `displayCurrency`, `signal`
    - Returns: `{ moneyIn, moneyOut, gross }`
 
 4. **`fetchCabinetsForLocation`**
@@ -652,12 +652,12 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 
 5. **`getMachineChartData`**
    - Fetches chart data for a machine
-   - Parameters: `machineId`, `timePeriod`, `startDate`, `endDate`, `displayCurrency`, `selectedLicencee`, `granularity`, `signal`
+   - Parameters: `machineId`, `timePeriod`, `startDate`, `endDate`, `displayCurrency`, `selectedLicensee`, `granularity`, `signal`
    - Returns: Chart data array with optional data span
 
 6. **`getMachineMetrics`**
    - Fetches machine metrics
-   - Parameters: `machineId`, `timePeriod`, `startDate`, `endDate`, `displayCurrency`, `selectedLicencee`
+   - Parameters: `machineId`, `timePeriod`, `startDate`, `endDate`, `displayCurrency`, `selectedLicensee`
    - Returns: Machine metrics data
 
 ### Hook Functions

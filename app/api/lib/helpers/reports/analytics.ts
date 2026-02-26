@@ -8,7 +8,7 @@
  */
 
 import { Countries } from '@/app/api/lib/models/countries';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -80,7 +80,7 @@ function buildMachineAnalyticsPipeline(
   if (selectedLicensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licencee': selectedLicensee,
+        'locationDetails.rel.licensee': selectedLicensee,
       },
     } as PipelineStage);
   }
@@ -285,7 +285,7 @@ function buildDashboardAnalyticsPipeline(licensee: string): PipelineStage[] {
     },
     {
       $match: {
-        'locationDetails.rel.licencee': licensee,
+        'locationDetails.rel.licensee': licensee,
       },
     },
     {
@@ -559,7 +559,7 @@ export async function getTopLocationsAnalytics(
     },
     {
       $match: {
-        'locationDetails.rel.licencee': licensee,
+        'locationDetails.rel.licensee': licensee,
       },
     },
     {
@@ -698,7 +698,7 @@ export async function getTopLocationsAnalytics(
       '@/lib/helpers/rates'
     );
 
-    const licenseesData = await Licencee.find(
+    const licenseesData = await Licensee.find(
         {
           $or: [
             { deletedAt: null },
@@ -724,7 +724,7 @@ export async function getTopLocationsAnalytics(
     });
 
     topLocationsWithMetrics = topLocationsWithMetrics.map(location => {
-      const licenseeId = location.rel?.licencee;
+      const licenseeId = location.rel?.licensee;
       let nativeCurrency: string = 'USD';
 
       if (licenseeId) {

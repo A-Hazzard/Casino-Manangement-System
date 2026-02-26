@@ -6,7 +6,7 @@
  */
 
 import { Countries } from '@/app/api/lib/models/countries';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
   convertFromUSD,
@@ -22,20 +22,20 @@ import type { CurrencyCode } from '@/shared/types/currency';
  *
  * @param rows - Array of aggregated locations
  * @param displayCurrency - Target currency code
- * @param licencee - Licensee filter (if any)
+ * @param licensee - Licensee filter (if any)
  * @returns Promise<AggregatedLocation[]>
  */
 export async function convertLocationCurrency(
   rows: AggregatedLocation[],
   displayCurrency: CurrencyCode,
-  licencee: string | undefined
+  licensee: string | undefined
 ): Promise<AggregatedLocation[]> {
-  if (!shouldApplyCurrencyConversion(licencee)) {
+  if (!shouldApplyCurrencyConversion(licensee)) {
     return rows;
   }
 
   // Get currency mappings
-  const licenseesData = await Licencee.find(
+  const licenseesData = await Licensee.find(
     {
       $or: [
         { deletedAt: null },
@@ -64,7 +64,7 @@ export async function convertLocationCurrency(
   // Meter values are stored in the location's native currency
   // Convert from native currency to USD, then to display currency
   return rows.map(location => {
-    const locationLicenseeId = location.rel?.licencee as string | undefined;
+    const locationLicenseeId = location.rel?.licensee as string | undefined;
 
     let nativeCurrency: string = 'USD';
 

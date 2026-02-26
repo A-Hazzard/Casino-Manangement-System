@@ -15,9 +15,12 @@
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { Countries } from '@/app/api/lib/models/countries';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import UserModel from '@/app/api/lib/models/user';
+import { generateUniqueLicenseKey } from '@/app/api/lib/utils/licenseKey';
 import { hashPassword } from '@/app/api/lib/utils/validation';
-import mongoose from 'mongoose';
+import { generateMongoId } from '@/lib/utils/id';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -28,20 +31,26 @@ export async function GET() {
     await connectDB();
 
     // ============================================================================
-    // STEP 2: Check if an admin user already exists
+    // STEP 2: Check if system is already initialized
     // ============================================================================
-    const existingUser = await UserModel.findOne({
-      $or: [
-        { username: 'admin' },
-        { emailAddress: 'admin@gmail.com' },
-      ],
-    }).lean();
+    const [existingUser, existingCountryCount, existingLicenseeCount] = await Promise.all([
+      UserModel.findOne({
+        $or: [{ username: 'admin' }, { emailAddress: 'admin@gmail.com' }],
+      }).lean(),
+      Countries.countDocuments({
+        name: { $in: ['Trinidad & Tobago', 'Guyana', 'Barbados', 'St. Lucia'] },
+      }),
+      Licensee.countDocuments({
+        name: { $in: ['TTG', 'Cabana', 'Barbados'] },
+      }),
+    ]);
 
-    if (existingUser) {
+    // Only block installation if ALL prerequisite data exists
+    if (existingUser && existingCountryCount >= 4 && existingLicenseeCount >= 3) {
       return NextResponse.json(
         {
           success: false,
-          error: 'System is already initialized. An admin user already exists.',
+          error: 'System is already initialized. Initial data already exists.',
         },
         { status: 403 }
       );
@@ -50,46 +59,113 @@ export async function GET() {
     // ============================================================================
     // STEP 3: Hash the default password
     // ============================================================================
-    const defaultPassword = 'Sunny2026!';
+    const defaultPassword = process.env.DEFAULT_PASSWORD;
+    if (!defaultPassword) throw new Error('DEFAULT_PASSWORD environment variable is not set');
     const hashedPassword = await hashPassword(defaultPassword);
 
     // ============================================================================
-    // STEP 4: Create the admin user
+    // STEP 4: Seed Countries
     // ============================================================================
-    await UserModel.create({
-      _id: new mongoose.Types.ObjectId().toHexString(),
-      username: 'admin',
-      emailAddress: 'admin@gmail.com',
-      password: hashedPassword,
-      passwordUpdatedAt: new Date(),
-      roles: ['developer', 'admin'],
-      isEnabled: true,
-      profile: {
-        firstName: 'Evolution',
-        lastName: 'Admin',
-      },
-      assignedLocations: ['8ab1af760c5b9137f8555560'],
-      assignedLicensees: [
-        '9a5db2cb29ffd2d962fd1d91',
-        'c03b094083226f216b3fc39c',
-        '732b094083226f216b3fc11a',
-      ],
-      tempPassword: null,
-      tempPasswordChanged: true,
-      sessionVersion: 1,
-      loginCount: 0,
-      lastLoginAt: null,
-      profilePicture: null,
-      deletedAt: null,
-    });
+    const countriesData = [
+      { name: 'Trinidad & Tobago', _id: 'be622340d9d8384087937ff6' },
+      { name: 'Guyana', _id: '175d649e49f7a95dc32e72fc' },
+      { name: 'Barbados', _id: '4dc779ccc9a24014b78b3e54' },
+      { name: 'St. Lucia' },
+    ];
+
+    const seededCountries = [];
+    for (const country of countriesData) {
+      let countryDoc = await Countries.findOne({ name: country.name });
+      if (!countryDoc) {
+        countryDoc = await Countries.create({
+          _id: country._id || await generateMongoId(),
+          name: country.name,
+        });
+      }
+      seededCountries.push(countryDoc);
+    }
+
+    const ttCountry = seededCountries.find(c => c.name === 'Trinidad & Tobago');
+    const guyanaCountry = seededCountries.find(c => c.name === 'Guyana');
+    const barbadosCountry = seededCountries.find(c => c.name === 'Barbados');
 
     // ============================================================================
-    // STEP 5: Return success
+    // STEP 5: Seed Licensees
+    // ============================================================================
+    const licenseesData = [
+      { 
+        name: 'TTG', 
+        country: ttCountry?._id 
+      },
+      { 
+        name: 'Cabana', 
+        country: guyanaCountry?._id 
+      },
+      { 
+        name: 'Barbados', 
+        country: barbadosCountry?._id 
+      },
+    ];
+
+    const seededLicenseeIds = [];
+    for (const lic of licenseesData) {
+      let licenseeDoc = await Licensee.findOne({ name: lic.name });
+      if (!licenseeDoc) {
+        const licenseKey = await generateUniqueLicenseKey();
+        const startDate = new Date();
+        const expiryDate = new Date();
+        expiryDate.setFullYear(expiryDate.getFullYear() + 1); // 1 year by default
+
+        const licId = await generateMongoId();
+        licenseeDoc = await Licensee.create({
+          _id: licId,
+          name: lic.name,
+          country: lic.country,
+          startDate,
+          expiryDate,
+          licenseKey,
+          status: 'active',
+          isPaid: true,
+        });
+      }
+      seededLicenseeIds.push(licenseeDoc._id);
+    }
+
+    // ============================================================================
+    // STEP 6: Create the admin user
+    // ============================================================================
+    if (!existingUser) {
+      await UserModel.create({
+        _id: await generateMongoId(),
+        username: 'admin',
+        emailAddress: 'admin@gmail.com',
+        password: hashedPassword,
+        passwordUpdatedAt: new Date(),
+        roles: ['developer', 'admin'],
+        isEnabled: true,
+        profile: {
+          firstName: 'Evolution',
+          lastName: 'Admin',
+        },
+        assignedLocations: [], // Empty initially
+        assignedLicensees: seededLicenseeIds,
+        tempPassword: null,
+        tempPasswordChanged: true,
+        sessionVersion: 1,
+        loginCount: 0,
+        lastLoginAt: null,
+        profilePicture: null,
+        deletedAt: null,
+      });
+    }
+
+    // ============================================================================
+    // STEP 7: Return success
     // ============================================================================
     return NextResponse.json(
       {
         success: true,
-        message: 'System initialized successfully. Admin user created.',
+        message: 'System initialized successfully. Admin user, countries, and licensees created.',
       },
       { status: 201 }
     );

@@ -7,18 +7,19 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
+import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { Input } from '@/components/shared/ui/input';
+import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import { Textarea } from '@/components/shared/ui/textarea';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from '@/components/shared/ui/tooltip';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import { formatDate } from '@/lib/utils/formatting';
-import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { Clock, ExternalLink } from 'lucide-react';
 
@@ -207,8 +208,13 @@ export default function CollectionReportEditFormFields({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-grayHighlight">
+          <label className="mb-1 flex items-center text-sm font-medium text-grayHighlight">
             Meters In:
+            <CalculationHelp 
+              title="Meters In" 
+              formula="Current In - Previous In" 
+              description="Calculates the total credits or cash inserted into the machine since the last collection."
+            />
           </label>
           <div onClick={onDisabledFieldClick}>
             <Input
@@ -238,8 +244,13 @@ export default function CollectionReportEditFormFields({
             )}
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-grayHighlight">
+          <label className="mb-1 flex items-center text-sm font-medium text-grayHighlight">
             Meters Out:
+            <CalculationHelp 
+              title="Meters Out" 
+              formula="Current Out - Previous Out" 
+              description="Calculates the total payouts or credits won by players since the last collection."
+            />
           </label>
           <div onClick={onDisabledFieldClick}>
             <Input
@@ -329,9 +340,14 @@ export default function CollectionReportEditFormFields({
         />
         <label
           htmlFor="ramClearCheckbox"
-          className="text-sm font-medium text-gray-700"
+          className="text-sm font-medium text-gray-700 flex items-center"
         >
           RAM Clear
+          <CalculationHelp 
+            title="RAM Clear" 
+            formula="(RAM_Clear_Meters - Previous_Meters) + Current_Meters" 
+            description="Used when machine meters are reset to zero. This formula ensures no data is lost during the reset."
+          />
         </label>
       </div>
 

@@ -14,13 +14,14 @@
 
 'use client';
 
+import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { Input } from '@/components/shared/ui/input';
 import { Textarea } from '@/components/shared/ui/textarea';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from '@/components/shared/ui/tooltip';
 
 type FinancialsData = {
@@ -62,8 +63,13 @@ export default function CollectionReportNewCollectionFinancials({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label className="mb-2 flex items-center text-sm font-medium text-gray-700">
             Taxes:
+            <CalculationHelp 
+              title="Taxes" 
+              formula="Value entered manually" 
+              description="Government or administrative taxes applied to the profit share."
+            />
           </label>
           <Input
             type="text"
@@ -77,8 +83,13 @@ export default function CollectionReportNewCollectionFinancials({
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label className="mb-2 flex items-center text-sm font-medium text-gray-700">
             Advance:
+            <CalculationHelp 
+              title="Advance" 
+              formula="Value entered manually" 
+              description="Upfront payment or loan provided to the partner before this collection."
+            />
           </label>
           <Input
             type="text"
@@ -92,8 +103,13 @@ export default function CollectionReportNewCollectionFinancials({
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label className="mb-2 flex items-center text-sm font-medium text-gray-700">
             Variance:
+            <CalculationHelp 
+              title="Variance" 
+              formula="Value entered manually" 
+              description="Expected vs actual money difference (e.g., incorrect payout, theft, or machine error)."
+            />
           </label>
           <Input
             type="text"
@@ -119,10 +135,14 @@ export default function CollectionReportNewCollectionFinancials({
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label className="mb-2 flex items-center text-sm font-medium text-gray-700">
             Amount To Collect:{' '}
-            <span className="text-red-500">*</span>{' '}
-            <span className="text-xs text-gray-400">(Auto-calculated)</span>
+            <span className="text-red-500 ml-1">*</span>
+            <CalculationHelp 
+              title="Amount to Collect" 
+              formula="(Gross - Variance - Advance) - PartnerProfit + PrevBalance" 
+              description="The total cash that the collector is expected to retrieve from the machines at this location."
+            />
           </label>
           <Input
             type="text"
@@ -134,8 +154,13 @@ export default function CollectionReportNewCollectionFinancials({
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label className="mb-2 flex items-center text-sm font-medium text-gray-700">
             Collected Amount:
+            <CalculationHelp 
+              title="Collected Amount" 
+              formula="Value entered manually" 
+              description="The actual amount of cash retrieved and counted by the collector."
+            />
           </label>
           <TooltipProvider>
             <Tooltip>
@@ -176,9 +201,14 @@ export default function CollectionReportNewCollectionFinancials({
           </TooltipProvider>
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label className="mb-2 flex items-center text-sm font-medium text-gray-700">
             Balance Correction:{' '}
-            <span className="text-red-500">*</span>
+            <span className="text-red-500 ml-1">*</span>
+            <CalculationHelp 
+              title="Balance Correction" 
+              formula="Value entered manually" 
+              description="Adjustment made to resolve any ongoing balance issues from previous periods."
+            />
           </label>
           <TooltipProvider>
             <Tooltip>
@@ -233,11 +263,13 @@ export default function CollectionReportNewCollectionFinancials({
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Previous Balance:{' '}
-            <span className="text-xs text-gray-400">
-              (Auto-calculated: collected amount - amount to collect)
-            </span>
+          <label className="mb-2 flex items-center text-sm font-medium text-gray-700">
+            Previous Balance:
+            <CalculationHelp 
+              title="Previous Balance" 
+              formula="Collected Amount - Amount to Collect" 
+              description="Automatically tracks shortages or overages. This becomes the balance for the next collection."
+            />
           </label>
           <Input
             type="text"

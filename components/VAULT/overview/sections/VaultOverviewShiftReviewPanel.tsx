@@ -53,7 +53,7 @@ export default function VaultOverviewShiftReviewPanel({
   readOnly = false,
 }: VaultOverviewShiftReviewPanelProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee } = useVaultLicensee();
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
   const [finalBalance, setFinalBalance] = useState<string>('');
@@ -141,7 +141,7 @@ export default function VaultOverviewShiftReviewPanel({
     setFinalBalance(shift.expectedBalance.toString());
     
     // Initialize denominations from shift data if available
-    const denoms = getInitialDenominationRecord(selectedLicencee);
+    const denoms = getInitialDenominationRecord(selectedLicensee);
     if (shift.enteredDenominations) {
         shift.enteredDenominations.forEach(d => {
             if (denoms[d.denomination.toString()] !== undefined) {
@@ -163,7 +163,7 @@ export default function VaultOverviewShiftReviewPanel({
     setIsRejecting(false);
     setIsEditingBreakdown(false);
     setFinalBalance('');
-    setShiftDenominations(getInitialDenominationRecord(selectedLicencee));
+    setShiftDenominations(getInitialDenominationRecord(selectedLicensee));
     setAuditComment('');
   };
 
@@ -192,7 +192,7 @@ export default function VaultOverviewShiftReviewPanel({
     const direction = discrepancy > 0 ? 'over' : 'short';
     let message = `Your count is $${absDisc.toFixed(2)} ${direction}. `;
     
-    const commonDenoms = getDenominationValues(selectedLicencee);
+    const commonDenoms = getDenominationValues(selectedLicensee);
     const matchingDenom = commonDenoms.find(d => Math.abs(absDisc - d) < 0.01);
     
     if (matchingDenom) {
@@ -579,7 +579,7 @@ export default function VaultOverviewShiftReviewPanel({
 
                                     {isEditingBreakdown && (
                                         <div className="grid grid-cols-3 gap-2 mt-2 bg-white p-3 rounded-lg border border-orange-200">
-                                            {getDenominationValues(selectedLicencee).map(denom => {
+                                            {getDenominationValues(selectedLicensee).map(denom => {
                                                 const qty = shiftDenominations[denom.toString()] || 0;
                                                 const stock = vaultInventory.find(v => Number(v.denomination) === denom)?.quantity || 0;
                                                 const isShort = qty > stock;

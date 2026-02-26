@@ -34,7 +34,7 @@ import CabinetsDetailsSummarySection from '@/components/CMS/cabinets/details/Cab
 export default function MachineDetailsPageContent() {
   const hook = useMachinePageData();
   const { user } = useUserStore();
-  const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
+  const { setSelectedLicensee, selectedLicensee } = useDashBoardStore();
 
   const {
     cabinet,
@@ -55,7 +55,7 @@ export default function MachineDetailsPageContent() {
   // Show "No Licensee Assigned" message for non-admin users without licensees
   if (shouldShowNoLicenseeMessage(user)) {
     return (
-      <PageLayout headerProps={{ selectedLicencee, setSelectedLicencee }} pageTitle="Machine Details" hideOptions hideLicenceeFilter mainClassName="flex flex-col flex-1 p-4 md:p-6" showToaster>
+      <PageLayout headerProps={{ selectedLicensee, setSelectedLicensee }} pageTitle="Machine Details" hideOptions hideLicenseeFilter mainClassName="flex flex-col flex-1 p-4 md:p-6" showToaster>
         <NoLicenseeAssigned />
       </PageLayout>
     );
@@ -63,7 +63,7 @@ export default function MachineDetailsPageContent() {
 
   // Show loading state while fetching cabinet data
   if (!cabinet && !error) {
-    return <CabinetDetailsLoadingState selectedLicencee={selectedLicencee} setSelectedLicencee={setSelectedLicencee} error={error} />;
+    return <CabinetDetailsLoadingState selectedLicensee={selectedLicensee} setSelectedLicensee={setSelectedLicensee} error={error} />;
   }
 
   // Don't render if there's an error or no cabinet data
@@ -75,9 +75,9 @@ export default function MachineDetailsPageContent() {
       <CabinetsDeleteCabinetModal />
 
       <PageLayout
-        headerProps={{ selectedLicencee, setSelectedLicencee }}
+        headerProps={{ selectedLicensee, setSelectedLicensee }}
         pageTitle=""
-        hideOptions hideLicenceeFilter
+        hideOptions hideLicenseeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
         showToaster={false}
         onRefresh={handleRefresh}
@@ -87,7 +87,7 @@ export default function MachineDetailsPageContent() {
           <CabinetsDetailsSummarySection
             cabinet={cabinet}
             locationName={locationName}
-            selectedLicencee={selectedLicencee}
+            selectedLicensee={selectedLicensee}
             isOnline={isOnline}
             refreshing={refreshing}
             canEditMachines={canManageMachines}

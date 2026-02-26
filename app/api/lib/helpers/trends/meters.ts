@@ -9,7 +9,7 @@
 
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -37,7 +37,7 @@ type MeterTrendMetric = {
   gross: number;
   gamesPlayed: number;
   jackpot: number;
-  licencee?: string | null;
+  licensee?: string | null;
   country?: string | null;
   location?: string;
   geoCoords?: Record<string, unknown> | null;
@@ -64,7 +64,7 @@ type LocationData = {
   gameDayOffset?: number;
   country?: unknown;
   geoCoords?: Record<string, unknown>;
-  rel?: { licencee?: unknown };
+  rel?: { licensee?: unknown };
 };
 
 /**
@@ -168,7 +168,7 @@ function determineAggregationGranularity(
  * Filters locations based on user permissions
  *
  * @param locations - Array of location data
- * @param licencee - Optional licensee filter
+ * @param licensee - Optional licensee filter
  * @param isAdmin - Whether user is admin
  * @param isManager - Whether user is manager
  * @param userLocationPermissions - User's location permissions
@@ -176,12 +176,12 @@ function determineAggregationGranularity(
  */
 function filterLocationsByPermissions(
   locations: LocationData[],
-  licencee: string | null,
+  licensee: string | null,
   isAdmin: boolean,
   isManager: boolean,
   userLocationPermissions: string[]
 ): LocationData[] {
-  if (licencee) {
+  if (licensee) {
     if (!isAdmin && !isManager) {
       if (userLocationPermissions.length === 0) {
         return [];
@@ -525,11 +525,11 @@ async function processLocationMetricsSingleAggregation(
         gross: metric.gross || 0,
         gamesPlayed: metric.gamesPlayed || 0,
         jackpot: metric.jackpot || 0,
-        licencee:
-          typeof location.rel?.licencee === 'string'
-            ? location.rel.licencee
-            : Array.isArray(location.rel?.licencee)
-              ? (location.rel?.licencee?.[0]?.toString() ?? null)
+        licensee:
+          typeof location.rel?.licensee === 'string'
+            ? location.rel.licensee
+            : Array.isArray(location.rel?.licensee)
+              ? (location.rel?.licensee?.[0]?.toString() ?? null)
               : null,
         country: location.country ? String(location.country) : null,
         location: locationId,
@@ -609,11 +609,11 @@ async function processLocationMetricsBatches(
 
         return results.map(metric => ({
           ...metric,
-          licencee:
-            typeof location.rel?.licencee === 'string'
-              ? location.rel.licencee
-              : Array.isArray(location.rel?.licencee)
-                ? (location.rel?.licencee?.[0]?.toString() ?? null)
+          licensee:
+            typeof location.rel?.licensee === 'string'
+              ? location.rel.licensee
+              : Array.isArray(location.rel?.licensee)
+                ? (location.rel?.licensee?.[0]?.toString() ?? null)
                 : null,
           country: location.country ? String(location.country) : null,
           location: locationId,
@@ -644,20 +644,20 @@ async function loadCurrencyMetadata(
   const licenseeIdToName = new Map<string, string>();
   const countryIdToName = new Map<string, string>();
 
-  const licenceeIds = Array.from(
+  const licenseeIds = Array.from(
     new Set(
       metricsPerLocation
-        .map(metric => metric.licencee)
+        .map(metric => metric.licensee)
         .filter((id): id is string => Boolean(id))
     )
   );
 
-  if (licenceeIds.length > 0) {
+  if (licenseeIds.length > 0) {
     // Use Mongoose model with lean() for read-only query
-    const licenseeDocs = await Licencee.find(
+    const licenseeDocs = await Licensee.find(
       {
         _id: {
-          $in: licenceeIds
+          $in: licenseeIds
             .map(id => {
               try {
                 return new ObjectId(id);
@@ -772,9 +772,9 @@ function aggregateMetricsWithConversion(
 
     if (shouldConvert) {
       let nativeCurrency = 'USD';
-      if (metric.licencee) {
+      if (metric.licensee) {
         nativeCurrency =
-          licenseeIdToName.get(metric.licencee) || metric.licencee || 'USD';
+          licenseeIdToName.get(metric.licensee) || metric.licensee || 'USD';
       } else if (metric.country) {
         const countryName = countryIdToName.get(metric.country);
         nativeCurrency = countryName
@@ -843,7 +843,7 @@ function aggregateMetricsWithConversion(
 export async function getMeterTrends(
   params: {
     timePeriod: string;
-    licencee: string;
+    licensee: string;
     startDate?: string | null;
     endDate?: string | null;
     displayCurrency: CurrencyCode;
@@ -858,7 +858,7 @@ export async function getMeterTrends(
 ): Promise<AggregatedMetric[]> {
   const {
     timePeriod,
-    licencee,
+    licensee,
     startDate,
     endDate,
     displayCurrency,
@@ -871,7 +871,7 @@ export async function getMeterTrends(
   const isAdminOrDev =
     userRoles.includes('admin') || userRoles.includes('developer');
   const shouldConvert =
-    isAdminOrDev && shouldApplyCurrencyConversion(licencee || 'all');
+    isAdminOrDev && shouldApplyCurrencyConversion(licensee || 'all');
 
   let customStartDate: Date | undefined;
   let customEndDate: Date | undefined;
@@ -887,8 +887,8 @@ export async function getMeterTrends(
     $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
   };
 
-  if (licencee) {
-    locationQuery['rel.licencee'] = licencee;
+  if (licensee) {
+    locationQuery['rel.licensee'] = licensee;
   }
   
   // Apply location filter if provided
@@ -910,10 +910,10 @@ export async function getMeterTrends(
     userRoles.includes('admin') ||
     userRoles.includes('developer');
 
-  if (licencee) {
+  if (licensee) {
     const filteredLocations = filterLocationsByPermissions(
       locations as LocationData[],
-      licencee,
+      licensee,
       isAdmin,
       isManager,
       userLocationPermissions

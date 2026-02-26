@@ -12,8 +12,8 @@
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
-  getUserLocationFilter,
+    getUserAccessibleLicenseesFromToken,
+    getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -25,7 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse query parameters (licensee/licencee)
+ * 2. Parse query parameters (licensee/licensee)
  * 3. Get user's accessible licensees and permissions
  * 4. Determine allowed location IDs
  * 5. Build aggregation pipeline
@@ -45,8 +45,7 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    // Support both 'licensee' and 'licencee' spelling for backwards compatibility
-    const licencee = searchParams.get('licencee');
+    // Support both 'licensee' and 'licensee' spelling for backwards compatibility
     const licensee = searchParams.get('licensee');
     const membershipOnly =
       searchParams.get('membershipOnly') === 'true' ||
@@ -72,10 +71,10 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 4: Determine allowed location IDs
     // ============================================================================
-    const finalLicencee = licencee || licensee;
+    const finalLicensee = licensee || licensee;
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,
-      finalLicencee || undefined,
+      finalLicensee || undefined,
       userLocationPermissions,
       userRoles
     );
@@ -123,7 +122,7 @@ export async function GET(request: NextRequest) {
     // STEP 6: Execute aggregation with country lookup
     // ============================================================================
     const locations = await GamingLocations.aggregate([
-      // Only include non-deleted locations and match licencee if provided
+      // Only include non-deleted locations and match licensee if provided
       { $match: matchStage },
       // Lookup country details
       {

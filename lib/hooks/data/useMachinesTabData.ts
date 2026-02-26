@@ -24,7 +24,7 @@ export const useMachinesTabData = (
   overviewItemsPerBatch: number = 100,
   offlineItemsPerBatch: number = 100
 ) => {
-  const { selectedLicencee, customDateRange, activeMetricsFilter } =
+  const { selectedLicensee, customDateRange, activeMetricsFilter } =
     useDashBoardStore();
 
   // AbortControllers
@@ -63,8 +63,8 @@ export const useMachinesTabData = (
       timePeriod: activeMetricsFilter || 'Today',
     };
 
-    if (selectedLicencee && selectedLicencee !== 'all') {
-      params.licencee = selectedLicencee;
+    if (selectedLicensee && selectedLicensee !== 'all') {
+      params.licensee = selectedLicensee;
     }
 
     if (customDateRange?.startDate && customDateRange?.endDate) {
@@ -99,7 +99,7 @@ export const useMachinesTabData = (
       setStatsLoading(false);
     }
   }, [
-    selectedLicencee,
+    selectedLicensee,
     customDateRange,
     activeMetricsFilter,
     displayCurrency,
@@ -124,8 +124,8 @@ export const useMachinesTabData = (
             timePeriod: activeMetricsFilter || 'Today',
           };
 
-          if (selectedLicencee && selectedLicencee !== 'all')
-            params.licencee = selectedLicencee;
+          if (selectedLicensee && selectedLicensee !== 'all')
+            params.licensee = selectedLicensee;
           if (locationId !== 'all') params.locationId = locationId;
           if (onlineStatus !== 'all') params.onlineStatus = onlineStatus;
           if (search?.trim()) params.search = search.trim();
@@ -168,7 +168,7 @@ export const useMachinesTabData = (
       }
     },
     [
-      selectedLicencee,
+      selectedLicensee,
       customDateRange,
       activeMetricsFilter,
       displayCurrency,
@@ -190,8 +190,8 @@ export const useMachinesTabData = (
             limit: offlineItemsPerBatch.toString(),
           };
 
-          if (selectedLicencee && selectedLicencee !== 'all')
-            params.licencee = selectedLicencee;
+          if (selectedLicensee && selectedLicensee !== 'all')
+            params.licensee = selectedLicensee;
           if (locationId !== 'all') params.locationId = locationId;
           if (search?.trim()) params.search = search.trim();
           if (duration && duration !== 'all') params.duration = duration;
@@ -233,7 +233,7 @@ export const useMachinesTabData = (
       }
     },
     [
-      selectedLicencee,
+      selectedLicensee,
       customDateRange,
       activeMetricsFilter,
       offlineItemsPerBatch,
@@ -252,8 +252,8 @@ export const useMachinesTabData = (
             timePeriod: activeMetricsFilter || 'Today',
           };
 
-          if (selectedLicencee && selectedLicencee !== 'all')
-            params.licencee = selectedLicencee;
+          if (selectedLicensee && selectedLicensee !== 'all')
+            params.licensee = selectedLicensee;
           if (selectedLocations.length > 0)
             params.locationId = selectedLocations.join(',');
           if (displayCurrency) params.currency = displayCurrency;
@@ -280,7 +280,7 @@ export const useMachinesTabData = (
       }
     },
     [
-      selectedLicencee,
+      selectedLicensee,
       customDateRange,
       activeMetricsFilter,
       displayCurrency,
@@ -292,8 +292,8 @@ export const useMachinesTabData = (
   const fetchLocationsData = useCallback(async () => {
     try {
       const params: Record<string, string> = {};
-      if (selectedLicencee && selectedLicencee !== 'all') {
-        params.licencee = selectedLicencee;
+      if (selectedLicensee && selectedLicensee !== 'all') {
+        params.licensee = selectedLicensee;
       }
       
       const response = await axios.get('/api/locations', { params });
@@ -317,7 +317,7 @@ export const useMachinesTabData = (
       console.error('Failed to fetch locations:', error);
       setLocations([]);
     }
-  }, [selectedLicencee]);
+  }, [selectedLicensee]);
 
   return {
     machineStats,

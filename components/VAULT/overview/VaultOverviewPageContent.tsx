@@ -86,7 +86,7 @@ export default function VaultOverviewPageContent() {
   const [machines, setMachines] = useState<GamingMachine[]>([]);
   
   // Loading States
-  const { licenseeId: selectedLicencee, setLicenseeId: setSelectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee, setLicenseeId: setSelectedLicensee } = useVaultLicensee();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [shiftReviewLoading, setShiftReviewLoading] = useState(false);
@@ -133,7 +133,7 @@ export default function VaultOverviewPageContent() {
       let data;
       if (isAdminOrDev) {
           // fetch global data with licensee filter
-          data = await fetchGlobalVaultOverviewData(selectedLicencee);
+          data = await fetchGlobalVaultOverviewData(selectedLicensee);
       } else if (locationId) {
           data = await fetchVaultOverviewData(locationId, user?.username || '');
       } else {
@@ -173,14 +173,14 @@ export default function VaultOverviewPageContent() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.assignedLocations, user?.username, selectedLicencee, isAdminOrDev]);
+  }, [user?.assignedLocations, user?.username, selectedLicensee, isAdminOrDev]);
 
   /**
    * Refetch data when location or licensee changes
    */
   useEffect(() => {
     fetchData();
-  }, [user?.assignedLocations, selectedLicencee, fetchData]);
+  }, [user?.assignedLocations, selectedLicensee, fetchData]);
 
   useEffect(() => {
     // STEP: Periodic refresh for float requests and notifications
@@ -512,8 +512,8 @@ export default function VaultOverviewPageContent() {
       onRefresh={() => fetchData(false)}
       refreshing={refreshing}
       headerProps={isAdminOrDev ? {
-          selectedLicencee,
-          setSelectedLicencee,
+          selectedLicensee,
+          setSelectedLicensee,
           disabled: false
       } : undefined}
     >

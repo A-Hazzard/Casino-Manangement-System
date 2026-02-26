@@ -15,7 +15,7 @@ import {
 import type { CurrencyCode } from '@/shared/types/currency';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 import { Countries } from '@/app/api/lib/models/countries';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import type { LocationWithGamingDay, TransformedMeterData } from './meters';
 
 /**
@@ -41,7 +41,7 @@ export async function buildCurrencyMaps(
   locationDetailsMap: Map<string, LocationDetails>;
 }> {
   // Fetch licensee mappings
-  const allLicensees = await Licencee.find({}, { _id: 1, name: 1, country: 1 })
+  const allLicensees = await Licensee.find({}, { _id: 1, name: 1, country: 1 })
     .lean()
     .exec();
 
@@ -74,7 +74,7 @@ export async function buildCurrencyMaps(
     const countryName = countryId ? countryNameMap.get(countryId) : null;
 
     locationDetailsMap.set(loc._id, {
-      licensee: loc.rel?.licencee || null,
+      licensee: loc.rel?.licensee || null,
       country: countryName || null,
     });
   });

@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const licensee =
-      searchParams.get('licensee') || searchParams.get('licencee');
+      searchParams.get('licensee') || searchParams.get('licensee');
     const locationId = searchParams.get('locationId');
     const machineTypeFilter = searchParams.get('machineTypeFilter');
 

@@ -50,7 +50,7 @@ type CabinetsCabinetContentDisplayProps = {
   onDelete?: (machine: Machine) => void;
   onRetry: () => void;
   transformCabinet: (cabinet: Machine) => Machine;
-  selectedLicencee?: string;
+  selectedLicensee?: string;
   /**
    * When false, disable header click sorting in the table.
    * Useful for pages that provide separate sort controls.
@@ -77,7 +77,7 @@ export const CabinetsCabinetContentDisplay = ({
   onPageChange,
   onRetry,
   transformCabinet,
-  selectedLicencee = 'all',
+  selectedLicensee = 'all',
   enableHeaderSorting = true,
   showSortIcons = true,
 }: CabinetsCabinetContentDisplayProps) => {
@@ -86,7 +86,7 @@ export const CabinetsCabinetContentDisplay = ({
   const { openEditModal, openDeleteModal } = useCabinetsActionsStore();
   const user = useUserStore(state => state.user);
   const licenseeName =
-    getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
+    getLicenseeName(selectedLicensee) || selectedLicensee || 'any licensee';
 
   /**
    * Determines if the user can edit machines.
@@ -258,9 +258,9 @@ export const CabinetsCabinetContentDisplay = ({
     } else if (allCabinets.length === 0) {
       if (isAdmin) {
         emptyMessage =
-          selectedLicencee &&
-          selectedLicencee !== 'all' &&
-          selectedLicencee !== ''
+          selectedLicensee &&
+          selectedLicensee !== 'all' &&
+          selectedLicensee !== ''
             ? `No machines found for ${licenseeName}.`
             : 'No machines found in the system.';
       } else if (licenseeNames.length > 0) {
@@ -270,7 +270,7 @@ export const CabinetsCabinetContentDisplay = ({
         emptyMessage = 'No machines found in your allowed locations.';
       }
     } else {
-      emptyMessage = `No machines found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}.`;
+      emptyMessage = `No machines found for ${selectedLicensee === 'all' ? 'any licensee' : licenseeName}.`;
     }
 
     return (

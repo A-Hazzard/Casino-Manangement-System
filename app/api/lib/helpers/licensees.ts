@@ -2,7 +2,7 @@ import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest } from 'next/server';
 import { Countries } from '../models/countries';
-import { Licencee } from '../models/licencee';
+import { Licensee } from '../models/licensee';
 import { generateUniqueLicenseKey } from '../utils/licenseKey';
 import { calculateChanges, logActivity } from './activityLogger';
 import { getUserFromServer } from './users';
@@ -73,7 +73,7 @@ export async function formatLicenseesForResponse(
  * Retrieves all licensees from database
  */
 export async function getAllLicensees() {
-  return await Licencee.find(
+  return await Licensee.find(
     {
       $or: [
         { deletedAt: null },
@@ -126,7 +126,7 @@ export async function createLicensee(
     finalExpiryDate.setDate(finalExpiryDate.getDate() + 30);
   }
 
-  const licensee = await Licencee.create({
+  const licensee = await Licensee.create({
     _id: newId,
     name,
     description: description || '',
@@ -210,7 +210,7 @@ export async function updateLicensee(
   } = data;
 
   const currentUser = await getUserFromServer();
-  const originalLicensee = (await Licencee.findOne({ _id }).lean()) as {
+  const originalLicensee = (await Licensee.findOne({ _id }).lean()) as {
     _id: string;
     name: string;
     description?: string;
@@ -262,7 +262,7 @@ export async function updateLicensee(
     updateData.isPaid = isPaid;
   }
 
-  const updated = await Licencee.findOneAndUpdate({ _id }, updateData, {
+  const updated = await Licensee.findOneAndUpdate({ _id }, updateData, {
     new: true,
   });
 
@@ -364,14 +364,14 @@ export async function updateLicensee(
 export async function deleteLicensee(_id: string, request: NextRequest) {
   const currentUser = await getUserFromServer();
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const licenseeToDelete = await Licencee.findOne({ _id });
+  const licenseeToDelete = await Licensee.findOne({ _id });
 
   if (!licenseeToDelete) {
     throw new Error('Licensee not found');
   }
 
   // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-  const deleted = await Licencee.findOneAndUpdate(
+  const deleted = await Licensee.findOneAndUpdate(
     { _id },
     { deletedAt: new Date() },
     { new: true }

@@ -9,7 +9,7 @@
 import type { ActiveTab, dateRange } from '@/lib/types/index';
 
 export type UseDashboardRefreshProps = {
-  selectedLicencee: string;
+  selectedLicensee: string;
   activeMetricsFilter: string | null;
   activePieChartFilter: string | null;
   customDateRange?: dateRange;

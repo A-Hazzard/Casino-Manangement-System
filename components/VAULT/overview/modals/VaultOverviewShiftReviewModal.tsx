@@ -56,7 +56,7 @@ export default function VaultOverviewShiftReviewModal({
   onSuccess
 }: VaultOverviewShiftReviewModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee } = useVaultLicensee();
   
   const [isRejecting, setIsRejecting] = useState(false);
   const [finalBalance, setFinalBalance] = useState<string>('');
@@ -79,7 +79,7 @@ export default function VaultOverviewShiftReviewModal({
       setIsEditingBreakdown(false);
       setTouchedDenominations(new Set());
       
-      const denoms = getInitialDenominationRecord(selectedLicencee);
+      const denoms = getInitialDenominationRecord(selectedLicensee);
       if (shift.enteredDenominations) {
         shift.enteredDenominations.forEach(d => {
           if (denoms[d.denomination.toString()] !== undefined) {
@@ -89,7 +89,7 @@ export default function VaultOverviewShiftReviewModal({
       }
       setShiftDenominations(denoms);
     }
-  }, [shift, selectedLicencee]);
+  }, [shift, selectedLicensee]);
 
   const shiftTotal = Object.entries(shiftDenominations).reduce(
     (sum, [denom, qty]) => sum + Number(denom) * qty,
@@ -149,7 +149,7 @@ export default function VaultOverviewShiftReviewModal({
     }
   };
 
-  const denomValues = getDenominationValues(selectedLicencee);
+  const denomValues = getDenominationValues(selectedLicensee);
   const allTouched = denomValues.every(d => touchedDenominations.has(d.toString()));
   const isValidResolution = !isEditingBreakdown || (shiftTotal > 0 || allTouched);
 
@@ -184,7 +184,7 @@ export default function VaultOverviewShiftReviewModal({
     if (absDisc === 0) return 'Carefully re-count your physical cash and please resubmit.';
     const direction = discrepancy > 0 ? 'over' : 'short';
     let message = `Your count is $${absDisc.toFixed(2)} ${direction}. `;
-    const commonDenoms = getDenominationValues(selectedLicencee);
+    const commonDenoms = getDenominationValues(selectedLicensee);
     const matchingDenom = commonDenoms.find(d => Math.abs(absDisc - d) < 0.01);
     if (matchingDenom) message += `It looks like you might have miscounted a $${matchingDenom} bill. `;
     message += 'Carefully re-count your physical cash and please resubmit.';

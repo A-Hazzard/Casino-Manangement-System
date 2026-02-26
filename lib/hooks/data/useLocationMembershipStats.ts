@@ -30,7 +30,7 @@ export function useLocationMembershipStats(
     useState<MembershipStats | null>(null);
   const [membershipStatsLoading, setMembershipStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
+  const selectedLicensee = useDashBoardStore(state => state.selectedLicensee);
   const makeRequest = useAbortableRequest();
 
   // Fetch membership stats
@@ -40,7 +40,7 @@ export function useLocationMembershipStats(
 
     try {
       // Use selected licensee or 'all' if not selected
-      const licensee = selectedLicencee || 'all';
+      const licensee = selectedLicensee || 'all';
       const stats = await fetchMembershipStats(
         licensee,
         locationId,
@@ -62,14 +62,14 @@ export function useLocationMembershipStats(
     } finally {
       setMembershipStatsLoading(false);
     }
-  }, [selectedLicencee, locationId, machineTypeFilter]);
+  }, [selectedLicensee, locationId, machineTypeFilter]);
 
   // Refresh membership stats
   const refreshMembershipStats = useCallback(async () => {
     await fetchMembershipStatsData();
   }, [fetchMembershipStatsData]);
 
-  // Load membership stats on mount and when selectedLicencee, locationId, or machineTypeFilter changes
+  // Load membership stats on mount and when selectedLicensee, locationId, or machineTypeFilter changes
   useEffect(() => {
     const loadMembershipStats = async () => {
       setMembershipStatsLoading(true);
@@ -77,7 +77,7 @@ export function useLocationMembershipStats(
 
       try {
         const result = await makeRequest(async signal => {
-          const licensee = selectedLicencee || 'all';
+          const licensee = selectedLicensee || 'all';
           const stats = await fetchMembershipStats(
             licensee,
             locationId,
@@ -110,7 +110,7 @@ export function useLocationMembershipStats(
     };
 
     loadMembershipStats();
-  }, [selectedLicencee, locationId, machineTypeFilter, makeRequest]);
+  }, [selectedLicensee, locationId, machineTypeFilter, makeRequest]);
 
   return {
     membershipStats,

@@ -1071,7 +1071,7 @@ When `locationsWithMachines=1` is set:
 **Purpose:** Fetch collection schedulers with filtering and human-readable names.
 
 **Query Parameters:**
-- `licencee` (string, optional) - Filter by licensee ID.
+- `licensee` (string, optional) - Filter by licensee ID.
 - `location` (string, optional) - Filter by location ID.
 - `collector` (string, optional) - Filter by collector ID.
 - `status` (string, optional) - Filter by status ('pending', 'completed', 'canceled').

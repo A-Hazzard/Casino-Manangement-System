@@ -1,5 +1,5 @@
 /**
- * Licencee Select Component
+ * Licensee Select Component
  * Dropdown select component for choosing a licensee with filtering support.
  *
  * Features:
@@ -21,19 +21,19 @@ import { fetchLicensees } from '@/lib/helpers/client';
 import type { Licensee } from '@/lib/types/common';
 import { useEffect, useRef, useState } from 'react';
 
-type LicenceeSelectProps = {
+type LicenseeSelectProps = {
   selected: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   userLicenseeIds?: string[]; // If provided, only show these licensees (for non-admins)
 };
 
-export default function LicenceeSelect({
+export default function LicenseeSelect({
   selected,
   onChange,
   disabled = false,
   userLicenseeIds,
-}: LicenceeSelectProps) {
+}: LicenseeSelectProps) {
   const [licensees, setLicensees] = useState<Licensee[]>([]);
   const [loading, setLoading] = useState(true);
 

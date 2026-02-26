@@ -15,13 +15,13 @@
 
 'use client';
 
-import { createCollectionReport as createCollectionReportAPI } from '@/lib/helpers/collectionReport';
+import { createCollectionReport as createCollectionReportAPI, validateMachineEntry } from '@/lib/helpers/collectionReport';
 import { sortMachinesAlphabetically } from '@/lib/helpers/collectionReport/editCollectionModalHelpers';
-import { validateMachineEntry } from '@/lib/helpers/collectionReport';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
+import { calculateMachineMovement } from '@/lib/utils/movement';
 import axios, { type AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -323,6 +323,77 @@ export function useMobileCollectionModal({
   }, [selectedLocation, lockedLocationId, setStoreAvailableMachines]);
 
   // ============================================================================
+  // Financial Calculations
+  // ============================================================================
+
+  /**
+   * Calculate amount to collect based on machine entries and financial inputs
+   */
+  const calculateAmountToCollect = useCallback(() => {
+    if (modalState.collectedMachines.length === 0 || modalState.isLoadingCollections) {
+      setStoreFinancials({ amountToCollect: '0' });
+      return;
+    }
+
+    const totalMovementData = modalState.collectedMachines.map(entry => {
+      const movement = calculateMachineMovement(
+        entry.metersIn || 0,
+        entry.metersOut || 0,
+        entry.prevIn || 0,
+        entry.prevOut || 0,
+        entry.ramClear || false,
+        undefined,
+        undefined,
+        entry.ramClearMetersIn,
+        entry.ramClearMetersOut
+      );
+      return {
+        gross: movement.gross,
+      };
+    });
+
+    const totalGross = totalMovementData.reduce(
+      (sum, m) => sum + m.gross,
+      0
+    );
+
+    const taxes = Number(financials.taxes) || 0;
+    const variance = Number(financials.variance) || 0;
+    const advance = Number(financials.advance) || 0;
+    const previousBalance = Number(financials.previousBalance) || 0;
+    
+    // Find matching location for profit share
+    const location = locationsRef.current.find(
+      loc => String(loc._id) === (lockedLocationId || selectedLocation)
+    );
+    const profitShare = location?.profitShare ?? 50;
+
+    const partnerProfit =
+      ((totalGross - variance - advance) * profitShare) / 100 - taxes;
+    const amountToCollect =
+      totalGross - variance - advance - partnerProfit + previousBalance;
+
+    setStoreFinancials({
+      amountToCollect: amountToCollect.toFixed(2),
+    });
+  }, [
+    modalState.collectedMachines,
+    modalState.isLoadingCollections,
+    financials.taxes,
+    financials.variance,
+    financials.advance,
+    financials.previousBalance,
+    lockedLocationId,
+    selectedLocation,
+    setStoreFinancials,
+  ]);
+
+  // Trigger calculation when relevant state changes
+  useEffect(() => {
+    calculateAmountToCollect();
+  }, [calculateAmountToCollect]);
+
+  // ============================================================================
   // View Handlers
   // ============================================================================
 
@@ -400,8 +471,7 @@ export function useMobileCollectionModal({
     const amountToCollectHasValue =
       financials.amountToCollect !== undefined &&
       financials.amountToCollect !== null &&
-      financials.amountToCollect.toString().trim() !== '' &&
-      Number(financials.amountToCollect) !== 0;
+      financials.amountToCollect.toString().trim() !== '';
 
     // Finance fields validation
     const balanceCorrectionHasValue =
@@ -762,7 +832,7 @@ export function useMobileCollectionModal({
         previousBalance: Number(financials.previousBalance) || 0,
         currentBalance: 0,
         amountToCollect: Number(financials.amountToCollect) || 0,
-        amountCollected: Number(financials.collectedAmount) || 0,
+        amountCollected: Number(financials.collectedAmount) || Number(financials.amountToCollect) || 0,
         amountUncollected: 0,
         partnerProfit: 0,
         taxes: Number(financials.taxes) || 0,
@@ -801,7 +871,10 @@ export function useMobileCollectionModal({
 
       const validation = validateCollectionReportPayload(payload);
       if (!validation.isValid) {
-        console.error('❌ Validation failed:', validation.errors);
+        console.error('❌ [MobileNewCollection] Validation failed:', {
+          errors: validation.errors,
+          payload,
+        });
         throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
       }
 

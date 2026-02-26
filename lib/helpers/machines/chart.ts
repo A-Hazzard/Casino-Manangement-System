@@ -55,7 +55,7 @@ export async function getMachineMetrics(
   startDate?: Date | string,
   endDate?: Date | string,
   displayCurrency?: string,
-  selectedLicencee?: string | null
+  selectedLicensee?: string | null
 ): Promise<MachineMetricsData | null> {
   try {
     let url = `/api/machines/${machineId}?timePeriod=${timePeriod}`;
@@ -86,8 +86,8 @@ export async function getMachineMetrics(
       url += `&currency=${displayCurrency}`;
     }
 
-    if (selectedLicencee) {
-      url += `&licensee=${encodeURIComponent(selectedLicencee)}`;
+    if (selectedLicensee) {
+      url += `&licensee=${encodeURIComponent(selectedLicensee)}`;
     }
 
     const response = await axios.get(url);
@@ -147,7 +147,7 @@ export async function getMachineChartData(
   startDate?: Date | string,
   endDate?: Date | string,
   displayCurrency?: string,
-  selectedLicencee?: string | null,
+  selectedLicensee?: string | null,
   granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly',
   signal?: AbortSignal
 ): Promise<{
@@ -187,9 +187,9 @@ export async function getMachineChartData(
       url += `&currency=${displayCurrency}`;
     }
 
-    // Pass selectedLicencee to API so it can check if "all licensees" is selected
-    if (selectedLicencee !== undefined && selectedLicencee !== null) {
-      url += `&licensee=${encodeURIComponent(selectedLicencee)}`;
+    // Pass selectedLicensee to API so it can check if "all licensees" is selected
+    if (selectedLicensee !== undefined && selectedLicensee !== null) {
+      url += `&licensee=${encodeURIComponent(selectedLicensee)}`;
     }
 
     // Pass granularity preference if specified

@@ -22,24 +22,24 @@ import { AggregatedLocation } from '../types/location';
 /**
  * Fetches all gaming locations from the API.
  *
- * @param licencee - (Optional) Licencee filter for locations.
+ * @param licensee - (Optional) Licensee filter for locations.
  * @returns Promise resolving to an array of locations.
  */
 export default async function getAllGamingLocations(
-  licencee?: string
+  licensee?: string
 ): Promise<locations> {
   try {
     const params: Record<string, string> = {};
-    if (licencee && licencee !== 'all') {
+    if (licensee && licensee !== 'all') {
       // Convert licensee name to ObjectId for API compatibility
-      const licenseeObjectId = getLicenseeObjectId(licencee);
-      console.log('[getAllGamingLocations] Input licencee:', licencee);
+      const licenseeObjectId = getLicenseeObjectId(licensee);
+      console.log('[getAllGamingLocations] Input licensee:', licensee);
       console.log(
         '[getAllGamingLocations] Converted ObjectId:',
         licenseeObjectId
       );
       if (licenseeObjectId) {
-        params.licencee = licenseeObjectId;
+        params.licensee = licenseeObjectId;
       }
     }
 
@@ -115,7 +115,7 @@ export const searchAllLocations = async (
   try {
     const params: Record<string, string> = {};
     if (searchTerm) params.search = searchTerm;
-    if (licensee) params.licencee = licensee;
+    if (licensee) params.licensee = licensee;
     if (displayCurrency) params.currency = displayCurrency;
     if (timePeriod) params.timePeriod = timePeriod;
     if (customDateRange?.from && customDateRange?.to) {
@@ -142,7 +142,7 @@ export const searchAllLocations = async (
  * Fetches location metrics for map display, including machine counts and financial data.
  *
  * @param timePeriod - The time period to fetch data for.
- * @param licencee - (Optional) Licencee filter.
+ * @param licensee - (Optional) Licensee filter.
  * @returns Promise resolving to location metrics array with machine and financial data.
  */
 /**

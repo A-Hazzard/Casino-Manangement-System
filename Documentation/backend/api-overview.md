@@ -551,7 +551,7 @@ WebSocket Connection → Event Monitoring → Real-time Data Push → UI Update
 ### Licensee Filtering
 
 - `licensee` (string): Licensee ID to filter data (preferred spelling)
-- `licencee` (string): Alternate spelling (backwards compatibility)
+- `licensee` (string): Alternate spelling (backwards compatibility)
 - **Behavior**:
   - Developer/Admin: Optional filter, defaults to all licensees
   - Manager: Must be one of user's assigned licensees

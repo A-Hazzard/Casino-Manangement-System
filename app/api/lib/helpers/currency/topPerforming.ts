@@ -7,7 +7,7 @@
 
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import {
   convertFromUSD,
   convertToUSD,
@@ -50,7 +50,7 @@ export async function convertTopPerformingCurrency(
   // Each machine's native currency is determined by its location's licensee
 
   // Get currency mappings
-  const licenseesData = await Licencee.find(
+  const licenseesData = await Licensee.find(
     {
       $or: [
         { deletedAt: null },
@@ -87,7 +87,7 @@ export async function convertTopPerformingCurrency(
   // Fetch location details using Mongoose model
   const locationsData = await GamingLocations.find(
     { _id: { $in: Array.from(locationIds) } },
-    { _id: 1, 'rel.licencee': 1, country: 1 }
+    { _id: 1, 'rel.licensee': 1, country: 1 }
   ).lean();
 
   const locationDetails = new Map<
@@ -97,7 +97,7 @@ export async function convertTopPerformingCurrency(
   locationsData.forEach(loc => {
     if (loc._id) {
       locationDetails.set(String(loc._id), {
-        licenseeId: loc.rel?.licencee,
+        licenseeId: loc.rel?.licensee,
         countryId: loc.country,
       });
     }

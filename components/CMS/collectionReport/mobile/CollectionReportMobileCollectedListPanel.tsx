@@ -1,5 +1,6 @@
 'use client';
 
+import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { ArrowLeft, Edit3, Trash2 } from 'lucide-react';
@@ -171,8 +172,13 @@ export default function CollectionReportMobileCollectedListPanel({
                     <div className="space-y-4">
                       {/* Amount to Collect */}
                       <div>
-                        <label className="mb-1 block text-sm font-medium">
+                        <label className="mb-1 flex items-center text-sm font-medium">
                           Amount to Collect *
+                          <CalculationHelp 
+                            title="Amount to Collect" 
+                            formula="(Gross - Variance - Advance) - PartnerProfit + PrevBalance" 
+                            description="The total cash that the collector is expected to retrieve."
+                          />
                         </label>
                         <input
                           type="text"
@@ -185,8 +191,13 @@ export default function CollectionReportMobileCollectedListPanel({
 
                       {/* Balance Correction */}
                       <div>
-                        <label className="mb-1 block text-sm font-medium">
+                        <label className="mb-1 flex items-center text-sm font-medium">
                           Balance Correction *
+                          <CalculationHelp 
+                            title="Balance Correction" 
+                            formula="Value entered manually" 
+                            description="Adjustment made to resolve any ongoing balance issues."
+                          />
                         </label>
                         <input
                           type="text"
@@ -205,8 +216,13 @@ export default function CollectionReportMobileCollectedListPanel({
 
                       {/* Collected Amount */}
                       <div>
-                        <label className="mb-1 block text-sm font-medium">
+                        <label className="mb-1 flex items-center text-sm font-medium">
                           Collected Amount
+                          <CalculationHelp 
+                            title="Collected Amount" 
+                            formula="Value entered manually" 
+                            description="The actual amount of cash retrieved and counted."
+                          />
                         </label>
                         <input
                           type="text"
@@ -225,8 +241,13 @@ export default function CollectionReportMobileCollectedListPanel({
 
                       {/* Taxes */}
                       <div>
-                        <label className="mb-1 block text-sm font-medium">
+                        <label className="mb-1 flex items-center text-sm font-medium">
                           Taxes
+                          <CalculationHelp 
+                            title="Taxes" 
+                            formula="Value entered manually" 
+                            description="Government taxes applied to the profit share."
+                          />
                         </label>
                         <input
                           type="text"
@@ -245,8 +266,13 @@ export default function CollectionReportMobileCollectedListPanel({
 
                       {/* Variance */}
                       <div>
-                        <label className="mb-1 block text-sm font-medium">
+                        <label className="mb-1 flex items-center text-sm font-medium">
                           Variance
+                          <CalculationHelp 
+                            title="Variance" 
+                            formula="Value entered manually" 
+                            description="Expected vs actual money difference."
+                          />
                         </label>
                         <input
                           type="text"
@@ -265,8 +291,13 @@ export default function CollectionReportMobileCollectedListPanel({
 
                       {/* Advance */}
                       <div>
-                        <label className="mb-1 block text-sm font-medium">
+                        <label className="mb-1 flex items-center text-sm font-medium">
                           Advance
+                          <CalculationHelp 
+                            title="Advance" 
+                            formula="Value entered manually" 
+                            description="Upfront payment or loan provided to the partner."
+                          />
                         </label>
                         <input
                           type="text"
@@ -285,8 +316,13 @@ export default function CollectionReportMobileCollectedListPanel({
 
                       {/* Previous Balance */}
                       <div>
-                        <label className="mb-1 block text-sm font-medium">
+                        <label className="mb-1 flex items-center text-sm font-medium">
                           Previous Balance
+                          <CalculationHelp 
+                            title="Previous Balance" 
+                            formula="Collected Amount - Amount to Collect" 
+                            description="Automatically tracks shortages or overages."
+                          />
                         </label>
                         <input
                           type="text"

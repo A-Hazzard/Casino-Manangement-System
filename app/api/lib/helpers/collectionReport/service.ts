@@ -37,7 +37,7 @@ const formatSmartDecimal = (value: number): string => {
  * This includes the total machine count per location which requires database access
  */
 export async function getAllCollectionReportsWithMachineCounts(
-  licenceeId?: string,
+  licenseeId?: string,
   startDate?: Date,
   endDate?: Date
 ): Promise<CollectionReportRow[]> {
@@ -100,12 +100,12 @@ export async function getAllCollectionReportsWithMachineCounts(
         preserveNullAndEmptyArrays: true,
       },
     },
-    // Apply licencee filter only if provided
-    ...(licenceeId
+    // Apply licensee filter only if provided
+    ...(licenseeId
       ? [
           {
             $match: {
-              'locationDetails.rel.licencee': licenceeId,
+              'locationDetails.rel.licensee': licenseeId,
             },
           },
         ]

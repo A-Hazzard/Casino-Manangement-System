@@ -10,7 +10,7 @@
 
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -221,7 +221,7 @@ function buildLocationTrendsPipeline(
   targetLocations: string[],
   queryStartDate: Date,
   queryEndDate: Date,
-  licencee: string | null,
+  licensee: string | null,
   shouldUseHourly: boolean,
   shouldUseMinute?: boolean,
   shouldUseMonthly?: boolean,
@@ -256,10 +256,10 @@ function buildLocationTrendsPipeline(
     },
   ];
 
-  if (licencee && licencee !== 'all') {
+  if (licensee && licensee !== 'all') {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licencee': licencee,
+        'locationDetails.rel.licensee': licensee,
       },
     } as PipelineStage);
   }
@@ -420,11 +420,11 @@ function buildLocationTrendsPipeline(
 async function getLocationCurrencies(
   locationsData: Array<{
     _id: unknown;
-    rel?: { licencee?: unknown };
+    rel?: { licensee?: unknown };
     country?: unknown;
   }>
 ): Promise<Map<string, string>> {
-  const licenseesData = await Licencee.find(
+  const licenseesData = await Licensee.find(
     {
       $or: [
         { deletedAt: null },
@@ -451,7 +451,7 @@ async function getLocationCurrencies(
 
   const locationCurrencies = new Map<string, string>();
   locationsData.forEach(loc => {
-    const locationLicenseeId = loc.rel?.licencee;
+    const locationLicenseeId = loc.rel?.licensee;
     if (locationLicenseeId) {
       const licenseeName =
         licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
@@ -805,7 +805,7 @@ function calculateLocationTotals(
 export async function getLocationTrends(
   locationIds: string,
   timePeriod: TimePeriod,
-  licencee: string | null,
+  licensee: string | null,
   startDateParam: string | null,
   endDateParam: string | null,
   displayCurrency: CurrencyCode,
@@ -1004,7 +1004,7 @@ export async function getLocationTrends(
     targetLocations,
     queryStartDate,
     queryEndDate,
-    licencee,
+    licensee,
     useHourly,
     useMinute,
     useMonthly,
@@ -1032,7 +1032,7 @@ export async function getLocationTrends(
 
   // Apply currency conversion if needed
   let convertedData = dailyData;
-  if (shouldApplyCurrencyConversion(licencee)) {
+  if (shouldApplyCurrencyConversion(licensee)) {
     const locationCurrencies = await getLocationCurrencies(locationsData);
     convertedData = convertDailyTrendItems(
       dailyData,
@@ -1085,7 +1085,7 @@ export async function getLocationTrends(
     locations: targetLocations,
     locationNames,
     currency: displayCurrency,
-    converted: shouldApplyCurrencyConversion(licencee),
+    converted: shouldApplyCurrencyConversion(licensee),
     isHourly: useHourly,
     dataSpan:
       actualDataSpan && actualDataSpan.minDate && actualDataSpan.maxDate

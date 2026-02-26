@@ -79,9 +79,9 @@ export async function GET(req: NextRequest) {
       : [];
 
     const searchTerm = searchParams.get('search')?.trim() || '';
-    // Support both 'licensee' and 'licencee' spelling for backwards compatibility
+    // Support both 'licensee' and 'licensee' spelling for backwards compatibility
     const licensee =
-      searchParams.get('licensee') || searchParams.get('licencee');
+      searchParams.get('licensee') || searchParams.get('licensee');
     const timePeriod = searchParams.get('timePeriod');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
@@ -1016,8 +1016,8 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      const { Licencee } = await import('@/app/api/lib/models/licencee');
-      const licenseesData = await Licencee.find(
+      const { Licensee } = await import('@/app/api/lib/models/licensee');
+      const licenseesData = await Licensee.find(
           {
             $or: [
               { deletedAt: null },
@@ -1060,7 +1060,7 @@ export async function GET(req: NextRequest) {
       // Convert from native currency to USD, then to display currency
       filteredMachines = filteredMachines.map(machine => {
         const locationDetails = locationDetailsMap.get(machine.locationId);
-        const machineLicenseeId = locationDetails?.rel?.licencee as
+        const machineLicenseeId = locationDetails?.rel?.licensee as
           | string
           | undefined;
 
@@ -1212,7 +1212,7 @@ export async function GET(req: NextRequest) {
         locationSample: locations.slice(0, 3).map(l => ({
           id: String(l._id),
           name: String(l.name),
-          licensee: l.rel?.licencee ? String(l.rel.licencee) : undefined,
+          licensee: l.rel?.licensee ? String(l.rel.licensee) : undefined,
         })),
         machinesReturned: paginatedMachines.length,
         totalMachines: totalCount,

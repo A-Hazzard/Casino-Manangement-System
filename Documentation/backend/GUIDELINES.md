@@ -452,7 +452,7 @@ Import models from `@/app/api/lib/models/`:
 - `Meters` - meters collection
 - `MachineSession` - machineSessions collection
 - `MachineEvents` - machineEvents collection
-- `Licencee` - licencees collection
+- `Licensee` - licensees collection
 - `Countries` - countries collection
 - `Collections` - collections collection
 - `CollectionReport` - collectionReports collection
@@ -495,7 +495,7 @@ const machine = await db.collection('machines').findOne({ _id: machineId });
 
 ```typescript
 // Always support both spellings
-const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+const licensee = searchParams.get('licensee') || searchParams.get('licensee');
 
 // Get user's accessible locations
 const allowedLocationIds = await getUserLocationFilter(licensee || undefined);

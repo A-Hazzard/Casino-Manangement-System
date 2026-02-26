@@ -42,10 +42,10 @@ export async function GET(req: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
-    // Support both 'licensee' and 'licencee' spelling
+    // Support both 'licensee' and 'licensee' spelling
     const rawLicenseeParam =
-      searchParams.get('licensee') || searchParams.get('licencee');
-    const licencee =
+      searchParams.get('licensee') || searchParams.get('licensee');
+    const licensee =
       rawLicenseeParam && rawLicenseeParam !== 'all'
         ? getLicenseeObjectId(rawLicenseeParam) || rawLicenseeParam
         : rawLicenseeParam;
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
 
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,
-      licencee || undefined,
+      licensee || undefined,
       userLocationPermissions,
       userRoles
     );

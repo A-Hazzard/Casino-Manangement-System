@@ -36,7 +36,7 @@ export type PlaysTrendItem = {
  * @param timePeriod - Time period
  * @param startDate - Start date
  * @param endDate - End date
- * @param licencee - Optional licensee to filter by
+ * @param licensee - Optional licensee to filter by
  * @param locationIds - Optional comma-separated location IDs
  * @returns Aggregation pipeline stages
  */
@@ -44,7 +44,7 @@ function buildWinLossTrendsPipeline(
   timePeriod: TimePeriod,
   startDate: Date,
   endDate: Date,
-  licencee?: string | null,
+  licensee?: string | null,
   locationIds?: string | null
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [
@@ -66,10 +66,10 @@ function buildWinLossTrendsPipeline(
     },
   ];
 
-  if (licencee) {
+  if (licensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licencee': licencee,
+        'locationDetails.rel.licensee': licensee,
       },
     } as PipelineStage);
   }
@@ -126,7 +126,7 @@ function buildWinLossTrendsPipeline(
  * @param timePeriod - Time period
  * @param startDate - Start date
  * @param endDate - End date
- * @param licencee - Optional licensee to filter by
+ * @param licensee - Optional licensee to filter by
  * @param locationIds - Optional comma-separated location IDs
  * @returns Aggregation pipeline stages
  */
@@ -134,7 +134,7 @@ function buildPlaysTrendsPipeline(
   timePeriod: TimePeriod,
   startDate: Date,
   endDate: Date,
-  licencee?: string | null,
+  licensee?: string | null,
   locationIds?: string | null
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [
@@ -156,10 +156,10 @@ function buildPlaysTrendsPipeline(
     },
   ];
 
-  if (licencee) {
+  if (licensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licencee': licencee,
+        'locationDetails.rel.licensee': licensee,
       },
     } as PipelineStage);
   }
@@ -207,13 +207,13 @@ function buildPlaysTrendsPipeline(
  * Fetches win/loss trends data
  *
  * @param timePeriod - Time period
- * @param licencee - Optional licensee to filter by
+ * @param licensee - Optional licensee to filter by
  * @param locationIds - Optional comma-separated location IDs
  * @returns Array of win/loss trend items
  */
 export async function getWinLossTrends(
   timePeriod: TimePeriod,
-  licencee?: string | null,
+  licensee?: string | null,
   locationIds?: string | null
 ): Promise<WinLossTrendItem[]> {
   const { startDate, endDate } = getDatesForTimePeriod(timePeriod);
@@ -225,7 +225,7 @@ export async function getWinLossTrends(
     timePeriod,
     startDate,
     endDate,
-    licencee,
+    licensee,
     locationIds
   );
 
@@ -242,13 +242,13 @@ export async function getWinLossTrends(
  * Fetches plays trends data
  *
  * @param timePeriod - Time period
- * @param licencee - Optional licensee to filter by
+ * @param licensee - Optional licensee to filter by
  * @param locationIds - Optional comma-separated location IDs
  * @returns Array of plays trend items
  */
 export async function getPlaysTrends(
   timePeriod: TimePeriod,
-  licencee?: string | null,
+  licensee?: string | null,
   locationIds?: string | null
 ): Promise<PlaysTrendItem[]> {
   const { startDate, endDate } = getDatesForTimePeriod(timePeriod);
@@ -260,7 +260,7 @@ export async function getPlaysTrends(
     timePeriod,
     startDate,
     endDate,
-    licencee,
+    licensee,
     locationIds
   );
 
@@ -461,7 +461,7 @@ export type HandleTrendItem = {
  * @param timePeriod - Time period
  * @param startDate - Start date
  * @param endDate - End date
- * @param licencee - Optional licensee to filter by
+ * @param licensee - Optional licensee to filter by
  * @param locationIds - Optional comma-separated location IDs
  * @returns Aggregation pipeline stages
  */
@@ -469,7 +469,7 @@ function buildHandleTrendsPipeline(
   timePeriod: TimePeriod,
   startDate: Date,
   endDate: Date,
-  licencee?: string | null,
+  licensee?: string | null,
   locationIds?: string | null
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [
@@ -491,10 +491,10 @@ function buildHandleTrendsPipeline(
     },
   ];
 
-  if (licencee) {
+  if (licensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licencee': licencee,
+        'locationDetails.rel.licensee': licensee,
       },
     } as PipelineStage);
   }
@@ -542,13 +542,13 @@ function buildHandleTrendsPipeline(
  * Get handle trends data
  *
  * @param timePeriod - Time period
- * @param licencee - Optional licensee to filter by
+ * @param licensee - Optional licensee to filter by
  * @param locationIds - Optional comma-separated location IDs
  * @returns Array of handle trend items
  */
 export async function getHandleTrends(
   timePeriod: TimePeriod,
-  licencee?: string | null,
+  licensee?: string | null,
   locationIds?: string | null
 ): Promise<HandleTrendItem[]> {
   const { startDate, endDate } = getDatesForTimePeriod(timePeriod);
@@ -560,7 +560,7 @@ export async function getHandleTrends(
     timePeriod,
     startDate,
     endDate,
-    licencee,
+    licensee,
     locationIds
   );
 
@@ -587,7 +587,7 @@ export type JackpotTrendItem = {
  * @param timePeriod - Time period
  * @param startDate - Start date
  * @param endDate - End date
- * @param licencee - Optional licensee to filter by
+ * @param licensee - Optional licensee to filter by
  * @param locationIds - Optional comma-separated location IDs
  * @returns Aggregation pipeline stages
  */
@@ -595,7 +595,7 @@ function buildJackpotTrendsPipeline(
   timePeriod: TimePeriod,
   startDate: Date,
   endDate: Date,
-  licencee?: string | null,
+  licensee?: string | null,
   locationIds?: string | null
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [
@@ -617,10 +617,10 @@ function buildJackpotTrendsPipeline(
     },
   ];
 
-  if (licencee) {
+  if (licensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licencee': licencee,
+        'locationDetails.rel.licensee': licensee,
       },
     } as PipelineStage);
   }
@@ -668,13 +668,13 @@ function buildJackpotTrendsPipeline(
  * Get jackpot trends data
  *
  * @param timePeriod - Time period
- * @param licencee - Optional licensee to filter by
+ * @param licensee - Optional licensee to filter by
  * @param locationIds - Optional comma-separated location IDs
  * @returns Array of jackpot trend items
  */
 export async function getJackpotTrends(
   timePeriod: TimePeriod,
-  licencee?: string | null,
+  licensee?: string | null,
   locationIds?: string | null
 ): Promise<JackpotTrendItem[]> {
   const { startDate, endDate } = getDatesForTimePeriod(timePeriod);
@@ -686,7 +686,7 @@ export async function getJackpotTrends(
     timePeriod,
     startDate,
     endDate,
-    licencee,
+    licensee,
     locationIds
   );
 

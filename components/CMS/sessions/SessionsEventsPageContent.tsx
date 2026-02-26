@@ -78,8 +78,8 @@ export function SessionsEventsPageContent({
   const { 
     activeMetricsFilter, 
     customDateRange,
-    selectedLicencee,
-    setSelectedLicencee 
+    selectedLicensee,
+    setSelectedLicensee 
   } = useDashBoardStore();
 
   // ============================================================================
@@ -511,8 +511,8 @@ export function SessionsEventsPageContent({
     <ProtectedRoute requiredPage="sessions">
       <PageLayout
         headerProps={{
-          selectedLicencee,
-          setSelectedLicencee,
+          selectedLicensee,
+          setSelectedLicensee,
           disabled: false,
         }}
         mainClassName="flex flex-col flex-1 px-4 py-6 sm:p-8 w-full max-w-full space-y-6 mt-4"

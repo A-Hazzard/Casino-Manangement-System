@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 const ITEMS_PER_PAGE = 20;
 
 export function useManagerScheduleData(
-  selectedLicencee: string | null,
+  selectedLicensee: string | null,
   locations: LocationSelectItem[],
   collectors: string[]
 ) {
@@ -47,7 +47,7 @@ export function useManagerScheduleData(
     setLoadingSchedulers(true);
     try {
       const data = await fetchSchedulersWithFilters({
-        licencee: selectedLicencee || undefined,
+        licensee: selectedLicensee || undefined,
         location: selectedSchedulerLocation === 'all' ? undefined : selectedSchedulerLocation,
         collector: selectedCollector === 'all' ? undefined : selectedCollector,
         status: selectedStatus === 'all' ? undefined : selectedStatus,
@@ -71,7 +71,7 @@ export function useManagerScheduleData(
     } finally {
       setLoadingSchedulers(false);
     }
-  }, [selectedLicencee, selectedSchedulerLocation, selectedCollector, selectedStatus]);
+  }, [selectedLicensee, selectedSchedulerLocation, selectedCollector, selectedStatus]);
 
   const onResetSchedulerFilters = useCallback(() => {
     setSelectedSchedulerLocation('all');

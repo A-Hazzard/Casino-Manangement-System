@@ -10,17 +10,17 @@
 import { updateMachineCollectionHistory } from '@/lib/helpers/cabinets';
 import { createCollectionReport } from '@/lib/helpers/collectionReport';
 import {
-  addMachineCollection,
-  deleteMachineCollection,
-  updateCollectionsWithReportId,
+    addMachineCollection,
+    deleteMachineCollection,
+    updateCollectionsWithReportId,
 } from '@/lib/helpers/collectionReport/newCollectionModalHelpers';
 import { updateCollection } from '@/lib/helpers/collections';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import type {
-  CollectionReportLocationWithMachines,
-  CollectionReportMachineSummary,
-  CreateCollectionReportPayload,
+    CollectionReportLocationWithMachines,
+    CollectionReportMachineSummary,
+    CreateCollectionReportPayload,
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
@@ -808,10 +808,7 @@ export function useNewCollectionModal({
         previousBalance: Number(financials.previousBalance) || 0,
         currentBalance: 0,
         amountToCollect: Number(financials.amountToCollect) || 0,
-        amountCollected:
-          financials.collectedAmount && financials.collectedAmount.trim() !== ''
-            ? Number(financials.collectedAmount)
-            : Number(financials.amountToCollect) || 0,
+        amountCollected: Number(financials.collectedAmount) || Number(financials.amountToCollect) || 0,
         amountUncollected: 0,
         partnerProfit: 0,
         taxes: Number(financials.taxes) || 0,
@@ -849,6 +846,10 @@ export function useNewCollectionModal({
 
       const validation = validateCollectionReportPayload(payload);
       if (!validation.isValid) {
+        console.error('❌ [NewCollection] Validation failed:', {
+          errors: validation.errors,
+          payload,
+        });
         toast.error(`Validation Error: ${validation.errors.join(', ')}`);
         return;
       }

@@ -15,13 +15,13 @@ import { getMemberCountsPerLocation } from './membershipAggregation';
  * @param startDate - Start date for aggregation.
  * @param endDate - End date for aggregation.
 
- * @param licencee - (Optional) Licencee filter for locations.
+ * @param licensee - (Optional) Licensee filter for locations.
 
 
  * @returns Promise resolving to an array of AggregatedLocation objects.
  */
 export const getLocationsWithMetrics = async (
-  licencee?: string,
+  licensee?: string,
   page: number = 1,
   limit: number = 50,
   sasEvaluationOnly: boolean = false,
@@ -57,8 +57,8 @@ export const getLocationsWithMetrics = async (
         ],
         ...locationIdFilter,
         // Apply licensee filter directly instead of prefetching location IDs
-        ...(licencee && licencee !== 'all' && !locationIdFilter._id
-          ? { 'rel.licencee': licencee }
+        ...(licensee && licensee !== 'all' && !locationIdFilter._id
+          ? { 'rel.licensee': licensee }
           : {}),
       },
     },

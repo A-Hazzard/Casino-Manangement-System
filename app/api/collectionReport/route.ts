@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
       try {
         const rawLicenseeParam =
           searchParams.get('licensee') ||
-          searchParams.get('licencee') ||
+          searchParams.get('licensee') ||
           undefined;
 
         const result = await fetchLocationsWithMachines(rawLicenseeParam);
@@ -104,25 +104,25 @@ export async function GET(req: NextRequest) {
     const locationId = searchParams.get('locationId') || undefined;
     const locationIds = searchParams.get('locationIds')?.split(',') || undefined;
     
-    const rawLicenceeParam =
-      searchParams.get('licensee') || searchParams.get('licencee') || undefined;
-    const licencee =
-      rawLicenceeParam && rawLicenceeParam !== 'all'
-        ? getLicenseeObjectId(rawLicenceeParam) || rawLicenceeParam
-        : rawLicenceeParam;
+    const rawLicenseeParam =
+      searchParams.get('licensee') || searchParams.get('licensee') || undefined;
+    const licensee =
+      rawLicenseeParam && rawLicenseeParam !== 'all'
+        ? getLicenseeObjectId(rawLicenseeParam) || rawLicenseeParam
+        : rawLicenseeParam;
 
     if (startDateStr && endDateStr && !timePeriod) {
       const summary = await getMonthlyCollectionReportSummary(
         new Date(startDateStr),
         new Date(endDateStr),
         locationName || (locationIds || (locationId ? [locationId] : undefined)),
-        licencee
+        licensee
       );
       const details = await getMonthlyCollectionReportByLocation(
         new Date(startDateStr),
         new Date(endDateStr),
         locationName || (locationIds || (locationId ? [locationId] : undefined)),
-        licencee
+        licensee
       );
       return NextResponse.json({ summary, details });
     }
@@ -191,7 +191,7 @@ export async function GET(req: NextRequest) {
     // STEP 8: Fetch and filter collection reports
     // ============================================================================
     const reports = await getAllCollectionReportsWithMachineCounts(
-      licencee,
+      licensee,
       startDate,
       endDate
     );

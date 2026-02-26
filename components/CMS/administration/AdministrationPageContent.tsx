@@ -32,7 +32,7 @@ export default function AdministrationPageContent() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
-  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
   const { user } = useUserStore();
   const { activeSection, handleSectionChange } = useAdministrationNavigation();
 
@@ -42,7 +42,7 @@ export default function AdministrationPageContent() {
 
   // Users data and state management hook
   const usersHook = useAdministrationUsers({
-    selectedLicencee,
+    selectedLicensee,
     activeSection,
     loadedSections,
     setLoadedSections,
@@ -68,10 +68,10 @@ export default function AdministrationPageContent() {
 
   useEffect(() => {
     // Ensure selected licensee is initialized
-    if (!selectedLicencee) {
-      setSelectedLicencee('');
+    if (!selectedLicensee) {
+      setSelectedLicensee('');
     }
-  }, [selectedLicencee, setSelectedLicencee]);
+  }, [selectedLicensee, setSelectedLicensee]);
 
   // ============================================================================
   // Render Helpers
@@ -194,7 +194,7 @@ export default function AdministrationPageContent() {
     }
     return (
       <AdministrationUsersSection
-        selectedLicencee={selectedLicencee}
+        selectedLicensee={selectedLicensee}
         isLoading={usersHook.isLoading}
         isSearching={usersHook.isSearching}
         processedUsers={usersHook.processedUsers}
@@ -235,7 +235,7 @@ export default function AdministrationPageContent() {
         refreshUsers={usersHook.refreshUsers}
       />
     );
-  }, [activeSection, user, usersHook, licenseesHook, selectedLicencee, countriesHook]);
+  }, [activeSection, user, usersHook, licenseesHook, selectedLicensee, countriesHook]);
 
   // ============================================================================
   // Event Handlers

@@ -23,18 +23,18 @@ import axios from 'axios';
  * @returns Filtered scheduler data
  */
 export async function fetchSchedulersWithFilters(options: {
-  licencee?: string;
+  licensee?: string;
   location?: string;
   collector?: string;
   status?: string;
   dateRange?: { start: string; end: string };
 }): Promise<SchedulerData[]> {
   try {
-    const { licencee, location, collector, status, dateRange } = options;
+    const { licensee, location, collector, status, dateRange } = options;
 
     // Build query parameters
     const params = new URLSearchParams();
-    if (licencee && licencee !== 'all') params.append('licencee', licencee);
+    if (licensee && licensee !== 'all') params.append('licensee', licensee);
     if (location && location !== 'all') params.append('location', location);
     if (collector && collector !== 'all') params.append('collector', collector);
     if (status) params.append('status', status);

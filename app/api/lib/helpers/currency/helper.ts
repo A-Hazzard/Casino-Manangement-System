@@ -87,7 +87,7 @@ export async function applyCurrencyConversionToMetrics<T>(
     const record = obj as Record<string, unknown>;
 
     // If object has licensee information, convert based on that licensee's currency
-    const objLicensee = (record['licensee'] || record['licencee']) as
+    const objLicensee = (record['licensee'] || record['licensee']) as
       | string
       | undefined;
     const sourceCurrency = objLicensee

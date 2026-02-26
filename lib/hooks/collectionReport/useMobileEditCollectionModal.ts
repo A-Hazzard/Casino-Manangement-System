@@ -7,18 +7,19 @@
 
 'use client';
 
-import { sortMachinesAlphabetically } from '@/lib/helpers/collectionReport/mobileEditCollectionModalHelpers';
 import { validateMachineEntry } from '@/lib/helpers/collectionReport';
+import { sortMachinesAlphabetically } from '@/lib/helpers/collectionReport/mobileEditCollectionModalHelpers';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
-  CollectionReportLocationWithMachines,
-  CollectionReportMachineSummary,
+    CollectionReportLocationWithMachines,
+    CollectionReportMachineSummary,
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
+import { calculateMachineMovement } from '@/lib/utils/movement';
 import axios, { type AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type MobileModalState = {
@@ -97,6 +98,11 @@ export function useMobileEditCollectionModal({
   onClose,
 }: UseMobileEditCollectionModalProps) {
   const user = useUserStore(state => state.user);
+  const locationsRef = useRef(locations);
+  
+  useEffect(() => {
+    locationsRef.current = locations;
+  }, [locations]);
 
   // Get Zustand store state - use store directly for shared state
   const {
@@ -163,6 +169,84 @@ export function useMobileEditCollectionModal({
       reasonForShortagePayment: '',
     },
   }));
+
+  // ============================================================================
+  // Financial Calculations
+  // ============================================================================
+
+  /**
+   * Calculate amount to collect based on machine entries and financial inputs
+   */
+  const calculateAmountToCollect = useCallback(() => {
+    if (modalState.collectedMachines.length === 0 || modalState.isLoadingCollections) {
+      setModalState(prev => ({
+        ...prev,
+        financials: { ...prev.financials, amountToCollect: '0' }
+      }));
+      return;
+    }
+
+    const totalMovementData = modalState.collectedMachines.map(entry => {
+      const movement = calculateMachineMovement(
+        entry.metersIn || 0,
+        entry.metersOut || 0,
+        entry.prevIn || 0,
+        entry.prevOut || 0,
+        entry.ramClear || false,
+        undefined,
+        undefined,
+        entry.ramClearMetersIn,
+        entry.ramClearMetersOut
+      );
+      return {
+        gross: movement.gross,
+      };
+    });
+
+    const totalGross = totalMovementData.reduce(
+      (sum, m) => sum + m.gross,
+      0
+    );
+
+    const taxes = Number(modalState.financials.taxes) || 0;
+    const variance = Number(modalState.financials.variance) || 0;
+    const advance = Number(modalState.financials.advance) || 0;
+    const previousBalance = Number(modalState.financials.previousBalance) || 0;
+    
+    // Find matching location for profit share
+    const location = locationsRef.current.find(
+      loc => String(loc._id) === (lockedLocationId || selectedLocationId || modalState.selectedLocation)
+    );
+    const profitShare = location?.profitShare ?? 50;
+
+    const partnerProfit =
+      ((totalGross - variance - advance) * profitShare) / 100 - taxes;
+    const amountToCollect =
+      totalGross - variance - advance - partnerProfit + previousBalance;
+
+    setModalState(prev => ({
+      ...prev,
+      financials: {
+        ...prev.financials,
+        amountToCollect: amountToCollect.toFixed(2),
+      },
+    }));
+  }, [
+    modalState.collectedMachines,
+    modalState.isLoadingCollections,
+    modalState.financials.taxes,
+    modalState.financials.variance,
+    modalState.financials.advance,
+    modalState.financials.previousBalance,
+    lockedLocationId,
+    selectedLocationId,
+    modalState.selectedLocation,
+  ]);
+
+  // Trigger calculation when relevant state changes
+  useEffect(() => {
+    calculateAmountToCollect();
+  }, [calculateAmountToCollect]);
 
   // State for unsaved changes warning
   const [showUnsavedChangesWarning, setShowUnsavedChangesWarning] =
@@ -323,8 +407,7 @@ export function useMobileEditCollectionModal({
     const amountToCollectHasValue =
       modalState.financials.amountToCollect !== undefined &&
       modalState.financials.amountToCollect !== null &&
-      modalState.financials.amountToCollect.toString().trim() !== '' &&
-      Number(modalState.financials.amountToCollect) !== 0;
+      modalState.financials.amountToCollect.toString().trim() !== '';
 
     // Finance fields validation
     const balanceCorrectionHasValue =
@@ -354,62 +437,7 @@ export function useMobileEditCollectionModal({
     [locations]
   );
 
-  // Fetch existing collections when modal opens
-  const fetchExistingCollections = useCallback(
-    async (locationId?: string) => {
-      setModalState(prev => ({ ...prev, isLoadingCollections: true }));
-      try {
-        let url = '/api/collections';
-        if (locationId) {
-          url += `?locationId=${locationId}`;
-        }
-        // Only get incomplete collections (no locationReportId)
-        url += `${locationId ? '&' : '?'}incompleteOnly=true`;
 
-        const response = await axios.get(url);
-        if (response.data && response.data.length > 0) {
-          // Update Zustand store with existing collections
-          setStoreCollectedMachines(response.data);
-
-          // Get the proper location ID from the first machine
-          const firstCollection = response.data[0];
-          if (firstCollection.machineId) {
-            const machineLocationId = getLocationIdFromMachine(
-              firstCollection.machineId
-            );
-            if (machineLocationId) {
-              // Find the matching location and set it
-              const matchingLocation = locations.find(
-                loc => String(loc._id) === machineLocationId
-              );
-              if (matchingLocation) {
-                setStoreSelectedLocation(
-                  machineLocationId,
-                  matchingLocation.name
-                );
-                setStoreLockedLocation(machineLocationId);
-              }
-            }
-          }
-        } else {
-          // Clear any existing state if no collections found
-          setStoreCollectedMachines([]);
-        }
-      } catch (error) {
-        console.error('Error fetching existing collections:', error);
-        setStoreCollectedMachines([]);
-      } finally {
-        setModalState(prev => ({ ...prev, isLoadingCollections: false }));
-      }
-    },
-    [
-      locations,
-      setStoreCollectedMachines,
-      setStoreSelectedLocation,
-      setStoreLockedLocation,
-      getLocationIdFromMachine,
-    ]
-  );
 
   // Add or update machine in collection list
   const addMachineToList = useCallback(async () => {
@@ -486,47 +514,47 @@ export function useMobileEditCollectionModal({
         createdCollection = response.data.data;
       }
 
-      // Update local and Zustand state
-      setModalState(prev => {
-        const newCollectedMachines = isEditing
-          ? prev.collectedMachines.map(m =>
-              m._id === modalState.editingEntryId ? createdCollection : m
-            )
-          : [...prev.collectedMachines, createdCollection];
+      // Calculate new state values
+      const newCollectedMachines = isEditing
+        ? modalState.collectedMachines.map(m =>
+            m._id === modalState.editingEntryId ? createdCollection : m
+          )
+        : [...modalState.collectedMachines, createdCollection];
 
-        const newLockedLocationId =
-          prev.collectedMachines.length === 0 && !isEditing
-            ? prev.selectedLocation || undefined
-            : prev.lockedLocationId;
+      const newLockedLocationId =
+        modalState.collectedMachines.length === 0 && !isEditing
+          ? modalState.selectedLocation || undefined
+          : modalState.lockedLocationId;
 
-        setStoreCollectedMachines(newCollectedMachines);
-        if (
-          newLockedLocationId &&
-          newLockedLocationId !== prev.lockedLocationId
-        ) {
-          setStoreLockedLocation(newLockedLocationId);
-        }
+      // Update Zustand store first (outside of local state update)
+      setStoreCollectedMachines(newCollectedMachines);
+      if (
+        newLockedLocationId &&
+        newLockedLocationId !== modalState.lockedLocationId
+      ) {
+        setStoreLockedLocation(newLockedLocationId);
+      }
 
-        return {
-          ...prev,
-          collectedMachines: newCollectedMachines,
-          lockedLocationId: newLockedLocationId,
-          isFormVisible: false,
-          isMachineListVisible: true,
-          selectedMachine: null,
-          selectedMachineData: null,
-          editingEntryId: null,
-          formData: {
-            ...prev.formData,
-            metersIn: '',
-            metersOut: '',
-            ramClear: false,
-            ramClearMetersIn: '',
-            ramClearMetersOut: '',
-            notes: '',
-          },
-        };
-      });
+      // Update local UI state
+      setModalState(prev => ({
+        ...prev,
+        collectedMachines: newCollectedMachines,
+        lockedLocationId: newLockedLocationId,
+        isFormVisible: false,
+        isMachineListVisible: true,
+        selectedMachine: null,
+        selectedMachineData: null,
+        editingEntryId: null,
+        formData: {
+          ...prev.formData,
+          metersIn: '',
+          metersOut: '',
+          ramClear: false,
+          ramClearMetersIn: '',
+          ramClearMetersOut: '',
+          notes: '',
+        },
+      }));
     } catch (error: unknown) {
       console.error('Error adding/updating machine in list:', error);
       const axiosError = error as AxiosError<{
@@ -576,30 +604,31 @@ export function useMobileEditCollectionModal({
       try {
         await axios.delete(`/api/collections?id=${entryId}`);
 
-        setModalState(prev => {
-          const newCollectedMachines = prev.collectedMachines.filter(
+        // Calculate new state values
+        const newCollectedMachines = modalState.collectedMachines.filter(
+          m => m._id !== entryId
+        );
+        const newLockedLocationId =
+          newCollectedMachines.length === 0
+            ? undefined
+            : modalState.lockedLocationId;
+
+        // Update Zustand store first
+        setStoreCollectedMachines(newCollectedMachines);
+        if (newLockedLocationId !== modalState.lockedLocationId) {
+          setStoreLockedLocation(newLockedLocationId);
+        }
+
+        // Update local UI state
+        setModalState(prev => ({
+          ...prev,
+          collectedMachines: newCollectedMachines,
+          originalCollections: prev.originalCollections.filter(
             m => m._id !== entryId
-          );
-          const newLockedLocationId =
-            newCollectedMachines.length === 0
-              ? undefined
-              : prev.lockedLocationId;
-
-          setStoreCollectedMachines(newCollectedMachines);
-          if (newLockedLocationId !== prev.lockedLocationId) {
-            setStoreLockedLocation(newLockedLocationId);
-          }
-
-          return {
-            ...prev,
-            collectedMachines: newCollectedMachines,
-            originalCollections: prev.originalCollections.filter(
-              m => m._id !== entryId
-            ),
-            lockedLocationId: newLockedLocationId,
-            isProcessing: false,
-          };
-        });
+          ),
+          lockedLocationId: newLockedLocationId,
+          isProcessing: false,
+        }));
 
         toast.success('Collection removed successfully');
       } catch (error) {
@@ -608,7 +637,12 @@ export function useMobileEditCollectionModal({
         toast.error('Failed to remove collection. Please try again.');
       }
     },
-    [setStoreCollectedMachines, setStoreLockedLocation]
+    [
+      modalState.collectedMachines,
+      modalState.lockedLocationId,
+      setStoreCollectedMachines,
+      setStoreLockedLocation,
+    ]
   );
 
   // Edit machine in collection list
@@ -817,35 +851,18 @@ export function useMobileEditCollectionModal({
 
       // Update collection report financials
       const payload = {
-        variance:
-          modalState.financials.variance &&
-          modalState.financials.variance.trim() !== ''
-            ? Number(modalState.financials.variance)
-            : 0,
-        previousBalance:
-          modalState.financials.previousBalance &&
-          modalState.financials.previousBalance.trim() !== ''
-            ? Number(modalState.financials.previousBalance)
-            : 0,
+        variance: Number(modalState.financials.variance) || 0,
+        previousBalance: Number(modalState.financials.previousBalance) || 0,
         currentBalance: 0,
         amountToCollect: Number(modalState.financials.amountToCollect) || 0,
-        amountCollected:
-          modalState.financials.collectedAmount &&
-          modalState.financials.collectedAmount.trim() !== ''
-            ? Number(modalState.financials.collectedAmount)
-            : 0,
+        amountCollected: 
+          Number(modalState.financials.collectedAmount) || 
+          Number(modalState.financials.amountToCollect) || 
+          0,
         amountUncollected: 0,
         partnerProfit: 0,
-        taxes:
-          modalState.financials.taxes &&
-          modalState.financials.taxes.trim() !== ''
-            ? Number(modalState.financials.taxes)
-            : 0,
-        advance:
-          modalState.financials.advance &&
-          modalState.financials.advance.trim() !== ''
-            ? Number(modalState.financials.advance)
-            : 0,
+        taxes: Number(modalState.financials.taxes) || 0,
+        advance: Number(modalState.financials.advance) || 0,
         collector: user?._id || '',
         locationName: selectedLocationName,
         locationReportId: reportId,
@@ -875,6 +892,10 @@ export function useMobileEditCollectionModal({
 
       const validation = validateCollectionReportPayload(payload);
       if (!validation.isValid) {
+        console.error('❌ [MobileEditReport] Validation failed:', {
+          errors: validation.errors,
+          payload,
+        });
         throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
       }
 
@@ -1012,13 +1033,7 @@ export function useMobileEditCollectionModal({
     setStoreCollectedMachines,
   ]);
 
-  // Fetch existing collections when modal opens
-  useEffect(() => {
-    if (show && locations.length > 0) {
-      fetchExistingCollections(selectedLocationId);
-    }
-    // Only run when show transitions to true or location ID changes while open
-  }, [show, selectedLocationId, fetchExistingCollections, locations.length]);
+
 
   // Reset modal state when modal opens
   useEffect(() => {
@@ -1091,7 +1106,6 @@ export function useMobileEditCollectionModal({
     // Helpers
     sortMachinesAlphabetically,
     getLocationIdFromMachine,
-    fetchExistingCollections,
 
     // Store actions
     setStoreSelectedLocation,

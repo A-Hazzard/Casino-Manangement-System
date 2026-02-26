@@ -66,11 +66,11 @@ export async function GET(request: NextRequest) {
         .map(l => l.trim())
         .filter(l => l);
       if (licenseeArray.length > 0) {
-        query['rel.licencee'] = { $in: licenseeArray };
+        query['rel.licensee'] = { $in: licenseeArray };
       }
     } else if (licensee) {
       // Single licensee filter (backwards compatibility)
-      query['rel.licencee'] = licensee;
+      query['rel.licensee'] = licensee;
     }
 
     // Filter by specific IDs if provided
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
         query._id = { $in: idArray };
         // If IDs are provided, we often want to bypass the licensee filter 
         // especially for profile display of assigned locations
-        delete query['rel.licencee'];
+        delete query['rel.licensee'];
       }
     }
 
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     const locations = await GamingLocations.find(query, {
       _id: 1,
       name: 1,
-      'rel.licencee': 1,
+      'rel.licensee': 1,
     })
       .sort({ name: 1 })
       .lean();
@@ -99,16 +99,16 @@ export async function GET(request: NextRequest) {
     // STEP 6: Format locations with licensee ID
     // ============================================================================
     const formattedLocations = locations.map(loc => {
-      const licenceeRaw = loc.rel?.licencee;
+      const licenseeRaw = loc.rel?.licensee;
       let licenseeId: string | null = null;
 
-      if (Array.isArray(licenceeRaw)) {
+      if (Array.isArray(licenseeRaw)) {
         licenseeId =
-          licenceeRaw.length > 0 && licenceeRaw[0]
-            ? String(licenceeRaw[0])
+          licenseeRaw.length > 0 && licenseeRaw[0]
+            ? String(licenseeRaw[0])
             : null;
-      } else if (licenceeRaw) {
-        licenseeId = String(licenceeRaw);
+      } else if (licenseeRaw) {
+        licenseeId = String(licenseeRaw);
       }
 
       return {

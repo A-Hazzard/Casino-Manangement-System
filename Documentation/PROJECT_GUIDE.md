@@ -103,7 +103,7 @@ evolution-one-cms/
 Types used across both frontend and backend:
 
 - `shared/types/database.ts` - Database-related types
-- `shared/types/entities.ts` - Core entity types (Licencee, GamingLocation, Machine, etc.)
+- `shared/types/entities.ts` - Core entity types (Licensee, GamingLocation, Machine, etc.)
 - `shared/types/api.ts` - API request/response types
 - `shared/types/common.ts` - Common utility types (TimePeriod, DateRange, etc.)
 - `shared/types/auth.ts` - Authentication types
@@ -155,7 +155,7 @@ Before creating or modifying types that represent backend data:
 ### Core Entity Hierarchy
 
 ```
-Licencee (licencee.ts)
+Licensee (licensee.ts)
 ├── GamingLocation (gaminglocations.ts)
 │   ├── Machine (machines.ts) - Primary UI data source
 │   │   ├── Meter (meters.ts) - Financial metrics source
@@ -273,7 +273,7 @@ Meters.aggregate([
 GamingLocation {
   _id: string;
   name: string;
-  "rel.licencee": string;         // Links to Licencee
+  "rel.licensee": string;         // Links to Licensee
   gameDayOffset: number;          // Gaming day start hour (0-23, default 8)
   country: string;                // Links to Country for currency detection
   geoCoords: {
@@ -292,7 +292,7 @@ GamingLocation {
 
 ### Important Relationships
 
-1. **Licencee → GamingLocation → Machine** - Multi-tenant architecture
+1. **Licensee → GamingLocation → Machine** - Multi-tenant architecture
 2. **Machine → Meter** - Primary financial data source
 3. **Machine → CollectionMetersHistory** - Collection tracking
 4. **GamingLocation → CollectionReport** - Location aggregation
@@ -326,7 +326,7 @@ const session = await MachineSession.findById(sessionId);
 All API routes must respect user's accessible licensees and locations:
 
 ```typescript
-const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+const licensee = searchParams.get('licensee') || searchParams.get('licensee');
 const allowedLocationIds = await getUserLocationFilter(licensee || undefined);
 
 if (allowedLocationIds !== 'all') {

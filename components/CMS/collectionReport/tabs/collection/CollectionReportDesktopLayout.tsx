@@ -41,7 +41,7 @@ export default function CollectionReportDesktopLayout(
           sortDirection={props.sortDirection}
           onSort={props.onSort}
           editableReportIds={props.editableReportIds}
-          selectedLicencee={props.selectedLicencee}
+          selectedLicensee={props.selectedLicensee}
         />
       </div>
     </div>

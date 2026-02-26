@@ -88,7 +88,7 @@ The Administration page provides comprehensive user and licensee management func
 **Data Flow:**
 
 1. `useAdministrationUserCounts` hook fetches counts on mount
-2. Data filtered by `selectedLicencee` query parameter
+2. Data filtered by `selectedLicensee` query parameter
 3. Excludes users with `deletedAt >= 2025-01-01`
 4. Includes disabled users (`isEnabled: false`)
 5. Counts displayed in 5 cards: Total, Collectors, Admins, Location Admins, Managers
@@ -101,7 +101,7 @@ The Administration page provides comprehensive user and licensee management func
 **Notes:**
 
 - Loading skeleton shown during fetch
-- Cards update when `selectedLicencee` changes
+- Cards update when `selectedLicensee` changes
 
 ---
 
@@ -826,7 +826,7 @@ The Administration page provides comprehensive user and licensee management func
 
 ### Licensee Filtering
 
-- Users section supports licensee filtering via `selectedLicencee` from dashboard store
+- Users section supports licensee filtering via `selectedLicensee` from dashboard store
 - Filter applies to user list and user counts
 - Managers automatically filtered to assigned licensees only
 

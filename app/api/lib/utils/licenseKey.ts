@@ -1,4 +1,4 @@
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 
 // Helper function to generate a unique license key
 function generateLicenseKey(): string {
@@ -16,7 +16,7 @@ export async function generateUniqueLicenseKey(): Promise<string> {
 
   while (!isUnique && attempts < maxAttempts) {
     licenseKey = generateLicenseKey();
-    const existing = await Licencee.findOne({ licenseKey });
+    const existing = await Licensee.findOne({ licenseKey });
     if (!existing) {
       isUnique = true;
       return licenseKey;

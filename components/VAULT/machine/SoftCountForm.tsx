@@ -62,7 +62,7 @@ export default function SoftCountForm({
   isEndOfDayFixed,
 }: SoftCountFormProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee } = useVaultLicensee();
   
   // Form State
   const [notes, setNotes] = useState('');
@@ -78,7 +78,7 @@ export default function SoftCountForm({
   const [expectedDrop, setExpectedDrop] = useState<string>('');
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
 
-  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
+  const denomsList = useMemo(() => getDenominationValues(selectedLicensee), [selectedLicensee]);
 
   // Reset form when machine changes
   useEffect(() => {

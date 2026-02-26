@@ -40,12 +40,12 @@ export default function VaultInventoryCard({
   isLoading = false,
 }: VaultInventoryCardProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee } = useVaultLicensee();
 
   // Normalize denominations to ensure all slots exist even if 0
   const normalizedDenoms = useMemo(() => {
     const map = new Map<number, number>();
-    const denomsList = getDenominationValues(selectedLicencee);
+    const denomsList = getDenominationValues(selectedLicensee);
     (denominations || []).forEach(d => map.set(d.denomination, d.quantity));
 
     const result = denomsList.map(val => ({
@@ -56,7 +56,7 @@ export default function VaultInventoryCard({
     }));
 
     return result;
-  }, [denominations, selectedLicencee]);
+  }, [denominations, selectedLicensee]);
 
   const totalBills = normalizedDenoms.reduce(
     (acc, curr) => acc + curr.quantity,

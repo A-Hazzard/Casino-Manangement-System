@@ -30,7 +30,7 @@ import { useEffect, useMemo, useState } from 'react';
 export function useLocationsPageData() {
   const { user } = useUserStore();
   const {
-    selectedLicencee,
+    selectedLicensee,
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
@@ -60,7 +60,7 @@ export function useLocationsPageData() {
   // Base Hook Integration
   // ============================================================================
   const { locationData, loading, searchLoading, error, fetchData } = useLocationData({
-    selectedLicencee,
+    selectedLicensee,
     activeMetricsFilter,
     customDateRange,
     searchTerm,
@@ -183,7 +183,7 @@ export function useLocationsPageData() {
   // Clear accumulated locations when filters change
   useEffect(() => {
     setAccumulatedLocations([]);
-  }, [selectedFilters, activeMetricsFilter, selectedLicencee, customDateRange]);
+  }, [selectedFilters, activeMetricsFilter, selectedLicensee, customDateRange]);
 
   // Consolidated data fetch effect
   // Triggers when filters, identity of fetchData, or custom date range changes
@@ -196,7 +196,7 @@ export function useLocationsPageData() {
   }, [
     selectedFilters, 
     activeMetricsFilter, 
-    selectedLicencee, 
+    selectedLicensee, 
     customDateRange,
     filtersInitialized, 
     fetchData
@@ -212,7 +212,7 @@ export function useLocationsPageData() {
         await fetchDashboardTotals(
           activeMetricsFilter,
           customDateRange || { startDate: new Date(), endDate: new Date() },
-          selectedLicencee,
+          selectedLicensee,
           setMetricsTotals,
           displayCurrency,
           signal,
@@ -230,7 +230,7 @@ export function useLocationsPageData() {
         setMetricsTotalsLoading(false);
       }
     });
-  }, [activeMetricsFilter, selectedLicencee, customDateRange, displayCurrency, filtersInitialized, machineTypeFilterString, makeMetricsRequest]);
+  }, [activeMetricsFilter, selectedLicensee, customDateRange, displayCurrency, filtersInitialized, machineTypeFilterString, makeMetricsRequest]);
 
   return {
     loading: loading || searchLoading,

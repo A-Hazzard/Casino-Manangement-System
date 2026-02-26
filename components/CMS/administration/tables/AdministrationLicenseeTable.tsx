@@ -16,18 +16,18 @@
 'use client';
 
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
 import type { Licensee } from '@/lib/types/common';
 import {
-  canChangePaymentStatus,
-  formatLicenseeDate,
-  isLicenseePaid,
+    canChangePaymentStatus,
+    formatLicenseeDate,
+    isLicenseePaid,
 } from '@/lib/utils/licensee';
 import creditCardIcon from '@/public/creditCardIcon.svg';
 import deleteIcon from '@/public/deleteIcon.svg';
@@ -77,9 +77,6 @@ function AdministrationLicenseeTable({
           <TableRow className="bg-button hover:bg-button">
             <TableHead className="font-semibold text-white">NAME</TableHead>
             <TableHead centered className="font-semibold text-white">
-              DESCRIPTION
-            </TableHead>
-            <TableHead centered className="font-semibold text-white">
               COUNTRY
             </TableHead>
             <TableHead centered className="font-semibold text-white">
@@ -102,7 +99,7 @@ function AdministrationLicenseeTable({
         <TableBody>
           {licensees.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="py-6 text-center text-gray-500">
+              <TableCell colSpan={7} className="py-6 text-center text-gray-500">
                 No licensees found.
               </TableCell>
             </TableRow>
@@ -116,9 +113,6 @@ function AdministrationLicenseeTable({
                 >
                   <TableCell className="font-medium text-gray-700">
                     {licensee.name}
-                  </TableCell>
-                  <TableCell centered className="text-gray-700">
-                    {licensee.description || '-'}
                   </TableCell>
                   <TableCell centered className="text-gray-700">
                     {licensee.countryName || licensee.country}

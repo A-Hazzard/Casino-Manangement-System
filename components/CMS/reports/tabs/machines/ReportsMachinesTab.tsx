@@ -56,7 +56,7 @@ export default function ReportsMachinesTab() {
   const searchParams = useSearchParams();
   const { displayCurrency } = useCurrencyFormat();
   const { openEditModal, openDeleteModal } = useCabinetsActionsStore();
-  const { selectedLicencee, customDateRange, activeMetricsFilter } =
+  const { selectedLicensee, customDateRange, activeMetricsFilter } =
     useDashBoardStore();
 
   // ============================================================================
@@ -656,7 +656,7 @@ export default function ReportsMachinesTab() {
   }, [
     fetchMachineStats,
     fetchLocationsData,
-    selectedLicencee,
+    selectedLicensee,
     customDateRange,
   ]);
 
@@ -674,7 +674,7 @@ export default function ReportsMachinesTab() {
     debouncedSearchTerm,
     overviewSelectedLocation,
     onlineStatusFilter,
-    selectedLicencee,
+    selectedLicensee,
     customDateRange,
     fetchOverviewMachines,
   ]);
@@ -686,7 +686,7 @@ export default function ReportsMachinesTab() {
   }, [
     activeTab,
     evaluationSelectedLocations,
-    selectedLicencee,
+    selectedLicensee,
     customDateRange,
     fetchAllMachines,
   ]);
@@ -713,7 +713,7 @@ export default function ReportsMachinesTab() {
     debouncedOfflineSearchTerm,
     offlineSelectedLocations,
     selectedOfflineDuration,
-    selectedLicencee,
+    selectedLicensee,
     customDateRange,
     fetchOfflineMachines,
     setAllOfflineMachines,
@@ -783,7 +783,7 @@ export default function ReportsMachinesTab() {
     debouncedSearchTerm,
     overviewSelectedLocation,
     onlineStatusFilter,
-    selectedLicencee,
+    selectedLicensee,
     customDateRange,
   ]);
 
@@ -794,7 +794,7 @@ export default function ReportsMachinesTab() {
     debouncedOfflineSearchTerm,
     offlineSelectedLocations,
     selectedOfflineDuration,
-    selectedLicencee,
+    selectedLicensee,
     customDateRange,
   ]);
 

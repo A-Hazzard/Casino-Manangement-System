@@ -23,7 +23,7 @@ import type {
 import { useCallback, useEffect, useMemo } from 'react';
 
 export function useDashboardFilters({
-  selectedLicencee,
+  selectedLicensee,
 }: UseDashboardFiltersProps): UseDashboardFiltersReturn {
   const {
     activeMetricsFilter,
@@ -41,10 +41,10 @@ export function useDashboardFilters({
 
   // Initialize selected licensee on component mount
   useEffect(() => {
-    if (!selectedLicencee) {
+    if (!selectedLicensee) {
       // This would be handled by the parent component
     }
-  }, [selectedLicencee]);
+  }, [selectedLicensee]);
 
   // Validate if current filter configuration is valid
   const isFilterValid = useMemo(() => {

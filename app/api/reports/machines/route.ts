@@ -52,8 +52,8 @@ export async function GET(req: NextRequest) {
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
 
-    const licencee =
-      searchParams.get('licensee') || searchParams.get('licencee') || undefined;
+    const licensee =
+      searchParams.get('licensee') || searchParams.get('licensee') || undefined;
     const onlineStatus = searchParams.get('onlineStatus') || 'all';
     const searchTerm = searchParams.get('search');
     const locationId = searchParams.get('locationId');
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
 
     const allowedLocationIds = await getUserLocationFilter(
       isAdminOrDev ? 'all' : assignedLicensees,
-      licencee,
+      licensee,
       assignedLocations,
       userRoles
     );
@@ -193,8 +193,8 @@ export async function GET(req: NextRequest) {
       locationMatchStage._id = { $in: allowedLocationIds };
     }
 
-    if (licencee && licencee !== 'all') {
-      locationMatchStage['rel.licencee'] = licencee;
+    if (licensee && licensee !== 'all') {
+      locationMatchStage['rel.licensee'] = licensee;
     }
 
     // ============================================================================
@@ -208,7 +208,7 @@ export async function GET(req: NextRequest) {
           locationMatchStage,
           startDate,
           endDate,
-          licencee,
+          licensee,
           displayCurrency,
           isAdminOrDev
         );

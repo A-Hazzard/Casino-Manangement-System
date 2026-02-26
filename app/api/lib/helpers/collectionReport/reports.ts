@@ -42,13 +42,13 @@ export type PaginatedCollectors = {
  *
  * @param page - Page number
  * @param limit - Items per page
- * @param licenceeId - Optional licensee ID to filter by
+ * @param licenseeId - Optional licensee ID to filter by
  * @returns Promise with paginated collectors
  */
 export async function getCollectorsPaginated(
   page: number,
   limit: number,
-  licenceeId?: string
+  licenseeId?: string
 ): Promise<PaginatedCollectors> {
   const skip = (page - 1) * limit;
 
@@ -58,8 +58,8 @@ export async function getCollectorsPaginated(
     isEnabled: true,
   };
 
-  if (licenceeId) {
-    filter.assignedLicensees = licenceeId;
+  if (licenseeId) {
+    filter.assignedLicensees = licenseeId;
   }
 
   // Fetch total count for pagination
@@ -140,7 +140,7 @@ export async function buildCollectionReportsLocationFilter(
 
     const managerLocations = await GamingLocations.find(
       {
-        'rel.licencee': { $in: licensees },
+        'rel.licensee': { $in: licensees },
         $or: [
           { deletedAt: null },
           { deletedAt: { $lt: new Date('2025-01-01') } },

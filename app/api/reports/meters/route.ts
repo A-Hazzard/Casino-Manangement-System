@@ -151,7 +151,7 @@ export async function GET(req: NextRequest) {
 
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,
-      params.licencee || undefined,
+      params.licensee || undefined,
       userLocationPermissions,
       userRoles
     );
@@ -210,7 +210,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const machinesData = await fetchMachinesData(
       locationList,
-      params.licencee
+      params.licensee
     );
 
     if (machinesData.length === 0) {
@@ -298,7 +298,7 @@ export async function GET(req: NextRequest) {
     /**
      * Currency conversion is ONLY applied when:
      * 1. User is Admin/Developer
-     * 2. "All Licensees" is selected (params.licencee is null, undefined, or "all")
+     * 2. "All Licensees" is selected (params.licensee is null, undefined, or "all")
      * 3. A display currency is explicitly selected (currency param is provided)
      *
      * When viewing a specific licensee, NO conversion should happen - values should
@@ -307,18 +307,18 @@ export async function GET(req: NextRequest) {
     let convertedData = paginatedData;
     // Currency conversion should ONLY happen when:
     // 1. User is Admin/Developer
-    // 2. "All Licensees" is EXPLICITLY selected (licencee parameter must be "all")
+    // 2. "All Licensees" is EXPLICITLY selected (licensee parameter must be "all")
     // 3. Currency parameter is explicitly provided in the request
     //
-    // IMPORTANT: The frontend only sends licencee parameter when it's NOT "all".
-    // So if licencee is missing, we're NOT viewing "all licensees" mode.
-    // Only convert when licencee is explicitly "all".
-    const licenceeParam = searchParams.get('licencee');
+    // IMPORTANT: The frontend only sends licensee parameter when it's NOT "all".
+    // So if licensee is missing, we're NOT viewing "all licensees" mode.
+    // Only convert when licensee is explicitly "all".
+    const licenseeParam = searchParams.get('licensee');
     const currencyParamProvided = searchParams.get('currency') !== null;
 
     // Only convert when explicitly viewing "all licensees" mode
     const shouldConvert =
-      isAdminOrDev && licenceeParam === 'all' && currencyParamProvided;
+      isAdminOrDev && licenseeParam === 'all' && currencyParamProvided;
 
     if (shouldConvert) {
       const { locationDetailsMap, licenseeMap } = await buildCurrencyMaps(

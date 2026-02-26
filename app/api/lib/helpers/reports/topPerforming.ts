@@ -88,7 +88,7 @@ function aggregateMetersForTop5Locations(
       ? [
           {
             $match: {
-              'locationDetails.rel.licencee': licensee,
+              'locationDetails.rel.licensee': licensee,
             },
           },
         ]
@@ -175,7 +175,7 @@ function aggregateMetersForTop5Machines(
       ? [
           {
             $match: {
-              'locationDetails.rel.licencee': licensee,
+              'locationDetails.rel.licensee': licensee,
             },
           },
         ]

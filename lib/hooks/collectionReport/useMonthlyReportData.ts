@@ -18,7 +18,7 @@ import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 
-export function useMonthlyReportData(selectedLicencee: string | null) {
+export function useMonthlyReportData(selectedLicensee: string | null) {
   // ============================================================================
   // State Management
   // ============================================================================
@@ -55,7 +55,7 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
         endDate: pendingRange.to,
         locationId: Array.isArray(monthlyLocation) ? undefined : (monthlyLocation === 'all' ? undefined : monthlyLocation),
         locationIds: Array.isArray(monthlyLocation) ? monthlyLocation : undefined,
-        licencee: selectedLicencee || undefined,
+        licensee: selectedLicensee || undefined,
       });
       
       setMonthlySummary(summary);
@@ -66,7 +66,7 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
     } finally {
       setMonthlyLoading(false);
     }
-  }, [pendingRange, monthlyLocation, selectedLicencee]);
+  }, [pendingRange, monthlyLocation, selectedLicensee]);
 
   const handleSetLastMonth = useCallback(() => {
     const lastMonth = subMonths(new Date(), 1);
@@ -96,8 +96,8 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
   // ============================================================================
   // Fetch locations on mount and licensee change
   useEffect(() => {
-    fetchMonthlyReportLocations(selectedLicencee || undefined).then(setLocations);
-  }, [selectedLicencee]);
+    fetchMonthlyReportLocations(selectedLicensee || undefined).then(setLocations);
+  }, [selectedLicensee]);
 
   // Initial fetch and fetch on location/range change
   useEffect(() => {

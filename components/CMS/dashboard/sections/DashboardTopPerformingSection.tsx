@@ -19,7 +19,7 @@ export type DashboardTopPerformingSectionProps = {
   topPerformingData: TopPerformingItem[];
   activeTab: ActiveTab;
   setActiveTab: (tab: 'locations' | 'Cabinets') => void;
-  selectedLicencee?: string;
+  selectedLicensee?: string;
   licenseeName: string;
   renderCustomizedLabel: (props: CustomizedLabelProps) => React.ReactNode;
   onViewMachine?: (item: TopPerformingItem) => void;
@@ -35,7 +35,7 @@ export function DashboardTopPerformingSection({
   topPerformingData,
   activeTab,
   setActiveTab,
-  selectedLicencee,
+  selectedLicensee,
   licenseeName,
   renderCustomizedLabel,
   onViewMachine,
@@ -113,7 +113,7 @@ export function DashboardTopPerformingSection({
         <div className="mb-0 rounded-lg rounded-tl-none rounded-tr-3xl bg-container p-6 shadow-sm">
           {topPerformingData.length === 0 ? (
             <NoDataMessage
-              message={`No metrics found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}
+              message={`No metrics found for ${selectedLicensee === 'all' ? 'any licensee' : licenseeName}`}
             />
           ) : (
             // List items with pie charts

@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
     if (isManager && !isAdmin && currentUserLicensees.length > 0) {
       // Get all resource IDs that belong to manager's licensees
       const [locations, machines, users] = await Promise.all([
-        GamingLocations.find({ 'rel.licencee': { $in: currentUserLicensees } })
+        GamingLocations.find({ 'rel.licensee': { $in: currentUserLicensees } })
           .select('_id')
           .lean(),
         Machine.find({}).select('_id gamingLocation').lean(), // Get all machines, will filter by location

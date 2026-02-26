@@ -77,7 +77,7 @@ export default function VaultOverviewRecordExpenseModal({
   onConfirm,
 }: VaultOverviewRecordExpenseModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee } = useVaultLicensee();
   // ============================================================================
   // Hooks & State
   // ============================================================================
@@ -87,7 +87,7 @@ export default function VaultOverviewRecordExpenseModal({
   const [denominations, setDenominations] = useState<Denomination[]>([]);
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
 
-  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
+  const denomsList = useMemo(() => getDenominationValues(selectedLicensee), [selectedLicensee]);
 
   // Update denominations when licensee changes or modal opens
   useEffect(() => {
@@ -139,7 +139,7 @@ export default function VaultOverviewRecordExpenseModal({
             params: {
               type: 'overview',
               limit: 1000,
-              licencee: selectedLicencee !== 'all' ? selectedLicencee : undefined,
+              licensee: selectedLicensee !== 'all' ? selectedLicensee : undefined,
             },
           });
           const fetchedMachines = response.data.data || [];
@@ -163,7 +163,7 @@ export default function VaultOverviewRecordExpenseModal({
       
       fetchMachines();
     }
-  }, [open, category, expenseDetails.isMachineRepair, selectedLicencee]);
+  }, [open, category, expenseDetails.isMachineRepair, selectedLicensee]);
 
   // ============================================================================
   // Computed Values

@@ -37,7 +37,7 @@ export default function LocationsPageContent() {
   // ============================================================================
   const router = useRouter();
   const { user } = useUserStore();
-  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
   const { openEditModal, openDeleteModal, closeDeleteModal } =
     useLocationsActionsStore();
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -121,7 +121,7 @@ export default function LocationsPageContent() {
       />
 
       <PageLayout
-        headerProps={{ selectedLicencee, setSelectedLicencee }}
+        headerProps={{ selectedLicensee, setSelectedLicensee }}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         onRefresh={handleRefresh}
         refreshing={refreshing}

@@ -99,9 +99,9 @@ const LICENSEE_COUNTRY_MAP: Record<string, string> = {
  * Get map center coordinates based on selected licensee
  */
 export const getMapCenterByLicensee = (
-  selectedLicencee?: string
+  selectedLicensee?: string
 ): [number, number] => {
-  const key = (selectedLicencee || '').toLowerCase();
+  const key = (selectedLicensee || '').toLowerCase();
   const countryCode = LICENSEE_COUNTRY_MAP[key] || 'TT';
   const center = REGION_CENTERS[countryCode] || REGION_CENTERS.DEFAULT;
   return center;

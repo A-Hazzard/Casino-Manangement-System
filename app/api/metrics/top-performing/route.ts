@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 
     // Raw licensee from query (name, id, or "all")
     const rawLicensee =
-      searchParams.get('licensee') || searchParams.get('licencee') || null;
+      searchParams.get('licensee') || searchParams.get('licensee') || null;
 
     // Normalize licensee for DB filtering:
     // - Map known names (TTG, Cabana, etc.) → ObjectId

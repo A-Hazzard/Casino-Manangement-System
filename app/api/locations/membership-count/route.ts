@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const licensee =
-      searchParams.get('licensee') || searchParams.get('licencee');
+      searchParams.get('licensee') || searchParams.get('licensee');
     const locationId = searchParams.get('locationId');
 
     // ============================================================================
@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
 
     // Apply licensee filter if provided
     if (licensee && licensee !== 'all') {
-      query['rel.licencee'] = licensee;
+      query['rel.licensee'] = licensee;
     }
 
     // Apply specific location filter if provided

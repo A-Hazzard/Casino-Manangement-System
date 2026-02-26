@@ -22,7 +22,7 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     // STEP 1: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licencee = searchParams.get('licencee') || '';
+    const licensee = searchParams.get('licensee') || '';
     const search = searchParams.get('search')?.trim() || '';
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,
-      licencee || undefined,
+      licensee || undefined,
       userLocationPermissions,
       userRoles
     );
@@ -163,8 +163,8 @@ export async function GET(request: NextRequest) {
         });
       }
     }
-    if (licencee) {
-      locationMatch.$and.push({ 'rel.licencee': licencee });
+    if (licensee) {
+      locationMatch.$and.push({ 'rel.licensee': licensee });
     }
 
     // Apply user location permissions filter
@@ -505,9 +505,9 @@ export async function GET(request: NextRequest) {
 
     // Apply currency conversion ONLY for Admin/Developer viewing "All Licensees"
     let finalLocations = locations;
-    if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
+    if (isAdminOrDev && shouldApplyCurrencyConversion(licensee)) {
       // Get licensee details for currency mapping
-      const licenseesData = await Licencee.find(
+      const licenseesData = await Licensee.find(
         {
           $or: [
             { deletedAt: null },
@@ -539,7 +539,7 @@ export async function GET(request: NextRequest) {
 
       // Convert each location's financial data
       finalLocations = locations.map(loc => {
-        const licenseeId = loc.rel?.licencee as string | undefined;
+        const licenseeId = loc.rel?.licensee as string | undefined;
 
         if (!licenseeId) {
           // Unassigned locations - determine currency from country

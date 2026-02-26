@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     // STEP 1: Parse query parameters
     // ============================================================================
     const searchParams = new URL(request.url).searchParams;
-    const licencee = searchParams.get('licencee') ?? '';
+    const licensee = searchParams.get('licensee') ?? '';
     const search = searchParams.get('search')?.trim() || '';
 
     // ============================================================================
@@ -54,7 +54,17 @@ export async function GET(request: NextRequest) {
     if (search) {
       locationMatch.name = { $regex: search, $options: 'i' };
     }
-    if (licencee) locationMatch['rel.licencee'] = licencee;
+    if (licensee) {
+      if (!locationMatch.$and) {
+        locationMatch.$and = [];
+      }
+      (locationMatch.$and as any[]).push({
+        $or: [
+          { 'rel.licensee': licensee },
+          { 'rel.licencee': licensee },
+        ],
+      });
+    }
 
     // ============================================================================
     // STEP 3: Connect to database
@@ -82,8 +92,11 @@ export async function GET(request: NextRequest) {
     const matchStage: MeterMatchStage = {
       readAt: { $gte: startDate, $lte: endDate },
     };
-    if (licencee) {
-      matchStage['rel.licencee'] = licencee;
+    if (licensee) {
+      (matchStage as any).$or = [
+        { 'rel.licensee': licensee },
+        { 'rel.licencee': licensee },
+      ];
     }
 
     // ============================================================================

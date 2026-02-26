@@ -170,7 +170,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 
 **Query Parameters:**
 - `timePeriod` - Time period filter (Today, Yesterday, 7d, 30d, Custom)
-- `licensee` / `licencee` - Licensee filter
+- `licensee` / `licensee` - Licensee filter
 - `currency` - Display currency
 - `search` - Search query
 - `machineTypeFilter` - Status filter string (comma-separated)
@@ -264,7 +264,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 
 1. **`GET /api/reports/locations`**
    - Returns paginated location list with financial metrics
-   - Parameters: `timePeriod`, `licensee`/`licencee`, `currency`, `search`, `machineTypeFilter`, `page`, `limit`, `startDate`, `endDate`
+   - Parameters: `timePeriod`, `licensee`/`licensee`, `currency`, `search`, `machineTypeFilter`, `page`, `limit`, `startDate`, `endDate`
    - Used by: `useLocationData` hook
    - Returns: Location array with financial metrics, pagination info, currency info
 
@@ -404,7 +404,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 
 2. **`fetchDashboardTotals`**
    - Fetches financial metrics totals from API
-   - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicencee`, `setTotals`, `displayCurrency`, `signal`
+   - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicensee`, `setTotals`, `displayCurrency`, `signal`
    - Used for financial metrics cards
 
 ---

@@ -14,7 +14,7 @@ import { useMemo } from 'react';
  */
 export function useVaultLicensee() {
   const { user } = useUserStore();
-  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
 
   const isAdminOrDev = useMemo(() => {
     return user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
@@ -26,12 +26,12 @@ export function useVaultLicensee() {
       return user.assignedLicensees[0];
     }
     // Otherwise use dashboard selection (for admins)
-    return selectedLicencee;
-  }, [isAdminOrDev, user?.assignedLicensees, selectedLicencee]);
+    return selectedLicensee;
+  }, [isAdminOrDev, user?.assignedLicensees, selectedLicensee]);
 
   return {
     licenseeId: effectiveLicenseeId,
     isAdminOrDev,
-    setLicenseeId: setSelectedLicencee
+    setLicenseeId: setSelectedLicensee
   };
 }

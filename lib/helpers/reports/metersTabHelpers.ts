@@ -237,7 +237,7 @@ export async function handleExportMeters({
   locations,
   activeMetricsFilter,
   customDateRange,
-  selectedLicencee,
+  selectedLicensee,
   displayCurrency,
   searchTerm,
   format,
@@ -246,7 +246,7 @@ export async function handleExportMeters({
   locations: Array<{ id: string; name: string }>;
   activeMetricsFilter: string;
   customDateRange?: DateRange | null;
-  selectedLicencee?: string | null;
+  selectedLicensee?: string | null;
   displayCurrency?: string | null;
   searchTerm: string;
   format: 'pdf' | 'excel';
@@ -269,9 +269,9 @@ export async function handleExportMeters({
       page: '1',
       limit: '10000',
       search: searchTerm || '',
-      ...(selectedLicencee &&
-        selectedLicencee !== 'all' && {
-          licencee: selectedLicencee,
+      ...(selectedLicensee &&
+        selectedLicensee !== 'all' && {
+          licensee: selectedLicensee,
         }),
       ...(displayCurrency && { currency: displayCurrency }),
       ...(activeMetricsFilter === 'Custom' &&

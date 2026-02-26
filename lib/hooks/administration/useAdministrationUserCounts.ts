@@ -19,7 +19,7 @@ type UserCounts = {
   managers: number;
 };
 
-export function useAdministrationUserCounts(selectedLicencee: string | null) {
+export function useAdministrationUserCounts(selectedLicensee: string | null) {
   const [counts, setCounts] = useState<UserCounts | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -33,8 +33,8 @@ export function useAdministrationUserCounts(selectedLicencee: string | null) {
 
       try {
         const params: Record<string, string> = {};
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.licensee = selectedLicencee;
+        if (selectedLicensee && selectedLicensee !== 'all') {
+          params.licensee = selectedLicensee;
         }
 
         const response = await axios.get<{
@@ -66,7 +66,7 @@ export function useAdministrationUserCounts(selectedLicencee: string | null) {
     return () => {
       isMounted = false;
     };
-  }, [selectedLicencee]);
+  }, [selectedLicensee]);
 
   return { counts, isLoading, error };
 }

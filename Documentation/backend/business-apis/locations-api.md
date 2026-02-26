@@ -73,7 +73,7 @@ X-RateLimit-Reset: 1640995200
 
 **Query Parameters:**
 - `licensee` (string, optional) - Filter locations by a specific licensee ID.
-- `minimal` (boolean, optional) - If `true`, returns a minimal projection of location data (`_id`, `name`, `geoCoords`, `rel.licencee`).
+- `minimal` (boolean, optional) - If `true`, returns a minimal projection of location data (`_id`, `name`, `geoCoords`, `rel.licensee`).
 - `showAll` (boolean, optional) - If `true`, includes all locations, but still respects user permissions.
 - `forceAll` (boolean, optional) - If `true` and user is an admin/developer, bypasses all licensee/location filters to return all locations in the system.
 - `page` (number, optional) - Page number for pagination (default: 1).
@@ -370,7 +370,7 @@ interface Location {
     };
   };
   rel: {
-    licencee: string;
+    licensee: string;
   };
   profitShare: number;
   collectionBalance: number;

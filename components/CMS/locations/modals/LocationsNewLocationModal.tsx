@@ -48,7 +48,7 @@ export default function LocationsNewLocationModal({
     city: '',
     country: '',
     profitShare: '',
-    licencee: '',
+    licensee: '',
     isLocalServer: false,
     latitude: '',
     longitude: '',
@@ -160,7 +160,7 @@ export default function LocationsNewLocationModal({
         city: '',
         country: '',
         profitShare: '',
-        licencee: '',
+        licensee: '',
         isLocalServer: false,
         latitude: '',
         longitude: '',
@@ -370,7 +370,7 @@ export default function LocationsNewLocationModal({
 
     try {
       // Validate form
-      if (!formData.name || !formData.licencee) {
+      if (!formData.name || !formData.licensee) {
         throw new Error('Please fill in all required fields');
       }
 
@@ -388,7 +388,7 @@ export default function LocationsNewLocationModal({
         country: formData.country,
         profitShare: parseInt(formData.profitShare) || 50,
         rel: {
-          licencee: formData.licencee,
+          licensee: formData.licensee,
         },
         isLocalServer: formData.isLocalServer,
         geoCoords: {
@@ -558,9 +558,9 @@ export default function LocationsNewLocationModal({
               Licensee <span className="text-red-500">*</span>
             </label>
             <select
-              name="licencee"
-              value={formData.licencee}
-              onChange={e => handleSelectChange('licencee', e.target.value)}
+              name="licensee"
+              value={formData.licensee}
+              onChange={e => handleSelectChange('licensee', e.target.value)}
               className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
               required
             >

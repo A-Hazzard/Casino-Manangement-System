@@ -23,7 +23,7 @@ import { getLocationsWithMetrics } from '@/app/api/lib/helpers/locationAggregati
 import { convertLocationCurrency } from '@/app/api/lib/helpers/currency/location';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
-    const licencee = searchParams.get('licencee') || undefined;
+    const licensee = searchParams.get('licensee') || undefined;
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;
     let displayCurrency: CurrencyCode = currencyParam || 'USD';
     const machineTypeFilter =
@@ -232,7 +232,7 @@ export async function GET(req: NextRequest) {
     if (!currencyParam && userAccessibleLicensees !== 'all') {
       // For non-admin users, auto-detect currency from their licensee
       let resolvedLicensee: string | undefined =
-        licencee && licencee !== 'all' ? licencee : undefined;
+        licensee && licensee !== 'all' ? licensee : undefined;
       if (
         !resolvedLicensee &&
         Array.isArray(userAccessibleLicensees) &&
@@ -244,7 +244,7 @@ export async function GET(req: NextRequest) {
       if (resolvedLicensee) {
         // Get licensee name from ID to properly resolve currency
         try {
-          const licenseeDoc = await Licencee.findOne(
+          const licenseeDoc = await Licensee.findOne(
             { _id: resolvedLicensee },
             { name: 1 }
           ).lean();
@@ -261,7 +261,7 @@ export async function GET(req: NextRequest) {
     // Get allowed location IDs (respects user permissions and licensee filter)
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,
-      licencee || undefined,
+      licensee || undefined,
       userLocationPermissions,
       userRoles
     );
@@ -272,7 +272,7 @@ export async function GET(req: NextRequest) {
     // Include user-specific permissions in cache key to prevent cross-user cache hits
     const cacheKey = getCacheKey({
       timePeriod,
-      licencee,
+      licensee,
       machineTypeFilter,
       startDate,
       endDate,
@@ -303,7 +303,7 @@ export async function GET(req: NextRequest) {
     // STEP 7: Fetch aggregated location metrics (with backend filtering)
     // ============================================================================
     const { rows, totalCount } = await getLocationsWithMetrics(
-      licencee,
+      licensee,
       page,
       limit,
       sasEvaluationOnly,
@@ -336,11 +336,11 @@ export async function GET(req: NextRequest) {
       currentUserRoles.includes('developer');
 
     let convertedRows = sortedRows;
-    if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
+    if (isAdminOrDev && shouldApplyCurrencyConversion(licensee)) {
       convertedRows = await convertLocationCurrency(
         sortedRows,
         displayCurrency,
-        licencee
+        licensee
       );
     }
 
@@ -355,7 +355,7 @@ export async function GET(req: NextRequest) {
       limit,
       hasMore: false,
       currency: displayCurrency,
-      converted: shouldApplyCurrencyConversion(licencee),
+      converted: shouldApplyCurrencyConversion(licensee),
     };
 
     if (!clearCacheParam && !skipCacheForSelected) {

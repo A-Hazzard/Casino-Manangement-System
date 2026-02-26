@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 type UseMembersSummaryDataProps = {
-  selectedLicencee: string;
+  selectedLicensee: string;
   search?: string;
   locationFilter?: string;
   page?: number;
@@ -55,7 +55,7 @@ type ActivityTrend = {
 };
 
 export function useMembersSummaryData({
-  selectedLicencee,
+  selectedLicensee,
   search = '',
   locationFilter = 'all',
   page = 1,
@@ -74,7 +74,7 @@ export function useMembersSummaryData({
     try {
       // Build query params
       const params = new URLSearchParams({
-        licensee: selectedLicencee,
+        licensee: selectedLicensee,
         page: page.toString(),
         limit: limit.toString(),
       });
@@ -91,8 +91,8 @@ export function useMembersSummaryData({
 
       const [summaryRes, demographicsRes, trendsRes] = await Promise.allSettled([
         axios.get(`/api/members/summary?${params.toString()}`),
-        axios.get(`/api/members/demographics?licensee=${selectedLicencee}${locationQuery}`),
-        axios.get(`/api/members/trends?licensee=${selectedLicencee}${locationQuery}`),
+        axios.get(`/api/members/demographics?licensee=${selectedLicensee}${locationQuery}`),
+        axios.get(`/api/members/trends?licensee=${selectedLicensee}${locationQuery}`),
       ]);
 
       // Handle summary response
@@ -157,7 +157,7 @@ export function useMembersSummaryData({
     } finally {
       setIsLoading(false);
     }
-  }, [selectedLicencee, search, locationFilter, page, limit]);
+  }, [selectedLicensee, search, locationFilter, page, limit]);
 
   useEffect(() => {
     fetchSummaryData();

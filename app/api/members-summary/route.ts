@@ -34,16 +34,16 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licencee = searchParams.get('licencee');
+    const licensee = searchParams.get('licensee');
 
     // ============================================================================
     // STEP 3: Build query filter
     // ============================================================================
     const matchStage: Record<string, unknown> = {};
 
-    if (licencee && licencee !== 'all') {
+    if (licensee && licensee !== 'all') {
       // Add licensee filtering if needed
-      matchStage.licencee = licencee;
+      matchStage.licensee = licensee;
     }
 
     // ============================================================================

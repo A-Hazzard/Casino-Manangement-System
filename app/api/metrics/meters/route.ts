@@ -107,10 +107,10 @@ export async function GET(req: NextRequest) {
     const params = Object.fromEntries(req.nextUrl.searchParams.entries());
     const { startDate, endDate } = params;
     const timePeriod = params.timePeriod;
-    const rawLicencee =
-      params.licencee || params.licensee || params.licenceeId || '';
-    const licencee =
-      rawLicencee && rawLicencee !== 'all' ? String(rawLicencee) : '';
+    const rawLicensee =
+      params.licensee || params.licensee || params.licenseeId || '';
+    const licensee =
+      rawLicensee && rawLicensee !== 'all' ? String(rawLicensee) : '';
     const displayCurrency =
       (params.currency as CurrencyCode | undefined) || 'USD';
     const granularity = params.granularity as 'hourly' | 'minute' | undefined;
@@ -165,8 +165,8 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 4: Validate licensee access
     // ============================================================================
-    if (licencee && accessibleLicensees !== 'all') {
-      if (!accessibleLicensees.includes(licencee)) {
+    if (licensee && accessibleLicensees !== 'all') {
+      if (!accessibleLicensees.includes(licensee)) {
         return NextResponse.json(
           { error: 'Unauthorized: You do not have access to this licensee' },
           { status: 403 }
@@ -192,7 +192,7 @@ export async function GET(req: NextRequest) {
     const aggregatedMetrics = await getMeterTrends(
       {
         timePeriod,
-        licencee,
+        licensee,
         startDate,
         endDate,
         displayCurrency,

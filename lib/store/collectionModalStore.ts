@@ -11,9 +11,9 @@
  *
  * @returns Zustand hook for accessing and updating collection modal state.
  */
-import { create } from 'zustand';
-import type { CollectionDocument } from '@/lib/types/collection';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
+import type { CollectionDocument } from '@/lib/types/collection';
+import { create } from 'zustand';
 
 // ============================================================================
 // Types

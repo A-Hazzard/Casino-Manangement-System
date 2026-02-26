@@ -42,7 +42,7 @@ GamingLocation {
   };
   profitShare: number;            // Profit sharing percentage (0-100)
   rel: {
-    licencee: string;             // Licensee identifier
+    licensee: string;             // Licensee identifier
   };
   status: string;                 // Location status (active, inactive, maintenance)
   statusHistory: Array;           // Status change history
@@ -356,7 +356,7 @@ if (location.sasMachines === 0 && !hasCollectionReportInPast3Months) {
 - Queries `gaminglocations` collection
 - Filters by licensee and search criteria
 - Applies soft delete filtering
-  **Query Parameters**: `licencee`, `search`, `page`, `limit`
+  **Query Parameters**: `licensee`, `search`, `page`, `limit`
   **Response Fields**: Array of `GamingLocation` objects
   **Used By**: Location management page, location selection components
 
@@ -551,7 +551,7 @@ Retrieves all gaming locations with optional licensee filtering.
 
 **Query Parameters:**
 
-- `licencee` (string, optional): Filter locations by licensee name
+- `licensee` (string, optional): Filter locations by licensee name
 
 **Response (Success - 200):**
 
@@ -567,7 +567,7 @@ Retrieves all gaming locations with optional licensee filtering.
         "city": "Las Vegas"
       },
       "rel": {
-        "licencee": "Casino Corp"
+        "licensee": "Casino Corp"
       },
       "profitShare": 50,
       "isLocalServer": false,
@@ -606,7 +606,7 @@ Creates a new gaming location.
   "country": "United States",
   "profitShare": 60,
   "rel": {
-    "licencee": "Gaming Corp"
+    "licensee": "Gaming Corp"
   },
   "isLocalServer": true,
   "geoCoords": {
@@ -630,7 +630,7 @@ Creates a new gaming location.
       "city": "Reno"
     },
     "rel": {
-      "licencee": "Gaming Corp"
+      "licensee": "Gaming Corp"
     },
     "profitShare": 60,
     "isLocalServer": true,
@@ -668,7 +668,7 @@ Updates an existing gaming location.
   "country": "United States",
   "profitShare": 55,
   "rel": {
-    "licencee": "Updated Corp"
+    "licensee": "Updated Corp"
   },
   "isLocalServer": false,
   "geoCoords": {
@@ -1231,7 +1231,7 @@ type GamingLocation = {
     city: string;
   };
   rel: {
-    licencee: string;
+    licensee: string;
   };
   profitShare: number;
   isLocalServer: boolean;

@@ -36,18 +36,18 @@ export default function CollectionReportDetailNotFound() {
 
 // Client component with store access
 function CollectionReportDetailNotFoundContent() {
-  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
 
   return (
     <>
       <div className="flex min-h-screen overflow-hidden bg-background md:pl-36 xl:mx-auto xl:w-full">
         <main className="flex flex-1 flex-col items-center justify-center overflow-x-hidden p-4 md:p-6">
           <Header
-            selectedLicencee={selectedLicencee}
-            setSelectedLicencee={setSelectedLicencee}
+            selectedLicensee={selectedLicensee}
+            setSelectedLicensee={setSelectedLicensee}
             pageTitle=""
             hideOptions={true}
-            hideLicenceeFilter={false}
+            hideLicenseeFilter={false}
           />
           <NotFoundError
             title="Collection Report Not Found"

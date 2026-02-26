@@ -40,7 +40,7 @@ Aggregates location-level metrics including machine counts, SAS status, and fina
 - `timePeriod`: "Today", "Yesterday", "7d", "30d", "All Time", "Custom"
 - `startDate`: Custom start date (ISO format)
 - `endDate`: Custom end date (ISO format)
-- `licencee`: Filter by licensee ID or name
+- `licensee`: Filter by licensee ID or name
 - `currency`: Display currency (USD, TTD, GYD, BBD)
 - `machineTypeFilter`: Comma-separated list:
   - `LocalServersOnly`: Locations with `isLocalServer: true`
@@ -81,7 +81,7 @@ Aggregates machine-level metrics across locations.
 
 **Query Parameters:**
 - `timePeriod`: Today, Yesterday, 7d, 30d, Custom
-- `licencee`: Filter by licensee
+- `licensee`: Filter by licensee
 - `locationId`: Filter by specific location(s)
 - `gameType`: Filter by game type(s)
 - `onlineStatus`: `online`, `offline`, `never-online`, `all`

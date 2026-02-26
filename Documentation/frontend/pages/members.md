@@ -80,7 +80,7 @@ The page features a tabbed interface with two main views:
 **API Endpoints:**
 
 - `GET /api/members` - Fetch members list with pagination, search, sorting, and filtering
-  - Query parameters: `page`, `limit`, `search`, `sortBy`, `sortOrder`, `licencee`, `locationFilter`
+  - Query parameters: `page`, `limit`, `search`, `sortBy`, `sortOrder`, `licensee`, `locationFilter`
 - `GET /api/machines/locations?membershipOnly=true` - Fetch membership-enabled locations for filter
 - `GET /api/members/summary` - Fetch summary statistics
 
@@ -207,7 +207,7 @@ The page features a tabbed interface with two main views:
     - `search` - Search term (searches name, playerId, username)
     - `sortBy` - Sort column (name, playerId, createdAt, lastSession, locationName, winLoss, lastLogin, etc.)
     - `sortOrder` - Sort direction (asc, desc)
-    - `licencee` - Licensee filter
+    - `licensee` - Licensee filter
     - `locationFilter` - Location ID filter
     - `winLossFilter` - Win/loss filter (positive, negative, all)
     - `startDate` - Date filter start
@@ -316,8 +316,8 @@ The page features a tabbed interface with two main views:
   - Provides loading state, summary data, demographics, trends, and refresh function
 
 - **`useDashBoardStore`** (`lib/store/dashboardStore.ts`) - Zustand store
-  - `selectedLicencee` - Selected licensee for filtering
-  - `setSelectedLicencee` - Licensee selection setter
+  - `selectedLicensee` - Selected licensee for filtering
+  - `setSelectedLicensee` - Licensee selection setter
 
 - **`useMemberActionsStore`** (`lib/store/memberActionsStore.ts`) - Zustand store
   - `selectedMember` - Currently selected member

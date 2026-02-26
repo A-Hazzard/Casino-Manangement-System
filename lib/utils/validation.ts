@@ -429,6 +429,33 @@ export function validateCollectionReportPayload(
     payload.reasonShortagePayment.trim() === ''
   )
     errors.push('Reason for shortage payment cannot be empty if provided.');
+  if (errors.length > 0) {
+    console.group('⚠️ Collection Report Validation Errors');
+    console.error('Validation failed with the following issues:', errors);
+    console.log('Payload Field Types:', {
+      variance: { value: payload.variance, type: typeof payload.variance },
+      previousBalance: {
+        value: payload.previousBalance,
+        type: typeof payload.previousBalance,
+      },
+      amountToCollect: {
+        value: payload.amountToCollect,
+        type: typeof payload.amountToCollect,
+      },
+      amountCollected: {
+        value: payload.amountCollected,
+        type: typeof payload.amountCollected,
+      },
+      taxes: { value: payload.taxes, type: typeof payload.taxes },
+      advance: { value: payload.advance, type: typeof payload.advance },
+      balanceCorrection: {
+        value: payload.balanceCorrection,
+        type: typeof payload.balanceCorrection,
+      },
+    });
+    console.groupEnd();
+  }
+
   return { isValid: errors.length === 0, errors };
 }
 

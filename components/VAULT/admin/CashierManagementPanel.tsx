@@ -11,39 +11,39 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import CashierManagementSkeleton from '@/components/ui/skeletons/CashierManagementSkeleton';
 
 import {
-    fetchCashiersData,
-    handleCreateCashier,
-    handleDeleteCashier,
-    handleFloatAction,
-    handleResetCashierPassword,
-    handleUpdateCashierStatus
+  fetchCashiersData,
+  handleCreateCashier,
+  handleDeleteCashier,
+  handleFloatAction,
+  handleResetCashierPassword,
+  handleUpdateCashierStatus
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
@@ -55,21 +55,21 @@ import { fetchVaultBalance } from '@/lib/helpers/vaultHelpers';
 import { getDenominationValues, getInitialDenominationRecord } from '@/lib/utils/vault/denominations';
 import type { Denomination, FloatRequest, UnbalancedShiftInfo } from '@/shared/types/vault';
 import {
-    AlertTriangle,
-    ArrowRight,
-    ArrowUpDown,
-    Ban,
-    Check,
-    CheckCircle,
-    Copy,
-    Eye,
-    Filter,
-    Plus,
-    RefreshCw,
-    RotateCcw,
-    Search,
-    Trash2,
-    User
+  AlertTriangle,
+  ArrowRight,
+  ArrowUpDown,
+  Ban,
+  Check,
+  CheckCircle,
+  Copy,
+  Eye,
+  Filter,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Trash2,
+  User
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -108,7 +108,7 @@ export default function CashierManagementPanel({
   const { user, hasActiveVaultShift, isVaultReconciled, isStaleShift } = useUserStore();
   const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicencee } = useVaultLicensee();
+  const { licenseeId: selectedLicensee } = useVaultLicensee();
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -228,7 +228,7 @@ export default function CashierManagementPanel({
   const openEndShiftModal = async (cashier: Cashier) => {
     if (!checkVaultStatus('management')) return;
     setSelectedCashier(cashier);
-    setShiftDenominations(getInitialDenominationRecord(selectedLicencee));
+    setShiftDenominations(getInitialDenominationRecord(selectedLicensee));
     setShiftNotes('');
     
 
@@ -249,7 +249,7 @@ export default function CashierManagementPanel({
             setCurrentFloatRequest(req);
             
             // Init denominations
-            const denoms = getInitialDenominationRecord(selectedLicencee);
+            const denoms = getInitialDenominationRecord(selectedLicensee);
             req.denominations.forEach((d: Denomination) => {
                 if (denoms[d.denomination.toString()] !== undefined) {
                     denoms[d.denomination.toString()] = d.quantity;
@@ -513,7 +513,7 @@ export default function CashierManagementPanel({
       if (result.success) {
         toast.success(`Shift ended for ${selectedCashier.username}. Move to Pending Review.`);
         setIsEndShiftModalOpen(false);
-        setShiftDenominations(getInitialDenominationRecord(selectedLicencee));
+        setShiftDenominations(getInitialDenominationRecord(selectedLicensee));
         setShiftNotes('');
         fetchCashiers();
       } else {
@@ -615,21 +615,21 @@ export default function CashierManagementPanel({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative w-full max-w-sm">
-             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+      {/* Header Container - Improved responsiveness for multiple controls */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        {/* Search and Filters Group */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center flex-1">
+          <div className="relative w-full md:max-w-[280px]">
+             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
              <Input
-               className="w-full pl-9"
+               className="w-full pl-9 h-10 border-gray-200 rounded-xl focus:ring-orangeHighlight/20"
                placeholder="Search cashiers..."
                value={searchValue}
                onChange={(e) => setSearchValue(e.target.value)}
              />
           </div>
 
-          {/* Variance Filter Button Group */}
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-inner">
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-inner overflow-x-auto no-scrollbar">
             {[
               { value: 'all', label: 'All', icon: Filter },
               { value: 'variance', label: 'Variance', icon: AlertTriangle },
@@ -642,7 +642,7 @@ export default function CashierManagementPanel({
                   key={item.value}
                   onClick={() => setVarianceFilter(item.value as any)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-tighter transition-all",
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] md:text-xs font-black uppercase tracking-tighter transition-all whitespace-nowrap",
                     isSelected 
                       ? "bg-white text-orangeHighlight shadow-sm border border-gray-200" 
                       : "text-gray-400 hover:text-gray-600 hover:bg-white/50"
@@ -655,19 +655,23 @@ export default function CashierManagementPanel({
             })}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Action Buttons Group */}
+        <div className="flex items-center gap-2 justify-end">
           <Button
             onClick={() => fetchCashiers(currentPage)}
             disabled={loading}
             variant="outline"
             size="sm"
-            className="border-gray-300 rounded-xl font-bold"
+            className="border-gray-200 bg-white rounded-xl font-bold h-10 px-4 hover:bg-gray-50 transition-colors"
           >
             <RefreshCw
-              className={cn('mr-2 h-4 w-4', loading && 'animate-spin')}
+              className={cn('mr-2 h-4 w-4 text-gray-500', loading && 'animate-spin')}
             />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
+            <span className="sm:hidden">Reload</span>
           </Button>
+
           {user?.roles?.includes('vault-manager') && !isAdminOrDev && (
             <Button
               onClick={() => {
@@ -681,12 +685,13 @@ export default function CashierManagementPanel({
               }}
               disabled={loading || isStaleShift}
               className={cn(
-                "bg-button text-white hover:bg-button/90 rounded-xl font-bold shadow-md shadow-button/20 active:scale-[0.98] transition-all",
+                "bg-button text-white hover:bg-button/90 rounded-xl font-bold h-10 px-4 shadow-md shadow-button/20 active:scale-[0.98] transition-all",
                 (isStaleShift || !hasActiveVaultShift) && "opacity-40 cursor-not-allowed"
               )}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Create Cashier
+              <span className="hidden sm:inline">Create Cashier</span>
+              <span className="sm:hidden">Create</span>
             </Button>
           )}
         </div>
@@ -1049,7 +1054,7 @@ export default function CashierManagementPanel({
           
           <div className="space-y-6 py-4">
              <div className="grid grid-cols-1 gap-y-4">
-                {getDenominationValues(selectedLicencee).map(denom => {
+                {getDenominationValues(selectedLicensee).map(denom => {
                    return (
                     <div key={denom} className="flex items-center gap-4">
                        <div className="flex-1 space-y-1.5">

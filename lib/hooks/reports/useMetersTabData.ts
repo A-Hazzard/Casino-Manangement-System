@@ -67,7 +67,7 @@ export function useMetersTabData({
   const makeHourlyChartRequest = useAbortableRequest();
 
   const {
-    selectedLicencee,
+    selectedLicensee,
     activeMetricsFilter,
     customDateRange,
     displayCurrency,
@@ -186,10 +186,10 @@ export function useMetersTabData({
         const params: Record<string, string> = {};
         if (
           !isLocationAdmin &&
-          selectedLicencee &&
-          selectedLicencee !== 'all'
+          selectedLicensee &&
+          selectedLicensee !== 'all'
         ) {
-          params.licencee = selectedLicencee;
+          params.licensee = selectedLicensee;
         }
 
         const response = await axios.get('/api/locations', {
@@ -232,7 +232,7 @@ export function useMetersTabData({
     });
   }, [
     isLocationAdmin,
-    selectedLicencee,
+    selectedLicensee,
     locationAdminLocations,
     fetchUserPermissions,
     makeLocationsRequest,
@@ -271,8 +271,8 @@ export function useMetersTabData({
           );
         }
 
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.append('licencee', selectedLicencee);
+        if (selectedLicensee && selectedLicensee !== 'all') {
+          params.append('licensee', selectedLicensee);
         }
 
         if (displayCurrency) {
@@ -355,7 +355,7 @@ export function useMetersTabData({
       selectedLocations,
       activeMetricsFilter,
       customDateRange,
-      selectedLicencee,
+      selectedLicensee,
       displayCurrency,
       chartGranularity,
       itemsPerBatch,
@@ -390,7 +390,7 @@ export function useMetersTabData({
     if (locationsInitialized.current) {
       void fetchLocations();
     }
-  }, [selectedLicencee, fetchLocations]);
+  }, [selectedLicensee, fetchLocations]);
 
   // Note: Granularity changes are handled by the main fetchMetersData effect
   // which includes chartGranularity in its dependency array, so data is refetched automatically
@@ -407,7 +407,7 @@ export function useMetersTabData({
     selectedLocations,
     activeMetricsFilter,
     customDateRange,
-    selectedLicencee,
+    selectedLicensee,
     displayCurrency,
     fetchMetersData,
   ]);
@@ -492,8 +492,8 @@ export function useMetersTabData({
             );
           }
 
-          if (selectedLicencee && selectedLicencee !== 'all') {
-            params.append('licencee', selectedLicencee);
+          if (selectedLicensee && selectedLicensee !== 'all') {
+            params.append('licensee', selectedLicensee);
           }
 
           if (displayCurrency) {
@@ -535,7 +535,7 @@ export function useMetersTabData({
     selectedLocations,
     activeMetricsFilter,
     customDateRange,
-    selectedLicencee,
+    selectedLicensee,
     displayCurrency,
     chartGranularity,
     allHourlyChartData,

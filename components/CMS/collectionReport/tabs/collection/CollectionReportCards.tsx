@@ -45,7 +45,7 @@ export default function CollectionReportCards({
   onEdit,
   onDelete,
   editableReportIds,
-  selectedLicencee,
+  selectedLicensee,
 }: CollectionReportCardsProps) {
   const router = useRouter();
   useCurrencyFormat();
@@ -72,8 +72,8 @@ export default function CollectionReportCards({
   // Only show "No Data Available" when NOT loading and data is empty
   if (!loading && (!data || data.length === 0)) {
     const licenseeName =
-      getLicenseeName(selectedLicencee || undefined) ||
-      selectedLicencee ||
+      getLicenseeName(selectedLicensee || undefined) ||
+      selectedLicensee ||
       'the selected period';
     const emptyMessage = `No collection reports found for ${licenseeName}.`;
 
