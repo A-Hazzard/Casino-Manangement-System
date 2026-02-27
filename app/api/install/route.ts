@@ -67,9 +67,9 @@ export async function GET() {
     // STEP 4: Seed Countries
     // ============================================================================
     const countriesData = [
-      { name: 'Trinidad & Tobago', _id: 'be622340d9d8384087937ff6' },
+      { name: 'Trinidad & Tobago', _id: '699ef6e695fc27943db16c14' },
       { name: 'Guyana', _id: '175d649e49f7a95dc32e72fc' },
-      { name: 'Barbados', _id: '4dc779ccc9a24014b78b3e54' },
+      { name: 'Barbados', _id: '699ef6e695fc27943db16c18' },
       { name: 'St. Lucia' },
     ];
 
@@ -85,48 +85,76 @@ export async function GET() {
       seededCountries.push(countryDoc);
     }
 
-    const ttCountry = seededCountries.find(c => c.name === 'Trinidad & Tobago');
-    const guyanaCountry = seededCountries.find(c => c.name === 'Guyana');
-    const barbadosCountry = seededCountries.find(c => c.name === 'Barbados');
+    // Countries seeded, proceeding to licensees...
 
     // ============================================================================
     // STEP 5: Seed Licensees
     // ============================================================================
+    const currentDateTime = new Date();
     const licenseesData = [
-      { 
-        name: 'TTG', 
-        country: ttCountry?._id 
+      {
+        _id: "9a5db2cb29ffd2d962fd1d91",
+        name: "TTG",
+        country: "699ef6e695fc27943db16c14",
+        startDate: new Date("2026-02-25T19:19:34.435Z"),
+        expiryDate: new Date("2027-02-25T19:19:34.435Z"),
+        isPaid: true,
+        licenseKey: "LIC-MM2F4UKI-1NW5E1",
+        status: "active",
+        deletedAt: null,
+        createdAt: currentDateTime,
+        updatedAt: null,
       },
-      { 
-        name: 'Cabana', 
-        country: guyanaCountry?._id 
+      {
+        _id: "732b094083226f216b3fc11a",
+        name: "Barbados",
+        country: "699ef6e695fc27943db16c18",
+        startDate: new Date("2026-02-25T19:19:35.029Z"),
+        expiryDate: new Date("2027-02-25T19:19:35.029Z"),
+        isPaid: true,
+        licenseKey: "LIC-MM2F4V11-6Y189A",
+        status: "active",
+        deletedAt: null,
+        createdAt: currentDateTime,
+        updatedAt: null,
       },
-      { 
-        name: 'Barbados', 
-        country: barbadosCountry?._id 
+      {
+        _id: "c03b094083226f216b3fc39c",
+        name: "Cabana",
+        country: "Guyana",
+        startDate: new Date("2025-06-01T14:31:00.000Z"),
+        expiryDate: new Date("2025-07-01T03:18:00.000Z"),
+        isPaid: true,
+        description: "Licence to operate in Guyana",
+        licenseKey: "LIC-CABANA-AUTO-GEN", // Added to satisfy required field
+        geoCoords: {
+          zoomRatio: 9,
+          latitude: 5.570307,
+          longitude: -59.026519
+        },
+        prevExpiryDate: new Date("2025-06-30T04:00:00.000Z"),
+        deletedAt: null,
+        createdAt: currentDateTime,
+        updatedAt: null,
       },
     ];
 
     const seededLicenseeIds = [];
     for (const lic of licenseesData) {
-      let licenseeDoc = await Licensee.findOne({ name: lic.name });
-      if (!licenseeDoc) {
-        const licenseKey = await generateUniqueLicenseKey();
-        const startDate = new Date();
-        const expiryDate = new Date();
-        expiryDate.setFullYear(expiryDate.getFullYear() + 1); // 1 year by default
+      let licenseeDoc = await Licensee.findOne({ 
+        $or: [
+          { _id: lic._id },
+          { name: lic.name }
+        ]
+      });
 
-        const licId = await generateMongoId();
-        licenseeDoc = await Licensee.create({
-          _id: licId,
-          name: lic.name,
-          country: lic.country,
-          startDate,
-          expiryDate,
-          licenseKey,
-          status: 'active',
-          isPaid: true,
-        });
+      if (!licenseeDoc) {
+        // Special case for Cabana: Generate licenseKey if not provided in user JSON
+        if (lic.name === 'Cabana' && lic.licenseKey === 'LIC-CABANA-AUTO-GEN') {
+          lic.licenseKey = await generateUniqueLicenseKey();
+        }
+
+        licenseeDoc = await Licensee.create(lic);
       }
       seededLicenseeIds.push(licenseeDoc._id);
     }

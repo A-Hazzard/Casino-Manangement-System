@@ -16,25 +16,52 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getUserFromServer();
-    if (!session || !session._id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { token } = await req.json();
+    const { token, recoveryToken } = await req.json();
     if (!token) {
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
 
+    const session = await getUserFromServer();
+
     await connectDB();
-    const user = await UserModel.findById(session._id);
-    if (!user || !user.totpSecret) {
-      return NextResponse.json({ error: 'Setup not initiated' }, { status: 400 });
+    let user;
+
+    if (session && session._id) {
+      user = await UserModel.findById(session._id);
+    } else if (recoveryToken) {
+      // Allow confirmation via recovery token if no session exists
+      user = await UserModel.findOne({
+        totpRecoveryToken: recoveryToken,
+        totpRecoveryExpires: { $gt: new Date() }
+      });
     }
 
-    const isValid = verifyTOTPCode(token, user.totpSecret);
+    if (!user) {
+      return NextResponse.json({ error: session ? 'User not found' : 'Unauthorized or invalid recovery link' }, { status: session ? 404 : 401 });
+    }
+
+    // Determine which secret to verify against
+    // 1. Recovery setup uses totpTempSecret
+    // 2. Initial setup uses totpSecret (where totpEnabled is false)
+    let secretToVerify = user.totpTempSecret || user.totpSecret;
+
+    if (!secretToVerify) 
+      return NextResponse.json({ error: 'Setup not initiated' }, { status: 400 });
+    
+    const isValid = verifyTOTPCode(token, secretToVerify);
     if (isValid) {
+      // If we verified a temp secret, promote it to the active secret
+      if (user.totpTempSecret) {
+        user.totpSecret = user.totpTempSecret;
+        user.totpTempSecret = null;
+      }
+
       user.totpEnabled = true;
+
+      // Clear recovery tokens if they exist
+      user.totpRecoveryToken = null;
+      user.totpRecoveryExpires = null;
+
       await user.save();
       return NextResponse.json({ success: true });
     } else {

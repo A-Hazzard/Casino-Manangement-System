@@ -59,7 +59,10 @@ function TwoFactorRecoveryContent() {
       const response = await fetch('/api/auth/totp/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: code }),
+        body: JSON.stringify({ 
+          token: code,
+          recoveryToken: token // Pass recovery token for identification
+        }),
       });
       const data = await response.json();
 

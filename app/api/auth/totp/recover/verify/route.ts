@@ -52,15 +52,15 @@ export async function POST(req: NextRequest) {
     const uri = generateOTPAuthURI(user.username || user.emailAddress, appName, secret);
     const qrCodeUrl = await QRCode.toDataURL(uri);
 
-    // Update user using direct update to ensure fields are cleared even with cached models
+    // Use totpTempSecret instead of overwriting totpSecret/totpEnabled immediately
+    // This allows the user to maintain their current 2FA protection until the new one is verified
     await UserModel.findOneAndUpdate(
       { _id: user._id },
       {
         $set: {
-          totpSecret: secret,
-          totpEnabled: false,
-          totpRecoveryToken: null,
-          totpRecoveryExpires: null
+          totpTempSecret: secret,
+          // totpRecoveryToken: null, // Keep the token for the confirm step if needed, or clear it if preferred
+          // totpRecoveryExpires: null
         }
       },
       { strict: false }
@@ -68,9 +68,9 @@ export async function POST(req: NextRequest) {
 
     console.log('[TOTP Verify] Tokens cleared and new secret saved for:', user.username);
 
-    return NextResponse.json({ 
-      success: true, 
-      qrCodeUrl, 
+    return NextResponse.json({
+      success: true,
+      qrCodeUrl,
       secret,
       username: user.username
     });
