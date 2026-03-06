@@ -65,6 +65,8 @@ import { cn } from '@/lib/utils';
 import type {
     CashierFloat,
     FloatRequest,
+    SoftCount,
+    VaultBalance,
     VaultMetrics,
 } from '@/shared/types/vault';
 import { jsPDF } from 'jspdf';
@@ -82,6 +84,25 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
+export interface EndOfDayReportData {
+  denominationBreakdown: Record<string, number>;
+  midDaySoftCounts: Array<SoftCount & { location: string; variance: number }>;
+  endOfDaySoftCounts: Array<SoftCount & { location: string; variance: number }>;
+  slotCounts: Array<{
+    machineId: string;
+    location: string;
+    closingCount: number;
+    collected: boolean;
+  }>;
+  cashierFloats: CashierFloat[];
+  vaultBalance: VaultBalance;
+  floatRequests: FloatRequest[];
+  metrics: VaultMetrics | null;
+  shiftStatus: 'not_started' | 'active' | 'closed';
+  previousShiftActive: boolean;
+  previousShiftDate?: Date | string;
+}
+
 export default function VaultEndOfDayReportsPageContent() {
   // ============================================================================
   // Hooks & State
@@ -96,42 +117,13 @@ export default function VaultEndOfDayReportsPageContent() {
   const ITEMS_PER_PAGE = 10;
   const [midDayPage, setMidDayPage] = useState(1);
   const [endOfDayPage, setEndOfDayPage] = useState(1);
-  const [reportData, setReportData] = useState<{
-    denominationBreakdown: Record<string, number>;
-    midDaySoftCounts: Array<{
-      machineId: string;
-      location: string;
-      amount: number;
-      countedAt: Date;
-      variance: number;
-    }>;
-    endOfDaySoftCounts: Array<{
-      machineId: string;
-      location: string;
-      amount: number;
-      countedAt: Date;
-      variance: number;
-    }>;
-    slotCounts: Array<{
-      machineId: string;
-      location: string;
-      closingCount: number;
-      collected: boolean;
-    }>;
-    cashierFloats: CashierFloat[];
-    vaultBalance: typeof DEFAULT_VAULT_BALANCE;
-    floatRequests: FloatRequest[];
-    metrics: VaultMetrics | null;
-    shiftStatus: 'not_started' | 'active' | 'closed';
-    previousShiftActive: boolean;
-    previousShiftDate?: Date | string;
-  }>({
+  const [reportData, setReportData] = useState<EndOfDayReportData>({
     denominationBreakdown: {},
     midDaySoftCounts: [],
     endOfDaySoftCounts: [],
     slotCounts: [],
     cashierFloats: DEFAULT_CASHIER_FLOATS,
-    vaultBalance: DEFAULT_VAULT_BALANCE,
+    vaultBalance: DEFAULT_VAULT_BALANCE as VaultBalance,
     floatRequests: [],
     metrics: DEFAULT_VAULT_METRICS,
     shiftStatus: 'not_started',
@@ -651,11 +643,11 @@ export default function VaultEndOfDayReportsPageContent() {
                     <TableCell className="text-xs uppercase text-gray-500">Machines</TableCell>
                     <TableCell className="text-right font-bold text-lighterBlueHighlight">{formatAmount(metrics.totalMachineBalance)}</TableCell>
                   </TableRow>
-                  {reportData.cashierFloats.map((float: any) => (
+                  {reportData.cashierFloats.map((float) => (
                     <TableRow key={float._id}>
                       <TableCell isFirstColumn className="font-medium">{float.cashierName || 'Unknown Cashier'}</TableCell>
                       <TableCell className="text-xs uppercase text-gray-500">Cashier Float</TableCell>
-                      <TableCell className="text-right font-bold text-button">{formatAmount(float.currentBalance || float.balance || 0)}</TableCell>
+                      <TableCell className="text-right font-bold text-button">{formatAmount(float.balance || 0)}</TableCell>
                     </TableRow>
                   ))}
                   <TableRow className="bg-gray-50/50">

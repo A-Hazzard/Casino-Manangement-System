@@ -44,10 +44,10 @@ export async function GET(request: NextRequest) {
 
     // Timeframe: Default to Today's Gaming Day
     const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
-    const gameDayOffset = (locationInfo as any)?.gameDayOffset ?? 8;
+    const gameDayOffset = (locationInfo as Record<string, unknown> | null)?.gameDayOffset as number ?? 8;
     const gamingDayRange = getGamingDayRangeForPeriod('Today', gameDayOffset);
 
-    const query: any = {
+    const query: Record<string, unknown> = {
       locationId,
       timestamp: {
         $gte: gamingDayRange.rangeStart,
@@ -77,8 +77,9 @@ export async function GET(request: NextRequest) {
       data: transactions
     });
 
-  } catch (error) {
-    console.error('Error fetching breakdown:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching breakdown:', errorMessage);
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }

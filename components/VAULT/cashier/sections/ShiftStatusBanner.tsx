@@ -9,8 +9,23 @@
 
 import { Button } from '@/components/shared/ui/button';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import type { CashierShift } from '@/shared/types/vault';
+import type { CashierShift, Denomination } from '@/shared/types/vault';
 import { AlertCircle, Clock, Loader2 } from 'lucide-react';
+
+type PendingVmApproval = {
+  _id: string;
+  type?: string;
+  requestNotes?: string;
+  approvedAmount?: number;
+  approvedDenominations?: Denomination[];
+  requestedDenominations?: Denomination[];
+};
+
+type PendingFloatRequest = {
+  _id: string;
+  type?: string;
+  requestedAmount?: number;
+};
 
 type ShiftStatusBannerProps = {
   status: string;
@@ -18,8 +33,8 @@ type ShiftStatusBannerProps = {
   refreshing: boolean;
   onRefresh: () => void;
   onCancel: () => void;
-  pendingVmApproval?: any;
-  pendingRequest?: any;
+  pendingVmApproval?: PendingVmApproval | null;
+  pendingRequest?: PendingFloatRequest | null;
   onConfirm?: (requestId: string) => void;
   onCancelRequest?: (requestId: string) => void;
 };
@@ -57,9 +72,9 @@ export default function ShiftStatusBanner({
               </p>
               <p className="text-sm text-green-700 mt-1">
                 {isIncrease ? (
-                  <>Vault Manager has prepared <strong>{formatAmount(pendingVmApproval.approvedAmount)}</strong> for you. Please collect the cash and confirm receipt.</>
+                  <>Vault Manager has prepared <strong>{formatAmount(pendingVmApproval.approvedAmount ?? 0)}</strong> for you. Please collect the cash and confirm receipt.</>
                 ) : (
-                  <>Vault Manager has approved your return of <strong>{formatAmount(pendingVmApproval.approvedAmount)}</strong>. Please hand over the cash and wait for VM confirmation.</>
+                  <>Vault Manager has approved your return of <strong>{formatAmount(pendingVmApproval.approvedAmount ?? 0)}</strong>. Please hand over the cash and wait for VM confirmation.</>
                 )}
               </p>
 
@@ -76,9 +91,9 @@ export default function ShiftStatusBanner({
                               </div>
                               <div className="flex flex-wrap gap-2">
                                   {denominationsToShow
-                                      .filter((d: any) => d.quantity > 0)
-                                      .sort((a: any, b: any) => b.denomination - a.denomination)
-                                      .map((d: any, i: number) => (
+                                      .filter((d: Denomination) => d.quantity > 0)
+                                      .sort((a: Denomination, b: Denomination) => b.denomination - a.denomination)
+                                      .map((d: Denomination, i: number) => (
                                       <div key={i} className="flex flex-col items-center justify-center bg-green-50 border border-green-100 rounded px-2 py-1 min-w-[3rem]">
                                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${d.denomination}</span>
                                           <span className="text-sm font-black text-green-900">{d.quantity}</span>
@@ -298,7 +313,7 @@ export default function ShiftStatusBanner({
                  {isIncrease ? 'Float Increase Requested' : 'Float Return Requested'}
                </p>
                <p className="text-sm text-blue-700 mt-1">
-                 Your request for <strong>{formatAmount(pendingRequest.requestedAmount)}</strong> is waiting for Vault Manager approval.
+                 Your request for <strong>{formatAmount(pendingRequest.requestedAmount ?? 0)}</strong> is waiting for Vault Manager approval.
                </p>
              </div>
              <div className="flex items-center gap-2">

@@ -1498,6 +1498,7 @@ export default function AdministrationAddUserModal({
                     </Label>
                     <div className="mt-2">
                       <DateTimePicker
+                        dateOnly
                         date={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
                         setDate={(date) =>
                           handleInputChange(

@@ -140,10 +140,11 @@ export async function POST(request: NextRequest) {
       success: true,
       transfer,
     });
-  } catch (error) {
-    console.error('Error creating inter-location transfer:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error creating inter-location transfer:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -234,10 +235,11 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error) {
-    console.error('Error fetching transfers:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching transfers:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

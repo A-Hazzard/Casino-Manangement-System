@@ -145,6 +145,10 @@ export default function MachinesPageContent() {
   const showLocationFilter =
     new Set(locations.map(location => String(location._id ?? ''))).size > 1;
 
+  const shouldHideFinancials = (u: { roles?: string[] } | null | undefined) => {
+    return u?.roles?.length === 1 && u?.roles[0] === 'technician';
+  };
+
   // ============================================================================
   // Event Handlers
   // ============================================================================
@@ -259,12 +263,14 @@ export default function MachinesPageContent() {
         {activeSection === 'cabinets' && (
           <>
             {/* Summary Metrics Cards */}
-            <FinancialMetricsCards
-              totals={financialTotals}
-              loading={loading}
-              title="Total for all Machines"
-              className="mt-6"
-            />
+            {!shouldHideFinancials(user) && (
+              <FinancialMetricsCards
+                totals={financialTotals}
+                loading={loading}
+                title="Total for all Machines"
+                className="mt-6"
+              />
+            )}
 
             {/* Date Filtering Controls */}
             <div className="mb-0 mt-4 flex items-center justify-between gap-4">

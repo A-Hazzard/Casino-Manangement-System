@@ -200,31 +200,22 @@ function createLogoutResponse(
 
   const response = NextResponse.redirect(redirectUrl);
 
+  // Detect secure context from the incoming request (Edge Runtime — cannot import from lib/)
+  const proto = request.headers.get('x-forwarded-proto');
+  const secure = proto ? proto === 'https' : request.url.startsWith('https://');
+
+  const clearOptions = {
+    expires: new Date(0),
+    httpOnly: true,
+    secure,
+    sameSite: 'lax' as const,
+    path: '/',
+  };
+
   // Clear all authentication cookies
-  response.cookies.set('token', '', {
-    expires: new Date(0),
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    path: '/',
-  });
-
-  response.cookies.set('refreshToken', '', {
-    expires: new Date(0),
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    path: '/',
-  });
-
-  // Clear any additional cookies that might contain user data
-  response.cookies.set('user', '', {
-    expires: new Date(0),
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    path: '/',
-  });
+  response.cookies.set('token', '', clearOptions);
+  response.cookies.set('refreshToken', '', clearOptions);
+  response.cookies.set('user', '', clearOptions);
 
   return response;
 }

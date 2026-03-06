@@ -348,7 +348,7 @@ export default function VaultOverviewShiftReviewModal({
                                     </div>
 
                                     <DenominationInputGrid
-                                        denominations={Object.entries(shiftDenominations).map(([d, q]) => ({ denomination: Number(d) as any, quantity: q }))}
+                                        denominations={Object.entries(shiftDenominations).map(([d, q]) => ({ denomination: Number(d) as Denomination['denomination'], quantity: q }))}
                                         onChange={(newDenoms: Denomination[]) => {
                                             const newRecord: Record<string, number> = {};
                                             newDenoms.forEach((d: Denomination) => {

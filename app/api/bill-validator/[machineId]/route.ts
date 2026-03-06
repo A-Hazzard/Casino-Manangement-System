@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
     // STEP 4: Parse query parameters
     // ============================================================================
     const searchParams = req.nextUrl.searchParams;
-    const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
+    let timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
@@ -108,6 +108,22 @@ export async function GET(req: NextRequest) {
         locationFound: !!gamingLocation,
         gameDayOffset: gamingLocation?.gameDayOffset,
       });
+    }
+
+    // ============================================================================
+    // STEP 5.5: Technician Restriction - Force last hour meter data
+    // ============================================================================
+    // User check for restriction
+    const { getUserFromServer: getUser } = await import('@/app/api/lib/helpers/users/users');
+    const userPayload = await getUser();
+    const userRoles = (userPayload?.roles as string[]) || [];
+
+    const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer');
+    const isOnlyTechnician = userRoles.length === 1 && userRoles[0].toLowerCase() === 'technician';
+
+    if (isOnlyTechnician && !isAdmin) {
+      console.warn('[API Bill Validator] Applying technician restriction: forcing LastHour timePeriod');
+      timePeriod = 'LastHour' as TimePeriod;
     }
 
     // ============================================================================

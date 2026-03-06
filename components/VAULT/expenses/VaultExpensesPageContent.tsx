@@ -40,7 +40,7 @@ import VaultTransactionDetailsModal from '@/components/VAULT/transactions/modals
 import { useVaultShift } from '@/lib/hooks/vault/useVaultShift';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
-import type { ExpenseCategory, VaultTransaction } from '@/shared/types/vault';
+import type { Denomination, ExpenseCategory, VaultTransaction } from '@/shared/types/vault';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { DollarSign, FileText, Paperclip, Plus, Receipt, RefreshCw } from 'lucide-react';
@@ -182,10 +182,10 @@ export default function VaultExpensesPageContent() {
     amount: number;
     description: string;
     date: Date;
-    denominations?: any[]; 
+    denominations?: Denomination[]; 
     file?: File;
     bankDetails?: Record<string, string>;
-    expenseDetails?: Record<string, any>;
+    expenseDetails?: Record<string, unknown>;
   }) => {
     try {
       // Use FormData to support file upload

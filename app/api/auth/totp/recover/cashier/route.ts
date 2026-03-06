@@ -52,8 +52,8 @@ export async function POST(_req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, message: 'Help request sent to Vault Managers' });
-  } catch (error: any) {
-    console.error('TOTP Cashier Recovery Error:', error);
+  } catch (error: unknown) {
+    console.error('TOTP Cashier Recovery Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

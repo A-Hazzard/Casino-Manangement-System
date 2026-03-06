@@ -14,13 +14,13 @@ export async function GET() {
     }
 
     const collections = await db.collections();
-    const results: any[] = [];
+    const results: Array<{ collection: string; desc: string; modifiedCount: number }> = [];
 
     for (const collection of collections) {
       const collectionName = collection.collectionName;
 
       // Group all rename operations we might need
-      const renames: Array<{ filter: Record<string, any>, rename: Record<string, string>, desc: string }> = [
+      const renames: Array<{ filter: Record<string, unknown>, rename: Record<string, string>, desc: string }> = [
         { filter: { licencee: { $exists: true } }, rename: { licencee: 'licensee' }, desc: 'licencee -> licensee' },
         { filter: { 'rel.licencee': { $exists: true } }, rename: { 'rel.licencee': 'rel.licensee' }, desc: 'rel.licencee -> rel.licensee' },
         { filter: { assignedLicencees: { $exists: true } }, rename: { assignedLicencees: 'assignedLicensees' }, desc: 'assignedLicencees -> assignedLicensees' },
@@ -41,7 +41,7 @@ export async function GET() {
     }
 
     return NextResponse.json({ success: true, results });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

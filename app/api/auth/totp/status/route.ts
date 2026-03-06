@@ -17,20 +17,20 @@ export async function GET(_req: NextRequest) {
 
     await connectDB();
     const user = await UserModel.findOne({ _id: session._id }).select('totpEnabled totpSecret roles emailAddress');
-    
+
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       enabled: !!user.totpEnabled,
       hasSecret: !!user.totpSecret,
       needsSetup: !user.totpEnabled,
       role: user.roles?.[0] || 'cashier',
       email: user.emailAddress
     });
-  } catch (error: any) {
-    console.error('TOTP Status Error:', error);
+  } catch (error: unknown) {
+    console.error('TOTP Status Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

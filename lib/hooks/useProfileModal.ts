@@ -67,7 +67,16 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   const [licensees, setLicensees] = useState<Licensee[]>([]);
   const [licenseesLoading, setLicenseesLoading] = useState(false);
   const [locations, setLocations] = useState<
-    Array<{ _id: string; name: string; licenseeId?: string }>
+    Array<{
+      _id: string;
+      name: string;
+      licenseeId?: string | string[];
+      licensee?: string | string[];
+      rel?: {
+        licensee?: string | string[];
+        licencee?: string | string[];
+      }
+    }>
   >([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [missingLocationNames] = useState<Record<string, string>>({});
@@ -96,62 +105,66 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   const [emailAddress, setEmailAddress] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasAttemptedLicenseeFetchRef = useRef(false);
+  const hasAttemptedLocationsFetchRef = useRef(false);
 
   // Load initial data
   useEffect(() => {
     if (open && authUser?._id) {
-      // Only fetch if we don't have user data or it's for a different user
-      if (!userData || userData._id !== authUser._id) {
-        setIsLoading(true);
-        fetchUserData(authUser._id)
-          .then(data => {
-            if (data) {
-              setUserData(data);
-              setFormData(data.profile || {});
-              setEmailAddress(data.emailAddress || data.email || '');
-              setProfilePicture(data.profilePicture || null);
-              setSelectedRoles(data.roles || []);
+      setIsLoading(true);
+      fetchUserData(authUser._id)
+        .then(data => {
+          if (data) {
+            setUserData(data);
+            setFormData(data.profile || {});
+            setEmailAddress(data.emailAddress || data.email || '');
+            setProfilePicture(data.profilePicture || null);
+            setSelectedRoles(data.roles || []);
 
-              // Set initial assignments (Support current API fields)
-              if (data.assignedLicensees) {
-                 setSelectedLicenseeIds(Array.isArray(data.assignedLicensees) ? data.assignedLicensees : []);
-              } else if (data.rel?.licensee) {
-                // Fallback for legacy data
-                const isAll = data.rel.licensee === 'all';
-                setAllLicenseesSelected(isAll);
-                setSelectedLicenseeIds(
-                  isAll
-                    ? []
-                    : Array.isArray(data.rel.licensee)
-                      ? data.rel.licensee
-                      : [data.rel.licensee]
-                );
-              }
-
-              if (data.assignedLocations) {
-                 setSelectedLocationIds(Array.isArray(data.assignedLocations) ? data.assignedLocations : []);
-              } else if (data.resourcePermissions?.['gaming-locations']?.resources) {
-                // Fallback for legacy data
-                const resources =
-                  data.resourcePermissions['gaming-locations'].resources;
-                const isAll = resources === 'all';
-                setAllLocationsSelected(isAll);
-                setSelectedLocationIds(
-                  isAll ? [] : Array.isArray(resources) ? resources : [resources]
-                );
-              }
-            } else {
-              toast.error('Could not load user profile.');
-              onClose();
+            // Set initial assignments (Support current API fields)
+            if (data.assignedLicensees) {
+              setSelectedLicenseeIds(Array.isArray(data.assignedLicensees) ? data.assignedLicensees : []);
+            } else if (data.rel?.licensee) {
+              // Fallback for legacy data
+              const isAll = data.rel.licensee === 'all';
+              setAllLicenseesSelected(isAll);
+              setSelectedLicenseeIds(
+                isAll
+                  ? []
+                  : Array.isArray(data.rel.licensee)
+                    ? data.rel.licensee
+                    : [data.rel.licensee]
+              );
             }
-          })
-          .finally(() => setIsLoading(false));
-      }
+
+            if (data.assignedLocations) {
+              setSelectedLocationIds(Array.isArray(data.assignedLocations) ? data.assignedLocations : []);
+            } else if (data.resourcePermissions?.['gaming-locations']?.resources) {
+              // Fallback for legacy data
+              const resources =
+                data.resourcePermissions['gaming-locations'].resources;
+              const isAll = resources === 'all';
+              setAllLocationsSelected(isAll);
+              setSelectedLocationIds(
+                isAll ? [] : Array.isArray(resources) ? resources : [resources]
+              );
+            }
+          } else {
+            toast.error('Could not load user profile.');
+            onClose();
+          }
+        })
+        .finally(() => setIsLoading(false));
     }
-  }, [open, authUser?._id, onClose, userData?._id]);
+  }, [open, authUser?._id, onClose]);
 
   // Fetch static lists (Countries, Licensees, Locations)
   useEffect(() => {
+    if (!open) {
+      hasAttemptedLicenseeFetchRef.current = false;
+      hasAttemptedLocationsFetchRef.current = false;
+      return;
+    }
     if (open) {
       // Fetch Countries if empty
       if (countries.length === 0 && !countriesLoading) {
@@ -166,8 +179,9 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
           .finally(() => setCountriesLoading(false));
       }
 
-      // Fetch Licensees if empty
-      if (licensees.length === 0 && !licenseesLoading) {
+      // Fetch Licensees only once per modal open
+      if (!hasAttemptedLicenseeFetchRef.current) {
+        hasAttemptedLicenseeFetchRef.current = true;
         setLicenseesLoading(true);
         fetchLicensees(1, 1000)
           .then(data => {
@@ -180,8 +194,9 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
           .finally(() => setLicenseesLoading(false));
       }
 
-      // Fetch Locations if empty
-      if (locations.length === 0 && !locationsLoading) {
+      // Fetch Locations once per modal open
+      if (!hasAttemptedLocationsFetchRef.current) {
+        hasAttemptedLocationsFetchRef.current = true;
         setLocationsLoading(true);
         axios
           .get('/api/gaming-locations')
@@ -191,7 +206,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
           .finally(() => setLocationsLoading(false));
       }
     }
-  }, [open, countries.length, countriesLoading, licensees.length, licenseesLoading, locations.length, locationsLoading]);
+  }, [open, countries.length, countriesLoading]);
 
   const attemptedMissingIdsRef = useRef<string | null>(null);
 
@@ -199,13 +214,13 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   useEffect(() => {
     if (open && userData?.assignedLocations && locations.length > 0) {
       const missingIds = userData.assignedLocations.filter(
-        id => id !== 'all' && !locations.find((l: any) => String(l._id) === id)
+        id => id !== 'all' && !locations.find((l: typeof locations[0]) => String(l._id) === id)
       );
 
       if (missingIds.length > 0) {
         // We only try to fetch missing locations if we haven't already tried for these specific IDs
         const missingKey = missingIds.sort().join(',');
-        
+
         if (attemptedMissingIdsRef.current !== missingKey) {
           attemptedMissingIdsRef.current = missingKey;
           axios.get('/api/gaming-locations', {
@@ -214,7 +229,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
             if (Array.isArray(res.data)) {
               setLocations(prev => {
                 const existingIds = new Set(prev.map(p => String(p._id)));
-                const newOnly = res.data.filter((d: any) => !existingIds.has(String(d._id)));
+                const newOnly = res.data.filter((d: typeof locations[0]) => !existingIds.has(String(d._id)));
                 return [...prev, ...newOnly];
               });
             }
@@ -400,14 +415,14 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
         email: emailAddress.trim(),
         profile: formData
           ? {
-              ...formData,
-              address: formData.address
-                ? {
-                    ...formData.address,
-                    country: countryName,
-                  }
-                : undefined,
-            }
+            ...formData,
+            address: formData.address
+              ? {
+                ...formData.address,
+                country: countryName,
+              }
+              : undefined,
+          }
           : {},
         profilePicture,
         roles: selectedRoles,
@@ -428,7 +443,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       };
 
       const res = await axios.put(`/api/users/${authUser._id}`, updatedUser);
-      
+
       if (res.data.success) {
         toast.success('Profile updated successfully!');
         setUserData(res.data.user);

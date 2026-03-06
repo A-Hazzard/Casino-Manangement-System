@@ -13,9 +13,9 @@ import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
-    convertFromUSD,
-    convertToUSD,
-    getCountryCurrency,
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
 } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -34,13 +34,14 @@ export async function getMachineStats(
   endDate: Date | undefined,
   licensee: string | undefined,
   displayCurrency: CurrencyCode,
-  isAdminOrDev: boolean
+  isAdminOrDev: boolean,
+  timePeriod: string = 'Today'
 ) {
   const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
-  // Use aggregation to join machines with gaminglocations for licensee filtering
+  // Build base aggregation pipeline that respects the location/machine filter
   const aggregationPipeline: PipelineStage[] = [
-    { $match: { deletedAt: { $in: [null, new Date(-1)] } } },
+    { $match: machineMatchStage },
     {
       $lookup: {
         from: 'gaminglocations',
@@ -56,11 +57,15 @@ export async function getMachineStats(
   if (
     locationMatchStage &&
     typeof locationMatchStage === 'object' &&
-    'rel.licensee' in locationMatchStage
+    ('rel.licensee' in locationMatchStage || 'rel.licencee' in locationMatchStage)
   ) {
+    const licenseeVal = locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee'];
     aggregationPipeline.push({
       $match: {
-        'locationDetails.rel.licensee': locationMatchStage['rel.licensee'],
+        $or: [
+          { 'locationDetails.rel.licensee': licenseeVal },
+          { 'locationDetails.rel.licencee': licenseeVal },
+        ],
       },
     });
   }
@@ -81,7 +86,26 @@ export async function getMachineStats(
   ]).exec();
   const onlineCount = onlineCountResult[0]?.total || 0;
 
-  // Calculate financial totals from meters collection within the date filter
+  // Compute per-location gaming day ranges to match the same logic used by the locations page
+  const locationsForRange = await GamingLocations.find(locationMatchStage)
+    .select('gameDayOffset _id')
+    .lean();
+  const gamingDayRanges = getGamingDayRangesForLocations(
+    locationsForRange as unknown as { _id: string; gameDayOffset?: number }[],
+    timePeriod,
+    startDate,
+    endDate
+  );
+
+  // Build a map of locationId -> {rangeStart, rangeEnd} as Date objects for $cond expressions
+  // We need to create a list of {locationId, rangeStart, rangeEnd} for $switch
+  const locationRangeList = Array.from(gamingDayRanges.entries()).map(([id, range]) => ({
+    id,
+    rangeStart: range.rangeStart,
+    rangeEnd: range.rangeEnd,
+  }));
+
+  // Calculate financial totals from meters collection within GAMING DAY date ranges
   const financialTotalsPipeline: PipelineStage[] = [
     { $match: machineMatchStage },
     {
@@ -97,35 +121,58 @@ export async function getMachineStats(
     },
     // Add location filter if licensee is specified
     ...(locationMatchStage &&
-    typeof locationMatchStage === 'object' &&
-    'rel.licensee' in locationMatchStage
+      typeof locationMatchStage === 'object' &&
+      ('rel.licensee' in locationMatchStage || 'rel.licencee' in locationMatchStage)
       ? [
-          {
-            $match: {
-              'locationDetails.rel.licensee':
-                locationMatchStage['rel.licensee'],
-            },
+        {
+          $match: {
+            $or: [
+              { 'locationDetails.rel.licensee': locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee'] },
+              { 'locationDetails.rel.licencee': locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee'] },
+            ],
           },
-        ]
+        },
+      ]
       : []),
-    // Add meters lookup with proper aggregation
+    // Add meters lookup using per-location gaming day ranges
     {
       $lookup: {
         from: 'meters',
-        let: { machineId: '$_id' },
+        let: {
+          machineId: '$_id',
+          locationId: { $toString: '$gamingLocation' },
+        },
         pipeline: [
           {
             $match: {
               $expr: {
                 $and: [
                   { $eq: ['$machine', '$$machineId'] },
-                  // Only include meters within the date range if dates are provided
-                  ...(startDate && endDate
+                  // Apply per-location gaming day range if available, otherwise fall back to raw dates
+                  ...(locationRangeList.length > 0
                     ? [
+                      // Use a $switch to apply the correct gaming day range per location
+                      // If we only have one location range (common for filtered view), use directly
+                      locationRangeList.length === 1
+                        ? { $gte: ['$readAt', locationRangeList[0].rangeStart] }
+                        : {
+                          $or: locationRangeList.map(lr => ({
+                            $and: [
+                              { $gte: ['$readAt', lr.rangeStart] },
+                              { $lte: ['$readAt', lr.rangeEnd] },
+                            ],
+                          })),
+                        },
+                      locationRangeList.length === 1
+                        ? { $lte: ['$readAt', locationRangeList[0].rangeEnd] }
+                        : { $literal: true }, // condition covered by $or above
+                    ]
+                    : startDate && endDate
+                      ? [
                         { $gte: ['$readAt', startDate] },
                         { $lte: ['$readAt', endDate] },
                       ]
-                    : []),
+                      : []),
                 ],
               },
             },
@@ -228,16 +275,18 @@ export async function getMachineStats(
         $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
       },
       ...(locationMatchStage &&
-      typeof locationMatchStage === 'object' &&
-      'rel.licensee' in locationMatchStage
+        typeof locationMatchStage === 'object' &&
+        ('rel.licensee' in locationMatchStage || 'rel.licencee' in locationMatchStage)
         ? [
-            {
-              $match: {
-                'locationDetails.rel.licensee':
-                  locationMatchStage['rel.licensee'],
-              },
+          {
+            $match: {
+              $or: [
+                { 'locationDetails.rel.licensee': locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee'] },
+                { 'locationDetails.rel.licencee': locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee'] },
+              ],
             },
-          ]
+          },
+        ]
         : []),
       {
         $lookup: {
@@ -251,9 +300,9 @@ export async function getMachineStats(
                     { $eq: ['$machine', '$$machineId'] },
                     ...(startDate && endDate
                       ? [
-                          { $gte: ['$readAt', startDate] },
-                          { $lte: ['$readAt', endDate] },
-                        ]
+                        { $gte: ['$readAt', startDate] },
+                        { $lte: ['$readAt', endDate] },
+                      ]
                       : []),
                   ],
                 },
@@ -288,7 +337,7 @@ export async function getMachineStats(
               { $ifNull: ['$meterData.moneyOut', 0] },
             ],
           },
-          licenseeId: '$locationDetails.rel.licensee',
+          licenseeId: { $ifNull: ['$locationDetails.rel.licensee', '$locationDetails.rel.licencee'] },
           countryId: '$locationDetails.country',
         },
       },
@@ -356,7 +405,7 @@ export async function getOverviewMachines(
 ) {
   // Fetch locations to get gaming day ranges
   const locationsWithOffset = await GamingLocations.find(locationMatchStage).select('gameDayOffset _id').lean();
-  const gamingDayRanges = getGamingDayRangesForLocations(locationsWithOffset as any, timePeriod, startDate, endDate);
+  const gamingDayRanges = getGamingDayRangesForLocations(locationsWithOffset as unknown as { _id: string; gameDayOffset?: number }[], timePeriod, startDate, endDate);
 
   const aggregationPipeline: PipelineStage[] = [
     { $match: machineMatchStage },
@@ -371,10 +420,14 @@ export async function getOverviewMachines(
     { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
   ];
 
-  if (locationMatchStage && locationMatchStage['rel.licensee']) {
+  if (locationMatchStage && (locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee'])) {
+    const licenseeVal = locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee'];
     aggregationPipeline.push({
       $match: {
-        'locationDetails.rel.licensee': locationMatchStage['rel.licensee'],
+        $or: [
+          { 'locationDetails.rel.licensee': licenseeVal },
+          { 'locationDetails.rel.licencee': licenseeVal },
+        ],
       },
     });
   }
@@ -392,9 +445,9 @@ export async function getOverviewMachines(
                   { $eq: ['$machine', '$$machineId'] },
                   ...(startDate && endDate
                     ? [
-                        { $gte: ['$readAt', startDate] },
-                        { $lte: ['$readAt', endDate] },
-                      ]
+                      { $gte: ['$readAt', startDate] },
+                      { $lte: ['$readAt', endDate] },
+                    ]
                     : []),
                 ],
               },
@@ -498,38 +551,38 @@ export async function getOverviewMachines(
     const gameConfig = machine.gameConfig as
       | { theoreticalRtp?: number }
       | undefined;
-    
+
     // Calculate offline labels
     const lastActivity = machine.lastActivity ? new Date(machine.lastActivity as string) : null;
     const isOnline = !!(lastActivity && lastActivity > threeMinutesAgo);
-    
-    let offlineTimeLabel : string | undefined = undefined;
-    let actualOfflineTime : string | undefined = undefined;
+
+    let offlineTimeLabel: string | undefined = undefined;
+    let actualOfflineTime: string | undefined = undefined;
 
     if (!isOnline && lastActivity) {
-        const actualDuration = formatDistanceToNow(lastActivity, { addSuffix: true });
-        actualOfflineTime = actualDuration;
+      const actualDuration = formatDistanceToNow(lastActivity, { addSuffix: true });
+      actualOfflineTime = actualDuration;
 
-        const locationId = machine.gamingLocation;
-        const range = gamingDayRanges.get(String(locationId));
+      const locationId = machine.gamingLocation;
+      const range = gamingDayRanges.get(String(locationId));
 
-        if (range) {
-            if (lastActivity < range.rangeStart && (timePeriod === '7d' || timePeriod === '30d' || timePeriod === 'Custom' || timePeriod === 'last7days' || timePeriod === 'last30days')) {
-                const days = (timePeriod === '7d' || timePeriod === 'last7days') ? '7' : (timePeriod === '30d' || timePeriod === 'last30days') ? '30' : undefined;
-                if (days) {
-                    offlineTimeLabel = `within the last ${days} days`;
-                } else {
-                    const diffMs = range.rangeEnd.getTime() - range.rangeStart.getTime();
-                    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-                    offlineTimeLabel = `within the last ${diffDays} days`;
-                }
-            } else {
-                offlineTimeLabel = actualDuration;
-            }
+      if (range) {
+        if (lastActivity < range.rangeStart && (timePeriod === '7d' || timePeriod === '30d' || timePeriod === 'Custom' || timePeriod === 'last7days' || timePeriod === 'last30days')) {
+          const days = (timePeriod === '7d' || timePeriod === 'last7days') ? '7' : (timePeriod === '30d' || timePeriod === 'last30days') ? '30' : undefined;
+          if (days) {
+            offlineTimeLabel = `within the last ${days} days`;
+          } else {
+            const diffMs = range.rangeEnd.getTime() - range.rangeStart.getTime();
+            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+            offlineTimeLabel = `within the last ${diffDays} days`;
+          }
+        } else {
+          offlineTimeLabel = actualDuration;
         }
+      }
     } else if (!isOnline && !lastActivity) {
-        actualOfflineTime = 'Never';
-        offlineTimeLabel = 'Never';
+      actualOfflineTime = 'Never';
+      offlineTimeLabel = 'Never';
     }
 
     return {
@@ -570,8 +623,8 @@ export async function getOverviewMachines(
       avgBet:
         (machine.gamesPlayed as number) > 0
           ? Math.round(
-              (Number(machine.coinIn || 0) / Number(machine.gamesPlayed)) * 100
-            ) / 100
+            (Number(machine.coinIn || 0) / Number(machine.gamesPlayed)) * 100
+          ) / 100
           : 0,
       actualHold: (machine.holdPct as number) || 0,
     };
@@ -590,10 +643,14 @@ export async function getOverviewMachines(
     { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
   ];
 
-  if (locationMatchStage && locationMatchStage['rel.licensee']) {
+  if (locationMatchStage && (locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee'])) {
+    const licenseeVal = locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee'];
     countPipeline.push({
       $match: {
-        'locationDetails.rel.licensee': locationMatchStage['rel.licensee'],
+        $or: [
+          { 'locationDetails.rel.licensee': licenseeVal },
+          { 'locationDetails.rel.licencee': licenseeVal },
+        ],
       },
     });
   }
@@ -652,10 +709,14 @@ export async function getAllMachines(
     { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
   ];
 
-  if (locationMatchStage['rel.licensee']) {
+  if (locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee']) {
+    const licenseeVal = locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee'];
     aggregationPipeline.push({
       $match: {
-        'locationDetails.rel.licensee': locationMatchStage['rel.licensee'],
+        $or: [
+          { 'locationDetails.rel.licensee': licenseeVal },
+          { 'locationDetails.rel.licencee': licenseeVal },
+        ],
       },
     });
   }
@@ -673,9 +734,9 @@ export async function getAllMachines(
                   { $eq: ['$machine', '$$machineId'] },
                   ...(startDate && endDate
                     ? [
-                        { $gte: ['$readAt', startDate] },
-                        { $lte: ['$readAt', endDate] },
-                      ]
+                      { $gte: ['$readAt', startDate] },
+                      { $lte: ['$readAt', endDate] },
+                    ]
                     : []),
                 ],
               },
@@ -793,7 +854,7 @@ export async function getAllMachines(
       isOnline: !!(
         machine.lastActivity &&
         new Date(machine.lastActivity as string) >=
-          new Date(Date.now() - 3 * 60 * 1000)
+        new Date(Date.now() - 3 * 60 * 1000)
       ),
       lastActivity: machine.lastActivity as string,
       isSasEnabled: (machine.isSasMachine as boolean) || false,
@@ -843,7 +904,7 @@ export async function getOfflineMachines(
 ) {
   // Fetch locations to get gaming day ranges
   const locationsWithOffset = await GamingLocations.find(locationMatchStage).select('gameDayOffset _id').lean();
-  const gamingDayRanges = getGamingDayRangesForLocations(locationsWithOffset as any, timePeriod, startDate, endDate);
+  const gamingDayRanges = getGamingDayRangesForLocations(locationsWithOffset as unknown as { _id: string; gameDayOffset?: number }[], timePeriod, startDate, endDate);
 
   const searchTerm = searchParams.get('search');
   const locationId = searchParams.get('locationId');
@@ -940,10 +1001,14 @@ export async function getOfflineMachines(
     { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
   ];
 
-  if (locationMatchStage && locationMatchStage['rel.licensee']) {
+  if (locationMatchStage && (locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee'])) {
+    const licenseeVal = locationMatchStage['rel.licensee'] || locationMatchStage['rel.licencee'];
     aggregationPipeline.push({
       $match: {
-        'locationDetails.rel.licensee': locationMatchStage['rel.licensee'],
+        $or: [
+          { 'locationDetails.rel.licensee': licenseeVal },
+          { 'locationDetails.rel.licencee': licenseeVal },
+        ],
       },
     });
   }
@@ -961,9 +1026,9 @@ export async function getOfflineMachines(
                   { $eq: ['$machine', '$$machineId'] },
                   ...(startDate && endDate
                     ? [
-                        { $gte: ['$readAt', startDate] },
-                        { $lte: ['$readAt', endDate] },
-                      ]
+                      { $gte: ['$readAt', startDate] },
+                      { $lte: ['$readAt', endDate] },
+                    ]
                     : []),
                 ],
               },
@@ -1068,34 +1133,34 @@ export async function getOfflineMachines(
     // Calculate offline labels
     const lastActivity = machine.lastActivity ? new Date(machine.lastActivity as string) : null;
     const isOnline = !!(lastActivity && lastActivity > threeMinutesAgo);
-    
-    let offlineTimeLabel : string | undefined = undefined;
-    let actualOfflineTime : string | undefined = undefined;
+
+    let offlineTimeLabel: string | undefined = undefined;
+    let actualOfflineTime: string | undefined = undefined;
 
     if (!isOnline && lastActivity) {
-        const actualDuration = formatDistanceToNow(lastActivity, { addSuffix: true });
-        actualOfflineTime = actualDuration;
+      const actualDuration = formatDistanceToNow(lastActivity, { addSuffix: true });
+      actualOfflineTime = actualDuration;
 
-        const locationId = machine.gamingLocation;
-        const range = gamingDayRanges.get(String(locationId));
+      const locationId = machine.gamingLocation;
+      const range = gamingDayRanges.get(String(locationId));
 
-        if (range) {
-            if (lastActivity < range.rangeStart && (timePeriod === '7d' || timePeriod === '30d' || timePeriod === 'Custom' || timePeriod === 'last7days' || timePeriod === 'last30days')) {
-                const days = (timePeriod === '7d' || timePeriod === 'last7days') ? '7' : (timePeriod === '30d' || timePeriod === 'last30days') ? '30' : undefined;
-                if (days) {
-                    offlineTimeLabel = `within the last ${days} days`;
-                } else {
-                    const diffMs = range.rangeEnd.getTime() - range.rangeStart.getTime();
-                    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-                    offlineTimeLabel = `within the last ${diffDays} days`;
-                }
-            } else {
-                offlineTimeLabel = actualDuration;
-            }
+      if (range) {
+        if (lastActivity < range.rangeStart && (timePeriod === '7d' || timePeriod === '30d' || timePeriod === 'Custom' || timePeriod === 'last7days' || timePeriod === 'last30days')) {
+          const days = (timePeriod === '7d' || timePeriod === 'last7days') ? '7' : (timePeriod === '30d' || timePeriod === 'last30days') ? '30' : undefined;
+          if (days) {
+            offlineTimeLabel = `within the last ${days} days`;
+          } else {
+            const diffMs = range.rangeEnd.getTime() - range.rangeStart.getTime();
+            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+            offlineTimeLabel = `within the last ${diffDays} days`;
+          }
+        } else {
+          offlineTimeLabel = actualDuration;
         }
+      }
     } else if (!isOnline && !lastActivity) {
-        actualOfflineTime = 'Never';
-        offlineTimeLabel = 'Never';
+      actualOfflineTime = 'Never';
+      offlineTimeLabel = 'Never';
     }
 
     return {

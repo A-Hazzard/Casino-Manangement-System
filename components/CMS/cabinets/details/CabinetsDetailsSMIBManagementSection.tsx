@@ -13,15 +13,16 @@
 
 'use client';
 
-import { Button } from '@/components/shared/ui/button';
+import { CabinetsDetailsSMIBComsConfig } from '@/components/CMS/cabinets/smibManagement/CabinetsDetailsSMIBComsConfig';
 import { CabinetsDetailsSMIBMeterData as MeterDataSection } from '@/components/CMS/cabinets/smibManagement/CabinetsDetailsSMIBMeterData';
+import { CabinetsDetailsSMIBMqttTopics } from '@/components/CMS/cabinets/smibManagement/CabinetsDetailsSMIBMqttTopics';
+import { CabinetsDetailsSMIBNetworkConfig } from '@/components/CMS/cabinets/smibManagement/CabinetsDetailsSMIBNetworkConfig';
 import { CabinetsDetailsSMIBOTAUpdate as OTAUpdateSection } from '@/components/CMS/cabinets/smibManagement/CabinetsDetailsSMIBOTAUpdate';
 import { CabinetsDetailsSMIBRestart as RestartSection } from '@/components/CMS/cabinets/smibManagement/CabinetsDetailsSMIBRestart';
-import { ChevronDownIcon } from 'lucide-react';
-import { Copy } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '@/components/shared/ui/button';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
-import { formatDateWithOrdinal } from '@/lib/utils/date';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronDownIcon, Copy } from 'lucide-react';
 
 type SSEMessage = {
   type: 'connected' | 'callback_ready' | 'heartbeat' | 'keepalive' | 'config_update' | 'error';
@@ -96,6 +97,14 @@ type CabinetsDetailsSMIBManagementSectionProps = {
   onCopyToClipboard: (text: string, label: string) => void;
   onResetFormData?: () => void;
   onSaveAll?: () => Promise<void>;
+  smibHook?: {
+    updateNetworkConfig?: (relayId: string, data: Record<string, unknown>) => Promise<void>;
+    updateComsConfig?: (relayId: string, data: Record<string, unknown>) => Promise<void>;
+    updateMqttConfig?: (relayId: string, data: Record<string, unknown>) => Promise<void>;
+    requestLiveConfig?: (relayId: string, section: string) => Promise<void>;
+    subscribeToMessages: (callback: (message: SSEMessage) => void) => () => void;
+    isSSEConnected: boolean;
+  };
 };
 
 export default function CabinetsDetailsSMIBManagementSection({
@@ -109,15 +118,16 @@ export default function CabinetsDetailsSMIBManagementSection({
   isManuallyFetching,
   isEditMode = false,
   editingSection,
-  smibConfig,
+  smibConfig: _smibConfig,
   onToggleExpand,
   onFetchConfig,
-  onSaveConfig,
-  onUpdateFormData,
+  onSaveConfig: _onSaveConfig,
+  onUpdateFormData: _onUpdateFormData,
   onSetEditingSection,
   onCopyToClipboard,
   onResetFormData,
   onSaveAll,
+  smibHook,
 }: CabinetsDetailsSMIBManagementSectionProps) {
   // Don't render if user doesn't have access to SMIB configuration
   if (!canAccessSmibConfig) return null;
@@ -288,336 +298,215 @@ export default function CabinetsDetailsSMIBManagementSection({
             className="overflow-hidden w-full max-w-full"
           >
             <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 overflow-x-hidden w-full max-w-full min-w-0">
-              {/* Network Configuration */}
-              <div className="border-t border-gray-100 pt-4 sm:pt-6 w-full max-w-full overflow-x-hidden">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
-                  <div className="flex flex-col gap-1">
-                    <h3 className="font-bold text-gray-900 text-sm">Network / WiFi</h3>
-                    <div className="text-[10px] text-gray-500">
-                      Last configured: {formatDateWithOrdinal(cabinet?.smibConfig?.net?.updatedAt) || 'Unknown'}
-                    </div>
-                  </div>
-                  {editingSection === 'network' ? (
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => onSetEditingSection(null)} className="text-xs h-7 px-2">Cancel</Button>
-                      <Button size="sm" onClick={() => onSaveConfig()} className="bg-button text-white hover:bg-button/90 text-xs h-7 px-2">Save Network</Button>
-                    </div>
-                  ) : (
-                    <Button 
-                      size="sm" 
-                      onClick={() => onSetEditingSection('network')} 
-                      className="bg-button text-white hover:bg-button/90 text-xs h-7 px-2"
-                    >
-                      EDIT NETWORK
-                    </Button>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-full min-w-0">
-                  <div className="min-w-0 w-full space-y-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-grayHighlight">
-                        Network Name{isConnectedToMqtt ? ' (live)' : ''}:
-                      </label>
-                      {editingSection === 'network' ? (
-                        <input
-                          type="text"
-                          value={formData.networkSSID === 'No Value Provided' ? '' : formData.networkSSID}
-                          onChange={e => onUpdateFormData('networkSSID', e.target.value)}
-                          className="w-full rounded border border-border bg-background p-1.5 text-xs text-foreground"
-                          placeholder="Enter network name"
-                        />
-                      ) : (
-                        <div className="truncate text-xs">
-                          {formData.networkSSID ||
-                            cabinet?.smibConfig?.net?.netStaSSID ||
-                            'No Value Provided'}
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-grayHighlight">
-                        Channel{isConnectedToMqtt ? ' (live)' : ''}:
-                      </label>
-                      {editingSection === 'network' ? (
-                        <input
-                          type="number"
-                          value={formData.networkChannel === 'No Value Provided' ? '' : formData.networkChannel}
-                          onChange={e => onUpdateFormData('networkChannel', e.target.value)}
-                          className="w-full rounded border border-border bg-background p-1.5 text-xs text-foreground"
-                          placeholder="Enter channel"
-                          min="1"
-                          max="11"
-                        />
-                      ) : (
-                        <div className="text-xs">
-                          {formData.networkChannel ||
-                            cabinet?.smibConfig?.net?.netStaChan?.toString() ||
-                            'No Value Provided'}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="min-w-0 w-full space-y-1">
-                    <label className="text-xs font-medium text-grayHighlight">
-                      Password{isConnectedToMqtt ? ' (live)' : ''}:
-                    </label>
-                    {editingSection === 'network' ? (
-                      <input
-                        type="password"
-                        value={formData.networkPassword === 'No Value Provided' ? '' : formData.networkPassword}
-                        onChange={e => onUpdateFormData('networkPassword', e.target.value)}
-                        className="w-full rounded border border-border bg-background p-1.5 text-xs text-foreground"
-                        placeholder="Enter network password"
-                      />
-                    ) : (
-                      <div className="text-xs">
-                        {formData.networkPassword ||
-                          cabinet?.smibConfig?.net?.netStaPwd ||
-                          'No Value Provided'}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              {/* Network, COMS, and MQTT Configuration exactly like /cabinets?smib */}
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 border-t border-gray-100 pt-4 sm:pt-6 w-full max-w-full min-w-0">
+                {/* Left Column */}
+                <div className="flex flex-col gap-6 w-full min-w-0">
+                  {/* Network Config */}
+                  <CabinetsDetailsSMIBNetworkConfig
+                    networkSSID={
+                      formData.networkSSID !== 'No Value Provided'
+                        ? formData.networkSSID
+                        : cabinet?.smibConfig?.net?.netStaSSID || ''
+                    }
+                    networkChannel={
+                      formData.networkChannel !== 'No Value Provided'
+                        ? formData.networkChannel
+                        : cabinet?.smibConfig?.net?.netStaChan?.toString() || ''
+                    }
+                    networkPassword={
+                      formData.networkPassword !== 'No Value Provided'
+                        ? formData.networkPassword
+                        : cabinet?.smibConfig?.net?.netStaPwd || ''
+                    }
+                    updatedAt={cabinet?.smibConfig?.net?.updatedAt}
+                    isEditMode={editingSection === 'network'}
+                    onToggleEdit={() => onSetEditingSection(editingSection === 'network' ? null : 'network')}
+                    onUpdate={async (data) => {
+                      const networkData = {
+                        netStaSSID: data.networkSSID || undefined,
+                        netStaPwd: data.networkPassword || undefined,
+                        netStaChan: data.networkChannel ? parseInt(data.networkChannel, 10) : undefined,
+                      };
+                      const relayId = cabinet.relayId || cabinet.smibBoard;
+                      if (!relayId) return;
 
-              {/* COMS and MQTT Configuration */}
-              <div className="border-t border-gray-100 pt-4 sm:pt-6 w-full max-w-full overflow-x-hidden">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full max-w-full min-w-0">
+                      if (isConnectedToMqtt && smibHook?.updateNetworkConfig) {
+                        await smibHook.updateNetworkConfig(relayId, networkData);
+                      }
+
+                      await fetch('/api/mqtt/update-machine-config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          relayId,
+                          smibConfig: { net: networkData },
+                        }),
+                      });
+
+                      const { toast } = await import('sonner');
+                      toast.success(
+                        isConnectedToMqtt
+                          ? 'Network configuration sent to SMIB and saved to database'
+                          : 'Network configuration saved to database (SMIB offline)'
+                      );
+
+                      setTimeout(async () => {
+                        if (smibHook?.requestLiveConfig) {
+                          await smibHook.requestLiveConfig(relayId, 'net');
+                        }
+                      }, 3000);
+
+                      onSetEditingSection(null);
+                    }}
+                    isConnectedToMqtt={isConnectedToMqtt}
+                    isLoading={isManuallyFetching}
+                  />
+
                   {/* COMS Configuration */}
-                  <div className="min-w-0 w-full max-w-full overflow-x-hidden">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
-                      <div className="flex flex-col gap-1">
-                        <h3 className="font-bold text-gray-900 text-sm">COMS</h3>
-                        <div className="text-[10px] text-gray-500">
-                          Last configured: {formatDateWithOrdinal(cabinet?.smibConfig?.coms?.updatedAt) || 'Unknown'}
-                        </div>
-                      </div>
-                      {editingSection === 'coms' ? (
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => onSetEditingSection(null)} className="text-xs h-7 px-2">Cancel</Button>
-                          <Button size="sm" onClick={() => onSaveConfig()} className="bg-button text-white hover:bg-button/90 text-xs h-7 px-2">Save COMS</Button>
-                        </div>
-                      ) : (
-                        <Button 
-                          size="sm" 
-                          onClick={() => onSetEditingSection('coms')} 
-                          className="bg-button text-white hover:bg-button/90 text-xs h-7 px-2"
-                        >
-                          EDIT COMS
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-3 w-full max-w-full min-w-0">
-                      <div className="min-w-0 w-full space-y-1">
-                        <label className="text-xs font-medium text-grayHighlight">Address:</label>
-                        {editingSection === 'coms' ? (
-                          <input
-                            type="text"
-                            value={formData.comsAddr === 'No Value Provided' ? '' : formData.comsAddr}
-                            onChange={e => onUpdateFormData('comsAddr', e.target.value)}
-                            className="w-full rounded border border-border bg-background p-1.5 text-xs text-foreground"
-                            placeholder="Enter address"
-                          />
-                        ) : (
-                          <div className="text-xs">
-                            {formData.comsAddr ||
-                              cabinet?.smibConfig?.coms?.comsAddr?.toString() ||
-                              'No Value Provided'}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 w-full space-y-1">
-                        <label className="text-xs font-medium text-grayHighlight">Polling Rate:</label>
-                        {editingSection === 'coms' ? (
-                          <input
-                            type="text"
-                            value={formData.comsRateMs === 'No Value Provided' ? '' : formData.comsRateMs}
-                            onChange={e => onUpdateFormData('comsRateMs', e.target.value)}
-                            className="w-full rounded border border-border bg-background p-1.5 text-xs text-foreground"
-                            placeholder="Enter polling rate"
-                          />
-                        ) : (
-                          <div className="text-xs">
-                            {formData.comsRateMs ||
-                              cabinet?.smibConfig?.coms?.comsRateMs?.toString() ||
-                              'No Value Provided'}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 w-full space-y-1">
-                        <label className="text-xs font-medium text-grayHighlight">RTE:</label>
-                        {editingSection === 'coms' ? (
-                          <select
-                            value={formData.comsRTE || '0'}
-                            onChange={e => onUpdateFormData('comsRTE', e.target.value)}
-                            className="w-full rounded border border-border bg-background p-1.5 text-xs text-foreground"
-                          >
-                            <option value="0">Disabled</option>
-                            <option value="1">Enabled</option>
-                          </select>
-                        ) : (
-                          <div className="text-xs">
-                            {formData.comsRTE === '1' || cabinet?.smibConfig?.coms?.comsRTE === 1
-                              ? 'Enabled'
-                              : formData.comsRTE === '0' || cabinet?.smibConfig?.coms?.comsRTE === 0
-                                ? 'Disabled'
-                                : 'No Value Provided'}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 w-full space-y-1">
-                        <label className="text-xs font-medium text-grayHighlight">GPC:</label>
-                        {editingSection === 'coms' ? (
-                          <input
-                            type="text"
-                            value={formData.comsGPC === 'No Value Provided' ? '' : formData.comsGPC}
-                            onChange={e => onUpdateFormData('comsGPC', e.target.value)}
-                            className="w-full rounded border border-border bg-background p-1.5 text-xs text-foreground"
-                            placeholder="Enter GPC"
-                          />
-                        ) : (
-                          <div className="text-xs">
-                            {formData.comsGPC ||
-                              cabinet?.smibConfig?.coms?.comsGPC?.toString() ||
-                              'No Value Provided'}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <CabinetsDetailsSMIBComsConfig
+                    comsMode={
+                      formData.comsMode !== 'No Value Provided'
+                        ? formData.comsMode
+                        : cabinet?.smibConfig?.coms?.comsMode?.toString() || ''
+                    }
+                    comsAddr={
+                      formData.comsAddr !== 'No Value Provided'
+                        ? formData.comsAddr
+                        : cabinet?.smibConfig?.coms?.comsAddr?.toString() || ''
+                    }
+                    comsRateMs={
+                      formData.comsRateMs !== 'No Value Provided'
+                        ? formData.comsRateMs
+                        : cabinet?.smibConfig?.coms?.comsRateMs?.toString() || ''
+                    }
+                    comsRTE={
+                      formData.comsRTE !== 'No Value Provided'
+                        ? formData.comsRTE
+                        : cabinet?.smibConfig?.coms?.comsRTE?.toString() || ''
+                    }
+                    comsGPC={
+                      formData.comsGPC !== 'No Value Provided'
+                        ? formData.comsGPC
+                        : cabinet?.smibConfig?.coms?.comsGPC?.toString() || ''
+                    }
+                    updatedAt={cabinet?.smibConfig?.coms?.updatedAt}
+                    isEditMode={editingSection === 'coms'}
+                    onToggleEdit={() => onSetEditingSection(editingSection === 'coms' ? null : 'coms')}
+                    onUpdate={async (data) => {
+                      const comsConfigData = {
+                        comsMode: data.comsMode ? parseInt(data.comsMode, 10) : undefined,
+                        comsAddr: data.comsAddr ? parseInt(data.comsAddr, 10) : undefined,
+                        comsRateMs: data.comsRateMs ? parseInt(data.comsRateMs, 10) : undefined,
+                        comsRTE: data.comsRTE ? parseInt(data.comsRTE, 10) : undefined,
+                        comsGPC: data.comsGPC ? parseInt(data.comsGPC, 10) : undefined,
+                      };
+                      const relayId = cabinet.relayId || cabinet.smibBoard;
+                      if (!relayId) return;
+                      
+                      if (isConnectedToMqtt && smibHook?.updateComsConfig) {
+                        await smibHook.updateComsConfig(relayId, comsConfigData);
+                      }
+                      
+                      await fetch('/api/mqtt/update-machine-config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          relayId,
+                          smibConfig: { coms: comsConfigData },
+                        }),
+                      });
+                      
+                      const { toast } = await import('sonner');
+                      toast.success(
+                        isConnectedToMqtt
+                          ? 'COMS configuration sent to SMIB and saved to database'
+                          : 'COMS configuration saved to database (SMIB offline)'
+                      );
+                      
+                      setTimeout(async () => {
+                        if (smibHook?.requestLiveConfig) {
+                          await smibHook.requestLiveConfig(relayId, 'coms');
+                        }
+                      }, 3000);
+                      
+                      onSetEditingSection(null);
+                    }}
+                    isLoading={isManuallyFetching}
+                  />
+                </div>
 
-                  {/* MQTT Configuration */}
-                  <div className="min-w-0 w-full max-w-full overflow-x-hidden">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
-                      <div className="flex flex-col gap-1">
-                        <h3 className="font-bold text-gray-900 text-sm">MQTT</h3>
-                        <div className="text-[10px] text-gray-500">
-                          Last configured: {formatDateWithOrdinal(cabinet?.smibConfig?.mqtt?.updatedAt) || 'Unknown'}
-                        </div>
-                      </div>
-                      {editingSection === 'mqtt' ? (
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => onSetEditingSection(null)} className="text-xs h-7 px-2">Cancel</Button>
-                          <Button size="sm" onClick={() => onSaveConfig()} className="bg-button text-white hover:bg-button/90 text-xs h-7 px-2">Save MQTT</Button>
-                        </div>
-                      ) : (
-                        <Button 
-                          size="sm" 
-                          onClick={() => onSetEditingSection('mqtt')} 
-                          className="bg-button text-white hover:bg-button/90 text-xs h-7 px-2"
-                        >
-                          EDIT MQTT
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3 w-full max-w-full min-w-0">
-                      <div className="min-w-0 w-full space-y-1">
-                        <label className="text-xs font-medium text-grayHighlight">MQTT Public Topic:</label>
-                        {editingSection === 'mqtt' ? (
-                          <input
-                            type="text"
-                            value={formData.mqttPubTopic === 'No Value Provided' ? '' : formData.mqttPubTopic}
-                            onChange={e => onUpdateFormData('mqttPubTopic', e.target.value)}
-                            className="w-full rounded border border-border bg-background p-1.5 text-xs text-foreground"
-                            placeholder="Enter MQTT public topic"
-                          />
-                        ) : (
-                          <div className="truncate text-xs">
-                            {formData.mqttPubTopic ||
-                              cabinet?.smibConfig?.mqtt?.mqttPubTopic ||
-                              'No Value Provided'}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 w-full space-y-1">
-                        <label className="text-xs font-medium text-grayHighlight">MQTT Config Topic:</label>
-                        {editingSection === 'mqtt' ? (
-                          <input
-                            type="text"
-                            value={formData.mqttCfgTopic === 'No Value Provided' ? '' : formData.mqttCfgTopic}
-                            onChange={e => onUpdateFormData('mqttCfgTopic', e.target.value)}
-                            className="w-full rounded border border-border bg-background p-1.5 text-xs text-foreground"
-                            placeholder="Enter MQTT config topic"
-                          />
-                        ) : (
-                          <div className="truncate text-xs">
-                            {formData.mqttCfgTopic ||
-                              cabinet?.smibConfig?.mqtt?.mqttCfgTopic ||
-                              'No Value Provided'}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 w-full space-y-1">
-                        <label className="text-xs font-medium text-grayHighlight">QOS:</label>
-                        {editingSection === 'mqtt' ? (
-                          <select
-                            value={formData.mqttTLS || '2'}
-                            onChange={e => onUpdateFormData('mqttTLS', e.target.value)}
-                            className="w-full rounded border border-border bg-background p-1.5 text-xs text-foreground"
-                          >
-                            <option value="0">0 - At most once</option>
-                            <option value="1">1 - At least once</option>
-                            <option value="2">2 - Exactly once</option>
-                          </select>
-                        ) : (
-                          <div className="text-xs">
-                            {formData.mqttTLS === '0'
-                              ? '0 - At most once'
-                              : formData.mqttTLS === '1'
-                                ? '1 - At least once'
-                                : formData.mqttTLS === '2'
-                                  ? '2 - Exactly once'
-                                  : cabinet?.smibConfig?.mqtt?.mqttQOS === 0
-                                    ? '0 - At most once'
-                                    : cabinet?.smibConfig?.mqtt?.mqttQOS === 1
-                                      ? '1 - At least once'
-                                      : cabinet?.smibConfig?.mqtt?.mqttQOS === 2
-                                        ? '2 - Exactly once'
-                                        : 'No Value Provided'}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 w-full space-y-1">
-                        <label className="text-xs font-medium text-grayHighlight">Idle Timeout (s):</label>
-                        {editingSection === 'mqtt' ? (
-                          <input
-                            type="number"
-                            value={formData.mqttIdleTimeout === 'No Value Provided' ? '' : formData.mqttIdleTimeout}
-                            onChange={e => onUpdateFormData('mqttIdleTimeout', e.target.value)}
-                            className="w-full rounded border border-border bg-background p-1.5 text-xs text-foreground"
-                            placeholder="Enter idle timeout"
-                          />
-                        ) : (
-                          <div className="text-xs">
-                            {formData.mqttIdleTimeout ||
-                              cabinet?.smibConfig?.mqtt?.mqttIdleTimeS?.toString() ||
-                              'No Value Provided'}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mt-3 min-w-0 w-full space-y-1">
-                      <label className="text-xs font-medium text-grayHighlight">MQTT URI:</label>
-                      {editingSection === 'mqtt' ? (
-                        <input
-                          type="text"
-                          value={formData.mqttURI === 'No Value Provided' ? '' : formData.mqttURI}
-                          onChange={e => onUpdateFormData('mqttURI', e.target.value)}
-                          className="w-full rounded border border-border bg-background p-1.5 text-xs text-foreground"
-                          placeholder="mqtt://mqtt:mqtt@mq.sas.backoffice.ltd:1883"
-                        />
-                      ) : (
-                        <div className="break-words text-xs">
-                          {formData.mqttURI ||
-                            cabinet?.smibConfig?.mqtt?.mqttURI ||
-                            'No Value Provided'}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                {/* Right Column */}
+                <div className="flex flex-col gap-6 w-full min-w-0">
+                  {/* MQTT Topics */}
+                  <CabinetsDetailsSMIBMqttTopics
+                    mqttPubTopic={
+                      formData.mqttPubTopic !== 'No Value Provided'
+                        ? formData.mqttPubTopic
+                        : cabinet?.smibConfig?.mqtt?.mqttPubTopic || ''
+                    }
+                    mqttCfgTopic={
+                      formData.mqttCfgTopic !== 'No Value Provided'
+                        ? formData.mqttCfgTopic
+                        : cabinet?.smibConfig?.mqtt?.mqttCfgTopic || ''
+                    }
+                    mqttURI={
+                      formData.mqttURI !== 'No Value Provided'
+                        ? formData.mqttURI
+                        : cabinet?.smibConfig?.mqtt?.mqttURI || ''
+                    }
+                    mqttTLS={
+                      formData.mqttTLS !== 'No Value Provided'
+                        ? formData.mqttTLS
+                        : cabinet?.smibConfig?.mqtt?.mqttQOS?.toString() || ''
+                    }
+                    mqttIdleTimeout={
+                      formData.mqttIdleTimeout !== 'No Value Provided'
+                        ? formData.mqttIdleTimeout
+                        : cabinet?.smibConfig?.mqtt?.mqttIdleTimeS?.toString() || ''
+                    }
+                    updatedAt={cabinet?.smibConfig?.mqtt?.updatedAt}
+                    isEditMode={editingSection === 'mqtt'}
+                    onToggleEdit={() => onSetEditingSection(editingSection === 'mqtt' ? null : 'mqtt')}
+                    onUpdate={async (data) => {
+                      const mqttConfigData = {
+                        mqttPubTopic: data.mqttPubTopic || undefined,
+                        mqttCfgTopic: data.mqttCfgTopic || undefined,
+                        mqttURI: data.mqttURI || undefined,
+                      };
+                      const relayId = cabinet.relayId || cabinet.smibBoard;
+                      if (!relayId) return;
+
+                      if (isConnectedToMqtt && smibHook?.updateMqttConfig) {
+                        await smibHook.updateMqttConfig(relayId, mqttConfigData);
+                      }
+
+                      await fetch('/api/mqtt/update-machine-config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          relayId,
+                          smibConfig: { mqtt: mqttConfigData },
+                        }),
+                      });
+
+                      const { toast } = await import('sonner');
+                      toast.success(
+                        isConnectedToMqtt
+                          ? 'MQTT configuration sent to SMIB and saved to database'
+                          : 'MQTT configuration saved to database (SMIB offline)'
+                      );
+
+                      setTimeout(async () => {
+                        if (smibHook?.requestLiveConfig) {
+                          await smibHook.requestLiveConfig(relayId, 'mqtt');
+                        }
+                      }, 3000);
+
+                      onSetEditingSection(null);
+                    }}
+                    isLoading={isManuallyFetching}
+                  />
                 </div>
               </div>
 
@@ -630,7 +519,10 @@ export default function CabinetsDetailsSMIBManagementSection({
                       <MeterDataSection 
                         relayId={cabinet.relayId!} 
                         isOnline={isConnectedToMqtt}
-                        smibConfig={smibConfig}
+                        smibConfig={{
+                          subscribeToMessages: smibHook?.subscribeToMessages ?? (() => () => {}),
+                          isSSEConnected: smibHook?.isSSEConnected ?? false,
+                        }}
                       />
                     </div>
                   </div>

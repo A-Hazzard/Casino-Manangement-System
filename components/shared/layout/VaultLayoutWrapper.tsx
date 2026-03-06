@@ -22,6 +22,7 @@ import { SidebarInset, SidebarProvider } from '@/components/shared/ui/sidebar';
 import {
     cashierNavigationConfig,
     getCmsNavigationConfig,
+    NavigationConfig,
     vaultNavigationConfig,
 } from '@/lib/constants';
 import { CurrencyProvider } from '@/lib/contexts/CurrencyContext';
@@ -56,7 +57,7 @@ export default function VaultLayoutWrapper({
    /**
     * Filter navigation items based on shift status
     */
-   const filterNavItems = (config: any) => {
+   const filterNavItems = (config: NavigationConfig) => {
      // Currently no complex filtering needed as end-of-day is handled via dashboard
      return config;
    };

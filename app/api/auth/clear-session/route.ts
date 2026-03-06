@@ -12,7 +12,8 @@
  * @features Session Management, Cookie Clearing, Authentication
  */
 
-import { NextResponse } from 'next/server';
+import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main POST handler for clearing user session
@@ -22,7 +23,7 @@ import { NextResponse } from 'next/server';
  * 2. Clear all authentication cookies (token, refreshToken, user)
  * 3. Return success response
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
@@ -39,14 +40,9 @@ export async function POST() {
     // ============================================================================
     const cookiesToClear = ['token', 'refreshToken', 'user'];
 
+    const clearOptions = getAuthCookieOptions(request, { expires: new Date(0) });
     cookiesToClear.forEach(cookieName => {
-      response.cookies.set(cookieName, '', {
-        expires: new Date(0),
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-      });
+      response.cookies.set(cookieName, '', clearOptions);
     });
 
     // ============================================================================

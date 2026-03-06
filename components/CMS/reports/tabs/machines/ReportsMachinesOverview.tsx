@@ -38,10 +38,12 @@ import {
     MachinesOverviewSkeleton,
     MetricCardsSkeleton,
 } from '@/components/shared/ui/skeletons/ReportsSkeletons';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type {
     MachineData,
     ReportsMachinesOverviewProps,
 } from '@/lib/types/reports';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { getFinancialColorClass } from '@/lib/utils/financial';
 import { Pencil2Icon } from '@radix-ui/react-icons';
 import {
@@ -130,6 +132,8 @@ export const ReportsMachinesOverview = ({
   onDelete,
 }: ReportsMachinesOverviewProps) => {
   const router = useRouter();
+  const { displayCurrency } = useCurrencyFormat();
+  const formatCurrency = (val: number | null | undefined) => formatCurrencyWithCodeString(val, displayCurrency);
 
   // ============================================================================
   // Render
@@ -209,7 +213,7 @@ export const ReportsMachinesOverview = ({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${machineStats?.totalGross?.toLocaleString() || '0'}
+                {formatCurrency(machineStats?.totalGross)}
               </div>
               <p className="text-xs text-muted-foreground">
                 Gross revenue this period
@@ -425,19 +429,19 @@ export const ReportsMachinesOverview = ({
                         <span
                           className={getFinancialColorClass(machine.coinIn)}
                         >
-                          ${machine.coinIn.toLocaleString()}
+                          {formatCurrency(machine.coinIn)}
                         </span>
                       </td>
                       <td className="p-3 text-left">
                         <span
                           className={getFinancialColorClass(machine.netWin)}
                         >
-                          ${machine.netWin.toLocaleString()}
+                          {formatCurrency(machine.netWin)}
                         </span>
                       </td>
                       <td className="p-3 text-left">
                         <span className={getFinancialColorClass(machine.gross)}>
-                          ${machine.gross.toLocaleString()}
+                          {formatCurrency(machine.gross)}
                         </span>
                       </td>
                       <td className="p-3 text-center">

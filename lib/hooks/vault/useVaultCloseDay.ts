@@ -26,7 +26,7 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
       if (balance) {
         setVaultBalance(balance);
       }
-      
+
       const machinesData = await fetchCabinetsForLocation(locationId, undefined, 'Today');
       if (machinesData && machinesData.data) {
         setMachines(machinesData.data);
@@ -46,7 +46,7 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
       // 1. Fetch basic overview data (shifts, balance status)
       const data = await fetchVaultOverviewData(locationId, username);
       const balance = data.vaultBalance;
-      
+
       setVaultBalance(balance);
       setActiveShifts(data.cashDesks || []);
       setPendingShifts(data.pendingShifts || []);
@@ -62,7 +62,7 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
         setShowBlockedShifts(true);
         return;
       }
-      
+
       if (!balance.canClose) {
         toast.error('Cannot Close Vault', {
           description: balance.blockReason || 'Please ensure all requirements are met.'
@@ -94,13 +94,13 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
     setActiveStep(null);
   }, []);
 
-  const handleConfirm = useCallback(async (type: string, _data?: any) => {
+  const handleConfirm = useCallback(async (type: string, _data?: unknown) => {
     if (type === 'softCount') {
       // 1. Fetch latest balance to ensure we close with correct data
       setLoading(true);
       try {
         const balanceRes = await fetchVaultBalance(locationId!);
-        
+
         // 2. Perform actual close API call using calculated data
         const res = await fetch('/api/vault/shift/close', {
           method: 'POST',
@@ -112,7 +112,7 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
             denominations: balanceRes?.denominations || vaultBalance?.denominations || []
           })
         });
-        
+
         const result = await res.json();
         if (result.success) {
           toast.success('Vault closed successfully');

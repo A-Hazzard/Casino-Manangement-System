@@ -402,19 +402,19 @@ export async function GET(
           },
           time: useMinute
             ? {
-                $dateToString: {
-                  date: '$readAt',
-                  format: '%H:%M',
-                  timezone: 'UTC',
-                },
-              }
-            : {
-                $dateToString: {
-                  date: '$readAt',
-                  format: '%H:00',
-                  timezone: 'UTC',
-                },
+              $dateToString: {
+                date: '$readAt',
+                format: '%H:%M',
+                timezone: 'UTC',
               },
+            }
+            : {
+              $dateToString: {
+                date: '$readAt',
+                format: '%H:00',
+                timezone: 'UTC',
+              },
+            },
         },
       });
     } else {
@@ -537,9 +537,9 @@ export async function GET(
           })
             .select('rel country')
             .lean()) as {
-            rel?: { licensee?: string };
-            country?: string;
-          } | null;
+              rel?: { licensee?: string };
+              country?: string;
+            } | null;
         } catch (error) {
           console.warn(
             'Failed to fetch location for currency conversion:',
@@ -550,10 +550,11 @@ export async function GET(
 
       // Determine native currency from licensee or country
       let nativeCurrency: CurrencyCode = 'USD';
-      if (locationData?.rel?.licensee) {
+      const licenseeId = locationData?.rel?.licensee || (locationData?.rel as Record<string, unknown>)?.licencee;
+      if (licenseeId) {
         try {
           const licenseeDoc = await Licensee.findOne({
-            _id: locationData.rel.licensee,
+            _id: licenseeId,
           })
             .select('name')
             .lean();
@@ -618,9 +619,9 @@ export async function GET(
       dataSpan:
         actualDataSpan && actualDataSpan.minDate && actualDataSpan.maxDate
           ? {
-              minDate: actualDataSpan.minDate.toISOString(),
-              maxDate: actualDataSpan.maxDate.toISOString(),
-            }
+            minDate: actualDataSpan.minDate.toISOString(),
+            maxDate: actualDataSpan.maxDate.toISOString(),
+          }
           : undefined,
     });
   } catch (error) {

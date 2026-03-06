@@ -23,16 +23,17 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
 import {
-    convertFromUSD,
-    convertToUSD,
-    getCountryCurrency,
-    getLicenseeCurrency,
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+  getLicenseeCurrency,
 } from '@/lib/helpers/rates';
 import { TransformedCabinet } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import mongoose from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromServer } from '../../lib/helpers/users';
 
 /**
  * Helper function to safely convert an ID to ObjectId if possible
@@ -132,7 +133,18 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // STEP 4: Check user access to location
       // ============================================================================
-      const hasAccess = await checkUserLocationAccess(locationId);
+      const user = await getUserFromServer();
+      const roles = (user?.roles as string[]) || [];
+      const normalizedRoles = roles.map(r => r?.toLowerCase?.() ?? r);
+      const isAdmin = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+
+      let hasAccess = false;
+      if (isAdmin) {
+        hasAccess = true;
+      } else {
+        hasAccess = await checkUserLocationAccess(locationId);
+      }
+
       if (!hasAccess) {
         return NextResponse.json(
           {
@@ -181,7 +193,7 @@ export async function GET(request: NextRequest) {
     const displayCurrency =
       (url.searchParams.get('currency') as CurrencyCode) || 'USD';
 
-      const onlineStatus = url.searchParams.get('onlineStatus') || 'all';
+    const onlineStatus = url.searchParams.get('onlineStatus') || 'all';
 
     // Pagination parameters
     // When searching, limit may be undefined to fetch all results
@@ -204,7 +216,19 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 4: Check user access to location
     // ============================================================================
-    const hasAccess = await checkUserLocationAccess(locationId);
+    // Re-check user for the main body of the handler if not already done
+    const user = await getUserFromServer();
+    const roles = (user?.roles as string[]) || [];
+    const normalizedRoles = roles.map(r => r?.toLowerCase?.() ?? r);
+    const isAdmin = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+
+    let hasAccess = false;
+    if (isAdmin) {
+      hasAccess = true;
+    } else {
+      hasAccess = await checkUserLocationAccess(locationId);
+    }
+
     if (!hasAccess) {
       return NextResponse.json(
         { error: 'Unauthorized: You do not have access to this location' },
@@ -268,14 +292,22 @@ export async function GET(request: NextRequest) {
     }
 
     // CRITICAL SECURITY CHECK: Verify the location belongs to the selected licensee (if provided)
-    if (licensee && locationCheck.rel?.licensee !== licensee) {
-      console.error(
-        `Access denied: Location ${locationId} does not belong to licensee ${licensee}`
-      );
-      return NextResponse.json(
-        { error: 'Access denied: Location not found for selected licensee' },
-        { status: 403 }
-      );
+    // Developers and Admins bypass this check to simplify cross-licensee navigation
+    const hasSpecificLicensee =
+      licensee && licensee !== '' && licensee !== 'all';
+
+    if (!isAdmin && hasSpecificLicensee) {
+      const locationLicenseeId = locationCheck.rel?.licensee || (locationCheck.rel as unknown as Record<string, unknown>)?.licencee;
+
+      if (locationLicenseeId !== licensee && (!Array.isArray(locationLicenseeId) || !locationLicenseeId.includes(licensee))) {
+        console.error(
+          `Access denied: Location ${locationId} does not belong to licensee ${licensee}`
+        );
+        return NextResponse.json(
+          { error: 'Access denied: Location not found for selected licensee' },
+          { status: 403 }
+        );
+      }
     }
 
     // ============================================================================
@@ -315,7 +347,7 @@ export async function GET(request: NextRequest) {
         },
       ],
     };
-    
+
     // Apply online/offline status filter at database level
     if (onlineStatus !== 'all') {
       const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
@@ -340,7 +372,7 @@ export async function GET(request: NextRequest) {
         });
       }
     }
-    
+
     // First, fetch all machines for this location
     const machines = await Machine.find(machineMatchQuery,
       {

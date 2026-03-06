@@ -63,6 +63,7 @@ export type UserDocument = Document & {
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  requiresPasswordUpdate?: boolean;
 };
 
 export type LeanUserDocument = Omit<UserDocument, keyof Document> & {
@@ -70,6 +71,7 @@ export type LeanUserDocument = Omit<UserDocument, keyof Document> & {
   __v?: number;
   tempPasswordChanged?: boolean;
   tempPassword?: string | null;
+  requiresPasswordUpdate?: boolean;
 };
 
 

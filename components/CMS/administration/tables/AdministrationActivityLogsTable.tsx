@@ -23,6 +23,13 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import { DatePicker } from '@/components/shared/ui/date-picker';
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/shared/ui/dialog';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
     Select,
@@ -40,8 +47,9 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/shared/ui/table';
+import { useUserStore } from '@/lib/store/userStore';
 import { formatDate } from '@/lib/utils/formatting';
-import { Activity, ArrowUpDown, Check, Copy } from 'lucide-react';
+import { Activity, ArrowUpDown, Check, Copy, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import AdministrationActivityLogsSearchBar from '../AdministrationActivityLogsSearchBar';
@@ -83,6 +91,15 @@ function AdministrationActivityLogsTable({
   const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Delete states
+  const { user: currentUser } = useUserStore();
+  const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
+  const isDeveloper = userRoles.includes('developer');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [logToDelete, setLogToDelete] = useState<ActivityLog | null>(null);
+  const [deleteType, setDeleteType] = useState<'soft' | 'hard'>('soft');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Copy to clipboard function
   const copyToClipboard = async (text: string, label: string, fieldId: string) => {
@@ -448,6 +465,37 @@ function AdministrationActivityLogsTable({
     };
   }, [fetchInitialBatch]);
 
+  // Handle delete action
+  const handleDeleteClick = (log: ActivityLog) => {
+    setLogToDelete(log);
+    setDeleteType('soft');
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!logToDelete) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/activity-logs/${logToDelete._id}?deleteType=${deleteType}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success(`Activity log ${deleteType === 'hard' ? 'permanently removed' : 'marked as deleted'}`);
+        setIsDeleteModalOpen(false);
+        setLogToDelete(null);
+        fetchInitialBatch();
+      } else {
+        toast.error(data.message || 'Failed to delete activity log');
+      }
+    } catch (error) {
+      console.error('Error deleting activity log:', error);
+      toast.error('An error occurred while deleting');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className={className}>
       <Card>
@@ -572,6 +620,7 @@ function AdministrationActivityLogsTable({
                         Description
                       </TableHead>
                       <TableHead centered>IP Address</TableHead>
+                      {isDeveloper && <TableHead centered>Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -712,6 +761,19 @@ function AdministrationActivityLogsTable({
                                 )}
                             </div>
                           </TableCell>
+                          {isDeveloper && (
+                            <TableCell centered>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteClick(log)}
+                                className="h-8 w-8 text-destructive hover:bg-red-50"
+                                title="Delete Log"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))
                     ) : (
@@ -762,11 +824,13 @@ function AdministrationActivityLogsTable({
 
           {/* Pagination Controls */}
           {!loading && logs.length > 0 && (
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              setCurrentPage={setCurrentPage}
-            />
+            <div className="mt-8 flex justify-center pb-4">
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                setCurrentPage={setCurrentPage}
+              />
+            </div>
           )}
         </CardContent>
       </Card>
@@ -778,6 +842,77 @@ function AdministrationActivityLogsTable({
         log={selectedLog}
         searchMode={searchMode}
       />
+
+      {/* Developer Delete Selection Modal */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Confirm Delete Log
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="rounded-lg bg-gray-50 p-4 border border-gray-100 space-y-2">
+              <p className="text-sm text-gray-700">
+                Are you sure you want to delete this activity log?
+              </p>
+              <div className="text-xs text-gray-500 font-mono space-y-1">
+                <p>ID: {logToDelete?._id}</p>
+                <p>Action: {logToDelete?.action}</p>
+                <p>User: {logToDelete?.username}</p>
+                <p>Time: {logToDelete && formatDate(logToDelete.timestamp)}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-lg bg-amber-50 p-4 border border-amber-100">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Deletion Mode:</span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={deleteType === 'soft' ? 'default' : 'outline'}
+                  className={`flex-1 text-xs h-9 font-bold ${deleteType === 'soft' ? 'bg-amber-500 hover:bg-amber-600 border-none text-white' : 'bg-white border-amber-200 text-amber-700 hover:bg-amber-100'}`}
+                  onClick={() => setDeleteType('soft')}
+                >
+                  SOFT DELETE
+                </Button>
+                <Button
+                  type="button"
+                  variant={deleteType === 'hard' ? 'default' : 'outline'}
+                  className={`flex-1 text-xs h-9 font-bold ${deleteType === 'hard' ? 'bg-red-600 hover:bg-red-700 border-none text-white' : 'bg-white border-red-200 text-red-700 hover:bg-red-100'}`}
+                  onClick={() => setDeleteType('hard')}
+                >
+                  HARD DELETE
+                </Button>
+              </div>
+              <p className="text-[10px] text-amber-800 italic leading-tight">
+                {deleteType === 'soft' 
+                  ? "Soft delete marks the log as hidden but keeps it in the database for auditing." 
+                  : "Hard delete PERMANENTLY removes the log from the database. This action cannot be undone."}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex sm:justify-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="px-6 font-bold"
+              disabled={isDeleting}
+            >
+              CANCEL
+            </Button>
+            <Button
+              onClick={confirmDelete}
+              className={`px-8 font-bold ${deleteType === 'hard' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'PROCESSING...' : deleteType === 'hard' ? 'PERMANENTLY DELETE' : 'CONFIRM SOFT DELETE'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

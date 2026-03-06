@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 
 import type { LogContext, LogResult } from '@/lib/types/common';
+export type { LogContext, LogResult };
 
 class APILogger {
   private startTime: number = 0;

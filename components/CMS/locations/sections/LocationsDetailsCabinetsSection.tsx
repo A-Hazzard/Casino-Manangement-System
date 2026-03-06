@@ -91,6 +91,7 @@ type LocationsDetailsCabinetsSectionProps = {
   // Pagination
   currentPage: number;
   effectiveTotalPages: number;
+  totalCount: number;
   debouncedSearchTerm: string;
   // Stats
   machineStats: {
@@ -145,6 +146,7 @@ export default function LocationsDetailsCabinetsSection({
   sortOrder,
   currentPage,
   effectiveTotalPages,
+  totalCount,
   debouncedSearchTerm,
   machineStats,
   membershipStats,
@@ -637,11 +639,15 @@ export default function LocationsDetailsCabinetsSection({
 
             {/* Show pagination only if there are multiple pages */}
             {!loading && effectiveTotalPages > 1 && (
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={effectiveTotalPages}
-                setCurrentPage={setCurrentPage}
-              />
+              <div className="mb-8 mt-4 flex w-full justify-center">
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={effectiveTotalPages}
+                  totalCount={totalCount}
+                  limit={10}
+                  setCurrentPage={setCurrentPage}
+                />
+              </div>
             )}
           </>
         )}

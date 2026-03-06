@@ -13,11 +13,11 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -43,6 +43,8 @@ type PasswordUpdateModalProps = {
   isCashierTempChange?: boolean;
   /** Optional logout handler to show a logout button in the footer (usually for forced changes) */
   onLogout?: () => void;
+  /** Optional initial phone number to pre-fill the field */
+  initialPhone?: string;
 };
 
 const PASSWORD_REQUIREMENTS = [
@@ -121,6 +123,7 @@ export default function PasswordUpdateModal({
   isForced = false,
   isCashierTempChange = false,
   onLogout,
+  initialPhone = '',
 }: PasswordUpdateModalProps) {
   // === State ===
   const [currentPassword, setCurrentPassword] = useState('');
@@ -137,7 +140,15 @@ export default function PasswordUpdateModal({
   // === Debouncing ===
   const debouncedPhone = useDebounce(phone, 2000);
   const debouncedNewPassword = useDebounce(newPassword, 2000);
-  const debouncedConfirmPassword = useDebounce(confirmPassword,2000);
+  const debouncedConfirmPassword = useDebounce(confirmPassword, 2000);
+
+  // === Effects ===
+  // Initialize phone when modal opens or initialPhone changes
+  useEffect(() => {
+    if (open) {
+      setPhone(initialPhone || '');
+    }
+  }, [open, initialPhone]);
 
   // === Computed ===
   const passwordStrength = newPassword ? validatePasswordStrength(newPassword) : null;

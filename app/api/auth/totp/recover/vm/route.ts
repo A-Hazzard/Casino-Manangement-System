@@ -26,7 +26,7 @@ export async function POST(_req: NextRequest) {
 
     // Role check: must be vault-manager or admin/developer
     const userRoles = Array.isArray(user.roles) ? user.roles : [];
-    const isVMOrHigher = userRoles.some((role: string) => 
+    const isVMOrHigher = userRoles.some((role: string) =>
       ['vault-manager', 'admin', 'developer', 'manager', 'location admin'].includes(role.toLowerCase())
     );
 
@@ -43,12 +43,12 @@ export async function POST(_req: NextRequest) {
     const expiry = new Date(Date.now() + 3600000); // 1 hour
 
     console.log('[TOTP VM Recovery] Updating user:', user.username, 'with token:', token);
-    
+
     // Use strict: false to ensure fields are saved even if the schema is cached by Mongoose
     const updatedUser = await UserModel.findOneAndUpdate(
       { _id: session._id },
-      { 
-        $set: { 
+      {
+        $set: {
           totpRecoveryToken: token,
           totpRecoveryExpires: expiry
         }
@@ -56,7 +56,7 @@ export async function POST(_req: NextRequest) {
       { new: true, strict: false }
     ).lean();
 
-    if (!updatedUser || (updatedUser as any).totpRecoveryToken !== token) {
+    if (!updatedUser || (updatedUser as Record<string, unknown>).totpRecoveryToken !== token) {
       console.error('[TOTP VM Recovery] Update failed - token not reflected in DB. UpdatedUser:', updatedUser);
       return NextResponse.json({ error: 'Failed to update recovery token in database' }, { status: 500 });
     }
@@ -71,8 +71,8 @@ export async function POST(_req: NextRequest) {
     } else {
       return NextResponse.json({ error: 'Failed to send recovery email' }, { status: 500 });
     }
-  } catch (error: any) {
-    console.error('TOTP VM Recovery Error:', error);
+  } catch (error: unknown) {
+    console.error('TOTP VM Recovery Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -25,8 +25,8 @@ import MapSkeleton from '@/components/shared/ui/MapSkeleton';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { Location } from '@/lib/types';
 import { MapPreviewProps } from '@/lib/types/components';
-import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
 import { isAbortError } from '@/lib/utils/errors';
+import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
 import { EnterFullScreenIcon, ExitFullScreenIcon } from '@radix-ui/react-icons';
 import axios from 'axios';
 import gsap from 'gsap';
@@ -38,15 +38,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from '@/components/shared/ui/tooltip';
 import {
-  PERFORMANCE_CONFIG,
-  PerformanceLevel,
-  getPerformanceLevel as getCommonPerformanceLevel,
+    PERFORMANCE_CONFIG,
+    PerformanceLevel,
+    getPerformanceLevel as getCommonPerformanceLevel,
 } from '@/lib/utils/financial';
 import { getMapCenterByLicensee } from '@/lib/utils/location';
 
@@ -83,7 +83,7 @@ const getValidLongitude = (geo: {
 
 // Helper function to get location stats from locationAggregation data
 const getLocationStats = (
-  location: any,
+  location: Location,
   locationAggregates: Record<string, unknown>[]
 ) => {
   // Try to find matching data in locationAggregates
@@ -119,7 +119,7 @@ const LocationPopupContent = ({
   onViewDetails,
   isMinimized = false,
 }: {
-  location: any;
+  location: Location;
   locationAggregates: Record<string, unknown>[];
   isFinancialDataLoading: boolean;
   onViewDetails: (locationId: string) => void;
@@ -439,7 +439,7 @@ export default function MapPreview(props: MapPreviewProps) {
 
   const validLocations = useMemo(() => {
     return (
-      (props.gamingLocations as any[])?.filter(location => {
+      (props.gamingLocations as Location[])?.filter(location => {
         if (!location.geoCoords) {
           return false;
         }
@@ -459,14 +459,14 @@ export default function MapPreview(props: MapPreviewProps) {
     if (!normalizedSelected || normalizedSelected === 'all') {
       return validLocations;
     }
-    return validLocations.filter((location: any) =>
+    return validLocations.filter((location) =>
       matchesLicensee(location, normalizedSelected)
     );
   }, [normalizedSelected, validLocations]);
 
   const locationsWithoutCoords = useMemo(() => {
     return (
-      (props.gamingLocations as any[])?.filter(location => {
+      (props.gamingLocations as Location[])?.filter(location => {
         if (!location.geoCoords) return true;
 
         const validLongitude = getValidLongitude(location.geoCoords);
@@ -648,7 +648,7 @@ export default function MapPreview(props: MapPreviewProps) {
 
     // Search through filteredLocations (already filtered by licensee and coordinates)
     // This ensures search results only show locations from the selected licensee
-    const filtered = filteredLocations.filter((location: any) => {
+    const filtered = filteredLocations.filter((location) => {
       const locationName = location.name || location.locationName || '';
       return locationName.toLowerCase().includes(query.toLowerCase());
     });
@@ -658,7 +658,7 @@ export default function MapPreview(props: MapPreviewProps) {
   };
 
   // Zoom to location
-  const zoomToLocation = (location: any) => {
+  const zoomToLocation = (location: Location) => {
     try {
       // Use preview map ref if modal is not open, otherwise use modal map ref
       const activeMapRef = isModalOpen ? modalMapRef : previewMapRef;

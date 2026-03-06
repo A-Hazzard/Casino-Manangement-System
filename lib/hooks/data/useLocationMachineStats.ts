@@ -10,8 +10,8 @@ import { fetchMachineStats } from '@/lib/helpers/machines';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type {
-    MachineStats,
-    UseLocationMachineStatsReturn,
+  MachineStats,
+  UseLocationMachineStatsReturn,
 } from '@/lib/types/location';
 import { isAbortError } from '@/lib/utils/errors';
 import { useCallback, useEffect, useState } from 'react';
@@ -20,7 +20,8 @@ export function useLocationMachineStats(
   locationId?: string,
   machineTypeFilter?: string | null,
   search?: string,
-  gameTypeFilter?: string | null
+  gameTypeFilter?: string | null,
+  selectedStatus?: string
 ): UseLocationMachineStatsReturn {
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null);
   const [machineStatsLoading, setMachineStatsLoading] = useState(true);
@@ -42,7 +43,8 @@ export function useLocationMachineStats(
         machineTypeFilter,
         undefined,
         search,
-        gameTypeFilter || undefined
+        gameTypeFilter || undefined,
+        selectedStatus
       );
       setMachineStats(stats);
     } catch (err) {
@@ -58,11 +60,14 @@ export function useLocationMachineStats(
         totalMachines: 0,
         onlineMachines: 0,
         offlineMachines: 0,
+        totalLocations: 0,
+        onlineLocations: 0,
+        offlineLocations: 0,
       });
     } finally {
       setMachineStatsLoading(false);
     }
-  }, [selectedLicensee, locationId, machineTypeFilter, search, gameTypeFilter]);
+  }, [selectedLicensee, locationId, machineTypeFilter, search, gameTypeFilter, selectedStatus]);
 
   // Refresh machine stats
   const refreshMachineStats = useCallback(async () => {
@@ -84,7 +89,8 @@ export function useLocationMachineStats(
             machineTypeFilter,
             signal,
             search,
-            gameTypeFilter || undefined
+            gameTypeFilter || undefined,
+            selectedStatus
           );
           return stats;
         }, 'machine-stats');
@@ -108,13 +114,16 @@ export function useLocationMachineStats(
           totalMachines: 0,
           onlineMachines: 0,
           offlineMachines: 0,
+          totalLocations: 0,
+          onlineLocations: 0,
+          offlineLocations: 0,
         });
         setMachineStatsLoading(false);
       }
     };
 
     loadMachineStats();
-  }, [selectedLicensee, locationId, machineTypeFilter, search, gameTypeFilter, makeRequest]);
+  }, [selectedLicensee, locationId, machineTypeFilter, search, gameTypeFilter, selectedStatus, makeRequest]);
 
   return {
     machineStats,

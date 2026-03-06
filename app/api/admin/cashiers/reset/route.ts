@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
     const userRoles = (userPayload?.roles as string[]) || [];
     const normalizedRoles = userRoles.map(role => String(role).toLowerCase().trim());
-    
+
     const hasAdminAccess = normalizedRoles.some(role =>
       ['developer', 'admin', 'manager', 'vault-manager', 'vault manager', 'location admin'].includes(role)
     );
@@ -88,12 +88,12 @@ export async function POST(request: NextRequest) {
     const isAdmin = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
     if (!isAdmin) {
       const { getUserAccessibleLicenseesFromToken } = await import('../../../lib/helpers/licenseeFilter');
-      const accessibleLicensees = await getUserAccessibleLicenseesFromToken(userPayload as any);
-      
+      const accessibleLicensees = await getUserAccessibleLicenseesFromToken(userPayload as Parameters<typeof getUserAccessibleLicenseesFromToken>[0]);
+
       if (accessibleLicensees !== 'all') {
         const cashierLicensees = (cashier.assignedLicensees as string[]) || [];
         const hasOverlap = cashierLicensees.some(id => accessibleLicensees.includes(String(id)));
-        
+
         if (!hasOverlap) {
           console.warn(`[Reset Cashier API] Access denied. User ${userPayload._id} tried to reset cashier ${cashierId} but has no shared licensees.`);
           return NextResponse.json(
@@ -108,21 +108,21 @@ export async function POST(request: NextRequest) {
     // STEP 5: Reset password and force change
     // ============================================================================
     // Standardize temporary password generation (using nanoid like handleResetCashierPassword expects)
-    const tempPassword = nanoid(12); 
-    
+    const tempPassword = nanoid(12);
+
     // Hash the password for the database
     const { hashPassword } = await import('../../../lib/utils/validation');
     cashier.password = await hashPassword(tempPassword);
-    
+
     // Update temp password fields for the new "View Password" system
     cashier.tempPassword = tempPassword;
     cashier.tempPasswordChanged = false;
-    
+
     // Legacy fields if still used
     if ('requiresPasswordChange' in cashier) {
-      (cashier as any).requiresPasswordChange = true;
+      (cashier as unknown as Record<string, unknown>).requiresPasswordChange = true;
     }
-    
+
     cashier.updatedAt = new Date();
 
     await cashier.save();
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     // STEP 6: Return success response
     // ============================================================================
     const cashierData = cashier.toObject();
-    const displayName = cashierData.profile 
+    const displayName = cashierData.profile
       ? `${cashierData.profile.firstName} ${cashierData.profile.lastName}`.trim()
       : cashierData.username;
 
@@ -145,8 +145,8 @@ export async function POST(request: NextRequest) {
         email: cashierData.emailAddress,
       },
     });
-  } catch (error) {
-    console.error('Error resetting cashier password:', error);
+  } catch (error: unknown) {
+    console.error('Error resetting cashier password:', error instanceof Error ? error.message : error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

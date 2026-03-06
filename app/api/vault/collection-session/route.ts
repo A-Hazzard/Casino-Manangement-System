@@ -25,14 +25,22 @@ export async function GET(req: Request) {
 
     await connectDB();
 
+    interface SessionQuery {
+      locationId: string;
+      vaultShiftId: string;
+      type: string;
+      isEndOfDay: boolean;
+      status?: string;
+    }
+
     // Build query
-    const query: any = {
-      locationId,
-      vaultShiftId,
-      type,
-      isEndOfDay
+    const query: SessionQuery = {
+      locationId: locationId as string,
+      vaultShiftId: vaultShiftId as string,
+      type: type as string,
+      isEndOfDay: isEndOfDay as boolean
     };
-    
+
     // Only filter by status if explicitly provided, 
     // BUT for non-EOD soft counts, we default to only fetching active ones 
     // if no status is provided, to allow starting new sessions after completion.
@@ -46,24 +54,44 @@ export async function GET(req: Request) {
     const session = await VaultCollectionSession.findOne(query).sort({ createdAt: -1 });
 
     return NextResponse.json({ success: true, session });
-  } catch (error: any) {
-    console.error('Error fetching collection session:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching collection session:', errorMessage);
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { action, locationId, vaultShiftId, machineId, entryData, sessionId, type = 'soft_count', isEndOfDay = false } = body;
+    interface SessionEntryData {
+      machineId: string;
+      machineName: string;
+      source?: string;
+      totalAmount?: number;
+      denominations?: Array<{ denomination: number; quantity: number }>;
+      meters?: Record<string, number>;
+      expectedDrop?: number;
+      variance?: number;
+      notes?: string;
+      isEndOfDay?: boolean;
+      collectedAt?: Date | string;
+    }
 
-    // Get current user (simple mock for now, replace with actual auth)
-    // In a real app, use getServerSession(authOptions)
-    // const session = await getServerSession(authOptions);
-    // const userId = session?.user?.id; 
-    
-    // For now, require userId in body or mock it if safe (assuming protected route)
-    const userId = body.userId; 
+    interface CollectionSessionRequest {
+      action: 'start' | 'addEntry' | 'removeEntry' | 'cancel';
+      locationId: string;
+      vaultShiftId: string;
+      machineId?: string;
+      entryData?: SessionEntryData;
+      sessionId?: string;
+      userId?: string;
+      type?: string;
+      isEndOfDay?: boolean;
+    }
+
+    const body = await req.json() as CollectionSessionRequest;
+    const { action, locationId, vaultShiftId, machineId, entryData, sessionId, type = 'soft_count', isEndOfDay = false } = body;
+    const userId = body.userId as string;
 
     if (!locationId || !vaultShiftId) {
       return NextResponse.json({ success: false, error: 'Location and Vault Shift ID required' }, { status: 400 });
@@ -98,8 +126,8 @@ export async function POST(req: Request) {
         entries: [],
         totalCollected: 0
       });
-    } 
-    
+    }
+
     // 2. Add Entry
     else if (action === 'addEntry') {
       if (!sessionId || !entryData) {
@@ -112,17 +140,17 @@ export async function POST(req: Request) {
       }
 
       // Check if machine already added
-      const existingEntryIndex = session.entries.findIndex((e: any) => e.machineId === entryData.machineId);
+      const existingEntryIndex = session.entries.findIndex((e: { machineId: string }) => e.machineId === entryData.machineId);
 
       const newEntry = {
         machineId: entryData.machineId,
         machineName: entryData.machineName,
         source: entryData.source || 'manual',
-        totalAmount: entryData.totalAmount || 0,
+        totalAmount: (entryData.totalAmount as number) || 0,
         denominations: entryData.denominations || [],
         meters: entryData.meters || {},
-        expectedDrop: entryData.expectedDrop || 0,
-        variance: entryData.variance || 0,
+        expectedDrop: (entryData.expectedDrop as number) || 0,
+        variance: (entryData.variance as number) || 0,
         notes: entryData.notes || '',
         isEndOfDay: entryData.isEndOfDay || false,
         collectedAt: entryData.collectedAt || new Date()
@@ -135,44 +163,45 @@ export async function POST(req: Request) {
         // Add new entry
         session.entries.push(newEntry);
       }
-      
+
       // Recalculate total
-      session.totalCollected = session.entries.reduce((sum: number, entry: any) => sum + (entry.totalAmount || 0), 0);
-      
+      session.totalCollected = session.entries.reduce((sum: number, entry: { totalAmount?: number }) => sum + (entry.totalAmount || 0), 0);
+
       await session.save();
     }
 
     // 3. Remove Entry
     else if (action === 'removeEntry') {
-        if (!sessionId || !machineId) {
-            return NextResponse.json({ success: false, error: 'Session ID and Machine ID required' }, { status: 400 });
-        }
+      if (!sessionId || !machineId) {
+        return NextResponse.json({ success: false, error: 'Session ID and Machine ID required' }, { status: 400 });
+      }
 
-        session = await VaultCollectionSession.findById(sessionId);
-        if (!session) return NextResponse.json({ success: false, error: 'Session not found' }, { status: 404 });
+      session = await VaultCollectionSession.findById(sessionId);
+      if (!session) return NextResponse.json({ success: false, error: 'Session not found' }, { status: 404 });
 
-        session.entries = session.entries.filter((e: any) => e.machineId !== machineId);
-        
-        // Recalculate total
-        session.totalCollected = session.entries.reduce((sum: number, entry: any) => sum + (entry.totalAmount || 0), 0);
-        
-        await session.save();
+      session.entries = session.entries.filter((e: { machineId: string }) => e.machineId !== machineId);
+
+      // Recalculate total
+      session.totalCollected = session.entries.reduce((sum: number, entry: { totalAmount?: number }) => sum + (entry.totalAmount || 0), 0);
+
+      await session.save();
     }
-    
+
     // 4. Cancel Session
-    else if (action === 'removeEntry') {
-        if (!sessionId) return NextResponse.json({ success: false, error: 'Session ID required' }, { status: 400 });
-        
-        session = await VaultCollectionSession.findByIdAndUpdate(
-            sessionId, 
-            { status: 'cancelled' },
-            { new: true }
-        );
+    else if (action === 'cancel') {
+      if (!sessionId) return NextResponse.json({ success: false, error: 'Session ID required' }, { status: 400 });
+
+      session = await VaultCollectionSession.findByIdAndUpdate(
+        sessionId,
+        { status: 'cancelled' },
+        { new: true }
+      );
     }
 
     return NextResponse.json({ success: true, session });
-  } catch (error: any) {
-    console.error('Error in collection session API:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error in collection session API:', errorMessage);
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }

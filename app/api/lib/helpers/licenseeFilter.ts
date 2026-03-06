@@ -23,8 +23,8 @@ export async function getUserAccessibleLicenseesFromToken(userPayloadOverride?: 
     const normalizeRoles = (roles: unknown): string[] =>
       Array.isArray(roles)
         ? roles
-            .filter((role): role is string => typeof role === 'string')
-            .map(role => role?.toLowerCase?.() ?? role)
+          .filter((role): role is string => typeof role === 'string')
+          .map(role => role?.toLowerCase?.() ?? role)
         : [];
 
     let roles = normalizeRoles(userPayload.roles);
@@ -56,9 +56,9 @@ export async function getUserAccessibleLicenseesFromToken(userPayloadOverride?: 
         )
           .lean()
           .exec()) as {
-          roles?: unknown;
-          assignedLicensees?: string[];
-        } | null;
+            roles?: unknown;
+            assignedLicensees?: string[];
+          } | null;
 
         if (dbUser) {
           if (needsRoleHydration) {
@@ -227,6 +227,7 @@ export async function getUserLocationFilter(
   const isManager = normalizedRoles.includes('manager');
   const isVaultManager = normalizedRoles.includes('vault-manager');
   const isCashier = normalizedRoles.includes('cashier');
+  const isDeveloper = normalizedRoles.includes('developer');
   const isLocationAdmin = normalizedRoles.includes('location admin');
 
   if (isAdmin) {
@@ -314,9 +315,15 @@ export async function getUserLocationFilter(
     );
   }
 
+  // CRITICAL: Developers and Admins skip all individual location permissions
+  // they only respect the licensee filter (if one is active)
+  if (isAdmin || isDeveloper) {
+    return licenseeLocations;
+  }
+
   // If licenseeLocations is 'all', check if user has location restrictions
   if (licenseeLocations === 'all') {
-    // Admin user - check if they have location restrictions
+    // Only reachable by non-admins now
     return userLocationPermissions.length > 0 ? userLocationPermissions : 'all';
   }
 
@@ -328,8 +335,8 @@ export async function getUserLocationFilter(
     return licenseeLocations;
   }
 
-  // MANAGERS OR ADMINS see ALL locations for their assigned/selected licensees
-  if (isManager || isAdmin) {
+  // MANAGERS see ALL locations for their assigned/selected licensees
+  if (isManager) {
     return licenseeLocations;
   }
 

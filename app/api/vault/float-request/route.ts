@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         role.toLowerCase()
       )
     );
-    
+
     // ============================================================================
     // STEP 2: Parse query parameters
     // ============================================================================
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    const query: any = {};
+    const query: Record<string, unknown> = {};
     if (locationId) {
       query.locationId = locationId;
     }
@@ -73,22 +73,23 @@ export async function GET(request: NextRequest) {
       // Support comma separated status? No, single status for now or 'all'
       query.status = status;
     } else if (!status) {
-        // Default to pending if not specified? Or all?
-        // Original code defaulted to pending. Let's keep that default for safety/compat?
-        // Or change default to all?
-        // Let's default to 'pending' to match previous behavior if no status passed.
-        // But if client wants history, they pass status=all or status=approved.
-        query.status = 'pending'; 
+      // Default to pending if not specified? Or all?
+      // Original code defaulted to pending. Let's keep that default for safety/compat?
+      // Or change default to all?
+      // Let's default to 'pending' to match previous behavior if no status passed.
+      // But if client wants history, they pass status=all or status=approved.
+      query.status = 'pending';
     }
     // If status === 'all', we don't set query.status, so it returns all.
 
     if (startDate || endDate) {
-      query.requestedAt = {};
-      if (startDate) query.requestedAt.$gte = new Date(startDate);
-      if (endDate) query.requestedAt.$lte = new Date(endDate);
+      const requestedAtFilter: Record<string, Date> = {};
+      if (startDate) requestedAtFilter.$gte = new Date(startDate);
+      if (endDate) requestedAtFilter.$lte = new Date(endDate);
+      query.requestedAt = requestedAtFilter;
     }
 
-    const pipeline: any[] = [
+    const pipeline: import('mongoose').PipelineStage[] = [
       { $match: query },
       { $sort: { createdAt: -1 } },
       { $skip: skip },
@@ -141,14 +142,14 @@ export async function GET(request: NextRequest) {
                       },
                       in: {
                         $cond: {
-                          if: { $and: [{ $ne: ['$$fullName', null] }, { $ne: ['$$fullName', ''] }, { $ne: ['$$fullName', ' ' ] }] },
+                          if: { $and: [{ $ne: ['$$fullName', null] }, { $ne: ['$$fullName', ''] }, { $ne: ['$$fullName', ' '] }] },
                           then: {
-                             $concat: [
-                                { $ifNull: ['$$user.username', 'Cashier'] },
-                                ' (',
-                                '$$fullName',
-                                ')'
-                             ]
+                            $concat: [
+                              { $ifNull: ['$$user.username', 'Cashier'] },
+                              ' (',
+                              '$$fullName',
+                              ')'
+                            ]
                           },
                           else: { $ifNull: ['$$user.username', '$cashierId'] }
                         }
@@ -217,10 +218,11 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error) {
-    console.error('Error fetching pending float requests:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching pending float requests:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -244,13 +246,13 @@ export async function POST(request: NextRequest) {
 
     // STEP 2: Parse request
     const body = await request.json();
-    const { 
-      type, 
-      amount, 
-      denominations, 
-      reason, 
-      locationId, 
-      cashierShiftId 
+    const {
+      type,
+      amount,
+      denominations,
+      reason,
+      locationId,
+      cashierShiftId
     } = body;
 
     if (!type || !amount || !locationId || !cashierShiftId) {
@@ -321,10 +323,11 @@ export async function POST(request: NextRequest) {
       message: 'Float request submitted successfully',
       floatRequest: floatRequest.toObject()
     });
-  } catch (error) {
-    console.error('Error creating float request:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error creating float request:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -343,75 +346,76 @@ export async function DELETE(request: NextRequest) {
 
     const { requestId } = await request.json();
     if (!requestId) {
-        return NextResponse.json(
-            { success: false, error: 'Request ID required' },
-            { status: 400 }
-        );
+      return NextResponse.json(
+        { success: false, error: 'Request ID required' },
+        { status: 400 }
+      );
     }
 
     await connectDB();
     const requestDoc = await FloatRequestModel.findById(requestId);
-    
+
     if (!requestDoc) {
-        return NextResponse.json(
-            { success: false, error: 'Request not found' },
-            { status: 404 }
-        );
+      return NextResponse.json(
+        { success: false, error: 'Request not found' },
+        { status: 404 }
+      );
     }
 
     // Ownership check
     const isOwner = requestDoc.cashierId.toString() === userPayload._id;
-    const isVM = (userPayload.roles as string[] || []).some(r => 
-        ['admin', 'manager', 'vault-manager'].includes(r.toLowerCase())
+    const isVM = (userPayload.roles as string[] || []).some(r =>
+      ['admin', 'manager', 'vault-manager'].includes(r.toLowerCase())
     );
 
     if (!isOwner && !isVM) {
-        return NextResponse.json(
-            { success: false, error: 'Unauthorized' },
-            { status: 403 }
-        );
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 403 }
+      );
     }
 
     const allowedStatuses = ['pending', 'approved_vm'];
     if (!allowedStatuses.includes(requestDoc.status)) {
-        return NextResponse.json(
-            { success: false, error: `Only ${allowedStatuses.join(' or ')} requests can be cancelled` },
-            { status: 400 }
-        );
+      return NextResponse.json(
+        { success: false, error: `Only ${allowedStatuses.join(' or ')} requests can be cancelled` },
+        { status: 400 }
+      );
     }
 
     // Update status to cancelled
     requestDoc.status = 'cancelled';
     requestDoc.auditLog.push({
-        action: 'cancelled',
-        performedBy: userPayload._id,
-        timestamp: new Date(),
-        notes: ''
+      action: 'cancelled',
+      performedBy: userPayload._id,
+      timestamp: new Date(),
+      notes: ''
     });
-    
+
     await requestDoc.save();
 
     // DELETE NOTIFICATION
     try {
-        const VaultNotificationModel = (await import('@/app/api/lib/models/vaultNotification')).default;
-        await VaultNotificationModel.deleteMany({
-            relatedEntityId: requestId,
-            relatedEntityType: 'float_request'
-        });
+      const VaultNotificationModel = (await import('@/app/api/lib/models/vaultNotification')).default;
+      await VaultNotificationModel.deleteMany({
+        relatedEntityId: requestId,
+        relatedEntityType: 'float_request'
+      });
     } catch (notifError) {
-        console.error('Failed to delete notification:', notifError);
-        // Continue, don't block the cancellation
+      console.error('Failed to delete notification:', notifError);
+      // Continue, don't block the cancellation
     }
 
     return NextResponse.json({
-        success: true,
-        message: 'Request cancelled successfully'
+      success: true,
+      message: 'Request cancelled successfully'
     });
 
-  } catch (error) {
-    console.error('Error cancelling float request:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error cancelling float request:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

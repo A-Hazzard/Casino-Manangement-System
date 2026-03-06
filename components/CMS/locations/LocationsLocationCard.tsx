@@ -14,24 +14,26 @@
 
 import { Button } from '@/components/shared/ui/button';
 import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { LocationCardData } from '@/lib/types/location';
-import { formatCurrency } from '@/lib/utils/currency';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import {
-  getGrossColorClass,
-  getMoneyInColorClass,
-  getMoneyOutColorClass,
+    getGrossColorClass,
+    getMoneyInColorClass,
+    getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import { hasMissingCoordinates } from '@/lib/utils/location';
 import {
-  BadgeCheck,
-  Eye,
-  FileWarning,
-  HelpCircle,
-  Home,
-  MapPinOff,
-  Pencil,
-  Server,
+    BadgeCheck,
+    Eye,
+    FileWarning,
+    HelpCircle,
+    Home,
+    MapPinOff,
+    Pencil,
+    Server,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 
 export default function LocationsLocationCard({
@@ -47,7 +49,10 @@ export default function LocationsLocationCard({
   canManageLocations?: boolean;
   selectedFilters?: Array<string | null | ''>;
 }) {
+  const router = useRouter();
   const cardRef = useRef<HTMLDivElement>(null);
+  const { displayCurrency } = useCurrencyFormat();
+  const formatCurrency = (amount: number) => formatCurrencyWithCodeString(amount, displayCurrency);
 
   return (
     <div
@@ -213,10 +218,20 @@ export default function LocationsLocationCard({
           {/* Membership Count Badge - Show if location has member count */}
           {typeof (location as { memberCount?: number }).memberCount ===
             'number' && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                const locationId = (location.location as string) || location._id;
+                if (locationId) {
+                  router.push(`/locations/${locationId}?tab=members`);
+                }
+              }}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 hover:bg-blue-100"
+              title="Click to view members"
+            >
               <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
               {(location as { memberCount?: number }).memberCount} Members
-            </span>
+            </button>
           )}
         </div>
       </div>

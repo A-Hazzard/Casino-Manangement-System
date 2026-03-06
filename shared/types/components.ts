@@ -22,5 +22,6 @@ export type DataTableProps<T> = {
   formatCurrency?: (amount: number) => string;
   formatDate?: (date: string | Date) => string;
   formatNumber?: (number: number) => string;
+  hideFinancials?: boolean;
 };
 

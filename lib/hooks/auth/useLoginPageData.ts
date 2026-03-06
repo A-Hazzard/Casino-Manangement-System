@@ -51,6 +51,10 @@ export function useLoginPageData() {
     pendingUserRef.current?.roles?.includes('cashier') &&
     pendingUserRef.current?.tempPasswordChanged === false;
 
+  // Derived: should the password update be forced (cannot be dismissed)?
+  // Forced if it's a cashier's temp password OR if it's a weak password detected at login
+  const isForced = isCashierTempChange || !!pendingUserRef.current?.requiresPasswordUpdate;
+
   // === Login Handler ===
   const handleLogin = useCallback(
     async (e?: React.FormEvent) => {
@@ -128,7 +132,7 @@ export function useLoginPageData() {
             firstName: pendingUserRef.current?.profile?.firstName || '',
             lastName: pendingUserRef.current?.profile?.lastName || '',
             emailAddress: pendingUserRef.current?.emailAddress || '',
-            phone: phone || '',
+            phone: phone || pendingUserRef.current?.profile?.phoneNumber || '',
             // Password change fields
             currentPassword,
             newPassword,
@@ -224,6 +228,8 @@ export function useLoginPageData() {
     authLoading,
     showPasswordUpdateModal,
     isCashierTempChange: !!isCashierTempChange,
+    isForced: !!isForced,
+    initialPhone: pendingUserRef.current?.profile?.phoneNumber || '',
     setIdentifier,
     setPassword,
     setShowPassword,

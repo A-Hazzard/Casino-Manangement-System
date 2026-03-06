@@ -7,8 +7,9 @@
  * @module app/api/lib/helpers/locationsReport
  */
 
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
+import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
@@ -19,7 +20,6 @@ import {
 } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { AggregatedLocation } from '@/shared/types/entities';
-import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextResponse } from 'next/server';
 
 /**
@@ -37,7 +37,7 @@ export async function applyLocationsCurrencyConversion(
 
   try {
     await connectDB();
-    
+
     // Get licensee details for currency mapping
     const licenseesData = await Licensee.find({
       $or: [
@@ -90,7 +90,7 @@ export async function applyLocationsCurrencyConversion(
       }
 
       const convertedLocation = { ...location };
-      const convert = (val: number) => 
+      const convert = (val: number) =>
         Math.round(convertFromUSD(convertToUSD(val, nativeCurrency), displayCurrency) * 100) / 100;
 
       if (typeof location.moneyIn === 'number') convertedLocation.moneyIn = convert(location.moneyIn);
@@ -124,12 +124,14 @@ export async function handleSummaryMode(
   const allLocationIds = locations.map(loc => String(loc._id));
   const machineCounts = await Machine.aggregate([
     { $match: { gamingLocation: { $in: allLocationIds }, deletedAt: { $in: [null, new Date(-1)] } } },
-    { $group: {
-      _id: '$gamingLocation',
-      totalMachines: { $sum: 1 },
-      sasMachines: { $sum: { $cond: [{ $eq: ['$isSasMachine', true] }, 1, 0] } },
-      onlineMachines: { $sum: { $cond: [{ $gt: ['$lastActivity', new Date(Date.now() - 24 * 60 * 60 * 1000)] }, 1, 0] } },
-    }},
+    {
+      $group: {
+        _id: '$gamingLocation',
+        totalMachines: { $sum: 1 },
+        sasMachines: { $sum: { $cond: [{ $eq: ['$isSasMachine', true] }, 1, 0] } },
+        onlineMachines: { $sum: { $cond: [{ $gt: ['$lastActivity', new Date(Date.now() - 3 * 60 * 1000)] }, 1, 0] } },
+      }
+    },
   ]);
 
   const countsMap = new Map(machineCounts.map(c => [c._id, c]));
@@ -146,13 +148,13 @@ export async function handleSummaryMode(
 
   return NextResponse.json({
     data: summaryResults,
-    pagination: { 
-      page: 1, 
-      limit: locations.length, 
-      totalCount: locations.length, 
-      totalPages: 1, 
-      hasNextPage: false, 
-      hasPrevPage: false 
+    pagination: {
+      page: 1,
+      limit: locations.length,
+      totalCount: locations.length,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPrevPage: false
     },
     currency: displayCurrency,
     converted: false,

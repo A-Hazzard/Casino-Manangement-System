@@ -68,7 +68,10 @@ function buildTopPerformerPipeline(
   if (licensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licensee': licensee,
+        $or: [
+          { 'locationDetails.rel.licensee': licensee },
+          { 'locationDetails.rel.licencee': licensee }
+        ],
       },
     } as PipelineStage);
   }

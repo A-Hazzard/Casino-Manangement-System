@@ -19,6 +19,25 @@ export type MovementEndpoint = {
   id?: string;
 };
 
+export interface Cashier {
+  _id: string;
+  profile?: {
+    firstName: string;
+    lastName: string;
+  };
+  username: string;
+  emailAddress: string;
+  isEnabled: boolean;
+  shiftStatus?: 'active' | 'pending_review' | 'pending_start' | 'closed' | 'inactive';
+  currentBalance?: number;
+  denominations?: Denomination[];
+  discrepancy?: number;
+  lastLoginAt?: string | Date;
+  roles: string[];
+  tempPassword?: string;
+  tempPasswordChanged?: boolean;
+}
+
 
 export type CashSource = 'Bank' | 'Owner Deposit' | 'Machine';
 export type ExpenseCategory =
@@ -342,7 +361,7 @@ export type CloseCashierShiftRequest = {
   denominations: Denomination[];
 };
 
-export type CloseCashierShiftResponse = 
+export type CloseCashierShiftResponse =
   | { success: true; status: 'closed' | 'pending_review'; message: string; }
   | { success: false; error: string; };
 
@@ -462,3 +481,47 @@ export type UnbalancedShiftInfo = {
   closedAt: Date;
   locationName?: string;
 };
+
+// ============================================================================
+// Machine Collection Types
+// ============================================================================
+
+export type CollectionSessionEntry = {
+  machineId: string;
+  machineName: string;
+  totalAmount: number;
+  denominations: Denomination[];
+  variance: number;
+  expectedDrop: number;
+  collectedAt: Date | string;
+  notes?: string;
+  meters?: {
+    billIn: number;
+    ticketIn: number;
+    totalIn: number;
+  };
+};
+
+export type CollectionSession = {
+  _id: string;
+  locationId: string;
+  vaultShiftId: string;
+  status: 'active' | 'finalized';
+  entries: CollectionSessionEntry[];
+  startedBy: string;
+  startedAt: Date;
+  finalizedBy?: string;
+  finalizedAt?: Date;
+  totalCollected?: number;
+};
+
+export type MachineCollectionActivity = {
+  _id: string;
+  machineId: string;
+  amount: number;
+  timestamp: string | Date;
+  performedBy: string | { username: string; _id: string };
+  notes?: string;
+  variance?: number;
+};
+

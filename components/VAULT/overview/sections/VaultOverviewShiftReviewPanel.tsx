@@ -300,7 +300,7 @@ export default function VaultOverviewShiftReviewPanel({
                 return (
                   <button
                     key={item.value}
-                    onClick={() => setVarianceFilter(item.value as any)}
+                    onClick={() => setVarianceFilter(item.value as typeof varianceFilter)}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-tighter transition-all",
                       isSelected 

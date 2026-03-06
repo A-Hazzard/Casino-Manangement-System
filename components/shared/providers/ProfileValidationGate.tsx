@@ -164,6 +164,12 @@ export default function ProfileValidationGate({
         (user.invalidProfileFields &&
           Object.values(user.invalidProfileFields).some(Boolean));
 
+      // If a password update is already being forced by TempPasswordGate, yield to it
+      if (user.requiresPasswordUpdate) {
+        setOpen(false);
+        return;
+      }
+
       const result = shouldRefetch ? await refetch() : null;
       if (cancelled) return;
 
@@ -182,7 +188,7 @@ export default function ProfileValidationGate({
         return;
       }
 
-        const nextInvalid: InvalidProfileFields = {
+      const nextInvalid: InvalidProfileFields = {
         ...(latestUser.invalidProfileFields || {}),
       };
       const nextReasons: ProfileValidationReasons = {
@@ -200,15 +206,15 @@ export default function ProfileValidationGate({
         }
       }
 
-      // EXEMPTION: Date of Birth is no longer required
-      // Remove it from validation checks so it doesn't trigger the modal
+      // EXEMPTION: Date of Birth is no longer required to trigger the gate
+      // Remove it from validation checks so it doesn't trigger the modal on its own
       if (nextInvalid.dateOfBirth) {
         delete nextInvalid.dateOfBirth;
         delete nextReasons.dateOfBirth;
       }
 
-      // EXEMPTION: Phone is no longer required
-      // Remove it from validation checks so it doesn't trigger the modal
+      // EXEMPTION: Phone is no longer required to trigger the gate
+      // Remove it from validation checks so it doesn't trigger the modal on its own
       if (nextInvalid.phone) {
         delete nextInvalid.phone;
         delete nextReasons.phone;

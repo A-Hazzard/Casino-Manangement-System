@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/shared/ui/button';
-import {
-  getStatusColor,
-  formatMovementRequestDate,
-} from '@/lib/utils/movement';
+import { useUserStore } from '@/lib/store/userStore';
 import { MovementRequest } from '@/lib/types/movement';
+import {
+    formatMovementRequestDate,
+    getStatusColor,
+} from '@/lib/utils/movement';
+import { Pencil, Trash2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 type MovementRequestCardProps = {
   request: MovementRequest;
@@ -22,6 +23,24 @@ export default function MovementRequestCard({
 }: MovementRequestCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const prevPropsRef = useRef<MovementRequest | null>(null);
+  
+  const { user: currentUser } = useUserStore();
+  const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
+  const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role));
+  const userEmail = currentUser?.emailAddress;
+
+  // Resolve the destination ID for location check
+  const destinationLocationId = Object.keys(locationsMap).find(id => locationsMap[id] === request.locationTo) || request.locationTo;
+  const isAuthorizedDestinationUser = userRoles.some(role => 
+    ['location admin', 'technician', 'manager'].includes(role)
+  ) && currentUser?.assignedLocations?.includes(destinationLocationId);
+
+  const isCreator = request.createdBy === userEmail || request.createdBy === currentUser?._id;
+  const isRecipient = request.requestTo === userEmail || request.requestTo === currentUser?._id;
+  
+  const canEdit = isAdminOrDev || isCreator || isRecipient || isAuthorizedDestinationUser;
+  // ONLY developers can delete
+  const canDelete = userRoles.some(role => role.toLowerCase() === 'developer');
 
   useEffect(() => {
     if (
@@ -43,9 +62,9 @@ export default function MovementRequestCard({
       <div className="mb-2 flex items-center justify-between">
         <h3
           className="flex-1 truncate pr-2 text-sm font-semibold"
-          title={request.createdBy}
+          title={request.creatorName || request.createdBy}
         >
-          {request.createdBy}
+          {request.creatorName || request.createdBy}
         </h3>
       </div>
       <div className="mb-3 space-y-1">
@@ -60,12 +79,17 @@ export default function MovementRequestCard({
         </p>
         <p
           className="truncate text-xs text-gray-600"
-          title={`To: ${
-            locationsMap[request.locationTo] || request.locationTo
-          }`}
+          title={`To: ${locationsMap[request.locationTo] || request.locationTo}`}
         >
           <span className="font-medium">To:</span>{' '}
           {locationsMap[request.locationTo] || request.locationTo}
+        </p>
+        <p
+          className="truncate text-xs text-gray-600"
+          title={`Recipient: ${request.recipientName || request.requestTo}`}
+        >
+          <span className="font-medium">Recipient:</span>{' '}
+          {request.recipientName || request.requestTo}
         </p>
         <p
           className="truncate text-xs text-gray-600"
@@ -74,7 +98,7 @@ export default function MovementRequestCard({
           <span className="font-medium">Cabinet:</span> {request.cabinetIn}
         </p>
         <p
-          className="truncate text-xs text-gray-600"
+          className="text-xs text-gray-600"
           title={`Date: ${formatMovementRequestDate(request.timestamp)}`}
         >
           <span className="font-medium">Date:</span>{' '}
@@ -93,26 +117,32 @@ export default function MovementRequestCard({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
-        <Button
-          onClick={() => onEdit(request)}
-          variant="outline"
-          size="sm"
-          className="flex-1 flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          <span>Edit</span>
-        </Button>
-        <Button
-          onClick={() => onDelete(request)}
-          variant="outline"
-          size="sm"
-          className="flex-1 flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          <span>Delete</span>
-        </Button>
-      </div>
+      {(canEdit || canDelete) && (
+        <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
+          {canEdit && (
+            <Button
+              onClick={() => onEdit(request)}
+              variant="outline"
+              size="sm"
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              <span>Edit</span>
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              onClick={() => onDelete(request)}
+              variant="outline"
+              size="sm"
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Delete</span>
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

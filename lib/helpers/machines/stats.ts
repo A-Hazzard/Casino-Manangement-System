@@ -25,6 +25,9 @@ export type MachineStats = {
   offlineMachines: number;
   criticalOffline?: number;
   recentOffline?: number;
+  totalLocations?: number;
+  onlineLocations?: number;
+  offlineLocations?: number;
 };
 
 // ============================================================================
@@ -48,7 +51,8 @@ export async function fetchMachineStats(
   machineTypeFilter?: string | null,
   signal?: AbortSignal,
   search?: string,
-  gameType?: string
+  gameType?: string,
+  onlineStatus?: string
 ): Promise<MachineStats> {
   try {
     const params = new URLSearchParams();
@@ -67,6 +71,9 @@ export async function fetchMachineStats(
     if (gameType) {
       params.append('gameType', gameType);
     }
+    if (onlineStatus && onlineStatus !== 'all' && onlineStatus !== 'All') {
+      params.append('onlineStatus', onlineStatus.toLowerCase());
+    }
 
     const res = await axios.get(`/api/machines/status?${params.toString()}`, {
       signal,
@@ -79,6 +86,9 @@ export async function fetchMachineStats(
       offlineMachines: data.offlineMachines || 0,
       criticalOffline: data.criticalOffline || 0,
       recentOffline: data.recentOffline || 0,
+      totalLocations: data.totalLocations || 0,
+      onlineLocations: data.onlineLocations || 0,
+      offlineLocations: data.offlineLocations || 0,
     };
   } catch (error) {
     // Check if this is a cancellation error (expected behavior, don't log or handle)

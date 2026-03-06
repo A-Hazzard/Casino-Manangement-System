@@ -712,15 +712,16 @@ export default function MembersListTab({
         </div>
       </div>
 
-      {/* Pagination - Mobile Responsive */}
       {(() => {
         const totalPages = Math.ceil(allMembers.length / itemsPerPage);
         return totalPages > 1 ? (
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            setCurrentPage={setCurrentPage}
-          />
+          <div className="mt-6 flex justify-center pb-8">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              setCurrentPage={setCurrentPage}
+            />
+          </div>
         ) : null;
       })()}
 

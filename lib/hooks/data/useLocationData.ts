@@ -5,8 +5,8 @@
 
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import {
-    fetchAggregatedLocationsData,
-    searchAllLocations,
+  fetchAggregatedLocationsData,
+  searchAllLocations,
 } from '@/lib/helpers/locations';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import type { AggregatedLocation, dateRange } from '@/lib/types/index';
@@ -21,6 +21,9 @@ type UseLocationDataProps = {
   customDateRange?: dateRange;
   searchTerm: string;
   selectedFilters: LocationFilter[];
+  selectedStatus?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 };
 
 type UseLocationDataReturn = {
@@ -51,6 +54,9 @@ export function useLocationData({
   customDateRange,
   searchTerm,
   selectedFilters,
+  selectedStatus,
+  sortBy,
+  sortOrder,
 }: UseLocationDataProps): UseLocationDataReturn {
   const [locationData, setLocationData] = useState<AggregatedLocation[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -119,7 +125,12 @@ export function useLocationData({
         dateRangeForFetch,
         displayCurrency,
         page,
-        limit
+        limit,
+        undefined,
+        undefined,
+        selectedStatus,
+        sortBy,
+        sortOrder
       );
     },
     [
@@ -127,6 +138,9 @@ export function useLocationData({
       activeMetricsFilter,
       dateRangeForFetch,
       displayCurrency,
+      selectedStatus,
+      sortBy,
+      sortOrder
       // Note: selectedFiltersKey is intentionally excluded - we use ref to avoid recreation
     ]
   );
@@ -146,7 +160,7 @@ export function useLocationData({
         : '';
 
       // Create unique key for this fetch - include filters in the key
-      const fetchKey = `${debouncedSearchTerm}-${selectedLicensee}-${activeMetricsFilter}-${dateRangeForFetch?.from?.getTime()}-${dateRangeForFetch?.to?.getTime()}-${displayCurrency}-${page}-${limit}-${currentFilters}`;
+      const fetchKey = `${debouncedSearchTerm}-${selectedLicensee}-${activeMetricsFilter}-${dateRangeForFetch?.from?.getTime()}-${dateRangeForFetch?.to?.getTime()}-${displayCurrency}-${page}-${limit}-${currentFilters}-${selectedStatus}-${sortBy}-${sortOrder}`;
 
       // Mark this as the current active fetch generation
       const currentFetchId = performance.now();
@@ -155,9 +169,8 @@ export function useLocationData({
 
       // Reset error state
       setError(null);
-      
+
       // Update loading state
-      // If we are searching or changing filters, we might want to clear data or show loading immediately
       setLoading(true);
       if (debouncedSearchTerm.trim()) {
         setSearchLoading(true);
@@ -177,7 +190,6 @@ export function useLocationData({
 
       const result = await makeRequest(async signal => {
         // Only use backend search if debounced search term exists
-        // Frontend filtering is handled in the component
         if (debouncedSearchTerm.trim()) {
           const effectiveLicensee = selectedLicensee || '';
           const effectiveFilter = activeMetricsFilter || 'Today';
@@ -190,7 +202,8 @@ export function useLocationData({
               ? { from: dateRangeForFetch.from, to: dateRangeForFetch.to }
               : undefined,
             signal,
-            currentFilters
+            currentFilters,
+            selectedStatus
           );
           return { data: searchData, pagination: undefined };
         }
@@ -199,14 +212,16 @@ export function useLocationData({
         const result = await fetchAggregatedLocationsData(
           (activeMetricsFilter || 'Today') as TimePeriod,
           selectedLicensee || '',
-          selectedFilters.length
-            ? selectedFilters.join(',')
-            : '',
+          currentFilters,
           dateRangeForFetch,
           displayCurrency,
           page || 1,
           limit || 50,
-          signal
+          signal,
+          undefined,
+          selectedStatus,
+          sortBy,
+          sortOrder
         );
 
         return result;
@@ -215,7 +230,19 @@ export function useLocationData({
       // Only process the result if this is still the latest request
       if (lastFetchRef.current === currentFetchId) {
         if (result) {
-          setLocationData(result.data);
+          if (page === 1 || !page) {
+            setLocationData(result.data);
+          } else {
+            // Accumulate data, avoiding duplicates
+            setLocationData(prev => {
+              const existingIds = new Set(prev.map(loc => loc._id));
+              const uniqueNew = result.data.filter(
+                loc => !existingIds.has(loc._id)
+              );
+              return [...prev, ...uniqueNew];
+            });
+          }
+
           if (result.pagination) {
             const total =
               result.pagination.totalCount ?? result.pagination.total ?? 0;
@@ -225,7 +252,7 @@ export function useLocationData({
           }
           hasCompletedFirstFetchRef.current = true;
         }
-        
+
         // Always clear loading if we are the latest request
         setLoading(false);
         setSearchLoading(false);
@@ -244,6 +271,9 @@ export function useLocationData({
       dateRangeForFetch,
       makeRequest,
       selectedFilters,
+      selectedStatus,
+      sortBy,
+      sortOrder,
     ]
   );
 

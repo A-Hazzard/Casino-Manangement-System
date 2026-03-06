@@ -29,6 +29,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
+import type { CollectionSessionEntry, MachineCollectionActivity } from '@/shared/types/vault';
 import { CheckCheck, CheckCircle2, Coins, History as HistoryIcon, LayoutGrid, ListChecks, Loader2, Monitor, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -63,7 +64,7 @@ export default function VaultOverviewCollectionWizardModal({
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [entries, setEntries] = useState<any[]>([]);
+  const [entries, setEntries] = useState<CollectionSessionEntry[]>([]);
   
   // Selection
   const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
@@ -79,7 +80,7 @@ export default function VaultOverviewCollectionWizardModal({
 
   // History State
   const [viewMode, setViewMode] = useState<'session' | 'history'>('session');
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<MachineCollectionActivity[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [forceShowHistoryOnce, setForceShowHistoryOnce] = useState(false);
 
@@ -190,7 +191,7 @@ export default function VaultOverviewCollectionWizardModal({
 
   // -- Handlers --
 
-  const handleAddEntry = async (entryData: any) => {
+  const handleAddEntry = async (entryData: Omit<CollectionSessionEntry, 'machineId' | 'machineName' | 'collectedAt'>) => {
     if (!sessionId || !selectedMachine) return;
     
     setLoading(true);
@@ -293,7 +294,7 @@ export default function VaultOverviewCollectionWizardModal({
             // Show success logic instead of closing immediately
             setFinalStats({
                 count: entries.length,
-                total: data.totalCollected || entries.reduce((acc: any, e: any) => acc + e.totalAmount, 0)
+                total: data.totalCollected || entries.reduce((acc: number, e: CollectionSessionEntry) => acc + e.totalAmount, 0)
             });
             setIsCompleted(true);
             toast.success('Collection finalized successfully');

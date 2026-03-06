@@ -37,6 +37,7 @@ type ActivityLog = {
   type: string;
   amount: number;
   notes?: string;
+  performerName?: string;
 };
 
 type Cashier = {
@@ -215,10 +216,10 @@ export default function CashierActivityLogModal({
                         <TableCell>
                            <div className="flex items-center gap-2">
                               <div className="h-7 w-7 bg-gray-100 rounded-full flex items-center justify-center text-[10px] font-black text-gray-500 uppercase">
-                                {(activity as any).performerName?.[0] || 'U'}
+                                {activity.performerName?.[0] || 'U'}
                               </div>
                               <span className="text-xs font-bold text-gray-700">
-                                {(activity as any).performerName || 'Unknown System'}
+                                {activity.performerName || 'Unknown System'}
                               </span>
                            </div>
                         </TableCell>

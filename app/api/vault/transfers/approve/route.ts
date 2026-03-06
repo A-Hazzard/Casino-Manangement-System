@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     // STEP 5: Update transfer status
     // ============================================================================
     const now = new Date();
-    const transferDoc = transfer as any; // Cast to avoid mongoose typing issues
+    const transferDoc = transfer as unknown as Record<string, unknown>;
     transferDoc.status = approved ? 'approved' : 'cancelled';
     transferDoc.approvedBy = vaultManagerId;
     transferDoc.approvedAt = now;
@@ -130,8 +130,8 @@ export async function POST(request: NextRequest) {
         vaultBalanceBefore:
           activeVaultShift.closingBalance || activeVaultShift.openingBalance,
         vaultBalanceAfter:
-          (activeVaultShift.closingBalance || activeVaultShift.openingBalance) +
-          transferDoc.amount,
+          ((activeVaultShift.closingBalance || activeVaultShift.openingBalance) as number) +
+          (transferDoc.amount as number),
         vaultShiftId: activeVaultShift._id,
         performedBy: vaultManagerId,
         notes: `Inter-location transfer from ${transferDoc.fromLocationName}${notes ? `: ${notes}` : ''}`,
@@ -175,10 +175,11 @@ export async function POST(request: NextRequest) {
       transfer,
       transaction,
     });
-  } catch (error) {
-    console.error('Error approving inter-location transfer:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error approving inter-location transfer:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

@@ -24,12 +24,26 @@ import { toast } from 'sonner';
 import type { FloatRequestSortOption } from './tables/VaultFloatRequestsTable';
 import VaultFloatRequestsTable from './tables/VaultFloatRequestsTable';
 
+type MappedFloatRequest = {
+  id: string;
+  cashier: string;
+  cashierId: string;
+  station: string;
+  type: 'Increase' | 'Decrease';
+  amount: number;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requested: string;
+  processed: string;
+  processedBy: string;
+};
+
 export default function VaultFloatRequestsPageContent() {
   const { user, isVaultReconciled } = useUserStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
-  const [requestHistory, setRequestHistory] = useState<any[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<MappedFloatRequest[]>([]);
+  const [requestHistory, setRequestHistory] = useState<MappedFloatRequest[]>([]);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
@@ -74,8 +88,8 @@ export default function VaultFloatRequestsPageContent() {
             const data = await historyRes.json();
             if (data.success) {
                 // Filter out pending from history to avoid duplication if API returns them in 'all'
-                const historyRaw = data.data || [];
-                const historyFiltered = historyRaw.filter((r: any) => r.status !== 'pending');
+                const historyRaw: Record<string, unknown>[] = data.data || [];
+                const historyFiltered = historyRaw.filter((r) => r.status !== 'pending');
                 setRequestHistory(mapRequests(historyFiltered));
                 
                 // Handle pagination info from API if available, otherwise estimate
@@ -98,20 +112,21 @@ export default function VaultFloatRequestsPageContent() {
     }
   };
 
-  const mapRequests = (data: any[]) => {
+  const mapRequests = (data: Record<string, unknown>[]): MappedFloatRequest[] => {
       return data.map(r => ({
-          id: r._id,
-          cashier: r.cashierName || r.cashierId || 'Unknown',
-          cashierId: r.cashierId,
+          id: String(r._id || ''),
+          cashier: String(r.cashierName || r.cashierId || 'Unknown'),
+          cashierId: String(r.cashierId || ''),
           station: 'Cash Desk',
-          type: r.type, // 'increase' or 'decrease'
-          amount: r.requestedAmount,
-          // currentFloat: r.currentFloat || 0, // Not always present in API?
-          reason: r.requestNotes || '',
-          status: r.status,
-          requested: r.requestedAt || r.createdAt,
-          processed: r.processedAt || r.updatedAt,
-          processedBy: r.processedByName || r.processedBy || 'Vault Manager'
+          type: String(r.type || '').toLowerCase() === 'decrease' ? 'Decrease' : 'Increase',
+          amount: Number(r.requestedAmount || 0),
+          reason: String(r.requestNotes || ''),
+          status: r.status === 'denied' ? 'rejected' : 
+                  r.status === 'approved' || r.status === 'approved_vm' ? 'approved' : 
+                  'pending',
+          requested: String(r.requestedAt || r.createdAt || ''),
+          processed: String(r.processedAt || r.updatedAt || ''),
+          processedBy: String(r.processedByName || r.processedBy || 'Vault Manager')
       }));
   };
 
@@ -185,10 +200,10 @@ export default function VaultFloatRequestsPageContent() {
   };
 
   // Sorting Logic (Client Side)
-  const sortData = (data: any[], option: FloatRequestSortOption, order: 'asc' | 'desc') => {
+  const sortData = (data: MappedFloatRequest[], option: FloatRequestSortOption, order: 'asc' | 'desc') => {
       return [...data].sort((a, b) => {
-          let aValue: any;
-          let bValue: any;
+          let aValue: string | number;
+          let bValue: string | number;
           
           switch(option) {
               case 'amount': aValue = Math.abs(a.amount); bValue = Math.abs(b.amount); break;

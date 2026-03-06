@@ -1,14 +1,8 @@
 /**
  * Pagination Controls Component
- * Pagination controls with first, previous, next, last, and direct page input.
+ * Minimal pagination controls: first, previous, page input, next, last.
  *
- * Features:
- * - First, previous, next, last page buttons
- * - Direct page number input
- * - Page count display
- * - Responsive design (mobile and desktop)
- * - Disabled states for boundary pages
- * - Accessible navigation
+ * Layout: <<  <  [x] of y  >  >>
  *
  * @param currentPage - Current page index (0-based)
  * @param totalPages - Total number of pages
@@ -27,11 +21,9 @@ export default function PaginationControls({
   currentPage,
   totalPages,
   setCurrentPage,
-  totalCount,
-  limit = 20,
 }: PaginationControlsProps) {
   if (totalPages <= 1) {
-    return null; // Don't render pagination if there is only 1 page or less
+    return null;
   }
 
   const handlePageChange = (page: number) => {
@@ -48,130 +40,70 @@ export default function PaginationControls({
     setCurrentPage(val - 1);
   };
 
-  const startItem = currentPage * limit + 1;
-  const endItem = Math.min((currentPage + 1) * limit, totalCount || 0);
+  const navButtonClass =
+    'border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50';
 
   return (
-    <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-      {totalCount !== undefined && (
-        <div className="text-sm text-gray-600">
-          Showing <span className="font-medium text-gray-900">{startItem}</span>{' '}
-          to <span className="font-medium text-gray-900">{endItem}</span> of{' '}
-          <span className="font-medium text-gray-900">{totalCount}</span>{' '}
-          results
-        </div>
-      )}
-
-      {/* Mobile Pagination */}
-      <div className="flex w-full flex-col space-y-3 sm:hidden">
-        <div className="flex items-center justify-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(0)}
-            disabled={currentPage === 0}
-            className="px-2 py-1 text-xs"
-            aria-label="Go to first page"
-          >
-            ««
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 0}
-            className="px-2 py-1 text-xs"
-            aria-label="Go to previous page"
-          >
-            ‹
-          </Button>
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-600">Page</span>
-            <input
-              type="number"
-              min={1}
-              max={totalPages}
-              value={currentPage + 1}
-              onChange={handleInputChange}
-              className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-              aria-label="Page number"
-            />
-            <span className="text-xs text-gray-600">of {totalPages}</span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage >= totalPages - 1}
-            className="px-2 py-1 text-xs"
-            aria-label="Go to next page"
-          >
-            ›
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(totalPages - 1)}
-            disabled={currentPage >= totalPages - 1}
-            className="px-2 py-1 text-xs"
-            aria-label="Go to last page"
-          >
-            »»
-          </Button>
-        </div>
-      </div>
-
-      {/* Desktop Pagination */}
-      <div className="hidden items-center justify-center space-x-2 sm:flex">
+    <div className="flex h-12 w-full items-center justify-center border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+      {/* Navigation controls — shared for both mobile and desktop */}
+      <div className="flex items-center gap-1">
+        {/* First page */}
         <Button
           variant="outline"
           size="icon"
           onClick={() => handlePageChange(0)}
           disabled={currentPage === 0}
-          className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
+          className={navButtonClass}
           aria-label="Go to first page"
         >
           <DoubleArrowLeftIcon className="h-4 w-4" />
         </Button>
+
+        {/* Previous page */}
         <Button
           variant="outline"
           size="icon"
           onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage === 0}
-          className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
+          className={navButtonClass}
           aria-label="Go to previous page"
         >
           <ChevronLeftIcon className="h-4 w-4" />
         </Button>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-700">Page</span>
+
+        {/* Page input */}
+        <div className="flex items-center gap-1.5 px-1">
           <input
             type="number"
             min={1}
             max={totalPages}
             value={currentPage + 1}
             onChange={handleInputChange}
-            className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+            className="w-14 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:outline-none focus:ring-1 focus:ring-buttonActive"
             aria-label="Page number"
           />
-          <span className="text-sm text-gray-700">of {totalPages}</span>
+          <span className="text-sm text-gray-500">of {totalPages}</span>
         </div>
+
+        {/* Next page */}
         <Button
           variant="outline"
           size="icon"
           onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages - 1}
-          className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
+          disabled={currentPage >= totalPages - 1}
+          className={navButtonClass}
           aria-label="Go to next page"
         >
           <ChevronRightIcon className="h-4 w-4" />
         </Button>
+
+        {/* Last page */}
         <Button
           variant="outline"
           size="icon"
           onClick={() => handlePageChange(totalPages - 1)}
-          disabled={currentPage === totalPages - 1}
-          className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
+          disabled={currentPage >= totalPages - 1}
+          className={navButtonClass}
           aria-label="Go to last page"
         >
           <DoubleArrowRightIcon className="h-4 w-4" />

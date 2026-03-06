@@ -66,11 +66,17 @@ export async function GET(request: NextRequest) {
         .map(l => l.trim())
         .filter(l => l);
       if (licenseeArray.length > 0) {
-        query['rel.licensee'] = { $in: licenseeArray };
+        query.$or = [
+          { 'rel.licensee': { $in: licenseeArray } },
+          { 'rel.licencee': { $in: licenseeArray } }
+        ];
       }
     } else if (licensee) {
       // Single licensee filter (backwards compatibility)
-      query['rel.licensee'] = licensee;
+      query.$or = [
+        { 'rel.licensee': licensee },
+        { 'rel.licencee': licensee }
+      ];
     }
 
     // Filter by specific IDs if provided
@@ -81,6 +87,8 @@ export async function GET(request: NextRequest) {
         // If IDs are provided, we often want to bypass the licensee filter 
         // especially for profile display of assigned locations
         delete query['rel.licensee'];
+        delete query['rel.licencee'];
+        delete query.$or; // Removed if we're bypassing licensee filter
       }
     }
 
@@ -91,6 +99,7 @@ export async function GET(request: NextRequest) {
       _id: 1,
       name: 1,
       'rel.licensee': 1,
+      'rel.licencee': 1,
     })
       .sort({ name: 1 })
       .lean();
@@ -98,8 +107,17 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 6: Format locations with licensee ID
     // ============================================================================
-    const formattedLocations = locations.map(loc => {
-      const licenseeRaw = loc.rel?.licensee;
+    type LocationResult = {
+      _id: string;
+      name: string;
+      rel?: {
+        licensee?: string | string[];
+        licencee?: string | string[];
+      };
+    };
+
+    const formattedLocations = (locations as unknown as LocationResult[]).map((loc) => {
+      const licenseeRaw = loc.rel?.licensee || loc.rel?.licencee;
       let licenseeId: string | null = null;
 
       if (Array.isArray(licenseeRaw)) {

@@ -78,11 +78,10 @@ export type LocationMembershipSettings = {
   freePlayCreditsTimeout?: number;
 };
 
-// Alias MachineEvent as SessionEvent for now, or define specific if different
 export type SessionEvent = MachineEvent & {
-  timestamp: string; // Component uses timestamp, MachineEvent uses date. Keep both or mapped.
-  type: string; // Component uses type, MachineEvent uses eventType.
-  data?: any;
+  timestamp: string;
+  type: string;
+  data?: unknown;
 };
 
 export type SessionDetails = {
@@ -123,9 +122,8 @@ export type SessionsFiltersProps = {
   onSortChange?: (field: string) => void;
   // Optional props for backward compatibility or if needed
   statusFilter?: string;
-  onStatusFilterChange?: (value: string) => void;
-  dateRange?: any;
-  onDateRangeChange?: (range: any) => void;
+  dateRange?: unknown;
+  onDateRangeChange?: (range: unknown) => void;
   onClearFilters?: () => void;
 };
 

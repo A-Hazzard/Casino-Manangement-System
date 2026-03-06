@@ -114,8 +114,8 @@ export async function POST(request: NextRequest) {
         Array.isArray(allowedLocationIds) ? GamingLocations.find({ _id: { $in: allowedLocationIds } }, { name: 1 }).lean() : Promise.resolve([])
       ]);
 
-      const attemptedName = attemptedLocation ? (attemptedLocation as any).name : 'Unknown';
-      const allowedNames = (allowedLocations as any[]).map(l => l.name).join(', ') || 'None';
+      const attemptedName = attemptedLocation ? (attemptedLocation as Record<string, unknown>).name as string : 'Unknown';
+      const allowedNames = (allowedLocations as Array<Record<string, unknown>>).map(l => l.name as string).join(', ') || 'None';
       const hasAssignment = (userPayload?.assignedLocations as string[] || []).length > 0;
 
       let reason = `Access denied for location "${attemptedName}" (${activeVaultShift.locationId}). `;
@@ -202,10 +202,11 @@ export async function POST(request: NextRequest) {
       success: true,
       transaction: vaultTransaction,
     });
-  } catch (error) {
-    console.error('Error adding cash:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error adding cash:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

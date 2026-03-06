@@ -60,7 +60,7 @@ export default function VaultOverviewCloseShiftModal({
 
   useEffect(() => {
     if (open) {
-      setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+      setDenominations(denomsList.map(d => ({ denomination: d as Denomination['denomination'], quantity: 0 })));
       setTouchedDenominations(new Set());
     }
   }, [open, denomsList]);
@@ -81,7 +81,7 @@ export default function VaultOverviewCloseShiftModal({
 
   const handleAuthVerified = async () => {
     await onConfirm(totalAmount, denominations.filter(d => d.quantity > 0));
-    setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+    setDenominations(denomsList.map(d => ({ denomination: d as Denomination['denomination'], quantity: 0 })));
   };
 
   return (

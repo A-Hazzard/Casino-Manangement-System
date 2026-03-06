@@ -31,7 +31,7 @@ type VaultOverviewModalsProps = {
   };
   vaultBalance: number;
   onClose: (key: string) => void;
-  onConfirm: (key: string, data?: any) => Promise<void>;
+  onConfirm: (key: string, data?: Record<string, unknown>) => Promise<void>;
   machines?: GamingMachine[];
   viewDenomsData: { 
     title: string; 

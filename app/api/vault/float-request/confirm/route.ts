@@ -51,9 +51,9 @@ export async function POST(request: NextRequest) {
 
     // SECURITY: Ensure correct party is confirming
     const isVM = ((userPayload.roles as string[]) || []).some(r => ['admin', 'manager', 'vault-manager'].includes(r.toLowerCase()));
-    
+
     const canConfirm = (
-      (floatRequest.type === 'decrease' && isVM) || 
+      (floatRequest.type === 'decrease' && isVM) ||
       (floatRequest.type === 'increase' && floatRequest.cashierId === userId) ||
       (!floatRequest.type && floatRequest.cashierId === userId) || // initial float is increase
       ((userPayload.roles as string[]) || []).includes('admin')
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     // STEP 4/5/6/7: Finalize the transaction using the helper
     const { finalizeFloatRequest } = await import('@/app/api/lib/helpers/vault/finalizeFloat');
-    
+
     const result = await finalizeFloatRequest(
       requestId,
       userId,
@@ -89,10 +89,11 @@ export async function POST(request: NextRequest) {
       cashierShift: result.cashierShift.toObject(),
     });
 
-  } catch (error) {
-    console.error('Error confirming float request:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error confirming float request:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { success: false, error: 'Internal server error', details: errorMessage },
       { status: 500 }
     );
   }

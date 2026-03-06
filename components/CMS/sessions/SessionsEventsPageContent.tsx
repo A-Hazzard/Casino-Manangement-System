@@ -53,8 +53,8 @@ function getEventTypeColor(type: string): string {
 /**
  * Formats numeric values safely
  */
-function formatNumber(val: any): string {
-  if (val === undefined || val === null || isNaN(val)) return '0';
+function formatNumber(val: unknown): string {
+  if (val === undefined || val === null || (typeof val === 'number' && isNaN(val))) return '0';
   return Number(val).toLocaleString();
 }
 
@@ -145,8 +145,8 @@ export function SessionsEventsPageContent({
           setFilters(filtersData || null);
         }
       });
-    } catch (err: any) {
-      if (err.name !== 'AbortError' && !axios.isCancel(err)) {
+    } catch (err: unknown) {
+      if ((err as Error).name !== 'AbortError' && !axios.isCancel(err)) {
         console.error('Failed to fetch session events:', err);
         setError('Failed to load events. Please try again.');
         toast.error('Failed to load session details');
@@ -571,11 +571,13 @@ export function SessionsEventsPageContent({
 
               {/* Pagination Section - Use server-side pagination from API */}
               {!loading && pagination && pagination.totalPages > 1 && (
-                <PaginationControls
-                  currentPage={pagination.currentPage - 1} // Convert from 1-based to 0-based
-                  totalPages={pagination.totalPages}
-                  setCurrentPage={handlePageChange}
-                />
+                <div className="mt-4 flex justify-center pb-8">
+                  <PaginationControls
+                    currentPage={pagination.currentPage - 1} // Convert from 1-based to 0-based
+                    totalPages={pagination.totalPages}
+                    setCurrentPage={handlePageChange}
+                  />
+                </div>
               )}
             </>
           )}

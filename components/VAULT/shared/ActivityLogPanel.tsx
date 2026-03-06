@@ -30,7 +30,7 @@ type ActivityLogEntry = {
   amount: number;
   performedBy: string;
   notes?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 };
 
 type ActivityLogPanelProps = {

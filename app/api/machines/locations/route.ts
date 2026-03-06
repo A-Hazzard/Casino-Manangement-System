@@ -12,8 +12,8 @@
  */
 
 import {
-    getUserAccessibleLicenseesFromToken,
-    getUserLocationFilter,
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -87,7 +87,12 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 5: Build aggregation pipeline
     // ============================================================================
-    type MatchStage = Record<string, unknown>;
+    interface MatchStage {
+      $or?: Array<Record<string, unknown>>;
+      $and?: Array<Record<string, unknown>>;
+      _id?: { $in: string[] };
+      [key: string]: unknown;
+    }
 
     const matchStage: MatchStage = {};
 
@@ -97,7 +102,7 @@ export async function GET(request: NextRequest) {
       ? new Date('2025-01-01')
       : new Date('2025-01-01');
 
-    matchStage.$or = [
+    const basicDeletionFilter = [
       { deletedAt: null },
       { deletedAt: { $lt: deletionCutoff } },
     ];
@@ -105,12 +110,13 @@ export async function GET(request: NextRequest) {
     if (membershipOnly) {
       // Check both membershipEnabled and enableMembership fields for compatibility
       matchStage.$and = [
-        { $or: matchStage.$or },
+        { $or: basicDeletionFilter },
         {
           $or: [{ membershipEnabled: true }, { enableMembership: true }],
         },
       ];
-      delete matchStage.$or;
+    } else {
+      matchStage.$or = basicDeletionFilter;
     }
 
     // Apply location filter based on user permissions
@@ -162,7 +168,7 @@ export async function GET(request: NextRequest) {
       console.warn(`[Machines Locations API] Completed in ${duration}ms`);
     }
     return NextResponse.json({ locations }, { status: 200 });
-  } catch (error) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch locations';

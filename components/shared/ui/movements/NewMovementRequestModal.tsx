@@ -1,20 +1,21 @@
 import { Button } from '@/components/shared/ui/button';
 import Chip from '@/components/shared/ui/common/Chip';
+import MultiSelectDropdown from '@/components/shared/ui/common/MultiSelectDropdown';
+import SearchableSelect from '@/components/shared/ui/common/SearchableSelect';
 import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
-import { Input } from '@/components/shared/ui/input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets';
@@ -26,9 +27,18 @@ import type { MovementRequest } from '@/lib/types/movement';
 import type { MachineMovementRecord } from '@/lib/types/reports';
 import { generateMongoId } from '@/lib/utils/id';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
-import { PlusCircledIcon } from '@radix-ui/react-icons';
 import axios from 'axios';
+import { Loader2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+
+// === Disabled field hint banner ===
+function DisabledHint({ message }: { message: string }) {
+  return (
+    <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+      <span>⚠</span> {message}
+    </p>
+  );
+}
 
 const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
   isOpen,
@@ -37,154 +47,84 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
   onRefresh,
   locations: propLocations,
 }) => {
-  const [locations, setLocations] = useState<{ id: string; name: string }[]>(
-    []
-  );
-  const [users, setUsers] = useState<
-    { _id: string; name: string; email: string }[]
-  >([]);
-  const [movementType, setMovementType] = useState<'Machine' | 'SMIB'>(
-    'Machine'
-  );
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+  const [users, setUsers] = useState<{ _id: string; name: string; emailAddress: string; roles: string[]; assignedLocations: string[] }[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [movementType, setMovementType] = useState<'Machine' | 'SMIB'>('Machine');
   const [fromLocation, setFromLocation] = useState('');
   const [toLocation, setToLocation] = useState('');
   const [cabinets, setCabinets] = useState<Cabinet[]>([]);
-  const [cabinetSearch, setCabinetSearch] = useState('');
-  const [availableCabinets, setAvailableCabinets] = useState<Cabinet[]>([]);
-  const [selectedCabinets, setSelectedCabinets] = useState<Cabinet[]>([]);
-  const [cabinetDropdownOpen, setCabinetDropdownOpen] = useState(false);
   const [loadingCabinets, setLoadingCabinets] = useState(false);
+  const [selectedCabinets, setSelectedCabinets] = useState<Cabinet[]>([]);
   const [requestTo, setRequestTo] = useState('');
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [submitting, setSubmitting] = useState(false);
 
-  // Get current user from store
   const { user: currentUser } = useUserStore();
+  const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
+  const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role));
 
   // Use prop locations or fetch if not provided
   useEffect(() => {
     if (propLocations && propLocations.length > 0) {
-      // Convert prop locations to the expected format
-      const formattedLocations = propLocations.map(loc => ({
-        id: loc._id,
-        name: loc.name,
-      }));
-      setLocations(formattedLocations);
+      setLocations(propLocations.map(loc => ({ id: loc._id, name: loc.name })));
     } else {
-      // Fallback to fetching locations if not provided
       fetchAllGamingLocations().then(setLocations);
     }
   }, [propLocations]);
 
-  // Fetch users for email dropdown
+  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
+      setLoadingUsers(true);
       try {
         const response = await axios.get('/api/users');
-        if (response.data.users) {
-          setUsers(response.data.users);
-        }
+        if (response.data.users) setUsers(response.data.users);
       } catch (error) {
         console.error('Failed to fetch users:', error);
+      } finally {
+        setLoadingUsers(false);
       }
     };
-    fetchUsers();
-  }, []);
-
-  // Close cabinet dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.cabinet-dropdown-container')) {
-        setCabinetDropdownOpen(false);
-      }
-    };
-
-    if (cabinetDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () =>
-        document.removeEventListener('mousedown', handleClickOutside);
+    if (isOpen) {
+      fetchUsers();
     }
-
-    return undefined;
-  }, [cabinetDropdownOpen]);
+  }, [isOpen]);
 
   // Fetch cabinets for selected from location
   useEffect(() => {
     if (fromLocation) {
       setLoadingCabinets(true);
-      // Use "All" as the default timePeriod to get all available machines
       fetchCabinetsForLocation(fromLocation, undefined, 'All')
         .then(result => {
           setCabinets(result.data);
-          setAvailableCabinets(result.data);
           setSelectedCabinets([]);
         })
         .catch(error => {
           console.error('Failed to fetch cabinets for location:', error);
           setCabinets([]);
-          setAvailableCabinets([]);
           setSelectedCabinets([]);
-          // Show user-friendly error if needed
-          setErrors(prev => ({
-            ...prev,
-            fromLocation: 'Failed to load machines for this location',
-          }));
+          setErrors(prev => ({ ...prev, fromLocation: 'Failed to load machines for this location' }));
         })
-        .finally(() => {
-          setLoadingCabinets(false);
-        });
+        .finally(() => setLoadingCabinets(false));
     } else {
       setCabinets([]);
-      setAvailableCabinets([]);
       setSelectedCabinets([]);
-      setLoadingCabinets(false);
     }
-    setCabinetSearch('');
   }, [fromLocation]);
 
-  // Filter available cabinets by search
-  useEffect(() => {
-    if (!fromLocation) {
-      setAvailableCabinets([]);
-      return;
-    }
-    const searchLower = cabinetSearch.toLowerCase();
-    setAvailableCabinets(
-      cabinets.filter(
-        cab =>
-          !selectedCabinets.find(sc => sc._id === cab._id) &&
-          (cab.assetNumber?.toLowerCase().includes(searchLower) ||
-            cab.serialNumber?.toLowerCase().includes(searchLower) ||
-            cab.smbId?.toLowerCase().includes(searchLower) ||
-            cab.smibBoard?.toLowerCase().includes(searchLower) ||
-            cab.relayId?.toLowerCase().includes(searchLower) ||
-            cab.installedGame?.toLowerCase().includes(searchLower) ||
-            cab.game?.toLowerCase().includes(searchLower))
-      )
-    );
-  }, [cabinetSearch, cabinets, selectedCabinets, fromLocation]);
-
-  // Validation
   const validate = () => {
     const errs: { [key: string]: string } = {};
     if (!movementType) errs.movementType = 'Movement type is required.';
     if (!fromLocation) errs.fromLocation = 'From location is required.';
-    if (!selectedCabinets.length)
-      errs.selectedCabinets = `Select at least one ${movementType.toLowerCase()}.`;
+    if (!selectedCabinets.length) errs.selectedCabinets = 'Select at least one ' + (movementType.toLowerCase()) + '.';
     if (!toLocation) errs.toLocation = 'Destination location is required.';
-    if (toLocation && toLocation === fromLocation)
-      errs.toLocation = 'Destination must be different from source.';
+    if (toLocation && toLocation === fromLocation) errs.toLocation = 'Destination must be different from source.';
     if (!requestTo) errs.requestTo = 'Recipient user is required.';
     return errs;
   };
 
-  const handleSelectCabinet = (cabinet: Cabinet) => {
-    setSelectedCabinets(prev => [...prev, cabinet]);
-    setCabinetSearch('');
-    setCabinetDropdownOpen(false);
-  };
   const handleRemoveCabinet = (cabinetId: string) => {
     setSelectedCabinets(prev => prev.filter(cab => cab._id !== cabinetId));
   };
@@ -195,24 +135,13 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
     if (Object.keys(errs).length > 0) return;
     setSubmitting(true);
     try {
-      // Get current logged-in user from store
       const createdBy = currentUser?.emailAddress || 'unknown';
-
-      // Get location names for the payload
-      const fromLocationName =
-        locations.find(loc => loc.id === fromLocation)?.name || fromLocation;
-      const toLocationName =
-        locations.find(loc => loc.id === toLocation)?.name || toLocation;
-
-      // Generate a proper MongoDB ObjectId-style hex string for the movement request
+      const fromLocationName = locations.find(loc => loc.id === fromLocation)?.name || fromLocation;
+      const toLocationName = locations.find(loc => loc.id === toLocation)?.name || toLocation;
       const movementRequestId = await generateMongoId();
 
-      // Compose the request payload with all required fields
       const payload: Partial<MovementRequest> = {
-        // Generate a unique ID for the movement request
         _id: movementRequestId,
-
-        // Financial fields (set to 0 for movement requests)
         variance: 0,
         previousBalance: 0,
         currentBalance: 0,
@@ -222,49 +151,38 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
         partnerProfit: 0,
         taxes: 0,
         advance: 0,
-
-        // Location fields
         locationName: fromLocationName,
         locationFrom: fromLocationName,
         locationTo: toLocationName,
         locationId: fromLocation,
-
-        // Request details
+        locationFromId: fromLocation,
+        locationToId: toLocation,
+        selectedMachines: selectedCabinets.map(cab => cab._id),
         requestTo,
         reason: notes,
         cabinetIn: selectedCabinets
-          .map(
-            cab => cab.serialNumber || cab.assetNumber || cab.relayId || cab._id
-          )
+          .map(cab => cab.serialNumber || cab.assetNumber || cab.relayId || cab._id)
           .join(','),
         status: 'pending',
-        createdBy: createdBy,
+        createdBy: currentUser?._id || 'unknown',
         movementType: movementType.toLowerCase(),
         installationType: 'move',
         timestamp: new Date(),
-
-        // Timestamp fields
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      const createdRequest = await createMovementRequest(
-        payload as MovementRequest
-      );
 
-      // Call the onSubmit callback if provided
+      const createdRequest = await createMovementRequest(payload as MovementRequest);
+
       if (onSubmit) {
-        // Convert MovementRequest to MachineMovementRecord format
         const machineMovementRecord: MachineMovementRecord = {
           _id: createdRequest._id,
           machineId: selectedCabinets[0]?._id || '',
-          machineName:
-            selectedCabinets[0]?.installedGame ||
-            selectedCabinets[0]?.game ||
-            'Unknown Machine',
+          machineName: selectedCabinets[0]?.installedGame || selectedCabinets[0]?.game || 'Unknown Machine',
           fromLocationId: fromLocation,
-          fromLocationName: fromLocationName,
+          fromLocationName,
           toLocationId: toLocation,
-          toLocationName: toLocationName,
+          toLocationName,
           moveDate: new Date(),
           reason: notes,
           status: 'pending',
@@ -275,48 +193,64 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
         onSubmit(machineMovementRecord);
       }
 
-      // Call the onRefresh callback if provided
-      if (onRefresh) {
-        onRefresh();
-      }
-
+      if (onRefresh) onRefresh();
       onClose();
     } catch (error) {
       console.error('Movement request creation error:', error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Failed to create movement request.';
-      setErrors({ submit: errorMessage });
+      setErrors({ submit: error instanceof Error ? error.message : 'Failed to create movement request.' });
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Derive location options for SearchableSelect
+  const locationOptions = locations
+    .filter(loc => {
+      if (isAdminOrDev) return true;
+      return currentUser?.assignedLocations?.includes(loc.id) || currentUser?.assignedLocations?.includes(loc.name);
+    })
+    .map(loc => ({ label: loc.name, value: loc.id }));
+    
+  const toLocationOptions = locationOptions.filter(loc => loc.value !== fromLocation);
+
+  // Filter users based on role and location access
+  const filteredUsers = users.filter(user => {
+    if (!user.emailAddress || user.emailAddress.trim() === '') return false;
+    if (!toLocation) return false;
+    
+    const roleLower = user.roles?.map(r => r.toLowerCase()) || [];
+    const hasRole = roleLower.includes('location admin') || roleLower.includes('technician');
+    
+    // Check if the user is assigned to the selected destination location
+    // We compare with the destination location ID
+    const hasLocation = user.assignedLocations?.includes(toLocation);
+    
+    return hasRole && hasLocation;
+  });
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="md:max-w-3xl md:max-h-[90vh] overflow-hidden bg-white p-0 flex flex-col">
-        <DialogHeader className="border-b border-gray-200 p-6 shrink-0">
-          <DialogTitle className="text-2xl font-bold text-gray-800">
+      <DialogContent className="md:max-w-3xl md:max-h-[85vh] overflow-hidden bg-white p-0 flex flex-col items-center">
+        <DialogHeader className="border-b border-gray-100 p-6 shrink-0 w-full">
+          <DialogTitle className="text-2xl font-bold text-gray-800 text-center">
             New Movement Request
           </DialogTitle>
         </DialogHeader>
-        <div className="grid flex-1 grid-cols-1 gap-6 overflow-y-auto p-6 md:grid-cols-2 custom-scrollbar">
+
+        <div className="grid flex-1 grid-cols-1 gap-6 overflow-y-auto p-8 md:grid-cols-2 custom-scrollbar w-full">
           {/* Left Column */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-5">
+
             {/* Movement Type */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Please Select Movement Type{' '}
-                <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Please Select Movement Type <span className="text-red-500">*</span>
               </label>
               <Select
                 value={movementType}
-                onValueChange={(value: 'Machine' | 'SMIB') =>
-                  setMovementType(value)
-                }
+                onValueChange={(value: 'Machine' | 'SMIB') => setMovementType(value)}
               >
-                <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
+                <SelectTrigger className="h-11 w-full border-gray-300 shadow-sm focus:border-buttonActive focus:ring-buttonActive">
                   <SelectValue placeholder="Select movement type" />
                 </SelectTrigger>
                 <SelectContent className="z-[9999]">
@@ -324,291 +258,268 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                   <SelectItem value="SMIB">SMIB</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.movementType && (
-                <div className="mt-1 text-xs text-red-500">
-                  {errors.movementType}
-                </div>
-              )}
+              {errors.movementType && <div className="mt-1 text-xs font-medium text-red-500">{errors.movementType}</div>}
             </div>
 
-            {/* From Location */}
+            {/* From Location — searchable */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Please Select Location It Is Coming From{' '}
-                <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Please Select Location It Is Coming From <span className="text-red-500">*</span>
               </label>
-              <Select
-                value={fromLocation || undefined}
-                onValueChange={setFromLocation}
-              >
-                <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
-                  <SelectValue placeholder="Select source location" />
-                </SelectTrigger>
-                <SelectContent className="z-[9999]">
-                  {locations.map(loc => (
-                    <SelectItem key={loc.id} value={loc.id}>
-                      {loc.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.fromLocation && (
-                <div className="mt-1 text-xs text-red-500">
-                  {errors.fromLocation}
-                </div>
-              )}
+              <SearchableSelect
+                options={locationOptions}
+                value={fromLocation}
+                onChange={value => {
+                  setFromLocation(value);
+                  setToLocation('');
+                  setSelectedCabinets([]);
+                  setRequestTo('');
+                }}
+                placeholder="Select source location"
+                searchPlaceholder="Search locations..."
+                error={!!errors.fromLocation}
+                className="h-11 shadow-sm"
+              />
+              {errors.fromLocation && <div className="mt-1 text-xs font-medium text-red-500">{errors.fromLocation}</div>}
             </div>
 
-            {/* To Location */}
+            {/* To Location — searchable, disabled until cabinets selected */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Please Select Location It Is Going To{' '}
-                <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Please Select Location It Is Going To <span className="text-red-500">*</span>
               </label>
-              <Select
-                value={toLocation || undefined}
-                onValueChange={setToLocation}
-                disabled={!selectedCabinets.length}
-              >
-                <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
-                  <SelectValue placeholder="Location Is It Going To" />
-                </SelectTrigger>
-                <SelectContent className="z-[9999]">
-                  {locations
-                    .filter(loc => loc.id !== fromLocation)
-                    .map(loc => (
-                      <SelectItem key={loc.id} value={loc.id}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              {errors.toLocation && (
-                <div className="mt-1 text-xs text-red-500">
-                  {errors.toLocation}
-                </div>
+              <div className="relative">
+                <SearchableSelect
+                  options={toLocationOptions}
+                  value={toLocation}
+                  onChange={(val) => {
+                    setToLocation(val);
+                    setRequestTo('');
+                  }}
+                  placeholder="Select destination location"
+                  searchPlaceholder="Search locations..."
+                  error={!!errors.toLocation}
+                  className={`h-11 shadow-sm ${!selectedCabinets.length ? 'pointer-events-none opacity-50' : ''}`}
+                />
+                {!selectedCabinets.length && (
+                  <div
+                    className="absolute inset-0 cursor-not-allowed z-10"
+                    onClick={() =>
+                      setErrors(prev => ({
+                        ...prev,
+                        toLocationHint: !fromLocation
+                          ? 'Please select a source location first.'
+                          : 'Please select at least one machine before choosing a destination.',
+                      }))
+                    }
+                  />
+                )}
+              </div>
+              {errors.toLocation && <div className="mt-1 text-xs font-medium text-red-500">{errors.toLocation}</div>}
+              {!selectedCabinets.length && errors.toLocationHint && (
+                <DisabledHint message={errors.toLocationHint} />
+              )}
+              {!selectedCabinets.length && !errors.toLocationHint && (
+                <DisabledHint message={
+                  !fromLocation
+                    ? 'Select a source location first, then select machines.'
+                    : 'Select at least one machine before choosing a destination.'
+                } />
               )}
             </div>
 
             {/* Notes */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Notes
-              </label>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">Notes</label>
               <Textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
-                className="border-gray-300 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
-                placeholder="Please Enter Notes"
+                className="min-h-[120px] resize-none border-gray-300 shadow-sm placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
+                placeholder="Please enter any additional notes or details about this request..."
               />
             </div>
           </div>
 
           {/* Right Column */}
-          <div className="flex flex-col gap-4">
-            {/* Request To */}
+          <div className="flex flex-col gap-5">
+
+            {/* Request To — disabled until to-location selected */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
                 Request To: <span className="text-red-500">*</span>
               </label>
-              <Select
-                value={requestTo || undefined}
-                onValueChange={setRequestTo}
-                disabled={!toLocation}
-              >
-                <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
-                  <SelectValue placeholder="Select user" />
-                </SelectTrigger>
-                <SelectContent className="z-[9999]">
-                  {users
-                    .filter(user => user.email && user.email.trim() !== '')
-                    .map(user => (
-                      <SelectItem key={user._id} value={user.email}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {user.name || user.email}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {user.email}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              {errors.requestTo && (
-                <div className="mt-1 text-xs text-red-500">
-                  {errors.requestTo}
-                </div>
+              <div className="relative">
+                <Select
+                  value={requestTo || undefined}
+                  onValueChange={setRequestTo}
+                  disabled={!toLocation || loadingUsers}
+                >
+                  <SelectTrigger className="h-11 w-full border-gray-300 shadow-sm focus:border-buttonActive focus:ring-buttonActive">
+                    {loadingUsers ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading users...</span>
+                      </div>
+                    ) : (
+                      <SelectValue placeholder={toLocation ? "Select user" : "Select destination location first"} />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent className="z-[9999] max-h-[300px]">
+                    {filteredUsers.length > 0 ? (
+                      filteredUsers.map(user => (
+                        <SelectItem key={user._id} value={user._id}>
+                          <div className="flex flex-col py-0.5">
+                            <span className="font-semibold text-gray-900">{user.name || user.emailAddress}</span>
+                            <span className="text-[11px] text-gray-500">{user.emailAddress}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="py-6 text-center text-sm text-gray-500 px-4">
+                        {toLocation 
+                          ? "No technicians or admins assigned to this location found." 
+                          : "Please select a destination location above to see available recipients."}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                {!toLocation && (
+                  <div
+                    className="absolute inset-0 cursor-not-allowed z-10"
+                    onClick={() =>
+                      setErrors(prev => ({
+                        ...prev,
+                        requestToHint: !fromLocation
+                          ? 'Please select a source location first.'
+                          : !selectedCabinets.length
+                          ? 'Please select at least one machine first.'
+                          : 'Please select a destination location first.',
+                      }))
+                    }
+                  />
+                )}
+              </div>
+              {errors.requestTo && <div className="mt-1 text-xs font-medium text-red-500">{errors.requestTo}</div>}
+              {!toLocation && errors.requestToHint && (
+                <DisabledHint message={errors.requestToHint} />
               )}
             </div>
 
-            {/* Cabinet/SMIB Selection */}
+            {/* Cabinet/SMIB Selection with MultiSelectDropdown */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Please Select a {movementType} to be Moved{' '}
-                <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Please Select {movementType + 's'} to be Moved <span className="text-red-500">*</span>
               </label>
-              <div className="cabinet-dropdown-container relative">
-                <Input
-                  placeholder={`Select ${movementType}`}
-                  value={cabinetSearch}
-                  onChange={e => {
-                    setCabinetSearch(e.target.value);
-                    setCabinetDropdownOpen(true);
+              <div className="relative">
+                <MultiSelectDropdown
+                  options={cabinets.map(cab => ({
+                    id: cab._id,
+                    label: cab.installedGame || cab.game || cab.assetNumber || cab.serialNumber || 'Unknown Machine',
+                    displayNode: (
+                      <div className="flex flex-col py-1">
+                        <span className="text-sm font-bold text-gray-900">
+                          {cab.installedGame || cab.game || cab.assetNumber || cab.serialNumber || 'Unknown Machine'}
+                        </span>
+                        <span className="text-[11px] text-gray-500 font-medium">
+                          SN: {cab.serialNumber || 'N/A'} | Asset: {cab.assetNumber || 'N/A'}
+                        </span>
+                      </div>
+                    )
+                  }))}
+                  selectedIds={selectedCabinets.map(c => c._id)}
+                  onChange={(ids) => {
+                    const selected = cabinets.filter(c => ids.includes(c._id));
+                    setSelectedCabinets(selected);
+                    if (selected.length > 0) {
+                      setErrors(prev => ({...prev, selectedCabinets: '', machineHint: ''}));
+                    }
                   }}
-                  onFocus={() => setCabinetDropdownOpen(true)}
-                  disabled={!fromLocation}
-                  className="border-gray-300 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
-                  autoComplete="off"
+                  placeholder={
+                    loadingCabinets 
+                      ? "Loading items..." 
+                      : fromLocation 
+                        ? `Select ${movementType}s` 
+                        : "Select a source location first"
+                  }
+                  searchPlaceholder={`Search ${movementType}s...`}
+                  disabled={!fromLocation || loadingCabinets}
+                  label={movementType + 's'}
                 />
-                {/* Dropdown of filtered cabinets */}
-                {cabinetDropdownOpen && fromLocation && (
-                  <div className="absolute left-0 right-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                    {loadingCabinets ? (
-                      <div className="px-4 py-2 text-center text-sm text-gray-400">
-                        Loading {movementType.toLowerCase()}s...
-                      </div>
-                    ) : availableCabinets.length > 0 ? (
-                      availableCabinets.map(cab => {
-                        const displayName =
-                          cab.installedGame ||
-                          cab.game ||
-                          cab.assetNumber ||
-                          ((cab as Record<string, unknown>)
-                            .serialNumber as string) ||
-                          ((cab as Record<string, unknown>)
-                            .origSerialNumber as string) ||
-                          'Unknown Machine';
-                        const identifier =
-                          ((cab as Record<string, unknown>)
-                            .serialNumber as string) ||
-                          ((cab as Record<string, unknown>)
-                            .origSerialNumber as string) ||
-                          cab.assetNumber ||
-                          cab.smibBoard ||
-                          cab.relayId ||
-                          cab._id;
-
-                        return (
-                          <button
-                            key={cab._id}
-                            type="button"
-                            className="flex w-full items-center justify-between px-4 py-2 text-left text-gray-900 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
-                            onClick={() => handleSelectCabinet(cab)}
-                            disabled={selectedCabinets.some(
-                              sc => sc._id === cab._id
-                            )}
-                          >
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium">
-                                {displayName}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {identifier}
-                              </span>
-                            </div>
-                            {!selectedCabinets.some(
-                              sc => sc._id === cab._id
-                            ) && (
-                              <PlusCircledIcon className="ml-2 h-4 w-4 flex-shrink-0 text-button" />
-                            )}
-                          </button>
-                        );
-                      })
-                    ) : (
-                      <div className="px-4 py-2 text-center text-sm text-gray-400">
-                        {cabinetSearch
-                          ? `No ${movementType.toLowerCase()}s match your search.`
-                          : `No ${movementType.toLowerCase()}s available at this location.`}
-                      </div>
-                    )}
-                  </div>
+                {!fromLocation && (
+                  <div
+                    className="absolute inset-0 cursor-not-allowed z-10"
+                    onClick={() =>
+                      setErrors(prev => ({
+                        ...prev,
+                        machineHint: 'Please select a source location before picking machines.',
+                      }))
+                    }
+                  />
+                )}
+                {loadingCabinets && (
+                   <div className="absolute right-10 top-1/2 -translate-y-1/2">
+                     <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                   </div>
                 )}
               </div>
+              {!fromLocation && errors.machineHint && (
+                <DisabledHint message={errors.machineHint} />
+              )}
               {errors.selectedCabinets && (
-                <div className="mt-1 text-xs text-red-500">
-                  {errors.selectedCabinets}
-                </div>
+                <div className="mt-1 text-xs font-medium text-red-500">{errors.selectedCabinets}</div>
               )}
             </div>
 
             {/* Selected Items */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Selected {movementType}s ({selectedCabinets.length})
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Selected {movementType + 's'} ({selectedCabinets.length})
               </label>
-              <div className="h-40 min-h-[60px] overflow-y-auto rounded-md border bg-gray-50 p-3">
+              <div className="h-44 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50/50 p-4 shadow-inner">
                 {selectedCabinets.length > 0 ? (
-                  selectedCabinets.map(cab => {
-                    const displayName =
-                      cab.installedGame ||
-                      cab.game ||
-                      cab.assetNumber ||
-                      ((cab as Record<string, unknown>)
-                        .serialNumber as string) ||
-                      ((cab as Record<string, unknown>)
-                        .origSerialNumber as string) ||
-                      'Unknown Machine';
-                    return (
-                      <Chip
-                        key={cab._id}
-                        label={displayName}
-                        onRemove={() => handleRemoveCabinet(cab._id)}
-                        className="bg-buttonActive text-white"
-                      />
-                    );
-                  })
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCabinets.map(cab => {
+                      const displayName =
+                        cab.installedGame || cab.game || cab.assetNumber ||
+                        cab.serialNumber || 'Unknown Machine';
+                      return (
+                        <Chip
+                          key={cab._id}
+                          label={displayName}
+                          onRemove={() => handleRemoveCabinet(cab._id)}
+                          className="bg-buttonActive text-white px-3 py-1 font-medium shadow-sm"
+                        />
+                      );
+                    })}
+                  </div>
                 ) : (
-                  <p className="py-2 text-center text-sm text-gray-400">
-                    No {movementType.toLowerCase()}s selected.
-                  </p>
+                  <div className="flex h-full flex-col items-center justify-center text-gray-400">
+                    <p className="text-sm">No {movementType.toLowerCase() + 's'} selected.</p>
+                  </div>
                 )}
               </div>
             </div>
-
-            {/* SMIB Machine Selection (conditional) */}
-            {movementType === 'SMIB' && (
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Please Select Cabinet Is Coming To{' '}
-                  <span className="text-red-500">*</span>
-                </label>
-                <Select value="" onValueChange={() => {}}>
-                  <SelectTrigger className="w-full border-blue-300 focus:border-buttonActive focus:ring-buttonActive">
-                    <SelectValue placeholder="Cabinet Is Coming To" />
-                  </SelectTrigger>
-                  <SelectContent className="z-[9999]">
-                    <SelectItem value="placeholder">
-                      Select destination cabinet
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
         </div>
-        <DialogFooter className="border-t border-gray-200 p-6">
-          {errors.submit && (
-            <div className="mb-2 text-center text-sm text-red-500">
-              {errors.submit}
-            </div>
-          )}
-          <div className="flex flex-col sm:flex-row justify-end gap-2 w-full">
+
+        <DialogFooter className="border-t border-gray-100 p-6 w-full bg-gray-50/30">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 w-full max-w-sm ml-auto">
             <DialogClose asChild>
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto order-2 sm:order-1"
-              >
+              <Button variant="outline" className="h-11 flex-1 font-semibold text-gray-700 hover:bg-gray-100 sm:order-1">
                 Cancel
               </Button>
             </DialogClose>
             <Button
               onClick={handleSubmit}
               disabled={submitting}
-              className="bg-button hover:bg-buttonActive text-white w-full sm:w-auto order-1 sm:order-2"
+              className="h-11 flex-1 bg-green-600 hover:bg-green-700 text-white font-bold shadow-md transition-all active:scale-95 sm:order-2"
             >
-              {submitting ? 'Submitting...' : 'Add'}
+              {submitting ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Submitting...</span>
+                </div>
+              ) : 'Add'}
             </Button>
           </div>
         </DialogFooter>
@@ -618,4 +529,3 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
 };
 
 export default NewMovementRequestModal;
-

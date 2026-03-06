@@ -84,10 +84,10 @@ export async function GET(request: NextRequest) {
     // STEP 4: Define time range (Gaming Day)
     // ============================================================================
     const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
-    const gameDayOffset = (locationInfo as any)?.gameDayOffset ?? 8;
-    
+    const gameDayOffset = (locationInfo as Record<string, unknown> | null)?.gameDayOffset as number ?? 8;
+
     // Timeframe: Use Today's Gaming Day if no date provided
-    const { rangeStart, rangeEnd } = dateStr 
+    const { rangeStart, rangeEnd } = dateStr
       ? getGamingDayRange(new Date(dateStr), gameDayOffset)
       : getGamingDayRangeForPeriod('Today', gameDayOffset);
 
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const transactions = await VaultTransactionModel.find({
       locationId,
-      timestamp: { 
+      timestamp: {
         $gte: rangeStart,
         $lte: rangeEnd
       },
@@ -126,29 +126,29 @@ export async function GET(request: NextRequest) {
 
     // A. Cashier Floats sum
     const activeCashiersData = await CashierShiftModel.find({
-        locationId,
-        status: { $in: ['active', 'pending_review'] }
+      locationId,
+      status: { $in: ['active', 'pending_review'] }
     }, { currentBalance: 1 }).lean();
-    const totalCashierFloats = activeCashiersData.reduce((sum: number, s: any) => sum + (s.currentBalance || 0), 0);
+    const totalCashierFloats = activeCashiersData.reduce((sum: number, s: unknown) => sum + ((s as { currentBalance?: number }).currentBalance || 0), 0);
 
     // B. Machine Money In (Drops) - Use Gaming Day Logic
     // Using the same range calculated above
     const machineMeters = await Meters.aggregate([
-        {
-          $match: {
-            location: locationId,
-            readAt: {
-              $gte: rangeStart,
-              $lte: rangeEnd,
-            },
+      {
+        $match: {
+          location: locationId,
+          readAt: {
+            $gte: rangeStart,
+            $lte: rangeEnd,
           },
         },
-        {
-          $group: {
-            _id: null,
-            totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
-          },
+      },
+      {
+        $group: {
+          _id: null,
+          totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
         },
+      },
     ]);
     const totalMachineBalance = machineMeters.length > 0 ? machineMeters[0].totalMoneyIn : 0;
 
@@ -181,10 +181,11 @@ export async function GET(request: NextRequest) {
       rangeStart: rangeStart.toISOString(),
       rangeEnd: rangeEnd.toISOString(),
     });
-  } catch (error) {
-    console.error('Error fetching vault metrics:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching vault metrics:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

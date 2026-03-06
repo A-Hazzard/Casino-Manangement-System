@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
     let displayCurrency: CurrencyCode = currencyParam || 'USD';
     const searchTerm = searchParams.get('search')?.trim() || '';
     const machineTypeFilter = searchParams.get('machineTypeFilter');
+    const onlineStatus = searchParams.get('onlineStatus')?.toLowerCase() || 'all';
     const specificLocations =
       searchParams.get('locations')?.split(',').filter(Boolean) || [];
     const showAllLocations = searchParams.get('showAllLocations') === 'true';
@@ -76,6 +77,8 @@ export async function GET(req: NextRequest) {
       ? 10000
       : Math.min(parseInt(searchParams.get('limit') || '50'), 50);
     const skip = showAllLocations ? 0 : (page - 1) * limit;
+    const sortBy = searchParams.get('sortBy') || 'gross';
+    const sortOrder = searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
 
     let customStartDate: Date | undefined, customEndDate: Date | undefined;
     if (timePeriod === 'Custom') {
@@ -160,7 +163,15 @@ export async function GET(req: NextRequest) {
     }
 
     if (licensee && licensee !== 'all') {
-      locationMatchStage['rel.licensee'] = licensee;
+      if (!locationMatchStage.$and) {
+        locationMatchStage.$and = [];
+      }
+      (locationMatchStage.$and as Array<Record<string, unknown>>).push({
+        $or: [
+          { 'rel.licensee': licensee },
+          { 'rel.licencee': licensee }
+        ]
+      });
     }
 
     if (searchTerm) {
@@ -174,6 +185,16 @@ export async function GET(req: NextRequest) {
         locationMatchStage.$and.push(searchFilter);
       } else {
         locationMatchStage.$and = [searchFilter];
+      }
+    }
+
+    // Exclude test locations for non-developer users to ensure consistent pagination
+    if (!isAdminOrDev) {
+      const testFilter = { name: { $not: /^test/i } };
+      if (locationMatchStage.$and && Array.isArray(locationMatchStage.$and)) {
+        locationMatchStage.$and.push(testFilter);
+      } else {
+        locationMatchStage.$and = [testFilter];
       }
     }
 
@@ -430,12 +451,19 @@ export async function GET(req: NextRequest) {
       };
 
       const totalMachines = machines.length;
-      const onlineMachines = machines.filter(
-        m =>
-          m.lastActivity &&
-          new Date(m.lastActivity as string) >
-            new Date(Date.now() - 24 * 60 * 60 * 1000)
-      ).length;
+      const threshold = Date.now() - 3 * 60 * 1000;
+      const onlineMachines = machines.filter(m => {
+        if (!m.lastActivity) return false;
+        try {
+          // Handle both Date objects and strings
+          const activityDate = m.lastActivity instanceof Date
+            ? m.lastActivity
+            : new Date(String(m.lastActivity).replace(' ', 'T'));
+          return activityDate.getTime() > threshold;
+        } catch {
+          return false;
+        }
+      }).length;
       const sasMachines = machines.filter(
         m => m.isSasMachine as boolean
       ).length;
@@ -449,7 +477,7 @@ export async function GET(req: NextRequest) {
 
       const membershipEnabled = Boolean(
         loc.membershipEnabled ||
-          (loc as { enableMembership?: boolean }).enableMembership
+        (loc as { enableMembership?: boolean }).enableMembership
       );
 
       locationResults.push({
@@ -466,7 +494,7 @@ export async function GET(req: NextRequest) {
           Math.round(
             ((metrics.totalDrop as number) -
               (metrics.totalCancelledCredits as number)) *
-              100
+            100
           ) / 100,
         totalMachines,
         onlineMachines,
@@ -495,8 +523,75 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    locationResults.sort((a, b) => b.gross - a.gross);
-    const paginated = locationResults.slice(skip, skip + limit);
+    // Apply online status filter to results
+    let filteredResults = locationResults;
+    if (onlineStatus !== 'all') {
+      filteredResults = locationResults.filter(loc => {
+        const isOnline = loc.onlineMachines > 0;
+
+        if (onlineStatus === 'online') {
+          return isOnline;
+        }
+
+        if (onlineStatus.startsWith('offline')) {
+          return !isOnline && loc.totalMachines > 0;
+        }
+
+        if (onlineStatus === 'neveronline') {
+          // Never Online: No machines have ever been active
+          // For location level, this means all machines in the location have no lastActivity
+          const machines = (loc as { machines?: Array<{ lastActivity?: string | Date | null }> }).machines || [];
+          return (
+            machines.length > 0 && machines.every(m => !m.lastActivity)
+          );
+        }
+
+        return true;
+      });
+    }
+
+    // Apply sorting
+    if (onlineStatus === 'offlinelongest') {
+      filteredResults.sort((a, b) => {
+        const getLatestActivity = (loc: { machines?: Array<{ lastActivity?: string | Date | null }> }) => {
+          const machines = loc.machines || [];
+          if (machines.length === 0) return 0;
+          const activities = machines.map(m => m.lastActivity ? new Date(m.lastActivity).getTime() : 0).filter(t => t > 0);
+          return activities.length > 0 ? Math.max(...activities) : 0;
+        };
+        return getLatestActivity(a) - getLatestActivity(b);
+      });
+    } else if (onlineStatus === 'offlineshortest') {
+      filteredResults.sort((a, b) => {
+        const getLatestActivity = (loc: { machines?: Array<{ lastActivity?: string | Date | null }> }) => {
+          const machines = loc.machines || [];
+          if (machines.length === 0) return 0;
+          const activities = machines.map(m => m.lastActivity ? new Date(m.lastActivity).getTime() : 0).filter(t => t > 0);
+          return activities.length > 0 ? Math.max(...activities) : 0;
+        };
+        return getLatestActivity(b) - getLatestActivity(a);
+      });
+    } else {
+      // General dynamic sorting
+      filteredResults.sort((a, b) => {
+        let valA = (a as Record<string, unknown>)[sortBy] ?? 0;
+        let valB = (b as Record<string, unknown>)[sortBy] ?? 0;
+
+        // Special handling for nested or string fields if necessary
+        if (sortBy === 'locationName') {
+          valA = (String(valA) || '').toLowerCase();
+          valB = (String(valB) || '').toLowerCase();
+        }
+
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+
+        return sortOrder === 'asc' ? (Number(valA) - Number(valB)) : (Number(valB) - Number(valA));
+      });
+    }
+
+    const paginated = filteredResults.slice(skip, skip + limit);
     const converted = await applyLocationsCurrencyConversion(
       paginated,
       licensee,
@@ -512,21 +607,20 @@ export async function GET(req: NextRequest) {
       pagination: {
         page,
         limit,
-        totalCount: locationResults.length,
-        totalPages: Math.ceil(locationResults.length / limit),
-        hasNextPage: page < Math.ceil(locationResults.length / limit),
+        totalCount: filteredResults.length,
+        totalPages: Math.ceil(filteredResults.length / limit),
+        hasNextPage: page < Math.ceil(filteredResults.length / limit),
         hasPrevPage: page > 1,
       },
       currency: displayCurrency,
       converted: isAdminOrDev && (licensee === 'all' || !licensee),
       performance: { totalTime: Date.now() - perfStart },
     });
-  } catch (err) {
-    console.error('Reports Locations API Error:', err);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const errorMessage =
+      err instanceof Error ? err.message : 'Internal server error';
+    console.error('Reports Locations API Error:', errorMessage);
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 

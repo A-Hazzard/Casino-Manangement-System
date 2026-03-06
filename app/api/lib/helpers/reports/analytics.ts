@@ -7,6 +7,7 @@
  * @module app/api/lib/helpers/analytics
  */
 
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -18,7 +19,6 @@ import type { CurrencyCode } from '@/shared/types/currency';
 import { subDays } from 'date-fns';
 import type { PipelineStage } from 'mongoose';
 import mongoose from 'mongoose';
-import { connectDB } from '@/app/api/lib/middleware/db';
 
 /**
  * Builds aggregation pipeline for machine analytics
@@ -80,7 +80,10 @@ function buildMachineAnalyticsPipeline(
   if (selectedLicensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licensee': selectedLicensee,
+        $or: [
+          { 'locationDetails.rel.licensee': selectedLicensee },
+          { 'locationDetails.rel.licencee': selectedLicensee },
+        ],
       },
     } as PipelineStage);
   }
@@ -285,7 +288,10 @@ function buildDashboardAnalyticsPipeline(licensee: string): PipelineStage[] {
     },
     {
       $match: {
-        'locationDetails.rel.licensee': licensee,
+        $or: [
+          { 'locationDetails.rel.licensee': licensee },
+          { 'locationDetails.rel.licencee': licensee },
+        ],
       },
     },
     {
@@ -559,7 +565,10 @@ export async function getTopLocationsAnalytics(
     },
     {
       $match: {
-        'locationDetails.rel.licensee': licensee,
+        $or: [
+          { 'locationDetails.rel.licensee': licensee },
+          { 'locationDetails.rel.licencee': licensee },
+        ],
       },
     },
     {
@@ -627,20 +636,20 @@ export async function getTopLocationsAnalytics(
     totalCancelledCredits: number;
   }> = [];
   const allTopMetersCursor = Meters.aggregate([
-          {
-            $match: {
+    {
+      $match: {
         location: { $in: allTopLocationIds },
-            },
-          },
-          {
-            $group: {
+      },
+    },
+    {
+      $group: {
         _id: '$location',
-              totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-              totalCancelledCredits: {
-                $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-              },
-            },
-          },
+        totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+        totalCancelledCredits: {
+          $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+        },
+      },
+    },
   ]).cursor({ batchSize: 1000 });
 
   for await (const doc of allTopMetersCursor) {
@@ -663,34 +672,34 @@ export async function getTopLocationsAnalytics(
   let topLocationsWithMetrics = topLocations.map(location => {
     const locationId = location.id?.toString() || location._id?.toString();
     const financialMetrics = topFinancialMetricsMap.get(locationId) || {
-        totalDrop: 0,
-        totalCancelledCredits: 0,
-      };
-      const gross =
-        financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
+      totalDrop: 0,
+      totalCancelledCredits: 0,
+    };
+    const gross =
+      financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
 
-      return {
-        id: locationId,
-        name: location.locationInfo?.name || location.name,
-        totalDrop: financialMetrics.totalDrop,
-        cancelledCredits: financialMetrics.totalCancelledCredits,
-        gross: gross,
-        machineCount: location.machineCount,
-        onlineMachines: location.onlineMachines,
-        sasMachines: location.sasMachines,
-        rel: location.locationInfo?.rel,
-        country: location.locationInfo?.country,
-        coordinates:
-          location.locationInfo?.geoCoords?.latitude &&
+    return {
+      id: locationId,
+      name: location.locationInfo?.name || location.name,
+      totalDrop: financialMetrics.totalDrop,
+      cancelledCredits: financialMetrics.totalCancelledCredits,
+      gross: gross,
+      machineCount: location.machineCount,
+      onlineMachines: location.onlineMachines,
+      sasMachines: location.sasMachines,
+      rel: location.locationInfo?.rel,
+      country: location.locationInfo?.country,
+      coordinates:
+        location.locationInfo?.geoCoords?.latitude &&
           location.locationInfo?.geoCoords?.longitude
-            ? ([
-                location.locationInfo.geoCoords.longitude,
-                location.locationInfo.geoCoords.latitude,
-              ] as [number, number])
-            : null,
-        trend: gross >= 10000 ? 'up' : 'down',
-        trendPercentage: Math.abs(Math.random() * 10),
-      };
+          ? ([
+            location.locationInfo.geoCoords.longitude,
+            location.locationInfo.geoCoords.latitude,
+          ] as [number, number])
+          : null,
+      trend: gross >= 10000 ? 'up' : 'down',
+      trendPercentage: Math.abs(Math.random() * 10),
+    };
   });
 
   if (shouldApplyCurrencyConversion(licensee)) {
@@ -699,14 +708,14 @@ export async function getTopLocationsAnalytics(
     );
 
     const licenseesData = await Licensee.find(
-        {
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2025-01-01') } },
-          ],
-        },
+      {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      },
       { _id: 1, name: 1 }
-      )
+    )
       .lean()
       .exec();
 
@@ -724,7 +733,7 @@ export async function getTopLocationsAnalytics(
     });
 
     topLocationsWithMetrics = topLocationsWithMetrics.map(location => {
-      const licenseeId = location.rel?.licensee;
+      const licenseeId = location.rel?.licensee || (location.rel as Record<string, unknown> | undefined)?.licencee;
       let nativeCurrency: string = 'USD';
 
       if (licenseeId) {

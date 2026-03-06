@@ -56,7 +56,7 @@ export default function VaultOverviewReconcileModal({
   // Update breakdown when licensee changes or modal opens
   useEffect(() => {
     if (open) {
-      setBreakdown(getInitialDenominationRecord(selectedLicensee) as Record<any, number>);
+      setBreakdown(getInitialDenominationRecord(selectedLicensee) as Record<number, number>);
       setTouchedDenominations(new Set());
       setSource('Periodic');
       setReason('');
@@ -121,7 +121,7 @@ export default function VaultOverviewReconcileModal({
       });
       onClose();
       // Reset form
-      setBreakdown(getInitialDenominationRecord(selectedLicensee) as Record<any, number>);
+      setBreakdown(getInitialDenominationRecord(selectedLicensee) as Record<number, number>);
       setTouchedDenominations(new Set());
       setReason('');
       setSource('Periodic');

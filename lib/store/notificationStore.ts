@@ -4,15 +4,15 @@ import { create } from 'zustand';
 
 export type NotificationItem = {
   id: string;
-  type: any;
+  type: string;
   title: string;
   message: string;
-  timestamp: Date;
+  timestamp: Date | string;
   urgent?: boolean;
   actionUrl?: string;
-  status: any;
+  status: string;
   relatedEntityId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 };
 
 type NotificationStore = {
@@ -36,8 +36,8 @@ export const useNotificationStore = create<NotificationStore>((set) => ({
   unreadCount: 0,
   setNotifications: (notifications, unreadCount) => set({ notifications, unreadCount }),
   clearNotifications: () => set({ notifications: [], unreadCount: 0 }),
-  onMarkAsRead: () => {},
-  onMarkAllAsRead: () => {},
-  onDismiss: () => {},
+  onMarkAsRead: () => { },
+  onMarkAllAsRead: () => { },
+  onDismiss: () => { },
   setHandlers: (handlers) => set({ ...handlers }),
 }));

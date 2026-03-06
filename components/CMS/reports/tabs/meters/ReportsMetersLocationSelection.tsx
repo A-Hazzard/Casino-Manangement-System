@@ -14,23 +14,24 @@
 
 'use client';
 
-import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
 import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
+import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
 import { Skeleton } from '@/components/shared/ui/skeleton';
-import { ReportsMetersHourlyCharts } from './ReportsMetersHourlyCharts';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type { TopPerformingItem } from '@/lib/types';
-import { formatCurrency } from '@/lib/utils/currency';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { ExternalLink, Monitor } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { ReportsMetersHourlyCharts } from './ReportsMetersHourlyCharts';
 
 type ReportsMetersLocationSelectionProps = {
   locations: Array<{ id: string; name: string }>;
@@ -95,6 +96,8 @@ export default function ReportsMetersLocationSelection({
   onGranularityChange,
 }: ReportsMetersLocationSelectionProps) {
   const router = useRouter();
+  const { displayCurrency } = useCurrencyFormat();
+  const formatCurrency = (amount: number | null | undefined) => formatCurrencyWithCodeString(amount, displayCurrency);
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
   
   // Determine layout:

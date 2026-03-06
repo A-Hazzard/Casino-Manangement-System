@@ -84,7 +84,7 @@ export default function SoftCountForm({
   useEffect(() => {
     if (machine) {
         setDenominations(denomsList.map((denom: string | number) => ({ 
-            denomination: denom as any, 
+            denomination: Number(denom) as Denomination['denomination'], 
             quantity: 0 
         })));
         setTouchedDenominations(new Set());
@@ -193,7 +193,7 @@ export default function SoftCountForm({
       <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
          <div>
             <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black text-gray-900">{machine.custom?.name || (machine as any).name || (machine as any).machineName || `Machine ${machine.assetNumber || machine.serialNumber}`}</h2>
+                <h2 className="text-lg font-black text-gray-900">{machine.custom?.name || machine.locationName || `Machine ${machine.assetNumber || machine.serialNumber}`}</h2>
                 <Badge variant="outline" className="bg-white text-gray-500 border-gray-200">
                     {machine.assetNumber || machine.serialNumber}
                 </Badge>

@@ -9,10 +9,11 @@
 
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
+import type { MachineCollectionActivity } from '@/shared/types/vault';
 import { Clock, History as HistoryIcon, Loader2, User } from 'lucide-react';
 
 interface VaultOverviewCollectionMachineHistoryProps {
-  history: any[];
+  history: MachineCollectionActivity[];
   loading: boolean;
   machineName: string;
   containerClassName?: string;
@@ -80,7 +81,7 @@ export default function VaultOverviewCollectionMachineHistory({
                         minute: '2-digit'
                       })}
                     </span>
-                    <Badge icon={<User className="h-2.5 w-2.5" />} name={item.performedBy?.username || item.performedBy || 'System'} />
+                    <Badge icon={<User className="h-2.5 w-2.5" />} name={typeof item.performedBy === 'object' ? item.performedBy.username : item.performedBy || 'System'} />
                   </div>
                   
                   <div className="flex items-center justify-between min-w-0">

@@ -90,7 +90,7 @@ export default function HandPayForm({
                                 (() => {
                                     const m = machines.find(m => m._id === selectedMachine);
                                     // Use collection meter or SAS coinIn
-                                    return (m as any)?.collectionMeters?.metersIn || (m as any)?.sasMeters?.coinIn || 0;
+                                    return m?.collectionMeters?.metersIn || m?.sasMeters?.coinIn || 0;
                                 })()
                             )}
                         </span>

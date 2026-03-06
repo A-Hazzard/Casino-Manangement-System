@@ -437,7 +437,8 @@ export async function GET(request: NextRequest) {
     // Integrate meter data with machine data
     if (meterData.length > 0) {
       const aggregatedMeters = meterData[0];
-      const multiplier = Number((machine as any).collectorDenomination) || 1;
+      interface MachineWithDenom { collectorDenomination?: number }
+      const multiplier = Number((machine as unknown as MachineWithDenom).collectorDenomination) || 1;
       machine.sasMeters = {
         drop: (aggregatedMeters.drop || 0) * multiplier,
         totalCancelledCredits:
@@ -462,7 +463,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: convertResponseToTrinidadTime(machine.toObject()),
     });
-  } catch (error) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch machine';
@@ -819,19 +820,20 @@ export async function POST(request: NextRequest) {
       success: true,
       data: convertResponseToTrinidadTime(newMachine),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     let errorMessage =
       error instanceof Error ? error.message : 'Failed to create new machine';
     let status = 500;
 
     // Handle MongoDB duplicate key error (code 11000)
-    if (error && typeof error === 'object' && error.code === 11000) {
+    const mongoError = error as { code?: number; keyPattern?: Record<string, unknown>; message?: string };
+    if (mongoError && typeof mongoError === 'object' && mongoError.code === 11000) {
       let fieldName = 'field';
-      if (error.keyPattern) {
-        fieldName = Object.keys(error.keyPattern)[0];
-      } else if (error.message && error.message.includes('index:')) {
-        const match = error.message.match(/index: (.+?)_\d/);
+      if (mongoError.keyPattern) {
+        fieldName = Object.keys(mongoError.keyPattern)[0];
+      } else if (mongoError.message && mongoError.message.includes('index:')) {
+        const match = mongoError.message.match(/index: (.+?)_\d/);
         if (match && match[1]) fieldName = match[1];
       }
 
@@ -1106,19 +1108,20 @@ export async function PUT(request: NextRequest) {
       success: true,
       data: convertResponseToTrinidadTime(updatedMachine),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     let errorMessage =
       error instanceof Error ? error.message : 'Failed to update machine';
     let status = 500;
 
     // Handle MongoDB duplicate key error (code 11000)
-    if (error && typeof error === 'object' && error.code === 11000) {
+    const mongoError = error as { code?: number; keyPattern?: Record<string, unknown>; message?: string };
+    if (mongoError && typeof mongoError === 'object' && mongoError.code === 11000) {
       let fieldName = 'field';
-      if (error.keyPattern) {
-        fieldName = Object.keys(error.keyPattern)[0];
-      } else if (error.message && error.message.includes('index:')) {
-        const match = error.message.match(/index: (.+?)_\d/);
+      if (mongoError.keyPattern) {
+        fieldName = Object.keys(mongoError.keyPattern)[0];
+      } else if (mongoError.message && mongoError.message.includes('index:')) {
+        const match = mongoError.message.match(/index: (.+?)_\d/);
         if (match && match[1]) fieldName = match[1];
       }
 
@@ -1286,9 +1289,8 @@ export async function DELETE(request: NextRequest) {
 
         await logActivity({
           action: 'DELETE',
-          details: `Deleted machine "${
-            machineToDelete.serialNumber || machineToDelete.game
-          }"`,
+          details: `Deleted machine "${machineToDelete.serialNumber || machineToDelete.game
+            }"`,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
           userId: currentUser._id as string,
@@ -1319,7 +1321,7 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: 'Cabinet deleted successfully',
     });
-  } catch (error) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to delete cabinet';

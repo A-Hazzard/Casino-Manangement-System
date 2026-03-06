@@ -7,9 +7,9 @@
  * @module app/api/lib/helpers/logistics
  */
 
+import type { MovementRequestStatus } from '@/lib/types/movement';
 import type { LogisticsEntry } from '@/lib/types/reports';
 import { MovementRequest } from '../models/movementrequests';
-import type { MovementRequestStatus } from '@/lib/types/movement';
 
 /**
  * Maps MovementRequestStatus to LogisticsEntry status
@@ -21,13 +21,10 @@ function mapMovementStatusToLogisticsStatus(
   status: MovementRequestStatus
 ): 'pending' | 'completed' | 'in-progress' | 'cancelled' {
   switch (status) {
-    case 'approved':
-      return 'completed';
-    case 'rejected':
-      return 'cancelled';
-    case 'in progress':
-      return 'in-progress';
     case 'pending':
+      return 'pending';
+    case 'completed':
+      return 'completed';
     default:
       return 'pending';
   }

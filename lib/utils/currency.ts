@@ -59,6 +59,31 @@ export function formatCurrencyWithCode(
   });
 }
 
+/**
+ * Format currency string with currency code and amount
+ * Example: "USD 10,000.00", "-BBD 2,000.00"
+ */
+export function formatCurrencyWithCodeString(
+  value: number | null | undefined,
+  currencyCode: string = 'USD'
+): string {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return '--';
+  }
+
+  const hasDecimals = value % 1 !== 0;
+  const decimalPart = Math.abs(value % 1);
+  const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+
+  const formattedValue = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
+    maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
+  }).format(Math.abs(value));
+
+  const sign = value < 0 ? '-' : '';
+  return `${sign}${currencyCode} ${formattedValue}`;
+}
+
 
 // ============================================================================
 // Plain Number Formatting

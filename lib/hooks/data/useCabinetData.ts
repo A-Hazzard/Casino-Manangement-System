@@ -4,9 +4,9 @@
  */
 
 import {
-    fetchCabinetLocations,
-    fetchCabinets,
-    fetchCabinetTotals,
+  fetchCabinetLocations,
+  fetchCabinets,
+  fetchCabinetTotals,
 } from '@/lib/helpers/cabinets';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { dateRange } from '@/lib/types/index';
@@ -44,7 +44,12 @@ type UseCabinetDataReturn = {
   error: string | null;
 
   // Actions
-  loadCabinets: (page?: number, limit?: number) => Promise<void>;
+  loadCabinets: (
+    page?: number,
+    limit?: number,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc'
+  ) => Promise<void>;
   loadLocations: () => Promise<void>;
   filterCabinets: (
     cabinets: Cabinet[],
@@ -77,6 +82,7 @@ export const useCabinetData = ({
   // Use refs to track first load - these reset when allCabinets is cleared
   const hasReceivedFirstResponseRef = useRef(false);
   const hasStartedFirstLoadRef = useRef(false);
+  const activeRequestsRef = useRef(0);
 
   // Reset refs and initialLoading when data is cleared (fresh page load scenario)
   // This ensures skeleton shows on initial load even if refs persisted from previous session
@@ -180,12 +186,12 @@ export const useCabinetData = ({
       // 3. Status filter (if not 'All', filter by onlineStatus)
       if (selectedStatus !== 'All' && selectedStatus !== 'all') {
         const isOnline = cabinet.online === true;
-        
+
         if (selectedStatus === 'NeverOnline') {
-            // Never Online: Offline AND (no activity OR never online)
-            // Note: API filtering handles this more reliably, but for client-side search/filter:
-            const hasHistory = cabinet.lastOnline || cabinet.lastActivity;
-            return !isOnline && !hasHistory;
+          // Never Online: Offline AND (no activity OR never online)
+          // Note: API filtering handles this more reliably, but for client-side search/filter:
+          const hasHistory = cabinet.lastOnline || cabinet.lastActivity;
+          return !isOnline && !hasHistory;
         }
 
         const matchesStatus =
@@ -210,22 +216,21 @@ export const useCabinetData = ({
 
   // Load cabinets with proper error handling and logging
   const loadCabinets = useCallback(
-    async (page?: number, limit?: number) => {
+    async (page?: number, limit?: number, sortBy?: string, sortOrder?: 'asc' | 'desc') => {
+      // Synchronously increment and set loading to prevent the "No data" flash
+      activeRequestsRef.current++;
+      setLoading(true);
+      setError(null);
+
+      if (page === 1 || !page) {
+        hasStartedFirstLoadRef.current = false;
+        hasReceivedFirstResponseRef.current = false;
+        setInitialLoading(true);
+        setAllCabinets([]);
+        setTotalCount(0);
+      }
+
       const result = await makeRequest(async signal => {
-        // Mark that we've started the first load
-        if (!hasStartedFirstLoadRef.current) {
-          hasStartedFirstLoadRef.current = true;
-          // Ensure initialLoading is true when we start the first load
-          setInitialLoading(true);
-        }
-
-        setLoading(true);
-        setError(null);
-        if (page === 1) {
-          hasReceivedFirstResponseRef.current = false;
-          hasStartedFirstLoadRef.current = true;
-        }
-
         console.warn('[useCabinetData] Loading cabinets with filters:', {
           selectedLicensee,
           activeMetricsFilter,
@@ -233,9 +238,9 @@ export const useCabinetData = ({
           limit,
           customDateRange: customDateRange
             ? {
-                startDate: customDateRange.startDate?.toISOString(),
-                endDate: customDateRange.endDate?.toISOString(),
-              }
+              startDate: customDateRange.startDate?.toISOString(),
+              endDate: customDateRange.endDate?.toISOString(),
+            }
             : undefined,
           selectedLocation,
           selectedGameType,
@@ -244,12 +249,12 @@ export const useCabinetData = ({
 
         const dateRangeForFetch =
           activeMetricsFilter === 'Custom' &&
-          customDateRange?.startDate &&
-          customDateRange?.endDate
+            customDateRange?.startDate &&
+            customDateRange?.endDate
             ? {
-                from: customDateRange.startDate,
-                to: customDateRange.endDate,
-              }
+              from: customDateRange.startDate,
+              to: customDateRange.endDate,
+            }
             : undefined;
 
         // When searching, fetch all results (no pagination limit) to find matches across all machines
@@ -259,7 +264,6 @@ export const useCabinetData = ({
         const effectiveLimit = debouncedSearchTerm?.trim() ? undefined : limit; // No limit when searching = fetch all
 
         // Convert selectedStatus to onlineStatus format for API
-        // Handle both 'All'/'all' and 'Online'/'Offline' cases
         const onlineStatus =
           selectedStatus === 'All' || selectedStatus === 'all'
             ? 'all'
@@ -271,7 +275,7 @@ export const useCabinetData = ({
                   ? 'offline'
                   : 'all';
 
-        console.warn('[useCabinetData] Calling fetchCabinets with:', {
+        const result = await fetchCabinets(
           selectedLicensee,
           activeMetricsFilter,
           dateRangeForFetch,
@@ -279,37 +283,29 @@ export const useCabinetData = ({
           effectivePage,
           effectiveLimit,
           debouncedSearchTerm,
-          selectedLocation, // Pass locationId to filter at API level
-          selectedGameType, // Pass gameType to filter at API level
-          onlineStatus, // Pass onlineStatus to filter at API level
-        });
-
-        const cabinetsData = await fetchCabinets(
-          selectedLicensee,
-          activeMetricsFilter,
-          dateRangeForFetch,
-          displayCurrency,
-          effectivePage,
-          effectiveLimit,
-          debouncedSearchTerm,
-          selectedLocation, // Pass locationId to filter at API level
-          selectedGameType, // Pass gameType to filter at API level
-          onlineStatus, // Pass onlineStatus to filter at API level
-          signal
+          selectedLocation,
+          selectedGameType,
+          onlineStatus,
+          signal,
+          sortBy,
+          sortOrder
         );
 
-        return cabinetsData;
+        return result;
       }, 'cabinets');
 
-      // Only update state if request wasn't aborted (result is not null)
+      // Only update state if request wasn't aborted
       if (!result) {
-        console.log(
-          '[useCabinetData] Fetch aborted - keeping loading state and existing data'
-        );
-        // If aborted, keep loading state active so skeleton continues to show
-        // Also reset the first load ref so initialLoading can be set again on next attempt
-        hasStartedFirstLoadRef.current = false;
-        // Don't set loading to false here - a new request has likely started
+        // Always decrement on completion (even aborts)
+        activeRequestsRef.current = Math.max(0, activeRequestsRef.current - 1);
+        if (activeRequestsRef.current === 0) {
+          setLoading(false);
+          // Note: We deliberately DO NOT set initialLoading to false here.
+          // In React 18 Strict Mode, the first request is aborted on unmount.
+          // If we set initialLoading=false here, the subsequent remount will paint
+          // an empty "No Data" state before the next effect can fetch data.
+          // Leaving it true ensures the skeleton loader persists through the Strict Mode remount.
+        }
         return;
       }
 
@@ -348,13 +344,18 @@ export const useCabinetData = ({
               limit: number;
             };
           };
-          console.warn(
-            '✅ [USE CABINET DATA] Successfully loaded cabinets (paginated):',
-            paginatedResponse.cabinets.length,
-            'pagination:',
-            paginatedResponse.pagination
-          );
-          setAllCabinets(paginatedResponse.cabinets);
+
+          if (page === 1 || !page) {
+            setAllCabinets(paginatedResponse.cabinets);
+          } else {
+            setAllCabinets((prev: Cabinet[]) => {
+              const existingIds = new Set(prev.map(c => c._id));
+              const uniqueNew = paginatedResponse.cabinets.filter(
+                (c: Cabinet) => !existingIds.has(c._id)
+              );
+              return [...prev, ...uniqueNew];
+            });
+          }
           if (paginatedResponse.pagination) {
             setTotalCount(paginatedResponse.pagination.total);
           }
@@ -370,14 +371,9 @@ export const useCabinetData = ({
           setGameTypes(uniqueGameTypes);
         } else if (Array.isArray(result)) {
           // Backward compatibility: direct array response
-          console.warn(
-            '✅ [USE CABINET DATA] Successfully loaded cabinets (array):',
-            result.length
-          );
           setAllCabinets(result);
           setTotalCount(result.length);
 
-          // PERFORMANCE OPTIMIZATION: Extract unique game types efficiently
           const uniqueGameTypes = Array.from(
             new Set(
               result
@@ -387,19 +383,9 @@ export const useCabinetData = ({
           ).sort();
           setGameTypes(uniqueGameTypes);
         } else {
-          console.error(
-            '❌ [USE CABINET DATA] Cabinets data is not in expected format:',
-            result
-          );
           setAllCabinets([]);
           setTotalCount(0);
           setError('Invalid data format received from server');
-        }
-
-        // Set loading to false only after a successful data processing
-        setLoading(false);
-        if (!hasReceivedFirstResponseRef.current) {
-          hasReceivedFirstResponseRef.current = true;
         }
 
         // Metrics totals fetch moved to dedicated effect to avoid race conditions
@@ -415,7 +401,18 @@ export const useCabinetData = ({
         setError(
           error instanceof Error ? error.message : 'Failed to load cabinets'
         );
-        setLoading(false);
+      } finally {
+        // Always decrement on completion
+        activeRequestsRef.current = Math.max(0, activeRequestsRef.current - 1);
+
+        // Only set loading to false if this was the last active request
+        if (activeRequestsRef.current === 0) {
+          setLoading(false);
+          if (!hasReceivedFirstResponseRef.current) {
+            hasReceivedFirstResponseRef.current = true;
+            setInitialLoading(false);
+          }
+        }
       }
     },
     [
@@ -511,7 +508,7 @@ export const useCabinetData = ({
     }
 
     // Create a dependency key to detect actual changes
-    const depsKey = `${activeMetricsFilter}-${selectedLicensee || 'all'}-${displayCurrency || 'default'}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${selectedLocation.join(',')}-${selectedGameType.join(',')}-${selectedStatus}`;
+    const depsKey = `${activeMetricsFilter}-${selectedLicensee || 'all'}-${displayCurrency || 'default'}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${selectedLocation.join(',')}-${selectedGameType.join(',')}-${selectedStatus}-${searchTerm}`;
 
     // On initial mount, don't abort anything (there's nothing to abort)
     // Only abort if dependencies actually changed (not on initial mount)
@@ -548,7 +545,8 @@ export const useCabinetData = ({
                   ? 'never-online'
                   : selectedStatus.startsWith('Offline')
                     ? 'offline'
-                    : selectedStatus.toLowerCase()
+                    : selectedStatus.toLowerCase(),
+              searchTerm
             ),
           'totals'
         );
@@ -580,6 +578,7 @@ export const useCabinetData = ({
     selectedLocation,
     selectedGameType,
     selectedStatus,
+    searchTerm,
     makeRequest,
   ]);
 

@@ -34,15 +34,15 @@ export async function POST(request: NextRequest) {
 
     // STEP 2: Parse Request
     const body: CreatePayoutRequest = await request.json();
-    const { 
-      cashierShiftId, 
-      type, 
-      amount, 
-      ticketNumber, 
+    const {
+      cashierShiftId,
+      type,
+      amount,
+      ticketNumber,
       printedAt,
       machineId,
       reason,
-      notes 
+      notes
     } = body;
 
     // Validate
@@ -54,25 +54,25 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'ticket' && !ticketNumber) {
-        return NextResponse.json(
-            { success: false, error: 'Ticket number required' },
-            { status: 400 }
-        );
+      return NextResponse.json(
+        { success: false, error: 'Ticket number required' },
+        { status: 400 }
+      );
     }
 
     if (type === 'hand_pay' && !machineId) {
-        return NextResponse.json(
-            { success: false, error: 'Machine identification required for Hand Pay' },
-            { status: 400 }
-        );
+      return NextResponse.json(
+        { success: false, error: 'Machine identification required for Hand Pay' },
+        { status: 400 }
+      );
     }
-    
+
     // STEP 3: DB Connection & Shift Check
     await connectDB();
-    const shift = await CashierShiftModel.findOne({ 
-        _id: cashierShiftId,
-        cashierId: userId,
-        status: 'active' 
+    const shift = await CashierShiftModel.findOne({
+      _id: cashierShiftId,
+      cashierId: userId,
+      status: 'active'
     });
 
     if (!shift) {
@@ -83,33 +83,34 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 3.5: Check if Vault is reconciled
-    const vaultShift = await VaultShiftModel.findOne({ 
-        _id: shift.vaultShiftId,
-        status: 'active'
+    const vaultShift = await VaultShiftModel.findOne({
+      _id: shift.vaultShiftId,
+      status: 'active'
     });
 
     if (!vaultShift?.isReconciled) {
-        return NextResponse.json(
-            { success: false, error: 'Vault is not reconciled. Operation blocked until Vault Manager performs reconciliation.' },
-            { status: 403 }
-        );
+      return NextResponse.json(
+        { success: false, error: 'Vault is not reconciled. Operation blocked until Vault Manager performs reconciliation.' },
+        { status: 403 }
+      );
     }
 
     // Check Balance using live tracking
     const currentBalance = shift.currentBalance || 0;
 
     if (currentBalance < amount) {
-        return NextResponse.json(
-            { success: false, error: 'Insufficient funds for payout' },
-            { status: 400 }
-        );
+      return NextResponse.json(
+        { success: false, error: 'Insufficient funds for payout' },
+        { status: 400 }
+      );
     }
 
     // STEP 3.7: Fetch Machine Serial if Hand Pay
     let machineSerialNumber = '';
     if (type === 'hand_pay' && machineId) {
-        const machine = await Machine.findOne({ _id: machineId }, { origSerialNumber: 1, 'custom.name': 1 }).lean();
-        machineSerialNumber = (machine as any)?.custom?.name || (machine as any)?.origSerialNumber || machineId;
+      interface MachineResult { _id: string; origSerialNumber?: string; custom?: { name?: string } }
+      const machine = await Machine.findOne({ _id: machineId }, { origSerialNumber: 1, 'custom.name': 1 }).lean() as unknown as MachineResult | null;
+      machineSerialNumber = machine?.custom?.name || machine?.origSerialNumber || machineId;
     }
 
     // STEP 4: Process Payout
@@ -117,48 +118,48 @@ export async function POST(request: NextRequest) {
     const payoutId = await generateMongoId();
     const transactionId = await generateMongoId();
 
-    const payoutData: any = {
-        _id: payoutId,
-        locationId: shift.locationId,
-        cashierId: userId,
-        cashierShiftId: shift._id,
-        type,
-        amount,
-        validated: true, // Mock validation for Phase 1
-        timestamp: now,
-        cashierFloatBefore: currentBalance,
-        cashierFloatAfter: currentBalance - amount,
-        transactionId, // Satisfy requirement before creation
-        notes,
-        createdAt: now
+    const payoutData: Record<string, unknown> = {
+      _id: payoutId,
+      locationId: shift.locationId,
+      cashierId: userId,
+      cashierShiftId: shift._id,
+      type,
+      amount,
+      validated: true, // Mock validation for Phase 1
+      timestamp: now,
+      cashierFloatBefore: currentBalance,
+      cashierFloatAfter: currentBalance - amount,
+      transactionId, // Satisfy requirement before creation
+      notes,
+      createdAt: now
     };
 
     if (type === 'ticket') {
-        payoutData.ticketNumber = ticketNumber;
-        if (printedAt) payoutData.printedAt = new Date(printedAt);
+      payoutData.ticketNumber = ticketNumber;
+      if (printedAt) payoutData.printedAt = new Date(printedAt);
     } else if (type === 'hand_pay') {
-        payoutData.machineId = machineId;
-        payoutData.machineSerialNumber = machineSerialNumber;
-        payoutData.reason = reason;
+      payoutData.machineId = machineId;
+      payoutData.machineSerialNumber = machineSerialNumber;
+      payoutData.reason = reason;
     }
 
     const payout = await PayoutModel.create(payoutData);
 
     await VaultTransactionModel.create({
-        _id: transactionId,
-        locationId: shift.locationId,
-        timestamp: now,
-        type: 'payout',
-        from: { type: 'cashier', id: userId },
-        to: { type: 'external' }, // Customer
-        amount,
-        denominations: [], // No denomination tracking for payouts
-        payoutId,
-        cashierShiftId: shift._id,
-        performedBy: userId,
-        notes: type === 'hand_pay' ? `Payout (Hand Pay - ${machineSerialNumber})` : `Payout (Ticket Redemption - ${ticketNumber})`,
-        isVoid: false,
-        createdAt: now
+      _id: transactionId,
+      locationId: shift.locationId,
+      timestamp: now,
+      type: 'payout',
+      from: { type: 'cashier', id: userId },
+      to: { type: 'external' }, // Customer
+      amount,
+      denominations: [], // No denomination tracking for payouts
+      payoutId,
+      cashierShiftId: shift._id,
+      performedBy: userId,
+      notes: type === 'hand_pay' ? `Payout (Hand Pay - ${machineSerialNumber})` : `Payout (Ticket Redemption - ${ticketNumber})`,
+      isVoid: false,
+      createdAt: now
     });
 
     // STEP 5: Update Shift
@@ -168,13 +169,13 @@ export async function POST(request: NextRequest) {
     await shift.save();
 
     return NextResponse.json({
-        success: true,
-        payout: payout.toObject(),
-        newBalance: shift.currentBalance
+      success: true,
+      payout: payout.toObject(),
+      newBalance: shift.currentBalance
     }, { status: 201 });
 
-  } catch (error) {
-    console.error('Error processing payout:', error);
+  } catch (error: unknown) {
+    console.error('Error processing payout:', error instanceof Error ? error.message : error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
@@ -209,22 +210,23 @@ export async function GET(request: NextRequest) {
 
     // STEP 3: Build Query
     await connectDB();
-    const query: any = {};
-    
+    const query: Record<string, unknown> = {};
+
     // SECURITY: If not VM, can only see their own payouts
     if (!isVM) {
-        query.cashierId = userId;
+      query.cashierId = userId;
     } else {
-        const queryCashierId = searchParams.get('cashierId');
-        if (queryCashierId) query.cashierId = queryCashierId;
+      const queryCashierId = searchParams.get('cashierId');
+      if (queryCashierId) query.cashierId = queryCashierId;
     }
 
     if (cashierShiftId) query.cashierShiftId = cashierShiftId;
-    
+
     if (startDate || endDate) {
-      query.timestamp = {};
-      if (startDate) query.timestamp.$gte = new Date(startDate);
-      if (endDate) query.timestamp.$lte = new Date(endDate);
+      const timestampQuery: Record<string, Date> = {};
+      if (startDate) timestampQuery.$gte = new Date(startDate);
+      if (endDate) timestampQuery.$lte = new Date(endDate);
+      query.timestamp = timestampQuery;
     }
 
     // STEP 4: Fetch Payouts
@@ -236,18 +238,19 @@ export async function GET(request: NextRequest) {
     // Backward compatibility: Populate machineSerialNumber if missing
     const handPayPayouts = payouts.filter(p => p.type === 'hand_pay' && !p.machineSerialNumber && p.machineId);
     if (handPayPayouts.length > 0) {
-        const machineIds = [...new Set(handPayPayouts.map(p => p.machineId))];
-        const machines = await Machine.find({ _id: { $in: machineIds } }, { origSerialNumber: 1, 'custom.name': 1 }).lean();
-        const machineMap = machines.reduce((acc, m) => {
-            acc[String(m._id)] = (m as any)?.custom?.name || (m as any)?.origSerialNumber || String(m._id);
-            return acc;
-        }, {} as Record<string, string>);
+      const machineIds = [...new Set(handPayPayouts.map(p => p.machineId))];
+      interface MachineResult { _id: string; origSerialNumber?: string; custom?: { name?: string } }
+      const machines = await Machine.find({ _id: { $in: machineIds } }, { origSerialNumber: 1, 'custom.name': 1 }).lean() as unknown as MachineResult[];
+      const machineMap = machines.reduce((acc, m) => {
+        acc[String(m._id)] = m?.custom?.name || m?.origSerialNumber || String(m._id);
+        return acc;
+      }, {} as Record<string, string>);
 
-        payouts.forEach(p => {
-            if (p.type === 'hand_pay' && !p.machineSerialNumber && p.machineId) {
-                p.machineSerialNumber = machineMap[p.machineId] || p.machineId;
-            }
-        });
+      payouts.forEach(p => {
+        if (p.type === 'hand_pay' && !p.machineSerialNumber && p.machineId) {
+          p.machineSerialNumber = machineMap[p.machineId] || p.machineId;
+        }
+      });
     }
 
     return NextResponse.json({
@@ -255,8 +258,8 @@ export async function GET(request: NextRequest) {
       payouts
     });
 
-  } catch (error) {
-    console.error('Error fetching payouts:', error);
+  } catch (error: unknown) {
+    console.error('Error fetching payouts:', error instanceof Error ? error.message : error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

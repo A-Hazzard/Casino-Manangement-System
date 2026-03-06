@@ -121,7 +121,7 @@ export async function GET() {
       {
         _id: "c03b094083226f216b3fc39c",
         name: "Cabana",
-        country: "Guyana",
+        country: "175d649e49f7a95dc32e72fc",
         startDate: new Date("2025-06-01T14:31:00.000Z"),
         expiryDate: new Date("2025-07-01T03:18:00.000Z"),
         isPaid: true,

@@ -28,7 +28,7 @@ function LoginPageContent() {
 
   const {
     identifier, password, showPassword, rememberMe, errors, message, messageType,
-    loading, redirecting, authLoading, showPasswordUpdateModal, isCashierTempChange,
+    loading, redirecting, authLoading, showPasswordUpdateModal, isCashierTempChange, isForced,
     setIdentifier, setPassword, setShowPassword, setRememberMe, handleLogin,
     setShowPasswordUpdateModal,
     handlePasswordUpdate,
@@ -74,9 +74,10 @@ function LoginPageContent() {
         onClose={() => setShowPasswordUpdateModal(false)}
         onUpdate={handlePasswordUpdate}
         loading={loading}
-        isForced={isCashierTempChange}
+        isForced={isForced}
         isCashierTempChange={isCashierTempChange}
         onLogout={handleLogout}
+        initialPhone={hook.initialPhone}
       />
 
 

@@ -119,14 +119,14 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
             'sessionVersion roles permissions assignedLocations assignedLicensees isEnabled deletedAt'
           )
           .lean()) as {
-          sessionVersion?: number;
-          roles?: string[];
-          permissions?: string[];
-          assignedLocations?: string[];
-          assignedLicensees?: string[];
-          isEnabled?: boolean;
-          deletedAt?: Date | null;
-        } | null;
+            sessionVersion?: number;
+            roles?: string[];
+            permissions?: string[];
+            assignedLocations?: string[];
+            assignedLicensees?: string[];
+            isEnabled?: boolean;
+            deletedAt?: Date | null;
+          } | null;
 
         // If user doesn't exist in database (hard deleted), invalidate session
         if (!dbUser) {
@@ -325,8 +325,10 @@ export async function getUserByUsername(
   }
 }
 
-export async function getUserById(userId: string) {
-  return await UserModel.findOne({ _id: userId }, '-password').lean();
+export async function getUserById(
+  userId: string
+): Promise<LeanUserDocument | null> {
+  return (await UserModel.findOne({ _id: userId }, '-password').lean()) as LeanUserDocument | null;
 }
 
 /**
@@ -485,7 +487,7 @@ export async function createUser(
     if (isManager || isVaultManager) {
       finalAssignedLicensees = (requestingUser.assignedLicensees as string[]) || [];
       finalAssignedLocations = (requestingUser.assignedLocations as string[]) || [];
-      
+
       console.log(`[createUser] Auto-assigning licensees/locations for new user ${username} based on creator ${requestingUser._id}`);
     }
 
@@ -665,6 +667,25 @@ export async function updateUser(
     }
   }
 
+  // ENFORCEMENT: Only admins and developers can edit assigned locations and licensees
+  // This applies to both self-editing and editing others
+  const isAssignmentEditingAllowed = isDeveloper || isAdmin;
+
+  if (!isAssignmentEditingAllowed) {
+    if (updateFields.assignedLocations !== undefined || updateFields.assignedLicensees !== undefined) {
+      console.warn(`[updateUser] Unauthorized attempt by user ${requestingUser?._id} to edit assignments for user ${_id}`);
+
+      // Specifically for assignments, we silently remove them if unauthorized
+      // to allow other profile updates to proceed
+      delete updateFields.assignedLocations;
+      delete updateFields.assignedLicensees;
+
+      // Also block legacy fields
+      if (updateFields.rel !== undefined) delete updateFields.rel;
+      if (updateFields.resourcePermissions !== undefined) delete updateFields.resourcePermissions;
+    }
+  }
+
   // Validate role assignments if roles are being updated
   if (updateFields.roles !== undefined) {
     const ALLOWED_ROLES = [
@@ -740,37 +761,6 @@ export async function updateUser(
         throw new Error(
           'Vault Managers must be assigned to exactly one licensee and one location'
         );
-      }
-    }
-  }
-
-  // Prevent managers from changing licensee assignments
-  if (isManager) {
-    // Check new field
-    if (updateFields.assignedLicensees !== undefined) {
-      // Get original licensee assignments (use only new field)
-      let originalLicensees: string[] = [];
-      if (
-        Array.isArray(
-          (user as { assignedLicensees?: string[] })?.assignedLicensees
-        )
-      ) {
-        originalLicensees = (user as { assignedLicensees: string[] })
-          .assignedLicensees;
-      }
-      const newLicensees = Array.isArray(updateFields.assignedLicensees)
-        ? (updateFields.assignedLicensees as string[]).map(id => String(id))
-        : [];
-
-      // Check if licensee assignments changed
-      const originalNormalized = originalLicensees.map(id => String(id)).sort();
-      const newNormalized = newLicensees.sort();
-      const licenseeChanged =
-        originalNormalized.length !== newNormalized.length ||
-        !originalNormalized.every((id, idx) => id === newNormalized[idx]);
-
-      if (licenseeChanged) {
-        throw new Error('Managers cannot change licensee assignments');
       }
     }
   }
@@ -867,7 +857,7 @@ export async function updateUser(
 
     const contact =
       typeof profileUpdate.contact === 'object' &&
-      profileUpdate.contact !== null
+        profileUpdate.contact !== null
         ? (profileUpdate.contact as Record<string, unknown>)
         : undefined;
 
@@ -877,7 +867,7 @@ export async function updateUser(
           ? profileUpdate.phone
           : undefined) ||
         (typeof (profileUpdate as Record<string, unknown>).phoneNumber ===
-        'string'
+          'string'
           ? (profileUpdate as Record<string, unknown>).phoneNumber
           : undefined) ||
         (contact?.phone as string | undefined) ||
@@ -1079,7 +1069,7 @@ export async function updateUser(
       updateFields.password = await hashPassword(passwordObj.new);
       updateFields.passwordUpdatedAt = new Date();
       updateFields.previousPassword = oldPasswordHash;
-      
+
       // Update previousPasswords array
       const previousPasswords = [...(user.previousPasswords || [])];
       if (oldPasswordHash) {
@@ -1365,9 +1355,8 @@ export async function deleteUser(_id: string, request: NextRequest) {
 
       await logActivity({
         action: 'DELETE',
-        details: `Deleted user "${
-          deletedUser.username || deletedUser.emailAddress
-        }"`,
+        details: `Deleted user "${deletedUser.username || deletedUser.emailAddress
+          }"`,
         ipAddress: getClientIP(request) || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
         userId: currentUser._id as string,
@@ -1574,14 +1563,28 @@ function calculateUserChanges(
  * @param context - API logger context
  * @returns Promise<Response> - Formatted API response with deleted users
  */
+type UserItem = Record<string, unknown> & {
+  _id: string | unknown;
+  username?: string;
+  email?: string;
+  emailAddress?: string;
+  isEnabled?: boolean;
+  enabled?: boolean;
+  assignedLocations?: string[];
+  assignedLicensees?: string[];
+  profile?: Record<string, unknown>;
+  roles?: string[];
+  discrepancy?: number;
+};
+
 export async function handleDeletedUsersRequest(
-  currentUser: any,
+  currentUser: Record<string, unknown> | null,
   currentUserRoles: string[],
   currentUserLicensees: string[],
   currentUserLocationPermissions: string[],
   searchParams: URLSearchParams,
   startTime: number,
-  context: any
+  context: import('../../services/loggerService').LogContext
 ): Promise<Response> {
   const search = searchParams.get('search');
   const searchMode = searchParams.get('searchMode') || 'username';
@@ -1590,17 +1593,17 @@ export async function handleDeletedUsersRequest(
   // Fetch deleted users
   const users = await getDeletedUsers();
 
-  let result = users.map(user => ({
+  let result: UserItem[] = users.map(user => ({
     _id: user._id,
-    name: `${user.profile?.firstName ?? ''} ${user.profile?.lastName ?? ''}`.trim(),
+    name: `${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).firstName ?? '' : ''} ${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).lastName ?? '' : ''}`.trim(),
     username: user.username,
     email: user.emailAddress,
     enabled: user.isEnabled,
-    roles: user.roles,
-    profilePicture: user.profilePicture ?? null,
-    profile: user.profile,
-    assignedLocations: user.assignedLocations || undefined,
-    assignedLicensees: user.assignedLicensees || undefined,
+    roles: user.roles as string[],
+    profilePicture: (user.profilePicture as string) ?? null,
+    profile: user.profile as Record<string, unknown>,
+    assignedLocations: (user.assignedLocations as string[]) || undefined,
+    assignedLicensees: (user.assignedLicensees as string[]) || undefined,
     loginCount: user.loginCount,
     lastLoginAt: user.lastLoginAt,
     sessionVersion: user.sessionVersion,
@@ -1644,13 +1647,13 @@ export async function handleDeletedUsersRequest(
  * @returns Promise<Response> - Formatted API response with cashiers
  */
 export async function handleCashiersRequest(
-  currentUser: any,
+  currentUser: Record<string, unknown> | null,
   currentUserRoles: string[],
   currentUserLicensees: string[],
   currentUserLocationPermissions: string[],
   searchParams: URLSearchParams,
   startTime: number,
-  context: any
+  context: import('../../services/loggerService').LogContext
 ): Promise<Response> {
   const search = searchParams.get('search');
   const searchMode = searchParams.get('searchMode') || 'username';
@@ -1662,52 +1665,52 @@ export async function handleCashiersRequest(
   // Fetch all users and filter for cashiers
   const [users, allActiveShifts] = await Promise.all([
     getAllUsers(),
-    CashierShiftModel.find({ 
-      status: { $in: ['active', 'pending_review', 'pending_start'] } 
+    CashierShiftModel.find({
+      status: { $in: ['active', 'pending_review', 'pending_start'] }
     }).lean()
   ]);
 
   // Create a map of active shift data by cashier ID
-  const shiftMap = new Map<string, { status: string; balance: number; denominations: any[]; discrepancy: number }>();
-  allActiveShifts.forEach((shift: Record<string, any>) => {
+  const shiftMap = new Map<string, { status: string; balance: number; denominations: unknown[]; discrepancy: number }>();
+  allActiveShifts.forEach((shift: Record<string, unknown>) => {
     shiftMap.set(String(shift.cashierId), {
       status: String(shift.status),
-      balance: (shift.status === 'active' || shift.status === 'pending_review') 
-        ? (shift.currentBalance || shift.openingBalance || 0) 
-        : (shift.openingBalance || 0),
-      denominations: shift.lastSyncedDenominations ?? shift.openingDenominations ?? [],
-      discrepancy: shift.discrepancy || 0
+      balance: (shift.status === 'active' || shift.status === 'pending_review')
+        ? ((shift.currentBalance as number) || (shift.openingBalance as number) || 0)
+        : ((shift.openingBalance as number) || 0),
+      denominations: (shift.lastSyncedDenominations as unknown[]) ?? (shift.openingDenominations as unknown[]) ?? [],
+      discrepancy: (shift.discrepancy as number) || 0
     });
   });
 
-  let result = users
-    .filter((user: Record<string, any>) => {
+  let result: UserItem[] = users
+    .filter((user: Record<string, unknown>) => {
       const userRoles = Array.isArray(user.roles) ? user.roles : [];
       return userRoles.some(
         (userRole: unknown) =>
           typeof userRole === 'string' && userRole.toLowerCase() === 'cashier'
       );
     })
-    .map((user: Record<string, any>) => ({
+    .map((user: Record<string, unknown>) => ({
       _id: user._id,
-      name: `${user.profile?.firstName ?? ''} ${user.profile?.lastName ?? ''}`.trim(),
-      username: user.username,
-      emailAddress: user.emailAddress,
-      isEnabled: user.isEnabled,
+      name: `${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).firstName ?? '' : ''} ${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).lastName ?? '' : ''}`.trim(),
+      username: user.username as string,
+      emailAddress: user.emailAddress as string,
+      isEnabled: user.isEnabled as boolean,
       shiftStatus: (shiftMap.get(String(user._id))?.status || 'inactive') as 'active' | 'pending_review' | 'pending_start' | 'closed' | 'inactive',
       currentBalance: shiftMap.get(String(user._id))?.balance || 0,
       denominations: shiftMap.get(String(user._id))?.denominations || [],
       discrepancy: shiftMap.get(String(user._id))?.discrepancy || 0,
-      roles: user.roles,
-      profilePicture: user.profilePicture ?? null,
-      profile: user.profile,
-      assignedLocations: user.assignedLocations || undefined,
-      assignedLicensees: user.assignedLicensees || undefined,
-      loginCount: user.loginCount,
-      lastLoginAt: user.lastLoginAt,
-      sessionVersion: user.sessionVersion,
-      tempPassword: user.tempPassword,
-      tempPasswordChanged: user.tempPasswordChanged,
+      roles: user.roles as string[],
+      profilePicture: (user.profilePicture as string) ?? null,
+      profile: user.profile as Record<string, unknown>,
+      assignedLocations: (user.assignedLocations as string[]) || undefined,
+      assignedLicensees: (user.assignedLicensees as string[]) || undefined,
+      loginCount: user.loginCount as number,
+      lastLoginAt: user.lastLoginAt as Date,
+      sessionVersion: user.sessionVersion as number,
+      tempPassword: user.tempPassword as string,
+      tempPasswordChanged: user.tempPasswordChanged as boolean,
     }));
 
   // Apply role-based filtering
@@ -1720,7 +1723,7 @@ export async function handleCashiersRequest(
   );
 
   if (licensee && licensee !== 'all') {
-    result = result.filter((user: Record<string, any>) => {
+    result = result.filter((user: Record<string, unknown>) => {
       const userLicensees = Array.isArray(user.assignedLicensees)
         ? user.assignedLicensees
         : [];
@@ -1755,13 +1758,13 @@ export async function handleCashiersRequest(
  * @returns Promise<Response> - Formatted API response with all users
  */
 export async function handleAllUsersRequest(
-  currentUser: any,
+  currentUser: Record<string, unknown> | null,
   currentUserRoles: string[],
   currentUserLicensees: string[],
   currentUserLocationPermissions: string[],
   searchParams: URLSearchParams,
   startTime: number,
-  context: any
+  context: import('../../services/loggerService').LogContext
 ): Promise<Response> {
   const search = searchParams.get('search');
   const searchMode = searchParams.get('searchMode') || 'username';
@@ -1772,22 +1775,22 @@ export async function handleAllUsersRequest(
   // Fetch all users
   const users = await getAllUsers();
 
-  let result = users.map((user: Record<string, any>) => ({
+  let result: UserItem[] = users.map((user: Record<string, unknown>) => ({
     _id: user._id,
-    name: `${user.profile?.firstName ?? ''} ${user.profile?.lastName ?? ''}`.trim(),
-    username: user.username,
-    emailAddress: user.emailAddress,
-    isEnabled: user.isEnabled,
-    roles: user.roles,
-    profilePicture: user.profilePicture ?? null,
-    profile: user.profile,
-    assignedLocations: user.assignedLocations || undefined,
-    assignedLicensees: user.assignedLicensees || undefined,
-    loginCount: user.loginCount,
-    lastLoginAt: user.lastLoginAt,
-    sessionVersion: user.sessionVersion,
-    tempPassword: user.tempPassword,
-    tempPasswordChanged: user.tempPasswordChanged,
+    name: `${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).firstName ?? '' : ''} ${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).lastName ?? '' : ''}`.trim(),
+    username: user.username as string,
+    emailAddress: user.emailAddress as string,
+    isEnabled: user.isEnabled as boolean,
+    roles: user.roles as string[],
+    profilePicture: (user.profilePicture as string) ?? null,
+    profile: user.profile as Record<string, unknown>,
+    assignedLocations: (user.assignedLocations as string[]) || undefined,
+    assignedLicensees: (user.assignedLicensees as string[]) || undefined,
+    loginCount: user.loginCount as number,
+    lastLoginAt: user.lastLoginAt as Date,
+    sessionVersion: user.sessionVersion as number,
+    tempPassword: user.tempPassword as string,
+    tempPasswordChanged: user.tempPasswordChanged as boolean,
   }));
 
   // Apply role-based filtering
@@ -1802,18 +1805,18 @@ export async function handleAllUsersRequest(
   // Apply status filtering
   if (status !== 'all') {
     if (status === 'active') {
-      result = result.filter((user: Record<string, any>) => user.isEnabled === true);
+      result = result.filter((user: Record<string, unknown>) => user.isEnabled === true);
     } else if (status === 'disabled') {
-      result = result.filter((user: Record<string, any>) => user.isEnabled === false);
+      result = result.filter((user: Record<string, unknown>) => user.isEnabled === false);
     }
   }
 
   // Apply role filtering
   if (role && role !== 'all') {
-    result = result.filter((user: Record<string, any>) => {
+    result = result.filter((user: Record<string, unknown>) => {
       const userRoles = Array.isArray(user.roles) ? user.roles : [];
       return userRoles.some(
-        (userRole: any) =>
+        (userRole: unknown) =>
           typeof userRole === 'string' &&
           userRole.toLowerCase() === role.toLowerCase()
       );
@@ -1822,7 +1825,7 @@ export async function handleAllUsersRequest(
 
   // Apply licensee filtering
   if (licensee && licensee !== 'all') {
-    result = result.filter((user: Record<string, any>) => {
+    result = result.filter((user: UserItem) => {
       const userLicensees = Array.isArray(user.assignedLicensees)
         ? user.assignedLicensees
         : [];
@@ -1849,12 +1852,12 @@ export async function handleAllUsersRequest(
  * @returns Filtered array of users based on role-based access control
  */
 function applyRoleBasedFiltering(
-  users: any[],
-  currentUser: any,
+  users: UserItem[],
+  currentUser: Record<string, unknown> | null,
   currentUserRoles: string[],
   currentUserLicensees: string[],
   currentUserLocationPermissions: string[]
-): any[] {
+): UserItem[] {
   const isAdmin =
     currentUserRoles.includes('admin') ||
     currentUserRoles.includes('developer');
@@ -1886,9 +1889,7 @@ function applyRoleBasedFiltering(
       );
 
       result = result.filter(user => {
-        const userId = user._id?.toString
-          ? user._id.toString()
-          : String(user._id);
+        const userId = String(user._id || '');
         const isCurrentUser = currentUserId && userId === currentUserId;
 
         if (isCurrentUser) {
@@ -1896,21 +1897,15 @@ function applyRoleBasedFiltering(
         }
 
         let userLocationPermissionsRaw: unknown[] = [];
-        const userWithNewFields = user as { assignedLocations?: string[] };
         if (
-          Array.isArray(userWithNewFields.assignedLocations) &&
-          userWithNewFields.assignedLocations.length > 0
+          Array.isArray(user.assignedLocations) &&
+          user.assignedLocations.length > 0
         ) {
-          userLocationPermissionsRaw = userWithNewFields.assignedLocations;
+          userLocationPermissionsRaw = user.assignedLocations;
         }
 
         const userLocationPermissions = userLocationPermissionsRaw
-          .map(id => {
-            if (id && typeof id === 'object' && 'toString' in id) {
-              return (id as { toString: () => string }).toString().trim();
-            }
-            return String(id).trim();
-          })
+          .map(id => String(id).trim())
           .filter(id => id.length > 0);
 
         if (userLocationPermissions.length === 0) {
@@ -1928,9 +1923,7 @@ function applyRoleBasedFiltering(
   const currentUserId = currentUser?._id ? String(currentUser._id) : null;
   if (currentUserId) {
     result = result.filter(user => {
-      const userId = user._id?.toString
-        ? user._id.toString()
-        : String(user._id);
+      const userId = String(user._id || '');
       return userId !== currentUserId;
     });
   }
@@ -1947,16 +1940,16 @@ function applyRoleBasedFiltering(
  * @returns Filtered array of users matching search criteria
  */
 function applySearchFilter(
-  users: any[],
+  users: UserItem[],
   search: string,
   searchMode: string
-): any[] {
+): UserItem[] {
   const lowerSearchValue = search.toLowerCase().trim();
 
   return users.filter(user => {
     if (searchMode === 'all') {
       const username = (user.username || '').toLowerCase();
-      const email = (user.email || '').toLowerCase();
+      const email = (user.email || user.emailAddress || '').toLowerCase();
       const userId = String(user._id || '').toLowerCase();
       return (
         username.includes(lowerSearchValue) ||
@@ -1967,7 +1960,7 @@ function applySearchFilter(
       const username = user.username || '';
       return username.toLowerCase().includes(lowerSearchValue);
     } else if (searchMode === 'email') {
-      const email = user.email || '';
+      const email = user.email || user.emailAddress || '';
       return email.toLowerCase().includes(lowerSearchValue);
     } else if (searchMode === '_id') {
       const userId = String(user._id || '').toLowerCase();
@@ -1987,10 +1980,10 @@ function applySearchFilter(
  * @returns Formatted Response object with paginated data
  */
 function paginateAndRespond(
-  users: any[],
+  users: UserItem[],
   searchParams: URLSearchParams,
   startTime: number,
-  context: any
+  context: import('../../services/loggerService').LogContext
 ): Response {
   const page = parseInt(searchParams.get('page') || '1');
   const requestedLimit = parseInt(searchParams.get('limit') || '50');

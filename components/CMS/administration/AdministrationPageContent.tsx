@@ -23,6 +23,7 @@ import { useAdministrationUsers } from '@/lib/hooks/administration/useAdministra
 import { useAdministrationNavigation } from '@/lib/hooks/navigation';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
+import type { SortKey } from '@/lib/types/administration';
 import { hasTabAccess, UserRole } from '@/lib/utils/permissions';
 import { PlusCircle, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
@@ -231,7 +232,7 @@ export default function AdministrationPageContent() {
         handleSaveUser={usersHook.handleSaveUser}
         handleDeleteUserConfirm={usersHook.handleDeleteUserConfirm}
         closeAddUserModal={usersHook.closeAddUserModal}
-        requestSort={(key: string) => usersHook.requestSort(key as never)}
+        requestSort={(key: SortKey) => usersHook.requestSort(key)}
         refreshUsers={usersHook.refreshUsers}
       />
     );

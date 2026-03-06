@@ -1,15 +1,15 @@
 import {
-    containsEmailPattern,
-    containsPhonePattern,
-    isPlaceholderEmail,
-    normalizePhoneNumber,
-    validateEmail,
-    validateNameField,
-    validateOptionalGender,
-    validatePasswordStrength,
-    validatePhoneNumber,
-    validateProfileField,
-    validateUsername
+  containsEmailPattern,
+  containsPhonePattern,
+  isPlaceholderEmail,
+  normalizePhoneNumber,
+  validateEmail,
+  validateNameField,
+  validateOptionalGender,
+  validatePasswordStrength,
+  validatePhoneNumber,
+  validateProfileField,
+  validateUsername
 } from '@/lib/utils/validation';
 
 type NullableString = string | undefined | null;
@@ -44,7 +44,7 @@ export type ProfileValidationResult = {
   passwordConfirmedStrong?: boolean;
 };
 
-type ProfileLike = {
+export type ProfileLike = {
   username?: NullableString;
   emailAddress?: NullableString;
   roles?: string[] | unknown[];
@@ -65,6 +65,7 @@ type ProfileLike = {
   passwordUpdatedAt?: Date | string | null;
   tempPasswordChanged?: boolean;
   tempPassword?: string | null;
+  requiresPasswordUpdate?: boolean;
 };
 
 function normalizeNullable(value: NullableString): string {
@@ -95,20 +96,13 @@ export function getInvalidProfileFields(
   user: ProfileLike,
   options: ValidationOptions = {}
 ): ProfileValidationResult {
-  // Skip validation for admins and developers
+  // We determine if the user is an admin or developer to potentially skip some validations
   const userRoles = Array.isArray(user.roles) ? user.roles : [];
   const isAdminOrDeveloper = userRoles.some(
     role =>
       typeof role === 'string' &&
       (role.toLowerCase() === 'admin' || role.toLowerCase() === 'developer')
   );
-
-  if (isAdminOrDeveloper) {
-    return {
-      invalidFields: {},
-      reasons: {},
-    };
-  }
 
   const username = normalizeNullable(user.username);
   const firstName = normalizeNullable(user.profile?.firstName);
@@ -129,8 +123,8 @@ export function getInvalidProfileFields(
     !validateUsername(username) ||
     Boolean(
       emailAddress &&
-        username &&
-        username.toLowerCase() === emailAddress.toLowerCase()
+      username &&
+      username.toLowerCase() === emailAddress.toLowerCase()
     )
   ) {
     invalidFields.username = true;
@@ -218,8 +212,8 @@ export function getInvalidProfileFields(
     !validateEmail(emailAddress) ||
     Boolean(
       username &&
-        username.length > 0 &&
-        emailAddress.toLowerCase() === username.toLowerCase()
+      username.length > 0 &&
+      emailAddress.toLowerCase() === username.toLowerCase()
     ) ||
     containsPhonePattern(emailAddress) ||
     isPlaceholderEmail(emailAddress)
@@ -253,7 +247,7 @@ export function getInvalidProfileFields(
   ) {
     invalidFields.phone = true;
     if (!phone) {
-      reasons.phone = 'Phone number is required.';
+      reasons.phone = 'Phone number is required for account security.';
     } else if (!validatePhoneNumber(phone)) {
       reasons.phone =
         'Provide a valid phone number (digits, spaces, parentheses, hyphen, optional leading +).';
@@ -275,8 +269,8 @@ export function getInvalidProfileFields(
     ? validatePasswordStrength(options.rawPassword)
     : null;
 
-  // Only ask for password change in profile completion if tempPassword is null
-  if (user.tempPassword === null && (!user.passwordUpdatedAt || user.tempPasswordChanged === false)) {
+  // Only ask for password change in profile completion if tempPassword is null or empty
+  if (!user.tempPassword && (!user.passwordUpdatedAt || user.tempPasswordChanged === false)) {
     if (passwordValidation && passwordValidation.isValid) {
       // Treat as valid if we can confirm current password meets strength rules
       // No action needed, but note for caller
@@ -294,11 +288,34 @@ export function getInvalidProfileFields(
             ? passwordValidation.feedback.join(', ')
             : 'Password must be updated to meet current strength requirements.';
     }
-  } else if (passwordValidation && !passwordValidation.isValid) {
-    invalidFields.password = true;
-    reasons.password = passwordValidation.feedback.join(', ');
   } else if (passwordValidation?.isValid) {
     return { invalidFields, reasons, passwordConfirmedStrong: true };
+  } else if (passwordValidation && !passwordValidation.isValid) {
+    // This case handles existing users logging in with a password that no longer meets strength rules
+    invalidFields.password = true;
+    reasons.password = passwordValidation.feedback.join(', ');
+  } else if (user.requiresPasswordUpdate === true && !invalidFields.password) {
+    // This case handles persistent password update requirements even if plain text password isn't available
+    invalidFields.password = true;
+    reasons.password =
+      'A security update is required for your account password.';
+  }
+
+  // For admins and developers, we only enforce the password update requirement.
+  // Other profile fields are exempt to avoid blocking internal accounts with incomplete data.
+  if (isAdminOrDeveloper) {
+    const onlyPasswordInvalid: InvalidProfileFields = {};
+    const onlyPasswordReasons: ProfileValidationReasons = {};
+
+    if (invalidFields.password) {
+      onlyPasswordInvalid.password = true;
+      onlyPasswordReasons.password = reasons.password;
+    }
+
+    return {
+      invalidFields: onlyPasswordInvalid,
+      reasons: onlyPasswordReasons,
+    };
   }
 
   return { invalidFields, reasons };

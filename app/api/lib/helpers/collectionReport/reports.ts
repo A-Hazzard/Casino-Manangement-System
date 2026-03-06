@@ -140,10 +140,17 @@ export async function buildCollectionReportsLocationFilter(
 
     const managerLocations = await GamingLocations.find(
       {
-        'rel.licensee': { $in: licensees },
         $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2025-01-01') } },
+          { 'rel.licensee': { $in: licensees } },
+          { 'rel.licencee': { $in: licensees } },
+        ],
+        $and: [
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ]
+          },
         ],
       },
       { _id: 1 }

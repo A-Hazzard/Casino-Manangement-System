@@ -40,6 +40,30 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+// Type for data passed to handleModalConfirm
+type ModalFormData = {
+  // Expense fields
+  category?: string;
+  amount?: number;
+  description?: string;
+  date?: Date | string;
+  denominations?: Denomination[];
+  bankDetails?: Record<string, string>;
+  expenseDetails?: Record<string, unknown>;
+  file?: File;
+  // Add Cash / Remove Cash fields
+  totalAmount?: number;
+  source?: string;
+  notes?: string;
+  // Initialise / reconcile / close
+  openingBalance?: number;
+  vaultShiftId?: string;
+  reason?: string;
+  comment?: string;
+  newBalance?: number;
+  [key: string]: unknown;
+};
+
 // Sections
 import VaultOverviewAdvancedDashboard from './sections/VaultOverviewAdvancedDashboard';
 import VaultOverviewFloatRequestsPanel from './sections/VaultOverviewFloatRequestsPanel';
@@ -325,12 +349,12 @@ export default function VaultOverviewPageContent() {
    * Generic Modal Confirm Handlers
    */
   const handleResolveShift = handleShiftResolveConfirm;
-  const handleModalConfirm = async (type: string, data?: any) => {
+  const handleModalConfirm = async (type: string, data?: ModalFormData) => {
     let endpoint = '';
     const method = 'POST';
 
     // Base request body
-    const requestPayload: any = {
+    const requestPayload: Record<string, unknown> = {
       ...(data || {}),
       locationId: user?.assignedLocations?.[0]
     };
@@ -366,30 +390,31 @@ export default function VaultOverviewPageContent() {
       const isExpense = type === 'recordExpense';
       const isCashMovement = type === 'addCash' || type === 'removeCash';
       
-      let requestBody: any;
+      let requestBody: FormData | string;
       const headers: Record<string, string> = {};
 
       if (isExpense) {
         const fd = new FormData();
-        fd.append('category', data.category);
-        fd.append('amount', data.amount.toString());
-        fd.append('description', data.description || '');
-        fd.append('date', data.date instanceof Date ? data.date.toISOString() : data.date);
-        fd.append('denominations', JSON.stringify(data.denominations));
+        fd.append('category', String(data?.category || ''));
+        fd.append('amount', String(data?.amount ?? ''));
+        fd.append('description', String(data?.description || ''));
+        const dateVal = data?.date;
+        fd.append('date', dateVal instanceof Date ? dateVal.toISOString() : String(dateVal || ''));
+        fd.append('denominations', JSON.stringify(data?.denominations || []));
         
         // New Expense Fields
-        if (data.bankDetails) fd.append('bankDetails', JSON.stringify(data.bankDetails));
-        if (data.expenseDetails) fd.append('expenseDetails', JSON.stringify(data.expenseDetails));
+        if (data?.bankDetails) fd.append('bankDetails', JSON.stringify(data.bankDetails));
+        if (data?.expenseDetails) fd.append('expenseDetails', JSON.stringify(data.expenseDetails));
 
         fd.append('locationId', user?.assignedLocations?.[0] || '');
-        if (data.file) fd.append('file', data.file);
+        if (data?.file) fd.append('file', data.file);
         requestBody = fd;
         // browser sets content-type for FormData
       } else {
         headers['Content-Type'] = 'application/json';
         
         if (isCashMovement) {
-          const { denominations, totalAmount, ...rest } = data;
+          const { denominations, totalAmount, ...rest } = data || {};
           requestBody = JSON.stringify({
             ...rest,
             amount: totalAmount,

@@ -66,7 +66,7 @@ type VaultOverviewRecordExpenseModalProps = {
     date: Date;
     file?: File;
     bankDetails?: Record<string, string>;
-    expenseDetails?: Record<string, any>;
+    expenseDetails?: Record<string, unknown>;
   }) => Promise<void>;
 };
 
@@ -143,15 +143,24 @@ export default function VaultOverviewRecordExpenseModal({
             },
           });
           const fetchedMachines = response.data.data || [];
+          interface APIMachine {
+            machineId?: string;
+            _id?: string;
+            serialNumber?: string;
+            customName?: string;
+            custom?: { name: string };
+            gameTitle?: string;
+            game?: string;
+          }
           setMachines(
-            fetchedMachines.map((m: any) => ({
-              id: m.machineId || m._id || m.serialNumber,
-              label: m.serialNumber || m.customName || m.custom?.name || 'N/A', // fallback text label for dropdown search filter
-              displayNode: formatMachineDisplayNameWithBold({
-                  ...m,
-                  game: m.gameTitle === '(game name not provided)' ? '' : (m.gameTitle || m.game),
-                  custom: m.custom || { name: m.customName }
-              })
+            fetchedMachines.map((m: APIMachine) => ({
+               id: m.machineId || m._id || m.serialNumber || '',
+               label: m.serialNumber || m.customName || m.custom?.name || 'N/A', // fallback text label for dropdown search filter
+               displayNode: formatMachineDisplayNameWithBold({
+                   ...m,
+                   game: m.gameTitle === '(game name not provided)' ? '' : (m.gameTitle || m.game),
+                   custom: m.custom || (m.customName ? { name: m.customName } : undefined)
+               })
             }))
           );
         } catch (error) {

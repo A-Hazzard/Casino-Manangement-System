@@ -18,19 +18,20 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
-import { formatAmount } from '@/lib/helpers/rates';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
+import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 type VerificationDetails = {
   metricName: string;
@@ -718,7 +719,8 @@ export default function ReportsMachinesEvaluationSummary({
   winDetails,
   gamesPlayedDetails,
 }: ReportsMachinesEvaluationSummaryProps) {
-  const formatCurrency = (value: number) => formatAmount(value);
+  const { displayCurrency } = useCurrencyFormat();
+  const formatCurrency = (value: number) => formatCurrencyWithCodeString(value, displayCurrency);
   const formatNumber = (value: number) => value.toLocaleString();
 
   return (

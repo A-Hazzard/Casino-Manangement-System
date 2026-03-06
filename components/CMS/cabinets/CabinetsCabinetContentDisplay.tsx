@@ -51,6 +51,7 @@ type CabinetsCabinetContentDisplayProps = {
   onRetry: () => void;
   transformCabinet: (cabinet: Machine) => Machine;
   selectedLicensee?: string;
+  totalCount?: number;
   /**
    * When false, disable header click sorting in the table.
    * Useful for pages that provide separate sort controls.
@@ -80,6 +81,7 @@ export const CabinetsCabinetContentDisplay = ({
   selectedLicensee = 'all',
   enableHeaderSorting = true,
   showSortIcons = true,
+  totalCount,
 }: CabinetsCabinetContentDisplayProps) => {
   const tableRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
@@ -112,20 +114,24 @@ export const CabinetsCabinetContentDisplay = ({
   /**
    * Determines if the user can delete machines.
    * Only managers, admins, developers, and location admins can delete.
-   * Technicians and collectors cannot delete.
+   * Only collectors cannot delete.
    */
   const canDeleteMachines = useMemo(() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles || [];
-    // Collectors and technicians cannot delete machines
-    if (userRoles.includes('collector') || userRoles.includes('technician')) {
+    // Collectors cannot delete machines
+    if (userRoles.includes('collector')) {
       return false;
     }
-    // Only managers, admins, developers, and location admins can delete
-    return ['developer', 'admin', 'manager', 'location admin'].some(role =>
+    // Admins, developers, managers, location admins, and technicians can delete
+    return ['developer', 'admin', 'manager', 'location admin', 'technician'].some(role =>
       userRoles.includes(role)
     );
   }, [user]);
+
+  const shouldHideFinancials = useMemo(() => {
+    return false;
+  }, []);
 
   const [licenseeNames, setLicenseeNames] = useState<string[]>([]);
 
@@ -200,6 +206,26 @@ export const CabinetsCabinetContentDisplay = ({
     }
   };
 
+  // Use a small delay for the "No Data" message to prevent flashing during fast transitions
+  // Hooks must be called unconditionally before any early returns.
+  const [showNoDataState, setShowNoDataState] = useState(false);
+  const shouldShowSkeleton = initialLoading || loading;
+
+  useEffect(() => {
+    // If we're loading or have machines, don't show the "No Data" state
+    if (shouldShowSkeleton || filteredCabinets.length > 0) {
+      setShowNoDataState(false);
+      return;
+    }
+
+    // Delay showing the "No Data Available" message to bridge micro-transient states
+    const timer = setTimeout(() => {
+      setShowNoDataState(true);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [shouldShowSkeleton, filteredCabinets.length]);
+
   if (error) {
     return (
       <NetworkError
@@ -211,14 +237,6 @@ export const CabinetsCabinetContentDisplay = ({
       />
     );
   }
-
-  // Show skeleton while loading (initial load or subsequent loads)
-  // Show skeleton while loading (initial load or subsequent loads)
-  // CRITICAL: When loading is true, ALWAYS show skeleton, regardless of data array state
-  const shouldShowSkeleton = initialLoading || loading;
-  
-  // Only show "No Data" when we are definitively NOT loading and data is empty
-  const shouldShowNoData = !shouldShowSkeleton && filteredCabinets.length === 0;
 
   if (shouldShowSkeleton) {
     return (
@@ -240,9 +258,9 @@ export const CabinetsCabinetContentDisplay = ({
     );
   }
 
-  // Only show "No Data Available" when NOT loading and data is empty
-  if (shouldShowNoData) {
-    console.warn('[CABINET DISPLAY] No data to display', {
+  // Only show "No Data Available" when NOT loading, NO data, AND the delay has passed
+  if (showNoDataState && filteredCabinets.length === 0) {
+    console.warn('[CABINET DISPLAY] Displaying No Data message', {
       filteredCabinetsLength: filteredCabinets.length,
       allCabinetsLength: allCabinets.length,
       loading,
@@ -276,10 +294,11 @@ export const CabinetsCabinetContentDisplay = ({
     return (
       <div className="mt-6">
         <NoDataMessage message={emptyMessage} />
-        {allCabinets.length === 0 && (
+        {/* Only show retry if there was an actual error or if data is truly missing after load */}
+        {(error || allCabinets.length === 0) && (
           <div className="mt-4 text-center">
             <Button onClick={onRetry} variant="outline">
-              Retry Loading
+              {error ? 'Retry Loading' : 'Refresh Data'}
             </Button>
           </div>
         )}
@@ -302,6 +321,7 @@ export const CabinetsCabinetContentDisplay = ({
           canDeleteMachines={canDeleteMachines}
           enableHeaderSorting={enableHeaderSorting}
           showSortIcons={showSortIcons}
+          hideFinancials={shouldHideFinancials}
         />
       </div>
 
@@ -338,6 +358,7 @@ export const CabinetsCabinetContentDisplay = ({
                 onDelete={() => handleDelete(machine)}
                 canEditMachines={canEditMachines}
                 canDeleteMachines={canDeleteMachines}
+                hideFinancials={shouldHideFinancials}
               />
             ))}
           </ClientOnly>
@@ -346,11 +367,16 @@ export const CabinetsCabinetContentDisplay = ({
 
       {/* Pagination */}
       {!loading && paginatedCabinets.length > 0 && totalPages > 1 && (
-        <PaginationControls
-          currentPage={currentPage}
-          totalPages={totalPages}
-          setCurrentPage={onPageChange}
-        />
+        <div className="mb-8 mt-8 flex w-full justify-center">
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            limit={10}
+            showTotalCount={false}
+            setCurrentPage={onPageChange}
+          />
+        </div>
       )}
     </>
   );

@@ -1,38 +1,50 @@
 import { Button } from '@/components/shared/ui/button';
+import Chip from '@/components/shared/ui/common/Chip';
+import MultiSelectDropdown from '@/components/shared/ui/common/MultiSelectDropdown';
+import SearchableSelect from '@/components/shared/ui/common/SearchableSelect';
 import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
-import { Input } from '@/components/shared/ui/input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { updateMovementRequest } from '@/lib/helpers/movementRequests';
 import { useMovementRequestActionsStore } from '@/lib/store/movementRequestActionsStore';
+import { useUserStore } from '@/lib/store/userStore';
 import { MovementRequest } from '@/lib/types/movement';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
-import { Cross2Icon } from '@radix-ui/react-icons';
 import axios from 'axios';
+import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-export default function EditMovementRequestModal({
-  onSaved,
-}: {
-  onSaved: () => void;
-}) {
+// === Disabled field hint banner ===
+function DisabledHint({ message }: { message: string }) {
+  return (
+    <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+      <span>⚠</span> {message}
+    </p>
+  );
+}
+
+export default function EditMovementRequestModal({ onSaved }: { onSaved: () => void }) {
   const { isEditModalOpen, selectedMovementRequest, closeEditModal } =
     useMovementRequestActionsStore();
+  const { user: currentUser } = useUserStore();
+  const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
+  const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role));
+  const userEmail = currentUser?.emailAddress;
 
   // Form state
   const [formData, setFormData] = useState<MovementRequest | null>(null);
@@ -40,32 +52,20 @@ export default function EditMovementRequestModal({
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   // Data state
-  const [locations, setLocations] = useState<{ id: string; name: string }[]>(
-    []
-  );
-  const [users, setUsers] = useState<
-    { _id: string; name: string; email: string }[]
-  >([]);
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+  const [users, setUsers] = useState<{ _id: string; name: string; emailAddress: string; roles: string[]; assignedLocations: string[] }[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [cabinets, setCabinets] = useState<Cabinet[]>([]);
-  const [cabinetSearch, setCabinetSearch] = useState('');
-  const [availableCabinets, setAvailableCabinets] = useState<Cabinet[]>([]);
-  const [selectedCabinets, setSelectedCabinets] = useState<Cabinet[]>([]);
-  const [cabinetDropdownOpen, setCabinetDropdownOpen] = useState(false);
   const [loadingCabinets, setLoadingCabinets] = useState(false);
+  const [selectedCabinets, setSelectedCabinets] = useState<Cabinet[]>([]);
 
-  // Load initial data
+  // Load initial data when modal opens
   useEffect(() => {
     if (isEditModalOpen && selectedMovementRequest) {
-      console.log('🔍 [EDIT MODAL] selectedMovementRequest:', selectedMovementRequest);
-      console.log('🔍 [EDIT MODAL] locationFrom:', selectedMovementRequest.locationFrom);
-      console.log('🔍 [EDIT MODAL] locationTo:', selectedMovementRequest.locationTo);
       setFormData(selectedMovementRequest);
 
-      // Parse cabinetIn string back to cabinet objects
       if (selectedMovementRequest.cabinetIn) {
         const cabinetIds = selectedMovementRequest.cabinetIn.split(',');
-        // We'll need to fetch the actual cabinet objects
-        // For now, create placeholder objects
         const placeholderCabinets = cabinetIds.map(id => ({
           _id: id,
           serialNumber: id,
@@ -80,126 +80,71 @@ export default function EditMovementRequestModal({
 
   // Fetch locations
   useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const locationsData = await fetchAllGamingLocations();
-        console.log('🔍 [EDIT MODAL] Loaded locations:', locationsData.length);
-        console.log('🔍 [EDIT MODAL] First 5 locations:', locationsData.slice(0, 5).map(l => ({ id: l.id, name: l.name })));
-        setLocations(locationsData);
-      } catch (error) {
-        console.error('Failed to fetch locations:', error);
-      }
-    };
-    fetchLocations();
+    fetchAllGamingLocations()
+      .then(setLocations)
+      .catch(error => console.error('Failed to fetch locations:', error));
   }, []);
 
   // Fetch users
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await axios.get('/api/users');
-        if (response.data.users) {
-          setUsers(response.data.users);
+    if (isEditModalOpen) {
+      setLoadingUsers(true);
+      axios
+        .get('/api/users')
+        .then(response => { if (response.data.users) setUsers(response.data.users); })
+        .catch(error => console.error('Failed to fetch users:', error))
+        .finally(() => setLoadingUsers(false));
+    }
+  }, [isEditModalOpen]);
+
+  // Resolve user IDs if they are currently email addresses (for legacy data)
+  useEffect(() => {
+    if (formData?.requestTo && users.length > 0) {
+      // If requestTo looks like an email and we can find the user ID
+      if (formData.requestTo.includes('@')) {
+        const foundUser = users.find(u => u.emailAddress === formData.requestTo);
+        if (foundUser) {
+          setFormData(prev => prev ? { ...prev, requestTo: foundUser._id } : null);
         }
-      } catch (error) {
-        console.error('Failed to fetch users:', error);
       }
-    };
-    fetchUsers();
-  }, []);
+    }
+  }, [users, formData?.requestTo]);
 
   // Fetch cabinets when location changes
   useEffect(() => {
     if (formData?.locationFrom) {
-      // Find the location ID from the location name
       const location = locations.find(
-        loc => loc.name === formData.locationFrom
+        loc => loc.name === formData.locationFrom || loc.id === formData.locationFrom
       );
       if (location) {
-        const fetchCabinets = async () => {
-          setLoadingCabinets(true);
-          try {
-            const result = await fetchCabinetsForLocation(
-              location.id,
-              undefined,
-              'All'
-            );
+        setLoadingCabinets(true);
+        fetchCabinetsForLocation(location.id, undefined, 'All')
+          .then(result => {
             setCabinets(result.data);
-            setAvailableCabinets(result.data);
-          } catch (error) {
+          })
+          .catch(error => {
             console.error('Failed to fetch cabinets:', error);
             setCabinets([]);
-            setAvailableCabinets([]);
-          } finally {
-            setLoadingCabinets(false);
-          }
-        };
-        fetchCabinets();
+          })
+          .finally(() => setLoadingCabinets(false));
       }
     } else {
       setCabinets([]);
-      setAvailableCabinets([]);
     }
   }, [formData?.locationFrom, locations]);
-
-  // Filter cabinets based on search
-  useEffect(() => {
-    if (cabinetSearch.trim()) {
-      const filtered = cabinets.filter(
-        cab =>
-          !selectedCabinets.find(sc => sc._id === cab._id) &&
-          (cab.serialNumber
-            ?.toLowerCase()
-            .includes(cabinetSearch.toLowerCase()) ||
-            cab.assetNumber
-              ?.toLowerCase()
-              .includes(cabinetSearch.toLowerCase()) ||
-            cab.relayId?.toLowerCase().includes(cabinetSearch.toLowerCase()) ||
-            cab.smbId?.toLowerCase().includes(cabinetSearch.toLowerCase()) ||
-            cab.smibBoard
-              ?.toLowerCase()
-              .includes(cabinetSearch.toLowerCase()) ||
-            cab.installedGame
-              ?.toLowerCase()
-              .includes(cabinetSearch.toLowerCase()) ||
-            cab.game?.toLowerCase().includes(cabinetSearch.toLowerCase()))
-      );
-      setAvailableCabinets(filtered);
-    } else {
-      // Show all cabinets except already selected ones
-      setAvailableCabinets(
-        cabinets.filter(cab => !selectedCabinets.find(sc => sc._id === cab._id))
-      );
-    }
-  }, [cabinetSearch, cabinets, selectedCabinets]);
-
-  // Handle clicks outside cabinet dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest('.cabinet-dropdown-container')) {
-        setCabinetDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   if (!isEditModalOpen || !formData) return null;
 
   const validate = () => {
     const errs: { [key: string]: string } = {};
-
-    if (!formData.movementType) errs.movementType = 'Movement type is required';
-    if (!formData.locationFrom)
-      errs.locationFrom = 'Source location is required';
-    if (!formData.locationTo)
-      errs.locationTo = 'Destination location is required';
-    if (!formData.requestTo) errs.requestTo = 'Request recipient is required';
-    if (!selectedCabinets.length)
-      errs.selectedCabinets = `${formData.movementType} selection is required`;
-
+    if (!formData.movementType) errs.movementType = 'Movement type is required.';
+    if (!formData.locationFrom) errs.locationFrom = 'From location is required.';
+    if (!selectedCabinets.length) errs.selectedCabinets = 'Select at least one ' + (formData.movementType?.toLowerCase() || 'item') + '.';
+    if (!formData.locationTo) errs.locationTo = 'Destination location is required.';
+    const toLocId = locations.find(l => l.name === formData.locationTo || l.id === formData.locationTo)?.id;
+    const fromLocId = locations.find(l => l.name === formData.locationFrom || l.id === formData.locationFrom)?.id;
+    if (toLocId && toLocId === fromLocId) errs.locationTo = 'Destination must be different from source.';
+    if (!formData.requestTo) errs.requestTo = 'Recipient user is required.';
     return errs;
   };
 
@@ -213,13 +158,10 @@ export default function EditMovementRequestModal({
       const updatedData = {
         ...formData,
         cabinetIn: selectedCabinets
-          .map(
-            cab => cab.serialNumber || cab.assetNumber || cab.relayId || cab._id
-          )
+          .map(cab => cab.serialNumber || cab.assetNumber || cab.relayId || cab._id)
           .join(','),
         updatedAt: new Date(),
       };
-
       await updateMovementRequest(updatedData);
       onSaved();
       closeEditModal();
@@ -231,349 +173,358 @@ export default function EditMovementRequestModal({
     }
   };
 
-  const addCabinet = (cabinet: Cabinet) => {
-    if (!selectedCabinets.find(cab => cab._id === cabinet._id)) {
-      setSelectedCabinets([...selectedCabinets, cabinet]);
-    }
-    setCabinetSearch('');
-    setCabinetDropdownOpen(false);
-  };
+  // Derive SearchableSelect options
+  const locationOptions = locations
+    .filter(loc => {
+      if (isAdminOrDev) return true;
+      return currentUser?.assignedLocations?.includes(loc.id) || currentUser?.assignedLocations?.includes(loc.name);
+    })
+    .map(loc => ({ label: loc.name, value: loc.name }));
+    
+  // Ensure the current selection exists in options so it doesn't appear blank
+  if (formData.locationFrom && !locationOptions.some(opt => opt.value === formData.locationFrom)) {
+    locationOptions.push({ label: formData.locationFrom, value: formData.locationFrom });
+  }
 
-  const removeCabinet = (cabinetId: string) => {
-    setSelectedCabinets(selectedCabinets.filter(cab => cab._id !== cabinetId));
-  };
+  const toLocationOptions = locationOptions.filter(loc => loc.value !== formData.locationFrom);
+
+  // Resolve the current from-location value for SearchableSelect
+  const fromLocationValue =
+    locations.find(l => l.name === formData.locationFrom || l.id === formData.locationFrom)?.name ||
+    formData.locationFrom ||
+    '';
+
+  // Filter users based on destination location assignment
+  const destinationLocationId = locations.find(l => l.name === formData.locationTo || l.id === formData.locationTo)?.id;
+  
+  const filteredUsers = users.filter(user => {
+    if (!user.emailAddress || user.emailAddress.trim() === '') return false;
+    if (!destinationLocationId) return false;
+    
+    const roleLower = user.roles?.map(r => r.toLowerCase()) || [];
+    const hasRole = roleLower.includes('location admin') || roleLower.includes('technician');
+    const hasLocation = user.assignedLocations?.includes(destinationLocationId);
+    
+    return hasRole && hasLocation;
+  });
+
+  // Ensure current recipient is always included so their name displays correctly
+  const currentRecipient = users.find(u => u._id === formData.requestTo);
+  if (currentRecipient && !filteredUsers.some(u => u._id === currentRecipient._id)) {
+    filteredUsers.push(currentRecipient);
+  } else if (!currentRecipient && formData.requestTo) {
+    // Legacy fallback user in case they are not in `users` list but their name is recorded
+    filteredUsers.push({
+      _id: formData.requestTo,
+      name: formData.recipientName || formData.requestTo,
+      emailAddress: formData.requestTo,
+      roles: [],
+      assignedLocations: []
+    });
+  }
+
+  // Calculate if user has full record edit permissions
+  const isCreator = formData.createdBy === currentUser?._id || formData.createdBy === userEmail;
+  const canModifyRecord = isAdminOrDev || isCreator;
+  const isRecipient = formData.requestTo === currentUser?._id || formData.requestTo === userEmail;
+  
+  // Destination involvement check (can update status)
+  const isAuthorizedDestinationUser = userRoles.some(role => 
+    ['location admin', 'technician', 'manager'].includes(role)
+  ) && currentUser?.assignedLocations?.includes(destinationLocationId || '');
+
+  const canUpdateStatus = canModifyRecord || isRecipient || isAuthorizedDestinationUser;
 
   return (
     <Dialog open={isEditModalOpen} onOpenChange={closeEditModal}>
-      <DialogContent className="md:max-h-[90vh] md:max-w-4xl overflow-hidden p-0 flex flex-col">
-        <DialogHeader className="border-b border-gray-200 p-6 shrink-0">
-          <DialogTitle className="text-xl font-semibold text-gray-900">
+      <DialogContent className="md:max-w-3xl md:max-h-[85vh] overflow-hidden bg-white p-0 flex flex-col items-center">
+        <DialogHeader className="border-b border-gray-100 p-6 shrink-0 w-full">
+          <DialogTitle className="text-2xl font-bold text-gray-800 text-center">
             Edit Movement Request
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid flex-1 grid-cols-1 gap-6 overflow-y-auto p-6 md:grid-cols-2 custom-scrollbar">
+        <div className="grid flex-1 grid-cols-1 gap-6 overflow-y-auto p-8 md:grid-cols-2 custom-scrollbar w-full">
           {/* Left Column */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-5">
+
             {/* Movement Type */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Please Select Movement Type{' '}
-                <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Please Select Movement Type <span className="text-red-500">*</span>
               </label>
               <Select
-                value={formData.movementType}
+                value={formData.movementType?.toLowerCase() || ''}
                 onValueChange={value =>
-                  setFormData(prev =>
-                    prev ? { ...prev, movementType: value } : null
-                  )
+                  setFormData(prev => prev ? { ...prev, movementType: value } : null)
                 }
               >
-                <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
+                <SelectTrigger 
+                  className="h-11 w-full border-gray-300 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
+                  disabled={!canModifyRecord}
+                >
                   <SelectValue placeholder="Select movement type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
                   <SelectItem value="machine">Machine</SelectItem>
                   <SelectItem value="smib">SMIB</SelectItem>
+                  {formData.movementType && !['machine', 'smib'].includes(formData.movementType.toLowerCase()) && (
+                    <SelectItem value={formData.movementType.toLowerCase()}>
+                      {formData.movementType.charAt(0).toUpperCase() + formData.movementType.slice(1)} (Legacy)
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
-              {errors.movementType && (
-                <div className="mt-1 text-xs text-red-500">
-                  {errors.movementType}
-                </div>
-              )}
+              {!canModifyRecord && <DisabledHint message="Only the creator can change the movement type." />}
+              {errors.movementType && <div className="mt-1 text-xs font-medium text-red-500">{errors.movementType}</div>}
             </div>
 
-            {/* From Location */}
+            {/* From Location — searchable */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Please Select Location It Is Coming From{' '}
-                <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Please Select Location It Is Coming From <span className="text-red-500">*</span>
               </label>
-              <Select
-                value={formData.locationFrom}
-                onValueChange={value => {
-                  setFormData(prev =>
-                    prev ? { ...prev, locationFrom: value } : null
-                  );
-                  // Clear selected cabinets when location changes
+              <SearchableSelect
+                options={locationOptions}
+                value={fromLocationValue}
+                onChange={value => {
+                  setFormData(prev => prev ? { ...prev, locationFrom: value, locationTo: '', requestTo: '' } : null);
                   setSelectedCabinets([]);
-                  setCabinetSearch('');
                 }}
-              >
-                <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
-                  <SelectValue placeholder="Select source location" />
-                </SelectTrigger>
-                <SelectContent className="z-[9999]">
-                  {/* Show the original location if it doesn't exist anymore */}
-                  {formData.locationFrom && 
-                   !locations.find(l => l.name === formData.locationFrom || l.id === formData.locationFrom) && (
-                    <SelectItem value={formData.locationFrom} className="text-red-500">
-                      {formData.locationFrom} (Deleted/Renamed)
-                    </SelectItem>
-                  )}
-                  {locations.map(loc => (
-                    <SelectItem key={loc.id} value={loc.name}>
-                      {loc.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.locationFrom && (
-                <div className="mt-1 text-xs text-red-500">
-                  {errors.locationFrom}
-                </div>
-              )}
+                placeholder="Select source location"
+                searchPlaceholder="Search locations..."
+                error={!!errors.locationFrom}
+                className={`h-11 shadow-sm ${!canModifyRecord ? 'pointer-events-none opacity-50' : ''}`}
+              />
+              {!canModifyRecord && <DisabledHint message="Only the creator can change the source location." />}
+              {errors.locationFrom && <div className="mt-1 text-xs font-medium text-red-500">{errors.locationFrom}</div>}
             </div>
 
-            {/* To Location */}
+            {/* To Location — searchable, disabled until cabinets selected */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Please Select Location It Is Going To{' '}
-                <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Please Select Location It Is Going To <span className="text-red-500">*</span>
               </label>
-              <Select
-                value={formData.locationTo}
-                onValueChange={value =>
-                  setFormData(prev =>
-                    prev ? { ...prev, locationTo: value } : null
-                  )
-                }
-                disabled={!selectedCabinets.length}
-              >
-                <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
-                  <SelectValue placeholder="Location Is It Going To" />
-                </SelectTrigger>
-                <SelectContent className="z-[9999]">
-                  {/* Show the original location if it doesn't exist anymore */}
-                  {formData.locationTo && 
-                   !locations.find(l => l.name === formData.locationTo || l.id === formData.locationTo) && (
-                    <SelectItem value={formData.locationTo} className="text-red-500">
-                      {formData.locationTo} (Deleted/Renamed)
-                    </SelectItem>
-                  )}
-                  {locations
-                    .filter(loc => loc.name !== formData.locationFrom)
-                    .map(loc => (
-                      <SelectItem key={loc.id} value={loc.name}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              {errors.locationTo && (
-                <div className="mt-1 text-xs text-red-500">
-                  {errors.locationTo}
-                </div>
-              )}
+              <div className="relative">
+                <SearchableSelect
+                  options={toLocationOptions}
+                  value={formData.locationTo || ''}
+                  onChange={value =>
+                    setFormData(prev => prev ? { ...prev, locationTo: value, requestTo: '' } : null)
+                  }
+                  placeholder="Select destination location"
+                  searchPlaceholder="Search locations..."
+                  error={!!errors.locationTo}
+                  className={`h-11 shadow-sm ${(!selectedCabinets.length || !canModifyRecord) ? 'pointer-events-none opacity-50' : ''}`}
+                />
+                {!selectedCabinets.length && (
+                  <div
+                    className="absolute inset-0 cursor-not-allowed z-10"
+                    onClick={() =>
+                      setErrors(prev => ({
+                        ...prev,
+                        toLocationHint: !formData.locationFrom
+                          ? 'Please select a source location first.'
+                          : 'Please select at least one machine before choosing a destination.',
+                      }))
+                    }
+                  />
+                )}
+                {canModifyRecord && !selectedCabinets.length && errors.toLocationHint && (
+                  <DisabledHint message={errors.toLocationHint} />
+                )}
+                {!canModifyRecord && (
+                  <div className="absolute inset-0 cursor-not-allowed z-10" />
+                )}
+              </div>
+              {!canModifyRecord && <DisabledHint message="Only the creator can change the destination." />}
+              {errors.locationTo && <div className="mt-1 text-xs font-medium text-red-500">{errors.locationTo}</div>}
             </div>
 
             {/* Notes */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Notes
-              </label>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">Notes</label>
               <Textarea
                 value={formData.reason || ''}
                 onChange={e =>
-                  setFormData(prev =>
-                    prev ? { ...prev, reason: e.target.value } : null
-                  )
+                  setFormData(prev => prev ? { ...prev, reason: e.target.value } : null)
                 }
-                className="border-gray-300 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
-                placeholder="Please Enter Notes"
+                className="min-h-[120px] resize-none border-gray-300 shadow-sm placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
+                placeholder="Please enter details about this update..."
               />
             </div>
           </div>
 
           {/* Right Column */}
-          <div className="flex flex-col gap-4">
-            {/* Request To */}
+          <div className="flex flex-col gap-5">
+
+            {/* Request To — disabled until to-location selected */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
                 Request To: <span className="text-red-500">*</span>
               </label>
-              <Select
-                value={formData.requestTo || undefined}
-                onValueChange={value =>
-                  setFormData(prev =>
-                    prev ? { ...prev, requestTo: value } : null
-                  )
-                }
-                disabled={!formData.locationTo}
-              >
-                <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
-                  <SelectValue placeholder="Select user" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users
-                    .filter(user => user.email && user.email.trim() !== '')
-                    .map(user => (
-                      <SelectItem key={user._id} value={user.email}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {user.name || user.email}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {user.email}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              {errors.requestTo && (
-                <div className="mt-1 text-xs text-red-500">
-                  {errors.requestTo}
-                </div>
+              <div className="relative">
+                <Select
+                  value={formData.requestTo || ''}
+                  onValueChange={value =>
+                    setFormData(prev => prev ? { ...prev, requestTo: value } : null)
+                  }
+                  disabled={!formData.locationTo || loadingUsers || !canModifyRecord}
+                >
+                  <SelectTrigger className="h-11 w-full border-gray-300 shadow-sm focus:border-buttonActive focus:ring-buttonActive">
+                    {loadingUsers ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading users...</span>
+                      </div>
+                    ) : (
+                      <SelectValue placeholder={formData.locationTo ? "Select user" : "Select destination location first"} />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent className="z-[9999] max-h-[300px]">
+                    {filteredUsers.length > 0 ? (
+                      filteredUsers.map(user => (
+                        <SelectItem key={user._id} value={user._id}>
+                          <div className="flex flex-col py-0.5">
+                            <span className="font-semibold text-gray-900">{user.name || user.emailAddress}</span>
+                            <span className="text-[11px] text-gray-500">{user.emailAddress}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="py-6 text-center text-sm text-gray-500 px-4">
+                        {formData.locationTo 
+                          ? "No technicians or admins assigned to this location found." 
+                          : "Please select a destination location above to see available recipients."}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                {!canModifyRecord && (
+                  <div className="absolute inset-0 cursor-not-allowed z-10" />
+                )}
+                {canModifyRecord && !formData.locationTo && (
+                  <div
+                    className="absolute inset-0 cursor-not-allowed z-10"
+                    onClick={() =>
+                      setErrors(prev => ({
+                        ...prev,
+                        requestToHint: !formData.locationFrom
+                          ? 'Please select a source location first.'
+                          : !selectedCabinets.length
+                          ? 'Please select at least one machine first.'
+                          : 'Please select a destination location first.',
+                      }))
+                    }
+                  />
+                )}
+              </div>
+              {!canModifyRecord && <DisabledHint message="Only the creator can change the recipient." />}
+              {errors.requestTo && <div className="mt-1 text-xs font-medium text-red-500">{errors.requestTo}</div>}
+              {canModifyRecord && !formData.locationTo && errors.requestToHint && (
+                <DisabledHint message={errors.requestToHint} />
               )}
             </div>
 
-            {/* Cabinet/SMIB Selection */}
+            {/* Cabinet/SMIB Selection with MultiSelectDropdown */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Please Select a {formData.movementType} to be Moved{' '}
-                <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Please Select {formData.movementType}s to be Moved <span className="text-red-500">*</span>
               </label>
-              <div className="cabinet-dropdown-container relative">
-                <Input
-                  placeholder={`Select ${formData.movementType}`}
-                  value={cabinetSearch}
-                  onChange={e => {
-                    setCabinetSearch(e.target.value);
-                    setCabinetDropdownOpen(true);
+              <div className="relative">
+                <MultiSelectDropdown
+                  options={cabinets.map(cab => ({
+                    id: cab._id,
+                    label: cab.installedGame || cab.game || cab.assetNumber || cab.serialNumber || 'Unknown Machine',
+                    displayNode: (
+                      <div className="flex flex-col py-1">
+                        <span className="text-sm font-bold text-gray-900">
+                          {cab.installedGame || cab.game || cab.assetNumber || cab.serialNumber || 'Unknown Machine'}
+                        </span>
+                        <span className="text-[11px] text-gray-500 font-medium">
+                          SN: {cab.serialNumber || 'N/A'} | Asset: {cab.assetNumber || 'N/A'}
+                        </span>
+                      </div>
+                    )
+                  }))}
+                  selectedIds={selectedCabinets.map(c => c._id)}
+                  onChange={(ids) => {
+                    const selected = cabinets.filter(c => ids.includes(c._id));
+                    setSelectedCabinets(selected);
                   }}
-                  onFocus={() => setCabinetDropdownOpen(true)}
-                  disabled={!formData.locationFrom}
-                  className="border-gray-300 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
-                  autoComplete="off"
+                  placeholder={
+                    loadingCabinets 
+                    ? "Loading items..." 
+                    : formData.locationFrom 
+                      ? 'Select ' + formData.movementType + 's' 
+                      : 'Select a source location first'
+                  }
+                  searchPlaceholder={'Search ' + formData.movementType + 's...'}
+                  disabled={!formData.locationFrom || loadingCabinets || !canModifyRecord}
+                  label={formData.movementType + 's'}
                 />
-                {cabinetDropdownOpen && formData.locationFrom && (
-                  <div className="absolute left-0 right-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                    {loadingCabinets ? (
-                      <div className="px-4 py-2 text-center text-sm text-gray-400">
-                        Loading {formData.movementType.toLowerCase()}s...
-                      </div>
-                    ) : availableCabinets.length > 0 ? (
-                      availableCabinets.map(cab => {
-                        const displayName =
-                          cab.installedGame ||
-                          cab.game ||
-                          cab.assetNumber ||
-                          cab.serialNumber ||
-                          cab.relayId ||
-                          'Unknown Machine';
-                        const identifier =
-                          cab.serialNumber ||
-                          cab.assetNumber ||
-                          cab.smibBoard ||
-                          cab.relayId ||
-                          cab._id;
-
-                        return (
-                          <button
-                            key={cab._id}
-                            type="button"
-                            className="flex w-full items-center justify-between px-4 py-2 text-left text-gray-900 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
-                            onClick={() => addCabinet(cab)}
-                            disabled={selectedCabinets.some(
-                              sc => sc._id === cab._id
-                            )}
-                          >
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium">
-                                {displayName}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {identifier}
-                              </span>
-                            </div>
-                            {!selectedCabinets.some(
-                              sc => sc._id === cab._id
-                            ) && (
-                              <span className="text-sm text-blue-600">+</span>
-                            )}
-                          </button>
-                        );
-                      })
-                    ) : (
-                      <div className="px-4 py-2 text-center text-sm text-gray-400">
-                        {cabinetSearch
-                          ? `No ${formData.movementType.toLowerCase()}s match your search.`
-                          : `No ${formData.movementType.toLowerCase()}s available at this location.`}
-                      </div>
-                    )}
-                  </div>
+                {!canModifyRecord && (
+                  <div className="absolute inset-0 cursor-not-allowed z-10" />
+                )}
+                {canModifyRecord && !formData.locationFrom && (
+                  <div
+                    className="absolute inset-0 cursor-not-allowed z-10"
+                    onClick={() =>
+                      setErrors(prev => ({
+                        ...prev,
+                        machineHint: 'Please select a source location before picking machines.',
+                      }))
+                    }
+                  />
+                )}
+                {loadingCabinets && (
+                   <div className="absolute right-10 top-1/2 -translate-y-1/2">
+                     <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                   </div>
                 )}
               </div>
+              {!canModifyRecord && <DisabledHint message="Only the creator can modify items in this request." />}
+              {canModifyRecord && !formData.locationFrom && errors.machineHint && (
+                <DisabledHint message={errors.machineHint} />
+              )}
               {errors.selectedCabinets && (
-                <div className="mt-1 text-xs text-red-500">
-                  {errors.selectedCabinets}
-                </div>
+                <div className="mt-1 text-xs font-medium text-red-500">{errors.selectedCabinets}</div>
               )}
             </div>
 
             {/* Selected Items */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
                 Selected {formData.movementType}s ({selectedCabinets.length})
               </label>
-              <div className="h-40 min-h-[60px] overflow-y-auto rounded-md border bg-gray-50 p-3">
+              <div className="h-40 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50/50 p-4 shadow-inner">
                 {selectedCabinets.length > 0 ? (
-                  selectedCabinets.map(cab => {
-                    const displayName =
-                      cab.installedGame ||
-                      cab.game ||
-                      cab.assetNumber ||
-                      cab.serialNumber ||
-                      cab.relayId ||
-                      'Unknown Machine';
-                    return (
-                      <div
-                        key={cab._id}
-                        className="mb-2 flex items-center justify-between rounded border bg-white p-2 last:mb-0"
-                      >
-                        <div>
-                          <div className="text-sm font-medium">
-                            {displayName}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {cab.serialNumber &&
-                              cab.serialNumber !== displayName && (
-                                <>Serial: {cab.serialNumber}</>
-                              )}
-                            {cab.assetNumber &&
-                              cab.assetNumber !== displayName && (
-                                <>Asset: {cab.assetNumber}</>
-                              )}
-                            {cab.relayId && cab.relayId !== displayName && (
-                              <>Relay: {cab.relayId}</>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeCabinet(cab._id)}
-                          className="text-red-500 hover:bg-red-50 hover:text-red-700"
-                        >
-                          <Cross2Icon className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    );
-                  })
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCabinets.map(cab => {
+                      const displayName =
+                        cab.installedGame || cab.game || cab.assetNumber ||
+                        cab.serialNumber || 'Unknown Machine';
+                      return (
+                        <Chip
+                          key={cab._id}
+                          label={displayName}
+                          onRemove={() => setSelectedCabinets(prev => prev.filter(c => c._id !== cab._id))}
+                          className="bg-buttonActive text-white px-3 py-1 font-medium shadow-sm"
+                        />
+                      );
+                    })}
+                  </div>
                 ) : (
-                  <p className="py-2 text-center text-sm text-gray-400">
-                    No {formData.movementType.toLowerCase()}s selected.
-                  </p>
+                  <div className="flex h-full flex-col items-center justify-center text-gray-400">
+                    <p className="text-sm">No {(formData.movementType || 'machine').toLowerCase()}s selected.</p>
+                  </div>
                 )}
               </div>
             </div>
 
             {/* Status */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
                 Status <span className="text-red-500">*</span>
               </label>
               <Select
@@ -581,53 +532,50 @@ export default function EditMovementRequestModal({
                 onValueChange={value =>
                   setFormData(prev =>
                     prev
-                      ? {
-                          ...prev,
-                          status: value as
-                            | 'pending'
-                            | 'approved'
-                            | 'rejected'
-                            | 'in progress',
-                        }
+                      ? { ...prev, status: value as 'pending' | 'completed' }
                       : null
                   )
                 }
               >
-                <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
+                <SelectTrigger 
+                  className="h-11 w-full border-gray-300 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
+                  disabled={!canUpdateStatus}
+                >
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
                   <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="in progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  {formData?.status && formData.status !== 'pending' && formData.status !== 'completed' && (
+                    <SelectItem value={formData.status}>
+                      {String(formData.status).charAt(0).toUpperCase() + String(formData.status).slice(1)} (Legacy)
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
+              {!canUpdateStatus && <DisabledHint message="You don't have permission to update the status of this request." />}
             </div>
           </div>
         </div>
 
-        <DialogFooter className="border-t border-gray-200 p-6">
-          {errors.submit && (
-            <div className="mb-2 text-center text-sm text-red-500">
-              {errors.submit}
-            </div>
-          )}
-          <div className="flex flex-col sm:flex-row justify-end gap-2 w-full">
+        <DialogFooter className="border-t border-gray-100 p-6 w-full bg-gray-50/30">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 w-full max-w-sm ml-auto">
             <DialogClose asChild>
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto order-2 sm:order-1"
-              >
+              <Button variant="outline" className="h-11 flex-1 font-semibold text-gray-700 hover:bg-gray-100 sm:order-1">
                 Cancel
               </Button>
             </DialogClose>
             <Button
               onClick={handleSave}
-              disabled={loading}
-              className="bg-button hover:bg-buttonActive text-white w-full sm:w-auto order-1 sm:order-2"
+              disabled={loading || !canUpdateStatus}
+              className="h-11 flex-1 bg-green-600 hover:bg-green-700 text-white font-bold shadow-md transition-all active:scale-95 sm:order-2"
             >
-              {loading ? 'Updating...' : 'Update'}
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Updating...</span>
+                </div>
+              ) : 'Update'}
             </Button>
           </div>
         </DialogFooter>
@@ -635,4 +583,3 @@ export default function EditMovementRequestModal({
     </Dialog>
   );
 }
-

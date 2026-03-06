@@ -108,6 +108,7 @@ export type PaginationControlsProps = {
   setCurrentPage: (page: number) => void;
   totalCount?: number;
   limit?: number;
+  showTotalCount?: boolean;
 };
 
 export type LocationsCabinetGridProps = {
@@ -116,18 +117,18 @@ export type LocationsCabinetGridProps = {
   itemsPerPage: number;
   router: AppRouterInstance;
   sortOption?:
-    | 'assetNumber'
-    | 'locationName'
-    | 'moneyIn'
-    | 'moneyOut'
-    | 'jackpot'
-    | 'gross'
-    | 'cancelledCredits'
-    | 'game'
-    | 'smbId'
-    | 'serialNumber'
-    | 'lastOnline'
-    | 'offlineTime';
+  | 'assetNumber'
+  | 'locationName'
+  | 'moneyIn'
+  | 'moneyOut'
+  | 'jackpot'
+  | 'gross'
+  | 'cancelledCredits'
+  | 'game'
+  | 'smbId'
+  | 'serialNumber'
+  | 'lastOnline'
+  | 'offlineTime';
   sortOrder?: 'asc' | 'desc';
   onSortChange?: (
     option:

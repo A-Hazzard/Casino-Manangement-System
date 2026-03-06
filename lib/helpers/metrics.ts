@@ -49,7 +49,8 @@ export async function getMetrics(
   granularity?: 'hourly' | 'minute',
   locationId?: string | string[],
   gameType?: string | string[],
-  onlineStatus?: string
+  onlineStatus?: string,
+  searchTerm?: string
 ): Promise<dashboardData[]> {
   try {
     let url = `/api/metrics/meters?timePeriod=${timePeriod}`;
@@ -87,22 +88,27 @@ export async function getMetrics(
     if (granularity) {
       url += `&granularity=${granularity}`;
     }
-    
+
     // Add location filter if provided
     if (locationId && locationId !== 'all' && (Array.isArray(locationId) ? locationId.length > 0 : true)) {
       const locIds = Array.isArray(locationId) ? locationId.join(',') : locationId;
       url += `&locationId=${encodeURIComponent(locIds)}`;
     }
-    
+
     // Add game type filter if provided
     if (gameType && gameType !== 'all' && (Array.isArray(gameType) ? gameType.length > 0 : true)) {
       const gTypes = Array.isArray(gameType) ? gameType.join(',') : gameType;
       url += `&gameType=${encodeURIComponent(gTypes)}`;
     }
-    
+
     // Add status filter if provided
     if (onlineStatus && onlineStatus !== 'all') {
       url += `&onlineStatus=${encodeURIComponent(onlineStatus)}`;
+    }
+
+    // Add search term if provided
+    if (searchTerm) {
+      url += `&search=${encodeURIComponent(searchTerm)}`;
     }
 
     const { data } = await axios.get<
@@ -167,8 +173,8 @@ export async function getMetrics(
         groupByHour = false;
       } else {
         // Data spans > 5 hours, use hourly
-          useMinute = false;
-          groupByHour = true;
+        useMinute = false;
+        groupByHour = true;
       }
     }
 

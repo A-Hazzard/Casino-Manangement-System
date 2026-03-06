@@ -13,23 +13,23 @@
  */
 
 import {
-    getInvalidProfileFields,
-    hasInvalidProfileFields,
+  getInvalidProfileFields,
+  hasInvalidProfileFields,
 } from '@/app/api/lib/helpers/profileValidation';
 import { getUserIdFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
 import { comparePassword, hashPassword } from '@/app/api/lib/utils/validation';
 import {
-    containsEmailPattern,
-    isValidDateInput,
-    normalizePhoneNumber,
-    validateEmail,
-    validateNameField,
-    validateOptionalGender,
-    validatePasswordStrength,
-    validatePhoneNumber,
-    validateUsername,
+  containsEmailPattern,
+  isValidDateInput,
+  normalizePhoneNumber,
+  validateEmail,
+  validateNameField,
+  validateOptionalGender,
+  validatePasswordStrength,
+  validatePhoneNumber,
+  validateUsername,
 } from '@/lib/utils/validation';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -318,11 +318,11 @@ export async function PUT(request: NextRequest) {
           {
             success: false,
             message: isTemporaryPassword
-              ? 'Temporary password is incorrect. Please check the password given to you.'
+              ? 'Current password is incorrect. Please check the password given to you.'
               : 'Current password is incorrect.',
             errors: {
               currentPassword: isTemporaryPassword
-                ? 'Temporary password is incorrect.'
+                ? 'Current password is incorrect.'
                 : 'Current password is incorrect.',
             },
           },
@@ -390,6 +390,7 @@ export async function PUT(request: NextRequest) {
       updateSet.password = await hashPassword(newPassword);
       updateSet.passwordUpdatedAt = new Date();
       updateSet.tempPasswordChanged = true;
+      updateSet.requiresPasswordUpdate = false; // Successfully updated to a strong password
       unsetMap.tempPassword = ''; // Delete plain text temp password after first password change
       if (!isTemporaryPassword) {
         incrementSession = true;
@@ -454,7 +455,7 @@ export async function PUT(request: NextRequest) {
     // STEP 10: Return updated user with validation status
     // ============================================================================
     const { invalidFields, reasons } = getInvalidProfileFields(
-      updatedUser as never,
+      updatedUser,
       { rawPassword: newPassword || undefined }
     );
     const requiresProfileUpdate = hasInvalidProfileFields(invalidFields);
@@ -481,10 +482,12 @@ export async function PUT(request: NextRequest) {
         assignedLicensees: updatedObject.assignedLicensees || undefined,
         tempPasswordChanged: updatedObject.tempPasswordChanged,
         requiresProfileUpdate,
+        requiresPasswordUpdate: !!invalidFields.password,
         invalidProfileFields: invalidFields,
         invalidProfileReasons: reasons,
       },
       requiresProfileUpdate,
+      requiresPasswordUpdate: !!invalidFields.password,
       invalidProfileFields: invalidFields,
       invalidProfileReasons: reasons,
     });

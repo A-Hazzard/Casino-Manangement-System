@@ -17,6 +17,7 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { generateMongoId } from '@/lib/utils/id';
+import type { Denomination } from '@/shared/types/vault';
 import { Db, GridFSBucket } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import { Readable } from 'stream';
@@ -73,20 +74,20 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File | null;
 
     const amount = parseFloat(amountStr);
-    let denominations: { denomination: number; quantity: number }[] = [];
-    
+    let denominations: Denomination[] = [];
+
     // Parse denominations if provided
     if (denominationsStr) {
       try {
         const parsed = JSON.parse(denominationsStr);
         // Filter out zero quantities and ensure positive numbers
         denominations = parsed
-          .filter((d: any) => d.quantity > 0)
-          .map((d: any) => ({
-            denomination: Number(d.denomination),
+          .filter((d: { quantity: number; denomination: number }) => d.quantity > 0)
+          .map((d: { quantity: number; denomination: number }) => ({
+            denomination: Number(d.denomination) as Denomination['denomination'],
             quantity: Math.max(0, Number(d.quantity)),
           }));
-        
+
         // Validate total against amount (optional strict check, or just trust amount)
         // const denomTotal = denominations.reduce((sum, d) => sum + d.denomination * d.quantity, 0);
         // if (Math.abs(denomTotal - amount) > 0.01) {
@@ -188,8 +189,8 @@ export async function POST(request: NextRequest) {
         Array.isArray(allowedLocationIds) ? GamingLocations.find({ _id: { $in: allowedLocationIds } }, { name: 1 }).lean() : Promise.resolve([])
       ]);
 
-      const attemptedName = attemptedLocation ? (attemptedLocation as any).name : 'Unknown';
-      const allowedNames = (allowedLocations as any[]).map(l => l.name).join(', ') || 'None';
+      const attemptedName = attemptedLocation ? (attemptedLocation as Record<string, unknown>).name as string : 'Unknown';
+      const allowedNames = (allowedLocations as Array<Record<string, unknown>>).map(l => l.name as string).join(', ') || 'None';
       const hasAssignment = (userPayload?.assignedLocations as string[] || []).length > 0;
 
       let reason = `Access denied for location "${attemptedName}" (${activeVaultShift.locationId}). `;
@@ -226,7 +227,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!validateDenominationTotal(amount, denominations as any)) {
+    if (!validateDenominationTotal(amount, denominations)) {
       return NextResponse.json(
         { success: false, error: 'Denomination total does not match expense amount' },
         { status: 400 }
@@ -241,31 +242,36 @@ export async function POST(request: NextRequest) {
 
     let bankDetails = undefined;
     if (formData.get('bankDetails')) {
-        try { bankDetails = JSON.parse(formData.get('bankDetails') as string); } catch(e) { console.error("Error parsing bankDetails", e); }
+      try { bankDetails = JSON.parse(formData.get('bankDetails') as string); } catch (e) { console.error("Error parsing bankDetails", e); }
     }
-    let expenseDetails: any = undefined;
+    let expenseDetails: Record<string, unknown> | undefined = undefined;
     if (formData.get('expenseDetails')) {
-        try { expenseDetails = JSON.parse(formData.get('expenseDetails') as string); } catch(e) { console.error("Error parsing expenseDetails", e); }
+      try { expenseDetails = JSON.parse(formData.get('expenseDetails') as string); } catch (e) { console.error("Error parsing expenseDetails", e); }
     }
 
-    if (expenseDetails?.isMachineRepair && expenseDetails?.machineIds?.length > 0) {
+    if (expenseDetails?.isMachineRepair && (expenseDetails?.machineIds as string[] | undefined)?.length) {
+      const machineIds = expenseDetails.machineIds as string[];
       const { Machine } = await import('@/app/api/lib/models/machines');
-      const mList = await Machine.find({ _id: { $in: expenseDetails.machineIds } }).lean();
-      
-      const machineDetails = expenseDetails.machineIds.map((id: string) => {
-        const m = mList.find((x: any) => String(x._id) === id || String(x.machineId) === id || x.serialNumber === id);
+      const mList = await Machine.find({ _id: { $in: machineIds } }).lean();
+
+      const machineDetails = machineIds.map((id: string) => {
+        const m = mList.find((x: unknown) => {
+          const mDoc = x as { _id: string; machineId?: string; serialNumber?: string; custom?: { name?: string }; game?: string; installedGame?: string; gameType?: string };
+          return String(mDoc._id) === id || String(mDoc.machineId) === id || mDoc.serialNumber === id;
+        }) as { _id: string; machineId?: string; serialNumber?: string; custom?: { name?: string }; game?: string; installedGame?: string; gameType?: string } | undefined;
+
         if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
-        
+
         const serialNumberRaw = m.serialNumber?.trim() || '';
         const customName = m.custom?.name?.trim() || '';
         const game = m.game || m.installedGame || '';
         const gameType = m.gameType || '';
         const mainIdentifier = serialNumberRaw || customName || 'N/A';
-        
+
         return {
-           identifier: customName && customName !== mainIdentifier ? `${mainIdentifier} (${customName})` : mainIdentifier,
-           game: game.trim(),
-           gameType: gameType.trim()
+          identifier: customName && customName !== mainIdentifier ? `${mainIdentifier} (${customName})` : mainIdentifier,
+          game: game.trim(),
+          gameType: gameType.trim()
         };
       });
       expenseDetails.machineDetails = machineDetails;
@@ -301,7 +307,7 @@ export async function POST(request: NextRequest) {
     // STEP 8: Save and Update Balance & Inventory
     // ============================================================================
     await vaultTransaction.save();
-    await updateVaultShiftInventory(activeVaultShift, amount, denominations as any, false);
+    await updateVaultShiftInventory(activeVaultShift, amount, denominations, false);
 
     // STEP 9: Audit Activity
     await logActivity({
@@ -327,10 +333,11 @@ export async function POST(request: NextRequest) {
       success: true,
       transaction: vaultTransaction,
     });
-  } catch (error) {
-    console.error('Error recording expense:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error recording expense:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -445,49 +452,58 @@ export async function GET(request: NextRequest) {
 
     // collect all missing machine IDs
     const missingMachineIds = new Set<string>();
-    expenses.forEach((expense: any) => {
-       if (expense.expenseDetails?.isMachineRepair && expense.expenseDetails.machineIds?.length > 0) {
-           if (!expense.expenseDetails.machineDetails || expense.expenseDetails.machineDetails.length === 0) {
-               expense.expenseDetails.machineIds.forEach((id: string) => missingMachineIds.add(id));
-           }
-       }
+    interface MachineDetail { identifier: string; game: string; gameType: string }
+    interface ExpenseDetails { isMachineRepair?: boolean; machineIds?: string[]; machineDetails?: MachineDetail[]; machineNames?: string[] }
+    interface ExpenseItem { expenseDetails?: ExpenseDetails }
+
+    expenses.forEach((expense: unknown) => {
+      const e = expense as ExpenseItem;
+      if (e.expenseDetails?.isMachineRepair && (e.expenseDetails.machineIds?.length ?? 0) > 0) {
+        if (!e.expenseDetails.machineDetails || e.expenseDetails.machineDetails.length === 0) {
+          e.expenseDetails.machineIds?.forEach((id: string) => missingMachineIds.add(id));
+        }
+      }
     });
 
     if (missingMachineIds.size > 0) {
-       const { Machine } = await import('@/app/api/lib/models/machines');
-       const mList = await Machine.find({ _id: { $in: Array.from(missingMachineIds) } }).lean();
+      const { Machine } = await import('@/app/api/lib/models/machines');
+      const mList = await Machine.find({ _id: { $in: Array.from(missingMachineIds) } }).lean();
 
-       expenses.forEach((expense: any) => {
-           if (expense.expenseDetails?.isMachineRepair && expense.expenseDetails.machineIds?.length > 0) {
-               if (!expense.expenseDetails.machineDetails || expense.expenseDetails.machineDetails.length === 0) {
-                   expense.expenseDetails.machineDetails = expense.expenseDetails.machineIds.map((id: string) => {
-                        const m = mList.find((x: any) => String(x._id) === id || String(x.machineId) === id || x.serialNumber === id);
-                        if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
-                        
-                        const serialNumberRaw = m.serialNumber?.trim() || '';
-                        const customName = m.custom?.name?.trim() || '';
-                        const game = m.game || m.installedGame || '';
-                        const gameType = m.gameType || '';
-                        const mainIdentifier = serialNumberRaw || customName || 'N/A';
-                        
-                        return {
-                           identifier: customName && customName !== mainIdentifier ? `${mainIdentifier} (${customName})` : mainIdentifier,
-                           game: game.trim(),
-                           gameType: gameType.trim()
-                        };
-                   });
-                   // For backward compatibility while frontend handles both, maybe we clean up old machineNames
-                   delete expense.expenseDetails.machineNames;
-               }
-           }
-       });
+      expenses.forEach((expense: unknown) => {
+        const e = expense as ExpenseItem;
+        if (e.expenseDetails?.isMachineRepair && (e.expenseDetails.machineIds?.length ?? 0) > 0) {
+          if (!e.expenseDetails.machineDetails || e.expenseDetails.machineDetails.length === 0) {
+            if (e.expenseDetails.machineIds) {
+              e.expenseDetails.machineDetails = e.expenseDetails.machineIds.map((id: string) => {
+                const m = mList.find((x: Record<string, unknown>) => String(x._id) === id || String(x.machineId) === id || (x.serialNumber as string) === id);
+                if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
+
+                const serialNumberRaw = m.serialNumber?.trim() || '';
+                const customName = m.custom?.name?.trim() || '';
+                const game = m.game || m.installedGame || '';
+                const gameType = m.gameType || '';
+                const mainIdentifier = serialNumberRaw || customName || 'N/A';
+
+                return {
+                  identifier: customName && customName !== mainIdentifier ? `${mainIdentifier} (${customName})` : mainIdentifier,
+                  game: game.trim(),
+                  gameType: gameType.trim()
+                };
+              });
+              // For backward compatibility while frontend handles both, maybe we clean up old machineNames
+              delete e.expenseDetails.machineNames;
+            }
+          }
+        }
+      });
     }
 
     // Remove machineIds from response
-    expenses.forEach((expense: any) => {
-        if (expense.expenseDetails && expense.expenseDetails.machineIds) {
-            delete expense.expenseDetails.machineIds;
-        }
+    expenses.forEach((expense: unknown) => {
+      const e = expense as ExpenseItem;
+      if (e.expenseDetails && e.expenseDetails.machineIds) {
+        delete e.expenseDetails.machineIds;
+      }
     });
 
     const duration = Date.now() - startTime;
@@ -500,10 +516,11 @@ export async function GET(request: NextRequest) {
       expenses,
       count: expenses.length,
     });
-  } catch (error) {
-    console.error('Error fetching expenses:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching expenses:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

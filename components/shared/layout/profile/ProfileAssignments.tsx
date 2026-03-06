@@ -7,20 +7,21 @@
 'use client';
 
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import MultiSelectDropdown, {
-    type MultiSelectOption,
+  type MultiSelectOption,
 } from '@/components/shared/ui/common/MultiSelectDropdown';
 import { Label } from '@/components/shared/ui/label';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import type { User } from '@/lib/types/administration';
 import type { Licensee } from '@/lib/types/common';
+import { useMemo } from 'react';
 
 type ProfileAssignmentsProps = {
   userData: User;
@@ -34,14 +35,23 @@ type ProfileAssignmentsProps = {
   selectedLicenseeIds: string[];
   onLicenseeChange: (ids: string[]) => void;
   licenseeOptions: MultiSelectOption[];
-  locations: Array<{ _id: string; name: string }>;
+  locations: Array<{ 
+    _id: string; 
+    name: string; 
+    licenseeId?: string | string[]; 
+    licensee?: string | string[];
+    rel?: {
+      licensee?: string | string[];
+      licencee?: string | string[];
+    }
+  }>;
   locationsLoading: boolean;
   allLocationsSelected: boolean;
   onAllLocationsToggle: (checked: boolean) => void;
   selectedLocationIds: string[];
   onLocationChange: (ids: string[]) => void;
   locationOptions: MultiSelectOption[];
-  availableLocations: Array<{ _id: string; name: string }>;
+  availableLocations: Array<{ _id: string; name: string; licenseeId?: string | string[] }>;
   missingLocationNames: Record<string, string>;
 };
 
@@ -76,6 +86,82 @@ export default function ProfileAssignments({
     'collector',
   ];
 
+  const displayRows = useMemo(() => {
+    // If "All Locations" (the master global flag) is checked or if 'all' is in selectedLocationIds
+    const isActuallyAllSelected = allLocationsSelected || selectedLocationIds.includes('all');
+    
+    if (isActuallyAllSelected) {
+      return locations.map(loc => {
+        const lid = loc.licenseeId || loc.rel?.licensee || loc.rel?.licencee || loc.licensee;
+        const lic = licensees.find(l => String(l._id) === (Array.isArray(lid) ? String(lid[0]) : String(lid)));
+        return {
+          locationName: loc.name,
+          licenseeName: lic?.name || 'Unknown',
+          id: String(loc._id),
+        };
+      }).sort((a, b) => a.locationName.localeCompare(b.locationName));
+    }
+
+    const rows: Array<{ locationName: string; licenseeName: string; id: string }> = [];
+    const processedLocationIds = new Set<string>();
+
+    selectedLocationIds.forEach(id => {
+      if (!id || id === 'all') return;
+      
+      const licensee = licensees.find(l => String(l._id) === id);
+      if (licensee) {
+        // It's a licensee ID - find all locations for it
+        const licenseeLocations = locations.filter(loc => {
+          const lid = loc.licenseeId || loc.rel?.licensee || loc.rel?.licencee || loc.licensee;
+          if (Array.isArray(lid)) {
+             return lid.some(l => String(l) === String(licensee._id));
+          }
+          return String(lid) === String(licensee._id);
+        });
+        
+        licenseeLocations.forEach(loc => {
+          if (!processedLocationIds.has(String(loc._id))) {
+            rows.push({
+              locationName: loc.name,
+              licenseeName: licensee.name,
+              id: String(loc._id)
+            });
+            processedLocationIds.add(String(loc._id));
+          }
+        });
+      } else {
+        // Regular location ID
+        const loc = locations.find(l => String(l._id) === id);
+        if (loc) {
+          if (!processedLocationIds.has(String(loc._id))) {
+            const lid = loc.licenseeId || loc.rel?.licensee || loc.rel?.licencee || loc.licensee;
+            const singleLid = Array.isArray(lid) ? lid[0] : lid;
+            const lic = licensees.find(l => String(l._id) === String(singleLid));
+            rows.push({
+              locationName: loc.name,
+              licenseeName: lic?.name || 'Unknown',
+              id: String(loc._id)
+            });
+            processedLocationIds.add(String(loc._id));
+          }
+        } else {
+          rows.push({
+            locationName: missingLocationNames[id] || id,
+            licenseeName: 'Unknown',
+            id
+          });
+        }
+      }
+    });
+
+    return rows.sort((a, b) => a.locationName.localeCompare(b.locationName));
+  }, [allLocationsSelected, selectedLocationIds, locations, licensees, missingLocationNames]);
+
+  // Only admins and developers can edit assigned locations and licensees
+  const canEditAssignments = userData.roles?.some(role =>
+    ['admin', 'developer'].includes(role.toLowerCase())
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -92,7 +178,7 @@ export default function ProfileAssignments({
             <p className="mb-4 text-sm text-gray-500">
               Your assigned roles and permissions
             </p>
-            {isEditMode && userData.roles?.includes('developer') ? (
+            {isEditMode && userData.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase())) ? (
               <div className="space-y-2">
                 {roles.map(role => (
                   <div
@@ -158,7 +244,7 @@ export default function ProfileAssignments({
             </p>
             {licenseesLoading ? (
               <Skeleton className="h-10 w-full" />
-            ) : isEditMode ? (
+            ) : isEditMode && canEditAssignments ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
                   <Checkbox
@@ -187,12 +273,11 @@ export default function ProfileAssignments({
                 )}
               </div>
             ) : (
-              <div className="text-sm text-gray-700">
-                {/* Simplified view for display mode */}
+              <div className="text-sm font-medium text-gray-600">
                 {selectedLicenseeIds.length
                   ? selectedLicenseeIds
                       .map(
-                        id => licensees.find(l => String(l._id) === id)?.name
+                        id => licensees.find(l => String(l._id) === id)?.name || id
                       )
                       .filter(Boolean)
                       .join(', ')
@@ -208,7 +293,7 @@ export default function ProfileAssignments({
             </Label>
             {locationsLoading ? (
               <Skeleton className="mt-4 h-24 w-full" />
-            ) : isEditMode ? (
+            ) : isEditMode && canEditAssignments ? (
               <div className="mt-4 space-y-3 rounded-md border border-border bg-white p-3">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                   <Checkbox
@@ -245,24 +330,17 @@ export default function ProfileAssignments({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {selectedLocationIds.length ? (
-                      selectedLocationIds.map((id, i) => {
-                        const loc = locations.find(l => String(l._id) === id);
-                        return (
-                          <tr key={i}>
-                            <td className="px-4 py-3 text-sm text-gray-900">
-                              {loc?.name || missingLocationNames[id] || id}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {licensees.find(
-                                l =>
-                                  String(l._id) ===
-                                  (loc as { licenseeId?: string })?.licenseeId
-                              )?.name || 'Unknown'}
-                            </td>
-                          </tr>
-                        );
-                      })
+                    {displayRows.length ? (
+                      displayRows.map((row, i) => (
+                        <tr key={i}>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                            {row.locationName}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {row.licenseeName}
+                          </td>
+                        </tr>
+                      ))
                     ) : (
                       <tr>
                         <td

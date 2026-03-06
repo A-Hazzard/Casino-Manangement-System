@@ -300,15 +300,22 @@ export async function determineAllowedLocationIds(
 
     const { GamingLocations } = await import('@/app/api/lib/models/gaminglocations');
     const managerLocations = await GamingLocations.find(
-        {
-          'rel.licensee': { $in: userLicensees },
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2025-01-01') } },
-          ],
-        },
+      {
+        $or: [
+          { 'rel.licensee': { $in: userLicensees } },
+          { 'rel.licencee': { $in: userLicensees } },
+        ],
+        $and: [
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ]
+          },
+        ],
+      },
       { _id: 1 }
-      )
+    )
       .lean()
       .exec();
 
@@ -339,11 +346,11 @@ export async function getLocationNamesFromIds(
 
   const { GamingLocations } = await import('@/app/api/lib/models/gaminglocations');
   const locations = await GamingLocations.find(
-      {
+    {
       _id: { $in: locationIds },
-      },
+    },
     { _id: 1, name: 1 }
-    )
+  )
     .lean()
     .exec();
 
@@ -381,12 +388,14 @@ export async function getMonthlyCollectionReportSummary(
     } else {
       match.$or = [
         { location: locationFilter },
-        { locationName: { 
-          $regex: new RegExp(
-            `^${locationFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
-            'i'
-          )
-        } }
+        {
+          locationName: {
+            $regex: new RegExp(
+              `^${locationFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+              'i'
+            )
+          }
+        }
       ];
     }
   }
@@ -405,7 +414,7 @@ export async function getMonthlyCollectionReportSummary(
         },
       },
       { $unwind: '$locationDetails' },
-      { $match: { 'locationDetails.rel.licensee': licensee, ...match } },
+      { $match: { $or: [{ 'locationDetails.rel.licensee': licensee }, { 'locationDetails.rel.licencee': licensee }], ...match } },
       {
         $group: {
           _id: null,
@@ -484,12 +493,14 @@ export async function getMonthlyCollectionReportByLocation(
     } else {
       match.$or = [
         { location: locationFilter },
-        { locationName: { 
-          $regex: new RegExp(
-            `^${locationFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
-            'i'
-          )
-        } }
+        {
+          locationName: {
+            $regex: new RegExp(
+              `^${locationFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+              'i'
+            )
+          }
+        }
       ];
     }
   }
@@ -508,7 +519,7 @@ export async function getMonthlyCollectionReportByLocation(
         },
       },
       { $unwind: '$locationDetails' },
-      { $match: { 'locationDetails.rel.licensee': licensee, ...match } },
+      { $match: { $or: [{ 'locationDetails.rel.licensee': licensee }, { 'locationDetails.rel.licencee': licensee }], ...match } },
       {
         $group: {
           _id: '$locationName',
@@ -543,7 +554,7 @@ export async function getMonthlyCollectionReportByLocation(
   // If we have a specific location filter, ensure all filtered locations appear in the results
   if (locationFilter && locationFilter !== 'all') {
     const filterArray = Array.isArray(locationFilter) ? locationFilter : [locationFilter];
-    
+
     // Fetch the names of the locations in the filter to ensure we show them accurately
     const filteredLocations = await GamingLocations.find({
       $or: [
@@ -553,7 +564,7 @@ export async function getMonthlyCollectionReportByLocation(
     }, { name: 1 }).lean();
 
     const existingNames = new Set(result.map(r => r._id));
-    
+
     for (const loc of filteredLocations) {
       if (!existingNames.has(loc.name)) {
         finalResult.push({
@@ -565,7 +576,7 @@ export async function getMonthlyCollectionReportByLocation(
         });
       }
     }
-    
+
     // Re-sort if we added new items
     finalResult.sort((a, b) => (a._id || '').localeCompare(b._id || ''));
   }

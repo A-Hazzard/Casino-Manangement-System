@@ -21,10 +21,10 @@ import { Licensee } from '@/app/api/lib/models/licensee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import {
-    convertFromUSD,
-    convertToUSD,
-    getCountryCurrency,
-    getLicenseeCurrency,
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+  getLicenseeCurrency,
 } from '@/lib/helpers/rates';
 import type { MachineDocument } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
@@ -59,7 +59,7 @@ export async function GET(
     // ============================================================================
     const { machineId } = await params;
     const { searchParams } = new URL(request.url);
-    const timePeriod = searchParams.get('timePeriod');
+    let timePeriod = searchParams.get('timePeriod');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
     const displayCurrency =
@@ -85,6 +85,16 @@ export async function GET(
     const isCashier = userRoles.includes('cashier');
     const isVaultManager = userRoles.includes('vault-manager');
     const isStaff = isCashier || isVaultManager;
+
+    // ============================================================================
+    // STEP 3.5: Technician Restriction - Force last hour meter data
+    // ============================================================================
+    const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer');
+    const isOnlyTechnician = userRoles.length === 1 && userRoles[0].toLowerCase() === 'technician';
+    if (isOnlyTechnician && !isAdmin) {
+      console.warn('[API Machine Detail] Applying technician restriction: forcing LastHour timePeriod');
+      timePeriod = 'LastHour';
+    }
 
     // ============================================================================
     // STEP 4: Fetch machine by ID
@@ -146,11 +156,11 @@ export async function GET(
         })
           .select('name locationName gameDayOffset rel')
           .lean()) as {
-          name?: string;
-          locationName?: string;
-          gameDayOffset?: number;
-          rel?: { licensee?: string };
-        } | null;
+            name?: string;
+            locationName?: string;
+            gameDayOffset?: number;
+            rel?: { licensee?: string };
+          } | null;
 
         if (location) {
           // Check if user has access to this location (includes both licensee and location permissions)
@@ -312,9 +322,9 @@ export async function GET(
           })
             .select('rel country')
             .lean()) as {
-            rel?: { licensee?: string };
-            country?: string;
-          } | null;
+              rel?: { licensee?: string };
+              country?: string;
+            } | null;
         } catch (error) {
           console.warn(
             'Failed to fetch location for currency conversion:',
@@ -325,11 +335,12 @@ export async function GET(
 
       // Determine native currency from licensee or country
       let nativeCurrency: CurrencyCode = 'USD';
-      if (locationData?.rel?.licensee) {
+      const licenseeId = locationData?.rel?.licensee || (locationData?.rel as unknown as Record<string, unknown>)?.licencee as string | undefined;
+      if (licenseeId) {
         try {
           // Licensee _id is stored as a String in this project, not ObjectId
           const licenseeDoc = await Licensee.findOne({
-            _id: locationData.rel.licensee,
+            _id: licenseeId,
           })
             .select('name')
             .lean();
@@ -338,20 +349,20 @@ export async function GET(
             // Map licensee name/id to its native currency (TTD, GYD, BBD, etc.)
             nativeCurrency = getLicenseeCurrency(licenseeDoc.name);
           }
-        } catch (licenseeError) {
+        } catch (licenseeError: unknown) {
           console.warn(
             'Failed to resolve licensee for currency conversion:',
-            licenseeError
+            licenseeError instanceof Error ? licenseeError.message : licenseeError
           );
         }
       } else if (locationData?.country) {
         try {
           // location.country already stores the country name in most cases
           nativeCurrency = getCountryCurrency(locationData.country);
-        } catch (countryError) {
+        } catch (countryError: unknown) {
           console.warn(
             'Failed to resolve country for currency conversion:',
-            countryError
+            countryError instanceof Error ? countryError.message : countryError
           );
         }
       }
@@ -473,7 +484,7 @@ export async function GET(
       success: true,
       data: transformedMachine,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch machine';

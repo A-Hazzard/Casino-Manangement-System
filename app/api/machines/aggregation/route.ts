@@ -16,8 +16,8 @@
  */
 
 import {
-    getUserAccessibleLicenseesFromToken,
-    getUserLocationFilter,
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -67,22 +67,22 @@ export async function GET(req: NextRequest) {
 
     // Get parameters from search params
     const locationIdsParam = searchParams.get('locationId') || searchParams.get('locationIds');
-    const locationIdArray = locationIdsParam 
-      ? locationIdsParam.split(',').filter(id => id && id !== 'all' && id !== 'null') 
+    const locationIdArray = locationIdsParam
+      ? locationIdsParam.split(',').filter(id => id && id !== 'all' && id !== 'null')
       : [];
-    
-    
+
+
     // Support multiple game types
     const gameTypesParam = searchParams.get('gameType') || searchParams.get('gameTypes');
-    const selectedGameTypes = gameTypesParam 
-      ? gameTypesParam.split(',').filter(type => type && type !== 'all' && type !== 'null') 
+    const selectedGameTypes = gameTypesParam
+      ? gameTypesParam.split(',').filter(type => type && type !== 'all' && type !== 'null')
       : [];
 
     const searchTerm = searchParams.get('search')?.trim() || '';
     // Support both 'licensee' and 'licensee' spelling for backwards compatibility
     const licensee =
       searchParams.get('licensee') || searchParams.get('licensee');
-    const timePeriod = searchParams.get('timePeriod');
+    let timePeriod = searchParams.get('timePeriod');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
     const rawOnlineStatus = searchParams.get('onlineStatus') || 'all';
@@ -125,16 +125,30 @@ export async function GET(req: NextRequest) {
         .assignedLocations;
     }
 
-    // ============================================================================
-    // STEP 5: Determine allowed location IDs
-    // ============================================================================
     // Get allowed location IDs (intersection of licensee + location permissions, respecting roles)
-    const allowedLocationIds = await getUserLocationFilter(
+    let allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,
       licensee || undefined,
       userLocationPermissions,
       userRoles
     );
+
+    // CRITICAL: For Admins and Developers, if specific locations are requested,
+    // we bypass the restrictive allowedLocationIds check (which might be filtered by a stale licensee UI tag)
+    // to ensure they can see the data for the location they are specifically viewing.
+    const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer');
+    if (isAdmin && locationIdArray.length > 0) {
+      allowedLocationIds = 'all';
+    }
+
+    // ============================================================================
+    // STEP 4.5: Technician Restriction - Force last hour meter data
+    // ============================================================================
+    const isOnlyTechnician = userRoles.length === 1 && userRoles[0].toLowerCase() === 'technician';
+    if (isOnlyTechnician && !isAdmin) {
+      console.warn('[API Aggregation] Applying technician restriction: forcing LastHour timePeriod');
+      timePeriod = 'LastHour';
+    }
 
     // DEBUG: Return debug info if ?debug=true
     const debug = searchParams.get('debug') === 'true';
@@ -218,14 +232,14 @@ export async function GET(req: NextRequest) {
       // Specific locations requested - validate access
       const filteredLocationIds = locationIdArray.filter(locId => {
         const idStr = String(locId);
-        return allowedLocationIds === 'all' || allowedLocationIds.some(id => String(id) === idStr);
+        return allowedLocationIds === 'all' || allowedLocationIds.some((id: string) => String(id) === idStr);
       });
 
       if (filteredLocationIds.length === 0) {
         console.warn('[API] No locations after permission filtering');
         return NextResponse.json({ success: true, data: [] });
       }
-      
+
       console.warn('[API] Filtered location IDs after permissions:', filteredLocationIds);
       matchStage._id = { $in: filteredLocationIds };
     } else if (allowedLocationIds !== 'all') {
@@ -235,7 +249,7 @@ export async function GET(req: NextRequest) {
 
     // Get all locations with their gameDayOffset
     const locations = await GamingLocations.find(matchStage).lean();
-    
+
     if (locations.length === 0) {
       console.warn('[API] No locations found in database');
       return NextResponse.json({ success: true, data: [] });
@@ -270,7 +284,7 @@ export async function GET(req: NextRequest) {
       const allLocationIds = locations.map(loc =>
         (loc._id as { toString: () => string }).toString()
       );
-      
+
       // Build machine match query with online/offline filter
       const machineMatchQuery: Record<string, unknown> = {
         gamingLocation: { $in: allLocationIds },
@@ -299,7 +313,7 @@ export async function GET(req: NextRequest) {
           ]
         });
       }
-      
+
       // Apply online/offline status filter at database level
       if (onlineStatus !== 'all') {
         const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
@@ -324,7 +338,7 @@ export async function GET(req: NextRequest) {
           });
         }
       }
-      
+
       const allLocationMachines = await Machine.find(machineMatchQuery).lean();
 
       if (onlineStatus !== 'all') {
@@ -333,9 +347,9 @@ export async function GET(req: NextRequest) {
         console.warn('🔍 [API DEBUG] Query lastActivity constraint:', JSON.stringify(machineMatchQuery.lastActivity));
         console.warn('🔍 [API DEBUG] Found machines count:', allLocationMachines.length);
         if (allLocationMachines.length > 0) {
-           const firstMachine = allLocationMachines[0];
-           console.warn('🔍 [API DEBUG] First machine lastActivity:', firstMachine.lastActivity);
-           console.warn('🔍 [API DEBUG] Is valid?', new Date(firstMachine.lastActivity as Date) >= new Date(Date.now() - 3 * 60 * 1000));
+          const firstMachine = allLocationMachines[0];
+          console.warn('🔍 [API DEBUG] First machine lastActivity:', firstMachine.lastActivity);
+          console.warn('🔍 [API DEBUG] Is valid?', new Date(firstMachine.lastActivity as Date) >= new Date(Date.now() - 3 * 60 * 1000));
         }
       }
 
@@ -519,7 +533,7 @@ export async function GET(req: NextRequest) {
             // Calculate online status: machine is online if lastActivity is within last 3 minutes
             online: machine.lastActivity
               ? new Date(machine.lastActivity as Date) >
-                new Date(Date.now() - 3 * 60 * 1000)
+              new Date(Date.now() - 3 * 60 * 1000)
               : false,
             moneyIn,
             moneyOut,
@@ -579,7 +593,7 @@ export async function GET(req: NextRequest) {
             ]
           });
         }
-        
+
         // Apply online/offline status filter at database level
         if (onlineStatus !== 'all') {
           const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
@@ -604,7 +618,7 @@ export async function GET(req: NextRequest) {
             });
           }
         }
-        
+
         const batchAllMachines = await Machine.find(batchMachineMatchQuery).lean();
 
         if (batchAllMachines.length === 0) continue;
@@ -612,7 +626,7 @@ export async function GET(req: NextRequest) {
         // Step 3: Group machines by location
         const batchMachinesByLocation = new Map<
           string,
-          Array<{ _id: string; [key: string]: unknown }>
+          Array<Record<string, unknown>>
         >();
         batchAllMachines.forEach(machine => {
           const locationId = machine.gamingLocation
@@ -623,10 +637,7 @@ export async function GET(req: NextRequest) {
               batchMachinesByLocation.set(locationId, []);
             }
             batchMachinesByLocation.get(locationId)!.push(
-              machine as {
-                _id: string;
-                [key: string]: unknown;
-              }
+              machine as Record<string, unknown>
             );
           }
         });
@@ -652,11 +663,11 @@ export async function GET(req: NextRequest) {
               machine: { $in: allBatchMachineIds },
               ...(timePeriod !== 'All Time'
                 ? {
-                    readAt: {
-                      $gte: batchGlobalStart,
-                      $lte: batchGlobalEnd,
-                    },
-                  }
+                  readAt: {
+                    $gte: batchGlobalStart,
+                    $lte: batchGlobalEnd,
+                  },
+                }
                 : {}),
             },
           },
@@ -682,7 +693,7 @@ export async function GET(req: NextRequest) {
             },
           },
           {
-              $group: {
+            $group: {
               _id: {
                 machine: '$machine',
                 locationId: '$locationId',
@@ -692,21 +703,21 @@ export async function GET(req: NextRequest) {
                 $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
               },
               jackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
-                coinIn: { $last: '$coinIn' },
-                coinOut: { $last: '$coinOut' },
-                gamesPlayed: { $last: '$gamesPlayed' },
-                gamesWon: { $last: '$gamesWon' },
-                handPaidCancelledCredits: {
-                  $last: '$handPaidCancelledCredits',
-                },
-                meterCount: { $sum: 1 },
+              coinIn: { $last: '$coinIn' },
+              coinOut: { $last: '$coinOut' },
+              gamesPlayed: { $last: '$gamesPlayed' },
+              gamesWon: { $last: '$gamesWon' },
+              handPaidCancelledCredits: {
+                $last: '$handPaidCancelledCredits',
+              },
+              meterCount: { $sum: 1 },
               minReadAt: { $min: '$readAt' },
               maxReadAt: { $max: '$readAt' },
-              },
+            },
           },
         ];
 
-            const batchMetricsAggregation =
+        const batchMetricsAggregation =
           await Meters.aggregate(batchMetersPipeline).exec();
 
         // Step 6: Filter by gaming day ranges and group by machine
@@ -793,76 +804,76 @@ export async function GET(req: NextRequest) {
           const locationResults = locationMachines.map(machine => {
             const machineId = String(machine._id);
             const metrics = metricsByMachine.get(machineId) || {
-                moneyIn: 0,
-                moneyOut: 0,
-                jackpot: 0,
-                coinIn: 0,
-                coinOut: 0,
-                gamesPlayed: 0,
-                gamesWon: 0,
-                handPaidCancelledCredits: 0,
-                meterCount: 0,
-              };
+              moneyIn: 0,
+              moneyOut: 0,
+              jackpot: 0,
+              coinIn: 0,
+              coinOut: 0,
+              gamesPlayed: 0,
+              gamesWon: 0,
+              handPaidCancelledCredits: 0,
+              meterCount: 0,
+            };
 
-              const multiplier = Number((machine as any).collectorDenomination) || 1;
-              const moneyIn = (metrics.moneyIn || 0) * multiplier;
-              const moneyOut = (metrics.moneyOut || 0) * multiplier;
-              const jackpot = (metrics.jackpot || 0) * multiplier;
-              const coinIn = (metrics.coinIn || 0) * multiplier;
-              const coinOut = (metrics.coinOut || 0) * multiplier;
-              const gamesPlayed = metrics.gamesPlayed || 0;
-              const gamesWon = metrics.gamesWon || 0;
-              const gross = moneyIn - moneyOut;
+            const multiplier = Number(machine.collectorDenomination) || 1;
+            const moneyIn = (metrics.moneyIn || 0) * multiplier;
+            const moneyOut = (metrics.moneyOut || 0) * multiplier;
+            const jackpot = (metrics.jackpot || 0) * multiplier;
+            const coinIn = (metrics.coinIn || 0) * multiplier;
+            const coinOut = (metrics.coinOut || 0) * multiplier;
+            const gamesPlayed = metrics.gamesPlayed || 0;
+            const gamesWon = metrics.gamesWon || 0;
+            const gross = moneyIn - moneyOut;
 
-              // Get serialNumber with fallback to custom.name
+            // Get serialNumber with fallback to custom.name
             const serialNumber = (machine.serialNumber as string)?.trim() || '';
-              const customName =
-                (
-                  (machine.custom as Record<string, unknown>)?.name as string
-                )?.trim() || '';
-              const finalSerialNumber = serialNumber || customName || '';
+            const customName =
+              (
+                (machine.custom as Record<string, unknown>)?.name as string
+              )?.trim() || '';
+            const finalSerialNumber = serialNumber || customName || '';
 
-              return {
-                _id: machineId,
-                locationId: locationIdStr,
-                locationName: (location.name as string) || '(No Location)',
-                assetNumber: finalSerialNumber,
-                serialNumber: finalSerialNumber,
-                smbId: machine.relayId || '',
-                relayId: machine.relayId || '',
-                installedGame: String(machine.game || machine.gameType || ''),
-                game: String(machine.game || machine.gameType || ''),
-                manufacturer:
+            return {
+              _id: machineId,
+              locationId: locationIdStr,
+              locationName: (location.name as string) || '(No Location)',
+              assetNumber: finalSerialNumber,
+              serialNumber: finalSerialNumber,
+              smbId: machine.relayId || '',
+              relayId: machine.relayId || '',
+              installedGame: String(machine.game || machine.gameType || ''),
+              game: String(machine.game || machine.gameType || ''),
+              manufacturer:
                 machine.manufacturer || machine.manuf || 'Unknown Manufacturer',
-                status: machine.assetStatus || '',
-                assetStatus: machine.assetStatus || '',
-                cabinetType: machine.cabinetType || '',
-                accountingDenomination:
+              status: machine.assetStatus || '',
+              assetStatus: machine.assetStatus || '',
+              cabinetType: machine.cabinetType || '',
+              accountingDenomination:
                 ((machine.gameConfig as Record<string, unknown>)
                   ?.accountingDenomination as string) || '1',
-                collectorDenomination: (machine as any).collectorDenomination || 1,
-                collectionMultiplier: String((machine as any).collectorDenomination || 1),
-                isCronosMachine: false,
+              collectorDenomination: (machine.collectorDenomination as number) || 1,
+              collectionMultiplier: String(machine.collectorDenomination || 1),
+              isCronosMachine: false,
               lastOnline: (machine.lastActivity as Date | undefined) || null,
               lastActivity: (machine.lastActivity as Date | undefined) || null,
-                // Calculate online status: machine is online if lastActivity is within last 3 minutes
-                online: machine.lastActivity
+              // Calculate online status: machine is online if lastActivity is within last 3 minutes
+              online: machine.lastActivity
                 ? new Date(machine.lastActivity as Date) >
-                    new Date(Date.now() - 3 * 60 * 1000)
-                  : false,
+                new Date(Date.now() - 3 * 60 * 1000)
+                : false,
               createdAt: machine.createdAt as Date | undefined,
-                timePeriod: timePeriod,
-                moneyIn,
-                moneyOut,
-                cancelledCredits: moneyOut,
-                jackpot,
-                gross,
-                coinIn,
-                coinOut,
-                gamesPlayed,
-                gamesWon,
-              };
-            });
+              timePeriod: timePeriod,
+              moneyIn,
+              moneyOut,
+              cancelledCredits: moneyOut,
+              jackpot,
+              gross,
+              coinIn,
+              coinOut,
+              gamesPlayed,
+              gamesWon,
+            };
+          });
           batchResults.push(...locationResults);
         });
 
@@ -875,75 +886,77 @@ export async function GET(req: NextRequest) {
     // STEP 8.5: Refine Offline Status Filter and Calculate Labels
     // ============================================================================
     const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
-    
+
     // Process all machines to add offline labels and apply refined filtering if needed
     let refinedMachines = allMachines.map(machine => {
-        const lastActivity = (machine as any).lastActivity ? new Date((machine as any).lastActivity) : null;
-        const isOnline = lastActivity && lastActivity > threeMinutesAgo;
-        
-        let offlineTimeLabel : string | undefined = undefined;
-        let actualOfflineTime : string | undefined = undefined;
+      const lastActivityStr = (machine as Record<string, unknown>).lastActivity;
+      const lastActivity = lastActivityStr ? new Date(lastActivityStr as string | Date) : null;
+      const isOnline = lastActivity && lastActivity > threeMinutesAgo;
 
-        if (!isOnline && lastActivity) {
-            const actualDuration = formatDistanceToNow(lastActivity, { addSuffix: true });
-            actualOfflineTime = actualDuration;
+      let offlineTimeLabel: string | undefined = undefined;
+      let actualOfflineTime: string | undefined = undefined;
 
-            const locationId = (machine as any).locationId;
-            const range = gamingDayRanges.get(String(locationId));
+      if (!isOnline && lastActivity) {
+        const actualDuration = formatDistanceToNow(lastActivity, { addSuffix: true });
+        actualOfflineTime = actualDuration;
 
-            if (range) {
-                // If it went offline BEFORE the range start, we clamp the label for 7d/30d/Custom
-                if (lastActivity < range.rangeStart && (timePeriod === '7d' || timePeriod === '30d' || timePeriod === 'Custom' || timePeriod === 'last7days' || timePeriod === 'last30days')) {
-                    const days = (timePeriod === '7d' || timePeriod === 'last7days') ? '7' : (timePeriod === '30d' || timePeriod === 'last30days') ? '30' : undefined;
-                    if (days) {
-                        offlineTimeLabel = `within the last ${days} days`;
-                    } else {
-                        // For Custom, use distance to rangeStart? 
-                        // Let's just say "within the selected period"
-                        const diffMs = range.rangeEnd.getTime() - range.rangeStart.getTime();
-                        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-                        offlineTimeLabel = `within the last ${diffDays} days`;
-                    }
-                } else {
-                    offlineTimeLabel = actualDuration;
-                }
+        const locationId = (machine as Record<string, unknown>).locationId;
+        const range = gamingDayRanges.get(String(locationId));
+
+        if (range) {
+          // If it went offline BEFORE the range start, we clamp the label for 7d/30d/Custom
+          if (lastActivity < range.rangeStart && (timePeriod === '7d' || timePeriod === '30d' || timePeriod === 'Custom' || timePeriod === 'last7days' || timePeriod === 'last30days')) {
+            const days = (timePeriod === '7d' || timePeriod === 'last7days') ? '7' : (timePeriod === '30d' || timePeriod === 'last30days') ? '30' : undefined;
+            if (days) {
+              offlineTimeLabel = `within the last ${days} days`;
+            } else {
+              // For Custom, use distance to rangeStart? 
+              // Let's just say "within the selected period"
+              const diffMs = range.rangeEnd.getTime() - range.rangeStart.getTime();
+              const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+              offlineTimeLabel = `within the last ${diffDays} days`;
             }
-        } else if (!isOnline && !lastActivity) {
-            actualOfflineTime = 'Never';
-            offlineTimeLabel = 'Never';
+          } else {
+            offlineTimeLabel = actualDuration;
+          }
         }
+      } else if (!isOnline && !lastActivity) {
+        actualOfflineTime = 'Never';
+        offlineTimeLabel = 'Never';
+      }
 
-        return {
-            ...machine,
-            online: isOnline,
-            offlineTimeLabel,
-            actualOfflineTime
-        };
+      return {
+        ...machine,
+        online: isOnline,
+        offlineTimeLabel,
+        actualOfflineTime
+      };
     });
 
     // Apply strict filtering for 'offline' status if requested
     if (onlineStatus.startsWith('offline')) {
-        refinedMachines = refinedMachines.filter(machine => {
-            const lastActivity = (machine as any).lastActivity ? new Date((machine as any).lastActivity) : null;
-            const isOnline = lastActivity && lastActivity > threeMinutesAgo;
-            
-            // 1. Must be currently offline
-            if (isOnline) return false;
+      refinedMachines = refinedMachines.filter(machine => {
+        const lastActivityStr = (machine as Record<string, unknown>).lastActivity;
+        const lastActivity = lastActivityStr ? new Date(lastActivityStr as string | Date) : null;
+        const isOnline = lastActivity && lastActivity > threeMinutesAgo;
 
-            // 2. Apply period-based rules
-            const locationId = (machine as any).locationId;
-            const range = gamingDayRanges.get(String(locationId));
-            if (!range) return true;
+        // 1. Must be currently offline
+        if (isOnline) return false;
 
-            if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
-                // Strict: Only show if it went offline DURING this gaming day
-                if (!lastActivity) return false; // Never online isn't "offline today"
-                return lastActivity >= range.rangeStart && lastActivity <= range.rangeEnd;
-            } else {
-                // Less strict for 7d/30d/Custom: Show if offline at the end of the period (including long-term)
-                return !lastActivity || lastActivity <= range.rangeEnd;
-            }
-        });
+        // 2. Apply period-based rules
+        const locationId = (machine as Record<string, unknown>).locationId;
+        const range = gamingDayRanges.get(String(locationId));
+        if (!range) return true;
+
+        if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
+          // Strict: Only show if it went offline DURING this gaming day
+          if (!lastActivity) return false; // Never online isn't "offline today"
+          return lastActivity >= range.rangeStart && lastActivity <= range.rangeEnd;
+        } else {
+          // Less strict for 7d/30d/Custom: Show if offline at the end of the period (including long-term)
+          return !lastActivity || lastActivity <= range.rangeEnd;
+        }
+      });
     }
 
     // Update allMachines for the next steps
@@ -1018,14 +1031,14 @@ export async function GET(req: NextRequest) {
 
       const { Licensee } = await import('@/app/api/lib/models/licensee');
       const licenseesData = await Licensee.find(
-          {
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          },
+        {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
+          ],
+        },
         { _id: 1, name: 1 }
-        )
+      )
         .lean()
         .exec();
 
@@ -1060,7 +1073,7 @@ export async function GET(req: NextRequest) {
       // Convert from native currency to USD, then to display currency
       filteredMachines = filteredMachines.map(machine => {
         const locationDetails = locationDetailsMap.get(machine.locationId);
-        const machineLicenseeId = locationDetails?.rel?.licensee as
+        const machineLicenseeId = (locationDetails?.rel?.licensee || (locationDetails?.rel as Record<string, unknown>)?.licencee) as
           | string
           | undefined;
 
@@ -1130,16 +1143,37 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 10.5: Sort machines by moneyIn descending (default sort)
+    // STEP 10.5: Dynamic machine sorting
     // ============================================================================
-    // Sort machines by moneyIn (highest first) so pagination returns top performers first
-    // This ensures the first page shows machines with actual financial data
+    const sortBy = searchParams.get('sortBy') || 'moneyIn';
+    const sortOrderRaw = searchParams.get('sortOrder') || 'desc';
+    const sortOrder = sortOrderRaw.toLowerCase() === 'asc' ? 1 : -1;
+
     filteredMachines.sort((a, b) => {
       const aRecord = a as Record<string, unknown>;
       const bRecord = b as Record<string, unknown>;
-      return (
-        ((bRecord.moneyIn as number) || 0) - ((aRecord.moneyIn as number) || 0)
-      );
+
+      let valA = aRecord[sortBy];
+      let valB = bRecord[sortBy];
+
+      // Handle nested values if needed (e.g., relayId)
+      if (valA === undefined || valA === null) valA = 0;
+      if (valB === undefined || valB === null) valB = 0;
+
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        return sortOrder === 1
+          ? valA.localeCompare(valB)
+          : valB.localeCompare(valA);
+      }
+
+      const numA = Number(valA);
+      const numB = Number(valB);
+
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return sortOrder === 1 ? numA - numB : numB - numA;
+      }
+
+      return 0;
     });
 
     // ============================================================================
@@ -1207,7 +1241,7 @@ export async function GET(req: NextRequest) {
         allowedLocationIds:
           allowedLocationIds === 'all'
             ? 'ALL'
-            : allowedLocationIds?.slice(0, 10),
+            : (allowedLocationIds as string[])?.slice(0, 10),
         locationsFound: locations.length,
         locationSample: locations.slice(0, 3).map(l => ({
           id: String(l._id),

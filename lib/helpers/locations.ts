@@ -110,7 +110,8 @@ export const searchAllLocations = async (
   timePeriod?: string,
   customDateRange?: { from: Date; to: Date },
   signal?: AbortSignal,
-  machineTypeFilter?: string
+  machineTypeFilter?: string,
+  onlineStatus?: string
 ): Promise<AggregatedLocation[]> => {
   try {
     const params: Record<string, string> = {};
@@ -123,6 +124,7 @@ export const searchAllLocations = async (
       params.endDate = customDateRange.to.toISOString();
     }
     if (machineTypeFilter) params.machineTypeFilter = machineTypeFilter;
+    if (onlineStatus) params.onlineStatus = onlineStatus;
 
     const response = await axios.get('/api/locations/search-all', {
       params,
@@ -162,7 +164,10 @@ export async function fetchAggregatedLocationsData(
   page?: number,
   limit?: number,
   signal?: AbortSignal,
-  locations?: string[]
+  locations?: string[],
+  onlineStatus?: string,
+  sortBy?: string,
+  sortOrder?: 'asc' | 'desc'
 ): Promise<{
   data: AggregatedLocation[];
   pagination?: {
@@ -188,6 +193,10 @@ export async function fetchAggregatedLocationsData(
       );
     if (displayCurrency)
       queryParams.push(`currency=${encodeURIComponent(displayCurrency)}`);
+    if (onlineStatus)
+      queryParams.push(`onlineStatus=${encodeURIComponent(onlineStatus)}`);
+    if (sortBy) queryParams.push(`sortBy=${encodeURIComponent(sortBy)}`);
+    if (sortOrder) queryParams.push(`sortOrder=${encodeURIComponent(sortOrder)}`);
 
     // Add specific locations filter
     if (locations && locations.length > 0) {

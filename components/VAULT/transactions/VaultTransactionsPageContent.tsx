@@ -19,18 +19,18 @@ import { Card, CardContent } from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/shared/ui/select';
 import VaultTransactionsSkeleton from '@/components/ui/skeletons/VaultTransactionsSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import {
-  fetchVaultTransactions,
-  getTransactionTypeBadge
+    fetchVaultTransactions,
+    getTransactionTypeBadge
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
@@ -129,7 +129,7 @@ export default function VaultTransactionsPageContent() {
   const filteredAndSortedTransactions = useMemo(() => {
     // Only sort the current page data
     return [...transactions].sort((a, b) => {
-        const getField = (obj: any, field: string) => {
+        const getField = (obj: ExtendedVaultTransaction, field: string) => {
             switch(field) {
                 case 'date': return new Date(obj.timestamp).getTime();
                 case 'user': return (obj.performedByName || obj.performedBy || '').toLowerCase();
@@ -138,15 +138,18 @@ export default function VaultTransactionsPageContent() {
                 case 'amount': return Math.abs(obj.amount);
                 case 'type': return (obj.type || '').toLowerCase();
                 case 'status': return (obj.isVoid ? 'voided' : 'completed');
-                default: return obj[field];
+                default: return (obj as Record<string, unknown>)[field];
             }
         };
 
         const aValue = getField(a, sortOption);
         const bValue = getField(b, sortOption);
 
-        if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+        const aStr = typeof aValue === 'number' ? aValue : String(aValue ?? '');
+        const bStr = typeof bValue === 'number' ? bValue : String(bValue ?? '');
+
+        if (aStr < bStr) return sortOrder === 'asc' ? -1 : 1;
+        if (aStr > bStr) return sortOrder === 'asc' ? 1 : -1;
         return 0;
     });
   }, [

@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
       secret,
       username: user.username
     });
-  } catch (error: any) {
-    console.error('TOTP Verify Recovery Error:', error);
+  } catch (error: unknown) {
+    console.error('TOTP Verify Recovery Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -11,39 +11,39 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
 import CashierManagementSkeleton from '@/components/ui/skeletons/CashierManagementSkeleton';
 
 import {
-  fetchCashiersData,
-  handleCreateCashier,
-  handleDeleteCashier,
-  handleFloatAction,
-  handleResetCashierPassword,
-  handleUpdateCashierStatus
+    fetchCashiersData,
+    handleCreateCashier,
+    handleDeleteCashier,
+    handleFloatAction,
+    handleResetCashierPassword,
+    handleUpdateCashierStatus
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
@@ -53,23 +53,23 @@ import { cn } from '@/lib/utils';
 // Phase 2 Modals
 import { fetchVaultBalance } from '@/lib/helpers/vaultHelpers';
 import { getDenominationValues, getInitialDenominationRecord } from '@/lib/utils/vault/denominations';
-import type { Denomination, FloatRequest, UnbalancedShiftInfo } from '@/shared/types/vault';
+import type { Cashier, Denomination, FloatRequest, UnbalancedShiftInfo } from '@/shared/types/vault';
 import {
-  AlertTriangle,
-  ArrowRight,
-  ArrowUpDown,
-  Ban,
-  Check,
-  CheckCircle,
-  Copy,
-  Eye,
-  Filter,
-  Plus,
-  RefreshCw,
-  RotateCcw,
-  Search,
-  Trash2,
-  User
+    AlertTriangle,
+    ArrowRight,
+    ArrowUpDown,
+    Ban,
+    Check,
+    CheckCircle,
+    Copy,
+    Eye,
+    Filter,
+    Plus,
+    RefreshCw,
+    RotateCcw,
+    Search,
+    Trash2,
+    User
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -79,24 +79,7 @@ import CashierActionSelectionModal from './modals/CashierActionSelectionModal';
 import CashierActivityLogModal from './modals/CashierActivityLogModal';
 import CashierShiftHistoryModal from './modals/CashierShiftHistoryModal';
 
-interface Cashier {
-  _id: string;
-  profile?: {
-    firstName: string;
-    lastName: string;
-  };
-  username: string;
-  emailAddress: string;
-  isEnabled: boolean;
-  shiftStatus?: 'active' | 'pending_review' | 'pending_start' | 'closed' | 'inactive';
-  currentBalance?: number;
-  denominations?: Denomination[];
-  discrepancy?: number;
-  lastLoginAt?: string;
-  roles: string[];
-  tempPassword?: string;
-  tempPasswordChanged?: boolean;
-}
+
 
 export default function CashierManagementPanel({
   onLoadingChange,
@@ -640,7 +623,7 @@ export default function CashierManagementPanel({
               return (
                 <button
                   key={item.value}
-                  onClick={() => setVarianceFilter(item.value as any)}
+                  onClick={() => setVarianceFilter(item.value as typeof varianceFilter)}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] md:text-xs font-black uppercase tracking-tighter transition-all whitespace-nowrap",
                     isSelected 

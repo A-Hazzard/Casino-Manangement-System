@@ -32,6 +32,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
+import type { GamingMachine } from '@/shared/types/entities';
 import type { CashSource, Denomination } from '@/shared/types/vault';
 import axios from 'axios';
 import { ArrowUpRight, Info, Landmark, Loader2, MessageSquare, Plus, RefreshCw, Wallet } from 'lucide-react';
@@ -89,7 +90,7 @@ export default function VaultOverviewAddCashModal({
 
   useEffect(() => {
     if (open) {
-      setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+      setDenominations(denomsList.map(d => ({ denomination: Number(d) as Denomination['denomination'], quantity: 0 })));
       setTouchedDenominations(new Set());
     }
   }, [open, denomsList]);
@@ -108,7 +109,7 @@ export default function VaultOverviewAddCashModal({
           });
           const fetchedMachines = response.data.data || [];
           setMachines(
-            fetchedMachines.map((m: any) => ({
+            fetchedMachines.map((m: GamingMachine) => ({
               id: m.machineId || m._id || m.serialNumber,
               label: m.game ? `${m.serialNumber} (${m.game})` : m.serialNumber,
             }))
@@ -214,7 +215,7 @@ export default function VaultOverviewAddCashModal({
       });
       // Reset form on success
       setSource('');
-      setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+      setDenominations(denomsList.map(d => ({ denomination: d as Denomination['denomination'], quantity: 0 })));
       setTouchedDenominations(new Set());
       setSelectedMachineIds([]);
       setBankDetails({ nameOnAccount: '', branch: '' });
@@ -236,7 +237,7 @@ export default function VaultOverviewAddCashModal({
   const handleClose = () => {
     if (loading) return;
     setSource('');
-    setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+    setDenominations(denomsList.map(d => ({ denomination: d as Denomination['denomination'], quantity: 0 })));
     setTouchedDenominations(new Set());
     setSelectedMachineIds([]);
     setBankDetails({ nameOnAccount: '', branch: '' });

@@ -13,10 +13,25 @@ import { safeFormatDate } from '@/lib/utils/date/formatting';
 import type { VaultTransaction } from '@/shared/types/vault';
 import { Calendar, FileText, Landmark, Receipt, User } from 'lucide-react';
 
+type MachineDetail = {
+  identifier?: string;
+  game?: string;
+  gameType?: string;
+};
+
+export type ExtendedTransactionView = Omit<VaultTransaction, 'timestamp' | 'createdAt' | 'updatedAt'> & {
+  timestamp: string | Date;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  performerName?: string;
+  performedByName?: string;
+  machineDetails?: MachineDetail[];
+};
+
 type VaultTransactionDetailsModalProps = {
   open: boolean;
   onClose: () => void;
-  transaction: VaultTransaction | null;
+  transaction: ExtendedTransactionView | null;
 };
 
 export default function VaultTransactionDetailsModal({
@@ -79,7 +94,7 @@ export default function VaultTransactionDetailsModal({
                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Performed By</span>
                    <span className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
                       <User className="h-4 w-4 text-gray-400" />
-                      {(transaction as any).performerName || (transaction as any).performedByName || transaction.performedBy || 'System'}
+                      {transaction.performerName || transaction.performedByName || transaction.performedBy || 'System'}
                    </span>
                 </div>
                 <div className="flex flex-col p-5 items-end text-right bg-gray-50/50">
@@ -198,7 +213,7 @@ export default function VaultTransactionDetailsModal({
           )}
 
           {/* Machine Details Section */}
-          {(transaction as any).machineDetails && (transaction as any).machineDetails.length > 0 && (
+          {(transaction as ExtendedTransactionView).machineDetails && (transaction as ExtendedTransactionView).machineDetails!.length > 0 && (
              <div className="flex flex-col space-y-4 p-5 rounded-xl border border-gray-200 shadow-sm bg-white">
                <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
                  <Receipt className="h-4.5 w-4.5 text-gray-500" />
@@ -214,7 +229,7 @@ export default function VaultTransactionDetailsModal({
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-gray-100 bg-white">
-                        {(transaction as any).machineDetails.map((m: any, idx: number) => (
+                        {(transaction as ExtendedTransactionView).machineDetails!.map((m: MachineDetail, idx: number) => (
                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
                               <td className="px-3 py-2.5 font-semibold text-gray-900">{m.identifier || 'N/A'}</td>
                               <td className="px-3 py-2.5 text-gray-600 truncate max-w-[150px]">{m.game || <span className="text-red-600 italic">no game provided</span>}</td>

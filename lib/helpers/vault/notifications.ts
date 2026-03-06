@@ -7,11 +7,12 @@
  */
 
 import VaultNotificationModel, {
-    type IVaultNotification,
-    type NotificationStatus,
-    type NotificationType,
+  type IVaultNotification,
+  type NotificationStatus,
+  type NotificationType,
 } from '@/app/api/lib/models/vaultNotification';
 import type { FloatRequest } from '@/shared/types/vault';
+import type { FilterQuery, UpdateQuery } from 'mongoose';
 
 // ============================================================================
 // Notification Creation
@@ -28,7 +29,7 @@ export async function createFloatRequestNotification(
   // Determine specific title based on type and if it's initial
   let title = `Float Request from ${cashierName}`;
   const isInitial = floatRequest.requestNotes === 'Initial shift float' || !floatRequest.type;
-  
+
   if (isInitial) {
     title = `Cashdesk Start Day Float Request - ${cashierName}`;
   } else if (floatRequest.type === 'increase') {
@@ -104,7 +105,7 @@ export async function createSystemAlertNotification(
   title: string,
   message: string,
   urgent: boolean = false,
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ): Promise<IVaultNotification> {
   const notification = await VaultNotificationModel.create({
     locationId,
@@ -268,18 +269,20 @@ export async function dismissNotifications(
   notificationIds: string[],
   userId?: string
 ): Promise<void> {
-  const update: any = {
+  const update: UpdateQuery<IVaultNotification> = {
     $set: {
       deletedAt: new Date(),
     },
   };
-  
+
   if (userId) {
     update.$addToSet = { dismissedByUsers: userId };
   } else {
     // Fallback for system updates: mark as globally dismissed
-    update.$set.status = 'dismissed' as NotificationStatus;
-    update.$set.dismissedAt = new Date();
+    if (update.$set) {
+      update.$set.status = 'dismissed' as NotificationStatus;
+      update.$set.dismissedAt = new Date();
+    }
   }
 
   await VaultNotificationModel.updateMany(
@@ -325,7 +328,7 @@ export async function getNotifications(
   status?: NotificationStatus,
   limit: number = 50
 ): Promise<IVaultNotification[]> {
-  const query: any = {
+  const query: FilterQuery<IVaultNotification> = {
     $or: [
       { recipientId: userId },
       { recipientRole: 'vault-manager' }

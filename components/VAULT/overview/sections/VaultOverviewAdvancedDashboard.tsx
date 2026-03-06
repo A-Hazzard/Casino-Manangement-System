@@ -19,6 +19,7 @@ import {
 import { fetchAdvancedDashboardMetrics } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
+import type { VaultMetrics } from '@/shared/types/vault';
 import { formatTime12Hour } from '@/shared/utils/dateFormat';
 import {
     Activity,
@@ -44,6 +45,21 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 
+interface VaultAdvancedDashboardData {
+  metrics: VaultMetrics;
+  balanceTrend: Array<{
+    time: string;
+    balance: number;
+    cashOut: number;
+    transactions: number;
+  }>;
+  cashFlowData: Array<{
+    category: string;
+    amount: number;
+  }>;
+  peakHour: string;
+}
+
 export default function VaultOverviewAdvancedDashboard() {
   const { formatAmount } = useCurrencyFormat();
   const { user } = useUserStore();
@@ -51,7 +67,7 @@ export default function VaultOverviewAdvancedDashboard() {
     'balance' | 'transactions' | 'flow'
   >('balance');
   const [loading, setLoading] = useState(false);
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<VaultAdvancedDashboardData | null>(null);
 
   useEffect(() => {
     fetchAdvancedDashboardData();
@@ -216,7 +232,7 @@ export default function VaultOverviewAdvancedDashboard() {
                         `${name} ${(percent * 100).toFixed(0)}%`
                       }
                     >
-                      {dashboardData?.cashFlowData?.map((entry: any, index: number) => (
+                      {dashboardData?.cashFlowData?.map((_entry, index) => (
                          <Cell key={`cell-${index}`} fill={
                            index === 0 ? "#0AB40B" : // Cash In (Green)
                            index === 1 ? "#FFA203" : // Cash Out (Orange)

@@ -26,7 +26,7 @@ export type VaultNotification = {
     requestedAmount?: number;
     requestType?: string;
     requestedDenominations?: { denomination: number; quantity: number }[];
-    [key: string]: any;
+    [key: string]: unknown;
   };
 };
 
@@ -87,7 +87,7 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
         const data = await res.json();
         if (data.success) {
           // Optimistically update local state
-          setNotifications(prev => 
+          setNotifications(prev =>
             prev.map(n => ids.includes(n._id) ? { ...n, status: 'read' } : n)
           );
           setUnreadCount(prev => Math.max(0, prev - ids.length));
@@ -117,13 +117,13 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
         const data = await res.json();
         if (data.success) {
           setNotifications(prev => prev.filter(n => !ids.includes(n._id)));
-          
+
           // Calculate how many unread were dismissed to update count
           setUnreadCount(prev => {
-             // We need current notifications to calculate this accurately, 
-             // but using a setter function means we don't have direct access to 'notifications' here without making it a dependency.
-             // However, the component already has 'notifications' in scope.
-             return prev; // We'll just rely on the next fetch for full accuracy if needed, or handle it better.
+            // We need current notifications to calculate this accurately, 
+            // but using a setter function means we don't have direct access to 'notifications' here without making it a dependency.
+            // However, the component already has 'notifications' in scope.
+            return prev; // We'll just rely on the next fetch for full accuracy if needed, or handle it better.
           });
         }
       }

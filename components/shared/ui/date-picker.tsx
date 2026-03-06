@@ -18,7 +18,7 @@
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import * as React from 'react';
-import { DayPicker, SelectSingleEventHandler } from 'react-day-picker';
+import { DayPicker, Matcher, SelectSingleEventHandler } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 
 import { Button } from '@/components/shared/ui/button';
@@ -33,7 +33,7 @@ export type DatePickerProps = {
   date: Date | undefined;
   setDate: (date: Date | undefined) => void;
   disabled?: boolean;
-  disabledDates?: any; // Matcher | Matcher[] from react-day-picker
+  disabledDates?: Matcher | Matcher[];
 };
 
 export function DatePicker({ date, setDate, disabled, disabledDates }: DatePickerProps) {

@@ -9,10 +9,10 @@ import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { isAbortError } from '@/lib/utils/errors';
 import type {
-    MachineData,
-    MachinesApiResponse,
-    MachineStats,
-    MachineStatsApiResponse,
+  MachineData,
+  MachinesApiResponse,
+  MachineStats,
+  MachineStatsApiResponse,
 } from '@/shared/types/machines';
 import axios from 'axios';
 import { useCallback, useState } from 'react';
@@ -56,7 +56,7 @@ export const useMachinesTabData = (
   const [loading, setLoading] = useState(false);
 
   // Stats fetching
-  const fetchMachineStats = useCallback(async () => {
+  const fetchMachineStats = useCallback(async (locationId: string = 'all') => {
     setStatsLoading(true);
     const params: Record<string, string> = {
       type: 'stats',
@@ -65,6 +65,10 @@ export const useMachinesTabData = (
 
     if (selectedLicensee && selectedLicensee !== 'all') {
       params.licensee = selectedLicensee;
+    }
+
+    if (locationId !== 'all') {
+      params.locationId = locationId;
     }
 
     if (customDateRange?.startDate && customDateRange?.endDate) {
@@ -295,9 +299,9 @@ export const useMachinesTabData = (
       if (selectedLicensee && selectedLicensee !== 'all') {
         params.licensee = selectedLicensee;
       }
-      
+
       const response = await axios.get('/api/locations', { params });
-      
+
       let fetchedLocations: { id: string; name: string; sasEnabled: boolean }[] = [];
       if (Array.isArray(response.data?.locations)) {
         fetchedLocations = response.data.locations.map((loc: {
@@ -311,7 +315,7 @@ export const useMachinesTabData = (
           sasEnabled: loc.sasEnabled || false,
         }));
       }
-      
+
       setLocations(fetchedLocations);
     } catch (error) {
       console.error('Failed to fetch locations:', error);

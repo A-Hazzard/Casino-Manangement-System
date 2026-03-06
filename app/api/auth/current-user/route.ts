@@ -12,8 +12,9 @@
  */
 
 import {
-    getInvalidProfileFields,
-    hasInvalidProfileFields,
+  getInvalidProfileFields,
+  hasInvalidProfileFields,
+  ProfileLike
 } from '@/app/api/lib/helpers/profileValidation';
 import { getUserById, getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -67,7 +68,7 @@ export async function GET() {
     // ============================================================================
     // STEP 4: Validate profile fields
     // ============================================================================
-    const { invalidFields, reasons } = getInvalidProfileFields(dbUser as never);
+    const { invalidFields, reasons } = getInvalidProfileFields(dbUser as ProfileLike);
     const requiresProfileUpdate = hasInvalidProfileFields(invalidFields);
 
     // ============================================================================
@@ -90,6 +91,7 @@ export async function GET() {
         tempPasswordChanged: dbUser.tempPasswordChanged ?? true,
         tempPassword: dbUser.tempPassword ?? null,
         requiresProfileUpdate,
+        requiresPasswordUpdate: !!invalidFields.password,
         invalidProfileFields: invalidFields,
         invalidProfileReasons: reasons,
       },

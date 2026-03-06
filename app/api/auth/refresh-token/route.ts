@@ -11,6 +11,7 @@
  */
 
 import { generateAccessToken, verifyAccessToken } from '@/lib/utils/auth';
+import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -74,13 +75,7 @@ export async function POST(request: NextRequest) {
       message: 'Token refreshed successfully',
     });
 
-    response.cookies.set('token', newToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 120 * 60, // 2 hours (same as token expiration)
-      path: '/',
-    });
+    response.cookies.set('token', newToken, getAuthCookieOptions(request, { maxAge: 120 * 60 }));
 
     // ============================================================================
     // STEP 5: Return success response

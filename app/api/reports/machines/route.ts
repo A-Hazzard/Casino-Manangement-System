@@ -17,10 +17,10 @@
 
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import {
-    getAllMachines,
-    getMachineStats,
-    getOfflineMachines,
-    getOverviewMachines,
+  getAllMachines,
+  getMachineStats,
+  getOfflineMachines,
+  getOverviewMachines,
 } from '@/app/api/lib/helpers/reports/machines';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -194,7 +194,15 @@ export async function GET(req: NextRequest) {
     }
 
     if (licensee && licensee !== 'all') {
-      locationMatchStage['rel.licensee'] = licensee;
+      if (!locationMatchStage.$and) {
+        locationMatchStage.$and = [];
+      }
+      (locationMatchStage.$and as Array<Record<string, unknown>>).push({
+        $or: [
+          { 'rel.licensee': licensee },
+          { 'rel.licencee': licensee }
+        ]
+      });
     }
 
     // ============================================================================
@@ -210,7 +218,8 @@ export async function GET(req: NextRequest) {
           endDate,
           licensee,
           displayCurrency,
-          isAdminOrDev
+          isAdminOrDev,
+          timePeriod
         );
         break;
       case 'overview':
@@ -267,8 +276,9 @@ export async function GET(req: NextRequest) {
     }
 
     return result;
-  } catch (err) {
+  } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Server error';
+    console.error('Reports Machines API Error:', errorMessage);
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

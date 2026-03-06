@@ -620,6 +620,7 @@ export default function LocationsDetailsPageContent() {
             sortOrder={cabinetsData.sortOrder}
             currentPage={cabinetsData.currentPage}
             effectiveTotalPages={cabinetsData.effectiveTotalPages}
+            totalCount={cabinetsData.totalCount}
             debouncedSearchTerm={cabinetsData.debouncedSearchTerm || ''}
             machineStats={machineStats}
             membershipStats={membershipStats}

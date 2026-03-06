@@ -16,7 +16,7 @@ import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { GamingMachine } from '@/shared/types/entities';
-import type { Denomination } from '@/shared/types/vault';
+import type { Denomination, MachineCollectionActivity } from '@/shared/types/vault';
 import { AlertCircle, Coins, History as HistoryIcon, Loader2, Minus, Plus, RefreshCw, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -36,7 +36,7 @@ interface VaultOverviewCollectionEntryFormProps {
     notes: string;
   }) => void;
   loading: boolean;
-  history?: any[];
+  history?: MachineCollectionActivity[];
   historyLoading?: boolean;
   defaultShowHistory?: boolean;
 }
@@ -72,13 +72,13 @@ export default function VaultOverviewCollectionEntryForm({
 
   // Effects
   useEffect(() => {
-    setDenominations(denomsList.map((d: string | number) => ({ denomination: d as any, quantity: 0 })));
+    setDenominations(denomsList.map((d: string | number) => ({ denomination: Number(d) as Denomination['denomination'], quantity: 0 })));
   }, [denomsList]);
 
   useEffect(() => {
     // Reset form when machine changes
     setMeters({ billIn: '', ticketIn: '', totalIn: '', moneyIn: 0, moneyOut: 0, gross: 0 });
-    setDenominations(denomsList.map((d: string | number) => ({ denomination: d as any, quantity: 0 })));
+    setDenominations(denomsList.map((d: string | number) => ({ denomination: Number(d) as Denomination['denomination'], quantity: 0 })));
     setTouchedDenominations(new Set());
     setNotes('');
     setExpectedDrop('');
@@ -135,7 +135,7 @@ export default function VaultOverviewCollectionEntryForm({
     });
   };
 
-  const isAllTouched = denomsList.every((d: any) => touchedDenominations.has(Number(d)));
+  const isAllTouched = denomsList.every((d: string | number) => touchedDenominations.has(Number(d)));
   const isValidCount = totalPhysical > 0 || isAllTouched;
 
   const getDynamicFontSize = (text: string, base: string, med: string, small: string) => {
@@ -210,13 +210,13 @@ export default function VaultOverviewCollectionEntryForm({
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-3">
-                      {history.map((record: any) => (
+                      {history.map((record: MachineCollectionActivity) => (
                         <div key={record._id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
                           <div>
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-tight mb-0.5">
-                              {new Date(record.timestamp || record.collectedAt).toLocaleDateString()}
+                              {new Date(record.timestamp).toLocaleDateString()}
                             </p>
-                            <p className="text-sm font-black text-gray-900">{formatAmount(record.amount || record.totalAmount)}</p>
+                            <p className="text-sm font-black text-gray-900">{formatAmount(record.amount)}</p>
                           </div>
                           <div className="text-right">
                              {record.variance !== undefined && (

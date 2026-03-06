@@ -79,7 +79,16 @@ export async function convertLocationCurrency(
       // Get licensee's native currency
       const licenseeName =
         licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
-      nativeCurrency = getLicenseeCurrency(licenseeName);
+
+      if (licenseeName === 'Unknown') {
+        const countryId = location.country as string | undefined;
+        const countryName = countryId
+          ? countryIdToName.get(countryId.toString())
+          : undefined;
+        nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
+      } else {
+        nativeCurrency = getLicenseeCurrency(licenseeName);
+      }
     }
 
     // Convert from native currency to USD, then to display currency

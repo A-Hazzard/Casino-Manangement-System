@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
         role.toLowerCase()
       )
     );
-    
+
     // ============================================================================
     // STEP 2: Parse query parameters
     // ============================================================================
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       finalCashierId = userId;
     }
 
-    const query: any = {};
+    const query: Record<string, unknown> = {};
     if (status) {
       if (status.includes(',')) {
         query.status = { $in: status.split(',') };
@@ -63,9 +63,10 @@ export async function GET(request: NextRequest) {
     if (finalCashierId) query.cashierId = finalCashierId;
 
     if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) query.createdAt.$gte = new Date(startDate);
-      if (endDate) query.createdAt.$lte = new Date(endDate);
+      const createdAtQuery: Record<string, Date> = {};
+      if (startDate) createdAtQuery.$gte = new Date(startDate);
+      if (endDate) createdAtQuery.$lte = new Date(endDate);
+      query.createdAt = createdAtQuery;
     }
 
     // ============================================================================
@@ -165,8 +166,8 @@ export async function GET(request: NextRequest) {
       success: true,
       shifts,
     });
-  } catch (error) {
-    console.error('Error fetching cashier shifts:', error);
+  } catch (error: unknown) {
+    console.error('Error fetching cashier shifts:', error instanceof Error ? error.message : error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

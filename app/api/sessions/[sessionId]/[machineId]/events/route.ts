@@ -30,9 +30,9 @@ export async function GET(
 
     // Build Match Query
     // In our system, machine and currentSession are stored as Strings.
-    const matchQuery: Record<string, any> = {
-      machine: machineId,
-      currentSession: sessionId,
+    const matchQuery: Record<string, unknown> = {
+      machine: machineId as string,
+      currentSession: sessionId as string,
     };
 
     if (eventType) {
@@ -87,7 +87,7 @@ export async function GET(
     }
 
     // Aggregation pipeline
-    const pipeline: any[] = [
+    const pipeline: import('mongoose').PipelineStage[] = [
       { $match: matchQuery },
       { $sort: { date: -1 } },
       {
@@ -121,13 +121,13 @@ export async function GET(
           hasPrevPage: page > 1,
         },
         filters: {
-          eventTypes: data.eventTypes.map((e: any) => e._id).filter(Boolean),
-          events: data.events.map((e: any) => e._id).filter(Boolean),
+          eventTypes: data.eventTypes.map((e: { _id: string }) => e._id).filter(Boolean),
+          events: data.events.map((e: { _id: string }) => e._id).filter(Boolean),
           games: games.filter(Boolean),
         },
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';

@@ -250,7 +250,7 @@ export function getGamingDayRangeForPeriod(
       const endDateOnly = new Date(endDateStr + 'T00:00:00.000Z');
       const daysDiff = Math.floor(
         (endDateOnly.getTime() - startDateOnly.getTime()) /
-          (1000 * 60 * 60 * 24)
+        (1000 * 60 * 60 * 24)
       );
       const isSingleDaySelection = isSameDay || daysDiff === 1;
 
@@ -282,6 +282,11 @@ export function getGamingDayRangeForPeriod(
           rangeEnd: endGamingDay.rangeStart, // Use start of next gaming day to include full last day
         };
       }
+
+    case 'LastHour':
+      const endNow = new Date();
+      const startOneHourAgo = new Date(endNow.getTime() - 60 * 60 * 1000);
+      return { rangeStart: startOneHourAgo, rangeEnd: endNow };
 
     default:
       // Fallback to standard day boundaries for unknown periods

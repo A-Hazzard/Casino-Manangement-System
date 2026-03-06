@@ -56,7 +56,7 @@ export default function BlindCloseModal({
 
   useEffect(() => {
     if (open) {
-      setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+      setDenominations(denomsList.map(d => ({ denomination: d as Denomination['denomination'], quantity: 0 })));
       setTouchedDenominations(new Set());
     }
   }, [open, denomsList]);

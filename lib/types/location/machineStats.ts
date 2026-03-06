@@ -11,6 +11,9 @@ export type MachineStats = {
   offlineMachines: number;
   criticalOffline?: number;
   recentOffline?: number;
+  totalLocations?: number;
+  onlineLocations?: number;
+  offlineLocations?: number;
 };
 
 export type UseLocationMachineStatsReturn = {

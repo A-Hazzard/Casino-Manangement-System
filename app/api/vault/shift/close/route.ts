@@ -135,13 +135,18 @@ export async function POST(request: NextRequest) {
       vaultShift.openedAt,
       vaultShift.locationId
     );
-    
+
     vaultShift.status = 'closed';
     vaultShift.closedAt = attributionDate;
     vaultShift.closingBalance = closingBalance;
-    vaultShift.closingDenominations = denominations.map((d: any) => ({
-      denomination: typeof d.denomination === 'string' 
-        ? parseInt(d.denomination.replace('$', '')) 
+    interface VaultDenomination {
+      denomination: string | number;
+      count?: number;
+      quantity?: number;
+    }
+    vaultShift.closingDenominations = denominations.map((d: VaultDenomination) => ({
+      denomination: typeof d.denomination === 'string'
+        ? parseInt(d.denomination.replace('$', ''))
         : d.denomination,
       quantity: d.count ?? d.quantity ?? 0
     }));
@@ -158,9 +163,9 @@ export async function POST(request: NextRequest) {
       from: { type: 'vault' },
       to: { type: 'external' },
       amount: closingBalance,
-      denominations: denominations.map((d: any) => ({
-        denomination: typeof d.denomination === 'string' 
-          ? parseInt(d.denomination.replace('$', '')) 
+      denominations: denominations.map((d: VaultDenomination) => ({
+        denomination: typeof d.denomination === 'string'
+          ? parseInt(d.denomination.replace('$', ''))
           : d.denomination,
         quantity: d.count ?? d.quantity ?? 0
       })),
@@ -183,13 +188,14 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error('Error closing vault shift:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error closing vault shift:', errorMessage);
     return NextResponse.json(
       {
         success: false,
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined,
       },
       { status: 500 }
     );

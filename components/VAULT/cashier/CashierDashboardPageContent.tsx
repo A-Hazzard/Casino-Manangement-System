@@ -27,7 +27,7 @@ import { useCashierShift } from '@/lib/hooks/useCashierShift';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
-import type { CreatePayoutRequest, Denomination } from '@/shared/types/vault';
+import type { CashDesk, CreatePayoutRequest, Denomination } from '@/shared/types/vault';
 import { Lock, Plus, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -80,7 +80,7 @@ export default function CashierDashboardPageContent() {
   const [floatRequestType, setFloatRequestType] = useState<'increase' | 'decrease'>('increase');
   const [machines, setMachines] = useState<GamingMachine[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
-  const [globalCashDesks, setGlobalCashDesks] = useState<any[]>([]);
+  const [globalCashDesks, setGlobalCashDesks] = useState<CashDesk[]>([]);
   
   // Confirmation state for requests
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
@@ -97,14 +97,15 @@ export default function CashierDashboardPageContent() {
           if (res.ok) {
               const data = await res.json();
               if (data.success) {
-                  const mapped = data.shifts.map((s: any) => ({
-                      _id: s._id,
-                      name: s.cashierName || s.cashierUsername || 'Unknown',
-                      cashierName: s.cashierName || s.cashierUsername,
-                      balance: s.currentBalance || s.openingBalance || 0,
-                      lastAudit: s.openedAt || s.createdAt,
-                      status: s.status,
-                      locationName: s.locationName
+                  const mapped: CashDesk[] = data.shifts.map((s: Record<string, unknown>) => ({
+                      _id: String(s._id || ''),
+                      locationId: String(s.locationId || ''),
+                      name: String(s.cashierName || s.cashierUsername || 'Unknown'),
+                      cashierName: s.cashierName ? String(s.cashierName) : undefined,
+                      balance: Number(s.currentBalance || s.openingBalance || 0),
+                      lastAudit: String(s.openedAt || s.createdAt || ''),
+                      status: (s.status as CashDesk['status']) || 'active',
+                      locationName: s.locationName ? String(s.locationName) : undefined,
                   }));
                   setGlobalCashDesks(mapped);
               }
@@ -513,6 +514,32 @@ export default function CashierDashboardPageContent() {
 /**
  * Sub-component for cleaning up modal logic from main component
  */
+type ShiftModalsProps = {
+  showOpen: boolean;
+  showClose: boolean;
+  showTicket: boolean;
+  showHandPay: boolean;
+  showFloat: boolean;
+  floatType: 'increase' | 'decrease';
+  actionLoading: boolean;
+  shiftLoading: boolean;
+  hasActiveVaultShift: boolean;
+  isVaultReconciled: boolean;
+  machines: GamingMachine[];
+  currentBalance: number;
+  onOpenClose: () => void;
+  onCloseClose: () => void;
+  onTicketClose: () => void;
+  onHandPayClose: () => void;
+  onFloatClose: () => void;
+  onOpenSubmit: (denominations: Denomination[]) => Promise<void>;
+  onCloseSubmit: (physicalCount: number, denominations: Denomination[]) => Promise<void>;
+  onTicketSubmit: (t: string, a: number, pAt?: Date) => Promise<void>;
+  onHandPaySubmit: (a: number, mid: string) => Promise<void>;
+  onFloatSubmit: (data: import('./shifts/FloatRequestModal').FloatRequestData) => Promise<void>;
+  onRequestCash: () => void;
+};
+
 function ShiftModals({
   showOpen, showClose, showTicket, showHandPay, showFloat, 
   floatType, actionLoading, shiftLoading, hasActiveVaultShift,
@@ -520,7 +547,7 @@ function ShiftModals({
   onOpenClose, onCloseClose, onTicketClose, onHandPayClose, onFloatClose,
   onOpenSubmit, onCloseSubmit, onTicketSubmit, onHandPaySubmit, onFloatSubmit,
   onRequestCash
-}: any) {
+}: ShiftModalsProps) {
   return (
     <>
       <CashierShiftOpenModal

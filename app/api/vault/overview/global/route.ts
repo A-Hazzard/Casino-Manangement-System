@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 3: Identify locations to query
     // ============================================================================
-    const locationQuery: Record<string, any> = {
+    const locationQuery: Record<string, unknown> = {
       membershipEnabled: true,
       deletedAt: { $lt: new Date('2025-01-01') }
     };
@@ -108,17 +108,29 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 5: Aggregate Balances & Metrics
     // ============================================================================
-    
+
     // Total Balance and Denominations across all active shifts
     let totalBalance = 0;
     const aggregatedDenominations: Record<number, number> = {};
 
-    activeVaultShifts.forEach((shift: any) => {
-      const balance = shift.closingBalance ?? shift.openingBalance ?? 0; // Simplified for global view
+    interface DenominationQuantity {
+      denomination: number;
+      quantity: number;
+    }
+    interface BaseShift {
+      closingBalance?: number;
+      openingBalance?: number;
+      currentDenominations?: DenominationQuantity[];
+      openingDenominations?: DenominationQuantity[];
+    }
+
+    activeVaultShifts.forEach((shift: unknown) => {
+      const s = shift as BaseShift;
+      const balance = s.closingBalance ?? s.openingBalance ?? 0; // Simplified for global view
       totalBalance += balance;
-      
-      const denoms = (shift.currentDenominations?.length > 0 ? shift.currentDenominations : shift.openingDenominations) || [];
-      denoms.forEach((d: any) => {
+
+      const denoms = (s.currentDenominations && s.currentDenominations.length > 0 ? s.currentDenominations : s.openingDenominations) || [];
+      denoms.forEach((d: DenominationQuantity) => {
         aggregatedDenominations[d.denomination] = (aggregatedDenominations[d.denomination] || 0) + d.quantity;
       });
     });
@@ -127,7 +139,7 @@ export async function GET(request: NextRequest) {
     // Use average gameDayOffset or just midnight for global view? 
     // Standardizing on UTC-4 midnight for simplicity in global view, or fetching per location is too expensive.
     // Let's iterate locations and get their today's metrics.
-    
+
     // For performance, we'll just sum the metrics of current active shifts or transactions today.
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -144,20 +156,28 @@ export async function GET(request: NextRequest) {
       timestamp: { $gte: startOfToday }
     }).lean();
 
-    todayTransactions.forEach((tx: any) => {
-      if (tx.to?.type === 'vault') totalIn += tx.amount;
-      if (tx.from?.type === 'vault') totalOut += tx.amount;
-      if (tx.type === 'payout') {
-        payouts += tx.amount;
+    interface VaultTx {
+      amount: number;
+      type: string;
+      to?: { type: string };
+      from?: { type: string };
+    }
+
+    todayTransactions.forEach((tx: unknown) => {
+      const vtx = tx as VaultTx;
+      if (vtx.to?.type === 'vault') totalIn += vtx.amount;
+      if (vtx.from?.type === 'vault') totalOut += vtx.amount;
+      if (vtx.type === 'payout') {
+        payouts += vtx.amount;
         payoutsCount += 1;
       }
     });
 
     // STEP 5.5: Calculate Cash on Premises (Machines & Cashiers)
-    
+
     // A. All Active Cashier Floats sum (across all locations)
-    const totalCashierFloats = activeCashierShifts.reduce((sum: number, s: any) => sum + (s.currentBalance || 0), 0) + 
-                             pendingCashierShifts.reduce((sum: number, s: any) => sum + (s.currentBalance || 0), 0);
+    const totalCashierFloats = activeCashierShifts.reduce((sum: number, s: unknown) => sum + ((s as { currentBalance?: number }).currentBalance || 0), 0) +
+      pendingCashierShifts.reduce((sum: number, s: unknown) => sum + ((s as { currentBalance?: number }).currentBalance || 0), 0);
 
     // B. Machine Meter Drops (Theoretic) - Today's Gaming Day
     // Use a default 8 AM offset for global dashboard query or aggregate ranges?
@@ -165,106 +185,132 @@ export async function GET(request: NextRequest) {
     const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod('Today', 8);
 
     const machineMeters = await Meters.aggregate([
-        {
-          $match: {
-            location: { $in: locationIds },
-            readAt: {
-              $gte: rangeStart,
-              $lte: rangeEnd,
-            },
+      {
+        $match: {
+          location: { $in: locationIds },
+          readAt: {
+            $gte: rangeStart,
+            $lte: rangeEnd,
           },
         },
-        {
-          $group: {
-            _id: null,
-            totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
-          },
+      },
+      {
+        $group: {
+          _id: null,
+          totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
         },
+      },
     ]);
     const totalMachineMoneyIn = machineMeters.length > 0 ? machineMeters[0].totalMoneyIn : 0;
 
-    pendingCashierShifts.forEach((shift: any) => {
-      totalDiscrepancies += Math.abs(shift.discrepancy || 0);
+    pendingCashierShifts.forEach((shift: unknown) => {
+      totalDiscrepancies += Math.abs((shift as { discrepancy?: number }).discrepancy || 0);
     });
 
     // ============================================================================
     // STEP 6: Format and Return Data
     // ============================================================================
-    const formattedPendingShifts = pendingCashierShifts.map((shift: any) => ({
-      ...shift,
-      locationName: locationNameMap[shift.locationId]
+    const formattedPendingShifts = pendingCashierShifts.map((shift: unknown) => ({
+      ...(shift as Record<string, unknown>),
+      locationName: locationNameMap[(shift as { locationId: string }).locationId]
     }));
 
-    const formattedFloatRequests = pendingFloatRequests.map((req: any) => ({
-      ...req,
-      locationName: locationNameMap[req.locationId]
+    const formattedFloatRequests = pendingFloatRequests.map((req: unknown) => ({
+      ...(req as Record<string, unknown>),
+      locationName: locationNameMap[(req as { locationId: string }).locationId]
     }));
 
-    const formattedCashDesks = activeCashierShifts.map((shift: any) => ({
-      _id: shift._id,
-      locationId: shift.locationId,
-      locationName: locationNameMap[shift.locationId],
-      name: (shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId.substring(0, 4)}`),
-      cashierName: shift.cashierName || shift.cashierUsername,
-      balance: shift.currentBalance ?? shift.openingBalance ?? 0,
-      denominations: shift.lastSyncedDenominations ?? shift.openingDenominations ?? [],
-      lastAudit: new Date(shift.openedAt || shift.createdAt).toISOString(),
-      status: shift.status === 'pending_start' ? 'inactive' : 'active'
-    }));
+    const formattedCashDesks = activeCashierShifts.map((shift: unknown) => {
+      const s = shift as {
+        _id: string;
+        locationId: string;
+        cashierName?: string;
+        cashierUsername?: string;
+        cashierId: string;
+        currentBalance?: number;
+        openingBalance?: number;
+        lastSyncedDenominations?: DenominationQuantity[];
+        openingDenominations?: DenominationQuantity[];
+        openedAt?: string | Date;
+        createdAt: string | Date;
+        status: string;
+      };
+      return {
+        _id: s._id,
+        locationId: s.locationId,
+        locationName: locationNameMap[s.locationId],
+        name: (s.cashierName || s.cashierUsername || `Cashier ${s.cashierId.substring(0, 4)}`),
+        cashierName: s.cashierName || s.cashierUsername,
+        balance: s.currentBalance ?? s.openingBalance ?? 0,
+        denominations: s.lastSyncedDenominations ?? s.openingDenominations ?? [],
+        lastAudit: new Date(s.openedAt || s.createdAt).toISOString(),
+        status: s.status === 'pending_start' ? 'inactive' : 'active'
+      };
+    });
 
-    const formattedTransactionsRaw = recentTransactions.map((tx: any) => ({
-      ...tx,
-      locationName: locationNameMap[tx.locationId]
+    type ExtendedTx = Record<string, unknown> & { locationName: string };
+    const formattedTransactionsRaw: ExtendedTx[] = recentTransactions.map((tx: unknown) => ({
+      ...(tx as Record<string, unknown>),
+      locationName: locationNameMap[(tx as { locationId: string }).locationId]
     }));
 
     // Populate Names for Transactions
     const userIds = new Set<string>();
     formattedTransactionsRaw.forEach(tx => {
-        if (tx.performedBy) userIds.add(tx.performedBy);
-        if (tx.from?.type === 'cashier' && tx.from.id) userIds.add(tx.from.id);
-        if (tx.to?.type === 'cashier' && tx.to.id) userIds.add(tx.to.id);
+      if (tx.performedBy) userIds.add(tx.performedBy as string);
+      if ((tx.from as { type?: string; id?: string } | undefined)?.type === 'cashier' && (tx.from as { id?: string }).id) userIds.add((tx.from as { id: string }).id);
+      if ((tx.to as { type?: string; id?: string } | undefined)?.type === 'cashier' && (tx.to as { id?: string }).id) userIds.add((tx.to as { id: string }).id);
     });
 
-    let formattedTransactions = formattedTransactionsRaw;
+    let formattedTransactions: ExtendedTx[] = formattedTransactionsRaw;
     if (userIds.size > 0) {
-        const UserModel = (await import('@/app/api/lib/models/user')).default;
-        const users = await UserModel.find(
-            { _id: { $in: Array.from(userIds) } }, 
-            { 'profile.firstName': 1, 'profile.lastName': 1, username: 1 }
-        ).lean();
+      const UserModel = (await import('@/app/api/lib/models/user')).default;
+      const users = await UserModel.find(
+        { _id: { $in: Array.from(userIds) } },
+        { 'profile.firstName': 1, 'profile.lastName': 1, username: 1 }
+      ).lean();
 
-        const userMap = users.reduce((acc: Record<string, any>, u: any) => {
-            acc[String(u._id)] = u;
-            return acc;
-        }, {} as Record<string, any>);
+      interface PopulatedUser {
+        _id: string;
+        profile?: { firstName?: string; lastName?: string };
+        username?: string;
+      }
 
-        formattedTransactions = formattedTransactionsRaw.map(tx => {
-            const updatedTx = { ...tx };
-            
-            // Format Performer Name
-            const perfUser = userMap[tx.performedBy];
-            if (perfUser && perfUser.profile?.firstName) {
-                updatedTx.performedByName = `${perfUser.profile.firstName} ${perfUser.profile.lastName}`;
-            }
+      const userMap = (users as unknown as PopulatedUser[]).reduce((acc: Record<string, PopulatedUser>, u: PopulatedUser) => {
+        acc[String(u._id)] = u;
+        return acc;
+      }, {} as Record<string, PopulatedUser>);
 
-            // Format Source (if Cashier)
-            if (tx.from?.type === 'cashier' && tx.from.id) {
-                const cashier = userMap[tx.from.id];
-                if (cashier && cashier.profile?.firstName) {
-                    updatedTx.fromName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
-                }
-            }
+      formattedTransactions = formattedTransactionsRaw.map(tx => {
+        const updatedTx = { ...tx } as ExtendedTx;
+        const performedBy = tx.performedBy as string;
 
-            // Format Destination (if Cashier)
-            if (tx.to?.type === 'cashier' && tx.to.id) {
-                const cashier = userMap[tx.to.id];
-                if (cashier && cashier.profile?.firstName) {
-                    updatedTx.toName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
-                }
-            }
+        // Format Performer Name
+        const perfUser = userMap[performedBy];
+        if (perfUser && perfUser.profile?.firstName) {
+          updatedTx.performedByName = `${perfUser.profile.firstName} ${perfUser.profile.lastName}`;
+        }
 
-            return updatedTx;
-        });
+        // Format Source (if Cashier)
+        const from = tx.from as { type: string; id?: string } | undefined;
+        if (from?.type === 'cashier' && from.id) {
+          const cashier = userMap[from.id];
+          if (cashier && cashier.profile?.firstName) {
+            updatedTx.fromName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
+          }
+        }
+
+        // Format Destination (if Cashier)
+        const to = tx.to as { type: string; id?: string } | undefined;
+        if (to?.type === 'cashier' && to.id) {
+          const cashier = userMap[to.id];
+          if (cashier && cashier.profile?.firstName) {
+            updatedTx.toName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
+          }
+        }
+
+        return updatedTx;
+      });
     }
 
     const response = {
@@ -303,10 +349,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
 
-  } catch (error) {
-    console.error('Error in Global Vault Overview API:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error in Global Vault Overview API:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

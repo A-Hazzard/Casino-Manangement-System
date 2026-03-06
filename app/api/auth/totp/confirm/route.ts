@@ -43,11 +43,12 @@ export async function POST(req: NextRequest) {
     // Determine which secret to verify against
     // 1. Recovery setup uses totpTempSecret
     // 2. Initial setup uses totpSecret (where totpEnabled is false)
-    let secretToVerify = user.totpTempSecret || user.totpSecret;
+    const secretToVerify = user.totpTempSecret || user.totpSecret;
 
-    if (!secretToVerify) 
+    if (!secretToVerify) {
       return NextResponse.json({ error: 'Setup not initiated' }, { status: 400 });
-    
+    }
+
     const isValid = verifyTOTPCode(token, secretToVerify);
     if (isValid) {
       // If we verified a temp secret, promote it to the active secret
@@ -67,8 +68,8 @@ export async function POST(req: NextRequest) {
     } else {
       return NextResponse.json({ error: 'Invalid authenticator code' }, { status: 400 });
     }
-  } catch (error: any) {
-    console.error('TOTP Confirm Error:', error);
+  } catch (error: unknown) {
+    console.error('TOTP Confirm Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

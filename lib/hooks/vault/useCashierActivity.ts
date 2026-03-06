@@ -72,7 +72,7 @@ export function useCashierActivity() {
         (requestsData.data || []).forEach((r: FloatRequest) => {
           // If it's a pending shift start, it's the initial float
           const isInitial = r.requestNotes === 'Initial shift float';
-          
+
           combined.push({
             id: r._id,
             type: 'float_request',
@@ -87,17 +87,28 @@ export function useCashierActivity() {
         });
 
         // Map payouts
-        (payoutsData.payouts || []).forEach((p: any) => {
-            combined.push({
-                id: p._id,
-                type: 'payout',
-                action: p.type === 'ticket' ? `Ticket Redemption` : `Hand Pay`,
-                amount: p.amount,
-                status: 'completed',
-                timestamp: new Date(p.timestamp),
-                notes: p.type === 'ticket' ? `Ticket: ${p.ticketNumber}` : `Machine: ${p.machineSerialNumber || p.machineId}${p.notes ? ` - ${p.notes}` : ''}`,
-                isOutflow: true
-            });
+        type PayoutItem = {
+          _id: string;
+          type: string;
+          amount: number;
+          timestamp: string | Date;
+          ticketNumber?: string;
+          machineSerialNumber?: string;
+          machineId?: string;
+          notes?: string;
+        };
+
+        (payoutsData.payouts || []).forEach((p: PayoutItem) => {
+          combined.push({
+            id: p._id,
+            type: 'payout',
+            action: p.type === 'ticket' ? `Ticket Redemption` : `Hand Pay`,
+            amount: p.amount,
+            status: 'completed',
+            timestamp: new Date(p.timestamp),
+            notes: p.type === 'ticket' ? `Ticket: ${p.ticketNumber}` : `Machine: ${p.machineSerialNumber || p.machineId}${p.notes ? ` - ${p.notes}` : ''}`,
+            isOutflow: true
+          });
         });
 
         // Sort by timestamp desc

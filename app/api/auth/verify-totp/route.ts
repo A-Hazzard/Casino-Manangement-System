@@ -30,16 +30,16 @@ export async function POST(req: NextRequest) {
     // 2. Connect to DB and fetch user
     await connectDB();
     const user = await UserModel.findOne({ _id: session._id });
-    
+
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // 3. Check if user has TOTP setup and enabled
     if (!user.totpSecret || !user.totpEnabled) {
-      return NextResponse.json({ 
-        error: 'Authenticator not set up', 
-        needsSetup: true 
+      return NextResponse.json({
+        error: 'Authenticator not set up',
+        needsSetup: true
       }, { status: 400 });
     }
 
@@ -51,8 +51,8 @@ export async function POST(req: NextRequest) {
     } else {
       return NextResponse.json({ error: 'Invalid authenticator code' }, { status: 400 });
     }
-  } catch (error: any) {
-    console.error('Verify TOTP Error:', error);
+  } catch (error: unknown) {
+    console.error('Verify TOTP Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

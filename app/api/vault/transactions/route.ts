@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       (userPayload?.roles as string[]) || []
     );
 
-    const query: any = {};
+    const query: Record<string, unknown> = {};
 
     if (!locationId || locationId === 'all') {
       if (allowedLocationIds !== 'all') {
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
         query.type = type;
       }
     }
-    
+
     // Status filter - mapped to transaction properties
     if (status && status !== 'all') {
       if (status === 'voided') {
@@ -105,18 +105,19 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-       // Basic search on notes or amount
-       const searchRegex = { $regex: search, $options: 'i' };
-       query.$or = [
-          { notes: searchRegex },
-          { auditComment: searchRegex },
-          { performedBy: searchRegex }
-       ];
-       // Try numeric search if possible
-       const numSearch = parseFloat(search);
-       if (!isNaN(numSearch)) {
-          query.$or.push({ amount: numSearch });
-       }
+      // Basic search on notes or amount
+      const searchRegex = { $regex: search, $options: 'i' };
+      const orConditions: Record<string, unknown>[] = [
+        { notes: searchRegex },
+        { auditComment: searchRegex },
+        { performedBy: searchRegex }
+      ];
+      // Try numeric search if possible
+      const numSearch = parseFloat(search);
+      if (!isNaN(numSearch)) {
+        orConditions.push({ amount: numSearch });
+      }
+      query.$or = orConditions;
     }
 
     const transactions = await VaultTransactionModel.find(query)
@@ -130,145 +131,186 @@ export async function GET(request: NextRequest) {
     // If global view, attach location names
     let finalTransactions = transactions;
     if (locationId === 'all' || !locationId) {
-        const locations = await GamingLocations.find({ 
-            _id: { $in: transactions.map(tx => tx.locationId) } 
-        }, { name: 1 }).lean();
-        
-        const nameMap = locations.reduce((acc, loc) => {
-            acc[String(loc._id)] = loc.name;
-            return acc;
-        }, {} as Record<string, string>);
-        
-        finalTransactions = transactions.map(tx => ({
-            ...tx,
-            locationName: nameMap[tx.locationId] || 'Unknown'
-        }));
+      const locations = await GamingLocations.find({
+        _id: { $in: transactions.map(tx => tx.locationId) }
+      }, { name: 1 }).lean();
+
+      const nameMap = locations.reduce((acc, loc) => {
+        acc[String(loc._id)] = loc.name;
+        return acc;
+      }, {} as Record<string, string>);
+
+      finalTransactions = transactions.map(tx => ({
+        ...tx,
+        locationName: nameMap[tx.locationId] || 'Unknown'
+      }));
     }
 
     // ============================================================================
     // STEP 4: Populate Names (Cashiers, Performers, and Machines)
     // ============================================================================
+    interface TransactionSourceDest { type: string; id?: string }
+    interface ExpenseDetails { isMachineRepair?: boolean; machineIds?: string[] }
+    interface BaseTransaction {
+      performedBy: string;
+      from?: TransactionSourceDest;
+      to?: TransactionSourceDest;
+      expenseDetails?: ExpenseDetails;
+      locationId: string;
+      serialNumber?: string;
+      custom?: { name?: string };
+      game?: string;
+      installedGame?: string;
+      gameType?: string;
+      performedByName?: string;
+      fromName?: string;
+      toName?: string;
+      machineDetails?: Array<{ identifier: string; game: string; gameType: string }>;
+    }
+
     const userIds = new Set<string>();
     const machineIds = new Set<string>();
 
-    finalTransactions.forEach((tx: any) => {
-        if (tx.performedBy) userIds.add(tx.performedBy);
-        if (tx.from?.type === 'cashier' && tx.from.id) userIds.add(tx.from.id);
-        if (tx.to?.type === 'cashier' && tx.to.id) userIds.add(tx.to.id);
-        
-        if (tx.from?.type === 'machine' && tx.from.id) machineIds.add(tx.from.id);
-        if (tx.to?.type === 'machine' && tx.to.id) machineIds.add(tx.to.id);
+    type PopulatedTransactions = Array<BaseTransaction & Record<string, unknown>>;
+    let populatedTransactions: PopulatedTransactions = (finalTransactions as unknown[]).map(tx => tx as BaseTransaction & Record<string, unknown>);
 
-        if (tx.expenseDetails?.isMachineRepair && tx.expenseDetails.machineIds?.length > 0) {
-            tx.expenseDetails.machineIds.forEach((id: string) => machineIds.add(id));
-        }
+    populatedTransactions.forEach((t) => {
+      if (t.performedBy) userIds.add(t.performedBy);
+      if (t.from?.type === 'cashier' && t.from.id) userIds.add(t.from.id);
+      if (t.to?.type === 'cashier' && t.to.id) userIds.add(t.to.id);
+
+      if (t.from?.type === 'machine' && t.from.id) machineIds.add(t.from.id);
+      if (t.to?.type === 'machine' && t.to.id) machineIds.add(t.to.id);
+
+      if (t.expenseDetails?.isMachineRepair && t.expenseDetails.machineIds && t.expenseDetails.machineIds.length > 0) {
+        t.expenseDetails.machineIds.forEach((id: string) => machineIds.add(id));
+      }
     });
 
-    const userMap: Record<string, any> = {};
-    const machineMap: Record<string, any> = {};
+    interface PopulatedUser {
+      _id: string;
+      profile?: { firstName?: string; lastName?: string };
+      username?: string;
+    }
+
+    interface PopulatedMachine {
+      _id: string;
+      serialNumber?: string;
+      custom?: { name?: string };
+      game?: string;
+      installedGame?: string;
+      gameType?: string;
+    }
+
+    const userMap: Record<string, PopulatedUser> = {};
+    const machineMap: Record<string, PopulatedMachine> = {};
 
     if (userIds.size > 0) {
-        const UserModel = (await import('@/app/api/lib/models/user')).default;
-        const users = await UserModel.find(
-            { _id: { $in: Array.from(userIds) } }, 
-            { 'profile.firstName': 1, 'profile.lastName': 1, username: 1 }
-        ).lean();
+      const UserModel = (await import('@/app/api/lib/models/user')).default;
+      const users = await UserModel.find(
+        { _id: { $in: Array.from(userIds) } },
+        { 'profile.firstName': 1, 'profile.lastName': 1, username: 1 }
+      ).lean();
 
-        users.forEach((u: any) => {
-            userMap[String(u._id)] = u;
-        });
+      (users as unknown as PopulatedUser[]).forEach((u: PopulatedUser) => {
+        userMap[String(u._id)] = u;
+      });
     }
 
     if (machineIds.size > 0) {
-        const { Machine } = await import('@/app/api/lib/models/machines');
-        const machines = await Machine.find(
-            { _id: { $in: Array.from(machineIds) } },
-            { serialNumber: 1, 'custom.name': 1, game: 1, installedGame: 1, gameType: 1 }
-        ).lean();
+      const { Machine } = await import('@/app/api/lib/models/machines');
+      const machines = await Machine.find(
+        { _id: { $in: Array.from(machineIds) } },
+        { serialNumber: 1, 'custom.name': 1, game: 1, installedGame: 1, gameType: 1 }
+      ).lean();
 
-        machines.forEach((m: any) => {
-            machineMap[String(m._id)] = m;
-        });
+      (machines as unknown as PopulatedMachine[]).forEach((m: PopulatedMachine) => {
+        machineMap[String(m._id)] = m;
+      });
     }
 
-    finalTransactions = finalTransactions.map((tx: any) => {
-        const updatedTx = { ...tx };
-        
-        // 1. Performer Name
-        const perfUser = userMap[tx.performedBy];
-        if (perfUser && perfUser.profile?.firstName) {
-            updatedTx.performedByName = `${perfUser.profile.firstName} ${perfUser.profile.lastName}`;
-        }
+    populatedTransactions = populatedTransactions.map((tx) => {
+      const originalTx = tx;
+      const updatedTx = { ...originalTx };
 
-        // 2. Source Name
-        if (tx.from?.type === 'cashier' && tx.from.id) {
-            const cashier = userMap[tx.from.id];
-            if (cashier && cashier.profile?.firstName) {
-                updatedTx.fromName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
-            }
-        } else if (tx.from?.type === 'machine' && tx.from.id) {
-            const machine = machineMap[tx.from.id];
-            if (machine) {
-                const sn = machine.serialNumber?.trim();
-                const name = machine.custom?.name?.trim();
-                updatedTx.fromName = `Machine (${sn || name || tx.from.id})`;
-            } else {
-                updatedTx.fromName = `Machine (${tx.from.id})`;
-            }
-        }
+      // 1. Performer Name
+      const perfUser = userMap[originalTx.performedBy];
+      if (perfUser && perfUser.profile?.firstName) {
+        updatedTx.performedByName = `${perfUser.profile.firstName} ${perfUser.profile.lastName}`;
+      }
 
-        // 3. Destination Name
-        if (tx.to?.type === 'cashier' && tx.to.id) {
-            const cashier = userMap[tx.to.id];
-            if (cashier && cashier.profile?.firstName) {
-                updatedTx.toName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
-            }
-        } else if (tx.to?.type === 'machine' && tx.to.id) {
-            const machine = machineMap[tx.to.id];
-            if (machine) {
-                const sn = machine.serialNumber?.trim();
-                const name = machine.custom?.name?.trim();
-                updatedTx.toName = `Machine (${sn || name || tx.to.id})`;
-            } else {
-                updatedTx.toName = `Machine (${tx.to.id})`;
-            }
+      // 2. Source Name
+      const from = originalTx.from;
+      if (from?.type === 'cashier' && from.id) {
+        const cashier = userMap[from.id];
+        if (cashier && cashier.profile?.firstName) {
+          updatedTx.fromName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
         }
-
-        // 4. Populate machineDetails for details modal (BR-03 compliance)
-        const allAssociatedMachineIds = new Set<string>();
-        if (tx.from?.type === 'machine' && tx.from.id) allAssociatedMachineIds.add(tx.from.id);
-        if (tx.to?.type === 'machine' && tx.to.id) allAssociatedMachineIds.add(tx.to.id);
-        if (tx.expenseDetails?.machineIds?.length > 0) {
-            tx.expenseDetails.machineIds.forEach((id: string) => allAssociatedMachineIds.add(id));
+      } else if (from?.type === 'machine' && from.id) {
+        const machine = machineMap[from.id];
+        if (machine) {
+          const sn = machine.serialNumber?.trim();
+          const name = machine.custom?.name?.trim();
+          updatedTx.fromName = `Machine (${sn || name || from.id})`;
+        } else {
+          updatedTx.fromName = `Machine (${from.id})`;
         }
+      }
 
-        if (allAssociatedMachineIds.size > 0) {
-            updatedTx.machineDetails = Array.from(allAssociatedMachineIds).map((id: string) => {
-                const m = machineMap[id];
-                if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
-                
-                const sn = m.serialNumber?.trim() || '';
-                const name = m.custom?.name?.trim() || '';
-                const game = m.game || m.installedGame || '';
-                const gameType = m.gameType || '';
-                const mainId = sn || name || 'N/A';
-                
-                return {
-                   identifier: name && name !== mainId ? `${mainId} (${name})` : mainId,
-                   game: game.trim(),
-                   gameType: gameType.trim()
-                };
-            });
+      // 3. Destination Name
+      const to = originalTx.to;
+      if (to?.type === 'cashier' && to.id) {
+        const cashier = userMap[to.id];
+        if (cashier && cashier.profile?.firstName) {
+          updatedTx.toName = `Cashier (${cashier.profile.firstName} ${cashier.profile.lastName})`;
         }
+      } else if (to?.type === 'machine' && to.id) {
+        const machine = machineMap[to.id];
+        if (machine) {
+          const sn = machine.serialNumber?.trim();
+          const name = machine.custom?.name?.trim();
+          updatedTx.toName = `Machine (${sn || name || to.id})`;
+        } else {
+          updatedTx.toName = `Machine (${to.id})`;
+        }
+      }
 
-        return updatedTx;
+      // 4. Populate machineDetails for details modal (BR-03 compliance)
+      const allAssociatedMachineIds = new Set<string>();
+      if (from?.type === 'machine' && from.id) allAssociatedMachineIds.add(from.id);
+      if (to?.type === 'machine' && to.id) allAssociatedMachineIds.add(to.id);
+      const expenseMachineIds = originalTx.expenseDetails?.machineIds;
+      if (expenseMachineIds && expenseMachineIds.length > 0) {
+        expenseMachineIds.forEach((id: string) => allAssociatedMachineIds.add(id));
+      }
+
+      if (allAssociatedMachineIds.size > 0) {
+        updatedTx.machineDetails = Array.from(allAssociatedMachineIds).map((id: string) => {
+          const m = machineMap[id];
+          if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
+
+          const sn = m.serialNumber?.trim() || '';
+          const name = m.custom?.name?.trim() || '';
+          const game = m.game || m.installedGame || '';
+          const gameType = m.gameType || '';
+          const mainId = sn || name || 'N/A';
+
+          return {
+            identifier: name && name !== mainId ? `${mainId} (${name})` : mainId,
+            game: game.trim(),
+            gameType: gameType.trim()
+          };
+        });
+      }
+
+      return updatedTx;
     });
 
     // Final cleanup of internal IDs from response
-    finalTransactions.forEach((tx: any) => {
-        if (tx.expenseDetails && tx.expenseDetails.machineIds) {
-            delete tx.expenseDetails.machineIds;
-        }
+    populatedTransactions.forEach((t) => {
+      if (t.expenseDetails && t.expenseDetails.machineIds) {
+        delete t.expenseDetails.machineIds;
+      }
     });
 
     // ============================================================================
@@ -276,8 +318,8 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     return NextResponse.json({
       success: true,
-      items: finalTransactions,
-      transactions: finalTransactions, // Keep for backward compatibility
+      items: populatedTransactions,
+      transactions: populatedTransactions, // Keep for backward compatibility
       total,
       pagination: {
         page,
@@ -286,10 +328,11 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error) {
-    console.error('Error fetching transactions:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching transactions:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

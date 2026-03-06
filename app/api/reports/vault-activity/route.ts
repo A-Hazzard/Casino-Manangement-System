@@ -8,9 +8,9 @@
  * @module app/api/reports/vault-activity/route
  */
 
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface VaultActivityQuery {
@@ -54,20 +54,21 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 4: Build query filters
     // ============================================================================
-    const filters: any = {};
+    const filters: Record<string, unknown> = {};
 
     if (query.locationId) {
       filters.locationId = query.locationId;
     }
 
     if (query.startDate || query.endDate) {
-      filters.timestamp = {};
+      const timestampFilter: Record<string, Date> = {};
       if (query.startDate) {
-        filters.timestamp.$gte = new Date(query.startDate);
+        timestampFilter.$gte = new Date(query.startDate);
       }
       if (query.endDate) {
-        filters.timestamp.$lte = new Date(query.endDate);
+        timestampFilter.$lte = new Date(query.endDate);
       }
+      filters.timestamp = timestampFilter;
     }
 
     if (query.type) {
@@ -113,10 +114,11 @@ export async function GET(request: NextRequest) {
       summary,
       filters: query,
     });
-  } catch (error) {
-    console.error('Error fetching vault activity reports:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching vault activity reports:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

@@ -10,7 +10,8 @@
  * @features Token Management, Cookie Clearing, Authentication
  */
 
-import { NextResponse } from 'next/server';
+import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main POST handler for clearing authentication token
@@ -20,7 +21,7 @@ import { NextResponse } from 'next/server';
  * 2. Clear token cookie
  * 3. Return success response
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
@@ -35,13 +36,7 @@ export async function POST() {
     // ============================================================================
     // STEP 2: Clear token cookie
     // ============================================================================
-    response.cookies.set('token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', // Consistent with login cookie settings
-      maxAge: 0, // Expire immediately
-      path: '/',
-    });
+    response.cookies.set('token', '', getAuthCookieOptions(request, { maxAge: 0 }));
 
     // ============================================================================
     // STEP 3: Return success response

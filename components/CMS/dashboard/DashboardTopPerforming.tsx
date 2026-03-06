@@ -10,7 +10,7 @@ type TopPerformingItem = {
   value?: number;
   machineId?: string;
   game?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 type Props = {
@@ -49,8 +49,8 @@ export default function DashboardTopPerforming({ locationId }: Props) {
           ? json
           : (json?.topPerformers ?? []);
         if (mounted) setData(items);
-      } catch (err: any) {
-        if (mounted) setError(err?.message ?? 'Failed to load top performers');
+      } catch (err: unknown) {
+        if (mounted) setError((err as Error)?.message ?? 'Failed to load top performers');
       } finally {
         if (mounted) setLoading(false);
       }

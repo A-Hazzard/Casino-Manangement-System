@@ -64,7 +64,7 @@ export async function fetchCollectionReportById(reportId: string) {
 /**
  * Updates a collection report's financial data
  */
-export async function updateCollectionReport(reportId: string, data: any) {
+export async function updateCollectionReport(reportId: string, data: unknown) {
   const response = await axios.patch(
     `/api/collection-reports/${reportId}`,
     data
@@ -75,7 +75,7 @@ export async function updateCollectionReport(reportId: string, data: any) {
 /**
  * Creates a new collection report
  */
-export async function createCollectionReport(payload: any) {
+export async function createCollectionReport(payload: unknown) {
   const response = await axios.post('/api/collectionReport', payload);
   return response.data;
 }
@@ -91,7 +91,7 @@ export async function fetchMonthlyReportLocations(licensee?: string) {
   const response = await axios.get(
     `/api/collectionReport?${params.toString()}`
   );
-  return (response.data.locations || []).map((loc: any) => ({
+  return (response.data.locations || []).map((loc: { _id: string; name: string }) => ({
     id: loc._id,
     name: loc.name,
   }));
@@ -111,7 +111,7 @@ export async function fetchMonthlyReportSummaryAndDetails(params: {
   const searchParams = new URLSearchParams();
   searchParams.append('startDate', params.startDate.toISOString());
   searchParams.append('endDate', params.endDate.toISOString());
-  
+
   if (params.locationName && params.locationName !== 'all') {
     searchParams.append('locationName', params.locationName);
   }
@@ -121,7 +121,7 @@ export async function fetchMonthlyReportSummaryAndDetails(params: {
   if (params.locationIds && params.locationIds.length > 0) {
     searchParams.append('locationIds', params.locationIds.join(','));
   }
-  
+
   if (params.licensee && params.licensee !== 'all') {
     searchParams.append('licensee', params.licensee);
   }

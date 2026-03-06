@@ -169,9 +169,9 @@ export function parseMetersReportParams(
   const hourlyDataMachineIdsParam = searchParams.get('hourlyDataMachineIds');
   const hourlyDataMachineIds = hourlyDataMachineIdsParam
     ? hourlyDataMachineIdsParam
-        .split(',')
-        .map(id => id.trim())
-        .filter(id => id !== '')
+      .split(',')
+      .map(id => id.trim())
+      .filter(id => id !== '')
     : undefined;
 
   // Parse granularity parameter
@@ -358,7 +358,12 @@ export async function fetchMachinesData(
   // Filter by licensee if provided
   if (licensee && licensee !== 'all') {
     const licenseeLocations = await GamingLocations.find(
-      { 'rel.licensee': licensee },
+      {
+        $or: [
+          { 'rel.licensee': licensee },
+          { 'rel.licencee': licensee }
+        ]
+      },
       { _id: 1 }
     )
       .lean()

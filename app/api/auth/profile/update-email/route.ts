@@ -53,13 +53,13 @@ export async function POST(req: NextRequest) {
     user.emailAddress = newEmail;
     await user.save();
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: 'Email address updated successfully',
       email: newEmail
     });
-  } catch (error: any) {
-    console.error('Update Email Error:', error);
+  } catch (error: unknown) {
+    console.error('Update Email Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -82,24 +82,115 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 3: Fetch all non-deleted movement requests
+    // STEP 3: Fetch all non-deleted movement requests with Aggregation
     // ============================================================================
-    let requests = await MovementRequest.find({
-      $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
-    })
-      .sort({ createdAt: -1 })
-      .lean();
+    let requests = await MovementRequest.aggregate([
+      // Match non-deleted requests
+      {
+        $match: {
+          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+        }
+      },
+      // Lookup recipient user
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'requestTo',
+          foreignField: '_id',
+          as: 'recipientDetails'
+        }
+      },
+      // Lookup creator user
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'createdBy',
+          foreignField: '_id',
+          as: 'creatorDetails'
+        }
+      },
+      // Lookup machine details if selectedMachines exists
+      {
+        $lookup: {
+          from: 'machines',
+          localField: 'selectedMachines',
+          foreignField: '_id',
+          as: 'machineDetails'
+        }
+      },
+      // Unwind details
+      {
+        $unwind: {
+          path: '$recipientDetails',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $unwind: {
+          path: '$creatorDetails',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      // Calculate names and machine details
+      {
+        $addFields: {
+          recipientName: {
+            $cond: {
+              if: { $and: ['$recipientDetails.profile.firstName', '$recipientDetails.profile.lastName'] },
+              then: { $concat: ['$recipientDetails.profile.firstName', ' ', '$recipientDetails.profile.lastName'] },
+              else: { $ifNull: ['$recipientDetails.username', '$requestTo'] }
+            }
+          },
+          creatorName: {
+            $cond: {
+              if: { $and: ['$creatorDetails.profile.firstName', '$creatorDetails.profile.lastName'] },
+              then: { $concat: ['$creatorDetails.profile.firstName', ' ', '$creatorDetails.profile.lastName'] },
+              else: { $ifNull: ['$creatorDetails.username', '$createdBy'] }
+            }
+          },
+          machineDetails: {
+            $map: {
+              input: '$machineDetails',
+              as: 'm',
+              in: {
+                _id: '$$m._id',
+                serialNumber: '$$m.serialNumber',
+                displayName: {
+                  $cond: {
+                    if: { $and: ['$$m.custom.name', { $ne: ['$$m.custom.name', ''] }] },
+                    then: '$$m.custom.name',
+                    else: { $ifNull: ['$$m.serialNumber', '$$m._id'] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      // Sort by newest first
+      { $sort: { createdAt: -1 } }
+    ]);
 
     // ============================================================================
-    // STEP 4: Filter by user location permissions
+    // STEP 4: Filter by user location permissions and direct recipient
     // ============================================================================
+    const userEmail = userPayload.emailAddress as string;
+
     if (allowedLocationIds !== 'all') {
-      // Filter requests to only include those where locationFrom or locationTo
-      // is in the user's accessible locations
+      // Filter requests to only include those where:
+      // 1. locationFromId, locationToId, or locationId is in the user's accessible locations
+      // 2. OR the user is the direct recipient (requestTo)
+      const currentUserId = String(userPayload._id);
       requests = requests.filter(
         request =>
-          allowedLocationIds.includes(request.locationFrom) ||
-          allowedLocationIds.includes(request.locationTo)
+          allowedLocationIds.includes(String(request.locationFromId)) ||
+          allowedLocationIds.includes(String(request.locationToId)) ||
+          allowedLocationIds.includes(String(request.locationId)) ||
+          // Fallback for names if IDs are missing (legacy compatibility)
+          allowedLocationIds.includes(String(request.locationFrom)) ||
+          allowedLocationIds.includes(String(request.locationTo)) ||
+          request.requestTo === currentUserId ||
+          request.requestTo === userEmail
       );
     }
 
@@ -109,23 +200,32 @@ export async function GET(req: NextRequest) {
     if (licensee && licensee !== 'all') {
       const licenseeLocations = await GamingLocations.find(
         {
-          'rel.licensee': licensee,
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2025-01-01') } },
-          ],
+          $and: [
+            {
+              $or: [
+                { 'rel.licensee': licensee },
+                { 'rel.licencee': licensee }
+              ]
+            },
+            {
+              $or: [
+                { deletedAt: null },
+                { deletedAt: { $lt: new Date('2025-01-01') } },
+              ]
+            }
+          ]
         },
         { _id: 1, name: 1 }
       ).lean();
 
-      const licenseeLocationIds = licenseeLocations.map(loc =>
-        (loc as { _id: string })._id.toString()
+      const licenseeLocationIds = licenseeLocations.map((loc: { _id: unknown }) =>
+        String(loc._id)
       );
 
       requests = requests.filter(
         request =>
-          licenseeLocationIds.includes(request.locationFrom) ||
-          licenseeLocationIds.includes(request.locationTo)
+          licenseeLocationIds.includes(String(request.locationFrom)) ||
+          licenseeLocationIds.includes(String(request.locationTo))
       );
     }
 
@@ -133,12 +233,7 @@ export async function GET(req: NextRequest) {
     // STEP 6: Fetch location names for lookup
     // ============================================================================
     const locations = await GamingLocations.find(
-      {
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('1970-01-01') } },
-        ],
-      },
+      {},
       { _id: 1, name: 1 }
     )
       .sort({ name: 1 })
@@ -148,13 +243,26 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 7: Transform requests with location names
+    // STEP 7: Transform requests with location names and map legacy statuses
     // ============================================================================
-    const transformed = requests.map(req => ({
-      ...req,
-      locationFrom: idToName[req.locationFrom] || req.locationFrom,
-      locationTo: idToName[req.locationTo] || req.locationTo,
-    }));
+    const transformed = requests.map((req: Record<string, unknown>) => {
+      const r = req;
+
+      // Map legacy statuses to purely pending/completed
+      let mappedStatus = r.status;
+      if (mappedStatus === 'approved') mappedStatus = 'completed';
+      if (mappedStatus === 'in progress') mappedStatus = 'pending';
+      if (mappedStatus === 'rejected') mappedStatus = 'completed'; // Or pending? Leave rejected as pending for safety if it shouldn't be completed
+
+      return {
+        ...req,
+        status: mappedStatus === 'approved' ? 'completed' : mappedStatus === 'in progress' ? 'pending' : (mappedStatus || 'pending'),
+        locationFrom: idToName[String(r.locationFrom)] || String(r.locationFrom),
+        locationTo: idToName[String(r.locationTo)] || String(r.locationTo),
+        recipientName: req.recipientName || req.requestTo, // Fallback
+        creatorName: req.creatorName || req.createdBy // Fallback
+      };
+    });
 
     // ============================================================================
     // STEP 8: Return transformed requests
@@ -164,7 +272,7 @@ export async function GET(req: NextRequest) {
       console.warn(`[Movement Requests API] Completed in ${duration}ms`);
     }
     return NextResponse.json(transformed);
-  } catch (error) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error
@@ -183,9 +291,40 @@ export async function POST(req: NextRequest) {
 
   try {
     // ============================================================================
-    // STEP 1: Parse and validate request body
+    // STEP 1: Connect to database and authenticate user
     // ============================================================================
-    let data;
+    await connectDB();
+    const currentUser = await getUserFromServer();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Role check: Only technicians, developers, managers, and location admins can create requests
+    const userRoles = (currentUser.roles as string[]) || [];
+    const authorizedRoles = ['technician', 'developer', 'manager', 'location admin'];
+    const isAuthorized = userRoles.some(role => authorizedRoles.includes(role.toLowerCase()));
+
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { error: 'Forbidden', details: 'You do not have permission to create movement requests' },
+        { status: 403 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 2: Parse and validate request body
+    // ============================================================================
+    interface MovementRequestData {
+      cabinetIn: string;
+      selectedMachines?: string[];
+      locationFrom: string;
+      locationTo: string;
+      locationFromId?: string;
+      locationToId?: string;
+      reason?: string;
+      status?: string;
+    }
+    let data: MovementRequestData;
     try {
       data = await req.json();
     } catch {
@@ -199,15 +338,18 @@ export async function POST(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 2: Create movement request
+    // STEP 3: Create movement request
     // ============================================================================
-    const created = await MovementRequest.create({ ...data });
+    const created = await MovementRequest.create({
+      ...data,
+      createdBy: currentUser._id, // Store creator ID
+      timestamp: new Date()
+    });
 
     // ============================================================================
-    // STEP 3: Log activity
+    // STEP 4: Log activity
     // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
+    if (currentUser.emailAddress) {
       try {
         const createChanges = [
           { field: 'cabinetIn', oldValue: null, newValue: data.cabinetIn },
@@ -250,14 +392,14 @@ export async function POST(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Return created request
+    // STEP 5: Return created request
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
       console.warn(`[Movement Requests API POST] Completed in ${duration}ms`);
     }
     return NextResponse.json(created, { status: 201 });
-  } catch (error) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error

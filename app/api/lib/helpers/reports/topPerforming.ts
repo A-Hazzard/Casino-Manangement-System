@@ -86,12 +86,15 @@ function aggregateMetersForTop5Locations(
     // Filter by licensee if specified
     ...(licensee
       ? [
-          {
-            $match: {
-              'locationDetails.rel.licensee': licensee,
-            },
+        {
+          $match: {
+            $or: [
+              { 'locationDetails.rel.licensee': licensee },
+              { 'locationDetails.rel.licencee': licensee },
+            ],
           },
-        ]
+        },
+      ]
       : []),
     {
       $project: {
@@ -173,12 +176,15 @@ function aggregateMetersForTop5Machines(
     // Filter by licensee if specified
     ...(licensee
       ? [
-          {
-            $match: {
-              'locationDetails.rel.licensee': licensee,
-            },
+        {
+          $match: {
+            $or: [
+              { 'locationDetails.rel.licensee': licensee },
+              { 'locationDetails.rel.licencee': licensee },
+            ],
           },
-        ]
+        },
+      ]
       : []),
     {
       $project: {

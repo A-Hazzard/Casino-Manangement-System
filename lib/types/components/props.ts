@@ -380,7 +380,7 @@ export type CollectionReportCollectorScheduleCardsProps = {
 export type CollectorScheduleCardsProps = CollectionReportCollectorScheduleCardsProps;
 
 export type MapPreviewProps = {
-  gamingLocations?: any[];
+  gamingLocations?: Record<string, unknown>[];
   locationAggregates?: Record<string, unknown>[];
   aggLoading?: boolean;
   zoom?: number;

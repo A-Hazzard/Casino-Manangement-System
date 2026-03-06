@@ -13,14 +13,14 @@
  */
 
 import { calculateChanges } from '@/app/api/lib/helpers/activityLogger';
-import { ActivityLog } from '@/app/api/lib/models/activityLog';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { ActivityLog } from '@/app/api/lib/models/activityLog';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import User from '@/app/api/lib/models/user';
-import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
 import { generateMongoId } from '@/lib/utils/id';
+import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -83,7 +83,9 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 4: Build query filter
     // ============================================================================
-    const filter: Record<string, unknown> = {};
+    const filter: Record<string, unknown> = {
+      deletedAt: { $exists: false },
+    };
 
     if (userId) {
       filter.userId = userId;
@@ -149,7 +151,7 @@ export async function GET(request: NextRequest) {
     if (Array.isArray((currentUser as { assignedLicensees?: string[] })?.assignedLicensees)) {
       currentUserLicensees = (currentUser as { assignedLicensees: string[] }).assignedLicensees;
     }
-    
+
     let currentUserLocationPermissions: string[] = [];
     if (Array.isArray((currentUser as { assignedLocations?: string[] })?.assignedLocations)) {
       currentUserLocationPermissions = (currentUser as { assignedLocations: string[] }).assignedLocations.map(id => String(id));

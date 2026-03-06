@@ -8,8 +8,8 @@
 
 import { COLLECTION_TABS_CONFIG } from '@/lib/constants';
 import {
-    fetchCollectionReportsByLicensee,
-    getLocationsWithMachines,
+  fetchCollectionReportsByLicensee,
+  getLocationsWithMachines,
 } from '@/lib/helpers/collectionReport';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { useCollectionNavigation } from '@/lib/hooks/navigation';
@@ -28,9 +28,9 @@ import { useCollectionReportFilters } from './useCollectionReportFilters';
 
 export function useCollectionReportPageData() {
   const searchParams = useSearchParams();
-   const { selectedLicensee, activeMetricsFilter, customDateRange } =
-     useDashBoardStore();
-   const { user } = useUserStore();
+  const { selectedLicensee, activeMetricsFilter, customDateRange } =
+    useDashBoardStore();
+  const { user } = useUserStore();
 
   // ============================================================================
   // Tab & View State
@@ -61,7 +61,7 @@ export function useCollectionReportPageData() {
     CollectionReportLocationWithMachines[]
   >([]);
 
-  const itemsPerPage = 20;
+  const itemsPerPage = 10;
   const itemsPerBatch = 50;
   const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
@@ -105,14 +105,14 @@ export function useCollectionReportPageData() {
         setLoading(false);
         return;
       }
-      
+
       // Mark that we've started the first load
       if (!hasStartedFirstLoadRef.current) {
         hasStartedFirstLoadRef.current = true;
         // Ensure initialLoading is true when we start the first load
         setInitialLoading(true);
       }
-      
+
       setLoading(true);
       try {
         const result = await fetchCollectionReportsByLicensee(
@@ -306,16 +306,31 @@ export function useCollectionReportPageData() {
     return filteredReports.slice(start, start + itemsPerPage);
   }, [filteredReports, currentPage, itemsPerPage]);
 
-  // Calculate total pages based on filtered results
-  // This matches the members page pattern: use filtered length for pagination
+  const isDataMissingForPage = useMemo(() => {
+    const startIndex = currentPage * itemsPerPage;
+    // A page is "missing" if we'd render beyond the filtered items AND server has more raw data
+    return filteredReports.length <= startIndex && allReports.length < totalReports;
+  }, [filteredReports.length, allReports.length, currentPage, itemsPerPage, totalReports]);
+
+  // Calculate total pages based on DISPLAYED (client-side filtered) reports.
+  // This prevents empty pages when date/location filters reduce visible count.
   const totalPages = useMemo(() => {
-    return Math.ceil(filteredReports.length / itemsPerPage) || 1;
-  }, [filteredReports.length, itemsPerPage]);
+    const displayedCount = filteredReports.length;
+    const displayedPages = Math.ceil(displayedCount / itemsPerPage) || 1;
+
+    // If server has more raw reports not yet fetched, allow +1 trigger page
+    if (allReports.length < totalReports && totalReports > 0) {
+      const serverTotalPages = Math.ceil(totalReports / itemsPerPage) || 1;
+      return Math.min(displayedPages + 1, serverTotalPages);
+    }
+
+    return displayedPages;
+  }, [filteredReports.length, allReports.length, totalReports, itemsPerPage]);
 
   // Calculate which reports are editable based on user role and recency
   const editableReportIds = useMemo(() => {
     if (!user || !user.roles) return new Set<string>();
-    
+
     const userRoles = (user.roles || []) as string[];
     const isDeveloper = userRoles.includes('developer');
     const isAdmin = userRoles.includes('admin');
@@ -329,7 +344,7 @@ export function useCollectionReportPageData() {
     // Admins and Managers can only edit the two most recent reports per location
     if (isAdmin || isManager) {
       const reportsByLocation: Record<string, CollectionReportRow[]> = {};
-      
+
       // Group reports by location
       allReports.forEach(report => {
         const loc = report.location || 'unknown';
@@ -365,7 +380,7 @@ export function useCollectionReportPageData() {
 
   return {
     activeTab,
-    loading: loading || initialLoading, // Combine both loading states
+    loading: loading || initialLoading || isDataMissingForPage, // Combine both loading states
     initialLoading,
     refreshing,
     allReports,
@@ -373,6 +388,7 @@ export function useCollectionReportPageData() {
     paginatedReports,
     currentPage,
     totalPages,
+    totalReports,
     searchTerm,
     locations,
     locationsWithMachines,

@@ -70,7 +70,7 @@ export default function VaultOverviewRemoveCashModal({
 
   useEffect(() => {
     if (open) {
-      setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+      setDenominations(denomsList.map(d => ({ denomination: d as Denomination['denomination'], quantity: 0 })));
       setTouchedDenominations(new Set());
     }
   }, [open, denomsList]);
@@ -170,7 +170,7 @@ export default function VaultOverviewRemoveCashModal({
       });
       // Reset form on success
       setReason('');
-      setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+      setDenominations(denomsList.map(d => ({ denomination: d as Denomination['denomination'], quantity: 0 })));
       setTouchedDenominations(new Set());
       setNotes('');
       setErrors({});
@@ -190,7 +190,7 @@ export default function VaultOverviewRemoveCashModal({
   const handleClose = () => {
     if (loading) return;
     setReason('');
-    setDenominations(denomsList.map(d => ({ denomination: d as any, quantity: 0 })));
+    setDenominations(denomsList.map(d => ({ denomination: d as Denomination['denomination'], quantity: 0 })));
     setTouchedDenominations(new Set());
     setNotes('');
     setErrors({});

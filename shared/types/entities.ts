@@ -1,10 +1,10 @@
 // Shared entity types used across frontend and backend
 import { Types } from 'mongoose';
 import type {
-    BillValidatorData,
-    CollectionMetersHistoryEntry,
-    MeterData,
-    SasMeters,
+  BillValidatorData,
+  CollectionMetersHistoryEntry,
+  MeterData,
+  SasMeters,
 } from './common';
 
 // Location types
@@ -576,6 +576,8 @@ export type NewCabinetFormData = {
   assetStatus: string;
   gamingLocation: string;
   relayId: string;
+  smibBoard?: string;
+  smbId?: string;
   manufacturer: string;
   otherGameType?: string;
   collectionSettings: {
@@ -591,14 +593,14 @@ export type CollectionIssue = {
   collectionId: string;
   machineName: string;
   issueType:
-    | 'inverted_times'
-    | 'prev_meters_mismatch'
-    | 'sas_time_wrong'
-    | 'wrong_sas_start_time'
-    | 'wrong_sas_end_time'
-    | 'missing_sas_times'
-    | 'history_mismatch'
-    | 'machine_time_mismatch';
+  | 'inverted_times'
+  | 'prev_meters_mismatch'
+  | 'sas_time_wrong'
+  | 'wrong_sas_start_time'
+  | 'wrong_sas_end_time'
+  | 'missing_sas_times'
+  | 'history_mismatch'
+  | 'machine_time_mismatch';
   details: {
     current: Record<string, unknown> | null;
     expected: Record<string, unknown> | null;

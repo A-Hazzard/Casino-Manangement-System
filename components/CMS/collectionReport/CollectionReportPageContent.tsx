@@ -280,11 +280,15 @@ export default function CollectionReportPageContent() {
                   {!loading &&
                     (hook.paginatedReports?.length > 0 ||
                       filters.filteredReports.length > 0) && (
-                      <PaginationControls
-                        currentPage={hook.currentPage}
-                        totalPages={hook.totalPages || 1}
-                        setCurrentPage={setCurrentPage}
-                      />
+                      <div className="mb-8 mt-4 flex w-full justify-center">
+                        <PaginationControls
+                          currentPage={hook.currentPage}
+                          totalPages={hook.totalPages || 1}
+                          totalCount={hook.totalReports}
+                          limit={10}
+                          setCurrentPage={setCurrentPage}
+                        />
+                      </div>
                     )}
                 </div>
               )}
@@ -310,11 +314,13 @@ export default function CollectionReportPageContent() {
                   {/* Pagination Controls */}
                   {!collectorHook.loadingCollectorSchedules &&
                     collectorHook.collectorSchedules.length > 0 && (
-                      <PaginationControls
-                        currentPage={collectorHook.currentPage}
-                        totalPages={collectorHook.totalPages}
-                        setCurrentPage={collectorHook.setCurrentPage}
-                      />
+                      <div className="flex justify-center">
+                        <PaginationControls
+                          currentPage={collectorHook.currentPage}
+                          totalPages={collectorHook.totalPages}
+                          setCurrentPage={collectorHook.setCurrentPage}
+                        />
+                      </div>
                     )}
                 </div>
               )}
@@ -330,11 +336,13 @@ export default function CollectionReportPageContent() {
                   {/* Pagination Controls */}
                   {!managerHook.loadingSchedulers &&
                     managerHook.schedulers.length > 0 && (
-                      <PaginationControls
-                        currentPage={managerHook.currentPage}
-                        totalPages={managerHook.totalPages}
-                        setCurrentPage={managerHook.setCurrentPage}
-                      />
+                      <div className="flex justify-center">
+                        <PaginationControls
+                          currentPage={managerHook.currentPage}
+                          totalPages={managerHook.totalPages}
+                          setCurrentPage={managerHook.setCurrentPage}
+                        />
+                      </div>
                     )}
                 </div>
               )}

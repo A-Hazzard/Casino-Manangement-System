@@ -12,6 +12,7 @@
 
 import { refreshAccessToken } from '@/app/api/lib/helpers/auth/auth';
 import { getFriendlyErrorMessage } from '@/lib/utils/auth';
+import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -68,13 +69,7 @@ export async function POST(request: NextRequest) {
       message: 'Token refreshed successfully',
     });
 
-    response.cookies.set('token', result.token!, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60, // 60 minutes (1 hour)
-    });
+    response.cookies.set('token', result.token!, getAuthCookieOptions(request, { maxAge: 60 * 60 }));
 
     // ============================================================================
     // STEP 5: Return success response

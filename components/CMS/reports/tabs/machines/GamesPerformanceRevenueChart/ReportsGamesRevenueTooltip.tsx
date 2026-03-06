@@ -6,7 +6,8 @@
 
 'use client';
 
-import { formatCurrency } from '@/lib/utils/formatting';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import React, { useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { GamesPerformanceData } from './ReportsGamesPerformanceRevenueChart';
@@ -40,6 +41,8 @@ export function ReportsGamesRevenueTooltip({
   coordinate,
   chartContainerRef,
 }: ReportsGamesRevenueTooltipProps) {
+  const { displayCurrency } = useCurrencyFormat();
+  const formatCurrency = (value: number | null | undefined) => formatCurrencyWithCodeString(value, displayCurrency);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(
     null
   );

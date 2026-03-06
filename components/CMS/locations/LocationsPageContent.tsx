@@ -18,9 +18,11 @@ import MachineStatusWidget from '@/components/shared/ui/MachineStatusWidget';
 import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { useLocationsPageData } from '@/lib/hooks/locations/useLocationsPageData';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licensee';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -44,6 +46,7 @@ export default function LocationsPageContent() {
 
   // Custom hook for locations page data and logic
   const locationsPageData = useLocationsPageData();
+  const { displayCurrency } = useCurrencyFormat();
 
   const {
     loading,
@@ -65,6 +68,8 @@ export default function LocationsPageContent() {
     handleMultiFilterChange,
     setSearchTerm,
     setCurrentPage,
+    totalCount,
+    isDataComplete,
   } = locationsPageData;
 
   // ============================================================================
@@ -138,7 +143,11 @@ export default function LocationsPageContent() {
         {/* Financial Performance Summary Cards */}
         <div className="mt-6">
           <FinancialMetricsCards
-            totals={metricsTotals || financialTotals}
+            totals={
+              (isDataComplete && !metricsTotalsLoading)
+                ? financialTotals
+                : (metricsTotals || financialTotals)
+            }
             loading={loading || metricsTotalsLoading}
             title="Total for all Locations"
           />
@@ -156,9 +165,12 @@ export default function LocationsPageContent() {
                   membershipStatsLoading ||
                   machineStats === null
                 }
-                onlineCount={machineStats?.onlineMachines || 0}
-                offlineCount={machineStats?.offlineMachines || 0}
-                totalCount={machineStats?.totalMachines}
+                title="AWS Location Status"
+                onlineLabel="Online Locations"
+                offlineLabel="Offline Locations"
+                onlineCount={machineStats?.onlineLocations || 0}
+                offlineCount={machineStats?.offlineLocations || 0}
+                totalCount={machineStats?.totalLocations}
                 membershipCount={membershipStats?.membershipCount || 0}
                 showTotal
                 showMembership
@@ -173,6 +185,8 @@ export default function LocationsPageContent() {
             selectedFilters={selectedFilters}
             onFilterChange={handleFilterChange}
             onMultiFilterChange={handleMultiFilterChange}
+            selectedStatus={locationsPageData.selectedStatus}
+            onStatusChange={locationsPageData.setSelectedStatus}
           />
         </div>
 
@@ -228,19 +242,21 @@ export default function LocationsPageContent() {
                   onSort={locationsPageData.handleSort}
                   sortOption={locationsPageData.sortOption}
                   sortOrder={locationsPageData.sortOrder}
-                  formatCurrency={amount =>
-                    `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  }
+                  formatCurrency={amount => formatCurrencyWithCodeString(amount, displayCurrency)}
                 />
               </div>
 
               {/* Data Pagination Controls */}
               {totalPages > 1 && (
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  setCurrentPage={setCurrentPage}
-                />
+                <div className="mb-8 mt-8 flex w-full justify-center">
+                  <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalCount={totalCount}
+                    limit={10}
+                    setCurrentPage={setCurrentPage}
+                  />
+                </div>
               )}
             </div>
           )}

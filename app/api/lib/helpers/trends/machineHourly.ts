@@ -76,7 +76,10 @@ function buildMachineHourlyPipeline(
   if (licensee && licensee !== 'all') {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licensee': licensee,
+        $or: [
+          { 'locationDetails.rel.licensee': licensee },
+          { 'locationDetails.rel.licencee': licensee },
+        ],
       },
     } as PipelineStage);
   }
@@ -266,7 +269,7 @@ async function getLocationCurrenciesForMachineHourly(
 
   const locationCurrencies = new Map<string, string>();
   locationsData.forEach(loc => {
-    const locationLicenseeId = loc.rel?.licensee;
+    const locationLicenseeId = loc.rel?.licensee || (loc.rel as Record<string, unknown> | undefined)?.licencee;
     if (locationLicenseeId) {
       const licenseeName =
         licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';

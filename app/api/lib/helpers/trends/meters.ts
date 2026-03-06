@@ -14,9 +14,9 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
-    convertFromUSD,
-    convertToUSD,
-    getCountryCurrency,
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
 } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -153,7 +153,7 @@ function determineAggregationGranularity(
       // Date-only custom range: use hourly if <= 1 day (for gaming day offset)
       const diffInDays = Math.ceil(
         (customEndDate.getTime() - customStartDate.getTime()) /
-          (1000 * 60 * 60 * 24)
+        (1000 * 60 * 60 * 24)
       );
       if (diffInDays <= 1) {
         return { useHourly: true, useMinute: false };
@@ -262,22 +262,22 @@ function buildLocationMetricsPipeline(
         },
         time: shouldUseMinute
           ? {
-              // Minute-level: format as HH:MM
+            // Minute-level: format as HH:MM
+            $dateToString: {
+              date: '$readAt',
+              format: '%H:%M',
+              timezone: 'UTC',
+            },
+          }
+          : shouldUseHourly
+            ? {
+              // Hourly: format as HH:00
               $dateToString: {
                 date: '$readAt',
-                format: '%H:%M',
+                format: '%H:00',
                 timezone: 'UTC',
               },
             }
-          : shouldUseHourly
-            ? {
-                // Hourly: format as HH:00
-                $dateToString: {
-                  date: '$readAt',
-                  format: '%H:00',
-                  timezone: 'UTC',
-                },
-              }
             : '00:00',
       },
     },
@@ -393,22 +393,22 @@ async function processLocationMetricsSingleAggregation(
         },
         time: shouldUseMinute
           ? {
-              // Minute-level: format as HH:MM
+            // Minute-level: format as HH:MM
+            $dateToString: {
+              date: '$readAt',
+              format: '%H:%M',
+              timezone: 'UTC',
+            },
+          }
+          : shouldUseHourly
+            ? {
+              // Hourly: format as HH:00
               $dateToString: {
                 date: '$readAt',
-                format: '%H:%M',
+                format: '%H:00',
                 timezone: 'UTC',
               },
             }
-          : shouldUseHourly
-            ? {
-                // Hourly: format as HH:00
-                $dateToString: {
-                  date: '$readAt',
-                  format: '%H:00',
-                  timezone: 'UTC',
-                },
-              }
             : '00:00',
       },
     },
@@ -528,9 +528,11 @@ async function processLocationMetricsSingleAggregation(
         licensee:
           typeof location.rel?.licensee === 'string'
             ? location.rel.licensee
-            : Array.isArray(location.rel?.licensee)
-              ? (location.rel?.licensee?.[0]?.toString() ?? null)
-              : null,
+            : typeof (location.rel as Record<string, unknown> | undefined)?.licencee === 'string'
+              ? (location.rel as Record<string, unknown> | undefined)?.licencee
+              : Array.isArray(location.rel?.licensee)
+                ? (location.rel?.licensee?.[0]?.toString() ?? null)
+                : null,
         country: location.country ? String(location.country) : null,
         location: locationId,
         geoCoords: location.geoCoords ?? null,
@@ -612,9 +614,11 @@ async function processLocationMetricsBatches(
           licensee:
             typeof location.rel?.licensee === 'string'
               ? location.rel.licensee
-              : Array.isArray(location.rel?.licensee)
-                ? (location.rel?.licensee?.[0]?.toString() ?? null)
-                : null,
+              : typeof (location.rel as Record<string, unknown> | undefined)?.licencee === 'string'
+                ? (location.rel as Record<string, unknown> | undefined)?.licencee
+                : Array.isArray(location.rel?.licensee)
+                  ? (location.rel?.licensee?.[0]?.toString() ?? null)
+                  : null,
           country: location.country ? String(location.country) : null,
           location: locationId,
           geoCoords: location.geoCoords ?? null,
@@ -851,6 +855,7 @@ export async function getMeterTrends(
     locationIds?: string[];
     gameTypes?: string[];
     onlineStatus?: string;
+    searchTerm?: string;
   },
   accessibleLicensees: string[] | 'all',
   userRoles: string[],
@@ -866,6 +871,7 @@ export async function getMeterTrends(
     locationIds: filterLocationIds,
     gameTypes,
     onlineStatus,
+    searchTerm,
   } = params;
 
   const isAdminOrDev =
@@ -888,9 +894,17 @@ export async function getMeterTrends(
   };
 
   if (licensee) {
-    locationQuery['rel.licensee'] = licensee;
+    if (!locationQuery.$and) {
+      locationQuery.$and = [];
+    }
+    (locationQuery.$and as unknown[]).push({
+      $or: [
+        { 'rel.licensee': licensee },
+        { 'rel.licencee': licensee },
+      ],
+    });
   }
-  
+
   // Apply location filter if provided
   if (filterLocationIds && filterLocationIds.length > 0) {
     locationQuery._id = { $in: filterLocationIds };
@@ -969,7 +983,7 @@ export async function getMeterTrends(
   );
 
   const locationIdStrings = locations.map(location => String(location._id));
-  
+
   // Build machine query with filters
   const machineQuery: Record<string, unknown> = {
     gamingLocation: { $in: locationIdStrings },
@@ -983,24 +997,24 @@ export async function getMeterTrends(
   if (gameTypes && gameTypes.length > 0) {
     // Only filter if not 'all'
     if (!gameTypes.includes('all')) {
-       // Filter by game (primary) or installedGame (fallback)
-       
-       // Correct approach: Add $and clause
-       machineQuery.$and = [
-         {
-           $or: [
-             { game: { $in: gameTypes } },
-             { installedGame: { $in: gameTypes } }
-           ]
-         }
-       ];
+      // Filter by game (primary) or installedGame (fallback)
+
+      // Correct approach: Add $and clause
+      machineQuery.$and = [
+        {
+          $or: [
+            { game: { $in: gameTypes } },
+            { installedGame: { $in: gameTypes } }
+          ]
+        }
+      ];
     }
   }
 
   // Apply status filter
   if (onlineStatus && onlineStatus !== 'all') {
     const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
-    
+
     if (onlineStatus === 'online' || onlineStatus === 'Online') {
       machineQuery.lastActivity = { $gte: threeMinutesAgo };
     } else if (onlineStatus === 'offline' || onlineStatus === 'Offline') {
@@ -1008,7 +1022,7 @@ export async function getMeterTrends(
       if (!machineQuery.$and) {
         machineQuery.$and = [];
       }
-      
+
       (machineQuery.$and as unknown[]).push({
         $or: [
           { lastActivity: { $exists: false } },
@@ -1016,6 +1030,39 @@ export async function getMeterTrends(
         ]
       });
     }
+  }
+
+  // Apply search term filter
+  if (searchTerm) {
+    const searchLower = searchTerm.trim().toLowerCase();
+
+    // We want a very robust search that behaves exactly like the frontend/aggregation search
+    const searchRegex = { $regex: searchLower, $options: 'i' };
+
+    if (!machineQuery.$and) {
+      machineQuery.$and = [];
+    }
+
+    const searchOrConditions: Record<string, unknown>[] = [
+      { serialNumber: searchRegex },
+      { relayId: searchRegex },
+      { smbId: searchRegex },
+      { 'custom.name': searchRegex },
+      { 'Custom.name': searchRegex } // Just in case of casing differences
+    ];
+
+    // Search by ObjectId if it's a valid 24-character hex string
+    if (/^[0-9a-fA-F]{24}$/.test(searchLower)) {
+      try {
+        searchOrConditions.push({ _id: new ObjectId(searchLower) });
+      } catch {
+        // Ignore if ObjectId parsing fails
+      }
+    }
+
+    (machineQuery.$and as unknown[]).push({
+      $or: searchOrConditions
+    });
   }
 
   const machineDocs = await Machine.find(
@@ -1029,19 +1076,19 @@ export async function getMeterTrends(
 
   const metricsPerLocation = useSingleAggregation
     ? await processLocationMetricsSingleAggregation(
-        locations as LocationData[],
-        machinesByLocation,
-        gamingDayRanges,
-        useHourly,
-        useMinute
-      )
+      locations as LocationData[],
+      machinesByLocation,
+      gamingDayRanges,
+      useHourly,
+      useMinute
+    )
     : await processLocationMetricsBatches(
-        locations as LocationData[],
-        machinesByLocation,
-        gamingDayRanges,
-        useHourly,
-        useMinute
-      );
+      locations as LocationData[],
+      machinesByLocation,
+      gamingDayRanges,
+      useHourly,
+      useMinute
+    );
 
   if (metricsPerLocation.length === 0) {
     return [];

@@ -61,6 +61,19 @@ const TRANSACTION_TYPES = [
   'expense',
 ];
 
+interface AuditTrailEntry {
+  id: string;
+  timestamp: string;
+  type: string;
+  description: string;
+  performedBy: string;
+  amount: number;
+  status: string;
+  isOutflow?: boolean;
+  balanceBefore?: number;
+  balanceAfter?: number;
+}
+
 export default function AuditTrailViewer() {
   const { formatAmount } = useCurrencyFormat();
   const { user } = useUserStore();
@@ -71,7 +84,7 @@ export default function AuditTrailViewer() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [auditTrail, setAuditTrail] = useState<any[]>([]);
+  const [auditTrail, setAuditTrail] = useState<AuditTrailEntry[]>([]);
   const [totalEntries, setTotalEntries] = useState(0);
 
   useEffect(() => {
@@ -299,7 +312,7 @@ export default function AuditTrailViewer() {
                           <div className="flex flex-col text-[10px]">
                             <span className="text-gray-400">Shift:</span>
                             <span className="font-bold text-gray-900">
-                              {formatAmount(entry.balanceBefore)} → {formatAmount(entry.balanceAfter)}
+                              {formatAmount(entry.balanceBefore ?? 0)} → {formatAmount(entry.balanceAfter ?? 0)}
                             </span>
                             <span className={`mt-0.5 ${entry.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                               ({entry.amount >= 0 ? '' : '-'}{formatAmount(Math.abs(entry.amount))})

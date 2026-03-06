@@ -16,32 +16,32 @@ import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import { ModernDateRangePicker } from '@/components/shared/ui/ModernDateRangePicker';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/shared/ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/shared/ui/table';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from '@/components/shared/ui/tooltip';
 import { useUserStore } from '@/lib/store/userStore';
 import {
-  AlertCircle,
-  ChevronDown,
-  ChevronsUpDown,
-  ChevronUp
+    AlertCircle,
+    ChevronDown,
+    ChevronsUpDown,
+    ChevronUp
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useMemo, useState } from 'react';
@@ -102,7 +102,7 @@ type CollectionData = {
 
 type SortField = 'timestamp' | 'metersIn' | 'metersOut' | 'prevIn' | 'prevOut';
 type SortDirection = 'asc' | 'desc' | null;
-type TimeFilter = 'all' | 'today' | 'yesterday' | '7d' | '30d' | '90d' | '1y' | '2y' | 'custom';
+export type TimeFilter = 'all' | 'today' | 'yesterday' | '7d' | '30d' | '90d' | '1y' | '2y' | 'custom';
 
 type CabinetsDetailsCollectionHistoryTableProps = {
   data: CollectionData[];
@@ -240,15 +240,15 @@ export function CabinetsDetailsCollectionHistoryTable({
 
     if (sortField && sortDirection) {
       filtered.sort((a, b) => {
-        let aValue: any = a[sortField as keyof CollectionData];
-        let bValue: any = b[sortField as keyof CollectionData];
+        let aValue: unknown = a[sortField as keyof CollectionData];
+        let bValue: unknown = b[sortField as keyof CollectionData];
 
         if (aValue === undefined || aValue === null) aValue = 0;
         if (bValue === undefined || bValue === null) bValue = 0;
 
         if (sortField === 'timestamp') {
-          aValue = new Date(aValue).getTime();
-          bValue = new Date(bValue).getTime();
+          aValue = new Date(aValue as string | number | Date).getTime();
+          bValue = new Date(bValue as string | number | Date).getTime();
         }
 
         if (typeof aValue === 'number' && typeof bValue === 'number') {

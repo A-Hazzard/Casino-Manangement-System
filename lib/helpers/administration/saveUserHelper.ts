@@ -168,7 +168,7 @@ export async function saveUserHelper({
   }
 
   try {
-    const response = await updateUser(updatePayload as never);
+    const response = await updateUser(updatePayload);
     const updatedUserData = response.data?.user;
 
     // Log the update activity

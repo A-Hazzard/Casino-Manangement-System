@@ -240,6 +240,7 @@ const UserSchema = new Schema(
     loginCount: { type: Number, default: 0 },
     lastLoginAt: { type: Date, default: null },
     tempPasswordChanged: { type: Boolean, default: false },
+    requiresPasswordUpdate: { type: Boolean, default: false },
     deletedAt: { type: Schema.Types.Mixed, default: null }, // allow for { $date: { $numberLong: "-1" } }
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date },

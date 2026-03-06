@@ -30,7 +30,7 @@ import {
     TableRow,
 } from '@/components/shared/ui/table';
 import StaleShiftDetectedBlock from '@/components/VAULT/shared/StaleShiftDetectedBlock';
-import VaultTransactionDetailsModal from '@/components/VAULT/transactions/modals/VaultTransactionDetailsModal';
+import VaultTransactionDetailsModal, { ExtendedTransactionView } from '@/components/VAULT/transactions/modals/VaultTransactionDetailsModal';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultShift } from '@/lib/hooks/vault/useVaultShift';
 import { useUserStore } from '@/lib/store/userStore';
@@ -42,21 +42,10 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import VaultManagerHeader from '../layout/VaultManagerHeader';
 
-type ActivityLog = {
-  _id: string;
-  timestamp: string;
-  type: string;
-  amount: number;
-  performedBy: string;
-  performerName?: string;
-  notes?: string;
+type ActivityLog = ExtendedTransactionView & {
   reason?: string;
   bankDetails?: Record<string, string>;
-  expenseDetails?: Record<string, any>;
-  denominations?: any[];
-  isVoid?: boolean;
-  from?: { type: string; id?: string };
-  to?: { type: string; id?: string };
+  expenseDetails?: Record<string, unknown>;
 };
 
 type Cashier = {
@@ -76,7 +65,7 @@ export default function VaultActivityLogPageContent() {
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [selectedActivity, setSelectedActivity] = useState<any | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<ActivityLog | null>(null);
   
   // Filters
   const [selectedCashier, setSelectedCashier] = useState<string>('all');
@@ -216,7 +205,7 @@ export default function VaultActivityLogPageContent() {
     };
   };
 
-  const formatTimestamp = (ts: string) => {
+  const formatTimestamp = (ts: string | Date) => {
     const d = new Date(ts);
     return (
       <div className="flex flex-col">

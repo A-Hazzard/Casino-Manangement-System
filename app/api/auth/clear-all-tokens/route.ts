@@ -12,7 +12,8 @@
  * @module app/api/auth/clear-all-tokens/route
  */
 
-import { NextResponse } from 'next/server';
+import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main POST handler for clearing all tokens
@@ -22,7 +23,7 @@ import { NextResponse } from 'next/server';
  * 2. Clear all token-related cookies
  * 3. Return success response
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
@@ -44,14 +45,9 @@ export async function POST() {
       'user-auth-store', // localStorage key that might be set as cookie
     ];
 
+    const clearOptions = getAuthCookieOptions(request, { maxAge: 0 });
     cookiesToClear.forEach(cookieName => {
-      response.cookies.set(cookieName, '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 0, // Expire immediately
-        path: '/',
-      });
+      response.cookies.set(cookieName, '', clearOptions);
     });
 
     // ============================================================================
@@ -77,7 +73,7 @@ export async function POST() {
  * GET endpoint for easy browser access
  * Delegates to POST handler
  */
-export async function GET() {
-  return POST();
+export async function GET(request: NextRequest) {
+  return POST(request);
 }
 

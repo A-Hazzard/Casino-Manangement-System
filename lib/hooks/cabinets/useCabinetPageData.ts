@@ -41,7 +41,7 @@ export function useCabinetPageData() {
   // Base Data Hooks
   // ============================================================================
   const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
-  
+
   const {
     cabinet,
     locationName,
@@ -176,39 +176,81 @@ export function useCabinetPageData() {
   // ============================================================================
   const handleTabChange = useCallback(
     (tab: string) => {
-    setActiveTab(tab);
-    const sectionMap: Record<string, string> = {
-      'Range Metrics': '',
-      'Live Metrics': 'live-metrics',
-      'Bill Validator': 'bill-validator',
-      'Activity Log': 'activity-log',
-      'Collection History': 'collection-history',
-      'Collection Settings': 'collection-settings',
+      setActiveTab(tab);
+      const sectionMap: Record<string, string> = {
+        'Range Metrics': '',
+        'Live Metrics': 'live-metrics',
+        'Bill Validator': 'bill-validator',
+        'Activity Log': 'activity-log',
+        'Collection History': 'collection-history',
+        'Collection Settings': 'collection-settings',
         Configurations: 'configurations',
-    };
+      };
 
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    const sectionValue = sectionMap[tab];
-    if (sectionValue) params.set('section', sectionValue);
-    else params.delete('section');
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      const sectionValue = sectionMap[tab];
+      if (sectionValue) params.set('section', sectionValue);
+      else params.delete('section');
 
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
     },
     [pathname, router, searchParams]
   );
 
-  const copyToClipboard = async (text: string, label: string) => {
-    if (!text || text === 'N/A') {
+  const copyToClipboard = useCallback(async (text: string, label: string) => {
+    if (!text || text === 'N/A' || text.trim() === '') {
       toast.error(`No ${label} value to copy`);
       return;
     }
+
+    const cleanText = text.trim();
+
     try {
-      await navigator.clipboard.writeText(text);
-      toast.success(`${label} copied to clipboard`);
-    } catch {
-      toast.error(`Failed to copy ${label}`);
+      // 1. Try using the modern Clipboard API
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(cleanText);
+          toast.success(`${label} copied to clipboard`);
+          return;
+        } catch (clipboardError) {
+          console.warn('Clipboard API failed, trying fallback:', clipboardError);
+          // Fall through to fallback
+        }
+      }
+
+      // 2. Fallback for older browsers or non-secure contexts
+      const textArea = document.createElement('textarea');
+      textArea.value = cleanText;
+
+      // Ensure the textarea is off-screen but still part of the DOM
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '0';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+
+      textArea.focus();
+      textArea.select();
+
+      let successful = false;
+      try {
+        successful = document.execCommand('copy');
+      } catch (err) {
+        console.error('execCommand copy failed:', err);
+      }
+
+      document.body.removeChild(textArea);
+
+      if (successful) {
+        toast.success(`${label} copied to clipboard`);
+      } else {
+        throw new Error('Copy command failed');
+      }
+    } catch (err) {
+      console.error(`Failed to copy ${label}:`, err);
+      toast.error(`Could not copy ${label}. Please try selecting and copying manually.`);
     }
-  };
+  }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -297,13 +339,13 @@ export function useCabinetPageData() {
     });
 
     if (!hasManuallySetGranularityRef.current) {
-    if (daysDiff < 7) {
+      if (daysDiff < 7) {
         setChartGranularity(prev => (prev !== 'daily' ? 'daily' : prev));
-    } else if (daysDiff < 60) {
+      } else if (daysDiff < 60) {
         setChartGranularity(prev =>
           !['daily', 'weekly'].includes(prev) ? 'daily' : prev
         );
-    } else {
+      } else {
         setChartGranularity(prev =>
           !['monthly', 'weekly'].includes(prev) ? 'monthly' : prev
         );
@@ -335,7 +377,7 @@ export function useCabinetPageData() {
           activeMetricsFilter === 'Today' ||
           activeMetricsFilter === 'Yesterday';
         const granularity = isShortPeriod ? chartGranularity : undefined;
-        
+
         const result = await getMachineChartData(
           String(cabinet._id),
           activeMetricsFilter,
@@ -348,7 +390,7 @@ export function useCabinetPageData() {
         );
         if (result.data) {
           setChartData(result.data);
-          
+
           // Store data span for granularity calculation
           setDataSpan(result.dataSpan || null);
         }
@@ -374,15 +416,15 @@ export function useCabinetPageData() {
   // SMIB Config Coordination
   useEffect(() => {
     if (!cabinet?._id) return;
-    
+
     // Set communication mode and firmware version from cabinet data
     smibHook.setCommunicationModeFromData(cabinet);
     smibHook.setFirmwareVersionFromData(cabinet);
-    
+
     // Fetch MQTT configuration from API (only if SMIB is not online with live data)
     const cabinetId = String(cabinet._id);
     smibHook.fetchMqttConfig(cabinetId);
-    
+
     return () => smibHook.disconnectFromConfigStream();
     // Only depend on cabinet._id, not the whole smibHook object
     // The smibHook functions are stable useCallback hooks, so they don't need to be in deps

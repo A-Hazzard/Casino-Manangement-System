@@ -8,10 +8,10 @@
  */
 
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
-import type { PipelineStage } from 'mongoose';
 import { Meters } from '@/app/api/lib/models/meters';
 import type { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
+import type { PipelineStage } from 'mongoose';
 
 /**
  * Hourly data item type
@@ -204,7 +204,12 @@ function buildHourlyTrendsPipeline(
 
   if (licensee) {
     pipeline.push({
-      $match: { 'locationDetails.rel.licensee': licensee },
+      $match: {
+        $or: [
+          { 'locationDetails.rel.licensee': licensee },
+          { 'locationDetails.rel.licencee': licensee },
+        ],
+      },
     } as PipelineStage);
   }
 

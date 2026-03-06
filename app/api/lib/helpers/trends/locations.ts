@@ -15,9 +15,9 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
-    convertFromUSD,
-    convertToUSD,
-    getCountryCurrency,
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
 } from '@/lib/helpers/rates';
 import { getDatesForTimePeriod } from '@/lib/utils/date';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
@@ -43,17 +43,17 @@ export type LocationTrendData = {
   day: string;
   time?: string;
   [locationId: string]:
-    | {
-        handle: number;
-        winLoss: number;
-        jackpot: number;
-        plays: number;
-        drop: number;
-        totalCancelledCredits: number;
-        gross: number;
-      }
-    | string
-    | undefined;
+  | {
+    handle: number;
+    winLoss: number;
+    jackpot: number;
+    plays: number;
+    drop: number;
+    totalCancelledCredits: number;
+    gross: number;
+  }
+  | string
+  | undefined;
 };
 
 /**
@@ -230,7 +230,7 @@ function buildLocationTrendsPipeline(
   shouldUseDaily?: boolean,
   matchingMachineIds?: string[]
 ): PipelineStage[] {
-  const matchStage: any = {
+  const matchStage: Record<string, unknown> = {
     readAt: { $gte: queryStartDate, $lte: queryEndDate },
     location: { $in: targetLocations },
   };
@@ -259,7 +259,10 @@ function buildLocationTrendsPipeline(
   if (licensee && licensee !== 'all') {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licensee': licensee,
+        $or: [
+          { 'locationDetails.rel.licensee': licensee },
+          { 'locationDetails.rel.licencee': licensee },
+        ],
       },
     } as PipelineStage);
   }
@@ -451,7 +454,7 @@ async function getLocationCurrencies(
 
   const locationCurrencies = new Map<string, string>();
   locationsData.forEach(loc => {
-    const locationLicenseeId = loc.rel?.licensee;
+    const locationLicenseeId = loc.rel?.licensee || (loc.rel as Record<string, unknown>)?.licencee;
     if (locationLicenseeId) {
       const licenseeName =
         licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
@@ -968,7 +971,7 @@ export async function getLocationTrends(
   // Filter machines if status or gameType provided
   let matchingMachineIds: string[] | undefined;
   if ((status && status !== 'All') || (gameType && gameType !== 'all')) {
-    const machineQuery: any = { gamingLocation: { $in: targetLocations } };
+    const machineQuery: Record<string, unknown> = { gamingLocation: { $in: targetLocations } };
 
     if (gameType && gameType !== 'all') {
       // Check both game and installedGame fields just in case, though schema says game
@@ -990,9 +993,9 @@ export async function getLocationTrends(
     }
 
     const matchingMachines = await Machine.find(machineQuery).select('_id').lean();
-    matchingMachineIds = matchingMachines.map((m: any) => m._id.toString());
+    matchingMachineIds = matchingMachines.map((m: Record<string, unknown>) => (m._id as { toString: () => string }).toString());
 
-    
+
     // If filtering and no machines match, we still want to continue to the pipeline
     // The pipeline will match nothing (machine: { $in: [] }) and return 0 results
     // Then the formatting functions will fill in the zero-value intervals
@@ -1044,33 +1047,33 @@ export async function getLocationTrends(
   // Format trends data based on granularity
   const trends = useMinute
     ? // For minute-level, use data as-is (already has minute-level grouping from pipeline)
-      convertDailyTrendsToLocationTrends(convertedData, targetLocations)
+    convertDailyTrendsToLocationTrends(convertedData, targetLocations)
     : useHourly
       ? formatHourlyTrends(
-          convertedData,
-          targetLocations,
-          convertedData[0]?.day || new Date().toISOString().split('T')[0]
-        )
+        convertedData,
+        targetLocations,
+        convertedData[0]?.day || new Date().toISOString().split('T')[0]
+      )
       : useMonthly
         ? formatMonthlyTrends(
+          convertedData,
+          targetLocations,
+          queryStartDate,
+          queryEndDate
+        )
+        : useWeekly
+          ? formatWeeklyTrends(
             convertedData,
             targetLocations,
             queryStartDate,
             queryEndDate
           )
-        : useWeekly
-          ? formatWeeklyTrends(
-              convertedData,
-              targetLocations,
-              queryStartDate,
-              queryEndDate
-            )
           : formatDailyTrends(
-              convertedData,
-              targetLocations,
-              queryStartDate,
-              queryEndDate
-            );
+            convertedData,
+            targetLocations,
+            queryStartDate,
+            queryEndDate
+          );
 
   // Calculate totals
   const totals = calculateLocationTotals(convertedData, targetLocations);
@@ -1090,9 +1093,9 @@ export async function getLocationTrends(
     dataSpan:
       actualDataSpan && actualDataSpan.minDate && actualDataSpan.maxDate
         ? {
-            minDate: actualDataSpan.minDate.toISOString(),
-            maxDate: actualDataSpan.maxDate.toISOString(),
-          }
+          minDate: actualDataSpan.minDate.toISOString(),
+          maxDate: actualDataSpan.maxDate.toISOString(),
+        }
         : undefined,
   };
 }

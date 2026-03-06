@@ -37,7 +37,7 @@ export default function CashierActivityPage() {
         const data = await res.json();
         if (data.success && data.activities.length > 0) {
           const activities = data.activities;
-          const net = activities.reduce((sum: number, a: any) => sum + (a.amount || 0), 0);
+          const net = activities.reduce((sum: number, a: { amount?: number }) => sum + (a.amount || 0), 0);
           setStats({
             totalCount: activities.length,
             netVolume: net,

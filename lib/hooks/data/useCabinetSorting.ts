@@ -30,6 +30,11 @@ type UseCabinetSortingProps = {
    * When false, use simple global pagination over the entire dataset.
    */
   useBatchPagination?: boolean;
+  /**
+   * Optional total count of items from the backend.
+   * If provided, used to calculate totalPages for global pagination.
+   */
+  totalCount?: number;
 };
 
 type UseCabinetSortingReturn = {
@@ -51,6 +56,7 @@ export const useCabinetSorting = ({
   filteredCabinets,
   itemsPerPage = 20,
   useBatchPagination = true,
+  totalCount,
 }: UseCabinetSortingProps): UseCabinetSortingReturn => {
   // Sort state management
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -94,26 +100,26 @@ export const useCabinetSorting = ({
 
     const sorted = [...filteredCabinets].sort((firstCabinet, secondCabinet) => {
       const orderMultiplier = sortOrder === 'desc' ? -1 : 1;
-      
+
       // Special handling for offlineTime sorting
       if (sortOption === 'offlineTime') {
         const now = Date.now();
         const threeMinutesAgo = now - 3 * 60 * 1000;
-        
+
         // Determine if machines are online
         // Use backend provided 'online' flag if available, otherwise calculate
         const firstLastActivity = firstCabinet.lastActivity || firstCabinet.lastOnline;
         const secondLastActivity = secondCabinet.lastActivity || secondCabinet.lastOnline;
 
         const firstIsOnline = firstCabinet.online !== undefined ? firstCabinet.online : (
-          firstLastActivity && 
+          firstLastActivity &&
           new Date(firstLastActivity).getTime() > threeMinutesAgo
         );
         const secondIsOnline = secondCabinet.online !== undefined ? secondCabinet.online : (
-          secondLastActivity && 
+          secondLastActivity &&
           new Date(secondLastActivity).getTime() > threeMinutesAgo
         );
-        
+
         // If both online or both offline, compare by offline time
         if (firstIsOnline && secondIsOnline) {
           return 0; // Both online, maintain order
@@ -135,7 +141,7 @@ export const useCabinetSorting = ({
         // One online, one offline - offline machines come first when sorting by offline time
         return firstIsOnline ? 1 : -1;
       }
-      
+
       // Standard sorting for other options
       const firstValue = firstCabinet[sortOption] || 0;
       const secondValue = secondCabinet[sortOption] || 0;
@@ -189,21 +195,33 @@ export const useCabinetSorting = ({
 
   // Calculate total pages
   const totalPages = useMemo(() => {
-    if (useBatchPagination) {
-      // Batched mode: each batch can show up to 5 pages (100 items / 20 per page)
-      // If we have fewer than a full batch, clamp to the actual number of pages
-      const pagesPerBatch = 5; // 100 items / 20 items per page = 5 pages
-      const pagesInCurrentBatch = Math.min(
-        pagesPerBatch,
-        Math.ceil(sortedCabinets.length / itemsPerPage)
+    if (totalCount !== undefined) {
+      // If we have a backend totalCount, use it for global total pages
+      const total = Math.max(
+        1,
+        Math.ceil(totalCount / itemsPerPage)
       );
-      const total = pagesInCurrentBatch > 0 ? pagesInCurrentBatch : 1;
+      console.warn(
+        'Total pages calculated (from backend totalCount):',
+        total,
+        'for total database items:',
+        totalCount
+      );
+      return total;
+    }
+
+    if (useBatchPagination) {
+      // Batched mode: each batch shows its available pages (e.g. 50 items / 10 per page = 5 pages)
+      // As more data is accumulated, the total pages grow.
+      const totalLoadedPages = Math.ceil(sortedCabinets.length / itemsPerPage);
+      const total = totalLoadedPages > 0 ? totalLoadedPages : 1;
+
       console.warn(
         'Total pages calculated (batched mode):',
         total,
-        'for current batch with',
+        'for accumulated',
         sortedCabinets.length,
-        'items (max 5 pages per batch)'
+        'items'
       );
       return total;
     }

@@ -8,6 +8,9 @@
  * - Date formatting for movement requests
  */
 
+import { formatFullDate } from '../date/formatting';
+
+
 // ============================================================================
 // Status Functions
 // ============================================================================
@@ -18,14 +21,10 @@
  */
 export function getStatusColor(status: string): string {
   switch (status) {
-    case 'approved':
+    case 'completed':
       return 'bg-greenHighlight/20 text-greenHighlight';
     case 'pending':
       return 'bg-orangeHighlight/20 text-orangeHighlight';
-    case 'rejected':
-      return 'bg-pinkHighlight/20 text-pinkHighlight';
-    case 'in progress':
-      return 'bg-blueHighlight/20 text-blueHighlight';
     default:
       return 'bg-gray-200 text-gray-500';
   }
@@ -34,15 +33,13 @@ export function getStatusColor(status: string): string {
 // ============================================================================
 // Date Formatting Functions
 // ============================================================================
+
 /**
  * Format a date for display in movement requests.
  * @param date Date or string
  * @returns string with date and time
  */
 export function formatMovementRequestDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  const dateStr = d.toLocaleDateString();
-  const timeStr = d.toLocaleTimeString('en-US', { hour12: false });
-  return `${dateStr} ${timeStr}`;
+  return formatFullDate(date);
 }
 

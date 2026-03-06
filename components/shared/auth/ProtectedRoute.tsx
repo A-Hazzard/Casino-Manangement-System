@@ -21,21 +21,21 @@ import { NoRoleAssigned } from '@/components/shared/ui/NoRoleAssigned';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { shouldShowNoRoleMessage } from '@/lib/utils/licensee';
 import {
-  PageName,
-  hasAdminAccessDb,
-  hasPageAccess,
-  hasPageAccessDb,
+    PageName,
+    hasAdminAccessDb,
+    hasPageAccess,
+    hasPageAccessDb,
 } from '@/lib/utils/permissions';
 import {
-  isCashierOnly,
-  isVaultManagerOnly,
+    isCashierOnly,
+    isVaultManagerOnly,
 } from '@/lib/utils/permissions/client';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { UserRole } from '@/lib/constants';
 import type React from 'react';
 import { UserAuthPayload } from '../../../shared/types';
-import { UserRole } from '@/lib/constants';
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
@@ -137,6 +137,19 @@ export default function ProtectedRoute({
       }
 
       // Check local permissions first (faster)
+      const userRoles = (user?.roles || []) as string[];
+      const isAdminOrDeveloper =
+        userRoles.includes('developer') || userRoles.includes('admin');
+
+      // STEP 1: Authorization Bypass for Developers and Admins
+      // Developers and Admins have unrestricted access to all pages and locations
+      if (isAdminOrDeveloper) {
+        // console.log(`[ProtectedRoute] Developer/Admin bypass granted for roles: ${userRoles.join(', ')}`);
+        setIsChecking(false);
+        return;
+      }
+
+      // STEP 2: Standard Authorization Check
       if (requireAdminAccess && user.roles) {
         const hasAdminLocal =
           user.roles.includes('admin') || user.roles.includes('developer');

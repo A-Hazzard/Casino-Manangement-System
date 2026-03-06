@@ -249,8 +249,12 @@ export async function PUT(
       updateFields.manuf = data.manufacturer;
     }
 
-    if (data.smbId !== undefined && data.smbId !== '') {
-      updateFields.relayId = data.smbId;
+    // Handle SMIB board fields consistently
+    const smibValue = data.smbId || data.smibBoard || data.relayId;
+    if (smibValue !== undefined) {
+      updateFields.relayId = smibValue;
+      updateFields.smibBoard = smibValue;
+      updateFields.smbId = smibValue;
     }
     if (data.status !== undefined && data.status !== '') {
       updateFields.assetStatus = data.status;

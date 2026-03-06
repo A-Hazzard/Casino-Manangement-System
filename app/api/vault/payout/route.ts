@@ -133,7 +133,27 @@ export async function POST(request: NextRequest) {
     const payoutId = await generateMongoId();
     const transactionId = await generateMongoId();
 
-    const payoutData: any = {
+    interface PayoutData {
+      _id: string;
+      locationId: string;
+      cashierId: string;
+      cashierShiftId: string;
+      type: string;
+      amount: number;
+      validated: boolean;
+      timestamp: Date;
+      cashierFloatBefore: number;
+      cashierFloatAfter: number;
+      transactionId: string;
+      notes?: string;
+      createdAt: Date;
+      ticketNumber?: string;
+      printedAt?: Date;
+      machineId?: string;
+      reason?: string;
+    }
+
+    const payoutData: PayoutData = {
       _id: payoutId,
       locationId: cashierShift.locationId,
       cashierId,
@@ -150,11 +170,11 @@ export async function POST(request: NextRequest) {
     };
 
     if (type === 'ticket') {
-      payoutData.ticketNumber = body.ticketNumber;
-      if (body.printedAt) payoutData.printedAt = new Date(body.printedAt);
+      payoutData.ticketNumber = body.ticketNumber as string;
+      if (body.printedAt) payoutData.printedAt = new Date(body.printedAt as string);
     } else if (type === 'hand_pay') {
-      payoutData.machineId = body.machineId;
-      payoutData.reason = body.reason;
+      payoutData.machineId = body.machineId as string;
+      payoutData.reason = body.reason as string;
     }
 
     const payout = await PayoutModel.create(payoutData);
@@ -184,7 +204,7 @@ export async function POST(request: NextRequest) {
     cashierShift.payoutsCount += 1;
     cashierShift.currentBalance -= amount;
     await cashierShift.save();
- 
+
     // STEP 7: Audit Activity
     await logActivity({
       userId: cashierId,
@@ -193,7 +213,7 @@ export async function POST(request: NextRequest) {
       details: `Processed ${type} payout: $${amount}`,
       metadata: {
         resource: 'machine', // Payouts are often machine linked if handpay
-        resourceId: (body as any).machineId || cashierShift.locationId,
+        resourceId: (body as Record<string, unknown>).machineId as string || cashierShift.locationId,
         resourceName: type === 'ticket' ? 'Ticket Redemption' : 'Hand Pay',
         payoutId,
         transactionId,
@@ -217,10 +237,11 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error) {
-    console.error('Error creating payout:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error creating payout:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

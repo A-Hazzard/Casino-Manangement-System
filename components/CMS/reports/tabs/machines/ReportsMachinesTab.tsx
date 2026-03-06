@@ -147,19 +147,21 @@ export default function ReportsMachinesTab() {
     []
   );
 
-  // Get machine stats - pass locationId(s) when specific locations are selected for offline tab
-  // Multiple locations are passed as comma-separated string (API handles this)
-  // useLocationMachineStats takes locationId as first param, licensee is handled internally
+  // Get machine stats for offline tab - pass locationId(s) when specific locations are selected
   const effectiveLocationIdForStats =
     activeTab === 'offline' && offlineSelectedLocations.length > 0
-      ? offlineSelectedLocations.join(',') // Pass all selected locations as comma-separated
-      : undefined; // No locations selected - show aggregate stats for all
+      ? offlineSelectedLocations.join(',')
+      : undefined;
 
   const {
     machineStats: locationMachineStats,
     machineStatsLoading: locationMachineStatsLoading,
     refreshMachineStats: refreshLocationMachineStats,
   } = useLocationMachineStats(effectiveLocationIdForStats);
+
+  // Derive the effective location filter for overview/evaluation stats cards
+  const overviewLocationForStats = overviewSelectedLocation !== 'all' ? overviewSelectedLocation : 'all';
+  const evaluationLocationForStats = evaluationSelectedLocations.length > 0 ? evaluationSelectedLocations.join(',') : 'all';
 
   // ============================================================================
   // Computed Values: Evaluation
@@ -534,8 +536,16 @@ export default function ReportsMachinesTab() {
     setEvaluationLoading(true);
     setOfflineLoading(true);
     try {
+      // Determine the location for stats based on active tab
+      const statsLocationId =
+        activeTab === 'overview'
+          ? overviewLocationForStats
+          : activeTab === 'evaluation'
+          ? evaluationLocationForStats
+          : 'all';
+
       await Promise.all([
-        fetchMachineStats(),
+        fetchMachineStats(statsLocationId),
         refreshLocationMachineStats(),
         fetchOverviewMachines(
           1,
@@ -571,11 +581,14 @@ export default function ReportsMachinesTab() {
     fetchOfflineMachines,
     searchTerm,
     overviewSelectedLocation,
+    overviewLocationForStats,
+    evaluationLocationForStats,
     onlineStatusFilter,
     evaluationSelectedLocations,
     offlineSearchTerm,
     offlineSelectedLocations,
     setAllOfflineMachines,
+    activeTab,
   ]);
 
   // Listen for global refresh events from parent PageLayout
@@ -650,14 +663,51 @@ export default function ReportsMachinesTab() {
   // Effects
   // ============================================================================
 
+  // Auto-select single location across all tabs
   useEffect(() => {
-    fetchMachineStats();
+    if (locations.length === 1) {
+      const onlyId = locations[0].id;
+      setOverviewSelectedLocation(prev => prev === 'all' ? onlyId : prev);
+      setEvaluationSelectedLocations(prev => prev.length === 0 ? [onlyId] : prev);
+      setOfflineSelectedLocations(prev => prev.length === 0 ? [onlyId] : prev);
+    }
+  }, [locations]);
+
+  // Fetch stats and locations when global filters change
+  useEffect(() => {
     fetchLocationsData();
   }, [
-    fetchMachineStats,
     fetchLocationsData,
     selectedLicensee,
     customDateRange,
+  ]);
+
+  // Fetch stats for overview tab: filtered by selected overview location
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      fetchMachineStats(overviewLocationForStats);
+    }
+  }, [
+    activeTab,
+    overviewLocationForStats,
+    fetchMachineStats,
+    selectedLicensee,
+    customDateRange,
+    activeMetricsFilter,
+  ]);
+
+  // Fetch stats for evaluation tab: filtered by selected evaluation locations
+  useEffect(() => {
+    if (activeTab === 'evaluation') {
+      fetchMachineStats(evaluationLocationForStats);
+    }
+  }, [
+    activeTab,
+    evaluationLocationForStats,
+    fetchMachineStats,
+    selectedLicensee,
+    customDateRange,
+    activeMetricsFilter,
   ]);
 
   useEffect(() => {

@@ -7,22 +7,24 @@
  * @module components/cabinets/CabinetsMovementRequests
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { Button } from '@/components/shared/ui/button';
+import MultiSelectDropdown from '@/components/shared/ui/common/MultiSelectDropdown';
 import { Input } from '@/components/shared/ui/input';
-import PaginationControls from '@/components/shared/ui/PaginationControls';
-import MovementRequestsTable from '@/components/shared/ui/movements/MovementRequestsTable';
-import MovementRequestCard from '@/components/shared/ui/movements/MovementRequestCard';
-import { MovementRequest } from '@/lib/types/movement';
-import { fetchMovementRequests } from '@/lib/helpers/movementRequests';
-import {
-  MovementRequestsTableSkeleton,
-  MovementRequestCardSkeleton,
-} from '@/components/shared/ui/movements/MovementRequestsSkeleton';
-import { fetchAllGamingLocations } from '@/lib/helpers/locations';
-import { useMovementRequestActionsStore } from '@/lib/store/movementRequestActionsStore';
-import EditMovementRequestModal from '@/components/shared/ui/movements/EditMovementRequestModal';
 import DeleteMovementRequestModal from '@/components/shared/ui/movements/DeleteMovementRequestModal';
+import EditMovementRequestModal from '@/components/shared/ui/movements/EditMovementRequestModal';
+import MovementRequestCard from '@/components/shared/ui/movements/MovementRequestCard';
+import {
+    MovementRequestCardSkeleton,
+    MovementRequestsTableSkeleton,
+} from '@/components/shared/ui/movements/MovementRequestsSkeleton';
+import MovementRequestsTable from '@/components/shared/ui/movements/MovementRequestsTable';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
+import { fetchAllGamingLocations } from '@/lib/helpers/locations';
+import { fetchMovementRequests } from '@/lib/helpers/movementRequests';
+import { useMovementRequestActionsStore } from '@/lib/store/movementRequestActionsStore';
+import { MovementRequest } from '@/lib/types/movement';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import { useCallback, useEffect, useState } from 'react';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -36,7 +38,8 @@ export default function CabinetsMovementRequests({
   refreshTrigger = 0,
 }: CabinetsMovementRequestsProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState('all');
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [currentPage, setCurrentPage] = useState(0);
   const [requests, setRequests] = useState<MovementRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,12 +92,17 @@ export default function CabinetsMovementRequests({
       req.locationTo.toLowerCase().includes(searchLower) ||
       req.cabinetIn.toLowerCase().includes(searchLower) ||
       req.status.toLowerCase().includes(searchLower);
-    const locationData = locations.find(l => l._id === selectedLocation);
+    
+    const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
+    
     const matchesLocation =
-      selectedLocation === 'all' ||
-      req.locationFrom === locationData?.name ||
-      req.locationTo === locationData?.name;
-    return matchesSearch && matchesLocation;
+      selectedLocations.length === 0 ||
+      selectedLocations.some(locId => {
+        const locationData = locations.find(l => l._id === locId);
+        return req.locationFrom === locationData?.name || req.locationTo === locationData?.name;
+      });
+      
+    return matchesSearch && matchesStatus && matchesLocation;
   });
 
   const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE);
@@ -115,57 +123,80 @@ export default function CabinetsMovementRequests({
       <EditMovementRequestModal onSaved={loadRequests} />
       <DeleteMovementRequestModal onDeleted={loadRequests} />
 
-      {/* Mobile: Search and filters stacked */}
-      <div className="mb-4 flex flex-col gap-4 rounded-lg bg-buttonActive p-4 shadow-sm lg:hidden">
-        <div className="relative w-full">
-          <Input
-            placeholder="Search requests..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="h-11 w-full rounded-md border-none bg-white px-4 pr-10 text-gray-700 placeholder-gray-400"
-          />
-          <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+      {/* Control Bar: Search and Filters */}
+      <div className="mb-6 flex flex-col gap-4 rounded-xl bg-buttonActive p-5 shadow-lg">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Input
+              placeholder="Search by creator, machine, location, or status..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="h-12 w-full border-none bg-white/95 px-5 pr-12 text-sm text-gray-800 shadow-inner focus:ring-2 focus:ring-white/20"
+            />
+            <MagnifyingGlassIcon className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+          </div>
+
+          {/* Location Filter */}
+          <div className="w-full lg:w-64 relative z-50">
+            <MultiSelectDropdown
+              options={locations.map(loc => ({ id: loc._id, label: loc.name }))}
+              selectedIds={selectedLocations}
+              onChange={setSelectedLocations}
+              placeholder="All Locations"
+              searchPlaceholder="Search locations..."
+            />
+          </div>
         </div>
-        <select
-          value={selectedLocation}
-          onChange={e => setSelectedLocation(e.target.value)}
-          className="h-11 w-full rounded-md border-none bg-white px-3 text-gray-700"
-        >
-          <option value="all">All Locations</option>
-          {locations.map(location => (
-            <option key={location._id} value={location._id}>
-              {location.name}
-            </option>
-          ))}
-        </select>
+
+        {/* Status Filtering Buttons */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
+          <span className="mr-2 text-xs font-bold uppercase tracking-wider text-white/70">Filter Status:</span>
+          <Button
+            variant={statusFilter === 'all' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setStatusFilter('all')}
+            className={`h-8 rounded-full px-4 text-xs font-bold transition-all ${
+              statusFilter === 'all' 
+                ? 'bg-white text-buttonActive shadow-md' 
+                : 'bg-white/10 text-white hover:bg-white/20'
+            }`}
+          >
+            ALL
+          </Button>
+          <Button
+            variant={statusFilter === 'pending' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setStatusFilter('pending')}
+            className={`h-8 rounded-full px-4 text-xs font-bold transition-all ${
+              statusFilter === 'pending' 
+                ? 'bg-amber-400 text-amber-950 shadow-md ring-2 ring-amber-200' 
+                : 'bg-white/10 text-white hover:bg-white/20'
+            }`}
+          >
+            PENDING
+          </Button>
+          <Button
+            variant={statusFilter === 'completed' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setStatusFilter('completed')}
+            className={`h-8 rounded-full px-4 text-xs font-bold transition-all ${
+              statusFilter === 'completed' 
+                ? 'bg-emerald-400 text-emerald-950 shadow-md ring-2 ring-emerald-200' 
+                : 'bg-white/10 text-white hover:bg-white/20'
+            }`}
+          >
+            COMPLETED
+          </Button>
+          
+          <div className="ml-auto text-xs font-medium text-white/80">
+            Showing {filteredRequests.length} movement requests
+          </div>
+        </div>
       </div>
 
-      {/* Desktop: Search and filters in row */}
-      <div className="hidden flex-col items-center gap-4 rounded-t-lg bg-buttonActive p-4 shadow-sm md:flex-row lg:flex">
-        <div className="relative w-full md:w-2/3">
-          <Input
-            placeholder="Search requests... (e.g., Creator, Location, Cabinet, Status)"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="h-11 w-full rounded-md border-none bg-white px-4 pr-10 text-gray-700 placeholder-gray-400"
-          />
-          <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-        </div>
-        <select
-          value={selectedLocation}
-          onChange={e => setSelectedLocation(e.target.value)}
-          className="h-11 w-full rounded-md border-none bg-white px-3 text-gray-700 md:w-1/3"
-        >
-          <option value="all">All Locations</option>
-          {locations.map(location => (
-            <option key={location._id} value={location._id}>
-              {location.name}
-            </option>
-          ))}
-        </select>
-      </div>
       {/* Table Area (Desktop) */}
-      <div className="hidden lg:block">
+      <div className="hidden lg:block overflow-hidden rounded-lg">
         {loading ? (
           <MovementRequestsTableSkeleton />
         ) : (
@@ -177,8 +208,9 @@ export default function CabinetsMovementRequests({
           />
         )}
       </div>
+
       {/* Card Area (Mobile/Tablet) */}
-      <div className="mt-4 block w-full max-w-full space-y-3 px-1 sm:space-y-4 sm:px-2 md:px-4 lg:hidden">
+      <div className="block w-full max-w-full space-y-4 lg:hidden">
         {loading ? (
           <MovementRequestCardSkeleton />
         ) : paginatedRequests.length > 0 ? (
@@ -192,14 +224,16 @@ export default function CabinetsMovementRequests({
             />
           ))
         ) : (
-          <div className="py-8 text-center text-gray-500">
-            No movement requests found matching your criteria.
+          <div className="rounded-lg border-2 border-dashed border-gray-200 py-12 text-center text-gray-500">
+            <p className="mb-1 font-semibold text-gray-600">No requests found</p>
+            <p className="text-sm">Try adjusting your filters or search term.</p>
           </div>
         )}
       </div>
+
       {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="mt-4">
+        <div className="mt-8 flex justify-center pb-4">
           <PaginationControls
             currentPage={currentPage}
             totalPages={totalPages}
@@ -210,4 +244,3 @@ export default function CabinetsMovementRequests({
     </div>
   );
 }
-

@@ -16,9 +16,9 @@
  */
 
 import {
-    CACHE_KEYS,
-    fetchUserWithCache,
-    userCache,
+  CACHE_KEYS,
+  fetchUserWithCache,
+  userCache,
 } from '@/lib/services/userCacheService';
 import { useUserStore } from '@/lib/store/userStore';
 import type { UserAuthPayload } from '@/shared/types/auth';
@@ -40,6 +40,7 @@ type CurrentUserResponse = {
     createdAt: string;
     updatedAt: string;
     requiresProfileUpdate?: boolean;
+    requiresPasswordUpdate?: boolean;
     invalidProfileFields?: UserAuthPayload['invalidProfileFields'];
     invalidProfileReasons?: UserAuthPayload['invalidProfileReasons'];
     tempPasswordChanged?: boolean;
@@ -111,6 +112,7 @@ export function useCurrentUserQuery() {
         assignedLocations: dbUser.assignedLocations,
         assignedLicensees: dbUser.assignedLicensees,
         requiresProfileUpdate: dbUser.requiresProfileUpdate,
+        requiresPasswordUpdate: dbUser.requiresPasswordUpdate,
         invalidProfileFields: dbUser.invalidProfileFields,
         invalidProfileReasons: dbUser.invalidProfileReasons,
         tempPasswordChanged: dbUser.tempPasswordChanged,

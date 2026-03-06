@@ -8,11 +8,11 @@
  */
 
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
-import type { PipelineStage } from 'mongoose';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Meters } from '@/app/api/lib/models/meters';
 import type { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
+import type { PipelineStage } from 'mongoose';
 
 /**
  * Win/loss trend data item
@@ -69,7 +69,10 @@ function buildWinLossTrendsPipeline(
   if (licensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licensee': licensee,
+        $or: [
+          { 'locationDetails.rel.licensee': licensee },
+          { 'locationDetails.rel.licencee': licensee },
+        ],
       },
     } as PipelineStage);
   }
@@ -159,7 +162,10 @@ function buildPlaysTrendsPipeline(
   if (licensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licensee': licensee,
+        $or: [
+          { 'locationDetails.rel.licensee': licensee },
+          { 'locationDetails.rel.licencee': licensee },
+        ],
       },
     } as PipelineStage);
   }
@@ -494,7 +500,10 @@ function buildHandleTrendsPipeline(
   if (licensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licensee': licensee,
+        $or: [
+          { 'locationDetails.rel.licensee': licensee },
+          { 'locationDetails.rel.licencee': licensee },
+        ],
       },
     } as PipelineStage);
   }
@@ -620,7 +629,10 @@ function buildJackpotTrendsPipeline(
   if (licensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licensee': licensee,
+        $or: [
+          { 'locationDetails.rel.licensee': licensee },
+          { 'locationDetails.rel.licencee': licensee },
+        ],
       },
     } as PipelineStage);
   }

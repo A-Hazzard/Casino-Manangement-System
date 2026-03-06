@@ -39,6 +39,7 @@ import {
     Server,
 } from 'lucide-react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 
 import deleteIcon from '@/public/deleteIcon.svg';
@@ -56,6 +57,7 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
   canManageLocations = true,
   selectedFilters = [],
 }) => {
+  const router = useRouter();
   const tableRef = useRef<HTMLTableElement>(null);
 
   return (
@@ -291,11 +293,21 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                         {/* Membership Count Badge - Show if location has member count */}
                         {typeof (location as { memberCount?: number })
                           .memberCount === 'number' && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              const locationId = location.location as string;
+                              if (locationId) {
+                                router.push(`/locations/${locationId}?tab=members`);
+                              }
+                            }}
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 hover:bg-blue-100"
+                            title="Click to view members"
+                          >
                             <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
                             {(location as { memberCount?: number }).memberCount}{' '}
                             Members
-                          </span>
+                          </button>
                         )}
                       </div>
                     </div>

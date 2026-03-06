@@ -125,10 +125,16 @@ export const fetchDashboardTotals = async (
   displayCurrency?: string,
   signal?: AbortSignal,
   machineTypeFilter?: string | null,
-  validateFilters?: () => boolean
+  validateFilters?: () => boolean,
+  searchTerm?: string,
+  selectedStatus?: string
 ) => {
   try {
     let url = `/api/locationAggregation?timePeriod=${activeMetricsFilter}`;
+
+    if (selectedStatus && selectedStatus !== 'All') {
+      url += `&onlineStatus=${encodeURIComponent(selectedStatus.toLowerCase())}`;
+    }
 
     if (
       activeMetricsFilter === 'Custom' &&
@@ -151,6 +157,10 @@ export const fetchDashboardTotals = async (
 
     if (machineTypeFilter) {
       url += `&machineTypeFilter=${encodeURIComponent(machineTypeFilter)}`;
+    }
+
+    if (searchTerm) {
+      url += `&search=${encodeURIComponent(searchTerm)}`;
     }
 
     // Explicitly request a very high limit to ensure we get ALL filtered locations
@@ -411,39 +421,39 @@ export const fetchMetricsData = async (
     ),
     selectedLicensee
       ? switchFilter(
-          activeMetricsFilter,
-          () => {}, // Don't set totals here, we already did it above
-          setChartData,
-          activeMetricsFilter === 'Custom'
-            ? customDateRange.startDate
-            : undefined,
-          activeMetricsFilter === 'Custom'
-            ? customDateRange.endDate
-            : undefined,
-          selectedLicensee,
-          setActiveFilters,
-          setShowDatePicker,
-          displayCurrency,
-          signal,
-          granularity
-        )
+        activeMetricsFilter,
+        () => { }, // Don't set totals here, we already did it above
+        setChartData,
+        activeMetricsFilter === 'Custom'
+          ? customDateRange.startDate
+          : undefined,
+        activeMetricsFilter === 'Custom'
+          ? customDateRange.endDate
+          : undefined,
+        selectedLicensee,
+        setActiveFilters,
+        setShowDatePicker,
+        displayCurrency,
+        signal,
+        granularity
+      )
       : switchFilter(
-          activeMetricsFilter,
-          () => {}, // Don't set totals here, we already did it above
-          setChartData,
-          activeMetricsFilter === 'Custom'
-            ? customDateRange.startDate
-            : undefined,
-          activeMetricsFilter === 'Custom'
-            ? customDateRange.endDate
-            : undefined,
-          undefined,
-          setActiveFilters,
-          setShowDatePicker,
-          displayCurrency,
-          signal,
-          granularity
-        ),
+        activeMetricsFilter,
+        () => { }, // Don't set totals here, we already did it above
+        setChartData,
+        activeMetricsFilter === 'Custom'
+          ? customDateRange.startDate
+          : undefined,
+        activeMetricsFilter === 'Custom'
+          ? customDateRange.endDate
+          : undefined,
+        undefined,
+        setActiveFilters,
+        setShowDatePicker,
+        displayCurrency,
+        signal,
+        granularity
+      ),
   ]);
 };
 

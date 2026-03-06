@@ -115,9 +115,9 @@ export default function LocationsEditLocationModal({
   }, [isDeveloper, useMap]);
 
   // Store original form data exactly as loaded from API for accurate comparison
-  const [originalFormData, setOriginalFormData] = useState<
-    any | null
-  >(null);
+  const [originalFormData, setOriginalFormData] = useState<typeof formData | null>(
+    null
+  );
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
     if (!user) return 'Unknown User';
@@ -431,9 +431,30 @@ export default function LocationsEditLocationModal({
     setMapLoadError(false);
   };
 
-  // Note: getCurrentLocation is NOT used in edit mode
-  // Coordinates should only come from the database or manual entry
-  // For new locations, use the NewLocationModal which has geolocation support
+  // Get user's current location when map is enabled
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const { latitude, longitude } = position.coords;
+        setFormData(prev => ({
+          ...prev,
+          latitude: latitude.toFixed(6),
+          longitude: longitude.toFixed(6),
+        }));
+      },
+      error => {
+        console.error('Error getting current location:', error);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 600000, // 5 minutes
+      }
+    );
+  };
 
   // Update form data when location details are fetched
   useEffect(() => {
@@ -605,7 +626,10 @@ export default function LocationsEditLocationModal({
     });
   };
 
-  const handleMembershipSettingsChange = (name: string, value: any) => {
+  const handleMembershipSettingsChange = (
+    name: string,
+    value: string | number | boolean | string[]
+  ) => {
     setFormData(prev => ({
       ...prev,
       locationMembershipSettings: {
@@ -766,7 +790,7 @@ export default function LocationsEditLocationModal({
 
           // Special handling for objects that should be sent in full if any child changes
           if (parent === 'billValidatorOptions' || parent === 'locationMembershipSettings') {
-            updatePayload[parent] = (formData as any)[parent];
+            updatePayload[parent] = (formData as Record<string, unknown>)[parent];
           } else {
             // For other nested fields (like address.street), build nested object
             if (!updatePayload[parent]) {
@@ -1294,7 +1318,7 @@ export default function LocationsEditLocationModal({
                           Points Method Game Types
                         </Label>
                         <div className="grid grid-cols-2 gap-2 rounded-md border border-gray-200 p-3 sm:grid-cols-3">
-                          {['IGT', 'Aristocrat', 'Novomatic', 'Bally', 'Ainsworth', 'EGT', 'Amatic', 'Apollo', 'Apex', 'Spintec', 'Interblock', 'Other'].map(type => (
+                          {['Slot', 'Roulette', 'Pulse'].map(type => (
                             <div key={`points-${type}`} className="flex items-center space-x-2">
                               <Checkbox
                                 id={`points-${type}`}
@@ -1312,7 +1336,7 @@ export default function LocationsEditLocationModal({
                           Free Play Game Types
                         </Label>
                         <div className="grid grid-cols-2 gap-2 rounded-md border border-gray-200 p-3 sm:grid-cols-3">
-                          {['IGT', 'Aristocrat', 'Novomatic', 'Bally', 'Ainsworth', 'EGT', 'Amatic', 'Apollo', 'Apex', 'Spintec', 'Interblock', 'Other'].map(type => (
+                          {['Slot', 'Roulette', 'Pulse'].map(type => (
                             <div key={`freeplay-${type}`} className="flex items-center space-x-2">
                               <Checkbox
                                 id={`freeplay-${type}`}
@@ -1356,8 +1380,9 @@ export default function LocationsEditLocationModal({
                         checked={useMap}
                         onCheckedChange={checked => {
                           setUseMap(checked === true);
-                          // In edit mode, don't auto-get current location
-                          // User can manually pick from the map or enter coordinates
+                          if (checked === true) {
+                            getCurrentLocation();
+                          }
                         }}
                         className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
                       />
@@ -1499,9 +1524,9 @@ export default function LocationsEditLocationModal({
                         <Checkbox
                           id={`denom-${denom}`}
                           checked={
-                            (formData.billValidatorOptions as any)[
+                            (formData.billValidatorOptions as Record<string, unknown>)[
                               `denom${denom}`
-                            ]
+                            ] as boolean
                           }
                           onCheckedChange={checked =>
                             handleBillValidatorChange(

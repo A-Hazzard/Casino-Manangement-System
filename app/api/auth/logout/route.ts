@@ -10,7 +10,8 @@
  * @module app/api/auth/logout/route
  */
 
-import { NextResponse } from 'next/server';
+import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main POST handler for user logout
@@ -21,7 +22,7 @@ import { NextResponse } from 'next/server';
  * 3. Clear refresh token cookie
  * 4. Return success response
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
@@ -36,24 +37,13 @@ export async function POST() {
     // ============================================================================
     // STEP 2: Clear access token cookie
     // ============================================================================
-    response.cookies.set('token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', // Consistent with login cookie settings
-      maxAge: 0, // Expire immediately
-      path: '/',
-    });
+    const clearOptions = getAuthCookieOptions(request, { maxAge: 0 });
+    response.cookies.set('token', '', clearOptions);
 
     // ============================================================================
     // STEP 3: Clear refresh token cookie
     // ============================================================================
-    response.cookies.set('refreshToken', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0, // Expire immediately
-      path: '/',
-    });
+    response.cookies.set('refreshToken', '', clearOptions);
 
     // ============================================================================
     // STEP 4: Return success response

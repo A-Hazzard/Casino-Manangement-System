@@ -96,7 +96,7 @@ export default function VaultManagerHeader({
   const handleFloatApprove = useCallback(async (requestId: string, approvedDenominations?: Denomination[]) => {
     try {
       const status = approvedDenominations ? 'edited' : 'approved';
-      let data: any = undefined;
+      let data: { approvedDenominations?: Denomination[]; approvedAmount?: number } | undefined = undefined;
 
       if (approvedDenominations) {
           const approvedAmount = approvedDenominations.reduce((sum, d) => sum + (d.denomination * d.quantity), 0);

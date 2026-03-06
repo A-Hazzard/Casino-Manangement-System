@@ -98,15 +98,15 @@ export async function POST(request: NextRequest) {
     if (status === 'denied') {
       const finalNotes = vmNotes || 'Insufficient vault balance';
       floatRequest.vmNotes = finalNotes;
-      
+
       // If it was a shift open request, we should probably close/cancel the pending shift too
       if (floatRequest.cashierShiftId) {
         const shift = await CashierShiftModel.findOne({ _id: floatRequest.cashierShiftId });
         if (shift && shift.status === 'pending_start') {
-           shift.status = 'cancelled'; // Use cancelled for denied start requests
-           shift.closedAt = now;
-           shift.notes = `Shift denied by VM: ${finalNotes}`;
-           await shift.save();
+          shift.status = 'cancelled'; // Use cancelled for denied start requests
+          shift.closedAt = now;
+          shift.notes = `Shift denied by VM: ${finalNotes}`;
+          await shift.save();
         }
       }
 
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
-      
+
       const currentVaultBalance = vaultShift.closingBalance !== undefined ? vaultShift.closingBalance : vaultShift.openingBalance;
 
       if (status === 'edited') {
@@ -164,10 +164,10 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
-        
+
         const validation = validateDenominations(approvedDenominations);
         if (!validation.valid || validation.total !== approvedAmount) {
-           return NextResponse.json(
+          return NextResponse.json(
             { success: false, error: 'Invalid denominations in approval' },
             { status: 400 }
           );
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
 
         finalAmount = approvedAmount;
         finalDenominations = approvedDenominations;
-        
+
         floatRequest.approvedAmount = finalAmount;
         floatRequest.approvedDenominations = finalDenominations;
       } else {
@@ -185,8 +185,8 @@ export async function POST(request: NextRequest) {
       }
 
       // === 2. Validate Vault Balance (if money leaving vault) ===
-      const isOutflow = (floatRequest.type === 'increase' || !floatRequest.type); 
-      
+      const isOutflow = (floatRequest.type === 'increase' || !floatRequest.type);
+
       if (isOutflow) {
         const { validateVaultDenominations, validateVaultBalance } = await import('@/lib/helpers/vault/validation');
         const balanceCheck = validateVaultBalance(finalAmount, currentVaultBalance);
@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
       if (isDecrease) {
         // AUTO-CONFIRM FOR RETURNS
         const { finalizeFloatRequest } = await import('@/app/api/lib/helpers/vault/finalizeFloat');
-        
+
         const result = await finalizeFloatRequest(
           requestId,
           vmUserId,
@@ -249,15 +249,15 @@ export async function POST(request: NextRequest) {
           metadata: { approvedAmount: finalAmount }
         });
       }
-      
+
       await floatRequest.save();
 
       // Mark notification as having new status in metadata
       try {
         const VaultNotificationModel = (await import('@/app/api/lib/models/vaultNotification')).default;
         await VaultNotificationModel.updateMany(
-            { relatedEntityId: requestId, relatedEntityType: 'float_request' },
-            { $set: { 'metadata.entityStatus': 'approved_vm' } }
+          { relatedEntityId: requestId, relatedEntityType: 'float_request' },
+          { $set: { 'metadata.entityStatus': 'approved_vm' } }
         );
       } catch (notifError) {
         console.error('Failed to update notification metadata:', notifError);
@@ -289,13 +289,14 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
 
-  } catch (error) {
-    console.error('Error approving float request:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error approving float request:', errorMessage);
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: errorMessage,
       },
       { status: 500 }
     );

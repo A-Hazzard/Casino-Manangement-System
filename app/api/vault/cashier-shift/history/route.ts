@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 3: Build Query
     // ============================================================================
-    const query: any = { cashierId };
+    const query: Record<string, unknown> = { cashierId };
 
     const varianceOne = searchParams.get('variance');
 
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (varianceOne === 'true') {
-        query.discrepancy = { $ne: 0 };
+      query.discrepancy = { $ne: 0 };
     }
 
     // ============================================================================
@@ -111,10 +111,11 @@ export async function GET(request: NextRequest) {
         hasMore: totalCount > skip + shifts.length,
       },
     });
-  } catch (error) {
-    console.error('Error fetching cashier shift history:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching cashier shift history:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

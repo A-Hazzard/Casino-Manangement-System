@@ -190,35 +190,51 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
       <div className="border-t border-gray-200 pt-2 text-sm">
         <div className="mb-1 flex justify-between">
           <span className="text-gray-500">Money In</span>
-          <CurrencyValueWithOverflow
-            value={props.moneyIn || 0}
-            className={`font-medium ${getMoneyInColorClass()}`}
-            formatCurrencyFn={formatCurrency}
-          />
+          {props.hideFinancials ? (
+            <span className="font-medium text-gray-500">-</span>
+          ) : (
+            <CurrencyValueWithOverflow
+              value={props.moneyIn || 0}
+              className={`font-medium ${getMoneyInColorClass()}`}
+              formatCurrencyFn={formatCurrency}
+            />
+          )}
         </div>
         <div className="mb-1 flex justify-between">
           <span className="text-gray-500">Money Out</span>
-          <CurrencyValueWithOverflow
-            value={props.moneyOut || 0}
-            className={`font-medium ${getMoneyOutColorClass(props.moneyOut, props.moneyIn)}`}
-            formatCurrencyFn={formatCurrency}
-          />
+          {props.hideFinancials ? (
+            <span className="font-medium text-gray-500">-</span>
+          ) : (
+            <CurrencyValueWithOverflow
+              value={props.moneyOut || 0}
+              className={`font-medium ${getMoneyOutColorClass(props.moneyOut, props.moneyIn)}`}
+              formatCurrencyFn={formatCurrency}
+            />
+          )}
         </div>
         <div className="mb-1 flex justify-between">
           <span className="text-gray-500">Jackpot</span>
-          <CurrencyValueWithOverflow
-            value={props.jackpot || 0}
-            className="font-medium"
-            formatCurrencyFn={formatCurrency}
-          />
+          {props.hideFinancials ? (
+            <span className="font-medium text-gray-500">-</span>
+          ) : (
+            <CurrencyValueWithOverflow
+              value={props.jackpot || 0}
+              className="font-medium"
+              formatCurrencyFn={formatCurrency}
+            />
+          )}
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Gross</span>
-          <CurrencyValueWithOverflow
-            value={props.gross || 0}
-            className={`font-medium ${getGrossColorClass(props.gross)}`}
-            formatCurrencyFn={formatCurrency}
-          />
+          {props.hideFinancials ? (
+            <span className="font-medium text-gray-500">-</span>
+          ) : (
+            <CurrencyValueWithOverflow
+              value={props.gross || 0}
+              className={`font-medium ${getGrossColorClass(props.gross)}`}
+              formatCurrencyFn={formatCurrency}
+            />
+          )}
         </div>
       </div>
 

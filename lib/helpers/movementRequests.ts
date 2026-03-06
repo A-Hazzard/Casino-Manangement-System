@@ -63,9 +63,13 @@ export async function updateMovementRequest(
 /**
  * Delete a movement request by ID via the API.
  * @param id MovementRequest _id
+ * @param deleteType 'soft' | 'hard'
  * @returns Promise<void>
  */
-export async function deleteMovementRequest(id: string): Promise<void> {
-  await axios.delete(`/api/movement-requests/${id}`);
+export async function deleteMovementRequest(
+  id: string,
+  deleteType: 'soft' | 'hard' = 'soft'
+): Promise<void> {
+  await axios.delete(`/api/movement-requests/${id}?deleteType=${deleteType}`);
 }
 

@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type');
 
     if (!locationId) {
-       // Optional: if generic audit required? No, safer to require location.
-       return NextResponse.json(
+      // Optional: if generic audit required? No, safer to require location.
+      return NextResponse.json(
         { success: false, error: 'Location ID is required' },
         { status: 400 }
       );
@@ -62,15 +62,15 @@ export async function GET(request: NextRequest) {
     // STEP 3: Build Query
     // ============================================================================
     await connectDB();
-    
+
     // Safety check for location access? getUserFromServer checks general access.
     // Location based check might be tricky if user has access to multiple but request specified one.
     // We assume if they have role, they can see data (filtered by their logic usually, but here we require locationId).
     // Better: Helper checkUserLocationAccess? Step 2379 didn't use it but check location access logic is better.
     // I'll skip deep check to avoid import errors unless I found the helper. 
     // Step 2379 used standard role check. I'll stick to that.
-    
-    const query: any = { locationId };
+
+    const query: Record<string, unknown> = { locationId };
 
     if (type && type !== 'all') {
       query.type = type;
@@ -78,20 +78,21 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       const searchRegex = { $regex: search, $options: 'i' };
-      query.$or = [
+      const orConditions: Array<Record<string, unknown>> = [
         { ticketNumber: searchRegex },
         { notes: searchRegex },
         { cashierId: searchRegex }
       ];
       const num = parseFloat(search);
-      if(!isNaN(num)) query.$or.push({ amount: num });
+      if (!isNaN(num)) orConditions.push({ amount: num });
+      query.$or = orConditions;
     }
 
     // ============================================================================
     // STEP 4: Execution
     // ============================================================================
     const skip = (page - 1) * limit;
-    
+
     const payouts = await PayoutModel.aggregate([
       { $match: query },
       { $sort: { timestamp: -1 } },
@@ -139,10 +140,11 @@ export async function GET(request: NextRequest) {
       },
     });
 
-  } catch (error: any) {
-    console.error('Error fetching payouts:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
+    console.error('Error fetching payouts:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal Server Error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

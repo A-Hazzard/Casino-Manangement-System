@@ -27,6 +27,9 @@ type MachineStatusWidgetProps = {
   showTotal?: boolean; // Whether to show total count
   membershipCount?: number; // Optional membership count
   showMembership?: boolean; // Whether to show membership count
+  title?: string;
+  onlineLabel?: string;
+  offlineLabel?: string;
 };
 
 export default function MachineStatusWidget({
@@ -37,6 +40,9 @@ export default function MachineStatusWidget({
   showTotal = false,
   membershipCount = 0,
   showMembership = false,
+  title = 'Machine Status',
+  onlineLabel = 'Online',
+  offlineLabel = 'Offline',
 }: MachineStatusWidgetProps) {
   const total = totalCount ?? (onlineCount + offlineCount);
   if (isLoading) {
@@ -63,25 +69,25 @@ export default function MachineStatusWidget({
         className="h-4 w-4 flex-shrink-0 sm:h-5 sm:w-5"
       />
       <span className="hidden flex-shrink-0 text-xs text-gray-600 sm:block sm:text-sm">
-        Machine Status
+        {title}
       </span>
       <span className="flex-shrink-0 text-xs text-gray-600 sm:hidden">
-        Status
+        {title === 'Machine Status' ? 'Status' : title}
       </span>
       <div className="flex flex-wrap gap-1 sm:gap-2">
         <span className="flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-green-50 px-1.5 py-1 text-xs text-green-700 sm:px-2">
           <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-green-500 sm:h-2 sm:w-2" />
           <span className="truncate">
             {showTotal 
-              ? `${onlineCount.toLocaleString()}/${total.toLocaleString()} Online`
-              : `${onlineCount.toLocaleString()} Online`
+              ? `${onlineCount.toLocaleString()}/${total.toLocaleString()} ${onlineLabel}`
+              : `${onlineCount.toLocaleString()} ${onlineLabel}`
             }
           </span>
         </span>
         <span className="flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-red-50 px-1.5 py-1 text-xs text-red-700 sm:px-2">
           <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-red-500 sm:h-2 sm:w-2" />
           <span className="truncate">
-            {offlineCount.toLocaleString()} Offline
+            {offlineCount.toLocaleString()} {offlineLabel}
           </span>
         </span>
         {showMembership && (

@@ -48,7 +48,15 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 2: Build filters
     // ============================================================================
-    const filters: any = { locationId };
+    interface ActivityFilters {
+      locationId: string | null;
+      performedBy?: string;
+      cashierShiftId?: string;
+      $or?: Array<Record<string, string>>;
+      type?: string;
+      timestamp?: { $gte?: Date; $lte?: Date };
+    }
+    const filters: ActivityFilters = { locationId };
 
     // If user is a cashier, only show their activity
     // If user is a VM, they can see others if they specified userId or cashierId
@@ -57,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     if (!isVM) {
       // Cashiers can only see their own activity
-      filters.performedBy = userPayload._id;
+      filters.performedBy = userPayload._id as string;
     } else if (cashierId) {
       // VM filtering by cashier ID
       filters.performedBy = cashierId;
@@ -93,14 +101,14 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     await connectDB();
 
-    const aggregationPipeline: any[] = [
-      { $match: filters },
+    const aggregationPipeline: import('mongoose').PipelineStage[] = [
+      { $match: filters as unknown as Record<string, unknown> },
       { $sort: { timestamp: -1 } },
       { $skip: skip },
       { $limit: limit },
       {
         $lookup: {
-        from: 'users',
+          from: 'users',
           localField: 'performedBy',
           foreignField: '_id',
           as: 'performer',
@@ -128,7 +136,7 @@ export async function GET(request: NextRequest) {
 
     const [activities, totalCount] = await Promise.all([
       VaultTransactionModel.aggregate(aggregationPipeline),
-      VaultTransactionModel.countDocuments(filters),
+      VaultTransactionModel.countDocuments(filters as unknown as Record<string, unknown>),
     ]);
 
     // ============================================================================
@@ -144,13 +152,14 @@ export async function GET(request: NextRequest) {
         total: totalCount,
         limit,
         skip,
-        hasMore: totalCount > skip + activities.length,
+        hasMore: totalCount > skip + (activities as Array<Record<string, unknown>>).length,
       },
     });
-  } catch (error) {
-    console.error('Error fetching activity log:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching activity log:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

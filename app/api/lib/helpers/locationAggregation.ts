@@ -31,7 +31,9 @@ export const getLocationsWithMetrics = async (
   customStartDate?: Date,
   customEndDate?: Date,
   allowedLocationIds?: string[] | 'all',
-  machineTypeFilter?: string | null
+  machineTypeFilter?: string | null,
+  search?: string | null,
+  onlineStatus?: string | null
 ): Promise<{ rows: AggregatedLocation[]; totalCount: number }> => {
   const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
 
@@ -56,13 +58,42 @@ export const getLocationsWithMetrics = async (
           { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
         ...locationIdFilter,
-        // Apply licensee filter directly instead of prefetching location IDs
+        // Apply licensee filter directly if no specific locations provided
         ...(licensee && licensee !== 'all' && !locationIdFilter._id
-          ? { 'rel.licensee': licensee }
+          ? {
+            $or: [
+              { 'rel.licensee': licensee },
+              { 'rel.licencee': licensee }
+            ]
+          }
           : {}),
       },
     },
   ];
+
+  // Apply search filter if provided
+  if (search) {
+    const isObjectIdFormat = /^[0-9a-fA-F]{24}$/.test(search.trim());
+    if (isObjectIdFormat) {
+      basePipeline.push({
+        $match: {
+          $or: [
+            { _id: search.trim() },
+            { name: { $regex: search, $options: 'i' } },
+          ],
+        },
+      });
+    } else {
+      basePipeline.push({
+        $match: {
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { _id: { $regex: search, $options: 'i' } },
+          ],
+        },
+      });
+    }
+  }
 
   // Filter by selected locations if provided (string matching only)
   if (selectedLocations) {
@@ -361,18 +392,38 @@ export const getLocationsWithMetrics = async (
 
           // Calculate machine status metrics
           const totalMachines = machines.length;
-          const onlineMachines = machines.filter(
-            m => m.lastActivity && new Date(m.lastActivity) >= onlineThreshold
-          ).length;
+          const onlineMachines = machines.filter(m => {
+            if (!m.lastActivity) return false;
+            try {
+              const activityDate = m.lastActivity instanceof Date
+                ? m.lastActivity
+                : new Date(String(m.lastActivity).replace(' ', 'T'));
+              return activityDate.getTime() >= onlineThreshold.getTime();
+            } catch {
+              return false;
+            }
+          }).length;
+          const isNeverOnline = totalMachines > 0 && machines.every(m => !m.lastActivity);
+          const latestActivity = machines.length > 0
+            ? Math.max(...machines.map(m => {
+              if (!m.lastActivity) return 0;
+              const d = m.lastActivity instanceof Date ? m.lastActivity : new Date(String(m.lastActivity).replace(' ', 'T'));
+              return d.getTime();
+            }))
+            : 0;
+
           const sasMachines = machines.filter(m => m.isSasMachine).length;
           const nonSasMachines = totalMachines - sasMachines;
 
           locationsWithMetrics.push({
             location: locationId,
             locationName: location.name || 'Unknown Location',
-            moneyIn: metrics.moneyIn,
-            moneyOut: metrics.moneyOut,
-            gross: metrics.moneyIn - metrics.moneyOut,
+            moneyIn: Math.round((metrics.moneyIn || 0) * 100) / 100,
+            moneyOut: Math.round((metrics.moneyOut || 0) * 100) / 100,
+            gross:
+              Math.round(
+                ((metrics.moneyIn || 0) - (metrics.moneyOut || 0)) * 100
+              ) / 100,
             coinIn: metrics.coinIn,
             coinOut: metrics.coinOut,
             jackpot: metrics.jackpot,
@@ -389,6 +440,8 @@ export const getLocationsWithMetrics = async (
             rel: location.rel,
             country: location.country,
             membershipEnabled: location.membershipEnabled || false,
+            isNeverOnline,
+            latestActivity,
           } as unknown as AggregatedLocation);
         }
       } else {
@@ -639,18 +692,39 @@ export const getLocationsWithMetrics = async (
 
           // Calculate machine metrics
           const totalMachines = machines.length;
-          const onlineMachines = machines.filter(
-            m => m.lastActivity && new Date(m.lastActivity) >= onlineThreshold
-          ).length;
+          const onlineMachines = machines.filter(m => {
+            if (!m.lastActivity) return false;
+            try {
+              const activityDate = m.lastActivity instanceof Date
+                ? m.lastActivity
+                : new Date(String(m.lastActivity).replace(' ', 'T'));
+              return activityDate.getTime() >= onlineThreshold.getTime();
+            } catch {
+              return false;
+            }
+          }).length;
+          const isNeverOnline = totalMachines > 0 && machines.every(m => !m.lastActivity);
+          const latestActivity = machines.length > 0
+            ? Math.max(...machines.map(m => {
+              if (!m.lastActivity) return 0;
+              const d = m.lastActivity instanceof Date ? m.lastActivity : new Date(String(m.lastActivity).replace(' ', 'T'));
+              return d.getTime();
+            }))
+            : 0;
           const sasMachines = machines.filter(m => m.isSasMachine).length;
           const nonSasMachines = totalMachines - sasMachines;
 
           return {
             location: locationId,
             locationName: location.name || 'Unknown Location',
-            moneyIn: meterMetrics.totalDrop,
-            moneyOut: meterMetrics.totalMoneyOut,
-            gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut,
+            moneyIn: Math.round((meterMetrics.totalDrop || 0) * 100) / 100,
+            moneyOut: Math.round((meterMetrics.totalMoneyOut || 0) * 100) / 100,
+            gross:
+              Math.round(
+                ((meterMetrics.totalDrop || 0) -
+                  (meterMetrics.totalMoneyOut || 0)) *
+                100
+              ) / 100,
             coinIn: meterMetrics.totalCoinIn,
             coinOut: meterMetrics.totalCoinOut,
             jackpot: meterMetrics.totalJackpot,
@@ -667,6 +741,8 @@ export const getLocationsWithMetrics = async (
             rel: location.rel,
             country: location.country,
             membershipEnabled: location.membershipEnabled || false,
+            isNeverOnline,
+            latestActivity,
           } as unknown as AggregatedLocation;
         });
 
@@ -741,19 +817,59 @@ export const getLocationsWithMetrics = async (
       });
     }
 
+    // ============================================================================
+    // STEP 10: Apply online status filter if requested
+    // ============================================================================
+    let filteredByStatus = locationsWithMetrics;
+    if (onlineStatus && onlineStatus !== 'all') {
+      filteredByStatus = locationsWithMetrics.filter(loc => {
+        const isOnline = loc.onlineMachines > 0;
+
+        if (onlineStatus === 'online') {
+          return isOnline;
+        }
+
+        if (onlineStatus.startsWith('offline')) {
+          return !isOnline && loc.totalMachines > 0;
+        }
+
+        if (onlineStatus === 'neveronline') {
+          // Never Online: No machine has ever reported activity
+          return (loc as AggregatedLocation & { isNeverOnline?: boolean }).isNeverOnline;
+        }
+
+        return true;
+      });
+    }
+
     // Filter by SAS evaluation if requested
     const filteredLocations = sasEvaluationOnly
-      ? locationsWithMetrics.filter(
-          loc => (loc as unknown as { sasMachines: number }).sasMachines > 0
-        )
-      : locationsWithMetrics;
-
-    // Sort locations alphabetically by name
-    const sortedLocations = filteredLocations.sort((a, b) =>
-      (a as unknown as { locationName: string }).locationName.localeCompare(
-        (b as unknown as { locationName: string }).locationName
+      ? filteredByStatus.filter(
+        loc => (loc as unknown as { sasMachines: number }).sasMachines > 0
       )
-    );
+      : filteredByStatus;
+
+    // Apply Offline sorting if specified
+    let sortedLocations = filteredLocations;
+    if (onlineStatus === 'offlinelongest' || onlineStatus === 'offlineshortest') {
+      sortedLocations = [...filteredLocations].sort((a, b) => {
+        const typeA = a as AggregatedLocation & { latestActivity?: number };
+        const typeB = b as AggregatedLocation & { latestActivity?: number };
+        const activityA = typeA.latestActivity || 0;
+        const activityB = typeB.latestActivity || 0;
+
+        return onlineStatus === 'offlinelongest'
+          ? activityA - activityB // Oldest activity (longest offline) first
+          : activityB - activityA; // Most recent activity (shortest offline) first
+      });
+    } else {
+      // Default: Sort locations alphabetically by name
+      sortedLocations = filteredLocations.sort((a, b) =>
+        (a as unknown as { locationName: string }).locationName.localeCompare(
+          (b as unknown as { locationName: string }).locationName
+        )
+      );
+    }
 
     const allResults = sortedLocations;
 
@@ -815,7 +931,7 @@ export const getLocationsWithMetrics = async (
                   online: {
                     $sum: {
                       $cond: [
-                        { $gte: ['$lastActivity', onlineThreshold] },
+                        { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, onlineThreshold] },
                         1,
                         0,
                       ],
@@ -827,6 +943,16 @@ export const getLocationsWithMetrics = async (
                       $cond: [{ $eq: ['$isSasMachine', false] }, 1, 0],
                     },
                   },
+                  hasActivityCount: {
+                    $sum: {
+                      $cond: [
+                        { $ifNull: ['$lastActivity', false] },
+                        1,
+                        0
+                      ]
+                    }
+                  },
+                  latestActivity: { $max: '$lastActivity' }
                 },
               },
             ],
@@ -850,6 +976,12 @@ export const getLocationsWithMetrics = async (
                 0,
               ],
             },
+            hasActivityCount: {
+              $ifNull: [{ $arrayElemAt: ['$machineData.hasActivityCount', 0] }, 0],
+            },
+            latestActivity: {
+              $ifNull: [{ $arrayElemAt: ['$machineData.latestActivity', 0] }, 0],
+            },
             gross: { $subtract: ['$moneyIn', '$moneyOut'] },
           },
         },
@@ -858,12 +990,12 @@ export const getLocationsWithMetrics = async (
         // For detailed queries, we can filter after financial aggregation
         ...(sasEvaluationOnly
           ? [
-              {
-                $match: {
-                  sasMachines: { $gt: 0 },
-                },
+            {
+              $match: {
+                sasMachines: { $gt: 0 },
               },
-            ]
+            },
+          ]
           : []),
       ],
       {
@@ -917,6 +1049,8 @@ export const getLocationsWithMetrics = async (
         noSMIBLocation: !hasSasMachines,
         hasSmib: hasSasMachines,
         gamesPlayed,
+        isNeverOnline: totalMachines > 0 && (location.hasActivityCount || 0) === 0,
+        latestActivity: location.latestActivity ? new Date(location.latestActivity).getTime() : 0,
       } as unknown as AggregatedLocation;
     });
 
@@ -969,7 +1103,31 @@ export const getLocationsWithMetrics = async (
       });
     }
 
-    const allResults = enhancedMetrics;
+    // ============================================================================
+    // STEP 10: Apply online status filter if requested
+    // ============================================================================
+    let filteredByStatus = enhancedMetrics;
+    if (onlineStatus && onlineStatus !== 'all') {
+      filteredByStatus = enhancedMetrics.filter(loc => {
+        const isOnline = loc.onlineMachines > 0;
+
+        if (onlineStatus === 'online') {
+          return isOnline;
+        }
+
+        if (onlineStatus.startsWith('offline')) {
+          return !isOnline && loc.totalMachines > 0;
+        }
+
+        if (onlineStatus === 'neveronline') {
+          return (loc as AggregatedLocation & { isNeverOnline?: boolean }).isNeverOnline;
+        }
+
+        return true;
+      });
+    }
+
+    const allResults = filteredByStatus;
 
     // Decide whether to paginate. For basic lists (page-load dropdown) and for
     // explicit selectedLocations queries, return ALL rows without slicing.

@@ -9,9 +9,9 @@
 
 import { Meters } from '@/app/api/lib/models/meters';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
-import type { PipelineStage } from 'mongoose';
 import type { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
+import type { PipelineStage } from 'mongoose';
 
 /**
  * Calculates date range for top machines query
@@ -226,7 +226,10 @@ function buildTopMachinesDetailedPipeline(
   if (licensee) {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licensee': licensee,
+        $or: [
+          { 'locationDetails.rel.licensee': licensee },
+          { 'locationDetails.rel.licencee': licensee },
+        ],
       },
     } as PipelineStage);
   }

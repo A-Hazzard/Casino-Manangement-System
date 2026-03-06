@@ -87,7 +87,7 @@ export async function convertTopPerformingCurrency(
   // Fetch location details using Mongoose model
   const locationsData = await GamingLocations.find(
     { _id: { $in: Array.from(locationIds) } },
-    { _id: 1, 'rel.licensee': 1, country: 1 }
+    { _id: 1, 'rel.licensee': 1, 'rel.licencee': 1, country: 1 }
   ).lean();
 
   const locationDetails = new Map<
@@ -97,7 +97,7 @@ export async function convertTopPerformingCurrency(
   locationsData.forEach(loc => {
     if (loc._id) {
       locationDetails.set(String(loc._id), {
-        licenseeId: loc.rel?.licensee,
+        licenseeId: loc.rel?.licensee || (loc.rel as { licencee?: string })?.licencee,
         countryId: loc.country,
       });
     }

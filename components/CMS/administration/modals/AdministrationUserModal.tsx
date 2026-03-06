@@ -576,7 +576,7 @@ export default function AdministrationUserModal({
 
     const loadLicensees = async () => {
       try {
-        const result = await fetchLicensees();
+        const result = await fetchLicensees(1, 1000);
         if (cancelled) return;
 
         hasLoadedLicenseesRef.current = true;
@@ -2813,6 +2813,7 @@ export default function AdministrationUserModal({
                     {isEditMode ? (
                       <div className="mt-2">
                         <DateTimePicker
+                          dateOnly
                           date={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
                           setDate={(date) =>
                             handleInputChange(

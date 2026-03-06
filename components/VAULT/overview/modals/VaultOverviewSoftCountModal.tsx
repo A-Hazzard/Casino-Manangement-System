@@ -30,6 +30,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
+import type { CollectionSessionEntry, Denomination } from '@/shared/types/vault';
 import { CheckCheck, CheckCircle2, Coins, LayoutGrid, ListChecks, Loader2, Monitor, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -61,7 +62,7 @@ export default function VaultOverviewSoftCountModal({
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [entries, setEntries] = useState<any[]>([]);
+  const [entries, setEntries] = useState<CollectionSessionEntry[]>([]);
   
   // Selection
   const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
@@ -161,7 +162,15 @@ export default function VaultOverviewSoftCountModal({
   };
 
   // -- Handlers --
-  const handleAddEntry = async (formData: any) => {
+  const handleAddEntry = async (formData: {
+    amount: number;
+    denominations: Denomination[];
+    notes?: string;
+    meters?: { billIn: number; ticketIn: number; totalIn: number };
+    expectedDrop: number;
+    variance: number;
+    isEndOfDay: boolean;
+  }) => {
     if (!sessionId || !selectedMachine) return;
     
     setLoading(true);
@@ -265,7 +274,7 @@ export default function VaultOverviewSoftCountModal({
         if (data.success) {
             setFinalStats({
                 count: entries.length,
-                total: data.totalCollected || entries.reduce((acc: any, e: any) => acc + e.totalAmount, 0)
+                total: data.totalCollected || entries.reduce((acc: number, e: CollectionSessionEntry) => acc + e.totalAmount, 0)
             });
             setIsCompleted(true);
             toast.success('Soft count finalized successfully');

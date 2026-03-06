@@ -24,6 +24,7 @@ import {
   createSuccessResponse,
 } from '@/app/api/lib/utils/apiResponse';
 import { getFriendlyErrorMessage } from '@/lib/utils/auth';
+import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest } from 'next/server';
 
@@ -124,46 +125,22 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // Clear any existing authentication cookies before setting new ones
     // This ensures old tokens from previous database connections don't persist
-    response.cookies.set('token', '', {
-      expires: new Date(0),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-    });
-    response.cookies.set('refreshToken', '', {
-      expires: new Date(0),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-    });
+    const clearOptions = getAuthCookieOptions(request, { expires: new Date(0) });
+    response.cookies.set('token', '', clearOptions);
+    response.cookies.set('refreshToken', '', clearOptions);
 
     // Set cookies on the response
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      path: '/',
-      maxAge: rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60, // 30 days if rememberMe, else 7 days
-      // Don't set domain - let browser use default (current domain)
-    };
+    const tokenMaxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
+    const cookieOptions = getAuthCookieOptions(request, { maxAge: tokenMaxAge });
 
     // Set token cookie
     response.cookies.set('token', result.token!, cookieOptions);
 
     if (result.refreshToken) {
-      const refreshCookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax' as const,
-        path: '/',
-        maxAge: rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60,
-      };
       response.cookies.set(
         'refreshToken',
         result.refreshToken,
-        refreshCookieOptions
+        getAuthCookieOptions(request, { maxAge: tokenMaxAge })
       );
     }
 

@@ -18,17 +18,14 @@ import { useLocationData, useLocationMachineStats, useLocationMembershipStats } 
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useUserStore } from '@/lib/store/userStore';
 import type { DashboardTotals } from '@/lib/types';
 import type { LocationFilter, LocationSortOption } from '@/lib/types/location';
 import { isAbortError } from '@/lib/utils/errors';
 import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
 import { useDebounce } from '@/lib/utils/hooks';
-import type { AggregatedLocation } from '@/shared/types';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export function useLocationsPageData() {
-  const { user } = useUserStore();
   const {
     selectedLicensee,
     activeMetricsFilter,
@@ -40,16 +37,16 @@ export function useLocationsPageData() {
   // State Management
   // ============================================================================
   const [selectedFilters, setSelectedFilters] = useState<LocationFilter[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const [refreshing, setRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const [accumulatedLocations, setAccumulatedLocations] = useState<AggregatedLocation[]>([]);
   const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(null);
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(true);
   const [filtersInitialized, setFiltersInitialized] = useState(false);
-  
+
   // Sorting State
   const [sortOption, setSortOption] = useState<LocationSortOption>('moneyIn');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -57,90 +54,101 @@ export function useLocationsPageData() {
   const makeMetricsRequest = useAbortableRequest();
 
   // ============================================================================
+  // Pagination Constants
+  // ============================================================================
+  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_BATCH = 50;
+  const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
+
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
+
+  // Helper to calculate which batch a page belongs to
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / PAGES_PER_BATCH) + 1;
+    },
+    []
+  );
+
+  // ============================================================================
   // Base Hook Integration
   // ============================================================================
-  const { locationData, loading, searchLoading, error, fetchData } = useLocationData({
+  const { locationData, loading, searchLoading, error, fetchData, totalCount } = useLocationData({
     selectedLicensee,
     activeMetricsFilter,
     customDateRange,
     searchTerm,
     selectedFilters,
+    selectedStatus,
+    sortBy: sortOption,
+    sortOrder: sortOrder,
   });
 
   const machineTypeFilterString = useMemo(() => selectedFilters.join(','), [selectedFilters]);
-  const { machineStats, machineStatsLoading, refreshMachineStats } = useLocationMachineStats(undefined, machineTypeFilterString, debouncedSearchTerm);
+  const { machineStats, machineStatsLoading, refreshMachineStats } = useLocationMachineStats(undefined, machineTypeFilterString, debouncedSearchTerm, undefined, selectedStatus);
   const { membershipStats, membershipStatsLoading, refreshMembershipStats } = useLocationMembershipStats(undefined, machineTypeFilterString);
 
   // ============================================================================
   // Computed Values
   // ============================================================================
   const filteredLocationData = useMemo(() => {
-    // When filters are active, always use locationData from API (which is already filtered)
-    // When no filters and no search, use accumulatedLocations
-    let data = selectedFilters.length > 0
-      ? locationData
-      : (searchTerm.trim() ? locationData : accumulatedLocations);
-
-    const isDeveloper = user?.roles?.includes('developer') ?? false;
-    if (!isDeveloper) {
-      data = data.filter(loc => !/^test/i.test(loc.locationName || loc.location || ''));
-    }
-    
-    // sorting logic
-    return [...data].sort((a, b) => {
-      let valA: any = a[sortOption as keyof AggregatedLocation];
-      let valB: any = b[sortOption as keyof AggregatedLocation];
-
-      // Handle undefined/null
-      if (valA === undefined || valA === null) valA = 0;
-      if (valB === undefined || valB === null) valB = 0;
-
-      // String comparison
-      if (typeof valA === 'string' && typeof valB === 'string') {
-        return sortOrder === 'asc' 
-          ? valA.localeCompare(valB) 
-          : valB.localeCompare(valA);
-      }
-      
-      // Numeric comparison
-      return sortOrder === 'asc' 
-        ? (Number(valA) - Number(valB)) 
-        : (Number(valB) - Number(valA));
-    });
-  }, [locationData, accumulatedLocations, searchTerm, selectedFilters, user, sortOption, sortOrder]);
+    return locationData;
+  }, [locationData]);
 
   const financialTotals = useMemo(() => calculateLocationFinancialTotals(
-    accumulatedLocations.length > 0 ? accumulatedLocations : locationData
-  ), [accumulatedLocations, locationData]);
+    filteredLocationData
+  ), [filteredLocationData]);
 
-  const itemsPerPage = 20;
-  const totalPages = useMemo(() => Math.ceil(filteredLocationData.length / itemsPerPage) || 1, [filteredLocationData.length]);
-  
-  // Paginate filteredLocationData
+  // Sliced data for the current page
   const paginatedLocationData = useMemo(() => {
-    const startIndex = currentPage * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredLocationData.slice(startIndex, endIndex);
-  }, [filteredLocationData, currentPage, itemsPerPage]);
+    const startIndex = currentPage * ITEMS_PER_PAGE;
+    return filteredLocationData.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredLocationData, currentPage, ITEMS_PER_PAGE]);
+
+  const isDataMissingForPage = useMemo(() => {
+    const startIndex = currentPage * ITEMS_PER_PAGE;
+    return filteredLocationData.length <= startIndex && totalCount > filteredLocationData.length;
+  }, [filteredLocationData.length, currentPage, ITEMS_PER_PAGE, totalCount]);
+
+  const isDataComplete = useMemo(() =>
+    filteredLocationData.length >= totalCount && totalCount > 0,
+    [filteredLocationData.length, totalCount]);
+
+  const effectiveTotalPages = useMemo(() => {
+    const displayedCount = filteredLocationData.length;
+    const displayedPages = Math.ceil(displayedCount / ITEMS_PER_PAGE) || 1;
+
+    // If server has more data not yet fetched, allow +1 page to trigger next batch
+    if (filteredLocationData.length < totalCount && totalCount > 0) {
+      const serverTotalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+      return Math.min(displayedPages + 1, serverTotalPages);
+    }
+
+    return displayedPages;
+  }, [filteredLocationData.length, totalCount, ITEMS_PER_PAGE]);
 
   // ============================================================================
   // Handlers
   // ============================================================================
   const handleRefresh = async () => {
     setRefreshing(true);
-    setAccumulatedLocations([]);
-    await Promise.all([refreshMachineStats(), refreshMembershipStats(), fetchData()]);
+    setLoadedBatches(new Set());
+    const firstBatch = calculateBatchNumber(0);
+    setLoadedBatches(new Set([firstBatch]));
+    await Promise.all([refreshMachineStats(), refreshMembershipStats(), fetchData(firstBatch, ITEMS_PER_BATCH)]);
     setRefreshing(false);
   };
 
   const handleFilterChange = (filter: LocationFilter, checked: boolean) => {
     setSelectedFilters(prev => checked ? [...prev, filter] : prev.filter(f => f !== filter));
+    setCurrentPage(0);
   };
 
   const handleMultiFilterChange = (filters: LocationFilter[]) => {
     setSelectedFilters(filters);
+    setCurrentPage(0);
   };
-  
+
   const handleSort = (option: LocationSortOption) => {
     if (sortOption === option) {
       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -148,6 +156,8 @@ export function useLocationsPageData() {
       setSortOption(option);
       setSortOrder('desc');
     }
+    setCurrentPage(0);
+    setLoadedBatches(new Set());
   };
 
   // ============================================================================
@@ -159,53 +169,42 @@ export function useLocationsPageData() {
     }
   }, [activeMetricsFilter, setFiltersInitialized]);
 
-  // Batch accumulation logic
+  // Reset accumulation when filters change
   useEffect(() => {
-    // Don't accumulate if filters are active - API already filtered
-    if (selectedFilters.length > 0) {
-      return;
-    }
-    
-    // Don't accumulate stale data while loading new data
-    if (loading) {
-      return;
-    }
-
-    if (!searchTerm.trim() && locationData.length > 0) {
-      setAccumulatedLocations(prev => {
-        const existingIds = new Set(prev.map(loc => loc._id));
-        const newLocations = locationData.filter(loc => !existingIds.has(loc._id));
-        return [...prev, ...newLocations];
-      });
-    }
-  }, [locationData, searchTerm, selectedFilters, loading]);
-
-  // Clear accumulated locations when filters change
-  useEffect(() => {
-    setAccumulatedLocations([]);
-  }, [selectedFilters, activeMetricsFilter, selectedLicensee, customDateRange]);
+    setCurrentPage(0);
+    setLoadedBatches(new Set());
+  }, [selectedFilters, selectedStatus, searchTerm, activeMetricsFilter, selectedLicensee, customDateRange, sortOption, sortOrder, displayCurrency]);
 
   // Consolidated data fetch effect
-  // Triggers when filters, identity of fetchData, or custom date range changes
   useEffect(() => {
     if (filtersInitialized) {
-      // Clear accumulated locations whenever parameters change to ensure fresh metrics
-      setAccumulatedLocations([]);
-      void fetchData();
+      const currentBatch = calculateBatchNumber(currentPage);
+      if (!loadedBatches.has(currentBatch)) {
+        console.warn(`[useLocationsPageData] Fetching batch ${currentBatch} for page ${currentPage + 1}`);
+        setLoadedBatches(prev => new Set([...prev, currentBatch]));
+        void fetchData(currentBatch, ITEMS_PER_BATCH);
+      }
     }
   }, [
-    selectedFilters, 
-    activeMetricsFilter, 
-    selectedLicensee, 
+    currentPage,
+    sortOption,
+    sortOrder,
+    selectedFilters,
+    activeMetricsFilter,
+    selectedLicensee,
     customDateRange,
-    filtersInitialized, 
-    fetchData
+    filtersInitialized,
+    fetchData,
+    selectedStatus,
+    ITEMS_PER_BATCH,
+    loadedBatches,
+    calculateBatchNumber,
   ]);
 
   // Metrics totals fetch
   useEffect(() => {
     if (!activeMetricsFilter || !filtersInitialized) return;
-    
+
     makeMetricsRequest(async signal => {
       setMetricsTotalsLoading(true);
       try {
@@ -216,7 +215,10 @@ export function useLocationsPageData() {
           setMetricsTotals,
           displayCurrency,
           signal,
-          machineTypeFilterString
+          machineTypeFilterString,
+          undefined,
+          debouncedSearchTerm,
+          selectedStatus
         );
       } catch (error) {
         // Silently handle aborted requests - this is expected behavior when switching filters
@@ -230,10 +232,10 @@ export function useLocationsPageData() {
         setMetricsTotalsLoading(false);
       }
     });
-  }, [activeMetricsFilter, selectedLicensee, customDateRange, displayCurrency, filtersInitialized, machineTypeFilterString, makeMetricsRequest]);
+  }, [activeMetricsFilter, selectedLicensee, customDateRange, displayCurrency, filtersInitialized, machineTypeFilterString, makeMetricsRequest, debouncedSearchTerm, selectedStatus]);
 
   return {
-    loading: loading || searchLoading,
+    loading: loading || searchLoading || isDataMissingForPage,
     refreshing,
     error,
     filteredLocationData: paginatedLocationData,
@@ -245,9 +247,10 @@ export function useLocationsPageData() {
     membershipStats,
     membershipStatsLoading,
     selectedFilters,
+    selectedStatus,
     searchTerm,
     currentPage,
-    totalPages,
+    totalPages: effectiveTotalPages,
     sortOption,
     sortOrder,
     // Handlers
@@ -257,7 +260,12 @@ export function useLocationsPageData() {
     handleSort,
     setSearchTerm,
     setCurrentPage,
+    setSelectedStatus,
     fetchData,
+    totalCount,
+    locationDataLength: locationData.length,
+    filteredLocationDataLength: paginatedLocationData.length,
+    isDataComplete,
   };
 }
 

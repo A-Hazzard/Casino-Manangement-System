@@ -37,13 +37,13 @@ export async function POST(_req: NextRequest) {
     const uri = generateOTPAuthURI(user.username || user.emailAddress, appName, secret);
     const qrCodeUrl = await QRCode.toDataURL(uri);
 
-    return NextResponse.json({ 
-      success: true, 
-      qrCodeUrl, 
+    return NextResponse.json({
+      success: true,
+      qrCodeUrl,
       secret // Also provide the text secret for manual entry
     });
-  } catch (error: any) {
-    console.error('TOTP Setup Error:', error);
+  } catch (error: unknown) {
+    console.error('TOTP Setup Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

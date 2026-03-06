@@ -272,7 +272,7 @@ export default function LocationsNewLocationModal({
     }));
   };
   
-  const handleMembershipSettingsChange = (name: string, value: any) => {
+  const handleMembershipSettingsChange = (name: string, value: unknown) => {
     setFormData(prev => ({
       ...prev,
       locationMembershipSettings: {
@@ -725,7 +725,7 @@ export default function LocationsNewLocationModal({
                     Points Method Game Types
                   </Label>
                   <div className="grid grid-cols-2 gap-2 rounded-md border border-gray-200 p-3 sm:grid-cols-3">
-                    {['IGT', 'Aristocrat', 'Novomatic', 'Bally', 'Ainsworth', 'EGT', 'Amatic', 'Apollo', 'Apex', 'Spintec', 'Interblock', 'Other'].map(type => (
+                    {['Slot', 'Roulette', 'Pulse'].map(type => (
                       <div key={`points-${type}`} className="flex items-center space-x-2">
                         <Checkbox
                           id={`points-${type}`}
@@ -743,7 +743,7 @@ export default function LocationsNewLocationModal({
                     Free Play Game Types
                   </Label>
                   <div className="grid grid-cols-2 gap-2 rounded-md border border-gray-200 p-3 sm:grid-cols-3">
-                    {['IGT', 'Aristocrat', 'Novomatic', 'Bally', 'Ainsworth', 'EGT', 'Amatic', 'Apollo', 'Apex', 'Spintec', 'Interblock', 'Other'].map(type => (
+                    {['Slot', 'Roulette', 'Pulse'].map(type => (
                       <div key={`freeplay-${type}`} className="flex items-center space-x-2">
                         <Checkbox
                           id={`freeplay-${type}`}

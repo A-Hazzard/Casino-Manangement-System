@@ -37,6 +37,17 @@ import type { PayoutSortOption } from './tables/VaultPayoutsTable';
 import VaultPayoutsTable from './tables/VaultPayoutsTable';
 import TicketRedemptionForm from './TicketRedemptionForm';
 
+type MappedPayout = {
+  id: string;
+  ticketNumber: string;
+  amount: number;
+  cashier: string;
+  cashierId: string;
+  station: string;
+  processed: string;
+  notes: string;
+};
+
 export default function VaultPayoutsPageContent() {
   const router = useRouter();
   const { user } = useUserStore();
@@ -47,7 +58,7 @@ export default function VaultPayoutsPageContent() {
 
   // -- State --
   const [loading, setLoading] = useState(true);
-  const [payouts, setPayouts] = useState<any[]>([]);
+  const [payouts, setPayouts] = useState<MappedPayout[]>([]);
   const [sortOption, setSortOption] = useState<PayoutSortOption>('processed');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [totalCount, setTotalCount] = useState(0);
@@ -78,15 +89,15 @@ export default function VaultPayoutsPageContent() {
         const res = await fetch(`/api/vault/payouts?locationId=${locationId}&limit=50`); 
         const data = await res.json();
         if (data.success) {
-            setPayouts(data.payouts.map((p: any) => ({
-                id: p._id,
-                ticketNumber: p.ticketNumber || (p.type === 'hand_pay' ? 'Hand Pay' : 'N/A'),
-                amount: p.amount,
-                cashier: p.cashierName || p.cashierId || 'Unknown',
-                cashierId: p.cashierId,
+            setPayouts(data.payouts.map((p: Record<string, unknown>): MappedPayout => ({
+                id: String(p._id || ''),
+                ticketNumber: String(p.ticketNumber || (p.type === 'hand_pay' ? 'Hand Pay' : 'N/A')),
+                amount: Number(p.amount || 0),
+                cashier: String(p.cashierName || p.cashierId || 'Unknown'),
+                cashierId: String(p.cashierId || ''),
                 station: 'Vault',
-                processed: p.createdAt || p.timestamp,
-                notes: p.notes || '-'
+                processed: String(p.createdAt || p.timestamp || ''),
+                notes: String(p.notes || '-')
             })));
             setTotalCount(data.pagination.total);
         } else {
@@ -196,8 +207,8 @@ export default function VaultPayoutsPageContent() {
 
   const sortedPayouts = useMemo(() => {
     return [...payouts].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: string | number;
+      let bValue: string | number;
 
       switch (sortOption) {
         case 'ticketNumber':

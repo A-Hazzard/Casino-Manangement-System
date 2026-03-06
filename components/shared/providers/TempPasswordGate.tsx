@@ -1,12 +1,12 @@
 /**
  * TempPasswordGate Component
  *
- * A global gate that blocks access to the application for cashier users
- * who have not yet changed their temporary password.
+ * A global gate that blocks access to the application for all users
+ * (including Developers and Admins) who require a password security update.
  *
  * Behaviour:
  * - Reads the current user from the store.
- * - If the user has role 'cashier' and tempPasswordChanged === false,
+ * - If the user has requiresPasswordUpdate === true,
  *   renders the PasswordUpdateModal in forced/blocking mode over all pages.
  * - On successful password update, refreshes the current-user data and
  *   allows the user to continue without a full logout/redirect since a
@@ -34,14 +34,13 @@ export default function TempPasswordGate() {
   // ============================================================================
   // Computed Values
   // ============================================================================
+  const needsPasswordChange = user?.requiresPasswordUpdate === true;
   const isCashier =
     Array.isArray(user?.roles) &&
     user.roles.some(
       (r: string) => typeof r === 'string' && r.toLowerCase() === 'cashier'
     );
-
-  const needsTempPasswordChange =
-    isCashier && user?.tempPasswordChanged === false;
+  const isCashierTempChange = isCashier && user?.tempPasswordChanged === false;
 
   // ============================================================================
   // Handlers
@@ -68,7 +67,7 @@ export default function TempPasswordGate() {
             firstName: user?.profile?.firstName || '',
             lastName: user?.profile?.lastName || '',
             emailAddress: user?.emailAddress || '',
-            phone: phone || '',
+            phone: phone || user?.profile?.phoneNumber || '',
             currentPassword,
             newPassword,
             confirmPassword: newPassword,
@@ -84,7 +83,7 @@ export default function TempPasswordGate() {
             data.message ||
             'Failed to update password. Please try again.'
           );
-        }
+      }
 
         // Update store and invalidate query to prevent stale data flicker
         if (data.user) {
@@ -116,7 +115,7 @@ export default function TempPasswordGate() {
   // ============================================================================
   // Render — only mount the modal when it is actually needed
   // ============================================================================
-  if (!needsTempPasswordChange) return null;
+  if (!needsPasswordChange) return null;
 
   return (
     <>
@@ -125,8 +124,9 @@ export default function TempPasswordGate() {
         onUpdate={handlePasswordUpdate}
         loading={loading}
         isForced={true}
-        isCashierTempChange={true}
+        isCashierTempChange={isCashierTempChange}
         onLogout={handleLogout}
+        initialPhone={user?.profile?.phoneNumber || ''}
       />
     </>
   );

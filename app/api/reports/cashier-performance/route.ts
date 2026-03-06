@@ -8,9 +8,9 @@
  * @module app/api/reports/cashier-performance/route
  */
 
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface CashierPerformanceQuery {
@@ -52,20 +52,21 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 4: Build query filters
     // ============================================================================
-    const shiftFilters: any = {};
+    const shiftFilters: Record<string, unknown> = {};
 
     if (query.locationId) {
       shiftFilters.locationId = query.locationId;
     }
 
     if (query.startDate || query.endDate) {
-      shiftFilters.createdAt = {};
+      const createdAtFilter: Record<string, Date> = {};
       if (query.startDate) {
-        shiftFilters.createdAt.$gte = new Date(query.startDate);
+        createdAtFilter.$gte = new Date(query.startDate);
       }
       if (query.endDate) {
-        shiftFilters.createdAt.$lte = new Date(query.endDate);
+        createdAtFilter.$lte = new Date(query.endDate);
       }
+      shiftFilters.createdAt = createdAtFilter;
     }
 
     if (query.cashierId) {
@@ -86,16 +87,16 @@ export async function GET(request: NextRequest) {
       const duration =
         shift.closedAt && shift.openedAt
           ? (shift.closedAt.getTime() - shift.openedAt.getTime()) /
-            (1000 * 60 * 60) // hours
+          (1000 * 60 * 60) // hours
           : 0;
 
       const discrepancy = shift.discrepancy || 0;
       const accuracy =
         shift.expectedClosingBalance && shift.expectedClosingBalance > 0
           ? Math.max(
-              0,
-              1 - Math.abs(discrepancy) / shift.expectedClosingBalance
-            )
+            0,
+            1 - Math.abs(discrepancy) / shift.expectedClosingBalance
+          )
           : 1;
 
       return {
@@ -111,6 +112,13 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    interface CashierSummary {
+      shifts: number;
+      totalPayouts: number;
+      averageAccuracy: number;
+      totalDiscrepancy: number;
+    }
+
     // ============================================================================
     // STEP 7: Calculate summary statistics
     // ============================================================================
@@ -118,12 +126,12 @@ export async function GET(request: NextRequest) {
       totalShifts: shifts.length,
       averageAccuracy:
         performance.reduce((sum, p) => sum + p.accuracy, 0) /
-          performance.length || 0,
+        performance.length || 0,
       totalPayouts: performance.reduce((sum, p) => sum + p.payoutsTotal, 0),
       averageShiftDuration:
         performance.reduce((sum, p) => sum + p.duration, 0) /
-          performance.length || 0,
-      byCashier: {} as Record<string, any>,
+        performance.length || 0,
+      byCashier: {} as Record<string, CashierSummary>,
     };
 
     // Group by cashier
@@ -136,7 +144,7 @@ export async function GET(request: NextRequest) {
           totalDiscrepancy: 0,
         };
       }
-      const cashier = summary.byCashier[p.cashierId];
+      const cashier = summary.byCashier[p.cashierId] as CashierSummary;
       cashier.shifts += 1;
       cashier.totalPayouts += p.payoutsTotal;
       cashier.averageAccuracy =
@@ -154,10 +162,11 @@ export async function GET(request: NextRequest) {
       summary,
       filters: query,
     });
-  } catch (error) {
-    console.error('Error fetching cashier performance reports:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching cashier performance reports:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

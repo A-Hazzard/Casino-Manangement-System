@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     // 3. Create Transactions and Records
     for (const entry of session.entries) {
       const transactionId = await generateMongoId();
-      
+
       const transaction = {
         _id: transactionId,
         locationId,
@@ -45,13 +45,13 @@ export async function POST(req: Request) {
         amount: entry.totalAmount,
         denominations: entry.denominations,
         performedBy: userId || session.startedBy,
-        notes: session.type === 'soft_count' 
+        notes: session.type === 'soft_count'
           ? `Soft count removal from Machine ${entry.machineName || entry.machineId}${entry.notes ? `: ${entry.notes}` : ''}`
           : `Collection from Machine ${entry.machineName || entry.machineId}${entry.notes ? `: ${entry.notes}` : ''}`,
         createdAt: new Date(),
         externalRef: sessionId
       };
-      
+
       newTransactions.push(transaction);
 
       if (session.type === 'soft_count') {
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     }
 
     await VaultTransactionModel.insertMany(newTransactions);
-    
+
     if (newSoftCounts.length > 0) {
       await SoftCountModel.insertMany(newSoftCounts);
     }
@@ -80,31 +80,32 @@ export async function POST(req: Request) {
     // 4. Update Vault Balance & Inventory
     const activeVaultShift = await VaultShiftModel.findById(vaultShiftId);
     if (!activeVaultShift || activeVaultShift.status !== 'active') {
-        return NextResponse.json({ success: false, error: 'Active vault shift not found' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Active vault shift not found' }, { status: 400 });
     }
 
-    const totalCollected = session.entries.reduce((sum: number, e: any) => sum + e.totalAmount, 0);
+    const totalCollected = session.entries.reduce((sum: number, e: { totalAmount: number }) => sum + e.totalAmount, 0);
     const isAddition = true; // All collection sessions add money from machines to the vault
 
     // Update inventory machine-by-machine to ensure all denoms are tracked
     for (const entry of session.entries) {
-        await updateVaultShiftInventory(activeVaultShift, entry.totalAmount, entry.denominations, isAddition);
+      await updateVaultShiftInventory(activeVaultShift, entry.totalAmount, entry.denominations, isAddition);
     }
-    
+
     // 5. Mark Session as Completed
     session.status = 'completed';
     session.completedAt = new Date();
     session.totalCollected = totalCollected;
     await session.save();
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: 'Collection finalized successfully',
-      totalCollected 
+      totalCollected
     });
 
-  } catch (error: any) {
-    console.error('Finalize Collection Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Finalize Collection Error:', errorMessage);
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }

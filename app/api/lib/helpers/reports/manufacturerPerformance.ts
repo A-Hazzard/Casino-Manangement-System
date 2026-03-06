@@ -8,10 +8,10 @@
  */
 
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
-import type { PipelineStage } from 'mongoose';
 import { Meters } from '@/app/api/lib/models/meters';
 import type { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
+import type { PipelineStage } from 'mongoose';
 
 /**
  * Manufacturer data item from aggregation
@@ -122,7 +122,10 @@ function buildManufacturerPerformancePipeline(
   if (licensee && licensee !== 'all') {
     pipeline.push({
       $match: {
-        'locationDetails.rel.licensee': licensee,
+        $or: [
+          { 'locationDetails.rel.licensee': licensee },
+          { 'locationDetails.rel.licencee': licensee },
+        ],
       },
     } as PipelineStage);
   }
@@ -241,8 +244,8 @@ function calculateManufacturerPercentages(
     totalCancelledCredits:
       totals.totalCancelledCredits > 0
         ? Math.round(
-            (item.totalCancelledCredits / totals.totalCancelledCredits) * 100
-          )
+          (item.totalCancelledCredits / totals.totalCancelledCredits) * 100
+        )
         : 0,
     totalGross:
       totals.totalGross > 0

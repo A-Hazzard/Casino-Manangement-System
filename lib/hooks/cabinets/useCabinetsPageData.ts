@@ -5,7 +5,7 @@
  *
  * Features:
  * - Tab-based section management (Cabinets, Movement, SMIB, Firmware)
- * - Cabinet data fetching with batch accumulation
+ * - True server-side pagination and sorting
  * - Chart data and financial metrics coordination
  * - Refresh logic synchronized across active sections
  * - Modal state and window resize handling
@@ -15,18 +15,19 @@
 
 import { getMetrics } from '@/lib/helpers/metrics';
 import {
-    useCabinetData,
-    useCabinetSorting,
-    useLocationMachineStats,
+  useCabinetData,
+  useCabinetSorting,
+  useLocationMachineStats,
 } from '@/lib/hooks/data';
+import type { CabinetSortOption } from '@/lib/hooks/data/useCabinetSorting';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import type { TimePeriod } from '@/shared/types';
-import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import type { TimePeriod } from '@/lib/types';
+import { useDebounce } from '@/lib/utils/hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-const ITEMS_PER_PAGE = 20;
-const ITEMS_PER_BATCH = 100;
+const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_BATCH = 50;
 const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
 
 export function useCabinetsPageData() {
@@ -52,9 +53,25 @@ export function useCabinetsPageData() {
   const [selectedGameType, setSelectedGameType] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [accumulatedCabinets, setAccumulatedCabinets] = useState<Cabinet[]>([]);
   // Local loading state to bridge the gap between clearing data and fetch start
   const [isFilterResetting, setIsFilterResetting] = useState(false);
+
+  // Debounce search term to match useCabinetData timing
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Sorting and Pagination state managed by local state, driving useCabinetData
+  const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
+
+  // Helper to calculate which batch a page belongs to
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / PAGES_PER_BATCH) + 1;
+    },
+    []
+  );
 
   const {
     allCabinets,
@@ -81,106 +98,95 @@ export function useCabinetsPageData() {
   });
 
   // ============================================================================
-  // Filtered Accumulated Data
+  // Batch Loading & Pagination (Now true server-side)
   // ============================================================================
-  const filteredAccumulatedCabinets = useMemo(() => {
-    if (accumulatedCabinets.length === 0) return [];
-    
-    return accumulatedCabinets.filter(cabinet => {
-      // 1. Location filter (matches any of multiple selected locations)
-      if (selectedLocation.length > 0 && !selectedLocation.includes('all')) {
-        const matchesLocation = selectedLocation.some(locId => String(cabinet.locationId) === String(locId));
-        if (!matchesLocation) return false;
-      }
-
-      // 2. Game Type filter (matches any of multiple selected game types)
-      if (selectedGameType.length > 0 && !selectedGameType.includes('all')) {
-        const machineGame = (cabinet.game || cabinet.installedGame || '').toString();
-        const matchesGameType = selectedGameType.includes(machineGame);
-        if (!matchesGameType) return false;
-      }
-
-      // 3. Status filter (if not 'All', filter by online status)
-      if (selectedStatus !== 'All' && selectedStatus !== 'all') {
-        const isOnline = cabinet.online === true;
-        
-        if (selectedStatus === 'NeverOnline') {
-            const hasHistory = cabinet.lastOnline || cabinet.lastActivity;
-            return !isOnline && !hasHistory;
-        }
-
-        const matchesStatus =
-          (selectedStatus === 'Online' && isOnline) ||
-          (selectedStatus.startsWith('Offline') && !isOnline);
-        if (!matchesStatus) return false;
-      }
-
-      return true;
-    });
-  }, [accumulatedCabinets, selectedLocation, selectedGameType, selectedStatus]);
-
-  // ============================================================================
-  // Batch Loading & Pagination
-  // ============================================================================
-  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
-
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / PAGES_PER_BATCH) + 1;
-    },
-    []
-  );
-  
   const {
-    sortOrder,
-    sortOption,
-    currentPage,
-    paginatedCabinets,
-    handleColumnSort,
-    setSortOption,
-    setSortOrder,
-    setCurrentPage,
     transformCabinet,
+    paginatedCabinets,
   } = useCabinetSorting({
-    filteredCabinets: searchTerm.trim()
-      ? filteredCabinets
-      : filteredAccumulatedCabinets,
+    filteredCabinets: filteredCabinets,
     itemsPerPage: ITEMS_PER_PAGE,
-    useBatchPagination: true,
+    useBatchPagination: false, // Using simple slicing on accumulated data
+    totalCount: totalCount,
   });
 
-  // Effect to handle automatic sorting when status changes to Offline sorting variants
-  useEffect(() => {
-    if (selectedStatus === 'OfflineLongest') {
-      setSortOption('offlineTime');
-      setSortOrder('desc');
-    } else if (selectedStatus === 'OfflineShortest') {
-      setSortOption('offlineTime');
-      setSortOrder('asc');
-    } else if (selectedStatus === 'All' || selectedStatus === 'all' || selectedStatus === 'Online') {
-      // If we are currently sorting by offlineTime but switched away from offline status,
-      // reset to default moneyIn-desc sort to ensure Online machines have priority again
-      if (sortOption === 'offlineTime') {
-        setSortOption('moneyIn');
-        setSortOrder('desc');
-      }
+  const isDataMissingForPage = useMemo(() => {
+    const startIndex = currentPage * ITEMS_PER_PAGE;
+    return allCabinets.length <= startIndex && allCabinets.length < totalCount;
+  }, [allCabinets.length, currentPage, ITEMS_PER_PAGE, totalCount]);
+
+  // effectiveTotalPages is based on the actual loaded count from API.
+  // Adds +1 trigger page only if server has more data not yet fetched.
+  const effectiveTotalPages = useMemo(() => {
+    const displayedPages = Math.ceil(allCabinets.length / ITEMS_PER_PAGE) || 1;
+
+    if (allCabinets.length < totalCount && totalCount > 0) {
+      const serverTotalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+      return Math.min(displayedPages + 1, serverTotalPages);
     }
-  }, [selectedStatus, sortOption, setSortOption, setSortOrder]);
+
+    return displayedPages;
+  }, [allCabinets.length, totalCount]);
+
+  // Custom column sort handler that triggers fresh fetch
+  const handleColumnSort = useCallback((column: CabinetSortOption) => {
+    if (sortOption === column) {
+      setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortOption(column);
+      setSortOrder('desc');
+    }
+    setCurrentPage(0);
+  }, [sortOption]);
 
   // ============================================================================
-  // Cabinet Data & Sorting
+  // Stats & Machine Logic
   // ============================================================================
-  const { machineStats, machineStatsLoading, refreshMachineStats } =
-    useLocationMachineStats(
-      selectedLocation.length > 0 && !selectedLocation.includes('all')
-        ? selectedLocation.join(',')
-        : undefined,
-      undefined, // machineTypeFilter (SMIB etc)
-      searchTerm,
-      selectedGameType.length > 0 && !selectedGameType.includes('all')
-        ? selectedGameType.join(',')
-        : undefined
-    );
+  const {
+    machineStats: apiMachineStats,
+    machineStatsLoading,
+    refreshMachineStats,
+  } = useLocationMachineStats(
+    selectedLocation.length > 0 && !selectedLocation.includes('all')
+      ? selectedLocation.join(',')
+      : undefined,
+    undefined, // machineTypeFilter
+    searchTerm,
+    selectedGameType.length > 0 && !selectedGameType.includes('all')
+      ? selectedGameType.join(',')
+      : undefined
+  );
+
+  // Fallback machine stats logic if API returns zero
+  const machineStats = useMemo(() => {
+    const hasCabinets = filteredCabinets.length > 0;
+    const apiReturnsZero = apiMachineStats?.totalMachines === 0;
+
+    if (hasCabinets && apiReturnsZero && !machineStatsLoading) {
+      const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+      let onlineCount = 0;
+      let offlineCount = 0;
+
+      filteredCabinets.forEach(cab => {
+        const lastActivity = cab.lastActivity
+          ? new Date(cab.lastActivity as string | number | Date)
+          : null;
+        if (lastActivity && lastActivity >= threeMinutesAgo) {
+          onlineCount++;
+        } else {
+          offlineCount++;
+        }
+      });
+
+      return {
+        totalMachines: filteredCabinets.length,
+        onlineMachines: onlineCount,
+        offlineMachines: offlineCount,
+      };
+    }
+
+    return apiMachineStats;
+  }, [apiMachineStats, filteredCabinets, machineStatsLoading]);
 
   // ============================================================================
   // Chart Logic
@@ -188,7 +194,16 @@ export function useCabinetsPageData() {
   const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
     'hourly'
   );
-  const [chartData, setChartData] = useState<any[]>([]);
+  type ChartDataPoint = {
+    xValue: string;
+    day: string;
+    time: string;
+    moneyIn: number;
+    moneyOut: number;
+    gross: number;
+  };
+
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loadingChart, setLoadingChart] = useState(false);
 
   const fetchChartData = useCallback(async () => {
@@ -208,14 +223,15 @@ export function useCabinetsPageData() {
           selectedGameType,
           selectedStatus === 'All' || selectedStatus === 'all'
             ? 'all'
-            : selectedStatus.toLowerCase()
+            : selectedStatus.toLowerCase(),
+          debouncedSearchTerm
         );
         if (data)
           setChartData(
             data.map(d => ({
               xValue: d.time || d.day,
               day: d.day,
-              time: d.time,
+              time: d.time ?? '',
               moneyIn: d.moneyIn,
               moneyOut: d.moneyOut,
               gross: d.gross,
@@ -234,145 +250,127 @@ export function useCabinetsPageData() {
     selectedLocation,
     selectedGameType,
     selectedStatus,
+    debouncedSearchTerm,
     makeRequest,
-    setChartData,
   ]);
 
   // ============================================================================
-  // Modals & Handlers
+  // Handlers
   // ============================================================================
-  const [isNewMovementOpen, setIsNewMovementOpen] = useState(false);
-  const [isUploadSmibOpen, setIsUploadSmibOpen] = useState(false);
-
   const handleRefresh = async () => {
     if (activeSection === 'cabinets') {
       setIsFilterResetting(true);
-      setAccumulatedCabinets([]);
-      setLoadedBatches(new Set([1]));
       await Promise.all([
-        loadCabinets(1, ITEMS_PER_BATCH),
+        loadCabinets(currentPage + 1, ITEMS_PER_PAGE, sortOption, sortOrder),
         fetchChartData(),
         refreshMachineStats(),
       ]);
+      setIsFilterResetting(false);
     } else {
       setRefreshTrigger(prev => prev + 1);
     }
   };
 
-  // ============================================================================
-  // Effects
-  // ============================================================================
+  // Sync sort state from Status changes
   useEffect(() => {
-    if (activeSection === 'cabinets') {
-      fetchChartData();
-      // Load cabinets on mount and when section changes to cabinets
-      if (activeMetricsFilter) {
-        void loadCabinets(1, ITEMS_PER_BATCH);
-      }
+    if (selectedStatus === 'OfflineLongest') {
+      setSortOption('offlineTime');
+      setSortOrder('desc');
+      setCurrentPage(0);
+    } else if (selectedStatus === 'OfflineShortest') {
+      setSortOption('offlineTime');
+      setSortOrder('asc');
+      setCurrentPage(0);
     }
-  }, [activeSection, activeMetricsFilter, fetchChartData, loadCabinets]);
+  }, [selectedStatus]);
 
-  // Trigger refetch when filters change
-  useEffect(() => {
-    if (activeSection === 'cabinets' && activeMetricsFilter) {
-      if (activeMetricsFilter === 'Custom' && (!customDateRange?.startDate || !customDateRange?.endDate)) {
-        return;
-      }
-      void loadCabinets(1, ITEMS_PER_BATCH);
-      void fetchChartData(); 
-    }
-  }, [selectedStatus, selectedLocation, selectedGameType, activeSection, activeMetricsFilter, customDateRange, loadCabinets, fetchChartData]);
-
-  // Reset to first page when ANY filter changes
+  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(0);
-  }, [selectedStatus, selectedLocation, selectedGameType, activeMetricsFilter, customDateRange, setCurrentPage]);
+    setLoadedBatches(new Set());
+  }, [selectedLocation, selectedGameType, searchTerm, selectedLicensee, activeMetricsFilter, customDateRange, sortOption, sortOrder, displayCurrency]);
 
-  // Batch loading effect
-  useEffect(() => {
-    if (loading || !activeMetricsFilter || searchTerm.trim()) return;
-
-    const currentBatch = calculateBatchNumber(currentPage);
-    const isLastPageOfBatch = (currentPage + 1) % PAGES_PER_BATCH === 0;
-    const nextBatch = currentBatch + 1;
-
-    // Fetch next batch if we're on the last page of the current batch and it's not loaded,
-    // or if the current batch itself isn't loaded (e.g., jumping pages)
-    if ((isLastPageOfBatch && !loadedBatches.has(nextBatch)) || !loadedBatches.has(currentBatch)) {
-      const batchToLoad = isLastPageOfBatch ? nextBatch : currentBatch;
-      loadCabinets(batchToLoad, ITEMS_PER_BATCH);
-      setLoadedBatches(prev => new Set([...prev, batchToLoad]));
-    }
-  }, [currentPage, loading, activeMetricsFilter, searchTerm, loadedBatches, loadCabinets, calculateBatchNumber]);
-  
-  useEffect(() => {
-    if (!searchTerm.trim()) {
-      if (allCabinets.length > 0) {
-        setAccumulatedCabinets(prev => {
-          if (prev.length === 0) {
-            return allCabinets;
-          }
-          const existingIds = new Set(prev.map(c => c._id));
-          const newCabs = allCabinets.filter(c => !existingIds.has(c._id));
-          return [...prev, ...newCabs];
-        });
-        
-        // Update loaded batches if it was empty (initial load scenario)
-        setLoadedBatches(prev => {
-          if (prev.size === 0) return new Set([1]);
-          return prev;
-        });
-      } else {
-        setAccumulatedCabinets([]);
-        // If we get empty data, mark the current batch as loaded so we don't infinitely retry
-        const currentBatch = calculateBatchNumber(currentPage);
-        setLoadedBatches(prev => new Set([...prev, currentBatch]));
-      }
-      setIsFilterResetting(false);
-    }
-  }, [allCabinets, searchTerm]);
-
-  // NOTE: accumulatedCabinets is cleared inside the wrapped setters below
-  // This ensures the loading state and data clear happen in the same React batch
-
-  // Wrapped setters that set isFilterResetting and clear data SYNCHRONOUSLY in the same batch
-  // This ensures React sees both updates together and renders with loading=true AND empty data
+  // Wrapped setters
   const handleSetSelectedStatus = useCallback((status: string) => {
     setIsFilterResetting(true);
-    setLoadedBatches(new Set()); // Reset loaded batches to allow fresh fetch
-    setAccumulatedCabinets([]);
-    setCurrentPage(0); // Reset to first page when filter changes
     setSelectedStatus(status);
-  }, [setCurrentPage]);
+    setCurrentPage(0);
+  }, []);
 
   const handleSetSelectedLocation = useCallback((location: string | string[]) => {
-    console.warn('[useCabinetsPageData] handleSetSelectedLocation called with:', location);
     setIsFilterResetting(true);
-    setLoadedBatches(new Set()); // Reset loaded batches to allow fresh fetch
-    setAccumulatedCabinets([]);
-    setCurrentPage(0); // Reset to first page when filter changes
     const locationArray = Array.isArray(location) ? location : [location];
-    console.warn('[useCabinetsPageData] Setting selectedLocation to:', locationArray);
     setSelectedLocation(locationArray);
-  }, [setCurrentPage]);
+    setCurrentPage(0);
+  }, []);
 
   const handleSetSelectedGameType = useCallback((gameType: string | string[]) => {
-    // Note: We don't necessarily need to reset accumulated cabinets for game type 
-    // if it's a frontend filter, but with multi-select it's better to fetch fresh
     setIsFilterResetting(true);
-    setLoadedBatches(new Set()); // Reset loaded batches to allow fresh fetch
-    setAccumulatedCabinets([]);
-    setCurrentPage(0); // Reset to first page when filter changes
     const gameTypeArray = Array.isArray(gameType) ? gameType : [gameType];
     setSelectedGameType(gameTypeArray);
-  }, [setCurrentPage]);
+    setCurrentPage(0);
+  }, []);
 
-  // isFilterResetting is cleared in the effect above when new data arrives
-  // This is more reliable than depending on loading state timing
+  const handleSetSearchTerm = useCallback((term: string) => {
+    if (term.trim() !== searchTerm.trim()) {
+      setIsFilterResetting(true);
+      setSearchTerm(term);
+      setCurrentPage(0);
+    }
+  }, [searchTerm]);
+
+  const [isNewMovementOpen, setIsNewMovementOpen] = useState(false);
+  const [isUploadSmibOpen, setIsUploadSmibOpen] = useState(false);
+
+  // Consolidated data fetch effect
+  useEffect(() => {
+    if (activeSection === 'cabinets' && activeMetricsFilter) {
+      if (
+        activeMetricsFilter === 'Custom' &&
+        (!customDateRange?.startDate || !customDateRange?.endDate)
+      ) {
+        return;
+      }
+
+      const currentBatch = calculateBatchNumber(currentPage);
+
+      // Fetch next batch if needed
+      if (!loadedBatches.has(currentBatch)) {
+        console.warn(`[useCabinetsPageData] Fetching batch ${currentBatch} for page ${currentPage + 1}`);
+        setLoadedBatches(prev => new Set([...prev, currentBatch]));
+        void loadCabinets(currentBatch, ITEMS_PER_BATCH, sortOption, sortOrder);
+      }
+
+      void fetchChartData();
+    }
+  }, [
+    currentPage,
+    sortOption,
+    sortOrder,
+    selectedStatus,
+    selectedLocation,
+    selectedGameType,
+    activeSection,
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicensee,
+    loadCabinets,
+    fetchChartData,
+    debouncedSearchTerm,
+    loadedBatches,
+    calculateBatchNumber,
+  ]);
+
+  // isFilterResetting is cleared when data arrives
+  useEffect(() => {
+    if (!loading && isFilterResetting) {
+      setIsFilterResetting(false);
+    }
+  }, [loading, isFilterResetting]);
 
   return {
     activeSection,
-    loading: loading || initialLoading || isFilterResetting,
+    loading: loading || initialLoading || isFilterResetting || isDataMissingForPage,
     refreshing: loading || machineStatsLoading || loadingChart || isFilterResetting,
     error,
     locations,
@@ -382,10 +380,8 @@ export function useCabinetsPageData() {
     metricsTotalsLoading,
     machineStats,
     paginatedCabinets,
-    allCabinets: accumulatedCabinets,
-    filteredCabinets: searchTerm.trim()
-      ? filteredCabinets
-      : accumulatedCabinets,
+    allCabinets: filteredCabinets,
+    filteredCabinets: filteredCabinets,
     initialLoading,
     currentPage,
     sortOption,
@@ -401,9 +397,10 @@ export function useCabinetsPageData() {
     totalCount,
     chartData,
     loadingChart,
+    totalPages: effectiveTotalPages,
     // Setters & Handlers
     setActiveSection,
-    setSearchTerm,
+    setSearchTerm: handleSetSearchTerm,
     setSelectedLocation: handleSetSelectedLocation,
     setSelectedGameType: handleSetSelectedGameType,
     setSelectedStatus: handleSetSelectedStatus,

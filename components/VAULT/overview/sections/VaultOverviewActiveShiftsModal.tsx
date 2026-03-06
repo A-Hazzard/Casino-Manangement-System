@@ -28,7 +28,7 @@ interface VaultOverviewActiveShiftsModalProps {
   activeShifts: CashDesk[];
   pendingShifts: UnbalancedShiftInfo[];
   onReviewShift: (shiftId: string) => void;
-  onForceCloseShift: (cashier: any) => void;
+  onForceCloseShift: (cashier: CashDesk) => void;
   isBlurred?: boolean;
 }
 

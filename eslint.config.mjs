@@ -41,6 +41,7 @@ const eslintConfig = [
         },
       ],
       'prefer-const': 'error',
+      '@typescript-eslint/no-explicit-any': 'error',
       'no-console': 'off',
     },
   },

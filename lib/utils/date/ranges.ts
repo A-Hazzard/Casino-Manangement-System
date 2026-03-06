@@ -11,8 +11,7 @@
  * - Date range type definitions
  */
 
-import type { CustomDate } from '@/shared/types/common';
-import type { TimePeriod } from '@/shared/types/common';
+import type { CustomDate, TimePeriod } from '@/shared/types/common';
 
 // ============================================================================
 // Types
@@ -27,7 +26,7 @@ export type DateRange = {
   end?: Date;
   from?: Date;
   to?: Date;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 // ============================================================================

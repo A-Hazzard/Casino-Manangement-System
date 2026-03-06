@@ -785,11 +785,13 @@ export default function AdministrationFeedbackManagement() {
 
           {/* Pagination Controls */}
           {!loading && feedback.length > 0 && (
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              setCurrentPage={setCurrentPage}
-            />
+            <div className="mt-8 flex justify-center pb-4">
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                setCurrentPage={setCurrentPage}
+              />
+            </div>
           )}
         </>
       )}

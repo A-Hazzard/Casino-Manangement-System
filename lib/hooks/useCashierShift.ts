@@ -10,15 +10,31 @@
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import { isShiftStale } from '@/lib/utils/vault/shift';
 import type {
-    CashierShift,
-    CloseCashierShiftRequest,
-    CloseCashierShiftResponse,
-    Denomination,
-    OpenCashierShiftRequest
+  CashierShift,
+  CloseCashierShiftRequest,
+  CloseCashierShiftResponse,
+  Denomination,
+  OpenCashierShiftRequest,
 } from '@/shared/types/vault';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './useAuth';
+
+// Locally-typed shapes matching what the API sends back
+type PendingVmApproval = {
+  _id: string;
+  type?: string;
+  requestNotes?: string;
+  approvedAmount?: number;
+  approvedDenominations?: import('@/shared/types/vault').Denomination[];
+  requestedDenominations?: import('@/shared/types/vault').Denomination[];
+};
+
+type PendingFloatRequest = {
+  _id: string;
+  type?: string;
+  requestedAmount?: number;
+};
 
 export function useCashierShift() {
   const { user } = useAuth();
@@ -29,8 +45,8 @@ export function useCashierShift() {
   const [status, setStatus] = useState<CashierShift['status'] | 'idle' | 'loading'>('loading');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [pendingVmApproval, setPendingVmApproval] = useState<any | null>(null);
-  const [pendingRequest, setPendingRequest] = useState<any | null>(null);
+  const [pendingVmApproval, setPendingVmApproval] = useState<PendingVmApproval | null>(null);
+  const [pendingRequest, setPendingRequest] = useState<PendingFloatRequest | null>(null);
 
   const [isStaleFromApi, setIsStaleFromApi] = useState<boolean>(false);
 
@@ -42,7 +58,7 @@ export function useCashierShift() {
     try {
       if (!isSilent) setLoading(true);
       else setRefreshing(true);
-      
+
       const res = await fetch('/api/cashier/shift/current');
       if (res.ok) {
         const data = await res.json();
@@ -55,8 +71,8 @@ export function useCashierShift() {
             setShift(null);
             setStatus('idle');
           }
-          setPendingVmApproval(data.pendingVmApproval || null);
-          setPendingRequest(data.pendingRequest || null);
+          setPendingVmApproval((data.pendingVmApproval as PendingVmApproval) || null);
+          setPendingRequest((data.pendingRequest as PendingFloatRequest) || null);
           setHasActiveVaultShift(data.hasActiveVaultShift || false);
           setIsVaultReconciled(data.isVaultReconciled || false);
           setIsStaleFromApi(data.isStale || false);
@@ -90,7 +106,7 @@ export function useCashierShift() {
 
     const interval = setInterval(() => {
       fetchCurrentShift(true);
-    }, DEFAULT_POLL_INTERVAL); 
+    }, DEFAULT_POLL_INTERVAL);
 
     return () => clearInterval(interval);
   }, [user, status, isVaultReconciled, fetchCurrentShift]);
@@ -118,7 +134,7 @@ export function useCashierShift() {
       const data = await res.json();
       if (data.success) {
         toast.success(data.message);
-        fetchCurrentShift(); 
+        fetchCurrentShift();
         return true;
       } else {
         toast.error(data.error || 'Failed to open shift');
@@ -148,7 +164,7 @@ export function useCashierShift() {
       });
 
       const data: CloseCashierShiftResponse = await res.json();
-      
+
       if (data.success) {
         if (data.status === 'closed') {
           toast.success(data.message);

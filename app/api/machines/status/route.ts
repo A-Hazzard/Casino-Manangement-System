@@ -13,8 +13,8 @@
  */
 
 import {
-    getUserAccessibleLicenseesFromToken,
-    getUserLocationFilter,
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -48,6 +48,8 @@ export async function GET(req: NextRequest) {
     const locationId = searchParams.get('locationId');
     const machineTypeFilter = searchParams.get('machineTypeFilter');
     const search = searchParams.get('search')?.trim();
+    const onlineStatus = searchParams.get('onlineStatus');
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -103,29 +105,29 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 5: Query machines and calculate online/offline status with filters
     // ============================================================================
-    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
     // Build aggregation pipeline to join machines with locations for filtering
     const aggregationPipeline: PipelineStage[] = [
       {
         $match: {
-          deletedAt: { $in: [null, new Date(-1)] },
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
+          ],
         },
       },
       {
         $lookup: {
           from: 'gaminglocations',
-          localField: 'gamingLocation',
-          foreignField: '_id',
+          let: { locId: '$gamingLocation' },
           pipeline: [
             {
               $match: {
-                $or: [
-                  { deletedAt: null },
-                  { deletedAt: { $lt: new Date('2025-01-01') } },
-                ],
-              },
-            },
+                $expr: {
+                  $eq: [{ $toString: '$_id' }, { $ifNull: [{ $toString: '$$locId' }, ''] }]
+                }
+              }
+            }
           ],
           as: 'locationDetails',
         },
@@ -135,17 +137,30 @@ export async function GET(req: NextRequest) {
       },
     ];
 
-    // Apply search filter (Location Name or ID)
+    // Apply search filter (Location Name or ID AND Machine fields)
     if (search) {
       const isObjectIdFormat = /^[0-9a-fA-F]{24}$/.test(search);
+      const searchRegex = { $regex: search, $options: 'i' };
       const searchConditions: Record<string, unknown>[] = [
-        { 'locationDetails.name': { $regex: search, $options: 'i' } },
+        { 'locationDetails.name': searchRegex },
+        { serialNumber: searchRegex },
+        { relayId: searchRegex },
+        { smibBoard: searchRegex },
+        { 'custom.name': searchRegex },
+        { 'Custom.name': searchRegex }
       ];
 
       if (isObjectIdFormat) {
         searchConditions.push({ 'locationDetails._id': search });
+        // Attempt to match machine _id if it's an ObjectId
+        try {
+          const { ObjectId } = require('mongodb');
+          searchConditions.push({ _id: new ObjectId(search) });
+        } catch {
+          // ignore error
+        }
       } else {
-         searchConditions.push({ 'locationDetails._id': { $regex: search, $options: 'i' } });
+        searchConditions.push({ 'locationDetails._id': searchRegex });
       }
 
       aggregationPipeline.push({
@@ -159,120 +174,85 @@ export async function GET(req: NextRequest) {
     if (effectiveLicensee) {
       aggregationPipeline.push({
         $match: {
-          'locationDetails.rel.licensee': effectiveLicensee,
+          $or: [
+            { 'locationDetails.rel.licensee': effectiveLicensee },
+            { 'locationDetails.rel.licencee': effectiveLicensee }
+          ]
         },
       });
     }
 
     if (locationId) {
-      // Handle comma-separated location IDs (multiple locations)
       const locationIds = locationId.split(',').filter(id => id.trim() !== '');
-
-      // Validate that user has access to all locations
       if (allowedLocationIds !== 'all') {
         if (!Array.isArray(allowedLocationIds)) {
-          return NextResponse.json({
-            totalMachines: 0,
-            onlineMachines: 0,
-            offlineMachines: 0,
-            criticalOffline: 0,
-            recentOffline: 0,
-          });
+          return NextResponse.json({ totalMachines: 0, onlineMachines: 0, offlineMachines: 0 });
         }
-        const hasAccess = locationIds.every(id =>
-          allowedLocationIds.includes(id)
-        );
-        if (!hasAccess) {
-          // User doesn't have access to one or more locations
-          return NextResponse.json({
-            totalMachines: 0,
-            onlineMachines: 0,
-            offlineMachines: 0,
-            criticalOffline: 0,
-            recentOffline: 0,
-          });
-        }
+        const hasAccess = locationIds.every(id => allowedLocationIds.includes(id));
+        if (!hasAccess) return NextResponse.json({ totalMachines: 0, onlineMachines: 0, offlineMachines: 0 });
       }
-
-      // Filter by location(s)
       if (locationIds.length > 0) {
         aggregationPipeline.push({
-          $match: {
-            gamingLocation:
-              locationIds.length === 1 ? locationIds[0] : { $in: locationIds },
-          },
+          $match: { gamingLocation: locationIds.length === 1 ? locationIds[0] : { $in: locationIds } },
         });
       }
-    } else if (allowedLocationIds !== 'all' && !locationId) {
-      // No specific location, filter by user's accessible locations
-      if (
-        !Array.isArray(allowedLocationIds) ||
-        allowedLocationIds.length === 0
-      ) {
-        // No accessible locations
-        return NextResponse.json({
-          totalMachines: 0,
-          onlineMachines: 0,
-          offlineMachines: 0,
-        });
+    } else if (allowedLocationIds !== 'all') {
+      if (!Array.isArray(allowedLocationIds) || allowedLocationIds.length === 0) {
+        return NextResponse.json({ totalMachines: 0, onlineMachines: 0, offlineMachines: 0 });
       }
-      aggregationPipeline.push({
-        $match: { gamingLocation: { $in: allowedLocationIds } },
-      });
+      aggregationPipeline.push({ $match: { gamingLocation: { $in: allowedLocationIds } } });
     }
 
-    // Apply machine type filters (SMIB, No SMIB, Local Server, Membership)
+    // Apply machine type filters
     if (machineTypeFilter) {
       const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
       const filterConditions: Record<string, unknown>[] = [];
-
       filters.forEach(filter => {
         switch (filter.trim()) {
           case 'LocalServersOnly':
-            filterConditions.push({
-              $and: [
-                { locationDetails: { $ne: null } },
-                { 'locationDetails.isLocalServer': true },
-              ],
-            });
+            filterConditions.push({ 'locationDetails.isLocalServer': true });
             break;
           case 'SMIBLocationsOnly':
-            filterConditions.push({
-              $and: [
-                { locationDetails: { $ne: null } },
-                { 'locationDetails.noSMIBLocation': { $ne: true } },
-              ],
-            });
+            filterConditions.push({ 'locationDetails.noSMIBLocation': { $ne: true } });
             break;
           case 'NoSMIBLocation':
-            filterConditions.push({
-              $and: [
-                { locationDetails: { $ne: null } },
-                { 'locationDetails.noSMIBLocation': true },
-              ],
-            });
+            filterConditions.push({ 'locationDetails.noSMIBLocation': true });
             break;
           case 'MembershipOnly':
-            // Check both membershipEnabled and enableMembership fields for compatibility
-            filterConditions.push({
-              $and: [
-                { locationDetails: { $ne: null } },
-                {
-                  $or: [
-                    { 'locationDetails.membershipEnabled': true },
-                    { 'locationDetails.enableMembership': true },
-                  ],
-                },
-              ],
-            });
+            filterConditions.push({ $or: [{ 'locationDetails.membershipEnabled': true }, { 'locationDetails.enableMembership': true }] });
             break;
         }
       });
-
-      // Apply OR logic - location must match ANY of the selected filters
-      // This allows users to see locations that match any combination of filters
       if (filterConditions.length > 0) {
         aggregationPipeline.push({ $match: { $or: filterConditions } });
+      }
+    }
+
+    // Apply online/offline status filter
+    if (onlineStatus && onlineStatus !== 'all') {
+      if (onlineStatus === 'online') {
+        aggregationPipeline.push({
+          $match: {
+            $and: [
+              { lastActivity: { $exists: true, $ne: null } },
+              { $expr: { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] } }
+            ]
+          },
+        });
+      } else if (onlineStatus === 'offline') {
+        aggregationPipeline.push({
+          $match: {
+            $or: [
+              { lastActivity: { $exists: false } },
+              { lastActivity: null },
+              { $expr: { $lt: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] } }
+            ],
+          },
+        });
+      } else if (onlineStatus === 'never-online' || onlineStatus === 'neveronline') {
+        aggregationPipeline.push({
+          $match: { $or: [{ lastActivity: { $exists: false } }, { lastActivity: null }] },
+        });
       }
     }
 
@@ -282,18 +262,11 @@ export async function GET(req: NextRequest) {
       const types = gameType.split(',').filter(t => t.trim() !== '' && t !== 'all');
       if (types.length > 0) {
         aggregationPipeline.push({
-          $match: {
-            $or: [
-              { game: { $in: types } },
-              { installedGame: { $in: types } }
-            ]
-          }
+          $match: { $or: [{ game: { $in: types } }, { installedGame: { $in: types } }] }
         });
       }
     }
 
-    // Get total machines count (ALL machines, including those without lastActivity)
-    // Single result aggregation - use exec() for efficiency
     const totalCountResult = await Machine.aggregate([
       ...aggregationPipeline,
       { $count: 'total' },
@@ -307,10 +280,10 @@ export async function GET(req: NextRequest) {
       ...aggregationPipeline,
       {
         $match: {
-          lastActivity: {
-            $exists: true,
-            $gte: threeMinutesAgo,
-          },
+          $and: [
+            { lastActivity: { $exists: true, $ne: null } },
+            { $expr: { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] } }
+          ],
         },
       },
       { $count: 'total' },
@@ -332,7 +305,8 @@ export async function GET(req: NextRequest) {
         $match: {
           $or: [
             { lastActivity: { $exists: false } },
-            { lastActivity: { $lt: twentyFourHoursAgo } },
+            { lastActivity: null },
+            { $expr: { $lt: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, twentyFourHoursAgo] } }
           ],
         },
       },
@@ -346,16 +320,57 @@ export async function GET(req: NextRequest) {
       ...aggregationPipeline,
       {
         $match: {
-          lastActivity: {
-            $exists: true,
-            $gte: fourHoursAgo,
-            $lt: threeMinutesAgo,
-          },
+          $and: [
+            { lastActivity: { $exists: true, $ne: null } },
+            {
+              $expr: {
+                $and: [
+                  { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, fourHoursAgo] },
+                  { $lt: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] }
+                ]
+              }
+            }
+          ],
         },
       },
       { $count: 'total' },
     ]).exec();
     const recentOffline = recentOfflineResult[0]?.total || 0;
+
+    // Calculate location-level stats
+    const locationStatusResult = await Machine.aggregate([
+      ...aggregationPipeline,
+      {
+        $group: {
+          _id: '$gamingLocation',
+          isOnline: {
+            $max: {
+              $cond: [
+                {
+                  $and: [
+                    { $gt: ['$lastActivity', null] },
+                    { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalLocations: { $sum: 1 },
+          onlineLocations: { $sum: '$isOnline' }
+        }
+      }
+    ]).exec();
+
+    const totalLocations = locationStatusResult[0]?.totalLocations || 0;
+    const onlineLocations = locationStatusResult[0]?.onlineLocations || 0;
+    const offlineLocations = totalLocations - onlineLocations;
 
     // ============================================================================
     // STEP 6: Return machine status counts
@@ -373,6 +388,9 @@ export async function GET(req: NextRequest) {
       offlineMachines: offlineCount,
       criticalOffline,
       recentOffline,
+      totalLocations,
+      onlineLocations,
+      offlineLocations,
     });
   } catch (err) {
     const duration = Date.now() - startTime;

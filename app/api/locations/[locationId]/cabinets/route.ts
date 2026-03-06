@@ -11,6 +11,7 @@
  * @module app/api/locations/[locationId]/cabinets/route
  */
 
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -62,7 +63,23 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3: Verify location exists and is not deleted
+    // STEP 3: Authenticate and authorize the request
+    // ============================================================================
+    const currentUser = await getUserFromServer();
+    if (!currentUser) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const userRoles = (currentUser.roles as string[]) ?? [];
+    const canCreate = ['developer', 'admin', 'technician'].some(r => userRoles.includes(r));
+    if (!canCreate) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: insufficient permissions to create a cabinet' },
+        { status: 403 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 4: Verify location exists and is not deleted
     // ============================================================================
     const location = await GamingLocations.findOne({
       _id: locationId,
@@ -79,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Parse request body
+    // STEP 5: Parse request body
     // ============================================================================
     const data = (await request.json()) as NewMachineData;
 
@@ -87,14 +104,16 @@ export async function POST(request: NextRequest) {
     data.gamingLocation = locationId;
 
     // ============================================================================
-    // STEP 5: Generate machine ID
+    // STEP 6: Generate machine ID
     // ============================================================================
     // Generate a proper MongoDB ObjectId-style hex string for the machine
     const machineId = await generateMongoId();
 
     // ============================================================================
-    // STEP 6: Create machine document with all required fields
+    // STEP 7: Create machine document with all required fields
     // ============================================================================
+
+    const smibValue = data.smibBoard || data.relayId || data.smbId || '';
 
     // Create the new machine
     const newMachine = new Machine({
@@ -130,7 +149,7 @@ export async function POST(request: NextRequest) {
       cabinetType: data.cabinetType,
       assetStatus: data.assetStatus,
       gamingLocation: locationId, // Ensure location ID is set
-      relayId: data.smibBoard,
+      relayId: smibValue,
       collectionTime: data.collectionSettings?.lastCollectionTime,
       previousCollectionTime: null, // Default to null for new machines
       collectionMeters: {
@@ -164,7 +183,7 @@ export async function POST(request: NextRequest) {
       machineId: '',
       gamingBoard: '',
       manuf: data.manufacturer || '',
-      smibBoard: data.smibBoard,
+      smibBoard: smibValue,
       smibVersion: { firmware: '', version: '' },
       smibConfig: {
         mqtt: {
@@ -253,12 +272,12 @@ export async function POST(request: NextRequest) {
     });
 
     // ============================================================================
-    // STEP 7: Save machine to database
+    // STEP 8: Save machine to database
     // ============================================================================
     await newMachine.save();
 
     // ============================================================================
-    // STEP 8: Return created machine
+    // STEP 9: Return created machine
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {

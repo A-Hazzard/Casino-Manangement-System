@@ -66,14 +66,26 @@ export type MovementRequest = {
   approvedBySecond?: string;
   /** Soft deletion timestamp */
   deletedAt?: Date;
+  /** ID of source location */
+  locationFromId?: string;
+  /** ID of destination location */
+  locationToId?: string;
+  /** Array of selected machine IDs */
+  selectedMachines?: string[];
+  /** Name of the recipient (aggregated) */
+  recipientName?: string;
+  /** Name of the creator (aggregated) */
+  creatorName?: string;
+  /** Machine details (aggregated) */
+  machineDetails?: Array<{
+    _id: string;
+    serialNumber?: string;
+    displayName: string;
+  }>;
 };
 
 /**
  * Status values for a movement request.
  */
-export type MovementRequestStatus =
-  | 'pending'
-  | 'approved'
-  | 'rejected'
-  | 'in progress';
+export type MovementRequestStatus = 'pending' | 'completed';
 

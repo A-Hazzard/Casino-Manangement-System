@@ -14,23 +14,23 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getUserFromServer();
     if (!session || !session._id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
+
 
     const { userId, notificationId } = await req.json();
 
     if (!userId) return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
 
     await connectDB();
-    
+
     // 1. Verify acting user is a VM or higher
     const actor = await UserModel.findOne({ _id: session._id });
     if (!actor) return NextResponse.json({ error: 'Actor not found' }, { status: 404 });
-    
+
     const actorRoles = Array.isArray(actor.roles) ? actor.roles : [];
     const isVM = actorRoles.some((r: string) => ['vault-manager', 'admin', 'developer'].includes(r.toLowerCase()));
-    
+
     if (!isVM) return NextResponse.json({ error: 'Not authorized to reset 2FA' }, { status: 403 });
-    
+
     // 2. Perform reset
     const user = await UserModel.findOne({ _id: userId });
     if (!user) return NextResponse.json({ error: 'Target user not found' }, { status: 404 });
@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json({ success: true, message: '2FA has been reset for the user' });
-  } catch (error: any) {
-    console.error('TOTP Reset Error:', error);
+  } catch (error: unknown) {
+    console.error('TOTP Reset Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

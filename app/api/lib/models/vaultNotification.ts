@@ -53,8 +53,8 @@ export interface IVaultNotification {
     requestedAmount?: number;
     requestType?: 'increase' | 'decrease';
     discrepancyAmount?: number;
-    requestedDenominations?: any[];
-    [key: string]: any;
+    requestedDenominations?: unknown[];
+    [key: string]: unknown;
   };
 
   // Status

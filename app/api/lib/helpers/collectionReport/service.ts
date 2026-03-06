@@ -103,12 +103,15 @@ export async function getAllCollectionReportsWithMachineCounts(
     // Apply licensee filter only if provided
     ...(licenseeId
       ? [
-          {
-            $match: {
-              'locationDetails.rel.licensee': licenseeId,
-            },
+        {
+          $match: {
+            $or: [
+              { 'locationDetails.rel.licensee': licenseeId },
+              { 'locationDetails.rel.licencee': licenseeId },
+            ],
           },
-        ]
+        },
+      ]
       : []),
     { $sort: { timestamp: -1 } },
   ];
@@ -272,10 +275,10 @@ export async function getAllCollectionReportsWithMachineCounts(
     const collectorUserId = (doc.collector as string) || '';
     const collectorDetails = doc.collectorDetails as
       | {
-          username?: string;
-          profile?: { firstName?: string; lastName?: string };
-          emailAddress?: string;
-        }
+        username?: string;
+        profile?: { firstName?: string; lastName?: string };
+        emailAddress?: string;
+      }
       | undefined;
 
     // Compute display name with priority: username → firstName → emailAddress → collectorName
@@ -320,18 +323,18 @@ export async function getAllCollectionReportsWithMachineCounts(
     // Prepare tooltip data: firstName, lastName, ID, email
     const collectorTooltipData = collectorDetails
       ? {
-          firstName: collectorDetails.profile?.firstName || undefined,
-          lastName: collectorDetails.profile?.lastName || undefined,
-          id: collectorUserId || undefined,
-          email: collectorDetails.emailAddress || undefined,
-        }
+        firstName: collectorDetails.profile?.firstName || undefined,
+        lastName: collectorDetails.profile?.lastName || undefined,
+        id: collectorUserId || undefined,
+        email: collectorDetails.emailAddress || undefined,
+      }
       : collectorUserId
         ? {
-            firstName: undefined,
-            lastName: undefined,
-            id: collectorUserId,
-            email: undefined,
-          }
+          firstName: undefined,
+          lastName: undefined,
+          id: collectorUserId,
+          email: undefined,
+        }
         : undefined;
 
     const result = {
@@ -360,8 +363,8 @@ export async function getAllCollectionReportsWithMachineCounts(
             typeof ts === 'string' || ts instanceof Date
               ? new Date(ts)
               : typeof ts === 'object' &&
-                  '$date' in ts &&
-                  typeof ts.$date === 'string'
+                '$date' in ts &&
+                typeof ts.$date === 'string'
                 ? new Date(ts.$date)
                 : null;
 

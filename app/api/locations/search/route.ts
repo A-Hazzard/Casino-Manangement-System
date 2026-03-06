@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       if (!locationMatch.$and) {
         locationMatch.$and = [];
       }
-      (locationMatch.$and as any[]).push({
+      (locationMatch.$and as unknown[]).push({
         $or: [
           { 'rel.licensee': licensee },
           { 'rel.licencee': licensee },
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     const { searchParams: searchParamsFromRequest } = new URL(request.url);
     const startDate = new Date(
       searchParamsFromRequest.get('startDate') ??
-        Date.now() - 30 * 24 * 60 * 60 * 1000
+      Date.now() - 30 * 24 * 60 * 60 * 1000
     );
     const endDate = new Date(
       searchParamsFromRequest.get('endDate') ?? Date.now()
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
       readAt: { $gte: startDate, $lte: endDate },
     };
     if (licensee) {
-      (matchStage as any).$or = [
+      (matchStage as Record<string, unknown>).$or = [
         { 'rel.licensee': licensee },
         { 'rel.licencee': licensee },
       ];
@@ -143,8 +143,8 @@ export async function GET(request: NextRequest) {
       // Note: locationMatch already includes deletion status, search, and licensee filters
       { $match: locationMatch },
       // Stage 5: Group by location to calculate financial metrics and machine stats
-            {
-              $group: {
+      {
+        $group: {
           _id: '$locationDetails._id',
           // Location fields
           name: { $first: '$locationDetails.name' },
@@ -163,22 +163,22 @@ export async function GET(request: NextRequest) {
           machineIds: { $addToSet: '$machineDetails._id' },
           onlineMachineIds: {
             $addToSet: {
-                    $cond: [
-                      {
+              $cond: [
+                {
                   $and: [
                     { $ne: ['$machineDetails.lastActivity', null] },
                     {
                       $gte: ['$machineDetails.lastActivity', threeMinutesAgo],
                     },
-                        ],
-                      },
+                  ],
+                },
                 '$machineDetails._id',
                 '$$REMOVE',
-                    ],
-                  },
-                },
-              },
+              ],
             },
+          },
+        },
+      },
       // Stage 6: Calculate derived fields
       {
         $addFields: {
@@ -222,13 +222,13 @@ export async function GET(request: NextRequest) {
     // STEP 7: Return search results
     // ============================================================================
     const response = locations.map(loc => ({
-        _id: loc._id,
-        locationName: loc.name,
-        country: loc.country,
-        address: loc.address,
-        rel: loc.rel,
-        profitShare: loc.profitShare,
-        geoCoords: loc.geoCoords,
+      _id: loc._id,
+      locationName: loc.name,
+      country: loc.country,
+      address: loc.address,
+      rel: loc.rel,
+      profitShare: loc.profitShare,
+      geoCoords: loc.geoCoords,
       totalMachines: loc.totalMachines || 0,
       onlineMachines: loc.onlineMachines || 0,
       moneyIn: (loc as { moneyIn?: number }).moneyIn || 0,

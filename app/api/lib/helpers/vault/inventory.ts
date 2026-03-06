@@ -9,7 +9,7 @@ import { Denomination, VaultShift } from '@/shared/types/vault';
  * @param isAddition True if adding to vault, False if removing
  */
 export async function updateVaultShiftInventory(
-  vaultShift: VaultShift & { save: () => Promise<any> },
+  vaultShift: VaultShift & { save: () => Promise<unknown> },
   amount: number,
   denominations: Denomination[],
   isAddition: boolean
@@ -25,7 +25,7 @@ export async function updateVaultShiftInventory(
       : vaultShift.openingDenominations;
 
   const inventoryMap = new Map<number, number>();
-  
+
   // Initialize map with current inventory
   currentInventory.forEach((d: Denomination) => {
     inventoryMap.set(d.denomination, d.quantity);
@@ -52,7 +52,7 @@ export async function updateVaultShiftInventory(
 
   vaultShift.updatedAt = new Date();
   await vaultShift.save();
-  
+
   return vaultShift;
 }
 

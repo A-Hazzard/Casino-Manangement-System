@@ -1,4 +1,5 @@
 import { convertCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
+import type { CurrencyCode } from '@/shared/types/currency';
 
 /**
  * Check if currency conversion should be applied based on licensee selection
@@ -33,8 +34,8 @@ const FINANCIAL_FIELDS = [
  */
 function convertFinancialFields<T extends Record<string, unknown>>(
   data: T,
-  fromCurrency: string,
-  toCurrency: string
+  fromCurrency: CurrencyCode,
+  toCurrency: CurrencyCode
 ): T {
   if (fromCurrency === toCurrency) {
     return data;
@@ -47,8 +48,8 @@ function convertFinancialFields<T extends Record<string, unknown>>(
     if (typeof value === 'number') {
       converted[field] = convertCurrency(
         value,
-        fromCurrency as never,
-        toCurrency as never
+        fromCurrency,
+        toCurrency
       );
     }
   }
@@ -66,7 +67,7 @@ function convertFinancialFields<T extends Record<string, unknown>>(
 export async function applyCurrencyConversionToMetrics<T>(
   data: T,
   licensee: string | null,
-  displayCurrency: string
+  displayCurrency: CurrencyCode
 ): Promise<T> {
   // No conversion needed if not in "All Licensee" mode
   if (!shouldApplyCurrencyConversion(licensee)) {
@@ -116,7 +117,11 @@ export async function applyCurrencyConversionToMetrics<T>(
  * @param searchParams - URLSearchParams object
  * @returns Currency code or 'USD' as default
  */
-export function getCurrencyFromQuery(searchParams: URLSearchParams): string {
-  return searchParams.get('currency') || 'USD';
+export function getCurrencyFromQuery(searchParams: URLSearchParams): CurrencyCode {
+  const currency = searchParams.get('currency');
+  const validCurrencies: CurrencyCode[] = ['USD', 'TTD', 'GYD', 'BBD'];
+  return validCurrencies.includes(currency as CurrencyCode)
+    ? (currency as CurrencyCode)
+    : 'USD';
 }
 

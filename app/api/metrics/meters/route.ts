@@ -14,8 +14,8 @@
 
 import { getUserAccessibleLicenseesFromToken } from '@/app/api/lib/helpers/licenseeFilter';
 import {
-    getMeterTrends,
-    validateCustomDateRange,
+  getMeterTrends,
+  validateCustomDateRange,
 } from '@/app/api/lib/helpers/trends/meters';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -114,19 +114,20 @@ export async function GET(req: NextRequest) {
     const displayCurrency =
       (params.currency as CurrencyCode | undefined) || 'USD';
     const granularity = params.granularity as 'hourly' | 'minute' | undefined;
-    
+
     // Parse filter parameters
     const locationIdParam = params.locationId;
-    const locationIds = locationIdParam 
-      ? locationIdParam.split(',').filter(id => id && id !== 'all' && id !== 'null') 
+    const locationIds = locationIdParam
+      ? locationIdParam.split(',').filter(id => id && id !== 'all' && id !== 'null')
       : undefined;
-      
+
     const gameTypeParam = params.gameType;
-    const gameTypes = gameTypeParam 
-      ? gameTypeParam.split(',').filter(type => type && type !== 'all' && type !== 'null') 
+    const gameTypes = gameTypeParam
+      ? gameTypeParam.split(',').filter(type => type && type !== 'all' && type !== 'null')
       : undefined;
-      
+
     const onlineStatus = params.onlineStatus;
+    const searchTerm = params.search;
 
     if (!timePeriod) {
       return NextResponse.json(
@@ -200,6 +201,7 @@ export async function GET(req: NextRequest) {
         locationIds,
         gameTypes,
         onlineStatus,
+        searchTerm,
       },
       accessibleLicensees,
       userRoles,

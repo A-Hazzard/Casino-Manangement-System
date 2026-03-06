@@ -10,17 +10,18 @@
  */
 
 import {
-    clearCache,
-    getCacheKey,
-    getCachedData,
-    setCachedData,
+  clearCache,
+  getCacheKey,
+  getCachedData,
+  setCachedData,
 } from '@/app/api/lib/helpers/cacheUtils';
+import { convertLocationCurrency } from '@/app/api/lib/helpers/currency/location';
 import {
-    getUserAccessibleLicenseesFromToken,
-    getUserLocationFilter,
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getLocationsWithMetrics } from '@/app/api/lib/helpers/locationAggregation';
-import { convertLocationCurrency } from '@/app/api/lib/helpers/currency/location';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licensee } from '@/app/api/lib/models/licensee';
@@ -30,7 +31,6 @@ import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion'
 import { LocationFilter } from '@/lib/types/location';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 
 /**
  * Main GET handler for location aggregation
@@ -68,6 +68,8 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limitParam = searchParams.get('limit');
     const limit = limitParam ? parseInt(limitParam) : 1000000;
+    const search = searchParams.get('search') || null;
+    const onlineStatus = searchParams.get('onlineStatus')?.toLowerCase() || 'all';
 
     // ============================================================================
     // STEP 2: Handle cache clearing if requested
@@ -282,6 +284,8 @@ export async function GET(req: NextRequest) {
       basicList,
       selectedLocations,
       currency: displayCurrency,
+      search,
+      onlineStatus,
       allowedLocationIds:
         allowedLocationIds === 'all'
           ? 'all'
@@ -313,7 +317,9 @@ export async function GET(req: NextRequest) {
       customStartDate,
       customEndDate,
       allowedLocationIds,
-      machineTypeFilter
+      machineTypeFilter,
+      search,
+      onlineStatus
     );
 
     // Filtering is now done at database level in getLocationsWithMetrics

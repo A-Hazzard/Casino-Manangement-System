@@ -12,17 +12,17 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-    calculateDateRangeForTimePeriod,
-    determineAllowedLocationIds,
-    fetchLocationsWithMachines,
-    getLocationNamesFromIds,
-    getMonthlyCollectionReportByLocation,
-    getMonthlyCollectionReportSummary,
+  calculateDateRangeForTimePeriod,
+  determineAllowedLocationIds,
+  fetchLocationsWithMachines,
+  getLocationNamesFromIds,
+  getMonthlyCollectionReportByLocation,
+  getMonthlyCollectionReportSummary,
 } from '@/app/api/lib/helpers/collectionReport/queries';
 import {
-    createCollectionReport,
-    sanitizeCollectionReportPayload,
-    validateCollectionReportPayload,
+  createCollectionReport,
+  sanitizeCollectionReportPayload,
+  validateCollectionReportPayload,
 } from '@/app/api/lib/helpers/collectionReport/reportCreation';
 import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReport/service';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
     const locationName = searchParams.get('locationName') || undefined;
     const locationId = searchParams.get('locationId') || undefined;
     const locationIds = searchParams.get('locationIds')?.split(',') || undefined;
-    
+
     const rawLicenseeParam =
       searchParams.get('licensee') || searchParams.get('licensee') || undefined;
     const licensee =
@@ -353,11 +353,9 @@ export async function POST(req: NextRequest) {
 
         await logActivity({
           action: 'CREATE',
-          details: `Created collection report for ${body.locationName} by ${
-            body.collector || 'Unknown'
-          } (${body.machines?.length || 0} machines, $${
-            body.amountCollected
-          } collected)`,
+          details: `Created collection report for ${body.locationName} by ${body.collector || 'Unknown'
+            } (${body.machines?.length || 0} machines, $${body.amountCollected
+            } collected)`,
           ipAddress: getClientIP(req) || undefined,
           userAgent: req.headers.get('user-agent') || undefined,
           userId,
@@ -370,7 +368,7 @@ export async function POST(req: NextRequest) {
             userRole: (currentUser.roles as string[])?.[0] || 'user',
             resource: 'collection-report',
             resourceId: result.report
-              ? String(result.report._id)
+              ? String((result.report as { _id: unknown })._id)
               : sanitizedBody.locationReportId,
             resourceName: `${body.locationName} - ${body.collector || 'Unknown'}`,
             changes: createChanges,

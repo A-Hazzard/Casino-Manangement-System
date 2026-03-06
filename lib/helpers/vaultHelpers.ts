@@ -9,19 +9,24 @@
 
 import type { NotificationItem } from '@/components/shared/ui/NotificationBell';
 import {
-    DEFAULT_CASHIER_FLOATS,
-    DEFAULT_VAULT_BALANCE,
+  DEFAULT_CASHIER_FLOATS,
+  DEFAULT_VAULT_BALANCE,
 } from '@/components/VAULT/overview/data/defaults';
 import type {
-    CashDesk,
-    CashierFloat,
-    CashierShift,
-    Denomination,
-    FloatRequest,
-    UnbalancedShiftInfo,
-    VaultBalance,
-    VaultMetrics,
-    VaultTransaction,
+  CashDesk,
+  Cashier,
+  CashierFloat,
+  CashierShift,
+  Denomination,
+  ExtendedVaultTransaction,
+  FloatRequest,
+  InterLocationTransfer,
+  SoftCount,
+  UnbalancedShiftInfo,
+  VaultBalance,
+  VaultMetrics,
+  VaultTransaction,
+  VaultTransfer,
 } from '@/shared/types/vault';
 
 // ============================================================================
@@ -151,7 +156,7 @@ export async function fetchVaultOverviewData(
             name: (shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId.substring(0, 4)}`) + (shift.status === 'pending_start' ? ' (Pending Start)' : ''),
             cashierName: shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId.substring(0, 4)}`,
             balance: shift.currentBalance ?? shift.openingBalance ?? 0,
-            denominations: shift.lastSyncedDenominations ?? shift.openingDenominations ?? [], 
+            denominations: shift.lastSyncedDenominations ?? shift.openingDenominations ?? [],
             lastAudit: new Date(shift.openedAt || shift.createdAt || new Date()).toISOString(),
             status: shift.status || 'active',
             openedAt: shift.openedAt,
@@ -197,13 +202,13 @@ export async function fetchVaultOverviewData(
 export async function fetchGlobalVaultOverviewData(
   licenseeId?: string
 ): Promise<{
-    vaultBalance: VaultBalance;
-    metrics: VaultMetrics;
-    transactions: VaultTransaction[];
-    pendingShifts: UnbalancedShiftInfo[];
-    floatRequests: FloatRequest[];
-    cashDesks: CashDesk[];
-    notifications: NotificationItem[];
+  vaultBalance: VaultBalance;
+  metrics: VaultMetrics;
+  transactions: VaultTransaction[];
+  pendingShifts: UnbalancedShiftInfo[];
+  floatRequests: FloatRequest[];
+  cashDesks: CashDesk[];
+  notifications: NotificationItem[];
 }> {
   try {
     let url = `/api/vault/overview/global`;
@@ -213,44 +218,47 @@ export async function fetchGlobalVaultOverviewData(
 
     const response = await fetch(url);
     if (!response.ok) {
-        console.error('Global vault fetch failed:', response.statusText);
-        throw new Error(`Failed to fetch global vault data: ${response.statusText}`);
+      console.error('Global vault fetch failed:', response.statusText);
+      throw new Error(`Failed to fetch global vault data: ${response.statusText}`);
     }
 
     const data = await response.json();
     if (!data.success) {
-        console.error('Global vault fetch returned error:', data.error);
-        throw new Error(data.error || 'Failed to fetch global vault data');
+      console.error('Global vault fetch returned error:', data.error);
+      throw new Error(data.error || 'Failed to fetch global vault data');
     }
 
     const resultData = data.data;
 
     // Helper to format shifts
-    const formatShifts = (shifts: any[]): UnbalancedShiftInfo[] => {
+    const formatShifts = (shifts: unknown[]): UnbalancedShiftInfo[] => {
       // Handle array or null input gracefully
       if (!Array.isArray(shifts)) return [];
-      
-      return shifts.map((shift: any) => ({
-        shiftId: shift._id,
-        cashierId: shift.cashierId,
-        cashierName: shift.cashierName || shift.cashierUsername || `Cashier ${shift.cashierId?.substring(0, 4)}`,
-        expectedBalance: shift.expectedClosingBalance || 0,
-        enteredBalance: shift.cashierEnteredBalance || 0,
-        enteredDenominations: shift.cashierEnteredDenominations || [],
-        discrepancy: shift.discrepancy || 0,
-        closedAt: shift.closedAt ? new Date(shift.closedAt) : new Date(),
-        locationName: shift.locationName // Extra field for global view
-      }));
+
+      return shifts.map((item) => {
+        const shift = item as Record<string, unknown>;
+        return {
+          shiftId: String(shift._id || ''),
+          cashierId: String(shift.cashierId || ''),
+          cashierName: String(shift.cashierName || shift.cashierUsername || `Cashier ${String(shift.cashierId || '').substring(0, 4)}`),
+          expectedBalance: Number(shift.expectedClosingBalance || 0),
+          enteredBalance: Number(shift.cashierEnteredBalance || 0),
+          enteredDenominations: (shift.cashierEnteredDenominations as Denomination[]) || [],
+          discrepancy: Number(shift.discrepancy || 0),
+          closedAt: shift.closedAt ? new Date(shift.closedAt as string) : new Date(),
+          locationName: String(shift.locationName || '') // Extra field for global view
+        };
+      });
     };
 
     // Helper to format requests
-    const formatRequests = (requests: any[]): FloatRequest[] => {
+    const formatRequests = (requests: unknown[]): FloatRequest[] => {
       // Handle array or null input gracefully
       if (!Array.isArray(requests)) return [];
 
-      return requests.map((req: any) => ({
-        ...req,
-        locationName: req.locationName // Extra field for global view
+      return requests.map((req) => ({
+        ...(req as FloatRequest),
+        locationName: (req as Record<string, unknown>).locationName as string // Extra field for global view
       }));
     };
 
@@ -307,13 +315,14 @@ export async function fetchGlobalVaultOverviewData(
       transactions: resultData.transactions || [],
       pendingShifts,
       floatRequests,
-      cashDesks: (resultData.cashDesks || []).map((desk: any) => ({
-          ...desk,
-          locationName: desk.locationName,
-          openedAt: desk.openedAt,
-          openingBalance: desk.openingBalance,
-          payoutsTotal: desk.payoutsTotal || 0,
-      })),
+      cashDesks: (resultData.cashDesks || []).map((desk: Record<string, unknown>) => ({
+        ...desk,
+        _id: String(desk._id || ''),
+        locationName: String(desk.locationName || ''),
+        openedAt: desk.openedAt as string | Date,
+        openingBalance: Number(desk.openingBalance || 0),
+        payoutsTotal: Number(desk.payoutsTotal || 0),
+      })) as CashDesk[],
       notifications,
     };
 
@@ -518,21 +527,22 @@ export async function fetchAuditTrail(
       if (data.success) {
         const txs = data.items || data.transactions || [];
         return {
-          entries: txs.map((tx: any) => {
+          entries: txs.map((tx: Record<string, unknown>) => {
             const isReconcile = tx.type === 'vault_reconciliation';
-            const adj = isReconcile ? (tx.vaultBalanceAfter - tx.vaultBalanceBefore) : tx.amount;
-            
+            const adj = isReconcile ? (Number(tx.vaultBalanceAfter || 0) - Number(tx.vaultBalanceBefore || 0)) : Number(tx.amount || 0);
+
+            const from = tx.from as Record<string, unknown> | undefined;
             return {
-              id: tx._id,
-              timestamp: new Date(tx.timestamp).toLocaleString(),
-              type: tx.type,
-              description: tx.notes || `${tx.type.replace(/_/g, ' ')}`,
-              performedBy: tx.performedByName || tx.performedBy || 'System',
+              id: String(tx._id || ''),
+              timestamp: new Date(tx.timestamp as string).toLocaleString(),
+              type: String(tx.type || ''),
+              description: String(tx.notes || `${String(tx.type || '').replace(/_/g, ' ')}`),
+              performedBy: String(tx.performedByName || tx.performedBy || 'System'),
               amount: adj,
-              isOutflow: isReconcile ? adj < 0 : tx.from?.type === 'vault',
-              balanceBefore: tx.vaultBalanceBefore,
-              balanceAfter: tx.vaultBalanceAfter,
-              location: tx.locationId,
+              isOutflow: isReconcile ? adj < 0 : from?.type === 'vault',
+              balanceBefore: Number(tx.vaultBalanceBefore || 0),
+              balanceAfter: Number(tx.vaultBalanceAfter || 0),
+              location: String(tx.locationId || ''),
               status: tx.isVoid ? 'failed' : 'completed',
             };
           }),
@@ -568,9 +578,9 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
         // Filter transactions for TODAY (Gaming Day) only
         const rangeStart = metricsData.rangeStart ? new Date(metricsData.rangeStart) : new Date();
         if (!metricsData.rangeStart) rangeStart.setHours(0, 0, 0, 0);
-        
-        const todayTxs = transactions.filter((tx: any) => 
-          new Date(tx.timestamp).getTime() >= rangeStart.getTime()
+
+        const todayTxs = transactions.filter((tx: Record<string, unknown>) =>
+          new Date(tx.timestamp as string).getTime() >= rangeStart.getTime()
         );
 
         // Calculate hourly transaction volume for "Peak Hour" and "Transaction Volume" chart
@@ -585,25 +595,28 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
           };
         });
 
-        todayTxs.forEach((tx: any) => {
+        todayTxs.forEach((tx: Record<string, unknown>) => {
           // Skip reconciliation and opening transactions for charts/trends
-          if (['vault_reconciliation', 'vault_open'].includes(tx.type)) return;
+          if (['vault_reconciliation', 'vault_open'].includes(tx.type as string)) return;
 
-          const hour = new Date(tx.timestamp).getHours();
-                    // For balance trend: if it's cash IN (to vault), add. If cash OUT (from vault), subtract.
+          const hour = new Date(tx.timestamp as string | number | Date).getHours();
+          // For balance trend: if it's cash IN (to vault), add. If cash OUT (from vault), subtract.
           // Logic: to.type === 'vault' -> +amount
           //        from.type === 'vault' -> -amount
           // But 'amount' accumulates blindly, so let's check direction
           hourlyStats[hour].transactions++;
 
-          if (tx.to?.type === 'vault') {
-             hourlyStats[hour].amount += Math.abs(tx.amount);
-          } else if (tx.from?.type === 'vault') {
-             hourlyStats[hour].amount -= Math.abs(tx.amount);
-             hourlyStats[hour].cashOut += Math.abs(tx.amount);
+          const to = tx.to as { type?: string } | undefined;
+          const from = tx.from as { type?: string } | undefined;
+
+          if (to?.type === 'vault') {
+            hourlyStats[hour].amount += Math.abs(Number(tx.amount || 0));
+          } else if (from?.type === 'vault') {
+            hourlyStats[hour].amount -= Math.abs(Number(tx.amount || 0));
+            hourlyStats[hour].cashOut += Math.abs(Number(tx.amount || 0));
           } else {
-             // Fallback if generic
-             hourlyStats[hour].amount += tx.amount;
+            // Fallback if generic
+            hourlyStats[hour].amount += Number(tx.amount || 0);
           }
         });
 
@@ -619,14 +632,14 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
 
         // Calculate total Payouts amount (metrics.payouts is a COUNT)
         const totalPayoutsAmount = todayTxs
-          .filter((tx: any) => tx.type === 'payout')
-          .reduce((sum: number, tx: any) => sum + Math.abs(tx.amount), 0); // Ensure positive magnitude
+          .filter((tx: Record<string, unknown>) => tx.type === 'payout')
+          .reduce((sum: number, tx: Record<string, unknown>) => sum + Math.abs(Number(tx.amount || 0)), 0); // Ensure positive magnitude
 
         // Construct trend data based on real daily transactions
         // Start running balance from 0 (or opening balance if we had it, but for trend 0 is baseline)
         let runningBalance = 0;
         let runningCashOut = 0;
-        
+
         const balanceTrend = hourlyStats
           .filter(h => h.transactions > 0 || h.amount > 0 || h.cashOut > 0)
           .map(h => {
@@ -644,25 +657,25 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
           balanceTrend.length > 0
             ? balanceTrend
             : [
-                {
-                  time: '00:00',
-                  balance: 0, // Start for graph should typically be flat if no data
-                  cashOut: 0,
-                  transactions: 0,
-                },
-                {
-                  time: '12:00',
-                  balance: 0,
-                  cashOut: 0,
-                  transactions: 0,
-                },
-                {
-                  time: '23:59',
-                  balance: 0,
-                  cashOut: 0,
-                  transactions: 0,
-                },
-              ];
+              {
+                time: '00:00',
+                balance: 0, // Start for graph should typically be flat if no data
+                cashOut: 0,
+                transactions: 0,
+              },
+              {
+                time: '12:00',
+                balance: 0,
+                cashOut: 0,
+                transactions: 0,
+              },
+              {
+                time: '23:59',
+                balance: 0,
+                cashOut: 0,
+                transactions: 0,
+              },
+            ];
 
         return {
           metrics,
@@ -691,7 +704,7 @@ export async function fetchVaultTransfers(
   locationId: string,
   page: number = 1,
   limit: number = 20
-): Promise<{ transfers: any[]; total: number; totalPages: number }> {
+): Promise<{ transfers: VaultTransfer[]; total: number; totalPages: number }> {
   try {
     const response = await fetch(
       `/api/vault/transfers?locationId=${locationId}&page=${page}&limit=${limit}`
@@ -726,7 +739,7 @@ export async function fetchVaultTransactions(
   type?: string,
   status?: string,
   search?: string
-): Promise<{ transactions: any[]; total: number; totalPages: number }> {
+): Promise<{ transactions: ExtendedVaultTransaction[]; total: number; totalPages: number }> {
   try {
     let url = `/api/vault/transactions?locationId=${locationId}&page=${page}&limit=${limit}`;
     if (type && type !== 'all') url += `&type=${type}`;
@@ -739,29 +752,30 @@ export async function fetchVaultTransactions(
       if (data.success) {
         const txs = data.items || data.transactions || [];
         return {
-          transactions: txs.map((tx: any) => ({
+          transactions: txs.map((tx: Record<string, unknown>) => ({
             ...tx,
-            timestamp: new Date(tx.timestamp),
-            performedByName: tx.performedByName || tx.performedBy || 'System',
+            _id: String(tx._id || ''),
+            timestamp: new Date(tx.timestamp as string),
+            performedByName: String(tx.performedByName || tx.performedBy || 'System'),
             fromName:
-              tx.fromName ||
-              (tx.from?.type === 'vault'
-                ? 'Vault'
-                : tx.from?.type === 'cashier'
-                  ? 'Cashier'
-                  : tx.from?.type === 'machine'
-                    ? 'Machine'
-                    : tx.from?.id || 'External'),
+              String(tx.fromName ||
+                ((tx.from as Record<string, unknown>)?.type === 'vault'
+                  ? 'Vault'
+                  : (tx.from as Record<string, unknown>)?.type === 'cashier'
+                    ? 'Cashier'
+                    : (tx.from as Record<string, unknown>)?.type === 'machine'
+                      ? 'Machine'
+                      : (tx.from as Record<string, unknown>)?.id || 'External')),
             toName:
-              tx.toName ||
-              (tx.to?.type === 'vault'
-                ? 'Vault'
-                : tx.to?.type === 'cashier'
-                  ? 'Cashier'
-                  : tx.to?.type === 'machine'
-                    ? 'Machine'
-                    : tx.to?.id || 'External'),
-          })),
+              String(tx.toName ||
+                ((tx.to as Record<string, unknown>)?.type === 'vault'
+                  ? 'Vault'
+                  : (tx.to as Record<string, unknown>)?.type === 'cashier'
+                    ? 'Cashier'
+                    : (tx.to as Record<string, unknown>)?.type === 'machine'
+                      ? 'Machine'
+                      : (tx.to as Record<string, unknown>)?.id || 'External')),
+          })) as ExtendedVaultTransaction[],
           total: data.total || data.pagination?.total || txs.length,
           totalPages:
             data.pagination?.totalPages ||
@@ -789,7 +803,7 @@ export async function fetchEndOfDayReportData(
         ? date
         : new Date(date)
       : new Date();
-      
+
     const reportDateStr = dateObj.toISOString().split('T')[0];
 
     // Fetch EOD Data and Metrics
@@ -799,7 +813,7 @@ export async function fetchEndOfDayReportData(
     const metricsPromise = fetch(
       `/api/vault/metrics?locationId=${locationId}&date=${reportDateStr}`
     );
-      
+
     const floatRequestsPromise = fetch(`/api/vault/float-request?locationId=${locationId}`);
 
     const [
@@ -815,11 +829,11 @@ export async function fetchEndOfDayReportData(
     const endOfDayData = endOfDayResponse.ok
       ? await endOfDayResponse.json()
       : null;
-      
+
     const metricsData = metricsResponse.ok
       ? await metricsResponse.json()
       : null;
-      
+
     const floatRequestsData = floatRequestsResponse && floatRequestsResponse.ok
       ? await floatRequestsResponse.json()
       : null;
@@ -829,13 +843,13 @@ export async function fetchEndOfDayReportData(
 
     // Map Vault Balance
     const vaultBalanceObj = {
-        ...DEFAULT_VAULT_BALANCE,
-        balance: data.vaultBalance?.systemBalance || 0,
-        physicalCount: data.vaultBalance?.physicalCount || 0,
-        variance: data.vaultBalance?.variance || 0,
+      ...DEFAULT_VAULT_BALANCE,
+      balance: data.vaultBalance?.systemBalance || 0,
+      physicalCount: data.vaultBalance?.physicalCount || 0,
+      variance: data.vaultBalance?.variance || 0,
     };
 
-      return {
+    return {
       denominationBreakdown: data.denominationBreakdown || {},
       vaultBalance: vaultBalanceObj,
       cashierFloats: data.cashierFloats || [],
@@ -899,18 +913,18 @@ export async function fetchFloatTransactionsData(
     // Create user map for name resolution
     const userMap = new Map<string, string>();
     if (usersData?.success && Array.isArray(usersData.users)) {
-      usersData.users.forEach((u: any) => {
+      usersData.users.forEach((u: Record<string, unknown>) => {
         if (u._id && u.username) {
-          userMap.set(u._id, u.username);
+          userMap.set(String(u._id), String(u.username));
         }
       });
     }
 
     const result: {
       cashierFloats: CashierFloat[];
-      vaultBalance: any;
-      floatTransactions: any[];
-      floatRequests: any[];
+      vaultBalance: VaultBalance;
+      floatTransactions: ExtendedVaultTransaction[];
+      floatRequests: FloatRequest[];
       totalTransactions: number;
       totalPages: number;
     } = {
@@ -924,12 +938,12 @@ export async function fetchFloatTransactionsData(
 
     // Process cashier data
     if (cashierData?.success) {
-      result.cashierFloats = (cashierData.shifts || []).map((shift: any) => ({
+      result.cashierFloats = (cashierData.shifts || []).map((shift: Record<string, unknown>) => ({
         ...shift,
-        cashierName: shift.cashierName || shift.cashierUsername || `Cashier ${(shift.cashierId || '').substring(0, 4)}`,
-        balance: shift.currentBalance ?? shift.openingBalance ?? 0,
-        status: shift.status || 'active',
-      }));
+        cashierName: String(shift.cashierName || shift.cashierUsername || `Cashier ${String(shift.cashierId || '').substring(0, 4)}`),
+        balance: Number((shift.currentBalance as number) ?? (shift.openingBalance as number) ?? 0),
+        status: String(shift.status || 'active'),
+      })) as CashierFloat[];
     } else {
       result.cashierFloats = DEFAULT_CASHIER_FLOATS;
     }
@@ -944,25 +958,27 @@ export async function fetchFloatTransactionsData(
       // Still apply a safe filter in case the API didn't handle the multi-type param
       const floatTypes = ['float_increase', 'float_decrease', 'cashier_shift_open', 'payout'];
       const floatTxs = (transactionsData.items || transactionsData.transactions || [])
-        .filter((tx: any) => floatTypes.includes(tx.type))
-        .map((tx: any) => {
+        .filter((tx: Record<string, unknown>) => floatTypes.includes(tx.type as string))
+        .map((tx: Record<string, unknown>) => {
+          const txTo = tx.to as Record<string, string> | undefined;
+          const txFrom = tx.from as Record<string, string> | undefined;
           // Resolve names
-          let toName = tx.toName;
-          if (!toName && tx.to.type === 'cashier' && tx.to.id) {
-            toName = userMap.get(tx.to.id) || tx.to.id;
+          let toName = tx.toName as string | undefined;
+          if (!toName && txTo?.type === 'cashier' && txTo?.id) {
+            toName = userMap.get(txTo.id) || txTo.id;
           }
 
-          let fromName = tx.fromName;
-          if (!fromName && tx.from.type === 'cashier' && tx.from.id) {
-            fromName = userMap.get(tx.from.id) || tx.from.id;
+          let fromName = tx.fromName as string | undefined;
+          if (!fromName && txFrom?.type === 'cashier' && txFrom?.id) {
+            fromName = userMap.get(txFrom.id) || txFrom.id;
           }
 
           return {
             ...tx,
             toName,
             fromName,
-            timestamp: new Date(tx.timestamp), // Ensure date object
-            performedByName: tx.performedByName || userMap.get(tx.performedBy) || tx.performedBy || 'System',
+            timestamp: new Date(tx.timestamp as string), // Ensure date object
+            performedByName: String(tx.performedByName || userMap.get(String(tx.performedBy || '')) || tx.performedBy || 'System'),
           };
         });
 
@@ -992,10 +1008,10 @@ export async function fetchCashiersData(
   search?: string,
   sortConfig?: { key: string; direction: 'ascending' | 'descending' },
   varianceFilter: 'all' | 'variance' | 'no-variance' = 'all'
-): Promise<{ users: any[]; total: number; totalPages: number }> {
+): Promise<{ users: Cashier[]; total: number; totalPages: number }> {
   try {
     let url = `/api/users?role=cashier&page=${page}&limit=${limit}`;
-    
+
     if (search) {
       url += `&search=${encodeURIComponent(search)}`;
     }
@@ -1009,7 +1025,7 @@ export async function fetchCashiersData(
     // Assuming backend might not fully support dynamic sort key yet based on API analysis,
     // but passing common ones is safe if backend ignores them. 
     // For now we'll stick to search and filter.
-    
+
     // Include authentication cookies for authorization
     const response = await fetch(
       url,
@@ -1027,29 +1043,31 @@ export async function fetchCashiersData(
 
         // Client-side sorting as a fallback/enhancement if API doesn't handle it
         if (sortConfig && users.length > 0) {
-           users.sort((a: any, b: any) => {
-             let valA = a[sortConfig.key];
-             let valB = b[sortConfig.key];
+          users.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+            let valA: unknown = a[sortConfig.key];
+            let valB: unknown = b[sortConfig.key];
 
-             // Handle nested profile fields
-             if (sortConfig.key === 'name') {
-                valA = `${a.profile?.firstName || ''} ${a.profile?.lastName || ''}`;
-                valB = `${b.profile?.firstName || ''} ${b.profile?.lastName || ''}`;
-             }
-             
-             // Handle email field mismatch
-             if (sortConfig.key === 'email') {
-                valA = a.emailAddress || a.email || '';
-                valB = b.emailAddress || b.email || '';
-             }
+            // Handle nested profile fields
+            if (sortConfig.key === 'name') {
+              const aProfile = a.profile as Record<string, string> | undefined;
+              const bProfile = b.profile as Record<string, string> | undefined;
+              valA = `${aProfile?.firstName || ''} ${aProfile?.lastName || ''}`;
+              valB = `${bProfile?.firstName || ''} ${bProfile?.lastName || ''}`;
+            }
 
-             if (typeof valA === 'string') valA = valA.toLowerCase();
-             if (typeof valB === 'string') valB = valB.toLowerCase();
+            // Handle email field mismatch
+            if (sortConfig.key === 'email') {
+              valA = (a.emailAddress || a.email || '') as string;
+              valB = (b.emailAddress || b.email || '') as string;
+            }
 
-             if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
-             if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
-             return 0;
-           });
+            const strA: string | number = typeof valA === 'number' ? valA : String(valA ?? '');
+            const strB: string | number = typeof valB === 'number' ? valB : String(valB ?? '');
+
+            if (strA < strB) return sortConfig.direction === 'ascending' ? -1 : 1;
+            if (strA > strB) return sortConfig.direction === 'ascending' ? 1 : -1;
+            return 0;
+          });
         }
 
         return {
@@ -1250,7 +1268,7 @@ export async function handleRecordExpense(
     formData.append('amount', data.amount.toString());
     formData.append('description', data.description);
     formData.append('date', data.date.toISOString());
-    
+
     if (data.denominations && data.denominations.length > 0) {
       formData.append('denominations', JSON.stringify(data.denominations));
     }
@@ -1281,7 +1299,7 @@ export async function handleRecordExpense(
 export async function handleReconcile(
   data: {
     newBalance: number;
-    denominations: any[];
+    denominations: Denomination[];
     reason: string;
     comment: string;
   },
@@ -1354,7 +1372,7 @@ export async function handleTransferSubmit(
   amount: number,
   denominations: Denomination[],
   notes?: string
-): Promise<{ success: boolean; error?: string; transfer?: any }> {
+): Promise<{ success: boolean; error?: string; transfer?: InterLocationTransfer }> {
   try {
     const response = await fetch('/api/vault/transfers', {
       method: 'POST',
@@ -1566,37 +1584,37 @@ export async function handleCreateCashier(cashierData: {
   assignedLicensees?: string[];
   assignedLocations?: string[];
 }): Promise<{ success: boolean; error?: string; tempPassword?: string }> {
-    let data;
-    let tempPassword = '';
-    try {
-      // Generate a temporary password if not provided
-      tempPassword = cashierData.password || generateTempPassword();
+  let data;
+  let tempPassword = '';
+  try {
+    // Generate a temporary password if not provided
+    tempPassword = cashierData.password || generateTempPassword();
 
-      const firstName = cashierData.firstName;
-      const lastName = cashierData.lastName;
-      const username = cashierData.username;
+    const firstName = cashierData.firstName;
+    const lastName = cashierData.lastName;
+    const username = cashierData.username;
 
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: username,
-          emailAddress: cashierData.email,
-          password: tempPassword,
-          tempPassword: tempPassword, // Store plain text temp password
-          roles: ['cashier'],
-          profile: {
-            firstName,
-            lastName,
-          },
-          assignedLicensees: cashierData.assignedLicensees || [],
-          assignedLocations: cashierData.assignedLocations || [],
-          isEnabled: true,
-        }),
-      });
+    const response = await fetch('/api/users', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: username,
+        emailAddress: cashierData.email,
+        password: tempPassword,
+        tempPassword: tempPassword, // Store plain text temp password
+        roles: ['cashier'],
+        profile: {
+          firstName,
+          lastName,
+        },
+        assignedLicensees: cashierData.assignedLicensees || [],
+        assignedLocations: cashierData.assignedLocations || [],
+        isEnabled: true,
+      }),
+    });
 
-      data = await response.json();
+    data = await response.json();
 
   } catch (error) {
     console.error('Error creating cashier:', error);
@@ -1663,12 +1681,12 @@ export async function handleResetCashierPassword(
  */
 export function calculateEndOfDayMetrics(reportData: {
   denominationBreakdown: Record<string, number>;
-  midDaySoftCounts: any[];
-  endOfDaySoftCounts: any[];
-  cashierFloats: any[];
-  vaultBalance: any;
-  floatRequests: any[];
-  metrics?: any;
+  midDaySoftCounts: SoftCount[];
+  endOfDaySoftCounts: SoftCount[];
+  cashierFloats: CashierFloat[];
+  vaultBalance: VaultBalance;
+  floatRequests: FloatRequest[];
+  metrics?: VaultMetrics | null;
 }) {
   const {
     denominationBreakdown,
@@ -1708,7 +1726,7 @@ export function calculateEndOfDayMetrics(reportData: {
   // Use values from API metrics if available (these are real-time queried sums for the gaming day)
   const totalInflows = apiMetrics?.totalCashIn || 0;
   const totalOutflows = apiMetrics?.totalCashOut || 0;
-  const totalExpenses = apiMetrics?.expenses || 0;
+  const totalExpenses = (apiMetrics as Record<string, number> | undefined)?.expenses || 0;
   const totalPayouts = apiMetrics?.payouts || 0; // Note: This might be count or amount depending on API implementation
 
   return {
@@ -1736,7 +1754,7 @@ export function calculateEndOfDayMetrics(reportData: {
  * Sort transfers
  */
 export function sortTransfers(
-  transfers: any[],
+  transfers: VaultTransfer[],
   sortOption: string,
   sortOrder: 'asc' | 'desc'
 ) {
@@ -1833,88 +1851,88 @@ export function getTransactionTypeBadge(type: string): {
 } {
   switch (type) {
     case 'vault_open':
-      return { 
-        label: 'Vault Open', 
-        icon: 'none', 
-        className: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-50' 
+      return {
+        label: 'Vault Open',
+        icon: 'none',
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-50'
       };
     case 'vault_close':
-      return { 
-        label: 'Outflow', 
-        icon: 'arrow-up', 
-        className: 'bg-red-600 text-white hover:bg-red-600/90' 
+      return {
+        label: 'Outflow',
+        icon: 'arrow-up',
+        className: 'bg-red-600 text-white hover:bg-red-600/90'
       };
     case 'cashier_shift_open':
-      return { 
-        label: 'Outflow', 
-        icon: 'arrow-up', 
-        className: 'bg-red-600 text-white hover:bg-red-600/90' 
+      return {
+        label: 'Outflow',
+        icon: 'arrow-up',
+        className: 'bg-red-600 text-white hover:bg-red-600/90'
       };
     case 'cashier_shift_close':
-      return { 
-        label: 'Cashier Shift Close', 
-        icon: 'none', 
-        className: 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-50' 
+      return {
+        label: 'Cashier Shift Close',
+        icon: 'none',
+        className: 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-50'
       };
     case 'float_increase':
-      return { 
-        label: 'Outflow', 
-        icon: 'arrow-up', 
-        className: 'bg-red-600 text-white hover:bg-red-600/90' 
+      return {
+        label: 'Outflow',
+        icon: 'arrow-up',
+        className: 'bg-red-600 text-white hover:bg-red-600/90'
       };
     case 'float_decrease':
-      return { 
-        label: 'Inflow', 
-        icon: 'arrow-down', 
-        className: 'bg-button text-white hover:bg-button/90' 
+      return {
+        label: 'Inflow',
+        icon: 'arrow-down',
+        className: 'bg-button text-white hover:bg-button/90'
       };
     case 'payout':
-      return { 
-        label: 'Outflow', 
-        icon: 'arrow-up', 
-        className: 'bg-red-600 text-white hover:bg-red-600/90' 
+      return {
+        label: 'Outflow',
+        icon: 'arrow-up',
+        className: 'bg-red-600 text-white hover:bg-red-600/90'
       };
     case 'machine_collection':
-      return { 
-        label: 'Inflow', 
-        icon: 'arrow-down', 
-        className: 'bg-button text-white hover:bg-button/90' 
+      return {
+        label: 'Inflow',
+        icon: 'arrow-down',
+        className: 'bg-button text-white hover:bg-button/90'
       };
     case 'soft_count':
-      return { 
-        label: 'Inflow', 
-        icon: 'arrow-down', 
-        className: 'bg-button text-white hover:bg-button/90' 
+      return {
+        label: 'Inflow',
+        icon: 'arrow-down',
+        className: 'bg-button text-white hover:bg-button/90'
       };
     case 'expense':
-      return { 
-        label: 'Expense', 
-        icon: 'receipt', 
-        className: 'bg-red-600 text-white hover:bg-red-600/90' 
+      return {
+        label: 'Expense',
+        icon: 'receipt',
+        className: 'bg-red-600 text-white hover:bg-red-600/90'
       };
     case 'vault_reconciliation':
-      return { 
-        label: 'Vault Reconciliation', 
-        icon: 'none', 
-        className: 'bg-violet-50 text-violet-700 border-violet-100 hover:bg-violet-50' 
+      return {
+        label: 'Vault Reconciliation',
+        icon: 'none',
+        className: 'bg-violet-50 text-violet-700 border-violet-100 hover:bg-violet-50'
       };
     case 'add_cash':
-      return { 
-        label: 'Inflow', 
-        icon: 'arrow-down', 
-        className: 'bg-button text-white hover:bg-button/90' 
+      return {
+        label: 'Inflow',
+        icon: 'arrow-down',
+        className: 'bg-button text-white hover:bg-button/90'
       };
     case 'remove_cash':
-      return { 
-        label: 'Outflow', 
-        icon: 'arrow-up', 
-        className: 'bg-red-600 text-white hover:bg-red-600/90' 
+      return {
+        label: 'Outflow',
+        icon: 'arrow-up',
+        className: 'bg-red-600 text-white hover:bg-red-600/90'
       };
     default:
-      return { 
-        label: type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), 
-        icon: 'none', 
-        className: 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-50' 
+      return {
+        label: type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+        icon: 'none',
+        className: 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-50'
       };
   }
 }

@@ -13,10 +13,10 @@
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import {
-    dismissNotifications,
-    getNotificationCounts,
-    getRecentNotifications,
-    markNotificationsAsRead
+  dismissNotifications,
+  getNotificationCounts,
+  getRecentNotifications,
+  markNotificationsAsRead
 } from '@/lib/helpers/vault/notifications';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -60,10 +60,11 @@ export async function GET(request: NextRequest) {
       notifications,
       ...counts,
     });
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching notifications:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -114,10 +115,11 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error processing notification action:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error processing notification action:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

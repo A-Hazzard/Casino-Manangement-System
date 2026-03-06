@@ -18,16 +18,16 @@
  */
 
 import {
-  containerVariants,
-  itemVariants,
+    containerVariants,
+    itemVariants,
 } from '@/lib/constants';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { AccountingDetailsProps } from '@/lib/types/cabinet';
 import { formatCurrency } from '@/lib/utils';
 import {
-  getGrossColorClass,
-  getMoneyInColorClass,
-  getMoneyOutColorClass,
+    getGrossColorClass,
+    getMoneyInColorClass,
+    getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -38,14 +38,14 @@ import ActivityLogDateFilter from '@/components/shared/ui/ActivityLogDateFilter'
 import { useCabinetUIStore } from '@/lib/store/cabinetUIStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type {
-  GamingMachine as Cabinet,
-  MachineDocument,
+    GamingMachine as Cabinet,
+    MachineDocument,
 } from '@/shared/types/entities';
 import CabinetsDetailsActivityLogSkeleton from './CabinetsDetailsActivityLogSkeleton';
 import type { CabinetsDetailsMachineEvent } from './CabinetsDetailsActivityLogTable';
 import { CabinetsDetailsActivityLogTable } from './CabinetsDetailsActivityLogTable';
 import CabinetsDetailsCollectionHistorySkeleton from './CabinetsDetailsCollectionHistorySkeleton';
-import { CabinetsDetailsCollectionHistoryTable } from './CabinetsDetailsCollectionHistoryTable';
+import { CabinetsDetailsCollectionHistoryTable, TimeFilter } from './CabinetsDetailsCollectionHistoryTable';
 
 import type { TimePeriod as ApiTimePeriod } from '@/shared/types/common';
 
@@ -1208,8 +1208,8 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
                           if (filter === 'All Time') return 'all';
                           if (filter === 'Custom') return 'custom';
                           return 'all';
-                        })() as any}
-                        customRange={customDateRange as any}
+                        })() as TimeFilter}
+                        customRange={customDateRange as { from: Date; to: Date } | undefined}
                       />
                     </motion.div>
                   ) : (

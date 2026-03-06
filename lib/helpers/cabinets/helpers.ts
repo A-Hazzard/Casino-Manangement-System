@@ -44,7 +44,9 @@ export const fetchCabinets = async (
   locationId?: string | string[],
   gameType?: string | string[],
   onlineStatus?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  sortBy?: string,
+  sortOrder?: 'asc' | 'desc'
 ) => {
   try {
     // Construct the URL with appropriate parameters
@@ -53,6 +55,9 @@ export const fetchCabinets = async (
     // Add query parameters if they exist
     const queryParams = [];
     if (licensee) queryParams.push(`licensee=${encodeURIComponent(licensee)}`);
+
+    if (sortBy) queryParams.push(`sortBy=${encodeURIComponent(sortBy)}`);
+    if (sortOrder) queryParams.push(`sortOrder=${encodeURIComponent(sortOrder)}`);
 
     // Add locationId parameter if provided (filter at API level for better performance)
     if (locationId && locationId !== 'all' && (Array.isArray(locationId) ? locationId.length > 0 : true)) {
@@ -663,7 +668,8 @@ export async function fetchCabinetTotals(
   signal?: AbortSignal,
   locationId?: string | string[],
   gameType?: string | string[],
-  onlineStatus?: string
+  onlineStatus?: string,
+  searchTerm?: string
 ): Promise<{ moneyIn: number; moneyOut: number; gross: number } | null> {
   try {
     let url = `/api/machines/aggregation?timePeriod=${activeMetricsFilter}`;
@@ -701,10 +707,15 @@ export async function fetchCabinetTotals(
       const gTypes = Array.isArray(gameType) ? gameType.join(',') : gameType;
       url += `&gameType=${encodeURIComponent(gTypes)}`;
     }
-    
+
     // Add status filter if provided
     if (onlineStatus && onlineStatus !== 'all') {
       url += `&onlineStatus=${encodeURIComponent(onlineStatus)}`;
+    }
+
+    // Add search term if provided
+    if (searchTerm) {
+      url += `&search=${encodeURIComponent(searchTerm)}`;
     }
 
     const response = await axios.get(url, { signal });

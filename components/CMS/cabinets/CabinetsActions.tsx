@@ -14,8 +14,9 @@
 import { Button } from '@/components/shared/ui/button';
 import { ActionButtonSkeleton } from '@/components/shared/ui/skeletons/ButtonSkeletons';
 import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
+import { useUserStore } from '@/lib/store/userStore';
 import { PlusCircle } from 'lucide-react';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 type CabinetsActionsProps = {
   activeSection: string;
@@ -35,6 +36,12 @@ export const CabinetsActions = ({
   loading = false,
 }: CabinetsActionsProps) => {
   const { openCabinetModal } = useNewCabinetStore();
+  const user = useUserStore(state => state.user);
+
+  const canCreateCabinet = useMemo(() => {
+    const roles = user?.roles ?? [];
+    return ['developer', 'admin', 'technician'].some(role => roles.includes(role));
+  }, [user]);
 
   const handleNewCabinet = useCallback(() => {
     // If selectedLocation is an array, pick the first one for pre-filling the modal
@@ -58,6 +65,7 @@ export const CabinetsActions = ({
    */
   const renderDesktopActions = () => {
     if (activeSection === 'cabinets') {
+      if (!canCreateCabinet) return null;
       return (
         <div className="hidden md:flex items-center gap-3 flex-shrink-0">
           {loading ? (
@@ -103,6 +111,7 @@ export const CabinetsActions = ({
    */
   const renderMobileActions = () => {
     if (activeSection === 'cabinets') {
+      if (!canCreateCabinet) return null;
       return (
         <div className="md:hidden">
           {loading ? (

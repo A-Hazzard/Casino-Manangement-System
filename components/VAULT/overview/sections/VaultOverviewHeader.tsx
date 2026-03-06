@@ -8,17 +8,19 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
+import type { NotificationItem } from '@/components/shared/ui/NotificationBell';
 import NotificationBell from '@/components/shared/ui/NotificationBell';
+import type { Denomination } from '@/shared/types/vault';
 import { RefreshCw } from 'lucide-react';
 
 type VaultOverviewHeaderProps = {
-  bellNotifications: any[];
-  denominations: any[];
+  bellNotifications: NotificationItem[];
+  denominations: Denomination[];
   refreshing: boolean;
   onRefresh: () => void;
   onMarkAsRead: (id: string | string[]) => void | Promise<void>;
   onMarkAllAsRead: () => void | Promise<void>;
-  onNotificationClick: (n: any) => void;
+  onNotificationClick: (n: NotificationItem) => void;
   onDismiss: (id: string | string[]) => void | Promise<void>;
   onApprove: (id: string) => Promise<void>;
   onDeny: (id: string, reason?: string) => Promise<void>;

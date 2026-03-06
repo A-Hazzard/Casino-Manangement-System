@@ -1,6 +1,6 @@
-import { ReportView } from './reports';
 import { DateRange } from '@/lib/utils/date';
 import { TimePeriod } from '@/shared/types/common';
+import { ReportView } from './reports';
 
 export * from '@/shared/types/entities';
 
@@ -110,7 +110,7 @@ export type dateRange = {
   endDate?: Date;
   start?: Date;
   end?: Date;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 // Location types

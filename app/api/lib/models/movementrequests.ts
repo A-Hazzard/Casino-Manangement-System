@@ -1,5 +1,5 @@
-import mongoose, { Schema } from 'mongoose';
 import type { MovementRequest as MovementRequestType } from '@/lib/types/movement';
+import mongoose, { Schema } from 'mongoose';
 
 const movementRequestSchema = new Schema<MovementRequestType>(
   {
@@ -17,15 +17,18 @@ const movementRequestSchema = new Schema<MovementRequestType>(
     locationFrom: { type: String, required: true },
     locationTo: { type: String, required: true },
     locationId: { type: String, required: true },
+    locationFromId: { type: String },
+    locationToId: { type: String },
     createdBy: { type: String, required: true },
     movementType: { type: String, required: true },
     installationType: { type: String, required: true },
     reason: { type: String },
     requestTo: { type: String, required: true },
+    selectedMachines: { type: [String] },
     cabinetIn: { type: String },
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected', 'in progress'],
+      enum: ['pending', 'completed'],
       required: true,
     },
     timestamp: { type: Date, required: true },

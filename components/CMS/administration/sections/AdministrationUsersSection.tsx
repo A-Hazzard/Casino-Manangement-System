@@ -56,7 +56,7 @@ type AdministrationUsersSectionProps = {
   ) => Promise<void>;
   handleDeleteUserConfirm: (user: User) => Promise<void>;
   closeAddUserModal: () => Promise<void>;
-  requestSort: (key: string) => void;
+  requestSort: (key: SortKey) => void;
   refreshUsers: () => Promise<void>;
 };
 
@@ -140,11 +140,13 @@ export default function AdministrationUsersSection({
               ))}
             </div>
             {!isLoading && (
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                setCurrentPage={setCurrentPage}
-              />
+              <div className="mt-8 flex justify-center pb-4">
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  setCurrentPage={setCurrentPage}
+                />
+              </div>
             )}
           </>
         ) : (

@@ -18,17 +18,17 @@
 import UserModel from '@/app/api/lib/models/user';
 import { comparePassword } from '@/app/api/lib/utils/validation';
 import {
-    generateAccessToken,
-    generateRefreshToken,
-    getCurrentDbConnectionString,
+  generateAccessToken,
+  generateRefreshToken,
+  getCurrentDbConnectionString,
 } from '@/lib/utils/auth';
 import type { AuthResult } from '@/shared/types';
 import { UserAuthPayload } from '@/shared/types';
 import type { LeanUserDocument } from '@/shared/types/auth';
 import { logActivity } from '../activityLogger';
 import {
-    getInvalidProfileFields,
-    hasInvalidProfileFields,
+  getInvalidProfileFields,
+  hasInvalidProfileFields,
 } from '../profileValidation';
 import { getUserByEmail, getUserByUsername } from '../users/users';
 
@@ -240,7 +240,7 @@ export async function authenticateUser(
       invalidFields,
       reasons: invalidReasons,
       passwordConfirmedStrong,
-    } = getInvalidProfileFields(typedUser as never, { rawPassword: password });
+    } = getInvalidProfileFields(typedUser, { rawPassword: password });
 
     const leanUser = typedUser as LeanUserObject;
     const isCashierWithTempPassword =
@@ -274,7 +274,7 @@ export async function authenticateUser(
           connectionString: getCurrentDbConnectionString(),
           timestamp: Date.now(),
         },
-      } as never);
+      });
 
       const refreshToken = await generateRefreshToken(
         userObject._id.toString(),
@@ -358,7 +358,7 @@ export async function authenticateUser(
           connectionString: getCurrentDbConnectionString(),
           timestamp: Date.now(),
         },
-      } as never);
+      });
 
       const refreshToken = await generateRefreshToken(
         userObject._id.toString(),
@@ -397,7 +397,7 @@ export async function authenticateUser(
 
       const expiresAt = new Date(
         Date.now() +
-          (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
+        (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
       ).toISOString();
 
       return {
@@ -407,6 +407,7 @@ export async function authenticateUser(
         user: userPayload,
         expiresAt,
         requiresProfileUpdate: true,
+        requiresPasswordUpdate: !!invalidFields.password, // Set flag if password itself is weak
         invalidProfileFields: invalidFields,
         invalidProfileReasons: invalidReasons,
       };
@@ -437,12 +438,28 @@ export async function authenticateUser(
         connectionString: getCurrentDbConnectionString(),
         timestamp: Date.now(),
       },
-    } as never);
+    });
 
     const refreshToken = await generateRefreshToken(
       userObject._id.toString(),
       userObject._id.toString() // Using user ID as session ID for simplicity
     );
+
+    const finalValidation = getInvalidProfileFields(typedUser, { rawPassword: password });
+    const requiresPasswordUpdate = !!finalValidation.invalidFields.password;
+
+    // If a weak password is detected, persist this requirement in the database
+    // so it persists across page navigation/session refreshes.
+    if (requiresPasswordUpdate) {
+      await UserModel.updateOne(
+        { _id: userObject._id },
+        { $set: { requiresPasswordUpdate: true } }
+      );
+    }
+
+    const isAdminOrDeveloper =
+      userObject.roles?.includes('admin') ||
+      userObject.roles?.includes('developer');
 
     const userPayload = {
       _id: userObject._id.toString(),
@@ -459,7 +476,8 @@ export async function authenticateUser(
       isLocked: false,
       lockedUntil: undefined,
       failedLoginAttempts: 0,
-      requiresProfileUpdate: false,
+      requiresProfileUpdate: profileInvalid && !isAdminOrDeveloper,
+      requiresPasswordUpdate: requiresPasswordUpdate, // Set flag here as well
       invalidProfileFields: undefined,
       invalidProfileReasons: undefined,
     } as UserAuthPayload;
@@ -476,7 +494,7 @@ export async function authenticateUser(
 
     const expiresAt = new Date(
       Date.now() +
-        (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
+      (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
     ).toISOString();
 
     return {
@@ -485,9 +503,10 @@ export async function authenticateUser(
       refreshToken,
       user: userPayload,
       expiresAt,
-      requiresProfileUpdate: false,
-      invalidProfileFields: undefined,
-      invalidProfileReasons: undefined,
+      requiresProfileUpdate: profileInvalid && !isAdminOrDeveloper,
+      requiresPasswordUpdate: requiresPasswordUpdate,
+      invalidProfileFields: profileInvalid ? invalidFields : undefined,
+      invalidProfileReasons: profileInvalid ? invalidReasons : undefined,
     };
   } catch (error) {
     console.error('Authentication error:', error);
@@ -510,9 +529,8 @@ export async function authenticateUser(
 
     await logActivity({
       action: 'login_error',
-      details: `Authentication error for ${identifier}: ${
-        error instanceof Error ? error.message : 'Unknown error'
-      }`,
+      details: `Authentication error for ${identifier}: ${error instanceof Error ? error.message : 'Unknown error'
+        }`,
       ipAddress,
       userAgent,
       userId: userIdForLog,

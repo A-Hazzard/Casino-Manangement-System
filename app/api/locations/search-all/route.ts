@@ -14,8 +14,8 @@
  */
 
 import {
-    getUserAccessibleLicenseesFromToken,
-    getUserLocationFilter,
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getMemberCountsPerLocation } from '@/app/api/lib/helpers/membershipAggregation';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
@@ -86,6 +86,7 @@ export async function GET(request: NextRequest) {
       : undefined;
 
     const machineTypeFilter = searchParams.get('machineTypeFilter');
+    const onlineStatus = searchParams.get('onlineStatus')?.toLowerCase() || 'all';
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -304,9 +305,9 @@ export async function GET(request: NextRequest) {
                   $sum: {
                     $cond: [
                       {
-                        $gt: [
-                          '$lastActivity',
-                          new Date(Date.now() - 24 * 60 * 60 * 1000),
+                        $gte: [
+                          { $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } },
+                          new Date(Date.now() - 3 * 60 * 1000), // 3 minutes threshold
                         ],
                       },
                       1,
@@ -314,6 +315,16 @@ export async function GET(request: NextRequest) {
                     ],
                   },
                 },
+                hasActivityCount: {
+                  $sum: {
+                    $cond: [
+                      { $ifNull: ['$lastActivity', false] },
+                      1,
+                      0
+                    ]
+                  }
+                },
+                latestActivity: { $max: '$lastActivity' }
               },
             },
           ],
@@ -380,7 +391,7 @@ export async function GET(request: NextRequest) {
           },
         ],
       },
-      { _id: 1, gamingLocation: 1 }
+      { _id: 1, gamingLocation: 1, lastActivity: 1, isSasMachine: 1 }
     )
       .lean()
       .exec();
@@ -470,7 +481,7 @@ export async function GET(request: NextRequest) {
 
       const membershipEnabled = Boolean(
         location.membershipEnabled ||
-          (location as { enableMembership?: boolean }).enableMembership
+        (location as { enableMembership?: boolean }).enableMembership
       );
 
       return {
@@ -491,8 +502,46 @@ export async function GET(request: NextRequest) {
         noSMIBLocation: !(location.hasSmib || false),
         membershipEnabled,
         memberCount: memberCountMap.get(locationId) || 0,
+        isNeverOnline: (location.machineStats?.[0]?.totalMachines || 0) > 0 && (location.machineStats?.[0]?.hasActivityCount || 0) === 0,
+        latestActivity: location.machineStats?.[0]?.latestActivity ? new Date(location.machineStats[0].latestActivity).getTime() : 0,
       };
     });
+
+    // Apply online status filter to results
+    let finalFilteredLocations = locations;
+    if (onlineStatus !== 'all') {
+      finalFilteredLocations = locations.filter(loc => {
+        const isOnline = loc.onlineMachines > 0;
+
+        if (onlineStatus === 'online') {
+          return isOnline;
+        }
+
+        if (onlineStatus.startsWith('offline')) {
+          return !isOnline && loc.totalMachines > 0;
+        }
+
+        if (onlineStatus === 'neveronline') {
+          return (loc as LocationAggregationResult & { isNeverOnline?: boolean }).isNeverOnline;
+        }
+
+        return true;
+      });
+    }
+
+    // Handle Offline sorting if specified
+    if (onlineStatus === 'offlinelongest' || onlineStatus === 'offlineshortest') {
+      finalFilteredLocations.sort((a, b) => {
+        const typeA = a as LocationAggregationResult & { latestActivity?: number };
+        const typeB = b as LocationAggregationResult & { latestActivity?: number };
+        const activityA = typeA.latestActivity || 0;
+        const activityB = typeB.latestActivity || 0;
+
+        return onlineStatus === 'offlinelongest'
+          ? activityA - activityB
+          : activityB - activityA;
+      });
+    }
 
     // ============================================================================
     // STEP 7: Apply currency conversion if needed
@@ -504,7 +553,7 @@ export async function GET(request: NextRequest) {
       currentUserRoles.includes('developer');
 
     // Apply currency conversion ONLY for Admin/Developer viewing "All Licensees"
-    let finalLocations = locations;
+    let convertedLocations = finalFilteredLocations;
     if (isAdminOrDev && shouldApplyCurrencyConversion(licensee)) {
       // Get licensee details for currency mapping
       const licenseesData = await Licensee.find(
@@ -521,8 +570,10 @@ export async function GET(request: NextRequest) {
 
       // Create a map of licensee ID to name
       const licenseeIdToName = new Map<string, string>();
-      licenseesData.forEach(lic => {
-        licenseeIdToName.set(String(lic._id), lic.name);
+      licenseesData.forEach((lic: { _id?: unknown; name?: string }) => {
+        if (lic._id && lic.name) {
+          licenseeIdToName.set(String(lic._id), lic.name);
+        }
       });
 
       // Get country details for currency mapping (for unassigned locations)
@@ -531,14 +582,14 @@ export async function GET(request: NextRequest) {
 
       // Create a map of country ID to name
       const countryIdToName = new Map<string, string>();
-      countriesData.forEach(country => {
+      countriesData.forEach((country: { _id?: unknown; name?: string }) => {
         if (country._id && country.name) {
           countryIdToName.set(String(country._id), country.name);
         }
       });
 
       // Convert each location's financial data
-      finalLocations = locations.map(loc => {
+      convertedLocations = finalFilteredLocations.map(loc => {
         const licenseeId = loc.rel?.licensee as string | undefined;
 
         if (!licenseeId) {
@@ -585,7 +636,7 @@ export async function GET(request: NextRequest) {
     // STEP 8: Return formatted location data
     // ============================================================================
     // Step 9: Return final results with unified property mapping
-    const response = finalLocations.map((loc) => ({
+    const finalResponse = convertedLocations.map((loc) => ({
       location: loc._id,
       locationName: loc.name || 'Unknown Location',
       country: loc.country,
@@ -610,7 +661,7 @@ export async function GET(request: NextRequest) {
       console.warn(`[Locations Search All API] Completed in ${duration}ms`);
     }
 
-    return NextResponse.json(response);
+    return NextResponse.json(finalResponse);
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =

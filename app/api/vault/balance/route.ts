@@ -18,9 +18,9 @@ import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type {
-    VaultBalance,
-    VaultShift,
-    VaultTransaction,
+  VaultBalance,
+  VaultShift,
+  VaultTransaction,
 } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 import { isShiftStaleBackend } from '../../lib/helpers/vault/gamingDay';
@@ -79,11 +79,11 @@ export async function GET(request: NextRequest) {
         status: 'closed',
       }).sort({ closedAt: -1 }).lean<VaultShift | null>();
 
-      const lastReconTime = lastClosedShift?.reconciliations?.length 
+      const lastReconTime = lastClosedShift?.reconciliations?.length
         ? new Date(Math.max(...lastClosedShift.reconciliations.map(r => new Date(r.timestamp).getTime())))
         : null;
-      
-      const lastAuditTime = lastClosedShift?.closedAt 
+
+      const lastAuditTime = lastClosedShift?.closedAt
         ? (lastReconTime && lastReconTime > lastClosedShift.closedAt ? lastReconTime : lastClosedShift.closedAt)
         : (lastReconTime || null);
 
@@ -112,17 +112,17 @@ export async function GET(request: NextRequest) {
         ? new Date(Math.max(...activeShift.reconciliations.map(r => new Date(r.timestamp).getTime())))
         : null;
 
-    const lastAuditTime = activeShift.openedAt 
+    const lastAuditTime = activeShift.openedAt
       ? (lastReconTime && lastReconTime > activeShift.openedAt ? lastReconTime : activeShift.openedAt)
       : (lastReconTime || null);
 
     // Fetch Manager on Duty name
-    const vaultManager = await UserModel.findOne({ _id: activeShift.vaultManagerId }, { profile: 1, username: 1 }).lean() as { 
-      profile?: { firstName: string; lastName: string }; 
-      username: string 
+    const vaultManager = await UserModel.findOne({ _id: activeShift.vaultManagerId }, { profile: 1, username: 1 }).lean() as {
+      profile?: { firstName: string; lastName: string };
+      username: string
     } | null;
 
-    const managerName = vaultManager?.profile?.firstName && vaultManager?.profile?.lastName 
+    const managerName = vaultManager?.profile?.firstName && vaultManager?.profile?.lastName
       ? `${vaultManager.profile.firstName} ${vaultManager.profile.lastName}`
       : vaultManager?.username || 'Unknown';
 
@@ -134,38 +134,38 @@ export async function GET(request: NextRequest) {
       vaultShiftId: activeShift._id,
       status: { $in: ['active', 'pending_review', 'pending_start'] }
     });
-    
+
     // B. All Active Cashier Floats sum
     const activeCashiersData = await CashierShiftModel.find({
-        locationId,
-        status: { $in: ['active', 'pending_review'] }
+      locationId,
+      status: { $in: ['active', 'pending_review'] }
     }, { currentBalance: 1 }).lean();
-    const totalCashierFloats = activeCashiersData.reduce((sum: number, s: any) => sum + (s.currentBalance || 0), 0);
+    const totalCashierFloats = activeCashiersData.reduce((sum: number, s: unknown) => sum + ((s as { currentBalance?: number }).currentBalance || 0), 0);
 
     // 2. Machine Metrics (Drops & Soft Counts)
     const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
-    const gameDayOffset = (locationInfo as any)?.gameDayOffset ?? 8;
-    
+    const gameDayOffset = (locationInfo as Record<string, unknown> | null)?.gameDayOffset as number ?? 8;
+
     // Use the standard gaming day range for metrics
     const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod('Today', gameDayOffset);
 
     // B. Machine Meter Drops (Theoretic) - Use Location Field directly
     const machineMeters = await Meters.aggregate([
-        {
-          $match: {
-            location: locationId,
-            readAt: {
-              $gte: rangeStart, 
-              $lte: rangeEnd,
-            },
+      {
+        $match: {
+          location: locationId,
+          readAt: {
+            $gte: rangeStart,
+            $lte: rangeEnd,
           },
         },
-        {
-          $group: {
-            _id: null,
-            totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
-          },
+      },
+      {
+        $group: {
+          _id: null,
+          totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
         },
+      },
     ]);
     const totalMachineMoneyIn = machineMeters.length > 0 ? machineMeters[0].totalMoneyIn : 0;
 
@@ -181,18 +181,18 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 5: Construct and return response
     // ============================================================================
-    const response: VaultBalance & { 
-        totalCashOnPremises: number;
-        machineMoneyIn: number;
-        cashierFloats: number;
-        isCollectionDone: boolean;
-        isStale?: boolean;
+    const response: VaultBalance & {
+      totalCashOnPremises: number;
+      machineMoneyIn: number;
+      cashierFloats: number;
+      isCollectionDone: boolean;
+      isStale?: boolean;
     } = {
       balance: vaultBalanceVal,
       // Prefer currentDenominations if set, otherwise fallback to opening
       denominations:
         activeShift.currentDenominations &&
-        activeShift.currentDenominations.length > 0
+          activeShift.currentDenominations.length > 0
           ? activeShift.currentDenominations
           : activeShift.openingDenominations,
       activeShiftId: activeShift._id,
@@ -200,12 +200,12 @@ export async function GET(request: NextRequest) {
       lastAudit: lastAuditTime ? lastAuditTime.toISOString() : 'Never',
       managerOnDuty: managerName,
       canClose: activeCashierShifts === 0,
-      blockReason: activeCashierShifts > 0 
-        ? `Cannot close vault while ${activeCashierShifts} cashier shift(s) are still Active or Pending Review.` 
+      blockReason: activeCashierShifts > 0
+        ? `Cannot close vault while ${activeCashierShifts} cashier shift(s) are still Active or Pending Review.`
         : undefined,
       // Premise metrics
       totalCashOnPremises: vaultBalanceVal + totalCashierFloats + totalMachineMoneyIn,
-      machineMoneyIn: totalMachineMoneyIn, 
+      machineMoneyIn: totalMachineMoneyIn,
       cashierFloats: totalCashierFloats,
       openingBalance: activeShift.openingBalance,
       isReconciled: activeShift.isReconciled || false,
@@ -215,10 +215,11 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json({ success: true, data: response });
-  } catch (error) {
-    console.error('Error fetching vault balance:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Error fetching vault balance:', errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

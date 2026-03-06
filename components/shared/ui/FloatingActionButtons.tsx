@@ -21,7 +21,7 @@
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import FeedbackForm from '@/components/shared/ui/FeedbackForm';
-import NotificationBell from '@/components/shared/ui/NotificationBell';
+import NotificationBell, { NotificationItem } from '@/components/shared/ui/NotificationBell';
 import { useNotificationStore } from '@/lib/store/notificationStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, MessageSquare, RefreshCw } from 'lucide-react';
@@ -73,7 +73,7 @@ export const FloatingActionButtons = ({
               transition={{ duration: 0.3, delay: 0.1 }}
             >
               <NotificationBell
-                notifications={storeNotifications as any}
+                notifications={storeNotifications as unknown as NotificationItem[]}
                 unreadCount={unreadCount}
                 onMarkAsRead={onMarkAsRead}
                 onMarkAllAsRead={onMarkAllAsRead}

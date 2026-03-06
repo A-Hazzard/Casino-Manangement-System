@@ -26,7 +26,8 @@ import {
     TableRow,
 } from '@/components/shared/ui/table';
 import { IMAGES } from '@/lib/constants';
-import { formatCurrency } from '@/lib/utils/currency';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import {
     getGrossColorClass,
     getMoneyInColorClass,
@@ -74,9 +75,12 @@ export default function CabinetsCabinetTable({
   canDeleteMachines = true, // Default to true for backward compatibility
   enableHeaderSorting = true,
   showSortIcons = true,
+  hideFinancials = false,
 }: CabinetsCabinetTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
   const router = useRouter();
+  const { displayCurrency } = useCurrencyFormat();
+  const formatCurrency = (amount: number | null | undefined) => formatCurrencyWithCodeString(amount, displayCurrency);
 
   // Navigate to cabinet detail page
   const navigateToCabinet = (cabinetId: string) => {
@@ -301,28 +305,28 @@ export default function CabinetsCabinetTable({
                 </TableCell>
                 <TableCell>
                   <span
-                    className={`font-semibold ${getMoneyInColorClass()}`}
+                    className={`font-semibold ${!hideFinancials ? getMoneyInColorClass() : 'text-gray-500'}`}
                   >
-                    {formatCurrency(cab.moneyIn)}
+                    {hideFinancials ? '-' : formatCurrency(cab.moneyIn)}
                   </span>
                 </TableCell>
                 <TableCell>
                   <span
-                    className={`font-semibold ${getMoneyOutColorClass(cab.moneyOut, cab.moneyIn)}`}
+                    className={`font-semibold ${!hideFinancials ? getMoneyOutColorClass(cab.moneyOut, cab.moneyIn) : 'text-gray-500'}`}
                   >
-                    {formatCurrency(cab.moneyOut)}
+                    {hideFinancials ? '-' : formatCurrency(cab.moneyOut)}
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span className="font-semibold">
-                    {formatCurrency(cab.jackpot)}
+                  <span className="font-semibold text-gray-500">
+                    {hideFinancials ? '-' : formatCurrency(cab.jackpot)}
                   </span>
                 </TableCell>
                 <TableCell>
                   <span
-                    className={`font-semibold ${getGrossColorClass(cab.gross)}`}
+                    className={`font-semibold ${!hideFinancials ? getGrossColorClass(cab.gross) : 'text-gray-500'}`}
                   >
-                    {formatCurrency(cab.gross)}
+                    {hideFinancials ? '-' : formatCurrency(cab.gross)}
                   </span>
                 </TableCell>
                 <TableCell>

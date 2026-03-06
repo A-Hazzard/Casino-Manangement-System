@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type');
     const event = searchParams.get('event');
     const game = searchParams.get('game');
-    const timePeriod = searchParams.get('timePeriod');
+    let timePeriod = searchParams.get('timePeriod');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const page = parseInt(searchParams.get('page') || '1');
@@ -69,6 +69,21 @@ export async function GET(request: NextRequest) {
         { error: 'Machine ID is required' },
         { status: 400 }
       );
+    }
+
+    // ============================================================================
+    // STEP 3.5: Technician Restriction - Force last hour data
+    // ============================================================================
+    const { getUserFromServer } = await import('@/app/api/lib/helpers/users/users');
+    const userPayload = await getUserFromServer();
+    const userRoles = (userPayload?.roles as string[]) || [];
+
+    const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer');
+    const isOnlyTechnician = userRoles.length === 1 && userRoles[0].toLowerCase() === 'technician';
+
+    if (isOnlyTechnician && !isAdmin) {
+      console.warn('[API Events] Applying technician restriction: forcing LastHour timePeriod');
+      timePeriod = 'LastHour';
     }
 
     // ============================================================================
@@ -115,7 +130,7 @@ export async function GET(request: NextRequest) {
     else if (timePeriod && timePeriod !== 'All Time') {
       const tz = 'America/Port_of_Spain';
       const now = new Date();
-      
+
       // Get current date parts in target timezone
       const formatter = new Intl.DateTimeFormat('en-CA', {
         timeZone: tz,
@@ -146,6 +161,10 @@ export async function GET(request: NextRequest) {
         case '30d':
           dateFilterEnd = now;
           dateFilterStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case 'LastHour':
+          dateFilterEnd = now;
+          dateFilterStart = new Date(now.getTime() - 60 * 60 * 1000);
           break;
         default:
           break;
@@ -179,10 +198,10 @@ export async function GET(request: NextRequest) {
       const machineDoc = (await Machine.findOne({ _id: machineId })
         .select('machineId relayId serialNumber')
         .lean()) as {
-        machineId?: string;
-        relayId?: string;
-        serialNumber?: string;
-      } | null;
+          machineId?: string;
+          relayId?: string;
+          serialNumber?: string;
+        } | null;
 
       if (machineDoc) {
         // Try alternative identifiers in order of specificity

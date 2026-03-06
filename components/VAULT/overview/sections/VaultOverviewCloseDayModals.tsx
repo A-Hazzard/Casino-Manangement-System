@@ -18,6 +18,14 @@ import type { CloseDayStep } from '@/lib/hooks/vault/useVaultCloseDay';
 import type { GamingMachine } from '@/shared/types/entities';
 import type { CashDesk, UnbalancedShiftInfo, VaultBalance } from '@/shared/types/vault';
 
+// Type that matches what VaultOverviewForceEndShiftModal expects
+type ForceEndShiftCashier = {
+  _id: string;
+  cashierId?: string;
+  username: string;
+  cashierName?: string;
+};
+
 interface VaultOverviewCloseDayModalsProps {
   activeStep: CloseDayStep;
   vaultBalance: VaultBalance | null;
@@ -28,7 +36,7 @@ interface VaultOverviewCloseDayModalsProps {
   setShowBlockedShifts: (show: boolean) => void;
   locationId?: string;
   onClose: () => void;
-  onConfirm: (type: string, data?: any) => Promise<void>;
+  onConfirm: (type: string, data?: Record<string, unknown>) => Promise<void>;
   onRefresh?: () => void;
 }
 
@@ -46,7 +54,7 @@ export default function VaultOverviewCloseDayModals({
   onRefresh
 }: VaultOverviewCloseDayModalsProps) {
   const { licenseeId: selectedLicensee } = useVaultLicensee();
-  const [forceCloseCashier, setForceCloseCashier] = useState<any>(null);
+  const [forceCloseCashier, setForceCloseCashier] = useState<ForceEndShiftCashier | null>(null);
   const [reviewShift, setReviewShift] = useState<UnbalancedShiftInfo | null>(null);
 
   return (
@@ -75,7 +83,12 @@ export default function VaultOverviewCloseDayModals({
            }
         }}
         onForceCloseShift={(cashier) => {
-           setForceCloseCashier(cashier);
+           setForceCloseCashier({
+             _id: cashier._id,
+             cashierId: cashier.cashierId,
+             username: cashier.name || cashier.cashierName || cashier._id,
+             cashierName: cashier.cashierName,
+           });
         }}
       />
 

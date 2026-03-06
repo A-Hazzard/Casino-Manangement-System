@@ -33,7 +33,7 @@ interface VaultNotification {
   metadata?: {
     cashierId?: string;
     cashierName?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

@@ -14,6 +14,7 @@ import { CabinetsCabinetSearchFilters } from '@/components/CMS/cabinets/Cabinets
 import CabinetsNavigation from '@/components/CMS/cabinets/CabinetsNavigation';
 import DashboardChart from '@/components/CMS/dashboard/DashboardChart';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { AccessRestricted } from '@/components/shared/ui/AccessRestricted';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards';
 import UploadSmibDataModal from '@/components/shared/ui/firmware/UploadSmibDataModal';
@@ -49,6 +50,8 @@ const CABINET_TABS_CONFIG = [
   { id: 'smib' as const, label: 'SMIB Management', icon: '🧩' },
   { id: 'firmware' as const, label: 'Firmware', icon: '🛠️' },
 ];
+
+const AUTHORIZED_MOVEMENT_ROLES = ['technician', 'developer', 'manager', 'location admin'];
 
 export default function CabinetsPageContent() {
   // ============================================================================
@@ -101,6 +104,12 @@ export default function CabinetsPageContent() {
     loadCabinets,
     transformCabinet,
   } = cabinetsPageData;
+
+  const isTechnicianOnly = user?.roles?.length === 1 && user?.roles[0] === 'technician';
+
+  const shouldHideFinancials = (_u: { roles?: string[] } | null | undefined) => {
+    return false;
+  };
 
   // ============================================================================
   // Permission Checks
@@ -180,7 +189,13 @@ export default function CabinetsPageContent() {
 
         {/* Tab Navigation Section */}
         <CabinetsNavigation
-          tabs={CABINET_TABS_CONFIG}
+          tabs={CABINET_TABS_CONFIG.filter(tab => {
+            if (tab.id === 'movement') {
+              const userRoles = user?.roles?.map((r: string) => r.toLowerCase()) || [];
+              return userRoles.some((role: string) => AUTHORIZED_MOVEMENT_ROLES.includes(role));
+            }
+            return true;
+          })}
           activeSection={activeSection}
           onChange={setActiveSection}
         />
@@ -191,32 +206,42 @@ export default function CabinetsPageContent() {
         {activeSection === 'cabinets' && (
           <div className="mt-6 w-full max-w-full overflow-x-hidden">
             {/* Financial Metrics Summary Cards */}
-            <div className="mb-6 w-full max-w-full">
-              <FinancialMetricsCards
-                totals={metricsTotals || financialTotals}
-                loading={loading || metricsTotalsLoading}
-                title="Total for all Machines"
-              />
-            </div>
-
-            {/* Performance Visualization Chart */}
-            <div className="mb-6 w-full max-w-full overflow-x-hidden">
-              <div className="w-full max-w-full overflow-x-auto lg:overflow-x-visible">
-                <DashboardChart
-                  loadingChartData={loadingChart}
-                  chartData={chartData}
-                  activeMetricsFilter={activeMetricsFilter}
+            {!shouldHideFinancials(user) && (
+              <div className="mb-6 w-full max-w-full">
+                <FinancialMetricsCards
+                  totals={metricsTotals || financialTotals}
+                  loading={loading || metricsTotalsLoading}
+                  title="Total for all Machines"
                 />
               </div>
-            </div>
+            )}
+
+            {/* Performance Visualization Chart */}
+            {!shouldHideFinancials(user) && (
+              <div className="mb-6 w-full max-w-full overflow-x-hidden">
+                <div className="w-full max-w-full overflow-x-auto lg:overflow-x-visible">
+                  <DashboardChart
+                    loadingChartData={loadingChart}
+                    chartData={chartData}
+                    activeMetricsFilter={activeMetricsFilter}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Filter Controls Row: Date selection and machine status widget */}
             <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-              <DateFilters
-                hideAllTime
-                onCustomRangeGo={loadCabinets}
-                enableTimeInputs
-              />
+              {isTechnicianOnly ? (
+                <div className="flex h-10 items-center rounded-lg bg-blue-50 px-4 text-sm font-medium text-blue-700">
+                  <span className="mr-2 italic">Showing data within the last hour</span>
+                </div>
+              ) : (
+                <DateFilters
+                  hideAllTime
+                  onCustomRangeGo={loadCabinets}
+                  enableTimeInputs
+                />
+              )}
               <MachineStatusWidget
                 isLoading={refreshing}
                 onlineCount={machineStats?.onlineMachines ?? 0}
@@ -259,7 +284,8 @@ export default function CabinetsPageContent() {
                 sortOption={sortOption}
                 sortOrder={sortOrder}
                 currentPage={currentPage}
-                totalPages={Math.ceil((cabinetsPageData.filteredCabinets.length || 0) / 20)}
+                totalPages={cabinetsPageData.totalPages}
+                totalCount={cabinetsPageData.totalCount}
                 onPageChange={setCurrentPage}
                 onSort={handleColumnSort}
                 onEdit={() => {}}
@@ -282,10 +308,21 @@ export default function CabinetsPageContent() {
            Tab Content: Movement Requests
            ============================================================================ */}
         {activeSection === 'movement' && (
-          <CabinetsMovementRequests
-            locations={locations}
-            refreshTrigger={refreshTrigger}
-          />
+          (() => {
+            const userRoles = user?.roles?.map((r: string) => r.toLowerCase()) || [];
+            const isAuthorized = userRoles.some((role: string) => AUTHORIZED_MOVEMENT_ROLES.includes(role));
+            
+            if (!isAuthorized) {
+              return <AccessRestricted sectionName="Movement Requests" />;
+            }
+            
+            return (
+              <CabinetsMovementRequests
+                locations={locations}
+                refreshTrigger={refreshTrigger}
+              />
+            );
+          })()
         )}
 
         {/* ============================================================================

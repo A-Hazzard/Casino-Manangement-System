@@ -320,8 +320,8 @@ const licenseeManagement = {
       };
       toast.error(
         error?.response?.data?.message ||
-          error?.message ||
-          'Failed to add licensee'
+        error?.message ||
+        'Failed to add licensee'
       );
     }
   },
@@ -367,8 +367,8 @@ const licenseeManagement = {
       };
       toast.error(
         error?.response?.data?.message ||
-          error?.message ||
-          'Failed to update licensee'
+        error?.message ||
+        'Failed to update licensee'
       );
     }
   },
@@ -400,8 +400,8 @@ const licenseeManagement = {
       };
       toast.error(
         error?.response?.data?.message ||
-          error?.message ||
-          'Failed to delete licensee'
+        error?.message ||
+        'Failed to delete licensee'
       );
     }
   },
@@ -453,8 +453,8 @@ const licenseeManagement = {
       };
       toast.error(
         error?.response?.data?.message ||
-          error?.message ||
-          'Failed to update payment status'
+        error?.message ||
+        'Failed to update payment status'
       );
     }
   },
@@ -475,10 +475,10 @@ const locationManagement = {
       const response = await axios.get('/api/locations', {
         params: { showAll, forceAll }
       });
-      
+
       const locationsList = response.data?.locations || [];
-      
-      return locationsList.map((loc: any) => ({
+
+      return locationsList.map((loc: { _id?: string; id?: string; name?: string; locationName?: string; licenseeId?: string }) => ({
         _id: loc._id?.toString() || loc.id?.toString() || '',
         name: loc.name || loc.locationName || 'Unknown Location',
         licenseeId: loc.licenseeId ? String(loc.licenseeId) : null,

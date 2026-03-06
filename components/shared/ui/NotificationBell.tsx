@@ -14,10 +14,10 @@ import { Button } from '@/components/shared/ui/button';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/shared/ui/dialog';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuTrigger
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuTrigger
 } from '@/components/shared/ui/dropdown-menu';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -47,7 +47,7 @@ export type NotificationItem = {
     requestType?: string;
     requestedDenominations?: { denomination: number; quantity: number }[];
     entityStatus?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 };
 
@@ -109,8 +109,8 @@ export default function NotificationBell({
         const requested = viewDetails.metadata?.requestedDenominations || [];
         const denomsList = getDenominationValues(selectedLicensee);
         const initialDenoms: Denomination[] = denomsList.map(d => ({
-            denomination: d as any,
-            quantity: requested.find((r: any) => Number(r.denomination) === d)?.quantity || 0
+            denomination: d as Denomination['denomination'],
+            quantity: requested.find((r) => Number(r.denomination) === d)?.quantity || 0
         }));
         setEditedDenominations(initialDenoms);
         setRejectionReason('');
@@ -198,7 +198,7 @@ export default function NotificationBell({
         ? editedDenominations.filter(d => d.quantity > 0)
         : (viewDetails.metadata?.requestedDenominations || []);
 
-    const shortages = denomsToCheck.filter((req: any) => {
+    const shortages = denomsToCheck.filter((req) => {
         const stock = vaultInventory.find(v => Number(v.denomination) === Number(req.denomination))?.quantity || 0;
         return Number(req.quantity) > Number(stock);
     });
@@ -675,7 +675,7 @@ export default function NotificationBell({
                             ) : (
                                 // View Mode: Show Only Requested Items
                                 <>
-                                    {requested.map((d: any, i: number) => {
+                                    {requested.map((d, i: number) => {
                                       const stock = vaultInventory.find(v => Number(v.denomination) === Number(d.denomination))?.quantity || 0;
                                       const isShort = viewDetails.metadata?.requestType !== 'decrease' && Number(d.quantity) > Number(stock);
                                       return (

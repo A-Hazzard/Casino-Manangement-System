@@ -138,11 +138,8 @@ export default function CabinetsDetailsPageContent() {
             formData={smibHook.formData}
             isManuallyFetching={smibHook.isManuallyFetching}
             isEditMode={smibHook.isEditMode}
+            smibHook={smibHook}
             editingSection={editingSection}
-            smibConfig={{
-              subscribeToMessages: smibHook.subscribeToMessages,
-              isSSEConnected: smibHook.isSSEConnected,
-            }}
             onToggleExpand={smibHook.toggleSmibConfig}
             onFetchConfig={smibHook.fetchSmibConfiguration}
             onResetFormData={smibHook.resetFormData}

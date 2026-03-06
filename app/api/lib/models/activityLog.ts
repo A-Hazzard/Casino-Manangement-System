@@ -87,6 +87,7 @@ const ActivityLogSchema = new Schema(
       required: true,
     },
     description: { type: String },
+    deletedAt: { type: Date },
   },
   { timestamps: true, versionKey: false }
 );

@@ -16,8 +16,8 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-    getUserAccessibleLicenseesFromToken,
-    getUserLocationFilter,
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -120,19 +120,19 @@ export async function GET(request: Request) {
 
     // Apply location filtering based on licensee + location permissions
     // Always use getUserLocationFilter to ensure proper access control
-      const allowedLocationIds = await getUserLocationFilter(
-        userAccessibleLicensees,
+    const allowedLocationIds = await getUserLocationFilter(
+      userAccessibleLicensees,
       licenseeFilterToUse,
-        userLocationPermissions,
-        userRoles
-      );
+      userLocationPermissions,
+      userRoles
+    );
 
-      if (allowedLocationIds !== 'all') {
-        if (allowedLocationIds.length === 0) {
-          // No accessible locations
-          queryFilter = { ...deletionFilter, _id: null };
-        } else {
-          queryFilter = { ...deletionFilter, _id: { $in: allowedLocationIds } };
+    if (allowedLocationIds !== 'all') {
+      if (allowedLocationIds.length === 0) {
+        // No accessible locations
+        queryFilter = { ...deletionFilter, _id: null };
+      } else {
+        queryFilter = { ...deletionFilter, _id: { $in: allowedLocationIds } };
 
         // CRITICAL: Add explicit licensee filter when specific licensee is selected
         // This ensures we only return locations from the selected licensee
@@ -164,7 +164,7 @@ export async function GET(request: Request) {
           if (!queryFilter.$and) {
             queryFilter.$and = [];
           }
-          (queryFilter.$and as any[]).push({
+          (queryFilter.$and as Array<Record<string, unknown>>).push({
             $or: [
               { 'rel.licensee': resolvedLicenseeId },
               { 'rel.licencee': resolvedLicenseeId },
@@ -174,8 +174,8 @@ export async function GET(request: Request) {
             `[Locations API] Applied licensee filter: ${resolvedLicenseeId} (from ${licenseeFilterToUse})`
           );
         }
-        }
-      } else {
+      }
+    } else {
       // Admin with no restrictions - return all locations (with deletion filter)
       // But if a specific licensee is selected, still filter by it
       queryFilter = { ...deletionFilter };
@@ -209,7 +209,7 @@ export async function GET(request: Request) {
         if (!queryFilter.$and) {
           queryFilter.$and = [];
         }
-        (queryFilter.$and as any[]).push({
+        (queryFilter.$and as Array<Record<string, unknown>>).push({
           $or: [
             { 'rel.licensee': resolvedLicenseeId },
             { 'rel.licencee': resolvedLicenseeId },
@@ -225,7 +225,7 @@ export async function GET(request: Request) {
     // STEP 5: Fetch locations with optional minimal projection
     // ============================================================================
     const projection = minimal
-      ? { _id: 1, name: 1, geoCoords: 1, 'rel.licensee': 1 }
+      ? { _id: 1, name: 1, geoCoords: 1, 'rel.licensee': 1, 'rel.licencee': 1 }
       : undefined;
     const locations = await GamingLocations.find(queryFilter, projection)
       .sort({ name: 1 })
@@ -235,7 +235,7 @@ export async function GET(request: Request) {
     // STEP 6: Add licenseeId field for frontend filtering
     // ============================================================================
     const locationsWithLicenseeId = locations.map(loc => {
-      const licenseeRaw = loc.rel?.licensee || (loc.rel as any)?.licencee;
+      const licenseeRaw = loc.rel?.licensee || (loc.rel as unknown as Record<string, unknown>)?.licencee;
       let licenseeId: string | null = null;
 
       if (Array.isArray(licenseeRaw)) {
@@ -531,19 +531,20 @@ export async function POST(request: Request) {
       { success: true, location: newLocation },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     let errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
     let status = 500;
 
     // Handle MongoDB duplicate key error (code 11000)
-    if (error && typeof error === 'object' && error.code === 11000) {
+    const mongoError = error as { code?: number; keyPattern?: Record<string, unknown>; message?: string };
+    if (mongoError && typeof mongoError === 'object' && mongoError.code === 11000) {
       let fieldName = 'field';
-      if (error.keyPattern) {
-        fieldName = Object.keys(error.keyPattern)[0];
-      } else if (error.message && error.message.includes('index:')) {
-        const match = error.message.match(/index: (.+?)_\d/);
+      if (mongoError.keyPattern) {
+        fieldName = Object.keys(mongoError.keyPattern)[0];
+      } else if (mongoError.message && mongoError.message.includes('index:')) {
+        const match = mongoError.message.match(/index: (.+?)_\d/);
         if (match && match[1]) fieldName = match[1];
       }
 
@@ -924,19 +925,20 @@ export async function PUT(request: Request) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     let errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
     let status = 500;
 
     // Handle MongoDB duplicate key error (code 11000)
-    if (error && typeof error === 'object' && error.code === 11000) {
+    const mongoError = error as { code?: number; keyPattern?: Record<string, unknown>; message?: string };
+    if (mongoError && typeof mongoError === 'object' && mongoError.code === 11000) {
       let fieldName = 'field';
-      if (error.keyPattern) {
-        fieldName = Object.keys(error.keyPattern)[0];
-      } else if (error.message && error.message.includes('index:')) {
-        const match = error.message.match(/index: (.+?)_\d/);
+      if (mongoError.keyPattern) {
+        fieldName = Object.keys(mongoError.keyPattern)[0];
+      } else if (mongoError.message && mongoError.message.includes('index:')) {
+        const match = mongoError.message.match(/index: (.+?)_\d/);
         if (match && match[1]) fieldName = match[1];
       }
 

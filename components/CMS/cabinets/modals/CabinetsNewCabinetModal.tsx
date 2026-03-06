@@ -286,10 +286,12 @@ export default function CabinetsNewCabinetModal({
         return;
       }
 
-      // Build submission data with lowercased gameType
+      // Build submission data with lowercased gameType and consistent SMIB field names
       const submissionData = {
         ...formData,
-        gameType: ((formData.gameType === 'other' ? formData.otherGameType : formData.gameType) || '').toLowerCase().trim()
+        gameType: ((formData.gameType === 'other' ? formData.otherGameType : formData.gameType) || '').toLowerCase().trim(),
+        smibBoard: formData.relayId,
+        smbId: formData.relayId,
       };
 
       // console.log("Form data being sent:", submissionData);

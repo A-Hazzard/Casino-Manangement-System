@@ -10,6 +10,7 @@
 
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
+import { CustomSelect } from '@/components/shared/ui/custom-select';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import type { LocationFilter } from '@/lib/types/location';
@@ -21,6 +22,8 @@ type LocationsDetailsFilterSectionProps = {
   selectedFilters: LocationFilter[];
   onFilterChange: (filter: LocationFilter, checked: boolean) => void;
   onMultiFilterChange: (filters: LocationFilter[]) => void;
+  selectedStatus: string;
+  onStatusChange: (status: string) => void;
 };
 
 const STATUS_OPTIONS = [
@@ -38,6 +41,8 @@ export default function LocationsDetailsFilterSection({
   selectedFilters,
   onFilterChange,
   onMultiFilterChange,
+  selectedStatus,
+  onStatusChange,
 }: LocationsDetailsFilterSectionProps) {
   return (
     <div className="space-y-4">
@@ -52,6 +57,24 @@ export default function LocationsDetailsFilterSection({
             onChange={e => onSearchChange(e.target.value)}
           />
           <MagnifyingGlassIcon className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        </div>
+
+        <div className="w-full md:w-[200px]">
+          <CustomSelect
+            value={selectedStatus}
+            onValueChange={onStatusChange}
+            options={[
+              { value: 'All', label: 'All Status' },
+              { value: 'Online', label: 'Online' },
+              { value: 'OfflineLongest', label: 'Offline (Longest First)' },
+              { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
+              { value: 'NeverOnline', label: 'Never Online' },
+            ]}
+            placeholder="All Status"
+            className="w-full"
+            triggerClassName="h-9 bg-white border border-gray-200 rounded-md px-3 text-gray-700 focus:ring-2 focus:ring-purple-200 text-sm"
+            searchable={false}
+          />
         </div>
 
         {/* Desktop Filter Dropdown (below XL) */}

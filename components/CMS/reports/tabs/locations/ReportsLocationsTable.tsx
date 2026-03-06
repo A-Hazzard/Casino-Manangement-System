@@ -20,20 +20,22 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import {
-  getGrossColorClass,
-  getMoneyInColorClass,
-  getMoneyOutColorClass,
+    getGrossColorClass,
+    getMoneyInColorClass,
+    getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import { AggregatedLocation } from '@/shared/types/entities';
 import {
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-  HelpCircle,
-  Home,
-  Search,
-  Server,
+    ChevronDown,
+    ChevronUp,
+    ExternalLink,
+    HelpCircle,
+    Home,
+    Search,
+    Server,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -82,6 +84,7 @@ export default function ReportsLocationsTable({
   const [sortField, setSortField] = useState<SortField>('moneyIn');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [searchTerm, setSearchTerm] = useState('');
+  const { displayCurrency } = useCurrencyFormat();
 
   // Calculate total machines across all locations for floor position calculation
   const totalMachinesAcrossAllLocations = useMemo(() => {
@@ -187,13 +190,8 @@ export default function ReportsLocationsTable({
     );
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const formatCurrency = (amount: number | null | undefined) => {
+    return formatCurrencyWithCodeString(amount, displayCurrency);
   };
 
   const formatNumber = (num: number) => {

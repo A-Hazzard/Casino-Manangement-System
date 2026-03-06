@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 
 type DebugSectionProps = {
   title: string;
-  data: any;
+  data: unknown;
   className?: string;
 };
 

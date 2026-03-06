@@ -37,7 +37,7 @@ import {
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
-import type { CashierFloat } from '@/shared/types/vault';
+import type { CashierFloat, FloatTransaction } from '@/shared/types/vault';
 import { AlertTriangle, RefreshCw, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -68,7 +68,7 @@ export default function VaultFloatTransactionsPageContent() {
   const [cashierFloats, setCashierFloats] = useState<CashierFloat[]>(
     DEFAULT_CASHIER_FLOATS
   );
-  const [floatTransactions, setFloatTransactions] = useState<any[]>([]);
+  const [floatTransactions, setFloatTransactions] = useState<FloatTransaction[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 

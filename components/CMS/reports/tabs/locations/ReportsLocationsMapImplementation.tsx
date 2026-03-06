@@ -6,29 +6,30 @@
 
 'use client';
 
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  useMap,
-} from 'react-leaflet';
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/shared/ui/tooltip';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
+import {
+    PERFORMANCE_CONFIG,
+    getPerformanceLevel as getCommonPerformanceLevel,
+} from '@/lib/utils/financial';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { MapPin, Search, TrendingUp } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/shared/ui/tooltip';
-import {
-  PERFORMANCE_CONFIG,
-  getPerformanceLevel as getCommonPerformanceLevel,
-} from '@/lib/utils/financial';
-import { formatCurrency } from '@/lib/utils/formatting';
-import { MapPin, Search, TrendingUp } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+    MapContainer,
+    Marker,
+    Popup,
+    TileLayer,
+    useMap,
+} from 'react-leaflet';
 
 // ============================================================================
 // Types
@@ -134,6 +135,8 @@ function LocationPopupContent({
   location: LocationData;
   isFinancialDataLoading: boolean;
 }) {
+  const { displayCurrency } = useCurrencyFormat();
+  const formatCurrency = (val: number | null | undefined) => formatCurrencyWithCodeString(val, displayCurrency);
   const performanceLevel = getCommonPerformanceLevel(
     location.metrics?.gross || 0,
     location.metrics?.moneyIn || 0
