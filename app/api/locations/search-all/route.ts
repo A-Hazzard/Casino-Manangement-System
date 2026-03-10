@@ -656,6 +656,23 @@ export async function GET(request: NextRequest) {
       memberCount: loc.memberCount,
     }));
 
+    // Apply relevance sorting if searching
+    if (search) {
+      const searchLower = search.toLowerCase();
+      finalResponse.sort((a, b) => {
+        const aName = a.locationName.toLowerCase();
+        const bName = b.locationName.toLowerCase();
+        const aStarts = aName.startsWith(searchLower);
+        const bStarts = bName.startsWith(searchLower);
+
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+
+        // If both start with it or both don't, sort alphabetically
+        return aName.localeCompare(bName);
+      });
+    }
+
     const duration = Date.now() - startTime;
     if (duration > 2000) {
       console.warn(`[Locations Search All API] Completed in ${duration}ms`);

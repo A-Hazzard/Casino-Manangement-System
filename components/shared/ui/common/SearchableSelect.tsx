@@ -41,7 +41,13 @@ export default function SearchableSelect({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      
+      // If the target is no longer in the document, it was likely an element
+      // unmounted during a re-render (e.g. selection)
+      if (!document.body.contains(target)) return;
+
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         setIsOpen(false);
         setSearchTerm('');
       }
@@ -114,7 +120,10 @@ export default function SearchableSelect({
                       'flex cursor-pointer items-center justify-between px-3 py-2 text-sm hover:bg-gray-50',
                       isSelected ? 'bg-violet-50 text-violet-900 font-medium' : 'text-gray-700'
                     )}
-                    onClick={() => handleSelect(option.value)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelect(option.value);
+                    }}
                   >
                     <div className="flex flex-col">
                       <span>{option.label}</span>

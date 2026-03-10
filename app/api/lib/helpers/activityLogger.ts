@@ -30,15 +30,15 @@ export async function logActivity(params: {
       }>) || [];
 
     // Validate and extract user information
-    // For auth failures (login attempts), 'unknown' is acceptable
-    const userId = params.userId;
-    const username = params.username;
+    // For auth failures (login attempts) and background operations, allow 'unknown' values
+    const userId = params.userId || 'unknown';
+    const username = params.username || 'unknown';
 
-    if (!userId || !username) {
-      console.error('❌ Activity logging failed: Missing user information');
-      console.error('❌ userId:', userId, 'username:', username);
-      console.error('❌ Action:', params.action);
-      throw new Error('User information is required for activity logging');
+    // Log when user information is missing but don't throw error for background operations
+    if (!params.userId || !params.username) {
+      console.warn('⚠️ Activity logging with incomplete user information');
+      console.warn('⚠️ userId:', params.userId, 'username:', params.username);
+      console.warn('⚠️ Action:', params.action);
     }
 
     const activityLog = await ActivityLog.create({

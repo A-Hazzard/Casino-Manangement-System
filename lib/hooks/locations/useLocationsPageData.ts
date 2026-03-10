@@ -173,7 +173,7 @@ export function useLocationsPageData() {
   useEffect(() => {
     setCurrentPage(0);
     setLoadedBatches(new Set());
-  }, [selectedFilters, selectedStatus, searchTerm, activeMetricsFilter, selectedLicensee, customDateRange, sortOption, sortOrder, displayCurrency]);
+  }, [selectedFilters, selectedStatus, searchTerm, debouncedSearchTerm, activeMetricsFilter, selectedLicensee, customDateRange, sortOption, sortOrder, displayCurrency]);
 
   // Consolidated data fetch effect
   useEffect(() => {
@@ -199,6 +199,7 @@ export function useLocationsPageData() {
     ITEMS_PER_BATCH,
     loadedBatches,
     calculateBatchNumber,
+    debouncedSearchTerm, // Added to ensure fetch re-triggers when term settles
   ]);
 
   // Metrics totals fetch
@@ -235,7 +236,7 @@ export function useLocationsPageData() {
   }, [activeMetricsFilter, selectedLicensee, customDateRange, displayCurrency, filtersInitialized, machineTypeFilterString, makeMetricsRequest, debouncedSearchTerm, selectedStatus]);
 
   return {
-    loading: loading || searchLoading || isDataMissingForPage,
+    loading: loading || searchLoading || isDataMissingForPage || (searchTerm !== debouncedSearchTerm),
     refreshing,
     error,
     filteredLocationData: paginatedLocationData,

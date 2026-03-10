@@ -25,8 +25,8 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportCardsProps } from '@/lib/types/components';
 import { getGrossColorClass } from '@/lib/utils/financial';
-import { hasAdminAccess, hasManagerAccess, UserRole } from '@/lib/utils/permissions';
 import { getLicenseeName } from '@/lib/utils/licensee';
+import { hasAdminAccess, hasManagerAccess, UserRole } from '@/lib/utils/permissions';
 import { AlertTriangle, Edit3, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -86,9 +86,7 @@ export default function CollectionReportCards({
   }
   return (
     <div
-      className={`mt-4 flex w-full min-w-0 flex-col gap-4 px-2 md:px-4 ${
-        gridLayout ? 'lg:hidden' : 'md:hidden'
-      }`}
+      className={`mt-4 flex w-full min-w-0 flex-col gap-4 px-2 md:px-4`}
     >
       <div
         className={`${

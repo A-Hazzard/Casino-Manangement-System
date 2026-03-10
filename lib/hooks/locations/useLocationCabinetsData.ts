@@ -172,7 +172,7 @@ export function useLocationCabinetsData({
   const filteredCabinets = useMemo(() => {
     let result = filterAndSortCabinets(
       sourceCabinets,
-      '', // API already handles search filtering
+      debouncedSearchTerm, // Now passing the search term for relevance sorting
       sortOption,
       sortOrder
     );
@@ -748,8 +748,8 @@ export function useLocationCabinetsData({
   return {
     // State
     filteredCabinets,
-    loading: loading || cabinetsLoading || isFilterResetting || isDataMissingForPage,
-    cabinetsLoading: cabinetsLoading || isFilterResetting || isDataMissingForPage,
+    loading: loading || cabinetsLoading || isFilterResetting || isDataMissingForPage || (searchTerm !== debouncedSearchTerm),
+    cabinetsLoading: cabinetsLoading || isFilterResetting || isDataMissingForPage || (searchTerm !== debouncedSearchTerm),
     searchTerm,
     locationName,
     locationMembershipEnabled,

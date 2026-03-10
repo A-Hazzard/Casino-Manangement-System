@@ -563,6 +563,23 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Apply relevance sorting if searching
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      cabinetsWithMeters.sort((a, b) => {
+        const aSerial = (a.serialNumber || '').toLowerCase();
+        const bSerial = (b.serialNumber || '').toLowerCase();
+
+        const aStarts = aSerial.startsWith(searchLower);
+        const bStarts = bSerial.startsWith(searchLower);
+
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+
+        return 0;
+      });
+    }
+
     // Apply pagination
     const totalCount = cabinetsWithMeters.length;
     const paginatedCabinets = limit

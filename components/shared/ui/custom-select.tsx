@@ -83,11 +83,17 @@ export function CustomSelect({
   // Handle click outside to close
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      
+      // If the target is no longer in the document, it was likely an element
+      // unmounted during a re-render (e.g. selection)
+      if (!document.body.contains(target)) return;
+
       if (
         contentRef.current &&
-        !contentRef.current.contains(event.target as Node) &&
+        !contentRef.current.contains(target) &&
         triggerRef.current &&
-        !triggerRef.current.contains(event.target as Node)
+        !triggerRef.current.contains(target)
       ) {
         setIsOpen(false);
         setSearchTerm('');
@@ -263,7 +269,7 @@ export function CustomSelect({
             ref={contentRef}
             id="select-options"
             className={cn(
-              'fixed z-[9999] rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95',
+              'fixed z-[100002] rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95',
               'sm:max-w-[300px] md:max-w-[400px] lg:max-w-[500px]',
               'max-h-60 overflow-y-auto overflow-x-hidden',
               contentClassName

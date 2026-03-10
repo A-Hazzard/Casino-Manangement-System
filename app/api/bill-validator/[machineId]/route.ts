@@ -95,16 +95,16 @@ export async function GET(req: NextRequest) {
     console.warn(`[BILL VALIDATOR] Machine lookup:`, {
       machineId,
       machineFound: !!machine,
-      locationId: machine?.locationId,
+      locationId: machine?.gamingLocation,
     });
 
-    if (machine?.locationId) {
+    if (machine?.gamingLocation) {
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
       gamingLocation = await GamingLocations.findOne({
-        _id: machine.locationId,
+        _id: machine.gamingLocation,
       });
       console.warn(`[BILL VALIDATOR] Location lookup:`, {
-        locationId: machine.locationId,
+        locationId: machine.gamingLocation,
         locationFound: !!gamingLocation,
         gameDayOffset: gamingLocation?.gameDayOffset,
       });
@@ -373,12 +373,38 @@ function processBillsData(
   billValidatorOptions: Record<string, boolean>
 ) {
   if (bills.length === 0) {
+    const allDenomsMap = [
+      { key: 'dollar1', value: 1, optionKey: 'denom1' },
+      { key: 'dollar2', value: 2, optionKey: 'denom2' },
+      { key: 'dollar5', value: 5, optionKey: 'denom5' },
+      { key: 'dollar10', value: 10, optionKey: 'denom10' },
+      { key: 'dollar20', value: 20, optionKey: 'denom20' },
+      { key: 'dollar50', value: 50, optionKey: 'denom50' },
+      { key: 'dollar100', value: 100, optionKey: 'denom100' },
+      { key: 'dollar200', value: 200, optionKey: 'denom200' },
+      { key: 'dollar500', value: 500, optionKey: 'denom500' },
+      { key: 'dollar1000', value: 1000, optionKey: 'denom1000' },
+      { key: 'dollar2000', value: 2000, optionKey: 'denom2000' },
+      { key: 'dollar5000', value: 5000, optionKey: 'denom5000' },
+      { key: 'dollar10000', value: 10000, optionKey: 'denom10000' },
+    ];
+
+    const emptyDenominations = allDenomsMap
+      .filter(({ optionKey }) => billValidatorOptions[optionKey] === true)
+      .map(({ value }) => ({
+        denomination: value,
+        label: `$${value}`,
+        quantity: 0,
+        subtotal: 0,
+      }));
+
     return {
-      version: 'none',
-      denominations: [],
+      version: 'v2', // Uses v2 to trick the UI into showing the table instead of empty state
+      denominations: emptyDenominations,
       totalAmount: 0,
       totalQuantity: 0,
       unknownBills: 0,
+      currentBalance,
     };
   }
 
@@ -450,12 +476,24 @@ function processV1Data(
 
   // console.warn("[BILL VALIDATOR] V1 denomination totals:", denominationTotals);
 
-  // Create dynamic denomination range based on the maximum found in the data
+  // Create dynamic denomination range based on billValidatorOptions
   const allDenominations = [
-    1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000,
-  ].filter(value => value <= maxDenomination || maxDenomination === 0); // Show all if no data
+    { value: 1, optionKey: 'denom1' },
+    { value: 2, optionKey: 'denom2' },
+    { value: 5, optionKey: 'denom5' },
+    { value: 10, optionKey: 'denom10' },
+    { value: 20, optionKey: 'denom20' },
+    { value: 50, optionKey: 'denom50' },
+    { value: 100, optionKey: 'denom100' },
+    { value: 200, optionKey: 'denom200' },
+    { value: 500, optionKey: 'denom500' },
+    { value: 1000, optionKey: 'denom1000' },
+    { value: 2000, optionKey: 'denom2000' },
+    { value: 5000, optionKey: 'denom5000' },
+    { value: 10000, optionKey: 'denom10000' },
+  ].filter(({ optionKey }) => billValidatorOptions[optionKey] === true);
 
-  const denominations = allDenominations.map(value => ({
+  const denominations = allDenominations.map(({ value }) => ({
     denomination: value,
     label: `$${value}`,
     quantity: denominationTotals[value] || 0,
@@ -546,22 +584,22 @@ function processV2Data(
     }
   });
 
-  // Create dynamic denomination range based on the maximum found in the data
+  // Create dynamic denomination range based on the location's allowed denominations
   const allDenominations = [
-    { key: 'dollar1', value: 1 },
-    { key: 'dollar2', value: 2 },
-    { key: 'dollar5', value: 5 },
-    { key: 'dollar10', value: 10 },
-    { key: 'dollar20', value: 20 },
-    { key: 'dollar50', value: 50 },
-    { key: 'dollar100', value: 100 },
-    { key: 'dollar200', value: 200 },
-    { key: 'dollar500', value: 500 },
-    { key: 'dollar1000', value: 1000 },
-    { key: 'dollar2000', value: 2000 },
-    { key: 'dollar5000', value: 5000 },
-    { key: 'dollar10000', value: 10000 },
-  ].filter(({ value }) => value <= maxDenomination || maxDenomination === 0); // Show all if no data
+    { key: 'dollar1', value: 1, optionKey: 'denom1' },
+    { key: 'dollar2', value: 2, optionKey: 'denom2' },
+    { key: 'dollar5', value: 5, optionKey: 'denom5' },
+    { key: 'dollar10', value: 10, optionKey: 'denom10' },
+    { key: 'dollar20', value: 20, optionKey: 'denom20' },
+    { key: 'dollar50', value: 50, optionKey: 'denom50' },
+    { key: 'dollar100', value: 100, optionKey: 'denom100' },
+    { key: 'dollar200', value: 200, optionKey: 'denom200' },
+    { key: 'dollar500', value: 500, optionKey: 'denom500' },
+    { key: 'dollar1000', value: 1000, optionKey: 'denom1000' },
+    { key: 'dollar2000', value: 2000, optionKey: 'denom2000' },
+    { key: 'dollar5000', value: 5000, optionKey: 'denom5000' },
+    { key: 'dollar10000', value: 10000, optionKey: 'denom10000' },
+  ].filter(({ optionKey }) => billValidatorOptions[optionKey] === true);
 
   const denominations = allDenominations
     .map(({ key, value }) => {

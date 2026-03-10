@@ -1,6 +1,6 @@
 import { Button } from '@/components/shared/ui/button';
+import { Checkbox } from '@/components/shared/ui/checkbox';
 import Chip from '@/components/shared/ui/common/Chip';
-import MultiSelectDropdown from '@/components/shared/ui/common/MultiSelectDropdown';
 import SearchableSelect from '@/components/shared/ui/common/SearchableSelect';
 import {
   Dialog,
@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/shared/ui/dialog';
+import { Input } from '@/components/shared/ui/input';
 import {
   Select,
   SelectContent,
@@ -26,7 +27,7 @@ import { useUserStore } from '@/lib/store/userStore';
 import { MovementRequest } from '@/lib/types/movement';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import axios from 'axios';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 // === Disabled field hint banner ===
@@ -52,12 +53,13 @@ export default function EditMovementRequestModal({ onSaved }: { onSaved: () => v
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   // Data state
-  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
-  const [users, setUsers] = useState<{ _id: string; name: string; emailAddress: string; roles: string[]; assignedLocations: string[] }[]>([]);
+  const [locations, setLocations] = useState<{ id: string; name: string; licenseeId?: string }[]>([]);
+  const [users, setUsers] = useState<{ _id: string; name: string; emailAddress: string; roles: string[]; assignedLocations: string[]; assignedLicensees: string[] }[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [cabinets, setCabinets] = useState<Cabinet[]>([]);
   const [loadingCabinets, setLoadingCabinets] = useState(false);
   const [selectedCabinets, setSelectedCabinets] = useState<Cabinet[]>([]);
+  const [machineSearchTerm, setMachineSearchTerm] = useState('');
 
   // Load initial data when modal opens
   useEffect(() => {
@@ -81,7 +83,7 @@ export default function EditMovementRequestModal({ onSaved }: { onSaved: () => v
   // Fetch locations
   useEffect(() => {
     fetchAllGamingLocations()
-      .then(setLocations)
+      .then(res => setLocations(res as { id: string; name: string; licenseeId?: string }[]))
       .catch(error => console.error('Failed to fetch locations:', error));
   }, []);
 
@@ -90,7 +92,7 @@ export default function EditMovementRequestModal({ onSaved }: { onSaved: () => v
     if (isEditModalOpen) {
       setLoadingUsers(true);
       axios
-        .get('/api/users')
+        .get('/api/users?limit=1000')
         .then(response => { if (response.data.users) setUsers(response.data.users); })
         .catch(error => console.error('Failed to fetch users:', error))
         .finally(() => setLoadingUsers(false));
@@ -194,16 +196,28 @@ export default function EditMovementRequestModal({ onSaved }: { onSaved: () => v
     formData.locationFrom ||
     '';
 
-  // Filter users based on destination location assignment
-  const destinationLocationId = locations.find(l => l.name === formData.locationTo || l.id === formData.locationTo)?.id;
+  // Filter users based on role and destination location access
+  const destinationLoc = locations.find(l => String(l.name) === String(formData.locationTo) || String(l.id) === String(formData.locationTo));
+  const destinationLocationId = destinationLoc?.id;
   
   const filteredUsers = users.filter(user => {
     if (!user.emailAddress || user.emailAddress.trim() === '') return false;
     if (!destinationLocationId) return false;
     
     const roleLower = user.roles?.map(r => r.toLowerCase()) || [];
-    const hasRole = roleLower.includes('location admin') || roleLower.includes('technician');
-    const hasLocation = user.assignedLocations?.includes(destinationLocationId);
+    const hasRole = roleLower.includes('technician') || roleLower.includes('location admin');
+    
+    // Admins/developers bypass location assignment validation for recipients
+    if (isAdminOrDev) return hasRole;
+    
+    // Check if the user is assigned to the selected destination location
+    const targetLoc = locations.find(loc => String(loc.id) === String(destinationLocationId));
+    const targetLocName = targetLoc?.name;
+    
+    const hasLocation = 
+      (user.assignedLocations || []).some(loc => String(loc) === 'all') || 
+      (user.assignedLocations || []).some(loc => String(loc) === String(destinationLocationId)) || 
+      (!!targetLocName && (user.assignedLocations || []).some(loc => String(loc) === String(targetLocName)));
     
     return hasRole && hasLocation;
   });
@@ -219,7 +233,8 @@ export default function EditMovementRequestModal({ onSaved }: { onSaved: () => v
       name: formData.recipientName || formData.requestTo,
       emailAddress: formData.requestTo,
       roles: [],
-      assignedLocations: []
+      assignedLocations: [],
+      assignedLicensees: []
     });
   }
 
@@ -432,37 +447,89 @@ export default function EditMovementRequestModal({ onSaved }: { onSaved: () => v
                 Please Select {formData.movementType}s to be Moved <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <MultiSelectDropdown
-                  options={cabinets.map(cab => ({
-                    id: cab._id,
-                    label: cab.installedGame || cab.game || cab.assetNumber || cab.serialNumber || 'Unknown Machine',
-                    displayNode: (
-                      <div className="flex flex-col py-1">
-                        <span className="text-sm font-bold text-gray-900">
-                          {cab.installedGame || cab.game || cab.assetNumber || cab.serialNumber || 'Unknown Machine'}
-                        </span>
-                        <span className="text-[11px] text-gray-500 font-medium">
-                          SN: {cab.serialNumber || 'N/A'} | Asset: {cab.assetNumber || 'N/A'}
-                        </span>
+                <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                  {/* Inline Search */}
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder={formData.locationFrom ? `Search ${formData.movementType}s...` : "Select a source location first"}
+                      value={machineSearchTerm}
+                      onChange={(e) => setMachineSearchTerm(e.target.value)}
+                      disabled={!formData.locationFrom || loadingCabinets || !canModifyRecord}
+                      className="h-10 pl-9 text-sm rounded-lg"
+                    />
+                  </div>
+
+                  {/* List of Machines */}
+                  <div className="max-h-56 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1">
+                    {loadingCabinets ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                        <Loader2 className="h-6 w-6 animate-spin mb-2" />
+                        <span className="text-sm">Loading {formData.movementType?.toLowerCase()}s...</span>
                       </div>
-                    )
-                  }))}
-                  selectedIds={selectedCabinets.map(c => c._id)}
-                  onChange={(ids) => {
-                    const selected = cabinets.filter(c => ids.includes(c._id));
-                    setSelectedCabinets(selected);
-                  }}
-                  placeholder={
-                    loadingCabinets 
-                    ? "Loading items..." 
-                    : formData.locationFrom 
-                      ? 'Select ' + formData.movementType + 's' 
-                      : 'Select a source location first'
-                  }
-                  searchPlaceholder={'Search ' + formData.movementType + 's...'}
-                  disabled={!formData.locationFrom || loadingCabinets || !canModifyRecord}
-                  label={formData.movementType + 's'}
-                />
+                    ) : !formData.locationFrom ? (
+                      <div className="py-8 text-center text-sm text-gray-500 italic">
+                        Please select a source location first.
+                      </div>
+                    ) : cabinets.length === 0 ? (
+                      <div className="py-8 text-center text-sm text-gray-500">
+                        No {formData.movementType?.toLowerCase()}s found for this location.
+                      </div>
+                    ) : (
+                      (() => {
+                        const filtered = cabinets.filter(cab => {
+                          const searchStr = machineSearchTerm.toLowerCase();
+                          return (
+                            (cab.installedGame || cab.game || '').toLowerCase().includes(searchStr) ||
+                            (cab.serialNumber || '').toLowerCase().includes(searchStr) ||
+                            (cab.assetNumber || '').toLowerCase().includes(searchStr)
+                          );
+                        });
+
+                        if (filtered.length === 0) {
+                          return (
+                            <div className="py-6 text-center text-sm text-gray-500 font-medium">
+                              No matches for "{machineSearchTerm}"
+                            </div>
+                          );
+                        }
+
+                        return filtered.map(cab => (
+                          <label
+                            key={cab._id}
+                            className={`flex cursor-pointer items-start gap-3 rounded-lg border border-transparent p-2 transition-all hover:bg-gray-50 ${
+                              selectedCabinets.some(c => c._id === cab._id) ? 'bg-violet-50/50 border-violet-100' : ''
+                            }`}
+                          >
+                            <Checkbox
+                              checked={selectedCabinets.some(c => c._id === cab._id)}
+                              onCheckedChange={() => {
+                                if (!canModifyRecord) return;
+                                if (selectedCabinets.some(c => c._id === cab._id)) {
+                                  setSelectedCabinets(prev => prev.filter(c => c._id !== cab._id));
+                                } else {
+                                  setSelectedCabinets(prev => [...prev, cab]);
+                                  setErrors(prev => ({...prev, selectedCabinets: '', machineHint: ''}));
+                                }
+                              }}
+                              disabled={!canModifyRecord}
+                              className="mt-1 h-4 w-4 border-gray-300 data-[state=checked]:bg-buttonActive data-[state=checked]:border-buttonActive"
+                            />
+                            <div className="flex flex-col leading-tight min-w-0 flex-1">
+                              <span className="text-sm font-bold text-gray-900 truncate">
+                                {cab.installedGame || cab.game || cab.assetNumber || cab.serialNumber || 'Unknown Machine'}
+                              </span>
+                              <span className="text-[11px] text-gray-500 font-medium mt-0.5">
+                                SN: {cab.serialNumber || 'N/A'} | Asset: {cab.assetNumber || 'N/A'}
+                              </span>
+                            </div>
+                          </label>
+                        ));
+                      })()
+                    )}
+                  </div>
+                </div>
                 {!canModifyRecord && (
                   <div className="absolute inset-0 cursor-not-allowed z-10" />
                 )}

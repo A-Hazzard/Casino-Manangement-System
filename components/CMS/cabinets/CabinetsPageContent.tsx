@@ -51,7 +51,7 @@ const CABINET_TABS_CONFIG = [
   { id: 'firmware' as const, label: 'Firmware', icon: '🛠️' },
 ];
 
-const AUTHORIZED_MOVEMENT_ROLES = ['technician', 'developer', 'manager', 'location admin'];
+const EXCLUDED_MOVEMENT_ROLES = ['collector'];
 
 export default function CabinetsPageContent() {
   // ============================================================================
@@ -142,7 +142,7 @@ export default function CabinetsPageContent() {
         locations={locations}
         onSubmit={async () => {
           setIsNewMovementOpen(false);
-          await loadCabinets();
+          await handleRefresh();
         }}
       />
       <UploadSmibDataModal
@@ -192,7 +192,7 @@ export default function CabinetsPageContent() {
           tabs={CABINET_TABS_CONFIG.filter(tab => {
             if (tab.id === 'movement') {
               const userRoles = user?.roles?.map((r: string) => r.toLowerCase()) || [];
-              return userRoles.some((role: string) => AUTHORIZED_MOVEMENT_ROLES.includes(role));
+              return !userRoles.some((role: string) => EXCLUDED_MOVEMENT_ROLES.includes(role));
             }
             return true;
           })}
@@ -310,7 +310,7 @@ export default function CabinetsPageContent() {
         {activeSection === 'movement' && (
           (() => {
             const userRoles = user?.roles?.map((r: string) => r.toLowerCase()) || [];
-            const isAuthorized = userRoles.some((role: string) => AUTHORIZED_MOVEMENT_ROLES.includes(role));
+            const isAuthorized = !userRoles.some((role: string) => EXCLUDED_MOVEMENT_ROLES.includes(role));
             
             if (!isAuthorized) {
               return <AccessRestricted sectionName="Movement Requests" />;

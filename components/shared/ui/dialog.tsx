@@ -35,7 +35,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm pointer-events-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      'fixed inset-0 z-[100000] bg-black/80 backdrop-blur-sm pointer-events-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className
     )}
     {...props}
@@ -56,7 +56,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed z-[150] grid gap-4 border bg-background shadow-lg duration-200 pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+        'fixed z-[100001] grid gap-4 border bg-background shadow-lg duration-200 pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
         isMobileFullScreen 
           ? 'inset-0 w-full h-[100dvh] p-6 max-w-none rounded-none' 
           : 'left-[50%] top-[50%] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] p-6 rounded-lg',
@@ -135,8 +135,8 @@ DialogDescription.displayName = DialogPrimitive.Description.displayName;
 const DialogTrigger = DialogPrimitive.Trigger;
 
 export {
-  Dialog, DialogClose,
-  DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogPortal, DialogTitle,
-  DialogTrigger
+    Dialog, DialogClose,
+    DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogPortal, DialogTitle,
+    DialogTrigger
 };
 

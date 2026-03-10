@@ -27,9 +27,8 @@ function CurrencyFilter({
   disabled = false,
   onCurrencyChange,
   userRoles = [],
-  hasMultipleLicensees = false,
 }: CurrencyFilterProps) {
-  const { displayCurrency, setDisplayCurrency, isAllLicensee } = useCurrency();
+  const { displayCurrency, setDisplayCurrency } = useCurrency();
   const { setDisplayCurrency: setDashboardCurrency } = useDashBoardStore();
 
   const handleCurrencyChange = (value: string) => {
@@ -40,12 +39,10 @@ function CurrencyFilter({
     onCurrencyChange?.(newCurrency);
   };
 
-  // Only show currency selector when "All Licensees" is selected and the user
-  // is either an admin/developer or a non-admin with multiple licensees.
-  const isAdminOrDev =
-    userRoles.includes('admin') || userRoles.includes('developer');
+  const normalizedRoles = (userRoles || []).map(r => r.toLowerCase());
   const canShowSelector =
-    isAllLicensee && (isAdminOrDev || hasMultipleLicensees);
+    !normalizedRoles.includes('vault-manager') &&
+    !normalizedRoles.includes('cashier');
 
   if (!canShowSelector) {
     return null;

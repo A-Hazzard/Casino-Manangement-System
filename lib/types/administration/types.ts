@@ -4,7 +4,7 @@ export type User = {
   username: string;
   email?: string;
   emailAddress?: string;
-  enabled: boolean;
+  isEnabled: boolean;
   roles: string[];
   profilePicture: string | null;
   assignedLocations?: string[]; // Array of location IDs user has access to

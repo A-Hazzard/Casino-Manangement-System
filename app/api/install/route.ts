@@ -174,7 +174,10 @@ export async function GET() {
         profile: {
           firstName: 'Evolution',
           lastName: 'Admin',
+          gender: "Other",
+          phoneNumber: "18681234566",
         },
+
         assignedLocations: [], // Empty initially
         assignedLicensees: seededLicenseeIds,
         tempPassword: null,

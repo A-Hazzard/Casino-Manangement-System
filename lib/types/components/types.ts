@@ -74,7 +74,7 @@ export type NewMovementModalProps = {
   onClose: () => void;
   onSubmit: (data: MachineMovementRecord) => void;
   onRefresh?: () => void;
-  locations?: { _id: string; name: string }[];
+  locations?: { _id: string; name: string; licenseeId?: string }[];
 };
 
 export type ReportsLocationsRevenueTableProps = {

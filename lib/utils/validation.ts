@@ -306,12 +306,12 @@ export function containsPhonePattern(value: string): boolean {
  * Validates phone numbers for required profile fields.
  *
  * Accepted formats (non-exhaustive):
- *  - +1 868 402-1566
- *  - +18684921566
- *  - +1 868 4921566
- *  - 18684921566
- *  - (868) 492-1566
- *  - 868-492-1566
+ *  - +1 868 000-0000
+ *  - +18680000000
+ *  - +1 868 0000000
+ *  - 18680000000
+ *  - (868) 000-0000
+ *  - 868-000-0000
  *
  * Rules:
  *  - Only digits, spaces, +, (, ), - allowed

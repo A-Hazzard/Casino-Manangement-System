@@ -138,8 +138,9 @@ export async function PUT(request: NextRequest) {
         'Other name may only contain letters and spaces and cannot resemble a phone number.';
     }
 
-    if (gender && !validateOptionalGender(gender)) {
-      errors.gender = 'Select a valid gender option.';
+    // Only enforce mandatory gender if it's being sent (to allow password-only updates from TempPasswordGate)
+    if (body.gender !== undefined && (!gender || !validateOptionalGender(gender))) {
+      errors.gender = !gender ? 'Gender is required.' : 'Select a valid gender option.';
     }
 
     if (!validateEmail(emailAddress)) {
@@ -247,17 +248,18 @@ export async function PUT(request: NextRequest) {
     const canManageAssignments =
       userRoles.includes('admin') || userRoles.includes('developer');
 
-    if (canManageAssignments) {
+    // DO NOT require locations or licensees for admin and developer roles
+    if (!canManageAssignments) {
       // Only validate if the fields are explicitly provided (not undefined)
       // This allows users to update other fields without changing licensees/locations
       if (requestedLicenseeIds !== undefined) {
         if (requestedLicenseeIds.length === 0) {
-          errors.licenseeIds = 'Select at least one licensee.';
+          errors.licenseeIds = 'Please contact your Administrator or Tech Support to be assigned to a licensee.';
         }
       }
       if (requestedLocationIds !== undefined) {
         if (requestedLocationIds.length === 0) {
-          errors.locationIds = 'Select at least one location.';
+          errors.locationIds = 'Please contact your Administrator or Tech Support to be assigned to a location.';
         }
       }
     }
@@ -490,6 +492,7 @@ export async function PUT(request: NextRequest) {
       requiresPasswordUpdate: !!invalidFields.password,
       invalidProfileFields: invalidFields,
       invalidProfileReasons: reasons,
+      sessionVersionIncremented: incrementSession,
     });
   } catch (error) {
     const duration = Date.now() - startTime;

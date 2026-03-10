@@ -1203,6 +1203,11 @@ export function useEditCollectionModal({
             setHasUnsavedEdits(true);
           }
 
+          // Set location name from report's locationName field
+          if (reportData.locationName) {
+            setSelectedLocationName(reportData.locationName);
+          }
+
           // Set the collection time to the report's timestamp
           if (reportData.collectionDate && reportData.collectionDate !== '-') {
             setCurrentCollectionTime(new Date(reportData.collectionDate));

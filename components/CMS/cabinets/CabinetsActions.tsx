@@ -60,24 +60,25 @@ export const CabinetsActions = ({
   }, [onMovementRequestClick]);
 
   /**
-   * Renders action buttons for desktop view
-   * Shows full button text with icons
+   * Renders action buttons
+   * Responsive: smaller on mobile, full size on desktop
    */
-  const renderDesktopActions = () => {
+  const renderActions = () => {
     if (activeSection === 'cabinets') {
       if (!canCreateCabinet) return null;
       return (
-        <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {loading ? (
-            <ActionButtonSkeleton width="w-36" showIcon={true} />
+            <ActionButtonSkeleton width="w-28 sm:w-36" showIcon={true} />
           ) : (
             <Button
               onClick={handleNewCabinet}
-              className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
-              title="Add Cabinet"
+              className="bg-button hover:bg-buttonActive text-white rounded-md items-center gap-1 flex-shrink-0 px-2 py-1 text-xs font-medium sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+              title="Create new cabinet"
             >
               <PlusCircle className="h-4 w-4" />
-              <span>Add Cabinet</span>
+              <span className="hidden sm:inline">Create new cabinet</span>
+              <span className="sm:hidden">Create</span>
             </Button>
           )}
         </div>
@@ -86,64 +87,18 @@ export const CabinetsActions = ({
 
     if (activeSection === 'movement') {
       return (
-        <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {loading ? (
-            <ActionButtonSkeleton width="w-48" showIcon={true} />
+            <ActionButtonSkeleton width="w-32 sm:w-48" showIcon={true} />
           ) : (
             <Button
               onClick={handleNewMovementRequest}
-              className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
+              className="bg-button hover:bg-buttonActive text-white rounded-md items-center gap-1 flex-shrink-0 px-2 py-1 text-xs font-medium sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
             >
               <PlusCircle className="h-4 w-4" />
-              <span>Create Movement Request</span>
+              <span className="hidden sm:inline">Create Movement Request</span>
+              <span className="sm:hidden">Create</span>
             </Button>
-          )}
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  /**
-   * Renders action buttons for mobile view
-   * Shows icon-only buttons to save space
-   */
-  const renderMobileActions = () => {
-    if (activeSection === 'cabinets') {
-      if (!canCreateCabinet) return null;
-      return (
-        <div className="md:hidden">
-          {loading ? (
-            <div className="h-5 w-5 flex-shrink-0" />
-          ) : (
-            <button
-              onClick={handleNewCabinet}
-              disabled={loading}
-              className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-              aria-label="Add Cabinet"
-            >
-              <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
-            </button>
-          )}
-        </div>
-      );
-    }
-
-    if (activeSection === 'movement') {
-      return (
-        <div className="md:hidden">
-          {loading ? (
-            <div className="h-5 w-5 flex-shrink-0" />
-          ) : (
-            <button
-              onClick={handleNewMovementRequest}
-              disabled={loading}
-              className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-              aria-label="Create Movement Request"
-            >
-              <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
-            </button>
           )}
         </div>
       );
@@ -154,8 +109,7 @@ export const CabinetsActions = ({
 
   return (
     <>
-      {renderDesktopActions()}
-      {renderMobileActions()}
+      {renderActions()}
     </>
   );
 };

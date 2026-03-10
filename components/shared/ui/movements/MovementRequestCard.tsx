@@ -39,8 +39,7 @@ export default function MovementRequestCard({
   const isRecipient = request.requestTo === userEmail || request.requestTo === currentUser?._id;
   
   const canEdit = isAdminOrDev || isCreator || isRecipient || isAuthorizedDestinationUser;
-  // ONLY developers can delete
-  const canDelete = userRoles.some(role => role.toLowerCase() === 'developer');
+  const canDelete = isAdminOrDev || isCreator;
 
   useEffect(() => {
     if (
@@ -70,32 +69,32 @@ export default function MovementRequestCard({
       <div className="mb-3 space-y-1">
         <p
           className="truncate text-xs text-gray-600"
-          title={`From: ${
-            locationsMap[request.locationFrom] || request.locationFrom
+          title={`Location From: ${
+            locationsMap[request.locationFromId || request.locationFrom] || request.locationFrom
           }`}
         >
-          <span className="font-medium">From:</span>{' '}
-          {locationsMap[request.locationFrom] || request.locationFrom}
+          <span className="font-medium">Location From:</span>{' '}
+          {locationsMap[request.locationFromId || request.locationFrom] || request.locationFrom}
         </p>
         <p
           className="truncate text-xs text-gray-600"
-          title={`To: ${locationsMap[request.locationTo] || request.locationTo}`}
+          title={`Location To: ${locationsMap[request.locationToId || request.locationTo] || request.locationTo}`}
         >
-          <span className="font-medium">To:</span>{' '}
-          {locationsMap[request.locationTo] || request.locationTo}
+          <span className="font-medium">Location To:</span>{' '}
+          {locationsMap[request.locationToId || request.locationTo] || request.locationTo}
         </p>
         <p
           className="truncate text-xs text-gray-600"
-          title={`Recipient: ${request.recipientName || request.requestTo}`}
+          title={`Requested To: ${request.recipientName || request.requestTo}`}
         >
-          <span className="font-medium">Recipient:</span>{' '}
+          <span className="font-medium">Requested To:</span>{' '}
           {request.recipientName || request.requestTo}
         </p>
         <p
           className="truncate text-xs text-gray-600"
-          title={`Cabinet: ${request.cabinetIn}`}
+          title={`Machines: ${request.cabinetIn}`}
         >
-          <span className="font-medium">Cabinet:</span> {request.cabinetIn}
+          <span className="font-medium">Machines:</span> {request.cabinetIn}
         </p>
         <p
           className="text-xs text-gray-600"

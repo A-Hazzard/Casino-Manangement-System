@@ -180,6 +180,7 @@ export async function GET(req: NextRequest) {
       // Filter requests to only include those where:
       // 1. locationFromId, locationToId, or locationId is in the user's accessible locations
       // 2. OR the user is the direct recipient (requestTo)
+      // 3. OR the user is the creator (createdBy) — creators can always see their own requests
       const currentUserId = String(userPayload._id);
       requests = requests.filter(
         request =>
@@ -190,7 +191,9 @@ export async function GET(req: NextRequest) {
           allowedLocationIds.includes(String(request.locationFrom)) ||
           allowedLocationIds.includes(String(request.locationTo)) ||
           request.requestTo === currentUserId ||
-          request.requestTo === userEmail
+          request.requestTo === userEmail ||
+          request.createdBy === currentUserId ||
+          request.createdBy === userEmail
       );
     }
 

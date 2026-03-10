@@ -401,8 +401,10 @@ export async function getOverviewMachines(
   skip: number,
   startDate: Date | undefined,
   endDate: Date | undefined,
-  timePeriod: string = 'Today'
+  timePeriod: string = 'Today',
+  searchTerm?: string
 ) {
+  const searchLower = searchTerm?.toLowerCase().trim();
   // Fetch locations to get gaming day ranges
   const locationsWithOffset = await GamingLocations.find(locationMatchStage).select('gameDayOffset _id').lean();
   const gamingDayRanges = getGamingDayRangesForLocations(locationsWithOffset as unknown as { _id: string; gameDayOffset?: number }[], timePeriod, startDate, endDate);
@@ -532,7 +534,7 @@ export async function getOverviewMachines(
         },
       },
     },
-    { $sort: { netWin: -1 } },
+    { $sort: (searchLower ? { relevance: -1, netWin: -1 } : { netWin: -1 }) as Record<string, 1 | -1> },
     { $skip: skip },
     { $limit: limit }
   );
@@ -900,13 +902,14 @@ export async function getOfflineMachines(
   startDate: Date | undefined,
   endDate: Date | undefined,
   locationMatchStage: Record<string, unknown>,
-  timePeriod: string = 'Today'
+  timePeriod: string = 'Today',
+  searchTerm?: string
 ) {
+  const searchLower = searchTerm?.toLowerCase().trim();
   // Fetch locations to get gaming day ranges
   const locationsWithOffset = await GamingLocations.find(locationMatchStage).select('gameDayOffset _id').lean();
   const gamingDayRanges = getGamingDayRangesForLocations(locationsWithOffset as unknown as { _id: string; gameDayOffset?: number }[], timePeriod, startDate, endDate);
 
-  const searchTerm = searchParams.get('search');
   const locationId = searchParams.get('locationId');
   const durationFilter =
     searchParams.get('duration') || searchParams.get('offlineDuration');
@@ -1112,7 +1115,19 @@ export async function getOfflineMachines(
         },
       },
     },
-    { $sort: { netWin: -1 } },
+    ...(searchLower ? [{
+      $addFields: {
+        relevance: {
+          $add: [
+            { $cond: [{ $regexMatch: { input: "$serialNumber", regex: `^${searchLower}`, options: "i" } }, 20, 0] },
+            { $cond: [{ $regexMatch: { input: "$game", regex: `^${searchLower}`, options: "i" } }, 15, 0] },
+            { $cond: [{ $regexMatch: { input: "$custom.name", regex: `^${searchLower}`, options: "i" } }, 10, 0] },
+            { $cond: [{ $regexMatch: { input: "$origSerialNumber", regex: `^${searchLower}`, options: "i" } }, 5, 0] }
+          ]
+        }
+      }
+    }] : []),
+    { $sort: (searchLower ? { relevance: -1, netWin: -1 } : { netWin: -1 }) as Record<string, 1 | -1> },
     { $skip: skip },
     { $limit: limit }
   );

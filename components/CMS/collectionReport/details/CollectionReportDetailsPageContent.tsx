@@ -220,6 +220,18 @@ export default function CollectionReportDetailsPageContent() {
         </div>
       </div>
 
+      {/* Mobile Back Button */}
+      <div className="px-2 pt-4 lg:hidden">
+        <Link href="/collection-report" className="inline-block">
+          <Button
+            variant="ghost"
+            className="rounded-full border border-gray-200 p-2 hover:bg-gray-100"
+          >
+            <ArrowLeft size={18} className="h-5 w-5" />
+          </Button>
+        </Link>
+      </div>
+
       {/* Report Header Section: Location name, report ID, and financial summary */}
       <div className="px-2 pb-6 pt-2 lg:px-6 lg:pt-4">
         <div className="rounded-lg bg-white py-4 shadow lg:border-t-4 lg:border-lighterBlueHighlight lg:bg-container lg:py-8">

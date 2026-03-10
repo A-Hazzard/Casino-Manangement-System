@@ -447,9 +447,21 @@ export function useNewCollectionModal({
     if (show) {
       if (onRefreshLocationsRef.current) onRefreshLocationsRef.current();
       if (onRefreshRef.current) onRefreshRef.current();
+
+      // Restore location from collected entries if available and no location is currently selected
+      if (collectedMachineEntries.length > 0 && !selectedLocationId && !lockedLocationId) {
+        const firstEntry = collectedMachineEntries[0];
+        if (firstEntry.location) {
+          // Find the location by name in the locations array
+          const matchingLocation = locations.find(loc => loc.name === firstEntry.location);
+          if (matchingLocation) {
+            setLockedLocationId(String(matchingLocation._id));
+          }
+        }
+      }
     }
     // Only run when 'show' transitions from false to true
-  }, [show]);
+  }, [show, collectedMachineEntries.length, selectedLocationId, lockedLocationId, locations]);
 
   useEffect(() => {
     const locationIdToUse = lockedLocationId || selectedLocationId;
@@ -771,7 +783,8 @@ export function useNewCollectionModal({
   const confirmCreateReports = async () => {
     try {
       setIsProcessing(true);
-      if (!selectedLocationId || collectedMachineEntries.length === 0) return;
+      const locationIdToUse = lockedLocationId || selectedLocationId;
+      if (!locationIdToUse || collectedMachineEntries.length === 0) return;
 
       const totalMovementData = collectedMachineEntries.map(entry => {
         const movement = calculateMachineMovement(
@@ -816,7 +829,7 @@ export function useNewCollectionModal({
         collector: userId || 'unknown',
         locationName: selectedLocationName,
         locationReportId: reportId,
-        location: selectedLocationId,
+        location: locationIdToUse,
         totalDrop: reportTotalData.drop,
         totalCancelled: reportTotalData.cancelledCredits,
         totalGross: reportTotalData.gross,

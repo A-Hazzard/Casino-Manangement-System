@@ -77,16 +77,23 @@ export async function fetchAllGamingLocations(licensee?: string) {
     const locationsList = await getAllGamingLocations(licensee);
     if (locationsList && Array.isArray(locationsList)) {
       const formattedLocations = locationsList.map(loc => {
-        const locationWithProps = loc as unknown as Record<string, unknown>;
+        const locObj = loc as Record<string, unknown>;
+        const rel = locObj.rel as Record<string, unknown> | undefined;
         return {
           id:
-            (locationWithProps._id as string)?.toString() ||
-            (locationWithProps._id as string) ||
+            (locObj._id as string)?.toString() ||
+            (locObj._id as string) ||
             '',
           name:
-            (locationWithProps.name as string) ||
-            (locationWithProps.locationName as string) ||
+            (locObj.name as string) ||
+            (locObj.locationName as string) ||
             'Unknown Location',
+          licenseeId:
+            (locObj.licenseeId as string) ||
+            (locObj.licensee as string) ||
+            (rel?.licensee as string) ||
+            (rel?.licencee as string) ||
+            '',
         };
       });
       // Sort alphabetically by name as additional safeguard

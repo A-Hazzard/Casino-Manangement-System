@@ -9,6 +9,7 @@ import React from 'react';
 type MobileCollectedListPanelProps = {
   isVisible: boolean;
   onBack: () => void;
+  isEditing?: boolean; // True when editing an existing report
 
   // Machine list
   collectedMachines: CollectionDocument[];
@@ -59,6 +60,7 @@ type MobileCollectedListPanelProps = {
 export default function CollectionReportMobileCollectedListPanel({
   isVisible,
   onBack,
+  isEditing = false,
   collectedMachines,
   searchTerm,
   onSearchChange,
@@ -355,8 +357,10 @@ export default function CollectionReportMobileCollectedListPanel({
                     }`}
                   >
                     {isProcessing
-                      ? 'Creating Report...'
-                      : `Create Collection Report (${collectedMachines.length} machines)`}
+                      ? isEditing ? 'Updating Report...' : 'Creating Report...'
+                      : isEditing
+                        ? `UPDATE COLLECTION REPORT (${collectedMachines.length} machines)`
+                        : `CREATE COLLECTION REPORT (${collectedMachines.length} machines)`}
                   </button>
                 </div>
               </div>

@@ -61,32 +61,19 @@ export default function CollectionReportHeader({
         {/* Create Button */}
         {activeTab === 'collection' && (
           <>
-            {/* Desktop View */}
-            <div className="hidden md:block">
-              {refreshing || loading ? (
-                <div className="flex h-10 w-36 animate-pulse items-center justify-center rounded-md bg-gray-200" />
-              ) : (
-                <Button
-                  onClick={onCreateDesktop}
-                  className="flex items-center gap-2 bg-buttonActive text-white transition-colors hover:bg-purple-700 shadow-sm"
-                  disabled={refreshing}
-                >
-                  <PlusCircle className="h-4 w-4" />
-                  Create Collection Report
-                </Button>
-              )}
-            </div>
-            {/* Mobile View */}
-            <div className="md:hidden">
-              <button
-                onClick={onCreateMobile}
+            {refreshing || loading ? (
+              <div className="flex h-9 w-28 animate-pulse items-center justify-center rounded-md bg-gray-200 sm:w-44" />
+            ) : (
+              <Button
+                onClick={refreshing ? undefined : (window.innerWidth < 768 ? onCreateMobile : onCreateDesktop)}
+                className="flex items-center gap-1 rounded-md bg-buttonActive text-white px-2 py-1 text-xs font-medium hover:bg-purple-700 transition-colors shadow-sm sm:gap-2 sm:px-4 sm:py-2 sm:text-sm flex-shrink-0"
                 disabled={refreshing}
-                className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Create Collection Report"
               >
-                <PlusCircle className="h-6 w-6 text-green-600 hover:text-green-700" />
-              </button>
-            </div>
+                <PlusCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">Create Collection Report</span>
+                <span className="sm:hidden">Create</span>
+              </Button>
+            )}
           </>
         )}
       </div>

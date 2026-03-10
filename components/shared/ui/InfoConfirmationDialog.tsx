@@ -111,7 +111,7 @@ export const InfoConfirmationDialog = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999]">
+    <div className="fixed inset-0 z-[999999]">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"
@@ -126,7 +126,7 @@ export const InfoConfirmationDialog = ({
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center p-4">
         <div
           ref={modalRef}
-          className="pointer-events-auto relative z-10 w-full max-w-md rounded-md bg-container shadow-lg"
+          className="pointer-events-auto relative z-50 w-full max-w-md rounded-md bg-container shadow-lg"
           style={{ opacity: 0, transform: 'translateY(-20px)' }}
           onClick={e => {
             e.stopPropagation();

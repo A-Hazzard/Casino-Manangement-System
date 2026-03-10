@@ -47,6 +47,7 @@ type ProfileUpdateResult = {
   fieldErrors?: Record<string, string>;
   message?: string;
   invalidProfileReasons?: ProfileValidationReasons;
+  sessionVersionIncremented?: boolean;
 };
 
 const EMPTY_FIELDS: InvalidProfileFields = {};
@@ -144,7 +145,8 @@ export default function ProfileValidationGate({
         return;
       }
 
-      // Skip validation for admins and developers
+      /* 
+      // Skip validation for admins and developers - DISABLED to allow gender enforcement
       const userRoles = Array.isArray(user.roles) ? user.roles : [];
       const isAdminOrDeveloper = userRoles.some(
         role =>
@@ -158,6 +160,7 @@ export default function ProfileValidationGate({
         setFieldReasons(EMPTY_REASONS);
         return;
       }
+      */
 
       const shouldRefetch =
         user.requiresProfileUpdate ||
@@ -394,9 +397,30 @@ export default function ProfileValidationGate({
         profileUpdateComplete,
       });
 
-      // ALWAYS logout after successful profile update because sessionVersion is incremented
-      // This invalidates the JWT token, so user must re-login
+      // Logout conditionally after successful profile update.
+      // If sessionVersion was NOT incremented (e.g. only profile fields changed), 
+      // we can persist the session and just update the local state.
       if (result.success) {
+        if (!result.sessionVersionIncremented) {
+          console.log('[ProfileValidationGate] Profile update successful - session version unchanged, continuing session.');
+          
+          if (profileUpdateComplete) {
+            toast.success('Profile updated successfully.', { duration: 3000 });
+            setOpen(false);
+            justUpdatedRef.current = true;
+          } else {
+            // Some fields still need attention, stay in modal or refresh state
+            toast.info('Profile partially updated. Some fields may still need attention.', { duration: 3000 });
+          }
+          
+          return {
+            success: profileUpdateComplete,
+            invalidFields: result.invalidProfileFields,
+            invalidProfileReasons: result.invalidProfileReasons,
+          };
+        }
+
+        // logout logic for sessionVersionIncremented
         console.log('[ProfileValidationGate] Profile update successful - initiating logout (sessionVersion incremented)...');
         
         // Set flag to prevent re-evaluation

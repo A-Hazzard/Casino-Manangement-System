@@ -59,14 +59,26 @@ export default function AdministrationCountriesSection({
       return;
     }
 
-    const searchLower = searchValue.toLowerCase();
+    const searchLower = searchValue.toLowerCase().trim();
     const filtered = countries.filter(
       (country) =>
         country.name.toLowerCase().includes(searchLower) ||
         country.alpha2.toLowerCase().includes(searchLower) ||
         country.alpha3.toLowerCase().includes(searchLower)
     );
-    setFilteredCountries(filtered);
+
+    // Sort by relevance: startsWith match gets priority
+    const sorted = [...filtered].sort((a, b) => {
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+      const aStarts = aName.startsWith(searchLower) ? 1 : 0;
+      const bStarts = bName.startsWith(searchLower) ? 1 : 0;
+      
+      if (aStarts !== bStarts) return bStarts - aStarts;
+      return aName.localeCompare(bName);
+    });
+
+    setFilteredCountries(sorted);
   }, [searchValue, countries]);
 
   // ============================================================================
@@ -101,12 +113,10 @@ export default function AdministrationCountriesSection({
   // ============================================================================
   return (
     <>
-      {countries.length > 20 && (
-        <AdministrationCountrySearchBar
-          searchValue={searchValue}
-          setSearchValue={setSearchValue}
-        />
-      )}
+      <AdministrationCountrySearchBar
+        searchValue={searchValue}
+        setSearchValue={setSearchValue}
+      />
 
       {/* Mobile Card View */}
       <div className="block lg:hidden">

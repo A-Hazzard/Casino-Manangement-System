@@ -145,6 +145,10 @@ export default function MembersListTab({
             );
             return [...prev, ...uniqueNewMembers];
           });
+          if (result.data.pagination) {
+            // Store total members if available
+            setSummaryStats(prev => prev ? ({ ...prev, totalMembers: result.data.pagination.totalMembers }) : { totalMembers: result.data.pagination.totalMembers, totalLocations: 0, activeMembers: 0 });
+          }
         } else {
           console.error('Invalid response format:', result);
           setAllMembers([]);
@@ -586,7 +590,15 @@ export default function MembersListTab({
             placeholder="Search members..."
             className="h-10 w-full rounded-lg border border-gray-300 bg-white px-4 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={e => {
+              const val = e.target.value;
+              setSearchTerm(val);
+              if (val.trim() !== searchTerm.trim()) {
+                setAllMembers([]);
+                setLoadedBatches(new Set([1]));
+                setCurrentPage(0);
+              }
+            }}
           />
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
@@ -636,7 +648,15 @@ export default function MembersListTab({
             placeholder="Search members..."
             className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={e => {
+              const val = e.target.value;
+              setSearchTerm(val);
+              if (val.trim() !== searchTerm.trim()) {
+                setAllMembers([]);
+                setLoadedBatches(new Set([1]));
+                setCurrentPage(0);
+              }
+            }}
           />
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
@@ -656,7 +676,7 @@ export default function MembersListTab({
       <div className="w-full flex-1">
         {/* Mobile View */}
         <div className="mt-4 space-y-4 pb-24 lg:hidden">
-          {loading ? (
+          {loading || (searchTerm !== debouncedSearchTerm) ? (
             Array.from({ length: 3 }).map((_, i) => (
               <MembersMemberSkeleton key={i} />
             ))
@@ -688,7 +708,7 @@ export default function MembersListTab({
 
         {/* Desktop View */}
         <div className="hidden lg:block">
-          {loading ? (
+          {loading || (searchTerm !== debouncedSearchTerm) ? (
             <MembersMemberTableSkeleton
               hideLocationColumn={!!forcedLocationId}
             />
@@ -713,7 +733,8 @@ export default function MembersListTab({
       </div>
 
       {(() => {
-        const totalPages = Math.ceil(allMembers.length / itemsPerPage);
+        const total = summaryStats?.totalMembers || allMembers.length;
+        const totalPages = Math.ceil(total / itemsPerPage);
         return totalPages > 1 ? (
           <div className="mt-6 flex justify-center pb-8">
             <PaginationControls

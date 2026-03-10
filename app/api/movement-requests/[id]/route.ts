@@ -77,16 +77,25 @@ export async function DELETE(
     const deleteType = (searchParams.get('deleteType') || 'soft') as 'soft' | 'hard';
 
     const userRoles = (currentUser.roles as string[]) || [];
-    const isDeveloper = userRoles.some(role => role.toLowerCase() === 'developer');
+    const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role.toLowerCase()));
+    const isCreator = movementRequestToDelete.createdBy === String(currentUser._id) ||
+      movementRequestToDelete.createdBy === currentUser.emailAddress;
 
-    if (!isDeveloper) {
+    if (!isAdminOrDev && !isCreator) {
       return NextResponse.json(
-        { success: false, message: 'Forbidden: Only developers can delete movement requests' },
+        { success: false, message: 'Forbidden: You do not have permission to delete this movement request' },
         { status: 403 }
       );
     }
 
-    if (deleteType === 'hard' && isDeveloper) {
+    if (deleteType === 'hard') {
+      const isDeveloper = userRoles.some(role => role.toLowerCase() === 'developer');
+      if (!isDeveloper) {
+        return NextResponse.json(
+          { success: false, message: 'Forbidden: Only developers can hard-delete movement requests' },
+          { status: 403 }
+        );
+      }
       await MovementRequest.deleteOne({ _id: id });
     } else {
       await MovementRequest.findOneAndUpdate(

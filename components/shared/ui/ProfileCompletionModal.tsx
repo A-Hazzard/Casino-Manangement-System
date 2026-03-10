@@ -176,6 +176,10 @@ export default function ProfileCompletionModal({
     //   errors.phone = 'Phone number is required.';
     // }
 
+    if (invalidFields.gender && !formData.gender) {
+      errors.gender = 'Gender is required.';
+    }
+
     if (needsPassword) {
       if (!formData.newPassword) errors.newPassword = 'New password is required.';
       if (formData.newPassword !== formData.confirmPassword) {
@@ -212,11 +216,15 @@ export default function ProfileCompletionModal({
                return;
            }
            
-           // 2. Assignment Fields (Always hidden in this modal)
-           if (['licenseeIds', 'locationIds'].includes(key)) {
-               hiddenErrors.push(msg); // Msg usually says "Select at least one..."
-               return;
-           }
+            // 2. Assignment Fields (Always hidden in this modal)
+            if (['licenseeIds', 'locationIds'].includes(key)) {
+                if (msg.toLowerCase().includes('select at least one')) {
+                    hiddenErrors.push('Please contact your Administrator or Tech Support to be assigned to a ' + (key === 'locationIds' ? 'location.' : 'licensee.'));
+                } else {
+                    hiddenErrors.push(msg);
+                }
+                return;
+            }
            
            // 3. Profile Fields
            // In this modal, a field is ONLY rendered if it is marked as invalid in `invalidFields`

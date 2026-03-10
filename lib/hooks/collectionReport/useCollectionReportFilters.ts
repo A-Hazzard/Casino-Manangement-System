@@ -6,14 +6,15 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
 import { filterCollectionReports } from '@/lib/helpers/collectionReport';
 import type { CollectionReportRow } from '@/lib/types/components';
 import type { LocationSelectItem } from '@/lib/types/location';
+import { useMemo, useState } from 'react';
 
 export function useCollectionReportFilters(
   allReports: CollectionReportRow[],
   locations: LocationSelectItem[],
+  searchTerm: string = '',
 ) {
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [showUncollectedOnly, setShowUncollectedOnly] = useState(false);
@@ -46,6 +47,21 @@ export function useCollectionReportFilters(
 
     // Apply sorting
     return [...result].sort((a, b) => {
+      // Relevance sorting: prioritize starts-with matches if searching
+      if (searchTerm.trim()) {
+        const lowerSearch = searchTerm.trim().toLowerCase();
+        const aId = String(a.locationReportId || '').toLowerCase();
+        const bId = String(b.locationReportId || '').toLowerCase();
+        const aCollector = String(a.collector || '').toLowerCase();
+        const bCollector = String(b.collector || '').toLowerCase();
+
+        const aStarts = aId.startsWith(lowerSearch) || aCollector.startsWith(lowerSearch);
+        const bStarts = bId.startsWith(lowerSearch) || bCollector.startsWith(lowerSearch);
+
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+      }
+
       const aValue = a[sortField];
       const bValue = b[sortField];
 
@@ -67,7 +83,7 @@ export function useCollectionReportFilters(
 
       return 0;
     });
-  }, [allReports, selectedLocation, showUncollectedOnly, locations, selectedFilters, sortField, sortDirection]);
+  }, [allReports, selectedLocation, showUncollectedOnly, locations, selectedFilters, sortField, sortDirection, searchTerm]);
 
   const handleSort = (field: keyof CollectionReportRow) => {
     if (sortField === field) {

@@ -35,8 +35,8 @@ import { SidebarTrigger, useSidebar } from '@/components/shared/ui/sidebar';
 import { UserRole } from '@/lib/constants';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import {
-    fetchLicenseeById,
-    fetchLicensees, logoutUser
+  fetchLicenseeById,
+  fetchLicensees, logoutUser
 } from '@/lib/helpers/client';
 import { fetchMetricsData } from '@/lib/helpers/dashboard';
 import { getCountryCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
@@ -113,9 +113,6 @@ export default function Header({
   // Show if: user has exactly one licensee AND not admin/dev AND (not manager OR manager with single licensee)
   const shouldShowLicenseeName =
     hasSingleLicensee && !isAdmin && (!isManager || hasSingleLicensee);
-  const selectedLicenseeValue = selectedLicensee ?? '';
-  const isAllLicenseeSelected =
-    selectedLicenseeValue === '' || selectedLicenseeValue === 'all';
   // Check if the current path is related to members
   const isMembersPath =
     pathname === '/members' || pathname.startsWith('/members/');
@@ -130,7 +127,8 @@ export default function Header({
   const shouldRenderCurrencyFilter =
     !hideCurrencyFilter &&
     !shouldHideCurrency &&
-    (isAdmin || (hasMultipleLicensees && isAllLicenseeSelected));
+    !normalizedRoles.includes('vault-manager') &&
+    !normalizedRoles.includes('cashier');
 
   const [licenseeCurrencyMap, setLicenseeCurrencyMap] = useState<
     Record<string, CurrencyCode>
@@ -442,7 +440,7 @@ export default function Header({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-40 bg-black bg-opacity-50"
+                  className="fixed inset-0 z-[40000] bg-black bg-opacity-50"
                   onClick={() => setMobileMenuOpen(false)}
                 />
                 {/* Mobile Menu Panel: Slide-out navigation menu */}
@@ -451,7 +449,7 @@ export default function Header({
                   animate={{ x: 0 }}
                   exit={{ x: '-100%' }}
                   transition={{ type: 'tween', duration: 0.3 }}
-                  className="fixed left-0 top-0 z-[100] flex h-full w-80 flex-col bg-container shadow-xl"
+                  className="fixed left-0 top-0 z-[50000] flex h-full w-80 flex-col bg-container shadow-xl"
                 >
                   {/* Mobile Navigation Menu: Navigation buttons for mobile users */}
                   <div className="flex h-full flex-col space-y-4 p-6">

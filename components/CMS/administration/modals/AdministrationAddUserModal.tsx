@@ -9,11 +9,11 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import type { MultiSelectOption } from '@/components/shared/ui/common/MultiSelectDropdown';
@@ -30,21 +30,21 @@ import type { Country, Licensee } from '@/lib/types/common';
 import type { LocationSelectItem } from '@/lib/types/location';
 import type { AddUserForm } from '@/lib/types/pages';
 import {
-  getPasswordStrengthLabel,
-  isPlaceholderEmail,
-  validateEmail,
-  validatePasswordStrength,
+    getPasswordStrengthLabel,
+    isPlaceholderEmail,
+    validateEmail,
+    validatePasswordStrength,
 } from '@/lib/utils/validation';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
 import {
-  AlertCircle,
-  Camera,
-  Info,
-  Loader2,
-  Save,
-  Trash2,
-  X,
+    AlertCircle,
+    Camera,
+    Info,
+    Loader2,
+    Save,
+    Trash2,
+    X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -944,6 +944,11 @@ export default function AdministrationAddUserModal({
       return;
     }
 
+    if (!formData.gender) {
+      toast.error('Gender is required');
+      return;
+    }
+
     // Validate date of birth (cannot be in future - matches User model schema)
     if (formData.dateOfBirth) {
       const dob = new Date(formData.dateOfBirth);
@@ -1357,7 +1362,7 @@ export default function AdministrationAddUserModal({
                   </div>
                   <div>
                     <Label htmlFor="gender" className="text-gray-700">
-                      Gender
+                      Gender <span className="text-red-500">*</span>
                     </Label>
                     <select
                       id="gender"

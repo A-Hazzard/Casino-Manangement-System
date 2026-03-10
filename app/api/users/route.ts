@@ -256,7 +256,22 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
 
     // ============================================================================
-    // STEP 5: Validate password strength
+    // STEP 5: Validate profile gender (Mandatory for all users)
+    // ============================================================================
+    if (!profile || !profile.gender) {
+      apiLogger.logError(
+        context,
+        'User creation failed',
+        'Gender is required'
+      );
+      return new Response(
+        JSON.stringify({ success: false, message: 'Gender is required' }),
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 6: Validate password strength
     // ============================================================================
     if (!password) {
       apiLogger.logError(
@@ -294,7 +309,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
 
     // ============================================================================
-    // STEP 6: Create user via helper function
+    // STEP 7: Create user via helper function
     // ============================================================================
     const userWithoutPassword = await createUserHelper(
       {
@@ -313,7 +328,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     );
 
     // ============================================================================
-    // STEP 7: Return created user data
+    // STEP 8: Return created user data
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {

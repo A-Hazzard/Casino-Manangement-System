@@ -108,6 +108,7 @@ export function useCabinetsPageData() {
     itemsPerPage: ITEMS_PER_PAGE,
     useBatchPagination: false, // Using simple slicing on accumulated data
     totalCount: totalCount,
+    searchTerm: debouncedSearchTerm,
   });
 
   const isDataMissingForPage = useMemo(() => {
@@ -288,7 +289,7 @@ export function useCabinetsPageData() {
   useEffect(() => {
     setCurrentPage(0);
     setLoadedBatches(new Set());
-  }, [selectedLocation, selectedGameType, searchTerm, selectedLicensee, activeMetricsFilter, customDateRange, sortOption, sortOrder, displayCurrency]);
+  }, [selectedLocation, selectedGameType, searchTerm, debouncedSearchTerm, selectedLicensee, activeMetricsFilter, customDateRange, sortOption, sortOrder, displayCurrency]);
 
   // Wrapped setters
   const handleSetSelectedStatus = useCallback((status: string) => {
@@ -370,7 +371,7 @@ export function useCabinetsPageData() {
 
   return {
     activeSection,
-    loading: loading || initialLoading || isFilterResetting || isDataMissingForPage,
+    loading: loading || initialLoading || isFilterResetting || isDataMissingForPage || (searchTerm !== debouncedSearchTerm),
     refreshing: loading || machineStatsLoading || loadingChart || isFilterResetting,
     error,
     locations,

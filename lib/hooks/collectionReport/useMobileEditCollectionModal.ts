@@ -13,8 +13,8 @@ import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
-    CollectionReportLocationWithMachines,
-    CollectionReportMachineSummary,
+  CollectionReportLocationWithMachines,
+  CollectionReportMachineSummary,
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { calculateMachineMovement } from '@/lib/utils/movement';
@@ -99,7 +99,7 @@ export function useMobileEditCollectionModal({
 }: UseMobileEditCollectionModalProps) {
   const user = useUserStore(state => state.user);
   const locationsRef = useRef(locations);
-  
+
   useEffect(() => {
     locationsRef.current = locations;
   }, [locations]);
@@ -125,7 +125,7 @@ export function useMobileEditCollectionModal({
 
   // Initialize only mobile-specific UI state
   const [modalState, setModalState] = useState<MobileModalState>(() => ({
-    isMachineListVisible: false,
+    isMachineListVisible: true,
     isFormVisible: false,
     isCollectedListVisible: false,
     navigationStack: [], // Track navigation history
@@ -212,7 +212,7 @@ export function useMobileEditCollectionModal({
     const variance = Number(modalState.financials.variance) || 0;
     const advance = Number(modalState.financials.advance) || 0;
     const previousBalance = Number(modalState.financials.previousBalance) || 0;
-    
+
     // Find matching location for profit share
     const location = locationsRef.current.find(
       loc => String(loc._id) === (lockedLocationId || selectedLocationId || modalState.selectedLocation)
@@ -492,8 +492,8 @@ export function useMobileEditCollectionModal({
           : undefined,
         locationReportId: isEditing
           ? modalState.collectedMachines.find(
-              c => c._id === modalState.editingEntryId
-            )?.locationReportId || ''
+            c => c._id === modalState.editingEntryId
+          )?.locationReportId || ''
           : '',
         isCompleted: false,
       };
@@ -517,8 +517,8 @@ export function useMobileEditCollectionModal({
       // Calculate new state values
       const newCollectedMachines = isEditing
         ? modalState.collectedMachines.map(m =>
-            m._id === modalState.editingEntryId ? createdCollection : m
-          )
+          m._id === modalState.editingEntryId ? createdCollection : m
+        )
         : [...modalState.collectedMachines, createdCollection];
 
       const newLockedLocationId =
@@ -576,8 +576,7 @@ export function useMobileEditCollectionModal({
         );
       } else {
         toast.error(
-          `Failed to ${modalState.editingEntryId ? 'update' : 'add'} machine: ${
-            error instanceof Error ? error.message : 'Unknown error'
+          `Failed to ${modalState.editingEntryId ? 'update' : 'add'} machine: ${error instanceof Error ? error.message : 'Unknown error'
           }`
         );
       }
@@ -855,9 +854,9 @@ export function useMobileEditCollectionModal({
         previousBalance: Number(modalState.financials.previousBalance) || 0,
         currentBalance: 0,
         amountToCollect: Number(modalState.financials.amountToCollect) || 0,
-        amountCollected: 
-          Number(modalState.financials.collectedAmount) || 
-          Number(modalState.financials.amountToCollect) || 
+        amountCollected:
+          Number(modalState.financials.collectedAmount) ||
+          Number(modalState.financials.amountToCollect) ||
           0,
         amountUncollected: 0,
         partnerProfit: 0,
@@ -911,8 +910,7 @@ export function useMobileEditCollectionModal({
       toast.dismiss('mobile-update-report-toast');
       console.error('Failed to update collection report:', error);
       toast.error(
-        `Failed to update collection report: ${
-          error instanceof Error ? error.message : 'Unknown error'
+        `Failed to update collection report: ${error instanceof Error ? error.message : 'Unknown error'
         }`
       );
     } finally {
@@ -1035,26 +1033,17 @@ export function useMobileEditCollectionModal({
 
 
 
-  // Reset modal state when modal opens
+  // Reset modal state when modal opens - show machines list to display collected machines with indicators
   useEffect(() => {
     if (show) {
-      if (collectedMachines.length > 0) {
-        setModalState(prev => ({
-          ...prev,
-          isMachineListVisible: false,
-          isFormVisible: false,
-          isCollectedListVisible: true,
-        }));
-      } else if (collectedMachines.length === 0) {
-        setModalState(prev => ({
-          ...prev,
-          isMachineListVisible: false,
-          isFormVisible: false,
-          isCollectedListVisible: false,
-        }));
-      }
+      setModalState(prev => ({
+        ...prev,
+        isMachineListVisible: true,
+        isFormVisible: false,
+        isCollectedListVisible: false,
+      }));
     }
-  }, [show, collectedMachines]);
+  }, [show]);
 
   return {
     // State

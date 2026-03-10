@@ -253,12 +253,43 @@ export async function GET(request: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 6: Execute query with pagination
+    // STEP 6: Execute query with pagination and relevance scoring
     // ============================================================================
-    const [logs, totalCount] = await Promise.all([
-      ActivityLog.find(filter).sort(sort).skip(skip).limit(limit).lean(),
-      ActivityLog.countDocuments(filter),
-    ]);
+    let logs;
+    let totalCount;
+
+    if (search && !username && !email && !resourceId) {
+      const searchLower = search.toLowerCase().trim();
+
+      const pipeline = [
+        { $match: filter },
+        {
+          $addFields: {
+            relevance: {
+              $add: [
+                { $cond: [{ $regexMatch: { input: "$username", regex: `^${searchLower}`, options: "i" } }, 20, 0] },
+                { $cond: [{ $regexMatch: { input: "$actor.email", regex: `^${searchLower}`, options: "i" } }, 15, 0] },
+                { $cond: [{ $regexMatch: { input: { $toString: "$_id" }, regex: `^${searchLower}`, options: "i" } }, 10, 0] },
+                { $cond: [{ $regexMatch: { input: "$description", regex: `^${searchLower}`, options: "i" } }, 5, 0] }
+              ]
+            }
+          }
+        },
+        { $sort: { relevance: -1, timestamp: -1 } as Record<string, 1 | -1> },
+        { $skip: skip },
+        { $limit: limit }
+      ];
+
+      [logs, totalCount] = await Promise.all([
+        ActivityLog.aggregate(pipeline),
+        ActivityLog.countDocuments(filter)
+      ]);
+    } else {
+      [logs, totalCount] = await Promise.all([
+        ActivityLog.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+        ActivityLog.countDocuments(filter),
+      ]);
+    }
 
     // ============================================================================
     // STEP 7: Return paginated activity logs

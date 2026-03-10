@@ -38,6 +38,8 @@ export async function POST(
     // ============================================================================
     // STEP 2: Authenticate and authorize user (admin/developer only)
     // ============================================================================
+    let user: Awaited<ReturnType<typeof getUserById>> | null = null;
+
     if (process.env.NODE_ENV !== 'development') {
       const userId = await getUserIdFromServer();
       if (!userId) {
@@ -48,7 +50,7 @@ export async function POST(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
-      const user = await getUserById(userId);
+      user = await getUserById(userId);
       if (!user || Array.isArray(user)) {
         const duration = Date.now() - startTime;
         console.error(
@@ -114,9 +116,16 @@ export async function POST(
     console.log(
       `[Fix Collection History POST API] Successfully fixed collection history for report ${reportId}: ${result.machinesFixedCount} machines fixed, ${result.totalHistoryRebuilt} history entries rebuilt after ${duration}ms.`
     );
+
+    // Determine if user is developer for detailed message visibility
+    const isDeveloper = user?.roles?.includes('developer');
+
     return NextResponse.json({
       success: true,
-      message: 'Collection history fix completed successfully',
+      message: isDeveloper
+        ? `Collection history fix completed successfully. Machines fixed: ${result.machinesFixedCount}, History entries rebuilt: ${result.totalHistoryRebuilt}`
+        : 'Collection history has been fixed',
+      isDeveloperMessage: isDeveloper,
       summary: {
         totalMachinesInReport: result.totalMachinesInReport,
         machinesWithIssues: result.machinesWithIssues,

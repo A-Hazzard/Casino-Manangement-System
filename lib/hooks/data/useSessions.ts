@@ -27,7 +27,7 @@ export function useSessions() {
     useDashBoardStore();
   const filterControls = useSessionsFilters();
   const { searchTerm, sortBy, sortOrder, statusFilter } = filterControls;
-  
+
   // Debounce search term to reduce API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -88,7 +88,7 @@ export function useSessions() {
             customDateRange.startDate instanceof Date
               ? customDateRange.startDate
               : new Date(customDateRange.startDate as unknown as string);
-          
+
           const endDate =
             customDateRange.endDate instanceof Date
               ? customDateRange.endDate
@@ -217,7 +217,7 @@ export function useSessions() {
     setCurrentBatch(1);
     setAllSessions([]);
     setLoadedBatches(new Set([1]));
-    
+
     // Initial load: fetch first batch to get 100 items (5 pages)
     fetchSessions(1, false);
   }, [
@@ -252,7 +252,7 @@ export function useSessions() {
   // ============================================================================
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-    
+
     // If we are moving to the last page of loaded data and there's more on the server,
     // fetch the next batch in the background.
     if (page >= totalPages - 1 && hasMore && !loading) {
@@ -285,7 +285,7 @@ export function useSessions() {
   // ============================================================================
   return {
     sessions,
-    loading,
+    loading: loading || (searchTerm !== debouncedSearchTerm),
     error,
     pagination,
     currentPage,
@@ -299,7 +299,15 @@ export function useSessions() {
     sortBy,
     sortOrder,
     statusFilter,
-    setSearchTerm: filterControls.setSearchTerm,
+    setSearchTerm: useCallback((term: string) => {
+      if (term.trim() !== searchTerm.trim()) {
+        filterControls.setSearchTerm(term);
+        setAllSessions([]);
+        setLoadedBatches(new Set([1]));
+        setCurrentPage(0);
+        setCurrentBatch(1);
+      }
+    }, [searchTerm, filterControls]),
     setSortBy: filterControls.setSortBy,
     setSortOrder: filterControls.setSortOrder,
     setStatusFilter: filterControls.setStatusFilter,

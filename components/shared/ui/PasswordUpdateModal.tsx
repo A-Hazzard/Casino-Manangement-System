@@ -13,11 +13,11 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -146,7 +146,7 @@ export default function PasswordUpdateModal({
   // Initialize phone when modal opens or initialPhone changes
   useEffect(() => {
     if (open) {
-      setPhone(initialPhone || '');
+      setPhone(''); // Keep empty to show placeholder by default
     }
   }, [open, initialPhone]);
 
@@ -182,7 +182,7 @@ export default function PasswordUpdateModal({
     if (!phoneOk) {
       setErrors(prev => ({
         ...prev,
-        phone: 'Enter a valid phone number (e.g. +1 868 492-1566 or (868) 492-1566).',
+        phone: 'Enter a valid phone number (e.g. +1 868 000-0000 or (868) 000-0000).',
       }));
     } else {
       setErrors(prev => {
@@ -299,7 +299,7 @@ export default function PasswordUpdateModal({
         digits >= 7 && digits <= 15;
       if (!phoneOk) {
         newErrors.phone =
-          'Enter a valid phone number (e.g. +1 868 492-1566 or (868) 492-1566).';
+          'Enter a valid phone number (e.g. +1 868 000-0000 or (868) 000-0000).';
       }
     }
 
@@ -472,9 +472,9 @@ export default function PasswordUpdateModal({
                   type="tel"
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
-                  placeholder="+1 868 492-1566"
+                  placeholder={initialPhone || '+1 868 000-0000'}
                   className={cn(
-                    'border-slate-200 bg-white focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0',
+                    'border-slate-200 bg-white focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0 placeholder:text-slate-400',
                     errors.phone && 'border-red-300'
                   )}
                   autoComplete="tel"
@@ -485,7 +485,7 @@ export default function PasswordUpdateModal({
                   </p>
                 ) : (
                   <p className="text-[10px] text-slate-400">
-                    Accepted: +1 868 492-1566 · (868) 492-1566 · 18684921566
+                    Accepted: +1 868 000-0000 · (868) 000-0000 · 18680000000
                   </p>
                 )}
               </div>

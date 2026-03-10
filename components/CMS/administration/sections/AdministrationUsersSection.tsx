@@ -108,16 +108,14 @@ export default function AdministrationUsersSection({
       />
 
       {/* Search Filter Bar */}
-      {counts && counts.total > 20 && (
-        <AdministrationSearchFilterBar
-          searchValue={searchValue}
-          setSearchValue={setSearchValue}
-          selectedRole={selectedRole}
-          setSelectedRole={setSelectedRole}
-          selectedStatus={selectedStatus}
-          setSelectedStatus={setSelectedStatus}
-        />
-      )}
+      <AdministrationSearchFilterBar
+        searchValue={searchValue}
+        setSearchValue={setSearchValue}
+        selectedRole={selectedRole}
+        setSelectedRole={setSelectedRole}
+        selectedStatus={selectedStatus}
+        setSelectedStatus={setSelectedStatus}
+      />
       <div className="block lg:hidden">
         {isSearching ? (
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">

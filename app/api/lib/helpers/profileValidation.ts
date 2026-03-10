@@ -187,9 +187,9 @@ export function getInvalidProfileFields(
     }
   }
 
-  if (gender && !validateOptionalGender(gender)) {
+  if (!gender || !validateOptionalGender(gender)) {
     invalidFields.gender = true;
-    reasons.gender = 'Select a valid gender option.';
+    reasons.gender = !gender ? 'Gender is required.' : 'Select a valid gender option.';
   }
 
   // Date of birth validation removed as it's no longer required
@@ -310,6 +310,11 @@ export function getInvalidProfileFields(
     if (invalidFields.password) {
       onlyPasswordInvalid.password = true;
       onlyPasswordReasons.password = reasons.password;
+    }
+
+    if (invalidFields.gender) {
+      onlyPasswordInvalid.gender = true;
+      onlyPasswordReasons.gender = reasons.gender;
     }
 
     return {

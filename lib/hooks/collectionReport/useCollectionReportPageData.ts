@@ -65,7 +65,7 @@ export function useCollectionReportPageData() {
   const itemsPerBatch = 50;
   const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
-  const filters = useCollectionReportFilters(allReports, locations);
+  const filters = useCollectionReportFilters(allReports, locations, debouncedSearch);
 
   // ============================================================================
   // Modal State
@@ -327,6 +327,15 @@ export function useCollectionReportPageData() {
     return displayedPages;
   }, [filteredReports.length, allReports.length, totalReports, itemsPerPage]);
 
+  const handleSetSearchTerm = useCallback((term: string) => {
+    if (term.trim() !== searchTerm.trim()) {
+      setSearchTerm(term);
+      setAllReports([]);
+      setLoadedBatches(new Set());
+      setCurrentPage(0);
+    }
+  }, [searchTerm]);
+
   // Calculate which reports are editable based on user role and recency
   const editableReportIds = useMemo(() => {
     if (!user || !user.roles) return new Set<string>();
@@ -380,7 +389,7 @@ export function useCollectionReportPageData() {
 
   return {
     activeTab,
-    loading: loading || initialLoading || isDataMissingForPage, // Combine both loading states
+    loading: loading || initialLoading || isDataMissingForPage || (searchTerm !== debouncedSearch), // Combine both loading states, including debounce interval
     initialLoading,
     refreshing,
     allReports,
@@ -407,7 +416,7 @@ export function useCollectionReportPageData() {
     handleEdit,
     handleDelete,
     confirmDelete,
-    setSearchTerm,
+    setSearchTerm: handleSetSearchTerm,
     setCurrentPage,
     setShowNewCollectionMobile,
     setShowNewCollectionDesktop,

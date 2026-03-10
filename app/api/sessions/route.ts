@@ -189,12 +189,12 @@ export async function GET(request: NextRequest) {
       // Stage 8: Filter by licensee if specified
       ...(licensee && licensee !== 'All Licensees'
         ? [
-            {
-              $match: {
-                'licensee.name': licensee,
-              },
+          {
+            $match: {
+              'licensee.name': licensee,
             },
-          ]
+          },
+        ]
         : []),
       // Stage 9: Count total sessions
       {
@@ -265,12 +265,12 @@ export async function GET(request: NextRequest) {
       // Stage 8: Filter by licensee if specified
       ...(licensee && licensee !== 'All Licensees'
         ? [
-            {
-              $match: {
-                'licensee.name': licensee,
-              },
+          {
+            $match: {
+              'licensee.name': licensee,
             },
-          ]
+          },
+        ]
         : []),
       // Stage 9: Lookup member details for each session
       {
@@ -288,7 +288,7 @@ export async function GET(request: NextRequest) {
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Stage 11: Add computed fields
+      // Stage 11: Add computed fields and relevance score if searching
       {
         $addFields: {
           machineName: {
@@ -311,11 +311,25 @@ export async function GET(request: NextRequest) {
               else: null,
             },
           },
+          // Calculate relevance score: 2 for starts-with, 1 for contains, 0 otherwise
+          // Prioritize sessionId, machineName, memberId, memberName
+          relevanceScore: search ? {
+            $add: [
+              { $cond: [{ $regexMatch: { input: { $toString: "$_id" }, regex: `^${search.trim()}`, options: "i" } }, 20, 0] },
+              { $cond: [{ $regexMatch: { input: { $toString: "$_id" }, regex: search.trim(), options: "i" } }, 1, 0] },
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$machine.custom.name", "$machine.serialNumber", ""] }, regex: `^${search.trim()}`, options: "i" } }, 10, 0] },
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$machine.custom.name", "$machine.serialNumber", ""] }, regex: search.trim(), options: "i" } }, 1, 0] },
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$memberId", ""] }, regex: `^${search.trim()}`, options: "i" } }, 10, 0] },
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$memberId", ""] }, regex: search.trim(), options: "i" } }, 1, 0] },
+            ]
+          } : 0
         },
       },
-      // Stage 12: Sort sessions by specified field and order
+      // Stage 12: Sort sessions by relevance first if searching, then by specified field
       {
-        $sort: { [sortBy]: sortOrder === 'desc' ? -1 : 1 },
+        $sort: search ?
+          { relevanceScore: -1, [sortBy]: sortOrder === 'desc' ? -1 : 1 } :
+          { [sortBy]: sortOrder === 'desc' ? -1 : 1 },
       },
       // Stage 13: Apply pagination (skip records)
       {

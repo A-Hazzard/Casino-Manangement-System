@@ -57,7 +57,8 @@ export const useCabinetSorting = ({
   itemsPerPage = 20,
   useBatchPagination = true,
   totalCount,
-}: UseCabinetSortingProps): UseCabinetSortingReturn => {
+  searchTerm = '',
+}: UseCabinetSortingProps & { searchTerm?: string }): UseCabinetSortingReturn => {
   // Sort state management
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
@@ -96,9 +97,23 @@ export const useCabinetSorting = ({
       totalCabinets: filteredCabinets.length,
       sortOption,
       sortOrder,
+      searchTerm,
     });
 
     const sorted = [...filteredCabinets].sort((firstCabinet, secondCabinet) => {
+      // If searching, relevance (starts with) takes TOP priority
+      if (searchTerm.trim()) {
+        const searchLower = searchTerm.toLowerCase();
+        const aSerial = (firstCabinet.serialNumber || firstCabinet.assetNumber || '').toLowerCase();
+        const bSerial = (secondCabinet.serialNumber || secondCabinet.assetNumber || '').toLowerCase();
+
+        const aStarts = aSerial.startsWith(searchLower);
+        const bStarts = bSerial.startsWith(searchLower);
+
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+      }
+
       const orderMultiplier = sortOrder === 'desc' ? -1 : 1;
 
       // Special handling for offlineTime sorting

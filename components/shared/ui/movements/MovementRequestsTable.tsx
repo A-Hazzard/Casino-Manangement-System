@@ -49,25 +49,28 @@ export default function MovementRequestsTable({
       <Table ref={tableRef} className="w-full">
         <TableHeader>
           <TableRow className="bg-[#00b517] hover:bg-[#00b517]">
-            <TableHead className="w-[15%] font-semibold text-white">
+            <TableHead className="w-[12%] font-semibold text-white">
               CREATOR
             </TableHead>
-            <TableHead className="w-[18%] font-semibold text-white">
+            <TableHead className="w-[14%] font-semibold text-white">
               LOCATION FROM
             </TableHead>
-            <TableHead className="w-[18%] font-semibold text-white">
+            <TableHead className="w-[14%] font-semibold text-white">
               LOCATION TO
             </TableHead>
-            <TableHead className="w-[12%] font-semibold text-white text-center">
+            <TableHead className="w-[12%] font-semibold text-white">
+              REQUESTED TO
+            </TableHead>
+            <TableHead className="w-[10%] font-semibold text-white text-center">
               MACHINES
             </TableHead>
-            <TableHead className="w-[20%] font-semibold text-white">
+            <TableHead className="w-[18%] font-semibold text-white">
               DATE
             </TableHead>
             <TableHead className="w-[10%] font-semibold text-white text-center">
               STATUS
             </TableHead>
-            <TableHead className="w-[7%] font-semibold text-white text-center">
+            <TableHead className="w-[10%] font-semibold text-white text-center">
               ACTIONS
             </TableHead>
           </TableRow>
@@ -94,6 +97,11 @@ export default function MovementRequestsTable({
                   title={locationsMap[req.locationToId || req.locationTo] || req.locationTo}
                 >
                   {locationsMap[req.locationToId || req.locationTo] || req.locationTo}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="truncate text-gray-600" title={req.recipientName || req.requestTo}>
+                  {req.recipientName || req.requestTo}
                 </div>
               </TableCell>
               <TableCell className="text-center">
@@ -147,8 +155,8 @@ export default function MovementRequestsTable({
                     ) && currentUser?.assignedLocations?.includes(destinationLocationId);
 
                     const canEdit = isAdminOrDev || isCreator || isRecipient || isAuthorizedDestinationUser;
-                    // ONLY developers can delete
-                    const canDelete = userRoles.some(role => role.toLowerCase() === 'developer');
+                    // Admins, developers, and the creator can delete
+                    const canDelete = isAdminOrDev || isCreator;
                     
                     return (
                       <>

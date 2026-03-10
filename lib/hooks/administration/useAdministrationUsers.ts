@@ -7,7 +7,7 @@
 
 'use client';
 
-import { fetchUsers, administrationUtils } from '@/lib/helpers/administration';
+import { administrationUtils, fetchUsers } from '@/lib/helpers/administration';
 import { saveUserHelper } from '@/lib/helpers/administration/saveUserHelper';
 import { useUserStore } from '@/lib/store/userStore';
 import type { SortKey, User } from '@/lib/types/administration';
@@ -178,6 +178,13 @@ export function useAdministrationUsers({
 
   // Debounce search value
   useEffect(() => {
+    // Immediate feedback: clear results when starting a new search
+    if (searchValue && searchValue.trim()) {
+      setIsSearching(true);
+      // We don't clear allUsers immediately here to avoid a flash of empty state,
+      // but we signal that searching is in progress.
+    }
+
     const timer = setTimeout(() => {
       setDebouncedSearchValue(searchValue);
     }, 500);
@@ -204,17 +211,32 @@ export function useAdministrationUsers({
     }
 
     const lowerSearchValue = debouncedSearchValue.toLowerCase().trim();
-    const frontendResults = allLoadedUsers.filter(user => {
-      const username = (user.username || '').toLowerCase();
-      const email = (user.email || user.emailAddress || '').toLowerCase();
-      const userId = String(user._id || '').toLowerCase();
+    const frontendResults = allLoadedUsers
+      .filter(user => {
+        const username = (user.username || '').toLowerCase();
+        const email = (user.email || user.emailAddress || '').toLowerCase();
+        const userId = String(user._id || '').toLowerCase();
 
-      return (
-        username.includes(lowerSearchValue) ||
-        email.includes(lowerSearchValue) ||
-        userId.includes(lowerSearchValue)
-      );
-    });
+        return (
+          username.includes(lowerSearchValue) ||
+          email.includes(lowerSearchValue) ||
+          userId.includes(lowerSearchValue)
+        );
+      })
+      .sort((a, b) => {
+        const getRelevance = (u: User) => {
+          let score = 0;
+          const username = (u.username || '').toLowerCase();
+          const email = (u.email || u.emailAddress || '').toLowerCase();
+          const userId = String(u._id || '').toLowerCase();
+
+          if (username.startsWith(lowerSearchValue)) score += 20;
+          if (email.startsWith(lowerSearchValue)) score += 10;
+          if (userId.startsWith(lowerSearchValue)) score += 5;
+          return score;
+        };
+        return getRelevance(b) - getRelevance(a);
+      });
 
     if (frontendResults.length > 0) {
       setAllUsers(frontendResults);
@@ -256,7 +278,6 @@ export function useAdministrationUsers({
     allLoadedUsers,
     activeSection,
     selectedLicensee,
-    selectedStatus,
   ]);
 
   // Handle pagination for backend search results
@@ -264,22 +285,21 @@ export function useAdministrationUsers({
     if (isLoading || activeSection !== 'users') return;
     if (!usingBackendSearch) return;
 
-    const isSearching = debouncedSearchValue && debouncedSearchValue.trim();
-    const isFiltering =
-      (selectedRole !== 'all' || selectedStatus !== 'all') && !isSearching;
+    const hasSearch = debouncedSearchValue && debouncedSearchValue.trim();
+    const hasFilter =
+      (selectedRole !== 'all' || selectedStatus !== 'all') && !hasSearch;
 
-    if (!isSearching && !isFiltering) return;
+    if (!hasSearch && !hasFilter) return;
 
     const currentPage1Indexed = currentPage + 1;
     const loadSearchPage = async () => {
-      setIsSearching(true);
       try {
         const result = await fetchUsers(
           selectedLicensee ?? undefined,
           currentPage1Indexed,
           itemsPerBatch,
-          isSearching ? debouncedSearchValue : undefined,
-          isSearching ? 'all' : 'username',
+          hasSearch ? debouncedSearchValue : undefined,
+          hasSearch ? 'all' : 'username',
           selectedStatus as 'all' | 'active' | 'disabled' | 'deleted',
           selectedRole
         );
@@ -293,8 +313,6 @@ export function useAdministrationUsers({
           console.error('Failed to fetch search results:', error);
         }
         setAllUsers([]);
-      } finally {
-        setIsSearching(false);
       }
     };
 
@@ -585,14 +603,14 @@ export function useAdministrationUsers({
         updated,
         currentUser: user
           ? ({
-              _id: user._id,
-              name: user.username || '',
-              username: user.username || '',
-              emailAddress: user.emailAddress || '',
-              enabled: user.isEnabled || true,
-              roles: user.roles || [],
-              profilePicture: null,
-            } as User)
+            _id: user._id,
+            name: user.username || '',
+            username: user.username || '',
+            emailAddress: user.emailAddress || '',
+            isEnabled: user.isEnabled || true,
+            roles: user.roles || [],
+            profilePicture: null,
+          } as User)
           : null,
         getUserDisplayName,
         selectedLicensee,
@@ -667,9 +685,8 @@ export function useAdministrationUsers({
               resource: 'user',
               resourceId: userToDelete._id,
               resourceName: userToDelete.username,
-              details: `Deleted user: ${userToDelete.username} with roles: ${
-                userData.roles?.join(', ') || 'N/A'
-              }`,
+              details: `Deleted user: ${userToDelete.username} with roles: ${userData.roles?.join(', ') || 'N/A'
+                }`,
               userId: user?._id || 'unknown',
               username: getUserDisplayName(),
               userRole: 'user',

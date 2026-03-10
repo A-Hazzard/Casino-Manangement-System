@@ -15,9 +15,9 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-    applyCurrencyConversionToMetrics,
-    getCurrencyFromQuery,
-    shouldApplyCurrencyConversion,
+  applyCurrencyConversionToMetrics,
+  getCurrencyFromQuery,
+  shouldApplyCurrencyConversion,
 } from '@/app/api/lib/helpers/currency/helper';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -110,23 +110,47 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Relevance score for search prioritization
+    let relevanceStage: PipelineStage | null = null;
+    if (search) {
+      const searchTermLower = search.trim();
+      relevanceStage = {
+        $addFields: {
+          relevanceScore: {
+            $add: [
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$profile.firstName", ""] }, regex: `^${searchTermLower}`, options: "i" } }, 20, 0] },
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$profile.lastName", ""] }, regex: `^${searchTermLower}`, options: "i" } }, 20, 0] },
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$username", ""] }, regex: `^${searchTermLower}`, options: "i" } }, 10, 0] },
+              { $cond: [{ $regexMatch: { input: { $toString: "$_id" }, regex: `^${searchTermLower}`, options: "i" } }, 10, 0] },
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$profile.firstName", ""] }, regex: searchTermLower, options: "i" } }, 1, 0] },
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$profile.lastName", ""] }, regex: searchTermLower, options: "i" } }, 1, 0] },
+            ]
+          }
+        }
+      };
+    }
+
     // Build optimized sort options with indexing considerations
-    const sort: Record<string, number> = {};
+    const sortOptions: Record<string, number> = {};
+    if (search) {
+      sortOptions['relevanceScore'] = -1;
+    }
+
     if (sortBy === 'name') {
-      sort['profile.firstName'] = sortOrder === 'asc' ? 1 : -1;
-      sort['profile.lastName'] = sortOrder === 'asc' ? 1 : -1;
+      sortOptions['profile.firstName'] = sortOrder === 'asc' ? 1 : -1;
+      sortOptions['profile.lastName'] = sortOrder === 'asc' ? 1 : -1;
     } else if (sortBy === 'playerId') {
-      sort['_id'] = sortOrder === 'asc' ? 1 : -1;
+      sortOptions['_id'] = sortOrder === 'asc' ? 1 : -1;
     } else if (sortBy === 'lastSession') {
-      sort['createdAt'] = sortOrder === 'asc' ? 1 : -1;
+      sortOptions['createdAt'] = sortOrder === 'asc' ? 1 : -1;
     } else if (sortBy === 'winLoss') {
-      sort['winLoss'] = sortOrder === 'asc' ? 1 : -1;
+      sortOptions['winLoss'] = sortOrder === 'asc' ? 1 : -1;
     } else if (sortBy === 'joined') {
-      sort['createdAt'] = sortOrder === 'asc' ? 1 : -1;
+      sortOptions['createdAt'] = sortOrder === 'asc' ? 1 : -1;
     } else if (sortBy === 'location') {
-      sort['locationName'] = sortOrder === 'asc' ? 1 : -1;
+      sortOptions['locationName'] = sortOrder === 'asc' ? 1 : -1;
     } else {
-      sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+      sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
     }
 
     // ============================================================================
@@ -292,7 +316,10 @@ export async function GET(request: NextRequest) {
     });
 
     // Stage 8: Sort results by specified criteria
-    pipeline.push({ $sort: sort });
+    if (relevanceStage) {
+      pipeline.push(relevanceStage as unknown as Record<string, unknown>);
+    }
+    pipeline.push({ $sort: sortOptions });
 
     // ============================================================================
     // STEP 5: Execute aggregation with pagination

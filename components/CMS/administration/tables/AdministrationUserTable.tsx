@@ -72,7 +72,7 @@ export function AdministrationUserTable({
     { header: 'NAME', sortKey: 'name' as SortKey },
     { header: 'USERNAME', sortKey: 'username' as SortKey },
     { header: 'EMAIL ADDRESS', sortKey: 'emailAddress' as SortKey },
-    { header: 'ENABLED', sortKey: 'enabled' as SortKey },
+    { header: 'ENABLED', sortKey: 'isEnabled' as SortKey },
     { header: 'LOGIN COUNT', sortKey: 'loginCount' as SortKey },
     { header: 'LAST LOGIN', sortKey: 'lastLoginAt' as SortKey },
     { header: 'SESSION', sortKey: 'sessionVersion' as SortKey },
@@ -171,8 +171,8 @@ export function AdministrationUserTable({
                 )}
               </TableCell>
               <TableCell className="text-left text-gray-600">
-                {user.enabled !== undefined ? (
-                  user.enabled ? (
+                {user.isEnabled !== undefined ? (
+                  user.isEnabled ? (
                     'True'
                   ) : (
                     'False'

@@ -9,11 +9,11 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import type { MultiSelectOption } from '@/components/shared/ui/common/MultiSelectDropdown';
@@ -30,24 +30,24 @@ import type { User } from '@/lib/types/administration';
 import type { Country, Licensee } from '@/lib/types/common';
 import type { LocationSelectItem } from '@/lib/types/location';
 import {
-  getPasswordStrengthLabel,
-  isPlaceholderEmail,
-  validateEmail,
-  validatePasswordStrength,
-  validatePhoneNumber,
+    getPasswordStrengthLabel,
+    isPlaceholderEmail,
+    validateEmail,
+    validatePasswordStrength,
+    validatePhoneNumber,
 } from '@/lib/utils/validation';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
 import {
-  AlertCircle,
-  Camera,
-  Edit3,
-  Info,
-  Loader2,
-  Save,
-  Trash2,
-  X,
-  XCircle
+    AlertCircle,
+    Camera,
+    Edit3,
+    Info,
+    Loader2,
+    Save,
+    Trash2,
+    X,
+    XCircle
 } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -291,7 +291,7 @@ export default function AdministrationUserModal({
     setAccountTouched({});
 
     setRoles(targetUser.roles || []);
-    setIsEnabled(targetUser.enabled !== undefined ? targetUser.enabled : true);
+    setIsEnabled(targetUser.isEnabled !== undefined ? targetUser.isEnabled : true);
 
     let rawLicenseeIds: string[] = [];
     if (
@@ -1427,6 +1427,10 @@ export default function AdministrationUserModal({
       profileUpdate.lastName = formData.lastName.trim() || undefined;
     }
     if (hasChanged(formData.gender, existingProfile.gender)) {
+      if (!formData.gender) {
+        toast.error('Gender is required');
+        return;
+      }
       profileUpdate.gender = formData.gender.trim() || undefined;
     }
     if (
@@ -1625,7 +1629,7 @@ export default function AdministrationUserModal({
       updatedUser.password = password;
     }
 
-    if ((isDeveloper || isAdmin || isManager) && user.enabled !== isEnabled) {
+    if ((isDeveloper || isAdmin || isManager) && user.isEnabled !== isEnabled) {
       updatedUser.isEnabled = isEnabled;
     }
 
@@ -1722,10 +1726,10 @@ export default function AdministrationUserModal({
       });
     }
 
-    if ((isDeveloper || isAdmin || isManager) && user.enabled !== isEnabled) {
+    if ((isDeveloper || isAdmin || isManager) && user.isEnabled !== isEnabled) {
       meaningfulChanges.push({
         field: 'isEnabled',
-        oldValue: user.enabled,
+        oldValue: user.isEnabled,
         newValue: isEnabled,
         path: 'isEnabled',
       });
@@ -2019,7 +2023,7 @@ export default function AdministrationUserModal({
 
                       <div>
                         <Label htmlFor="gender" className="text-gray-700">
-                          Gender
+                          Gender <span className="text-red-500">*</span>
                         </Label>
                         {isLoading ? (
                           <Skeleton className="mt-2 h-10 w-full" />

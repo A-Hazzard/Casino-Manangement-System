@@ -34,7 +34,6 @@ type AdministrationLicenseesSectionProps = {
   countries: Country[];
   isCountriesLoading: boolean;
   selectedLicensee: Licensee | null;
-  allLicensees: Licensee[];
   licenseeForm: AddLicenseeForm;
   selectedLicenseeForPayment: Licensee | null;
   selectedLicenseeForPaymentChange: Licensee | null;
@@ -78,7 +77,6 @@ export default function AdministrationLicenseesSection({
   countries,
   isCountriesLoading,
   selectedLicensee,
-  allLicensees,
   licenseeForm,
   selectedLicenseeForPayment,
   selectedLicenseeForPaymentChange,
@@ -119,12 +117,10 @@ export default function AdministrationLicenseesSection({
 
   return (
     <>
-      {allLicensees && allLicensees.length > 20 && (
-        <AdministrationLicenseeSearchBar
-          searchValue={licenseeSearchValue}
-          setSearchValue={setLicenseeSearchValue}
-        />
-      )}
+      <AdministrationLicenseeSearchBar
+        searchValue={licenseeSearchValue}
+        setSearchValue={setLicenseeSearchValue}
+      />
 
       <div className="block lg:hidden">
         {filteredLicensees.length > 0 ? (

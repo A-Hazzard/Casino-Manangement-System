@@ -1153,10 +1153,26 @@ export async function GET(req: NextRequest) {
       const aRecord = a as Record<string, unknown>;
       const bRecord = b as Record<string, unknown>;
 
+      // If searching, relevance (starts with) takes TOP priority
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const aSerial = String(aRecord.serialNumber || '').toLowerCase();
+        const bSerial = String(bRecord.serialNumber || '').toLowerCase();
+        const aName = String((aRecord.custom as { name?: string })?.name || '').toLowerCase();
+        const bName = String((bRecord.custom as { name?: string })?.name || '').toLowerCase();
+
+        const aStarts = aSerial.startsWith(searchLower) || aName.startsWith(searchLower);
+        const bStarts = bSerial.startsWith(searchLower) || bName.startsWith(searchLower);
+
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+      }
+
+      // Secondary sort: user-selected sortBy field
       let valA = aRecord[sortBy];
       let valB = bRecord[sortBy];
 
-      // Handle nested values if needed (e.g., relayId)
+      // Handle missing values
       if (valA === undefined || valA === null) valA = 0;
       if (valB === undefined || valB === null) valB = 0;
 

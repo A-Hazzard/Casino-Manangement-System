@@ -17,8 +17,8 @@ import {
   type CollectionReportsQueryParams,
 } from '@/app/api/lib/helpers/collectionReport/reports';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -105,6 +105,28 @@ export async function GET(request: NextRequest) {
     }
 
     const collectionReports = await queryBuilder.exec();
+
+    // Relevance sort in memory if searching
+    if (params.search && params.search.trim()) {
+      const searchTermLower = params.search.trim().toLowerCase();
+
+      collectionReports.sort((a, b) => {
+        const aId = String(a.locationReportId || '').toLowerCase();
+        const bId = String(b.locationReportId || '').toLowerCase();
+        const aCollector = String(a.collector || '').toLowerCase();
+        const bCollector = String(b.collector || '').toLowerCase();
+        const aName = String(a.collectorName || '').toLowerCase();
+        const bName = String(b.collectorName || '').toLowerCase();
+
+        const aStarts = aId.startsWith(searchTermLower) || aCollector.startsWith(searchTermLower) || aName.startsWith(searchTermLower);
+        const bStarts = bId.startsWith(searchTermLower) || bCollector.startsWith(searchTermLower) || bName.startsWith(searchTermLower);
+
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+
+        return 0;
+      });
+    }
 
     // ============================================================================
     // STEP 7: Return collection reports

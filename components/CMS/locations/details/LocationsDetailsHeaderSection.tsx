@@ -11,7 +11,7 @@
 import { Button } from '@/components/shared/ui/button';
 import { ActionButtonSkeleton } from '@/components/shared/ui/skeletons/ButtonSkeletons';
 import { IMAGES } from '@/lib/constants';
-import { Plus, PlusCircle, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 
 type LocationsDetailsHeaderSectionProps = {
@@ -31,8 +31,8 @@ export default function LocationsDetailsHeaderSection({
 }: LocationsDetailsHeaderSectionProps) {
   return (
     <div className="mt-4 flex w-full max-w-full items-center justify-between">
-      {/* Title and Mobile Actions */}
-      <div className="flex min-w-0 flex-1 items-center gap-2">
+      {/* Title */}
+      <div className="flex min-w-0 flex-1 items-center gap-1">
         <h1 className="flex min-w-0 items-center gap-1 truncate text-lg font-bold text-gray-800 sm:text-2xl md:text-3xl">
           Locations
           <Image
@@ -43,47 +43,29 @@ export default function LocationsDetailsHeaderSection({
             className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
           />
         </h1>
-        
-        {/* Mobile Refresh Button */}
+      </div>
+
+      {/* Actions */}
+      <div className="flex flex-shrink-0 items-center gap-2">
         <button
           onClick={onRefresh}
           disabled={refreshing}
-          className="flex-shrink-0 p-1.5 text-gray-600 md:hidden"
+          className="flex-shrink-0 p-1.5 text-gray-600 md:p-2"
         >
           <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`} />
         </button>
 
-        {/* Mobile Create Button - Show only if not loading and user can manage locations */}
-        {!loading && canManage && (
-          <button
-            onClick={onNew}
-            className="flex-shrink-0 p-1.5 md:hidden"
-          >
-            <PlusCircle className="h-4 w-4 text-button sm:h-5 sm:w-5" />
-          </button>
-        )}
-      </div>
-
-      {/* Desktop Actions */}
-      <div className="hidden flex-shrink-0 items-center gap-2 md:flex">
-        <button
-          onClick={onRefresh}
-          disabled={refreshing}
-          className="flex-shrink-0 p-2 text-gray-600"
-        >
-          <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
-        </button>
-        
         {/* Show skeleton while loading, button if user can manage, otherwise nothing */}
         {loading ? (
-          <ActionButtonSkeleton width="w-36" showIcon={true} />
+          <ActionButtonSkeleton width="w-32 sm:w-36" showIcon={true} />
         ) : canManage ? (
           <Button
             onClick={onNew}
-            className="flex-shrink-0 items-center gap-2 rounded-md bg-button px-4 py-2 text-white hover:bg-buttonActive shadow-sm"
+            className="flex-shrink-0 items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:bg-buttonActive shadow-sm sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
           >
             <Plus className="h-4 w-4" />
-            <span>New Location</span>
+            <span className="hidden sm:inline">Create new location</span>
+            <span className="sm:hidden">Create</span>
           </Button>
         ) : null}
       </div>

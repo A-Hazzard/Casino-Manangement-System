@@ -165,7 +165,7 @@ export default function LocationsPageContent() {
                   membershipStatsLoading ||
                   machineStats === null
                 }
-                title="AWS Location Status"
+                title="Location Status"
                 onlineLabel="Online Locations"
                 offlineLabel="Offline Locations"
                 onlineCount={machineStats?.onlineLocations || 0}

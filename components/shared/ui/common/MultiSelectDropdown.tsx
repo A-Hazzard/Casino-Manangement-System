@@ -25,7 +25,8 @@
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Input } from '@/components/shared/ui/input';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export type MultiSelectOption = {
   id: string;
@@ -59,12 +60,36 @@ export default function MultiSelectDropdown({
 }: MultiSelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [coords, setCoords] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const [position, setPosition] = useState<'bottom' | 'top'>('bottom');
+
+  // Handle hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      
+      // If the element is no longer in the document, it was likely an element 
+      // that was unmounted during a re-render (common when selecting items)
+      if (!document.body.contains(target)) return;
+
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(target) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(target)
+      ) {
         setIsOpen(false);
         setSearchTerm('');
       }
@@ -78,6 +103,38 @@ export default function MultiSelectDropdown({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
+
+  // Positioning logic
+  const updatePosition = useCallback(() => {
+    if (triggerRef.current && isOpen) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      // Ensure menu doesn't get clipped by mobile keyboard
+      const newPosition = spaceAbove > spaceBelow && spaceBelow < 300 ? 'top' : 'bottom';
+      setPosition(newPosition);
+
+      setCoords({
+        top: newPosition === 'bottom' ? rect.bottom + 4 : rect.top - 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+    }
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [isOpen, updatePosition]);
 
   const filteredOptions = options.filter(option =>
     option.label.toLowerCase().includes(searchTerm.toLowerCase())
@@ -115,9 +172,10 @@ export default function MultiSelectDropdown({
     : `${selectedOptions.length} selected`;
 
   return (
-    <div ref={dropdownRef} className="relative w-full">
+    <div className="relative w-full">
       {/* Trigger Button */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
@@ -158,9 +216,19 @@ export default function MultiSelectDropdown({
         </div>
       )}
 
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="absolute z-[9999] mt-1 w-full rounded-md border border-gray-300 bg-white shadow-lg">
+      {/* Dropdown Menu - Portaled to Body */}
+      {mounted && isOpen && coords && typeof window !== 'undefined' && createPortal(
+        <div 
+          ref={menuRef}
+          data-portal-id="multi-select-dropdown"
+          className="fixed z-[9999] rounded-md border border-gray-300 bg-white shadow-xl animate-in fade-in-0 zoom-in-95 ring-1 ring-black ring-opacity-5"
+          style={{
+            top: position === 'bottom' ? `${coords.top}px` : undefined,
+            bottom: position === 'top' ? `${window.innerHeight - coords.top}px` : undefined,
+            left: `${coords.left}px`,
+            width: `${coords.width}px`
+          }}
+        >
           {/* Search Bar */}
           <div className="border-b border-gray-200 p-2">
             <div className="relative">
@@ -170,7 +238,7 @@ export default function MultiSelectDropdown({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="pl-8 text-sm"
+                className="pl-8 text-sm h-8"
                 autoFocus
               />
             </div>
@@ -178,7 +246,7 @@ export default function MultiSelectDropdown({
 
           {/* Select All Option */}
           {showSelectAll && filteredOptions.length > 0 && (
-            <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
+            <div className="border-b border-gray-200 bg-gray-50 px-3 py-1.5">
               <label className="flex cursor-pointer items-center gap-2 hover:bg-gray-100 rounded px-1 py-1">
                 <Checkbox
                   checked={allSelected}
@@ -200,7 +268,7 @@ export default function MultiSelectDropdown({
           {/* Options List */}
           <div className={`overflow-y-auto ${maxHeight}`}>
             {filteredOptions.length === 0 ? (
-              <div className="px-3 py-2 text-center text-sm text-gray-500">
+              <div className="px-3 py-4 text-center text-sm text-gray-500">
                 No results found
               </div>
             ) : (
@@ -210,6 +278,10 @@ export default function MultiSelectDropdown({
                   className={`flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-gray-100 ${
                     option.disabled ? 'cursor-not-allowed opacity-50' : ''
                   }`}
+                  onClick={(e) => {
+                    // Prevent any potential bubbling that might close parent containers
+                    e.stopPropagation();
+                  }}
                 >
                   <Checkbox
                     checked={selectedIds.includes(option.id)}
@@ -217,7 +289,7 @@ export default function MultiSelectDropdown({
                     disabled={option.disabled}
                     className="h-4 w-4"
                   />
-                  <span className="flex-1 text-sm text-gray-900">
+                  <span className="flex-1 text-sm text-gray-900 truncate">
                     {option.displayNode || option.label}
                   </span>
                   {selectedIds.includes(option.id) && (
@@ -230,13 +302,14 @@ export default function MultiSelectDropdown({
 
           {/* Footer with count */}
           {selectedOptions.length > 0 && (
-            <div className="border-t border-gray-200 bg-gray-50 px-3 py-2">
-              <div className="text-xs text-gray-600">
+            <div className="border-t border-gray-200 bg-gray-50 px-3 py-1.5">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-gray-500">
                 {selectedOptions.length} of {options.length} selected
               </div>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

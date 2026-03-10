@@ -1598,7 +1598,7 @@ export async function handleDeletedUsersRequest(
     name: `${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).firstName ?? '' : ''} ${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).lastName ?? '' : ''}`.trim(),
     username: user.username,
     email: user.emailAddress,
-    enabled: user.isEnabled,
+    isEnabled: user.isEnabled,
     roles: user.roles as string[],
     profilePicture: (user.profilePicture as string) ?? null,
     profile: user.profile as Record<string, unknown>,
@@ -1869,13 +1869,19 @@ function applyRoleBasedFiltering(
 
   if (isManager && !isAdmin) {
     // Managers can only see users with same licensees
+    // Managers can only see users with same licensees OR same locations
     result = result.filter(user => {
-      const userLicensees = Array.isArray(user.assignedLicensees)
-        ? user.assignedLicensees
-        : [];
-      return userLicensees.some((userLic: string) =>
+      const userLicensees = (user.assignedLicensees || []).map(l => String(l));
+      const hasSharedLicensee = userLicensees.some((userLic: string) =>
         currentUserLicensees.includes(userLic)
       );
+
+      if (hasSharedLicensee) return true;
+
+      const userLocs = (user.assignedLocations || []).map(l => String(l));
+      if (userLocs.includes('all')) return true;
+
+      return userLocs.some(loc => currentUserLocationPermissions.includes(loc));
     });
   } else if (isLocationAdmin) {
     // Location admins can only see users who have access to at least one of their assigned locations
@@ -1946,7 +1952,8 @@ function applySearchFilter(
 ): UserItem[] {
   const lowerSearchValue = search.toLowerCase().trim();
 
-  return users.filter(user => {
+  // First filter the users
+  const filteredUsers = users.filter(user => {
     if (searchMode === 'all') {
       const username = (user.username || '').toLowerCase();
       const email = (user.email || user.emailAddress || '').toLowerCase();
@@ -1968,6 +1975,24 @@ function applySearchFilter(
     }
     return false;
   });
+
+  // Then sort by relevance
+  return filteredUsers.sort((a, b) => {
+    const getRelevance = (user: UserItem) => {
+      let score = 0;
+      const username = (user.username || '').toLowerCase();
+      const email = (user.email || user.emailAddress || '').toLowerCase();
+      const userId = String(user._id || '').toLowerCase();
+
+      if (username.startsWith(lowerSearchValue)) score += 20;
+      if (email.startsWith(lowerSearchValue)) score += 10;
+      if (userId.startsWith(lowerSearchValue)) score += 5;
+
+      return score;
+    };
+
+    return getRelevance(b) - getRelevance(a);
+  });
 }
 
 /**
@@ -1987,7 +2012,7 @@ function paginateAndRespond(
 ): Response {
   const page = parseInt(searchParams.get('page') || '1');
   const requestedLimit = parseInt(searchParams.get('limit') || '50');
-  const limit = Math.min(requestedLimit, 100);
+  const limit = Math.min(requestedLimit, 1000);
   const skip = (page - 1) * limit;
 
   const totalCount = users.length;

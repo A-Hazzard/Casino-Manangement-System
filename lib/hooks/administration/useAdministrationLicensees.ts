@@ -13,9 +13,9 @@ import { useUserStore } from '@/lib/store/userStore';
 import type { Country, Licensee } from '@/lib/types/common';
 import type { AddLicenseeForm } from '@/lib/types/pages';
 import {
-    detectChanges,
-    filterMeaningfulChanges,
-    getChangesSummary,
+  detectChanges,
+  filterMeaningfulChanges,
+  getChangesSummary,
 } from '@/lib/utils/changeDetection';
 import { getNext30Days } from '@/lib/utils/licensee';
 import axios from 'axios';
@@ -119,10 +119,21 @@ export function useAdministrationLicensees({
 
   const filteredLicensees = useMemo(() => {
     if (!licenseeSearchValue) return licenseesWithCountryNames;
-    const search = licenseeSearchValue.toLowerCase();
-    return licenseesWithCountryNames.filter(licensee =>
-      (licensee.name || '').toLowerCase().includes(search)
+    const searchLower = licenseeSearchValue.toLowerCase().trim();
+    const filtered = licenseesWithCountryNames.filter(licensee =>
+      (licensee.name || '').toLowerCase().includes(searchLower)
     );
+
+    return filtered.sort((a, b) => {
+      const aName = (a.name || '').toLowerCase();
+      const bName = (b.name || '').toLowerCase();
+
+      const aStarts = aName.startsWith(searchLower) ? 1 : 0;
+      const bStarts = bName.startsWith(searchLower) ? 1 : 0;
+
+      if (aStarts !== bStarts) return bStarts - aStarts;
+      return aName.localeCompare(bName);
+    });
   }, [licenseesWithCountryNames, licenseeSearchValue]);
 
   const getUserDisplayName = useCallback(() => {
@@ -374,8 +385,8 @@ export function useAdministrationLicensees({
       };
       toast.error(
         error?.response?.data?.message ||
-          error?.message ||
-          'Failed to add licensee'
+        error?.message ||
+        'Failed to add licensee'
       );
     }
   }, [
@@ -522,8 +533,8 @@ export function useAdministrationLicensees({
       };
       toast.error(
         error?.response?.data?.message ||
-          error?.message ||
-          'Failed to update licensee'
+        error?.message ||
+        'Failed to update licensee'
       );
     }
   }, [
@@ -580,10 +591,9 @@ export function useAdministrationLicensees({
             resource: 'licensee',
             resourceId: selectedLicensee._id,
             resourceName: selectedLicensee.name,
-            details: `Deleted licensee: ${selectedLicensee.name} from ${
-              selectedLicensee.countryName ||
+            details: `Deleted licensee: ${selectedLicensee.name} from ${selectedLicensee.countryName ||
               getCountryNameById(selectedLicensee.country)
-            }`,
+              }`,
             userId: user?._id || 'unknown',
             username: getUserDisplayName(),
             userRole: 'user',
@@ -620,8 +630,8 @@ export function useAdministrationLicensees({
       };
       toast.error(
         error?.response?.data?.message ||
-          error?.message ||
-          'Failed to delete licensee'
+        error?.message ||
+        'Failed to delete licensee'
       );
     }
   }, [
@@ -697,11 +707,9 @@ export function useAdministrationLicensees({
             resource: 'licensee',
             resourceId: selectedLicenseeForPaymentChange._id,
             resourceName: selectedLicenseeForPaymentChange.name,
-            details: `Changed payment status for ${
-              selectedLicenseeForPaymentChange.name
-            } from ${currentIsPaid ? 'Paid' : 'Unpaid'} to ${
-              newIsPaid ? 'Paid' : 'Unpaid'
-            }`,
+            details: `Changed payment status for ${selectedLicenseeForPaymentChange.name
+              } from ${currentIsPaid ? 'Paid' : 'Unpaid'} to ${newIsPaid ? 'Paid' : 'Unpaid'
+              }`,
             userId: user?._id || 'unknown',
             username: getUserDisplayName(),
             userRole: 'user',

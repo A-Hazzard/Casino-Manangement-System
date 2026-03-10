@@ -22,8 +22,7 @@ import CollectionReportMobileFormPanel from '@/components/CMS/collectionReport/m
 import {
     Dialog,
     DialogContent,
-    DialogPortal,
-    DialogTitle,
+    DialogTitle
 } from '@/components/shared/ui/dialog';
 import { MobileCollectionModalSkeleton } from '@/components/shared/ui/skeletons/MobileCollectionModalSkeleton';
 import { useMobileEditCollectionModal } from '@/lib/hooks/collectionReport/useMobileEditCollectionModal';
@@ -210,14 +209,8 @@ export default function CollectionReportMobileEditCollectionModal({
           }
         }}
       >
-        {/* Custom overlay with higher z-index */}
-        {show && (
-          <div className="fixed inset-0 z-[105] bg-black/80 backdrop-blur-sm" />
-        )}
-        <DialogPortal>
-          <DialogContent
-            className="left-[50%] top-[50%] z-[110] m-0 h-full max-w-full translate-x-[-50%] translate-y-[-50%] overflow-hidden rounded-t-xl border-none bg-white p-0 shadow-xl sm:max-w-[80%] md:h-[90vh] md:rounded-xl"
-            style={{ zIndex: 110 }}
+        <DialogContent
+            className="left-[50%] top-[50%] m-0 h-full max-w-full translate-x-[-50%] translate-y-[-50%] overflow-hidden rounded-t-xl border-none bg-white p-0 shadow-xl sm:max-w-[80%] md:h-[90vh] md:rounded-xl"
           >
             {/* DialogTitle for accessibility - hidden visually */}
             <DialogTitle className="sr-only">
@@ -402,6 +395,7 @@ export default function CollectionReportMobileEditCollectionModal({
                 {modalState.isCollectedListVisible && (
                   <CollectionReportMobileCollectedListPanel
                     isVisible={modalState.isCollectedListVisible}
+                    isEditing={!!reportId}
                     onBack={() => {
                       setModalState(prev => ({
                         ...prev,
@@ -465,7 +459,6 @@ export default function CollectionReportMobileEditCollectionModal({
                                     </div>
             </div>
           </DialogContent>
-        </DialogPortal>
       </Dialog>
     </>
   );

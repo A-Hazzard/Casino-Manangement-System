@@ -92,6 +92,19 @@ export const filterAndSortCabinets = (
 
   // Apply sorting
   filtered.sort((a, b) => {
+    // If searching, relevance (starts with) takes TOP priority
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      const aSerial = (a.serialNumber || a.assetNumber || '').toLowerCase();
+      const bSerial = (b.serialNumber || b.assetNumber || '').toLowerCase();
+
+      const aStarts = aSerial.startsWith(searchLower);
+      const bStarts = bSerial.startsWith(searchLower);
+
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+    }
+
     const order = sortOrder === 'desc' ? -1 : 1;
 
     // Special handling for offlineTime sorting

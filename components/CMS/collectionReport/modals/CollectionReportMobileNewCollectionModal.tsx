@@ -73,6 +73,7 @@ export default function CollectionReportMobileNewCollectionModal({
   });
 
   return (
+    <>
     <Dialog open={show} onOpenChange={onClose}>
       <DialogContent className="flex h-full w-full max-w-full flex-col p-0">
         <DialogHeader className="rounded-t-xl border-b bg-white p-4 md:rounded-t-xl">
@@ -561,35 +562,36 @@ export default function CollectionReportMobileNewCollectionModal({
             onCreateReport={createCollectionReport}
           />
         )}
-
-        {/* Delete Confirmation Dialog */}
-        <ConfirmationDialog
-          isOpen={showDeleteConfirmation}
-          onClose={() => {
-            setShowDeleteConfirmation(false);
-            setModalState(prev => ({
-              ...prev,
-              editingEntryId: null, // Clear delete target
-            }));
-          }}
-          onConfirm={() => {
-            if (modalState.editingEntryId) {
-              deleteMachineFromList(modalState.editingEntryId);
-              setShowDeleteConfirmation(false);
-              setModalState(prev => ({
-                ...prev,
-                editingEntryId: null, // Clear delete target
-              }));
-            }
-          }}
-          title="Confirm Delete"
-          message="Are you sure you want to delete this collection entry?"
-          confirmText="Yes, Delete"
-          cancelText="Cancel"
-          isLoading={modalState.isProcessing}
-        />
       </DialogContent>
     </Dialog>
+
+    {/* Delete Confirmation Dialog - Rendered outside Dialog to avoid z-index stacking context issues */}
+    <ConfirmationDialog
+      isOpen={showDeleteConfirmation}
+      onClose={() => {
+        setShowDeleteConfirmation(false);
+        setModalState(prev => ({
+          ...prev,
+          editingEntryId: null, // Clear delete target
+        }));
+      }}
+      onConfirm={() => {
+        if (modalState.editingEntryId) {
+          deleteMachineFromList(modalState.editingEntryId);
+          setShowDeleteConfirmation(false);
+          setModalState(prev => ({
+            ...prev,
+            editingEntryId: null, // Clear delete target
+          }));
+        }
+      }}
+      title="Confirm Delete"
+      message="Are you sure you want to delete this collection entry?"
+      confirmText="Yes, Delete"
+      cancelText="Cancel"
+      isLoading={modalState.isProcessing}
+    />
+    </>
   );
 }
 

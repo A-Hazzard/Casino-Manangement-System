@@ -147,12 +147,17 @@ function AdministrationActivityLogsTable({
 
   // Debounce search term
   useEffect(() => {
+    // Immediate feedback: show loading while debouncing
+    if (searchTerm && searchTerm.trim() !== debouncedSearchTerm) {
+      setLoading(true);
+    }
+
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 300);
+    }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, debouncedSearchTerm]);
 
   // Fetch activity logs - initial batch and when filters change
   const fetchInitialBatch = useCallback(async () => {
@@ -507,16 +512,14 @@ function AdministrationActivityLogsTable({
         </CardHeader>
         <CardContent>
           {/* Search Bar */}
-          {allLogs.length > 20 && (
-            <AdministrationActivityLogsSearchBar
-              searchValue={searchTerm}
-              setSearchValue={setSearchTerm}
-              searchMode={searchMode}
-              setSearchMode={setSearchMode}
-              searchDropdownOpen={searchDropdownOpen}
-              setSearchDropdownOpen={setSearchDropdownOpen}
-            />
-          )}
+          <AdministrationActivityLogsSearchBar
+            searchValue={searchTerm}
+            setSearchValue={setSearchTerm}
+            searchMode={searchMode}
+            setSearchMode={setSearchMode}
+            searchDropdownOpen={searchDropdownOpen}
+            setSearchDropdownOpen={setSearchDropdownOpen}
+          />
 
           {/* Filters */}
           <div className="mb-6 mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">

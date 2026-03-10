@@ -142,7 +142,6 @@ export default function AdministrationPageContent() {
           countries={licenseesHook.countries}
           isCountriesLoading={licenseesHook.isCountriesLoading}
           selectedLicensee={licenseesHook.selectedLicensee}
-          allLicensees={licenseesHook.allLicensees}
           licenseeForm={licenseesHook.licenseeForm}
           selectedLicenseeForPayment={licenseesHook.selectedLicenseeForPayment}
           selectedLicenseeForPaymentChange={
@@ -318,10 +317,11 @@ export default function AdministrationPageContent() {
           {activeSection === 'users' ? (
             <Button
               onClick={usersHook.openAddUserModal}
-              className="flex items-center gap-2 rounded-md bg-button px-6 py-2 text-lg font-semibold text-white"
+              className="flex items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:bg-buttonActive sm:gap-2 sm:px-6 sm:py-2 sm:text-sm"
             >
               <PlusCircle className="h-4 w-4" />
-              Add User
+              <span className="hidden sm:inline">Create new user</span>
+              <span className="sm:hidden">Create</span>
             </Button>
           ) : activeSection === 'licensees' ? (
             <Button
@@ -330,57 +330,24 @@ export default function AdministrationPageContent() {
                 licenseesHook.isCountriesLoading ||
                 licenseesHook.countries.length === 0
               }
-              className="flex items-center gap-2 rounded-md bg-button px-6 py-2 text-lg font-semibold text-white"
+              className="flex items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:bg-buttonActive sm:gap-2 sm:px-6 sm:py-2 sm:text-sm"
             >
               <PlusCircle className="h-4 w-4" />
-              Add Licensee
+              <span className="hidden sm:inline">Create new licensee</span>
+              <span className="sm:hidden">Create</span>
             </Button>
           ) : activeSection === 'countries' ? (
             <Button
               onClick={countriesHook.openAddModal}
-              className="flex items-center gap-2 rounded-md bg-button px-6 py-2 text-lg font-semibold text-white"
+              className="flex items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:bg-buttonActive sm:gap-2 sm:px-6 sm:py-2 sm:text-sm"
             >
               <PlusCircle className="h-4 w-4" />
-              Add Country
+              <span className="hidden sm:inline">Create new country</span>
+              <span className="sm:hidden">Create</span>
             </Button>
           ) : null}
         </div>
 
-        {/* Mobile Create Button */}
-        <div className="flex flex-shrink-0 items-center gap-2 md:hidden">
-          {activeSection === 'users' ? (
-            <button
-              onClick={usersHook.openAddUserModal}
-              disabled={refreshing}
-              className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Add User"
-            >
-              <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
-            </button>
-          ) : activeSection === 'licensees' ? (
-            <button
-              onClick={licenseesHook.handleOpenAddLicensee}
-              disabled={
-                refreshing ||
-                licenseesHook.isCountriesLoading ||
-                licenseesHook.countries.length === 0
-              }
-              className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Add Licensee"
-            >
-              <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
-            </button>
-          ) : activeSection === 'countries' ? (
-            <button
-              onClick={countriesHook.openAddModal}
-              disabled={refreshing}
-              className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Add Country"
-            >
-              <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
-            </button>
-          ) : null}
-        </div>
       </div>
 
       {/* Tab Navigation Section */}

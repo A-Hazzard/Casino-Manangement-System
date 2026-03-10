@@ -21,6 +21,7 @@
  */
 'use client';
 
+import CurrencyFilter from '@/components/shared/layout/CurrencyFilter';
 import ProfileModal from '@/components/shared/layout/ProfileModal';
 import { ClientOnly } from '@/components/shared/ui/ClientOnly';
 import { SidebarContainer, useSidebar } from '@/components/shared/ui/sidebar';
@@ -889,6 +890,15 @@ export default function AppSidebar({
                 })
             )}
           </nav>
+          
+          {/* Mobile Currency Selector: Shown only on mobile devices in the sidebar */}
+          <div className="md:hidden border-t border-border/50 px-3 py-4 mt-2">
+            <CurrencyFilter 
+              userRoles={user?.roles as string[]}
+              hasMultipleLicensees={(user?.assignedLicensees || []).length > 1}
+              className="w-full"
+            />
+          </div>
 
           {/* User Profile Section: User information and profile controls */}
           <div className="relative mt-auto border-t border-border/50 px-3 py-3">

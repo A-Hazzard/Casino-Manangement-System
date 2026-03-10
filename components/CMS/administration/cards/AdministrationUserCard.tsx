@@ -7,12 +7,12 @@
 
 'use client';
 
-import Image from 'next/image';
-import type { User } from '@/lib/types/administration';
-import type { UserAuthPayload } from '@/shared/types/auth';
-import defaultAvatar from '@/public/defaultAvatar.svg';
-import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/shared/ui/button';
+import type { User } from '@/lib/types/administration';
+import defaultAvatar from '@/public/defaultAvatar.svg';
+import type { UserAuthPayload } from '@/shared/types/auth';
+import { Pencil, Trash2 } from 'lucide-react';
+import Image from 'next/image';
 
 export type AdministrationUserCardProps = {
   user: User;
@@ -114,8 +114,8 @@ export function AdministrationUserCard({
         </div>
         <div className="mb-1 text-sm text-gray-700">
           <span className="font-semibold">Enabled:</span>{' '}
-          {user.enabled !== undefined ? (
-            user.enabled ? (
+          {user.isEnabled !== undefined ? (
+            user.isEnabled ? (
               'True'
             ) : (
               'False'

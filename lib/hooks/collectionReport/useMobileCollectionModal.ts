@@ -948,10 +948,11 @@ export function useMobileCollectionModal({
   // Sync local state collectedMachines to Zustand store
   useEffect(() => {
     if (
+      !show ||
       modalState.isLoadingCollections ||
       isUpdatingFromModalStateRef.current
     ) {
-      return; // Don't sync while loading or updating
+      return; // Don't sync while hidden, loading, or updating
     }
 
     // Only sync if modalState.collectedMachines is different from Zustand store
@@ -979,6 +980,7 @@ export function useMobileCollectionModal({
       });
     }
   }, [
+    show,
     modalState.collectedMachines,
     modalState.lockedLocationId,
     modalState.isLoadingCollections,

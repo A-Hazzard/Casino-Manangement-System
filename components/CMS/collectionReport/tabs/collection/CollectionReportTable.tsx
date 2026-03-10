@@ -102,7 +102,7 @@ export default function CollectionReportTable({
   }
 
   return (
-    <div className="hidden w-full min-w-0 overflow-x-auto bg-white shadow lg:block">
+    <div className="hidden w-full min-w-0 overflow-x-auto bg-white shadow md:block">
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">

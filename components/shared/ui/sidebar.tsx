@@ -265,7 +265,7 @@ export function SidebarOverlay() {
   return (
     <div
       className={cn(
-        'fixed inset-0 z-[80] bg-black/50 transition-opacity md:hidden',
+        'fixed inset-0 z-[40000] bg-black/50 transition-opacity md:hidden',
         isOpen
           ? 'pointer-events-auto opacity-100'
           : 'pointer-events-none opacity-0'
@@ -301,7 +301,7 @@ export function SidebarContainer({ children }: { children: React.ReactNode }) {
         isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         // Use exact widths that match CSS variables: 5rem (80px) and 12rem (192px)
         collapsed ? 'w-72 md:w-20' : 'w-72 md:w-52', // 288px mobile, 80px/192px desktop
-        'z-[90] transition-all duration-200'
+        'z-[50000] transition-all duration-200'
       )}
     >
       {children}
