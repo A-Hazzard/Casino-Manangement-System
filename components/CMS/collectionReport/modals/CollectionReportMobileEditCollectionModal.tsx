@@ -302,8 +302,9 @@ export default function CollectionReportMobileEditCollectionModal({
                         if (!modalState.searchTerm.trim()) return true;
                         const term = modalState.searchTerm.toLowerCase();
                         return (
-                          (machine.name || '').toLowerCase().includes(term) ||
-                          (machine.serialNumber || '').toLowerCase().includes(term)
+                          (machine.name && machine.name.toLowerCase().includes(term)) ||
+                          (machine.serialNumber && machine.serialNumber.toLowerCase().includes(term)) ||
+                          (machine.custom?.name && machine.custom.name.toLowerCase().includes(term))
                         );
                       });
 

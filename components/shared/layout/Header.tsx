@@ -359,9 +359,9 @@ export default function Header({
         {/* Header Section: Main header with title and licencee selector */}
         <header className="flex w-full flex-col p-0">
           {/* Menu Button and Main Title Row: Mobile sidebar trigger and title */}
-          <div className="flex w-full min-w-0 items-center justify-between gap-2 sm:gap-4">
+          <div className="flex w-full min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             {/* Left side: Menu button and title */}
-            <div className="flex min-w-0 flex-shrink items-center gap-2">
+            <div className="flex w-full min-w-0 flex-shrink items-center gap-2 sm:w-auto">
               {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
               <SidebarTrigger
                 className={cn(
@@ -386,21 +386,25 @@ export default function Header({
 
             {/* Right side: Filters */}
             {(!hideLicenceeFilter && shouldShowLicenceeSelect) || shouldRenderCurrencyFilter ? (
-              <div className="flex min-w-0 shrink items-center gap-1 sm:gap-2">
+              <div className="flex w-full min-w-0 shrink items-center gap-2 sm:w-auto sm:justify-end">
                 {!hideLicenceeFilter && shouldShowLicenceeSelect && (
                   <div
-                    className="min-w-0 overflow-hidden md:w-auto md:max-w-[200px] lg:max-w-[220px] xl:max-w-none"
+                    className="min-w-0 w-full overflow-hidden sm:w-auto md:max-w-[200px] lg:max-w-[220px] xl:max-w-none"
                     style={{
-                      width:
-                        'clamp(120px, calc((100vw - 240px) * 0.5 + 120px), 200px)',
+                      // On strictly mobile, let it be 100% width or whatever flex permits, disable the clamp if on very small screen
+                      width: '100%',
+                      maxWidth: '100%',
                     }}
                   >
-                    <LicenceeSelect
-                      selected={selectedLicencee || ''}
-                      onChange={handleLicenceeChange}
-                      userLicenceeIds={isAdmin ? undefined : userLicencees}
-                      disabled={disabled}
-                    />
+                    {/* Applying a media query class approach for the clamp to only apply on sm+ */}
+                    <div className="w-full sm:w-[clamp(120px,calc((100vw-240px)*0.5+120px),200px)] md:w-auto lg:w-full">
+                      <LicenceeSelect
+                        selected={selectedLicencee || ''}
+                        onChange={handleLicenceeChange}
+                        userLicenceeIds={isAdmin ? undefined : userLicencees}
+                        disabled={disabled}
+                      />
+                    </div>
                   </div>
                 )}
                 {shouldRenderCurrencyFilter && (

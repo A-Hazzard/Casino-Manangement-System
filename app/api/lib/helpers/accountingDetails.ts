@@ -478,20 +478,27 @@ export async function getCollectionReportById(
       : '-',
     machineMetrics: collections.map((collection, idx: number) => {
       // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
-      // Use a helper function to check for valid non-empty strings
-      const isValidString = (str: string | undefined | null): string | null => {
-        return str && typeof str === 'string' && str.trim() !== ''
-          ? str.trim()
-          : null;
-      };
+      // Get raw values with fallbacks handling older collection documents
+      const serialNumberRaw = (collection.serialNumber || '').trim();
+      const customName = (collection.custom?.name || collection.machineCustomName || collection.machineName || '').trim();
+      const game = (collection.game || '').trim();
 
-      const machineDisplayName =
-        isValidString(collection.serialNumber) ||
-        isValidString(collection.machineName) ||
-        isValidString(collection.machineCustomName) ||
-        isValidString(collection.machineId) ||
-        isValidString(collection.sasMeters?.machine) ||
-        `Machine ${idx + 1}`;
+      const mainIdentifier = serialNumberRaw || customName || collection.machineId || `Machine ${idx + 1}`;
+      const bracketParts: string[] = [];
+
+      // Only add customName if it's provided AND different from main identifier
+      if (customName && customName !== mainIdentifier) {
+        bracketParts.push(customName);
+      }
+
+      // Always include game - show "(game name not provided)" if blank
+      if (game) {
+        bracketParts.push(game);
+      } else {
+        bracketParts.push('(game name not provided)');
+      }
+
+      const machineDisplayName = `${mainIdentifier} (${bracketParts.join(', ')})`;
 
       // Calculate drop/cancelled from the difference between current and previous meters
       const drop = (collection.metersIn || 0) - (collection.prevIn || 0);

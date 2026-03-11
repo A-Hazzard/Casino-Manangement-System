@@ -50,7 +50,15 @@ export default function CollectionReportMobileMachineList({
         {isLoadingMachines ? (
           <Skeleton className="h-20 w-full" />
         ) : (
-          machines.filter(m => m.name?.toLowerCase().includes(searchTerm.toLowerCase())).map(machine => (
+          machines.filter(m => {
+            if (!searchTerm.trim()) return true;
+            const term = searchTerm.toLowerCase();
+            return (
+              (m.name && m.name.toLowerCase().includes(term)) ||
+              (m.serialNumber && m.serialNumber.toLowerCase().includes(term)) ||
+              (m.custom?.name && m.custom.name.toLowerCase().includes(term))
+            );
+          }).map(machine => (
             <button
               key={String(machine._id)}
               onClick={() => onMachineSelect(machine)}
