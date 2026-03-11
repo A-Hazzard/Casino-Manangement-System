@@ -157,7 +157,7 @@ export default function CollectionReportMobileCollectedListPanel({
           </div>
 
           {/* Content Area - Show either machine list or financial form */}
-          <div className="flex flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {collectedMachines.length === 0 ? (
               <div className="flex flex-1 items-center justify-center p-8">
                 <div className="text-center text-gray-500">
@@ -445,7 +445,10 @@ export default function CollectionReportMobileCollectedListPanel({
                 </div>
               </div>
             ) : (
-              <div className="mobile-collection-scrollbar flex-1 overflow-y-auto flex flex-col">
+              // === Machine List View ===
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                {/* Scrollable content */}
+                <div className="mobile-collection-scrollbar flex-1 overflow-y-auto">
                 {/* Live Reconciliation Summary - ALWAYS SHOWN ABOVE LIST */}
                 <div className="border-b bg-blue-50/50 px-4 py-4">
                   <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
@@ -588,8 +591,10 @@ export default function CollectionReportMobileCollectedListPanel({
                   )}
                 </div>
 
-                {/* Machine List Submission Button */}
-                <div className="sticky bottom-0 mt-auto border-t bg-white/90 p-4 backdrop-blur-md">
+                </div>
+
+                {/* Sticky Submit Footer */}
+                <div className="shrink-0 border-t bg-white/90 p-4 backdrop-blur-md">
                   <button
                     onClick={onCreateReport}
                     disabled={!isCreateReportsEnabled || isProcessing}
