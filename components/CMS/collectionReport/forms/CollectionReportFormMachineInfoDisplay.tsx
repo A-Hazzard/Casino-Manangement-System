@@ -41,13 +41,17 @@ export default function CollectionReportFormMachineInfoDisplay({
           </p>
         </div>
         {showExternalLink && onViewMachine && (
-          <ExternalLink
-            className="ml-2 h-5 w-5 cursor-pointer text-blue-600 transition-transform hover:scale-110"
+          <button
+            type="button"
+            className="ml-2 shrink-0 rounded p-1 text-blue-600 transition-transform hover:scale-110 hover:bg-blue-50 active:scale-95"
             onClick={(e) => {
               e.stopPropagation();
               onViewMachine();
             }}
-          />
+            aria-label="View machine details"
+          >
+            <ExternalLink className="h-5 w-5" />
+          </button>
         )}
       </div>
     </div>

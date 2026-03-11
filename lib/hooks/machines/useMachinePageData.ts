@@ -96,12 +96,13 @@ export function useMachinePageData() {
     if (activeMetricsFilter) setDateFilterInitialized(true);
   }, [activeMetricsFilter]);
 
+  const { setCommunicationModeFromData, setFirmwareVersionFromData } = smibHook;
   useEffect(() => {
     if (cabinet) {
-      smibHook.setCommunicationModeFromData(cabinet);
-      smibHook.setFirmwareVersionFromData(cabinet);
+      setCommunicationModeFromData(cabinet);
+      setFirmwareVersionFromData(cabinet);
     }
-  }, [cabinet, smibHook]);
+  }, [cabinet, setCommunicationModeFromData, setFirmwareVersionFromData]);
 
   return {
     slug,

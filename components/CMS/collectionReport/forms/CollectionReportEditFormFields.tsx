@@ -121,13 +121,17 @@ export default function CollectionReportEditFormFields({
               : 'Select a machine to edit'}
           </span>
           {machineForDataEntry && (
-            <ExternalLink
-              className="h-4 w-4 cursor-pointer text-blue-600 transition-transform hover:scale-110"
-              onClick={e => {
+            <button
+              type="button"
+              className="rounded p-0.5 text-blue-600 transition-transform hover:scale-110 hover:bg-blue-50"
+              onClick={(e) => {
                 e.stopPropagation();
                 onViewMachine();
               }}
-            />
+              aria-label="View machine details"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </button>
           )}
         </div>
       </div>

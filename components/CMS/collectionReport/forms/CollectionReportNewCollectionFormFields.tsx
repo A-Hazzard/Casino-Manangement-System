@@ -122,25 +122,26 @@ export default function CollectionReportNewCollectionFormFields({
         </p>
       </div>
 
-      <Button
-        variant="default"
-        className="flex w-full items-center justify-between bg-lighterBlueHighlight text-primary-foreground"
-      >
-        <span>
+      <div className="flex w-full items-center justify-between rounded-md bg-lighterBlueHighlight px-4 py-2 text-primary-foreground">
+        <span className="text-sm font-medium">
           {machineForDataEntry
             ? formatMachineDisplayNameWithBold(machineForDataEntry)
             : 'Select a machine to edit'}
         </span>
         {machineForDataEntry && (
-          <ExternalLink
-            className="ml-2 h-4 w-4 cursor-pointer transition-transform hover:scale-110"
-            onClick={e => {
+          <button
+            type="button"
+            className="ml-2 shrink-0 rounded p-0.5 transition-transform hover:scale-110 hover:bg-white/20"
+            onClick={(e) => {
               e.stopPropagation();
               onViewMachine();
             }}
-          />
+            aria-label="View machine details"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </button>
         )}
-      </Button>
+      </div>
 
       <div className="mb-4">
         <label className="mb-2 block text-sm font-medium text-grayHighlight">

@@ -26,6 +26,7 @@ import {
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { MobileCollectionModalSkeleton } from '@/components/shared/ui/skeletons/MobileCollectionModalSkeleton';
 import { useMobileEditCollectionModal } from '@/lib/hooks/collectionReport/useMobileEditCollectionModal';
+import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
 import type {
     CollectionReportLocationWithMachines,
     CollectionReportMachineSummary,
@@ -249,26 +250,23 @@ export default function CollectionReportMobileEditCollectionModal({
                     </button>
                   )}
 
-                  {/* View Collected Machines Button */}
-                  <button
-                    onClick={() => {
-                      if (collectedMachines.length === 0) return;
-                      pushNavigation('main');
-                      setModalState(prev => ({
-                        ...prev,
-                        isCollectedListVisible: true,
-                        isViewingFinancialForm: false,
-                      }));
-                    }}
-                    className={`flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium transition-all active:scale-95 shadow-md ${
-                      collectedMachines.length === 0
-                        ? 'cursor-not-allowed bg-gray-400 text-gray-200 shadow-none'
-                        : 'bg-green-600 text-white hover:bg-green-700'
-                    }`}
-                  >
-                    <ClipboardList className="h-5 w-5" />
-                    View Recorded Machines ({collectedMachines.length})
-                  </button>
+                  {/* View Collected Machines Button - only show when >=1 machine */}
+                  {collectedMachines.length >= 1 && (
+                    <button
+                      onClick={() => {
+                        pushNavigation('main');
+                        setModalState(prev => ({
+                          ...prev,
+                          isCollectedListVisible: true,
+                          isViewingFinancialForm: false,
+                        }));
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 py-3 font-medium text-white shadow-md transition-all hover:bg-green-700 active:scale-95"
+                    >
+                      <ClipboardList className="h-5 w-5" />
+                      View Recorded Machines ({collectedMachines.length})
+                    </button>
+                  )}
                 </div>
 
                 {/* Machines List Section */}
@@ -377,22 +375,19 @@ export default function CollectionReportMobileEditCollectionModal({
 
                 {/* Sticky Bottom Submit Button */}
                 {collectedMachines.length > 0 && (
-                  <div className="sticky bottom-0 mt-6 border-t bg-white/80 p-4 backdrop-blur-sm -mx-6 mb-[-1.5rem]">
+                  <div className="sticky bottom-0 mt-4 border-t bg-white/90 p-3 backdrop-blur-sm -mx-6 mb-[-1.5rem]">
                     <button
                       onClick={() => updateCollectionReportHandler()}
                       disabled={!isCreateReportsEnabled || modalState.isProcessing}
-                      className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold shadow-lg transition-all active:scale-95 ${
+                      className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold shadow-md transition-all active:scale-95 ${
                         isCreateReportsEnabled && !modalState.isProcessing
                           ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:shadow-green-200'
                           : 'cursor-not-allowed bg-gray-400 text-gray-200'
                       }`}
                     >
-                      <SendHorizontal className="h-5 w-5" />
-                      UPDATE FINAL COLLECTION REPORT
+                      <SendHorizontal className="h-3.5 w-3.5" />
+                      UPDATE FINAL REPORT ({collectedMachines.length} machines)
                     </button>
-                    <p className="mt-2 text-center text-[10px] text-gray-400 font-medium">
-                      Finalize all {collectedMachines.length} machine readings.
-                    </p>
                   </div>
                 )}
               </div>
@@ -500,7 +495,23 @@ export default function CollectionReportMobileEditCollectionModal({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* View Machine Confirmation Dialog */}
+      <InfoConfirmationDialog
+        isOpen={modalState.showViewMachineConfirmation}
+        onClose={() => setModalState(prev => ({ ...prev, showViewMachineConfirmation: false }))}
+        onConfirm={() => {
+          if (modalState.selectedMachineData?._id) {
+            window.open(`/cabinets/${modalState.selectedMachineData._id}`, '_blank');
+          }
+          setModalState(prev => ({ ...prev, showViewMachineConfirmation: false }));
+        }}
+        title="View Machine"
+        message="Do you want to open this machine's details in a new tab?"
+        confirmText="Yes, View Machine"
+        cancelText="Cancel"
+        isLoading={false}
+      />
     </>
   );
 }
-

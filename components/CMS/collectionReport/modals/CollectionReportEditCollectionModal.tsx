@@ -310,7 +310,7 @@ export default function CollectionReportEditCollectionModal({
         onClose={() => setShowViewMachineConfirmation(false)}
         onConfirm={() => {
           if (machineForDataEntry?._id) {
-            window.open(`/machines/${machineForDataEntry._id}`, '_blank');
+            window.open(`/cabinets/${machineForDataEntry._id}`, '_blank');
           }
           setShowViewMachineConfirmation(false);
         }}

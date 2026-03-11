@@ -529,7 +529,7 @@ export default function CollectionReportNewCollectionModal({
         onClose={() => setShowViewMachineConfirmation(false)}
         onConfirm={() => {
           if (selectedMachineId) {
-            const machineUrl = `/machines/${selectedMachineId}`;
+            const machineUrl = `/cabinets/${selectedMachineId}`;
             window.open(machineUrl, '_blank');
           }
           setShowViewMachineConfirmation(false);

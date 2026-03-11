@@ -22,6 +22,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { gsap } from "gsap";
 import { Button } from "@/components/shared/ui/button";
 import { Cross2Icon } from "@radix-ui/react-icons";
@@ -113,8 +114,8 @@ export const ConfirmationDialog = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[80000]">
+  return createPortal(
+    <div className="fixed inset-0 z-[999999]">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"
@@ -215,7 +216,8 @@ export const ConfirmationDialog = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
