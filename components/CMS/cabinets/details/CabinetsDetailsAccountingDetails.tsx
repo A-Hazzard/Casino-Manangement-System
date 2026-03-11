@@ -318,7 +318,6 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
   loading,
   activeMetricsTabContent,
   setActiveMetricsTabContent,
-  onDataRefresh,
 }) => {
   const { formatAmount } = useCurrencyFormat();
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
@@ -337,219 +336,13 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
   >(null);
   const [activityLogError, setActivityLogError] = useState<string | null>(null);
 
-  // Collection history fix functionality
-  const [isFixingCollectionHistory, setIsFixingCollectionHistory] =
-    useState(false);
-  const [hasCollectionHistoryIssues, setHasCollectionHistoryIssues] =
-    useState(false);
-  const [isCheckingIssues, setIsCheckingIssues] = useState(false);
-  const [collectionHistoryIssues, setCollectionHistoryIssues] = useState<
-    Record<string, string>
-  >({});
 
-  // Track if auto-fix has been attempted to prevent infinite loops
-  const autoFixAttemptedRef = React.useRef(false);
 
-  // Function to check for collection history issues (defined first as it's used by handleFix)
-  const checkForCollectionHistoryIssues = React.useCallback(async () => {
-    if (!cabinet?._id) return;
 
-    setIsCheckingIssues(true);
-    try {
-      const checkResponse = await fetch(
-        `/api/collection-reports/check-all-issues?machineId=${cabinet._id}`,
-        {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(60000), // 60 second timeout
-        }
-      );
 
-      if (!checkResponse.ok) {
-        throw new Error(
-          `Check API failed: ${checkResponse.status} ${checkResponse.statusText}`
-        );
-      }
 
-      const checkData = await checkResponse.json();
-      console.warn('🔍 Check API response:', checkData);
 
-      // Extract detailed issue information per collection
-      const issuesMap: Record<string, string> = {};
-      if (
-        checkData.success &&
-        checkData.machines &&
-        checkData.machines.length > 0
-      ) {
-        const machineData = checkData.machines[0];
-        console.warn('🔍 Machine data:', machineData);
 
-        if (machineData.issues && Array.isArray(machineData.issues)) {
-          machineData.issues.forEach(
-            (issue: {
-              type: string;
-              locationReportId?: string;
-              message?: string;
-              details?: Record<string, unknown>;
-            }) => {
-              if (issue.locationReportId) {
-                // Use the message from the API directly, which now includes all details
-                const issueDescription =
-                  issue.message || `Issue: ${issue.type}`;
-                issuesMap[issue.locationReportId] = issueDescription;
-              }
-            }
-          );
-        }
-      }
-
-      setCollectionHistoryIssues(issuesMap);
-      setHasCollectionHistoryIssues(Object.keys(issuesMap).length > 0);
-
-      if (Object.keys(issuesMap).length > 0) {
-        console.warn(
-          `⚠️ Found ${Object.keys(issuesMap).length} collection history issues:`,
-          issuesMap
-        );
-      } else {
-        console.warn('✅ No collection history issues found');
-      }
-    } catch (error) {
-      console.error('Error checking collection history issues:', error);
-      setHasCollectionHistoryIssues(false);
-      setCollectionHistoryIssues({});
-    } finally {
-      setIsCheckingIssues(false);
-    }
-  }, [cabinet._id]);
-
-  // Function to handle fixing collection history issues
-  const handleFixCollectionHistory = React.useCallback(
-    async (isAutomatic: boolean = false) => {
-      if (!cabinet?._id) return;
-
-      setIsFixingCollectionHistory(true);
-      try {
-        // Fix the issues using the existing fix-report endpoint
-        const fixResponse = await fetch('/api/collection-reports/fix-report', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            machineId: cabinet._id,
-            reportId: null, // Fix for specific machine, not a report
-          }),
-          // Add timeout
-          signal: AbortSignal.timeout(60000), // 60 second timeout for fix operation
-        });
-
-        if (!fixResponse.ok) {
-          throw new Error(
-            `Fix API failed: ${fixResponse.status} ${fixResponse.statusText}`
-          );
-        }
-
-        const fixData = await fixResponse.json();
-        console.warn('🔧 Fix API response:', fixData);
-
-        if (fixData.success) {
-          if (!isAutomatic) {
-            toast.success(
-              `Fixed ${fixData.results.issuesFixed.machineHistoryFixed} collection history issues`
-            );
-            // Reload the page to get updated data
-            window.location.reload();
-          } else {
-            console.warn(
-              `✅ Automatically fixed ${fixData.results.issuesFixed.machineHistoryFixed} collection history issues`
-            );
-
-            // AUTO-REQUERY: After auto-fix, recheck for issues to update UI state
-            // This ensures the warning banner and buttons hide if all issues are resolved
-            console.warn(
-              '🔄 Auto-requering collection history to verify fix...'
-            );
-            await checkForCollectionHistoryIssues();
-
-            // Refresh parent cabinet data if callback provided
-            if (onDataRefresh) {
-              console.warn('🔄 Refreshing parent cabinet data...');
-              await onDataRefresh();
-            }
-
-            toast.success('Collection history automatically synchronized', {
-              description: `${fixData.results.issuesFixed.machineHistoryFixed} issues resolved`,
-              duration: 4000,
-            });
-          }
-        } else {
-          if (!isAutomatic) {
-            toast.error(
-              fixData.message || 'Failed to fix collection history issues'
-            );
-          } else {
-            console.error(
-              'Failed to automatically fix collection history issues:',
-              fixData.message
-            );
-          }
-        }
-      } catch (error) {
-        console.error('Error fixing collection history:', error);
-        if (!isAutomatic) {
-          toast.error('Failed to fix collection history issues');
-        }
-      } finally {
-        setIsFixingCollectionHistory(false);
-      }
-    },
-    [cabinet._id, checkForCollectionHistoryIssues, onDataRefresh]
-  );
-
-  // Check for issues when component loads, cabinet changes, or after refresh
-  // AUTO-FIX: Automatically fixes issues when detected (can be disabled if needed)
-  React.useEffect(() => {
-    if (
-      cabinet?._id &&
-      !loading &&
-      activeMetricsTabContent === 'Collection History'
-    ) {
-      checkForCollectionHistoryIssues();
-    }
-  }, [
-    cabinet?._id,
-    loading,
-    activeMetricsTabContent,
-    checkForCollectionHistoryIssues,
-  ]);
-
-  // AUTO-FIX: Automatically call fix when issues are detected
-  // PRINCIPLE: Collections are always right, history might be wrong
-  // This ensures history is automatically synced to match collection documents
-  // Note: handleFixCollectionHistory intentionally omitted from deps to prevent infinite loop
-  // Auto-fix runs ONCE per page session and never again (prevents infinite loops)
-  React.useEffect(() => {
-    if (
-      hasCollectionHistoryIssues &&
-      !isFixingCollectionHistory &&
-      !isCheckingIssues &&
-      !autoFixAttemptedRef.current // Only run if never attempted
-    ) {
-      console.warn(
-        '🔧 Auto-fix: Collection history issues detected, automatically fixing (ONE TIME ONLY)...'
-      );
-      console.warn(
-        '   PRINCIPLE: Collection documents are source of truth, syncing history to match'
-      );
-
-      // Mark auto-fix attempted - NEVER reset during page session
-      autoFixAttemptedRef.current = true;
-      handleFixCollectionHistory(true); // true = automatic/silent fix
-    }
-    // NOTE: autoFixAttemptedRef is NEVER reset during page session to prevent infinite loops
-    // If user needs to re-run auto-fix, they must refresh the page or use manual "Fix History" button
-  }, [hasCollectionHistoryIssues, isFixingCollectionHistory, isCheckingIssues, handleFixCollectionHistory]);
 
   // Separate date filter states for Activity Log and Bill Validator
 
@@ -1193,12 +986,6 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
                     >
                       <CabinetsDetailsCollectionHistoryTable
                         data={collectionHistory}
-                        machineId={cabinet._id}
-                        onFixHistory={() => handleFixCollectionHistory(false)}
-                        isFixing={isFixingCollectionHistory}
-                        hasIssues={hasCollectionHistoryIssues}
-                        isCheckingIssues={isCheckingIssues}
-                        issuesMap={collectionHistoryIssues}
                         defaultTimeFilter={(() => {
                           const filter = activeMetricsFilter;
                           if (filter === 'Today') return 'today';

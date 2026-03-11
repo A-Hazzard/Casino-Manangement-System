@@ -94,7 +94,24 @@ export function useCabinetDetailsData({
           slug,
           activeMetricsFilter,
           activeMetricsFilter === 'Custom' && customDateRange
-            ? { from: customDateRange.startDate, to: customDateRange.endDate }
+            ? {
+                from:
+                  customDateRange.startDate instanceof Date
+                    ? customDateRange.startDate
+                    : customDateRange.startDate
+                      ? new Date(customDateRange.startDate)
+                      : (customDateRange as Record<string, unknown>).from
+                        ? new Date((customDateRange as Record<string, unknown>).from as string | Date)
+                        : undefined,
+                to:
+                  customDateRange.endDate instanceof Date
+                    ? customDateRange.endDate
+                    : customDateRange.endDate
+                      ? new Date(customDateRange.endDate)
+                      : (customDateRange as Record<string, unknown>).to
+                        ? new Date((customDateRange as Record<string, unknown>).to as string | Date)
+                        : undefined,
+              }
             : undefined,
           currency,
           selectedLicencee || null,

@@ -16,7 +16,8 @@
 'use client';
 
 import {
-  fetchCabinetsForLocation
+  fetchCabinetsForLocation,
+  fetchCabinetTotals,
 } from '@/lib/helpers/cabinets';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
@@ -101,6 +102,12 @@ export function useLocationCabinetsData({
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
   const [currentPage, setCurrentPage] = useState(0);
   const [totalCount, setTotalCount] = useState<number>(0);
+  const [metricsTotals, setMetricsTotals] = useState<{
+    moneyIn: number;
+    moneyOut: number;
+    gross: number;
+  } | null>(null);
+  const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
 
   // Effect to handle automatic sorting when status changes to Offline sorting variants
   useEffect(() => {
@@ -202,8 +209,13 @@ export function useLocationCabinetsData({
 
   const isDataMissingForPage = useMemo(() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
-    return filteredCabinets.length <= startIndex && accumulatedCabinets.length < totalCount;
-  }, [filteredCabinets.length, accumulatedCabinets.length, currentPage, totalCount]);
+    // We only need more data if our startIndex for the current page
+    // has exceeded what we've loaded in accumulatedCabinets, AND
+    // the server says there's more to fetch (totalCount).
+    // Note: When searching, we fetch all at once, so accumulatedCabinets is []
+    // but totalCount is set to the full search result count, so this correctly bypasses.
+    return !debouncedSearchTerm?.trim() && startIndex >= accumulatedCabinets.length && accumulatedCabinets.length < totalCount;
+  }, [accumulatedCabinets.length, currentPage, totalCount, debouncedSearchTerm]);
 
   // Get paginated cabinets for current page (slice from synchronous filteredCabinets)
   const paginatedCabinets = useMemo(() => {
@@ -211,13 +223,16 @@ export function useLocationCabinetsData({
     return filteredCabinets.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredCabinets, currentPage]);
 
-  const financialTotals = useMemo(
-    () =>
-      filteredCabinets.length > 0
-        ? calculateCabinetFinancialTotals(filteredCabinets)
-        : null,
-    [filteredCabinets]
-  );
+  const financialTotals = useMemo(() => {
+    // If we have API totals, use those; otherwise fall back to local calculation
+    // Note: Local calculation is only accurate if the whole dataset is loaded
+    if (metricsTotals) {
+      return metricsTotals;
+    }
+    return filteredCabinets.length > 0
+      ? calculateCabinetFinancialTotals(filteredCabinets)
+      : null;
+  }, [filteredCabinets, metricsTotals]);
 
   // ============================================================================
   // Effects - Filter & Sort
@@ -229,13 +244,13 @@ export function useLocationCabinetsData({
 
   // Reset to default view when search is cleared
   useEffect(() => {
-    if (!debouncedSearchTerm?.trim()) {
+    if (searchTerm === '' && debouncedSearchTerm === '') {
       setCurrentPage(0);
       setAccumulatedCabinets([]);
       setLoadedBatches(new Set([1]));
       setTotalCount(0);
     }
-  }, [debouncedSearchTerm]);
+  }, [searchTerm, debouncedSearchTerm]);
 
   // Update allCabinets when accumulatedCabinets changes
   // Update allCabinets when accumulatedCabinets changes
@@ -409,6 +424,74 @@ export function useLocationCabinetsData({
     debouncedSearchTerm,
     displayCurrency,
     selectedStatus,
+  ]);
+
+  // Effect to fetch metrics totals reliably when filters change
+  useEffect(() => {
+    if (!activeMetricsFilter || !dateFilterInitialized || !filtersInitialized || !locationId) {
+      return;
+    }
+
+    // Skip if searching (totals come from search result calculation in useMemo for now, 
+    // or we could fetch totals for search term too)
+    // Actually, it's better to fetch totals for EVERYTHING matching the filters
+    
+    setMetricsTotalsLoading(true);
+    (async () => {
+      try {
+        // Convert selectedStatus to onlineStatus format for API
+        const onlineStatus =
+          selectedStatus === 'All'
+            ? 'all'
+            : selectedStatus === 'Online'
+              ? 'online'
+              : selectedStatus === 'NeverOnline'
+                ? 'never-online'
+                : selectedStatus.startsWith('Offline')
+                  ? 'offline'
+                  : 'all';
+
+        const totals = await makeCabinetsRequest(
+          async signal =>
+            fetchCabinetTotals(
+              activeMetricsFilter,
+              customDateRange || undefined,
+              selectedLicencee ?? undefined,
+              displayCurrency,
+              signal,
+              locationId,
+              undefined, // gameType handled by filteredCabinets or we could pass it here
+              onlineStatus,
+              debouncedSearchTerm
+            ),
+          'location-totals'
+        );
+        if (totals) {
+          setMetricsTotals(totals);
+        } else {
+          setMetricsTotals(null);
+        }
+      } catch (error) {
+        if (isAbortError(error)) {
+          return;
+        }
+        console.error('[useLocationCabinetsData] Failed to fetch metrics totals:', error);
+        setMetricsTotals(null);
+      } finally {
+        setMetricsTotalsLoading(false);
+      }
+    })();
+  }, [
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicencee,
+    displayCurrency,
+    locationId,
+    selectedStatus,
+    debouncedSearchTerm,
+    dateFilterInitialized,
+    filtersInitialized,
+    makeCabinetsRequest,
   ]);
 
   // ============================================================================
@@ -748,8 +831,10 @@ export function useLocationCabinetsData({
   return {
     // State
     filteredCabinets,
-    loading: loading || cabinetsLoading || isFilterResetting || isDataMissingForPage || (searchTerm !== debouncedSearchTerm),
-    cabinetsLoading: cabinetsLoading || isFilterResetting || isDataMissingForPage || (searchTerm !== debouncedSearchTerm),
+    loading: loading || cabinetsLoading || isFilterResetting || isDataMissingForPage || metricsTotalsLoading,
+    cabinetsLoading: cabinetsLoading || isFilterResetting || isDataMissingForPage,
+    metricsTotalsLoading,
+    isDebouncingSearch: searchTerm !== debouncedSearchTerm,
     searchTerm,
     locationName,
     locationMembershipEnabled,
@@ -773,7 +858,12 @@ export function useLocationCabinetsData({
     financialTotals,
     totalCount,
     // Setters
-    setSearchTerm,
+    setSearchTerm: useCallback((term: string) => {
+      if (term !== searchTerm) {
+        setIsFilterResetting(true);
+        setSearchTerm(term);
+      }
+    }, [searchTerm]),
     setSelectedStatus: useCallback((status: string) => {
       setIsFilterResetting(true);
       setAccumulatedCabinets([]);

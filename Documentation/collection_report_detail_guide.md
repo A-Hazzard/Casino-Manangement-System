@@ -53,6 +53,17 @@ Explains the final calculation logic shown on the report detail.
     - `reportData.previousBalance`: The balance carried over from the previous report.
     - `reportData.summary.totalGross`: The sum of all machine-level gross amounts.
 
+### Technical Calculation Logic (High-Level)
+The finalized financials are persisted in the `LocationReport` document. The derivation follows this logic:
+
+1. **Total Gross:** Calculated as `Sum(Meters In - Meters Out)` across all machines.
+2. **Partner Profit:** `Floor((Total Gross - Variance - Advance) * Profit Share % / 100) - Taxes`.
+3. **Amount to Collect:** `Total Gross - Variance - Advance - Partner Profit + Previous Balance + Balance Correction`.
+
+**Code Reference:**
+- **Display Component:** `components/CMS/collectionReport/details/CollectionReportDetailsLocationMetricsTab.tsx` (Lines 21-582)
+- **Data Hook:** `lib/hooks/collectionReport/useCollectionReportDetailsData.ts` (Lines 107-173)
+
 ## 5. Issue Detection & Fixing
 Handles the identification of collection history gaps or meter jumps.
 

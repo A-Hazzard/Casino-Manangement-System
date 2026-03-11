@@ -243,6 +243,7 @@ export function useAdministrationUsers({
       setUsingBackendSearch(false);
       setPaginationMetadata(null);
       setCurrentPage(0);
+      setIsSearching(false);
     } else {
       setUsingBackendSearch(true);
       setIsSearching(true);

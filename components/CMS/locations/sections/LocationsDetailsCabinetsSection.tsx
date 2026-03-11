@@ -75,7 +75,6 @@ type LocationsDetailsCabinetsSectionProps = {
   loadingChartData: boolean;
   machineStatsLoading: boolean;
   membershipStatsLoading: boolean;
-  refreshing: boolean;
   // Chart
   showGranularitySelector: boolean;
   chartGranularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
@@ -133,7 +132,6 @@ export default function LocationsDetailsCabinetsSection({
   loadingChartData,
   machineStatsLoading,
   membershipStatsLoading,
-  refreshing,
   showGranularitySelector,
   chartGranularity,
   availableGranularityOptions,
@@ -232,8 +230,7 @@ export default function LocationsDetailsCabinetsSection({
    * Prevents updates while data is loading or refreshing.
    */
   const handleSearchChange = (value: string) => {
-    // Don't process search if data is loading or refreshing
-    if (loading || cabinetsLoading || refreshing) return;
+    // allow typing even while loading to prevent input freezing
     setSearchTerm(value);
 
     // Highlight table when user is searching
@@ -362,8 +359,7 @@ export default function LocationsDetailsCabinetsSection({
               type="text"
               placeholder="Search machines (Asset, SMID, Serial, Game)..."
               className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
-              value={searchTerm}
-              disabled={loading || cabinetsLoading || refreshing}
+               value={searchTerm}
               onChange={e => handleSearchChange(e.target.value)}
             />
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -440,9 +436,8 @@ export default function LocationsDetailsCabinetsSection({
             type="text"
             placeholder="Search machines..."
             className="h-11 w-full rounded-full border border-gray-300 bg-white px-4 pr-10 text-base text-gray-700 placeholder-gray-400 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
-            value={searchTerm}
+             value={searchTerm}
             onChange={e => handleSearchChange(e.target.value)}
-            disabled={loading || cabinetsLoading || refreshing}
           />
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
         </div>

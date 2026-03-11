@@ -682,9 +682,30 @@ export async function fetchCabinetTotals(
       const toDate = (customDateRange.endDate || customDateRange.to || customDateRange.end);
 
       if (fromDate && toDate) {
-        const fromStr = (fromDate instanceof Date ? fromDate : new Date(fromDate)).toISOString().split('T')[0];
-        const toStr = (toDate instanceof Date ? toDate : new Date(toDate)).toISOString().split('T')[0];
-        url += `&startDate=${fromStr}&endDate=${toStr}`;
+        // Convert to Date objects if they are strings or numbers
+        const fDate = fromDate instanceof Date ? fromDate : new Date(fromDate);
+        const tDate = toDate instanceof Date ? toDate : new Date(toDate);
+
+        // Check if dates have time components (not midnight)
+        const hasTime =
+          fDate.getHours() !== 0 ||
+          fDate.getMinutes() !== 0 ||
+          fDate.getSeconds() !== 0 ||
+          tDate.getHours() !== 0 ||
+          tDate.getMinutes() !== 0 ||
+          tDate.getSeconds() !== 0;
+
+        if (hasTime) {
+          // Send local time with timezone offset to preserve user's time selection
+          const fromStr = formatLocalDateTimeString(fDate, -4);
+          const toStr = formatLocalDateTimeString(tDate, -4);
+          url += `&startDate=${fromStr}&endDate=${toStr}`;
+        } else {
+          // Date-only: send ISO date format for gaming day offset to apply
+          const fromStr = fDate.toISOString().split('T')[0];
+          const toStr = tDate.toISOString().split('T')[0];
+          url += `&startDate=${fromStr}&endDate=${toStr}`;
+        }
       }
     }
 

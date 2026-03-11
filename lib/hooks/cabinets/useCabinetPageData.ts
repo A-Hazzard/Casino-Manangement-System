@@ -378,11 +378,23 @@ export function useCabinetPageData() {
           activeMetricsFilter === 'Yesterday';
         const granularity = isShortPeriod ? chartGranularity : undefined;
 
+        const effectiveStartDate = customDateRange?.startDate instanceof Date 
+            ? customDateRange.startDate 
+            : customDateRange?.startDate ? new Date(customDateRange.startDate) 
+            : (customDateRange as Record<string, unknown>)?.from ? new Date((customDateRange as Record<string, unknown>).from as string | Date) 
+            : undefined;
+
+        const effectiveEndDate = customDateRange?.endDate instanceof Date 
+            ? customDateRange.endDate 
+            : customDateRange?.endDate ? new Date(customDateRange.endDate) 
+            : (customDateRange as Record<string, unknown>)?.to ? new Date((customDateRange as Record<string, unknown>).to as string | Date) 
+            : undefined;
+
         const result = await getMachineChartData(
           String(cabinet._id),
           activeMetricsFilter,
-          customDateRange.startDate,
-          customDateRange.endDate,
+          effectiveStartDate,
+          effectiveEndDate,
           displayCurrency,
           selectedLicencee,
           granularity,

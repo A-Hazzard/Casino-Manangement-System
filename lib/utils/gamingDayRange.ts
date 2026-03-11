@@ -227,7 +227,20 @@ export function getGamingDayRangeForPeriod(
         );
       }
 
-      // For custom dates, apply gaming day offset
+      // 🔧 FIX: Check if dates have specific time components (not midnight exactly)
+      // If the user explicitly provided a time (via 'T' format from frontend), we should respect it
+      // and bypass the gaming day offset logic.
+      const hasSpecificTime = 
+        customStartDate.getUTCHours() !== 0 || 
+        customStartDate.getUTCMinutes() !== 0 ||
+        customEndDate.getUTCHours() !== 0 || 
+        customEndDate.getUTCMinutes() !== 0;
+
+      if (hasSpecificTime) {
+        return { rangeStart: customStartDate, rangeEnd: customEndDate };
+      }
+
+      // Otherwise, for custom date-only selections, apply gaming day offset
       // User selects: Oct 31 to Oct 31 (same day)
       // Means: Oct 31 gaming day start (e.g., 11 AM) to Nov 1 gaming day start (e.g., 11 AM) exclusive
       // If user selects: Sep 1 to Sep 30 (range)

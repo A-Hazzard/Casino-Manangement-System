@@ -429,19 +429,70 @@ const moneyOutFallback = machineData.sasMeters.totalCancelledCredits;
 const grossFallback = moneyInFallback - moneyOutFallback;
 ```
 
-### Date Filtering
+### Technical Implementation: Meter Queries & Gaming Day Offset
 
-⚠️ **Important**: Always use `readAt` field for date filtering on meter data:
+The system implements a sophisticated query mechanism for meter data to ensure financial accuracy across different time zones and gaming schedules.
 
-```javascript
-// ✅ CORRECT - Use readAt for meter date queries
-const metersQuery = {
-  machine: machineId,
-  readAt: { $gte: startDate, $lte: endDate },
-};
+#### 1. Date Conversion and Parsing
+API routes (e.g., `app/api/machines/aggregation/route.ts`) parse incoming `startDate` and `endDate` parameters while respecting potential ISO formats:
+
+```typescript
+if (startDateParam.includes('T')) {
+  // Timezone-aware date string (e.g., "2025-12-07T10:00:00-04:00")
+  customStartDateForGamingDay = new Date(startDateParam);
+} else {
+  // Date-only string - append time for UTC consistency
+  customStartDateForGamingDay = new Date(startDateParam + 'T00:00:00.000Z');
+}
 ```
 
-## Calculation Examples
+#### 2. Gaming Day Offset Calculation
+Gaming days are not standard calendar days. They are calculated per location using the `gameDayOffset` (start hour) and the local timezone offset (UTC-4).
+
+- **Location**: `lib/utils/gamingDayRange.ts`
+- **Logic**: `getGamingDayRangeForPeriod` calculates the precise UTC boundaries.
+
+```typescript
+// Example: If gameDayOffset is 8 (8 AM)
+// Gaming Day starts at 8 AM local (12:00 UTC) and ends at 7:59:59.999 AM next day
+const rangeStart = new Date(selectedDate);
+rangeStart.setUTCHours(gameDayOffset - (-4), 0, 0, 0); 
+```
+
+#### 3. Optimized Aggregation Query
+The system uses MongoDB aggregation to sum metrics efficiently across one or many locations.
+
+**Match Stage (Date Filtering):**
+Always uses the `readAt` field with the calculated UTC ranges:
+```javascript
+{
+  $match: {
+    machine: { $in: machineIds },
+    readAt: {
+      $gte: gameDayRange.rangeStart,
+      $lte: gameDayRange.rangeEnd,
+    },
+  },
+}
+```
+
+**Group Stage (Summing Metrics):**
+Metrics are summed from the `movement` field:
+```javascript
+{
+  $group: {
+    _id: '$machine',
+    moneyIn: { $sum: '$movement.drop' },
+    moneyOut: { $sum: '$movement.totalCancelledCredits' },
+    jackpot: { $sum: '$movement.jackpot' },
+    // Handle (coinIn) and other fields use $last as they are cumulative
+    coinIn: { $last: '$coinIn' }, 
+    gamesPlayed: { $last: '$gamesPlayed' },
+  },
+}
+```
+
+### Calculation Examples
 
 ### Example 1: Daily Location Performance
 

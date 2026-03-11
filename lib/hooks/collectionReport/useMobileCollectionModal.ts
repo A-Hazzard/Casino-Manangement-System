@@ -169,6 +169,9 @@ export function useMobileCollectionModal({
         }
         // Only get incomplete collections (no locationReportId)
         url += `${locationId ? '&' : '?'}incompleteOnly=true`;
+        if (user?._id) {
+          url += `&collector=${user._id}`;
+        }
 
         const response = await axios.get(url);
         if (response.data && response.data.length > 0) {
@@ -231,6 +234,7 @@ export function useMobileCollectionModal({
       setStoreSelectedLocation,
       setStoreLockedLocation,
       getLocationIdFromMachine,
+      user?._id,
     ]
   );
 
@@ -324,7 +328,7 @@ export function useMobileCollectionModal({
    * Calculate amount to collect based on machine entries and financial inputs
    */
   const calculateAmountToCollect = useCallback(() => {
-    if (modalState.collectedMachines.length === 0 || modalState.isLoadingCollections) {
+    if (modalState.collectedMachines.length === 0) {
       setStoreFinancials({ amountToCollect: '0' });
       return;
     }
@@ -369,8 +373,11 @@ export function useMobileCollectionModal({
     const amountToCollect =
       totalGross - variance - advance - partnerProfit + baseBalance + balanceCorrection;
 
+    const collectedAmount = Number(financials.collectedAmount) || 0;
+
     setStoreFinancials({
       amountToCollect: amountToCollect.toFixed(2),
+      previousBalance: (collectedAmount - amountToCollect).toFixed(2),
     });
   }, [
     modalState.collectedMachines,
@@ -379,6 +386,8 @@ export function useMobileCollectionModal({
     financials.variance,
     financials.advance,
     financials.balanceCorrection,
+    financials.collectedAmount,
+    locations,
     lockedLocationId,
     selectedLocation,
     setStoreFinancials,

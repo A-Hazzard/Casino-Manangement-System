@@ -277,7 +277,7 @@ export function useNewCollectionModal({
   ]);
 
   const calculateAmountToCollect = useCallback(() => {
-    if (!collectedMachineEntries.length || isLoadingExistingCollections) {
+    if (!collectedMachineEntries.length) {
       setFinancials({ amountToCollect: '0' });
       return;
     }
@@ -336,8 +336,11 @@ export function useNewCollectionModal({
       locationPreviousBalance +
       balanceCorrection;
 
+    const collectedAmount = Number(financials.collectedAmount) || 0;
+
     setFinancials({
       amountToCollect: amountToCollect.toFixed(2),
+      previousBalance: (collectedAmount - amountToCollect).toFixed(2),
     });
   }, [
     collectedMachineEntries,
@@ -345,8 +348,10 @@ export function useNewCollectionModal({
     financials.variance,
     financials.advance,
     financials.balanceCorrection,
+    financials.collectedAmount,
     locationCollectionBalance,
     locationProfitShare,
+    locations,
     isLoadingExistingCollections,
   ]);
 
@@ -369,17 +374,17 @@ export function useNewCollectionModal({
     }
   }, [selectedLocationId, lockedLocationId, locations]);
 
-  const getLocationIdFromMachine = useCallback(async (machineId: string) => {
-    try {
-      const response = await axios.get(
-        `/api/machines/${machineId}?timePeriod=all`
-      );
-      return response.data.location;
-    } catch (error) {
-      console.error('Error fetching machine location:', error);
+  const getLocationIdFromMachine = useCallback(
+    (machineId: string) => {
+      for (const location of locations) {
+        if (location.machines?.some(m => String(m._id) === machineId)) {
+          return String(location._id);
+        }
+      }
       return null;
-    }
-  }, []);
+    },
+    [locations]
+  );
 
   const fetchExistingCollections = useCallback(
     async (locationId?: string) => {
@@ -409,7 +414,7 @@ export function useNewCollectionModal({
 
           const firstCollection = response.data[0];
           if (firstCollection.machineId) {
-            const properLocationId = await getLocationIdFromMachine(
+            const properLocationId = getLocationIdFromMachine(
               firstCollection.machineId
             );
             if (properLocationId) {
@@ -427,6 +432,9 @@ export function useNewCollectionModal({
               }
             }
           }
+        } else {
+          // If no collections found, don't force a clear here as it might be a genuinely new report starting
+          // But if we're resolving state on open, we might want to ensure it's clean
         }
       } catch (error) {
         console.error('Error fetching existing collections:', error);
@@ -434,21 +442,54 @@ export function useNewCollectionModal({
         setIsLoadingExistingCollections(false);
       }
     },
-    [locations, getLocationIdFromMachine, userId]
+    [locations, getLocationIdFromMachine, userId, setSelectedLocation, setLockedLocation, setCollectedMachineEntries, setCurrentCollectionTime, setFinancials]
   );
 
-  // Fetch existing collections when modal opens or location changes
-  // Use refs for callbacks to prevent re-triggering on callback reference changes
+  // Fetch existing collections when modal opens
+  const hasFetchedOnOpenRef = useRef(false);
   const fetchExistingCollectionsRef = useRef(fetchExistingCollections);
   useEffect(() => {
     fetchExistingCollectionsRef.current = fetchExistingCollections;
   }, [fetchExistingCollections]);
 
   useEffect(() => {
-    if (show && locations.length > 0) {
-      fetchExistingCollectionsRef.current(selectedLocationId);
+    if (show) {
+      if (!hasFetchedOnOpenRef.current) {
+        fetchExistingCollectionsRef.current(undefined);
+        hasFetchedOnOpenRef.current = true;
+      }
+    } else {
+      hasFetchedOnOpenRef.current = false;
     }
-  }, [show, selectedLocationId, locations.length]);
+  }, [show]);
+
+  // Attempt to resolve location if machines were fetched before locations were ready
+  useEffect(() => {
+    if (show && collectedMachineEntries.length > 0 && !selectedLocationId && locations.length > 0) {
+      const firstCollection = collectedMachineEntries[0];
+      const properLocationId = getLocationIdFromMachine(firstCollection.machineId);
+      if (properLocationId) {
+        const locationData = locations.find(loc => String(loc._id) === properLocationId);
+        setSelectedLocation(properLocationId, locationData?.name || '');
+        setLockedLocation(properLocationId);
+        
+        if (locationData) {
+          setFinancials({
+            previousBalance: (locationData.collectionBalance || 0).toString(),
+          });
+        }
+      }
+    }
+  }, [
+    show, 
+    collectedMachineEntries, 
+    locations, 
+    selectedLocationId, 
+    getLocationIdFromMachine, 
+    setSelectedLocation, 
+    setLockedLocation, 
+    setFinancials
+  ]);
 
   // Use refs for callbacks to prevent re-triggering on callback reference changes
   const onRefreshRef = useRef(onRefresh);
@@ -463,47 +504,23 @@ export function useNewCollectionModal({
       if (onRefreshLocationsRef.current) onRefreshLocationsRef.current();
       if (onRefreshRef.current) onRefreshRef.current();
 
-      // Restore location from collected entries if available and no location is currently selected
-      if (collectedMachineEntries.length > 0 && !selectedLocationId && !lockedLocationId) {
-        const firstEntry = collectedMachineEntries[0];
-        if (firstEntry.location) {
-          // Find the location by name in the locations array
-          const matchingLocation = locations.find(loc => loc.name === firstEntry.location);
-          if (matchingLocation) {
-            setLockedLocation(String(matchingLocation._id));
-          }
-        }
+      // Ensure we have a clean state for location if no machines are in the list
+      // This helps with the "Select Location" issue
+      if (collectedMachineEntries.length === 0 && !selectedLocationId && !lockedLocationId) {
+        // Just refresh to be safe
       }
     }
-    // Only run when 'show' transitions from false to true to avoid infinite refresh loops
   }, [show]);
 
+  // Consolidating redundant effects: Handled by the effect at line 159
+  /*
   useEffect(() => {
     const locationIdToUse = lockedLocationId || selectedLocationId;
     if (locationIdToUse) {
-      const fetchMachinesForLocation = async () => {
-        try {
-          const response = await axios.get(
-            `/api/machines?locationId=${locationIdToUse}&_t=${Date.now()}`
-          );
-          if (response.data?.success && response.data?.data) {
-            setMachinesOfSelectedLocation(response.data.data);
-          } else {
-            setMachinesOfSelectedLocation([]);
-          }
-        } catch (error) {
-          console.error('Error fetching machines for location:', error);
-          setMachinesOfSelectedLocation([]);
-        }
-      };
-      fetchMachinesForLocation();
-      setSelectedMachineId(undefined);
-    } else {
-      setMachinesOfSelectedLocation([]);
-      setSelectedMachineId(undefined);
-      setMachineSearchTerm('');
+      ...
     }
   }, [selectedLocationId, lockedLocationId]);
+  */
 
   useEffect(() => {
     if (selectedMachineId && machineForDataEntry) {
@@ -574,15 +591,19 @@ export function useNewCollectionModal({
       onRefresh();
     }
 
-    if (hasChanges) {
-      setCollectedMachineEntries([]);
-      setSelectedLocation(undefined, '');
-      setSelectedMachineId(undefined);
-      setLockedLocation(undefined);
-      setMachineSearchTerm('');
-      setHasChanges(false);
-      resetStoreState();
-    }
+    // Always clear the state completely when closing
+    setCollectedMachineEntries([]);
+    setSelectedLocation(undefined, '');
+    setSelectedMachineId(undefined);
+    setLockedLocation(undefined);
+    setMachineSearchTerm('');
+    setHasChanges(false);
+    resetStoreState();
+    setMachinesOfSelectedLocation([]);
+    setCurrentMetersIn('');
+    setCurrentMetersOut('');
+    setCurrentMachineNotes('');
+    setCurrentRamClear(false);
 
     onClose();
   }, [hasChanges, onRefresh, onClose, resetStoreState]);

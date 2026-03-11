@@ -307,25 +307,6 @@ export default function CollectionReportNewCollectionModal({
                       setFinancials({
                         collectedAmount: value,
                       });
-                      // Trigger manual calculations
-                      setTimeout(() => {
-                        const amountCollected = Number(value) || 0;
-                        const amountToCollect =
-                          Number(financials.amountToCollect) || 0;
-
-                        // Only calculate previous balance if collected amount is 0 or more
-                        let previousBalance = financials.previousBalance; // Keep existing value
-                        if (value !== '' && amountCollected >= 0) {
-                          // Calculate previous balance: collectedAmount - amount To Collect
-                          previousBalance = (
-                            amountCollected - amountToCollect
-                          ).toFixed(2);
-                        }
-
-                        setFinancials({
-                          previousBalance: previousBalance,
-                        });
-                      }, 0);
                     }}
                   />
                   

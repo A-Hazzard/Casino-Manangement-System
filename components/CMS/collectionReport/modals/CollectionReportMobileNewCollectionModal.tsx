@@ -544,25 +544,6 @@ export default function CollectionReportMobileNewCollectionModal({
             }}
             onCollectedAmountChange={value => {
               setStoreFinancials({ collectedAmount: value });
-              // Trigger manual calculations to match PC logic
-              setTimeout(() => {
-                const amountCollected = Number(value) || 0;
-                const amountToCollect = Number(financials.amountToCollect) || 0;
-
-                // Calculate previous balance: collectedAmount - amount To Collect
-                let previousBalance = financials.previousBalance;
-                if (value !== '' && amountCollected >= 0) {
-                  previousBalance = (amountCollected - amountToCollect).toString();
-                }
-
-                // Final correction = base entered first + collected amount
-                const finalCorrection = (Number(baseBalanceCorrection) || 0) + amountCollected;
-
-                setStoreFinancials({
-                  previousBalance: previousBalance,
-                  balanceCorrection: value === '' ? (baseBalanceCorrection || '0') : finalCorrection.toString(),
-                });
-              }, 0);
             }}
             baseBalanceCorrection={baseBalanceCorrection}
             onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}
@@ -632,25 +613,6 @@ export default function CollectionReportMobileNewCollectionModal({
             }}
             onCollectedAmountChange={value => {
               setStoreFinancials({ collectedAmount: value });
-              // Trigger manual calculations to match PC logic
-              setTimeout(() => {
-                const amountCollected = Number(value) || 0;
-                const amountToCollect = Number(financials.amountToCollect) || 0;
-
-                // Calculate previous balance: collectedAmount - amount To Collect
-                let previousBalance = financials.previousBalance;
-                if (value !== '' && amountCollected >= 0) {
-                  previousBalance = (amountCollected - amountToCollect).toString();
-                }
-
-                // Final correction = base entered first + collected amount
-                const finalCorrection = (Number(baseBalanceCorrection) || 0) + amountCollected;
-
-                setStoreFinancials({
-                  previousBalance: previousBalance,
-                  balanceCorrection: value === '' ? (baseBalanceCorrection || '0') : finalCorrection.toString(),
-                });
-              }, 0);
             }}
             baseBalanceCorrection={baseBalanceCorrection}
             onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}

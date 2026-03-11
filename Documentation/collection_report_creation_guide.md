@@ -71,3 +71,15 @@ When finalizing the report, this section summarizes the total gross and allows m
   - **Previous Balance:** Carried forward from the location's last historical report.
 - **Key Functions:**
   - `calculateAmountToCollect()`: Orchestrates the math between manual inputs and aggregated totals.
+
+### Technical Calculation Logic
+The frontend calculates these values in real-time as the user types in the Financials section of the modal.
+
+1. **Total Machine Gross:** Iterates through `collectedMachineEntries` and uses `calculateMachineMovement` to get the movement per machine, then sums them up.
+2. **Partner Profit:** `((Total Gross - Variance - Advance) * Profit Share %) / 100 - Taxes`.
+3. **Amount to Collect:** `Total Gross - Variance - Advance - Partner Profit + Previous Balance + Balance Correction`.
+
+**Code Reference:**
+- **Logic Hook:** `lib/hooks/collectionReport/useNewCollectionModal.ts`
+  - Calculation Function: `calculateAmountToCollect` (Lines 279-356)
+- **Shared Util:** `lib/utils/movement.ts` -> `calculateMachineMovement` (Used for individual machine metrics)

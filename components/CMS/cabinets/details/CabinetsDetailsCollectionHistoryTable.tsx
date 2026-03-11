@@ -38,7 +38,6 @@ import {
 } from '@/components/shared/ui/tooltip';
 import { useUserStore } from '@/lib/store/userStore';
 import {
-    AlertCircle,
     ChevronDown,
     ChevronsUpDown,
     ChevronUp
@@ -106,24 +105,12 @@ export type TimeFilter = 'all' | 'today' | 'yesterday' | '7d' | '30d' | '90d' | 
 
 type CabinetsDetailsCollectionHistoryTableProps = {
   data: CollectionData[];
-  machineId?: string;
-  onFixHistory?: () => void;
-  isFixing?: boolean;
-  hasIssues?: boolean;
-  isCheckingIssues?: boolean;
-  issuesMap?: Record<string, string>;
   defaultTimeFilter?: TimeFilter;
   customRange?: { from: Date; to: Date };
 };
 
 export function CabinetsDetailsCollectionHistoryTable({
   data,
-  machineId,
-  onFixHistory,
-  isFixing = false,
-  hasIssues = false,
-  isCheckingIssues = false,
-  issuesMap = {},
   defaultTimeFilter = 'all',
   customRange,
 }: CabinetsDetailsCollectionHistoryTableProps) {
@@ -372,29 +359,7 @@ export function CabinetsDetailsCollectionHistoryTable({
             <div className="text-sm text-muted-foreground">
               Showing {filteredAndSortedData.length} of {data.length} entries
             </div>
-            {machineId && onFixHistory && hasIssues && (
-              <Button
-                onClick={onFixHistory}
-                disabled={isFixing || isCheckingIssues}
-                variant="destructive"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                {isCheckingIssues ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                    Checking...
-                  </>
-                ) : isFixing ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                    Fixing...
-                  </>
-                ) : (
-                  <>🔧 Fix History</>
-                )}
-              </Button>
-            )}
+
           </div>
         </div>
 
@@ -453,40 +418,25 @@ export function CabinetsDetailsCollectionHistoryTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paged.map((row, index) => {
-                const hasIssue = row.locationReportId && issuesMap[row.locationReportId];
-                return (
-                  <TableRow
-                    key={`${row.locationReportId}-${row.timestamp}-${index}`}
-                    className={hasIssue ? 'bg-red-50/50 hover:bg-red-100/50' : ''}
-                  >
-                    <TableCell className="text-left">
-                      <div className="flex items-center gap-2">
-                        {hasIssue && (
-                          <Tooltip delayDuration={200}>
-                            <TooltipTrigger asChild>
-                              <div className="flex cursor-help">
-                                <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="z-50 max-w-xs bg-slate-900 text-white">
-                              <p className="text-xs">{issuesMap[row.locationReportId]}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        <span className="truncate">
-                          {new Date(row.timestamp).toLocaleString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: true,
-                          })}
-                        </span>
-                      </div>
-                    </TableCell>
+              {paged.map((row, index) => (
+                <TableRow
+                  key={`${row.locationReportId}-${row.timestamp}-${index}`}
+                >
+                  <TableCell className="text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate">
+                        {new Date(row.timestamp).toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          hour12: true,
+                        })}
+                      </span>
+                    </div>
+                  </TableCell>
                     <TableCell className="truncate px-2 text-left">
                       <SmartNumberDisplay value={row.metersIn || 0} />
                     </TableCell>
@@ -512,82 +462,71 @@ export function CabinetsDetailsCollectionHistoryTable({
                       )}
                     </TableCell>
                   </TableRow>
-                );
-              })}
+                )
+              )}
             </TableBody>
           </Table>
         </div>
 
         <div className="w-full space-y-3 xl:hidden">
-          {paged.map((row, index) => {
-            const hasIssue = row.locationReportId && issuesMap[row.locationReportId];
-            return (
-              <Card
-                key={`${row.locationReportId}-${row.timestamp}-${index}`}
-                className={hasIssue ? 'border-red-500 bg-red-50/50' : ''}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                    <span className="flex items-center gap-2">
-                      Collection Entry
-                      {hasIssue && <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(row.timestamp).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {hasIssue && (
-                    <div className="rounded border border-red-300 bg-red-100 p-2 text-xs leading-tight text-red-800">
-                      <strong className="block pb-1">⚠️ Issue:</strong>
-                      <span className="break-words">{issuesMap[row.locationReportId]}</span>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-medium text-muted-foreground">Meters In:</span>
-                      <span className="font-semibold"><SmartNumberDisplay value={row.metersIn || 0} /></span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-medium text-muted-foreground">Meters Out:</span>
-                      <span className="font-semibold"><SmartNumberDisplay value={row.metersOut || 0} /></span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-medium text-muted-foreground">Prev. In:</span>
-                      <span className="font-semibold"><SmartNumberDisplay value={row.prevIn || 0} /></span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-medium text-muted-foreground">Prev. Out:</span>
-                      <span className="font-semibold"><SmartNumberDisplay value={row.prevOut || 0} /></span>
-                    </div>
-                  </div>
-                  <div className="text-center text-xs text-muted-foreground">
-                    {new Date(row.timestamp).toLocaleString('en-US', {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      second: '2-digit',
-                      hour12: true,
+          {paged.map((row, index) => (
+            <Card
+              key={`${row.locationReportId}-${row.timestamp}-${index}`}
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                  <span className="flex items-center gap-2">
+                    Collection Entry
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(row.timestamp).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
                     })}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">Meters In:</span>
+                    <span className="font-semibold"><SmartNumberDisplay value={row.metersIn || 0} /></span>
                   </div>
-                  {row.locationReportId && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => router.push(`/collection-report/report/${row.locationReportId}`)}
-                    >
-                      VIEW REPORT
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">Meters Out:</span>
+                    <span className="font-semibold"><SmartNumberDisplay value={row.metersOut || 0} /></span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">Prev. In:</span>
+                    <span className="font-semibold"><SmartNumberDisplay value={row.prevIn || 0} /></span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">Prev. Out:</span>
+                    <span className="font-semibold"><SmartNumberDisplay value={row.prevOut || 0} /></span>
+                  </div>
+                </div>
+                <div className="text-center text-xs text-muted-foreground">
+                  {new Date(row.timestamp).toLocaleString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true,
+                  })}
+                </div>
+                {row.locationReportId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => router.push(`/collection-report/report/${row.locationReportId}`)}
+                  >
+                    VIEW REPORT
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         <div className="mt-6 flex items-center justify-center gap-2">

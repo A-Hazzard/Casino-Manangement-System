@@ -17,7 +17,6 @@ export type AccountingDetailsProps = {
   loading: boolean;
   activeMetricsTabContent: string;
   setActiveMetricsTabContent: (content: string) => void;
-  onDataRefresh?: () => Promise<void>; // Optional callback to refresh parent data after auto-fix
 };
 
 // Props for CabinetsCabinetSearchFilters component

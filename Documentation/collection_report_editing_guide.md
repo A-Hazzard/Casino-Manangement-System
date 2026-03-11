@@ -59,3 +59,16 @@ Summarizes calculations and allows historical corrections to manual financial fi
 - **Key Functions:**
   - `recalculateAmountToCollect()`: Fired automatically on any financial field change.
   - `confirmUpdateFinancials()`: Persists the macro-financial changes to the database.
+
+### Technical Calculation Logic
+The Edit modal uses an `useEffect` hook to recalculate financials whenever the machine list or manual financial fields change.
+
+1. **Total Machine Gross:** Sum of individual machine grosses (calculated via `calculateMachineMovement`).
+2. **Partner Profit:** `Math.floor(((Total Gross - Variance - Advance) * Profit Share %) / 100) - Taxes`.
+3. **Amount to Collect:** `Total Gross - Variance - Advance - Partner Profit + Location Previous Balance`.
+
+**Code Reference:**
+- **Logic Hook:** `lib/hooks/collectionReport/useEditCollectionModal.ts`
+  - Recalculation Effect: `useEffect` (Lines 1064-1181)
+  - Calculation Logic: Lines 1112-1172
+- **Persistence:** `handleUpdateReport` function (Lines 775-928)

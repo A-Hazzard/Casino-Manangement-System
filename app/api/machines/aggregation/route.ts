@@ -497,11 +497,10 @@ export async function GET(req: NextRequest) {
           const gross = moneyIn - moneyOut;
 
           // Get serialNumber with fallback to custom.name
-          const serialNumber = (machine.serialNumber as string)?.trim() || '';
-          const customName =
-            (
-              (machine.custom as Record<string, unknown>)?.name as string
-            )?.trim() || '';
+          const machineRecord = machine as Record<string, unknown>;
+          const serialNumber = (machineRecord.serialNumber as string)?.trim() || '';
+          const customData = (machineRecord.custom || machineRecord.Custom || {}) as Record<string, unknown>;
+          const customName = (customData.name as string)?.trim() || '';
           const finalSerialNumber = serialNumber || customName || '';
 
           allMachines.push({
@@ -510,7 +509,7 @@ export async function GET(req: NextRequest) {
             locationName: (location.name as string) || '(No Location)',
             assetNumber: finalSerialNumber,
             serialNumber: finalSerialNumber,
-            custom: machine.custom || {},
+            custom: customData,
             game: String(machine.game || machine.gameType || ''),
             installedGame: String(machine.game || machine.gameType || ''),
             denomination: machine.denomination || '',
@@ -828,11 +827,10 @@ export async function GET(req: NextRequest) {
             const gross = moneyIn - moneyOut;
 
             // Get serialNumber with fallback to custom.name
-            const serialNumber = (machine.serialNumber as string)?.trim() || '';
-            const customName =
-              (
-                (machine.custom as Record<string, unknown>)?.name as string
-              )?.trim() || '';
+            const machineRecord = machine as Record<string, unknown>;
+            const serialNumber = (machineRecord.serialNumber as string)?.trim() || '';
+            const customData = (machineRecord.custom || machineRecord.Custom || {}) as Record<string, unknown>;
+            const customName = (customData.name as string)?.trim() || '';
             const finalSerialNumber = serialNumber || customName || '';
 
             return {
@@ -841,7 +839,7 @@ export async function GET(req: NextRequest) {
               locationName: (location.name as string) || '(No Location)',
               assetNumber: finalSerialNumber,
               serialNumber: finalSerialNumber,
-              custom: machine.custom || {},
+              custom: customData,
               smbId: machine.relayId || '',
               relayId: machine.relayId || '',
               installedGame: String(machine.game || machine.gameType || ''),

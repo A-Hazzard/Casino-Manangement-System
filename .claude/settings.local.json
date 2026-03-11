@@ -6,7 +6,10 @@
       "Bash(xargs grep:*)",
       "Bash(grep:*)",
       "Bash(bun run build)",
-      "Bash(bun run dev)"
+      "Bash(bun run dev)",
+      "Bash(node scripts/investigate-location-gross.js)",
+      "Bash(node scripts/investigate-meters-boundary.js)",
+      "Bash(node scripts/investigate-cumulative-delta.js)"
     ]
   }
 }

@@ -606,7 +606,6 @@ export default function LocationsDetailsPageContent() {
             loadingChartData={chartDataHook.loadingChartData}
             machineStatsLoading={machineStatsLoading}
             membershipStatsLoading={membershipStatsLoading}
-            refreshing={cabinetsData.refreshing}
             showGranularitySelector={chartDataHook.showGranularitySelector}
             chartGranularity={chartDataHook.chartGranularity}
             availableGranularityOptions={

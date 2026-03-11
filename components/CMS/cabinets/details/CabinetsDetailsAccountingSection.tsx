@@ -51,6 +51,7 @@ export default function CabinetsDetailsAccountingSection({
               hideAllTime={false}
               onCustomRangeGo={onRefresh}
               showQuarterly={true}
+              enableTimeInputs={true}
             />
           )}
         </div>

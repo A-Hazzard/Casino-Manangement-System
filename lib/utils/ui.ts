@@ -81,10 +81,11 @@ export const filterAndSortCabinets = (
     filtered = filtered.filter(cab => {
       const cabinetId = String(cab._id || '').toLowerCase();
       return (
-        cab.assetNumber?.toLowerCase().includes(searchLower) ||
-        cab.smbId?.toLowerCase().includes(searchLower) ||
-        cab.serialNumber?.toLowerCase().includes(searchLower) ||
-        cab.game?.toLowerCase().includes(searchLower) ||
+        (cab.assetNumber || '').toLowerCase().includes(searchLower) ||
+        (cab.smbId || '').toLowerCase().includes(searchLower) ||
+        (cab.serialNumber || '').toLowerCase().includes(searchLower) ||
+        (cab.game || '').toLowerCase().includes(searchLower) ||
+        (cab.custom?.name || (cab as { Custom?: { name?: string } })?.Custom?.name || '').toLowerCase().includes(searchLower) ||
         cabinetId.includes(searchLower)
       );
     });

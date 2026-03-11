@@ -91,7 +91,8 @@ export default function ProfileAssignments({
     
     if (isActuallyAllSelected) {
       return locations.map(loc => {
-        const lid = loc.licenceeId || loc.rel?.licencee || loc.licencee;
+        const locAny = loc as Record<string, unknown>;
+        const lid = locAny.licenceeId || (locAny.rel as Record<string, unknown>)?.licencee || (locAny.rel as Record<string, unknown>)?.licensee || locAny.licencee || locAny.licensee;
         const lic = licencees.find(l => String(l._id) === (Array.isArray(lid) ? String(lid[0]) : String(lid)));
         return {
           locationName: loc.name,
@@ -111,7 +112,8 @@ export default function ProfileAssignments({
       if (licencee) {
         // It's a licencee ID - find all locations for it
         const licenceeLocations = locations.filter(loc => {
-          const lid = loc.licenceeId || loc.rel?.licencee || loc.licencee;
+          const locAny = loc as Record<string, unknown>;
+          const lid = locAny.licenceeId || (locAny.rel as Record<string, unknown>)?.licencee || (locAny.rel as Record<string, unknown>)?.licensee || locAny.licencee || locAny.licensee;
           if (Array.isArray(lid)) {
              return lid.some(l => String(l) === String(licencee._id));
           }
@@ -133,7 +135,8 @@ export default function ProfileAssignments({
         const loc = locations.find(l => String(l._id) === id);
         if (loc) {
           if (!processedLocationIds.has(String(loc._id))) {
-            const lid = loc.licenceeId || loc.rel?.licencee || loc.licencee;
+            const locAny = loc as Record<string, unknown>;
+            const lid = locAny.licenceeId || (locAny.rel as Record<string, unknown>)?.licencee || (locAny.rel as Record<string, unknown>)?.licensee || locAny.licencee || locAny.licensee;
             const singleLid = Array.isArray(lid) ? lid[0] : lid;
             const lic = licencees.find(l => String(l._id) === String(singleLid));
             rows.push({

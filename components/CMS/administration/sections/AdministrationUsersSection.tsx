@@ -117,7 +117,7 @@ export default function AdministrationUsersSection({
         setSelectedStatus={setSelectedStatus}
       />
       <div className="block lg:hidden">
-        {isSearching ? (
+        {isLoading || isSearching ? (
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             <AdministrationUserCardSkeleton />
             <AdministrationUserCardSkeleton />
@@ -154,7 +154,7 @@ export default function AdministrationUsersSection({
         )}
       </div>
       <div className="hidden lg:block">
-        {isSearching ? (
+        {isLoading || isSearching ? (
           <AdministrationUserTableSkeleton />
         ) : processedUsers.length > 0 ? (
           <>

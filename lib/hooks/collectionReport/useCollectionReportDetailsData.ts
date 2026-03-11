@@ -14,16 +14,10 @@
 'use client';
 
 import { fetchCollectionReportById } from '@/lib/helpers/collectionReport';
-import { checkSasTimeIssues } from '@/lib/helpers/collectionReport/detailData';
 import { fetchCollectionsByLocationReportId } from '@/lib/helpers/collections';
 import type { CollectionReportData, MachineMetric } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { validateCollectionReportData } from '@/lib/utils/validation';
-import type {
-    CollectionIssue,
-    CollectionIssueDetails,
-} from '@/shared/types/entities';
-import axios from 'axios';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -46,21 +40,7 @@ export function useCollectionReportDetailsData() {
   const [error, setError] = useState<string | null>(null);
   const [collections, setCollections] = useState<CollectionDocument[]>([]);
   const [machinePage, setMachinePage] = useState(1);
-  const [showFixReportConfirmation, setShowFixReportConfirmation] =
-    useState(false);
-  const [isFixingReport, setIsFixingReport] = useState(false);
-  const [hasSasTimeIssues, setHasSasTimeIssues] = useState(false);
-  const [hasCollectionHistoryIssues, setHasCollectionHistoryIssues] =
-    useState(false);
-  const [collectionHistoryMachines, setCollectionHistoryMachines] = useState<
-    string[]
-  >([]);
-  const [sasTimeIssues, setSasTimeIssues] = useState<CollectionIssue[]>([]);
-  const [showCollectionIssueModal, setShowCollectionIssueModal] =
-    useState(false);
-  const [selectedIssue, setSelectedIssue] = useState<CollectionIssue | null>(
-    null
-  );
+
   const [sortField, setSortField] = useState<keyof MachineMetric>('sasGross');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [searchTerm, setSearchTerm] = useState('');
@@ -78,7 +58,7 @@ export function useCollectionReportDetailsData() {
   // Refs
   // ============================================================================
   const hasRedirectedRef = useRef(false);
-  const lastAutoFixIssuesRef = useRef<string>('');
+
   const tabContentRef = useRef<HTMLDivElement>(null);
 
   // ============================================================================
@@ -119,64 +99,7 @@ export function useCollectionReportDetailsData() {
     []
   );
 
-  const checkForSasTimeIssues = useCallback(async (id: string) => {
-    try {
-      const issueDetails: CollectionIssueDetails = await checkSasTimeIssues(id);
 
-      const sasIssues = issueDetails.issues.filter(
-        issue =>
-          issue.issueType !== 'prev_meters_mismatch' ||
-          !issue.collectionId.includes('machine-') ||
-          !issue.collectionId.includes('-history-')
-      );
-      const historyIssues = issueDetails.issues.filter(
-        issue =>
-          issue.issueType === 'prev_meters_mismatch' &&
-          issue.collectionId.includes('machine-') &&
-          issue.collectionId.includes('-history-')
-      );
-
-      setHasSasTimeIssues(sasIssues.length > 0);
-      setHasCollectionHistoryIssues(historyIssues.length > 0);
-      setSasTimeIssues(issueDetails.issues);
-
-      try {
-        const issuesResponse = await axios.get(
-          '/api/collection-reports/check-all-issues',
-          {
-            params: { reportId: id },
-          }
-        );
-
-        const reportIssues = issuesResponse.data.reportIssues || {};
-        const reportKeys = Object.keys(reportIssues);
-
-        if (reportKeys.length > 0) {
-          const reportKey = reportKeys[0];
-          const reportIssueData = reportIssues[reportKey];
-
-          if (
-            reportIssueData &&
-            reportIssueData.hasIssues &&
-            reportIssueData.issueCount > 0
-          ) {
-            setHasCollectionHistoryIssues(true);
-            setCollectionHistoryMachines(reportIssueData.machines || []);
-          } else {
-            setHasCollectionHistoryIssues(false);
-            setCollectionHistoryMachines([]);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking machine history issues:', error);
-      }
-    } catch (error) {
-      console.error('Error checking SAS time issues:', error);
-      setHasSasTimeIssues(false);
-      setHasCollectionHistoryIssues(false);
-      setSasTimeIssues([]);
-    }
-  }, []);
 
   // ============================================================================
   // Computed Values
@@ -276,43 +199,7 @@ export function useCollectionReportDetailsData() {
     router.push(newUrl, { scroll: false });
   };
 
-  const handleIssueClick = (issue: CollectionIssue) => {
-    setActiveTab('Machine Metrics');
-    const machineCollection = collections.find(
-      c => c._id === issue.collectionId
-    );
 
-    if (machineCollection) {
-      const machineIndex = filteredAndSortedData.findIndex(
-        m => m.machineId === machineCollection.machineId
-      );
-
-      if (machineIndex !== -1) {
-        const pageNumber = Math.floor(machineIndex / ITEMS_PER_PAGE) + 1;
-        setMachinePage(pageNumber);
-
-        setTimeout(() => {
-          const machineRow = document.querySelector(
-            `[data-machine-id="${machineCollection.machineId}"]`
-          );
-          if (machineRow) {
-            machineRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            machineRow.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50');
-            setTimeout(() => {
-              machineRow.classList.remove(
-                'ring-2',
-                'ring-blue-500',
-                'bg-blue-50'
-              );
-            }, 3000);
-          }
-        }, 100);
-      }
-    }
-
-    setSelectedIssue(issue);
-    setShowCollectionIssueModal(true);
-  };
 
   const handleRefresh = useCallback(async () => {
     setLoading(true);
@@ -320,10 +207,8 @@ export function useCollectionReportDetailsData() {
       const data = await fetchCollectionReportById(reportId);
       if (data) {
         setReportData(data);
-        await checkForSasTimeIssues(reportId);
       }
-      const collectionsData =
-        await fetchCollectionsByLocationReportId(reportId);
+      const collectionsData = await fetchCollectionsByLocationReportId(reportId);
       setCollections(collectionsData);
     } catch (error) {
       console.error('Error refreshing report data:', error);
@@ -331,48 +216,9 @@ export function useCollectionReportDetailsData() {
     } finally {
       setLoading(false);
     }
-  }, [reportId, checkForSasTimeIssues]);
+  }, [reportId]);
 
-  const handleFixReportConfirm = async () => {
-    setShowFixReportConfirmation(false);
-    setIsFixingReport(true);
-    setError(null);
-    try {
-      const response = await axios.post(`/api/collection-reports/fix-report`, {
-        reportId,
-      });
 
-      if (response.data.success) {
-        const { results } = response.data;
-        const issuesFixed =
-          results.issuesFixed.sasTimesFixed +
-          results.issuesFixed.movementCalculationsFixed +
-          results.issuesFixed.prevMetersFixed +
-          results.issuesFixed.historyEntriesFixed +
-          results.issuesFixed.machineHistoryFixed;
-
-        toast.success(
-          `Fixed ${issuesFixed} issues in ${results.collectionsProcessed} collections`
-        );
-
-        const data = await fetchCollectionReportById(reportId);
-        if (data) {
-          setReportData(data);
-          checkForSasTimeIssues(reportId);
-        }
-        const collectionsData =
-          await fetchCollectionsByLocationReportId(reportId);
-        setCollections(collectionsData);
-      } else {
-        toast.error(response.data.error || 'Failed to fix report');
-      }
-    } catch (error) {
-      console.error('Error fixing report:', error);
-      toast.error('Failed to fix report. Please try again.');
-    } finally {
-      setIsFixingReport(false);
-    }
-  };
 
   // ============================================================================
   // Effects
@@ -388,7 +234,6 @@ export function useCollectionReportDetailsData() {
           setError('Invalid report data received from server.');
         } else {
           setReportData(data);
-          checkForSasTimeIssues(reportId);
         }
       })
       .catch(err => {
@@ -406,7 +251,7 @@ export function useCollectionReportDetailsData() {
     fetchCollectionsByLocationReportId(reportId)
       .then(setCollections)
       .catch(() => setCollections([]));
-  }, [reportId, checkForSasTimeIssues]);
+  }, [reportId]);
 
   useEffect(() => {
     if (reportData?.isEditing && !hasRedirectedRef.current) {
@@ -430,49 +275,7 @@ export function useCollectionReportDetailsData() {
     }
   }, [searchParams, activeTab]);
 
-  // Auto-fix effect
-  useEffect(() => {
-    if (
-      (hasSasTimeIssues || hasCollectionHistoryIssues) &&
-      !isFixingReport &&
-      !loading &&
-      reportData &&
-      lastAutoFixIssuesRef.current === ''
-    ) {
-      lastAutoFixIssuesRef.current = 'attempted';
-      const autoFix = async () => {
-        setIsFixingReport(true);
-        try {
-          const response = await axios.post(
-            `/api/collection-reports/fix-report`,
-            { reportId }
-          );
-          if (response.data.success) {
-            const data = await fetchCollectionReportById(reportId);
-            if (data) setReportData(data);
-            await checkForSasTimeIssues(reportId);
-            const collectionsData =
-              await fetchCollectionsByLocationReportId(reportId);
-            setCollections(collectionsData);
-            toast.success('Collection history automatically synchronized');
-          }
-        } catch (error) {
-          console.error('Auto-fix failed:', error);
-        } finally {
-          setIsFixingReport(false);
-        }
-      };
-      autoFix();
-    }
-  }, [
-    hasSasTimeIssues,
-    hasCollectionHistoryIssues,
-    isFixingReport,
-    loading,
-    reportId,
-    reportData,
-    checkForSasTimeIssues,
-  ]);
+
 
   return {
     // State
@@ -486,29 +289,15 @@ export function useCollectionReportDetailsData() {
     searchTerm,
     sortField,
     sortDirection,
-    showFixReportConfirmation,
-    isFixingReport,
-    hasSasTimeIssues,
-    hasCollectionHistoryIssues,
-    sasTimeIssues,
-    showCollectionIssueModal,
-    selectedIssue,
-    collectionHistoryMachines,
     paginatedMetricsData,
     machineTotalPages,
     tabContentRef,
     // Setters
     setMachinePage,
     setSearchTerm,
-    setShowFixReportConfirmation,
-    setShowCollectionIssueModal,
     // Handlers
     handleSort,
     handleTabChange,
     handleRefresh,
-    handleIssueClick,
-    handleFixReportConfirm,
-    handleFixReportClick: () => setShowFixReportConfirmation(true),
   };
 }
-

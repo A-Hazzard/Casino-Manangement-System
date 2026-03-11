@@ -113,8 +113,13 @@ export function useCabinetsPageData() {
 
   const isDataMissingForPage = useMemo(() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
-    return allCabinets.length <= startIndex && allCabinets.length < totalCount;
-  }, [allCabinets.length, currentPage, ITEMS_PER_PAGE, totalCount]);
+    // We only need more data if our startIndex for the current page
+    // has exceeded what we've loaded in allCabinets, AND
+    // the server says there's more to fetch (totalCount).
+    // Note: When searching, we fetch all at once, so this correctly bypasses
+    // because totalCount is set to the full search result count.
+    return !debouncedSearchTerm?.trim() && startIndex >= allCabinets.length && allCabinets.length < totalCount;
+  }, [allCabinets.length, currentPage, totalCount, debouncedSearchTerm]);
 
   // effectiveTotalPages is based on the actual loaded count from API.
   // Adds +1 trigger page only if server has more data not yet fetched.
