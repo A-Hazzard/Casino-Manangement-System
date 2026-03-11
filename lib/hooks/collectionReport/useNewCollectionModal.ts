@@ -387,6 +387,7 @@ export function useNewCollectionModal({
         setIsLoadingExistingCollections(true);
         let url = `/api/collections?incompleteOnly=true&_t=${Date.now()}`;
         if (locationId) url += `&location=${locationId}`;
+        if (userId) url += `&collector=${userId}`;
 
         const response = await axios.get(url);
         if (response.data && response.data.length > 0) {
@@ -433,7 +434,7 @@ export function useNewCollectionModal({
         setIsLoadingExistingCollections(false);
       }
     },
-    [locations, getLocationIdFromMachine]
+    [locations, getLocationIdFromMachine, userId]
   );
 
   // Fetch existing collections when modal opens or location changes
